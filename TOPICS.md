@@ -50,7 +50,6 @@ Topics already covered live in [README.md](README.md) and are not repeated here.
 ## Security
 
 - **Web Application Security** — OWASP Top 10 with depth: how each class of bug actually works, how to test for it, how to prevent it. Complement to the Kali guide on the offensive side.
-- **Cryptography Fundamentals** — symmetric, asymmetric, hashing, signatures, key exchange, TLS, JWT pitfalls. Enough to read a spec and not misuse a library.
 - **Threat Modeling** — STRIDE, attack trees, trust boundaries. The discipline of thinking about security *before* the code is written.
 - **Reverse Engineering** — Ghidra/IDA, ELF/PE/Mach-O, dynamic analysis, anti-debugging. Pairs with the Kali guide for the binary-analysis half of pentesting.
 - **Binary Exploitation** — stack/heap exploitation, ROP, modern mitigations (ASLR, CFI, stack canaries). The CTF-leaning end of security.

@@ -14,6 +14,11 @@ This guide explains Cloudflare from a builder's point of view, focusing on the t
 
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/CLOUDFLARE_STUDY_GUIDE.md)
 
+### Cryptography Fundamentals
+This guide covers applied cryptography for engineers: the primitives (hashing, symmetric, asymmetric, signatures, key exchange), the protocols (TLS, OIDC, JWT), the engineering concerns (key management, side channels, constant-time code), and the applied recipes you actually ship (auth in Node.js and Go, webhook signing, envelope encryption with KMS, file encryption with age). The goal is to be fluent enough to read a spec, choose the right library, and recognize when something is dangerously wrong.
+
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/CRYPTO_FUNDAMENTALS.md)
+
 ### Django
 This guide covers Django as a productive web framework with a strong opinionated core. It focuses on the parts that matter most in day-to-day development: models, views, templates, forms, admin, auth, and how those pieces fit together in a maintainable app.
 
