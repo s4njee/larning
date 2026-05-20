@@ -12,7 +12,6 @@ Topics already covered live in [README.md](README.md) and are not repeated here.
 - **AWS** — counterpart to the existing Azure-for-AWS-architect guide, written for someone coming in fresh. Covers IAM, VPC, compute, storage, managed databases, and the cross-service patterns that actually matter.
 - **GCP** — third leg of the cloud stool; worth a guide that focuses on what's idiomatic in GCP (project model, IAM hierarchy, BigQuery, Cloud Run, GKE Autopilot) rather than a mechanical translation from AWS.
 - **Docker (Deep)** — image layers, BuildKit, multi-stage builds, OCI runtimes, security contexts, rootless. The existing networking guide covers networking; this would cover the rest.
-- **Networking Fundamentals** — TCP/IP, DNS, TLS 1.3, HTTP/1.1 vs. 2 vs. 3, load balancing, NAT. Foundational reference that other guides (K8s networking, Nginx, security) can lean on.
 - **Nginx & Reverse Proxies** — config language, upstream blocks, caching, TLS termination, rate limiting, the `ngx_http_*` module landscape. Still the most common load balancer on the planet.
 - **Observability** — Prometheus, OpenTelemetry, Grafana, traces vs. metrics vs. logs, RED/USE methods, alert design. Goes beyond "install Prometheus" into how to *think* about production signal.
 - **GitHub Actions** — workflow syntax, runners, matrix builds, secrets, OIDC to cloud, reusable workflows, caching. The default CI for most modern repos; deserves a proper treatment.
@@ -40,7 +39,6 @@ Topics already covered live in [README.md](README.md) and are not repeated here.
 
 - **Kafka & Streaming** — topics, partitions, consumer groups, exactly-once semantics, the broker/producer/consumer model. The dominant streaming substrate.
 - **Redis** — data structures beyond key-value, pub/sub, streams, persistence trade-offs, Cluster mode. Used as cache, queue, lock, session store, and more.
-- **Data Engineering** — Airflow/Dagster/Prefect, dbt, Spark, the modern data stack. A coherent guide to what data engineers actually build.
 - **LLM Application Development** — prompt engineering, tool use, agents, retrieval, evals, cost/latency trade-offs. The current state of the art for shipping LLM-backed features.
 - **Local LLMs** — llama.cpp, Ollama, GGUF, quantization, hardware considerations. Particularly relevant for Pi-class hardware experiments.
 - **Vector Databases** — embeddings, ANN indexes (HNSW, IVF), pgvector vs. dedicated stores. Foundation for any retrieval-augmented system.

@@ -19,6 +19,11 @@ This guide covers applied cryptography for engineers: the primitives (hashing, s
 
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/CRYPTO_FUNDAMENTALS.md)
 
+### Data Engineering
+This guide covers what data engineers actually build: storage formats, warehouses and lakehouses, ingestion (CDC, Kafka, SaaS), transformation with dbt, orchestration with Airflow/Dagster/Prefect, distributed compute with Spark, streaming, modeling, quality, and governance. It closes with concrete recipes for a real dbt project layout, Airflow DAG patterns, warehouse cost optimization, and a full walkthrough of a production pipeline from source systems to BI.
+
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/DATA_ENGINEERING_STUDY_GUIDE.md)
+
 ### Django
 This guide covers Django as a productive web framework with a strong opinionated core. It focuses on the parts that matter most in day-to-day development: models, views, templates, forms, admin, auth, and how those pieces fit together in a maintainable app.
 
@@ -53,6 +58,11 @@ This guide covers Kubernetes as a working operator: the API model, workloads, sc
 This guide walks through Kubernetes security as a layered system of identity, access control, workload hardening, secrets handling, and detection. It is written to help you think in terms of blast radius, trust boundaries, and production hardening rather than just individual YAML fields.
 
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md)
+
+### Networking Fundamentals
+This guide is a depth-first foundation for how computer networks actually work: layered architecture, Ethernet and ARP, IP and routing, NAT and firewalls, TCP and UDP, DNS, the networking view of TLS, and HTTP/1.1 vs. 2 vs. 3 — followed by load balancing, modern realities (CDNs, eBPF, service mesh), a diagnostic toolkit, a hands-on recipe for connecting two Linux machines directly with an Ethernet cable, the real-world problems that keep recurring, and an end-to-end walkthrough of what happens when you type a URL into the browser.
+
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/NETWORKING_FUNDAMENTALS.md)
 
 ### Next.js
 This guide covers Next.js as a full-stack React framework, with an emphasis on the parts that matter when you are building production apps. It focuses on routing, rendering strategies, data loading, API handling, and the tradeoffs that come with framework-driven React.
