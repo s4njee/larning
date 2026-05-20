@@ -1762,3 +1762,575 @@ These are not literally part of the standard library. They are the crates you wi
 | `itertools` | Extra iterator methods | `itertools` |
 | `sqlx` | Async SQL | `asyncpg` / `SQLAlchemy` |
 | `axum` / `actix-web` | Web frameworks | `FastAPI` / `Flask` |
+
+---
+
+## 17. Rust In Practice — Anatomy of a Real Scraper
+
+This section walks through the design choices in a production Rust application (csearch-rscraper, a congressional data scraper) and maps each pattern back to the Rust concepts covered earlier. The scraper parses tens of thousands of XML and JSON files from Congress.gov, writes them to PostgreSQL, and manages change detection via SHA-256 hashing — all using async Rust with Tokio.
+
+### 17.1 Project Structure and Module System
+
+The scraper's `src/` directory:
+
+```
+src/
+  main.rs              # Entry point, mod declarations, orchestration
+  config.rs            # Environment-based configuration (like pydantic.BaseSettings)
+  models.rs            # All data structs: DB params, parsed intermediaries, serde models
+  db.rs                # All SQL operations (sqlx, async PostgreSQL)
+  hashes.rs            # SHA-256 file change detection with bincode persistence
+  stats.rs             # Simple run counters (like a @dataclass)
+  util.rs              # Pure helper functions (date parsing, string conversion)
+  python.rs            # Spawning Python subprocesses via Tokio
+  redis_cache.rs       # Redis cache invalidation after DB writes
+  bills.rs             # Bill pipeline orchestrator (discovery, parallel parse, status logic)
+  bills_parse_xml.rs   # XML bill parsing (two schema versions)
+  bills_parse_json.rs  # JSON bill parsing (legacy format)
+  bills_write.rs       # Bill DB write strategies (incremental vs seed)
+  votes.rs             # Vote pipeline (discovery, parse, write)
+```
+
+In Python, you'd just create files and import them. In Rust, every file must be explicitly declared in `main.rs`:
+
+```rust
+mod bills;
+mod bills_parse_json;
+mod bills_parse_xml;
+mod bills_write;
+mod config;
+mod db;
+mod hashes;
+mod models;
+mod python;
+mod redis_cache;
+mod stats;
+mod util;
+mod votes;
+```
+
+Without these `mod` declarations, the compiler doesn't know the files exist. This is the key difference from Python's auto-discovery: Rust modules are opt-in, not opt-out. The upside is that you always know exactly what's in your crate by reading the root file.
+
+The scraper uses `pub(crate)` visibility on internal functions like `parse_bill_xml` and `insert_parsed_bill_in_tx`. This means "visible anywhere inside this crate, but not to external consumers." Python has no real equivalent — `_underscore` is just a convention. Rust enforces it at compile time.
+
+### 17.2 Cargo.toml — Dependency Management
+
+```toml
+[package]
+name = "csearch-rscraper"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1"
+bincode = "1"
+chrono = { version = "0.4", features = ["serde"] }
+dotenvy = "0.15"
+quick-xml = { version = "0.37", features = ["serialize"] }
+redis = { version = "0.27", features = ["aio", "tokio-comp"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "postgres", "chrono"] }
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+[dev-dependencies]
+tempfile = "3"
+```
+
+Key patterns a Python developer should notice:
+
+- **Feature flags** (`features = ["derive"]`). Rust crates use compile-time feature flags to enable optional functionality. `serde` without `derive` gives you the traits but not the `#[derive(Serialize, Deserialize)]` macros. `sqlx` without `postgres` doesn't include the PostgreSQL driver. This is like Python extras (`pip install sqlalchemy[postgresql]`), but enforced at compile time and with finer granularity.
+- **`[dev-dependencies]`** are only compiled for tests. `tempfile` creates temporary directories for test fixtures. In Python, you'd put test dependencies in a `[project.optional-dependencies]` group or a separate `requirements-dev.txt`.
+- **No version pinning to exact versions**. `anyhow = "1"` means "any 1.x.y". `Cargo.lock` (committed to the repo) pins exact versions, like `pip freeze`. The `Cargo.toml` specifies compatibility ranges; the lock file ensures reproducibility.
+- **Edition = "2024"**. Rust editions are backwards-compatible language version milestones (like Python 3.10 vs 3.12). They let the language evolve without breaking old code. Each crate declares which edition it uses.
+
+### 17.3 The Async Runtime: Tokio
+
+The scraper's `main.rs` starts with:
+
+```rust
+#[tokio::main]
+async fn main() -> ExitCode {
+    let _ = dotenvy::dotenv();
+    init_tracing();
+    match run().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(err) => {
+            error!(error = %err, "scraper run failed");
+            ExitCode::FAILURE
+        }
+    }
+}
+```
+
+In Python, you'd write `asyncio.run(main())`. Rust doesn't ship an async runtime — you bring your own. `#[tokio::main]` is a macro that creates a multi-threaded Tokio runtime and runs your async main inside it.
+
+The `ExitCode` return type is Rust's way of setting the process exit code. Python uses `sys.exit(1)`. Rust makes it a return value, which is more composable and harder to forget.
+
+The `run()` function returns `anyhow::Result<()>` — either success (no value) or an error with a full context chain. Every `?` in the function body propagates errors upward. This is the Rust equivalent of letting exceptions bubble up in Python, but it's explicit at every call site.
+
+### 17.4 Configuration: Structs Over Dicts
+
+Python developers typically use `os.getenv()` or `pydantic.BaseSettings`. The scraper uses a `Config` struct:
+
+```rust
+#[derive(Debug, Clone)]
+pub struct Config {
+    pub congress_dir: PathBuf,
+    pub postgres_uri: String,
+    pub redis_url: String,
+    pub db_user: String,
+    pub db_password: String,
+    pub db_name: String,
+    pub db_write_concurrency: u32,
+    pub bill_write_mode: BillWriteMode,
+    pub db_port: u16,
+    pub run_votes: bool,
+    pub run_bills: bool,
+    pub target_congress: i32,
+    pub log_level: String,
+}
+```
+
+Every field has an explicit type. `u16` for port numbers (0–65535), `u32` for concurrency limits, `PathBuf` for filesystem paths, `bool` for feature flags. Python's `os.getenv()` returns `str | None` and you cast manually. Rust forces you to parse and validate at load time.
+
+The `Config::load()` method demonstrates several Rust patterns:
+
+```rust
+let db_port: u16 = env::var("DB_PORT")
+    .ok()                              // Result -> Option (discard error)
+    .and_then(|v| v.parse().ok())      // parse string to u16, discard error
+    .unwrap_or(5432);                  // default if missing or unparseable
+```
+
+This is the Rust equivalent of `int(os.getenv("DB_PORT", "5432"))`, but it handles three failure modes (missing var, empty string, non-numeric string) without any exceptions.
+
+The `BillWriteMode` enum is a good example of Rust enums as configuration:
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BillWriteMode {
+    Incremental,
+    Seed,
+}
+```
+
+In Python, you'd use a string (`"incremental"` or `"seed"`) and hope nobody typos it. In Rust, the compiler ensures you only ever have one of two valid values. The `match` in `process_bills` is exhaustive — if you add a third variant, every `match` that doesn't handle it becomes a compile error.
+
+### 17.5 Serde: The Serialization Framework
+
+The `models.rs` file is the heart of the scraper's type system. It demonstrates serde's power for parsing heterogeneous data formats.
+
+#### Derive-based deserialization
+
+```rust
+#[derive(Debug, Deserialize, Default, Clone)]
+pub struct BillXmlNew {
+    #[serde(rename = "number", default)]
+    pub number: String,
+    #[serde(rename = "billType", default)]
+    pub bill_type: String,
+    #[serde(rename = "introducedDate", default)]
+    pub introduced_at: String,
+    // ...
+}
+```
+
+This is like a Pydantic model with `Field(alias="number")`, but it works for JSON, XML, YAML, TOML, bincode, and any other format serde supports — all from the same struct definition. The `#[serde(default)]` annotation means "use `Default::default()` if the field is missing," which for `String` is `""`.
+
+#### Handling schema evolution
+
+Congress.gov changed their XML schema over the years. The scraper handles this with two struct definitions (`BillXmlNew` and `BillXmlLegacy`) and a runtime fallback:
+
+```rust
+let root_new: BillXmlRootNew = from_str(&data)?;
+if !root_new.bill.number.is_empty() {
+    // New format — use it
+    return build_parsed_bill(/* ... */);
+}
+// Fall back to legacy format
+let root_legacy: BillXmlRootLegacy = from_str(&data)?;
+```
+
+In Python, you'd probably use a single dict and check for key existence. In Rust, having two typed structs means the compiler verifies you handle both schemas correctly. The cost is more code; the benefit is that a schema change in the XML won't silently produce wrong data.
+
+#### Custom deserializer for null-or-default
+
+```rust
+fn null_or_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de> + Default,
+{
+    let value = Option::<T>::deserialize(deserializer)?;
+    Ok(value.unwrap_or_default())
+}
+```
+
+This handles JSON fields that can be either a value or `null`, converting `null` to the type's default. The lifetime `'de` is the deserializer's lifetime — it tells the compiler how long the borrowed input data lives. You'd never think about this in Python because the GC handles it.
+
+#### Heterogeneous JSON with `serde_json::Value`
+
+The vote JSON has a `votes` field where values are arrays containing mixed types (objects and strings):
+
+```rust
+pub votes: std::collections::HashMap<String, Vec<Value>>,
+```
+
+`Value` is serde's "untyped JSON" type — like `Any` in Python or `any` in TypeScript. The scraper parses the array elements manually:
+
+```rust
+for item in items {
+    match item {
+        serde_json::Value::Null | serde_json::Value::String(_) => continue,
+        value => members.push(serde_json::from_value(value)?),
+    }
+}
+```
+
+This pattern — parse the container with types, then handle heterogeneous elements with pattern matching — is idiomatic Rust for messy real-world data.
+
+### 17.6 Error Handling in Practice
+
+The scraper uses `anyhow` throughout, which is the right choice for application code (as opposed to library code where you'd use `thiserror`).
+
+#### Context chains
+
+Every fallible operation gets a `.context()` or `.with_context()` call:
+
+```rust
+let pool = PgPoolOptions::new()
+    .max_connections(cfg.db_write_concurrency)
+    .connect(&cfg.postgres_dsn())
+    .await
+    .context("connect to postgres")?;
+```
+
+Without `.context()`, a connection failure would produce a raw TCP error. With it, you get: `"connect to postgres: connection refused"`. This is like Python's `raise RuntimeError("connect to postgres") from e`, but it's a one-liner.
+
+#### Non-fatal errors with `warn!`
+
+The scraper distinguishes fatal errors (propagated with `?`) from non-fatal ones (logged with `warn!` and skipped):
+
+```rust
+if let Err(err) = run_congress_task(cfg, &["votes", &format!("--congress={congress}")]).await {
+    warn!(congress, error = %err, "vote sync skipped");
+}
+```
+
+If the Python sync subprocess fails, the scraper continues with whatever data is already on disk. This is a deliberate resilience choice — in Python you'd wrap it in `try/except` and log the exception.
+
+#### Validation before database writes
+
+```rust
+if bill.billnumber == 0 || bill.billtype.is_empty() {
+    return Err(anyhow!(
+        "skipping bill with empty number/type (congress={}, id={})",
+        bill.congress,
+        bill.billid.clone().unwrap_or_default()
+    ));
+}
+```
+
+The scraper validates data before starting a transaction, not inside the SQL. This prevents wasted database round-trips and makes error messages more specific. In Python, you might rely on database constraints to catch bad data. In Rust, the pattern is to validate early and fail with a clear message.
+
+### 17.7 Async Concurrency Patterns
+
+The scraper's two-phase pipeline is the most instructive part for Python developers learning async Rust.
+
+#### Phase 1: CPU-bound parsing with `spawn_blocking`
+
+```rust
+tokio::task::spawn_blocking(move || parse_vote_job(job, &known_hashes)).await?
+```
+
+`parse_vote_job` is synchronous — it reads files and parses JSON/XML. Running it directly in an async task would block the Tokio worker thread. `spawn_blocking` moves it to a dedicated thread pool, returning a future that resolves when the work is done.
+
+This is exactly like Python's `await loop.run_in_executor(None, parse_vote_job, ...)`. The difference is that Rust makes the distinction between "async I/O work" and "blocking CPU work" explicit in the type system. In Python, you can accidentally block the event loop and only notice when throughput drops.
+
+#### Phase 2: I/O-bound database writes with semaphore-gated tasks
+
+```rust
+let write_sem = Arc::new(Semaphore::new(cfg.db_write_concurrency as usize));
+let mut write_tasks = JoinSet::new();
+
+for changed_vote in collected.changed_votes {
+    let pool = pool.clone();
+    let write_sem = write_sem.clone();
+    write_tasks.spawn(async move {
+        let _permit = write_sem.acquire_owned().await?;
+        insert_parsed_vote(&pool, &changed_vote.parsed_vote).await?;
+        Ok::<_, anyhow::Error>(changed_vote)
+    });
+}
+```
+
+This pattern has several Rust-specific details:
+
+- **`Arc::new(Semaphore::new(...))`**: The semaphore is wrapped in `Arc` (atomic reference counting) because each spawned task needs its own reference. In Python, you'd just pass the semaphore — the GC handles sharing. In Rust, you must be explicit about shared ownership.
+- **`pool.clone()`**: `PgPool` is internally `Arc`-wrapped, so cloning is cheap (just bumps a reference count). This is a common pattern — types that are meant to be shared across tasks implement cheap `Clone`.
+- **`async move { ... }`**: The `move` keyword transfers ownership of `pool`, `write_sem`, and `changed_vote` into the async block. Without `move`, the closure would try to borrow these variables, but the borrows might not live long enough (the spawned task could outlive the loop iteration).
+- **`_permit`**: The underscore prefix means "I need this variable to exist (holding the semaphore permit) but I never read it." When `_permit` is dropped at the end of the async block, the semaphore permit is released. This is RAII — no `try/finally` needed.
+
+#### JoinSet: Collecting results from concurrent tasks
+
+```rust
+while let Some(result) = write_tasks.join_next().await {
+    match result {
+        Ok(Ok(changed_vote)) => { /* success */ }
+        Ok(Err(err)) => { /* DB write failed */ }
+        Err(err) => { /* task panicked */ }
+    }
+}
+```
+
+`JoinSet` is like `asyncio.TaskGroup` in Python 3.11+, but you drain results one at a time instead of waiting for all tasks to finish. The double-`Result` pattern (`Ok(Ok(...))` vs `Ok(Err(...))` vs `Err(...)`) handles two failure levels: the task infrastructure (did the task panic?) and the application logic (did the DB write fail?).
+
+In Python, `asyncio.gather(return_exceptions=True)` flattens these into one list. Rust's nested pattern matching makes each failure mode explicit.
+
+### 17.8 Ownership in Action: The Hash Store
+
+`FileHashStore` in `hashes.rs` is a clean example of Rust ownership patterns solving a real problem.
+
+```rust
+pub struct FileHashStore {
+    path: PathBuf,
+    hashes: HashMap<String, String>,
+}
+```
+
+The store owns its data. When you call `hashes.mark_processed(&path, hash)`, the `hash: String` parameter is moved into the HashMap — the caller gives up ownership. This is different from Python where the dict and the caller both hold references to the same string object.
+
+The `snapshot()` method creates a clone for sharing across async tasks:
+
+```rust
+pub fn snapshot(&self) -> HashMap<String, String> {
+    self.hashes.clone()
+}
+```
+
+This clone is wrapped in `Arc` before being shared:
+
+```rust
+let known_hashes = Arc::new(hashes.snapshot());
+```
+
+Each spawned task gets `Arc::clone(&known_hashes)` — a cheap reference count bump, not a deep copy. The tasks can read the HashMap concurrently without locks because the `Arc` contents are immutable. This is the Rust pattern for "read-only shared state across tasks."
+
+In Python, you'd just pass the dict to each coroutine and trust that nobody mutates it. In Rust, the type system enforces it: `Arc<HashMap<...>>` gives you `&HashMap` (immutable reference) — you literally cannot call `.insert()` on it.
+
+### 17.9 Database Patterns with sqlx
+
+#### Transactions as RAII
+
+```rust
+let mut tx = pool.begin().await?;
+db::insert_vote(&mut tx, &parsed_vote.vote).await?;
+db::replace_vote_members(&mut tx, &parsed_vote.vote.voteid, &parsed_vote.members).await?;
+tx.commit().await?;
+```
+
+If any `?` triggers an early return (error propagation), `tx` is dropped without `.commit()`. sqlx automatically rolls back the transaction when the `Transaction` object is dropped. This is Rust's RAII pattern — no `try/finally` or context manager needed.
+
+In Python with `asyncpg`:
+```python
+async with pool.acquire() as conn:
+    async with conn.transaction():
+        await insert_vote(conn, vote)
+        await replace_vote_members(conn, vote.voteid, members)
+```
+
+Both approaches auto-rollback on failure, but Rust's version is implicit through drop semantics rather than explicit through context managers.
+
+#### Batch operations with UNNEST
+
+The scraper avoids N+1 query patterns by using PostgreSQL's `UNNEST` with parallel arrays:
+
+```rust
+let bioguide_ids: Vec<String> = members.iter().map(|m| m.bioguide_id.clone()).collect();
+let positions: Vec<String> = members.iter().map(|m| m.position.clone()).collect();
+
+sqlx::query(r#"
+    INSERT INTO vote_members (voteid, bioguide_id, ..., position)
+    SELECT $1, * FROM UNNEST($2::text[], ..., $6::text[])
+"#)
+.bind(voteid)
+.bind(&bioguide_ids)
+.bind(&positions)
+.execute(&mut **tx)
+.await?;
+```
+
+The `.iter().map(...).collect()` chain transforms a slice of structs into parallel `Vec`s — one per column. This is the Rust iterator equivalent of Python's:
+
+```python
+bioguide_ids = [m.bioguide_id for m in members]
+positions = [m.position for m in members]
+```
+
+The `&mut **tx` double-dereference is a sqlx quirk: `tx` is `&mut Transaction`, and `Transaction` wraps an inner connection. The `**` unwraps both layers to get the connection that `.execute()` expects.
+
+#### CTE chains for atomic multi-step operations
+
+The `replace_bill_actions` function does five operations in a single SQL round-trip using a CTE (Common Table Expression) chain:
+
+```sql
+WITH clear_latest AS (UPDATE bills SET latest_action_id = NULL WHERE ...),
+     deleted AS (DELETE FROM bill_actions WHERE ...),
+     inserted AS (INSERT INTO bill_actions ... FROM UNNEST(...) RETURNING id, ...),
+     best AS (SELECT id FROM inserted WHERE acted_at = $9 ORDER BY ... LIMIT 1)
+UPDATE bills SET latest_action_id = best.id, latest_action_date = $9 FROM best WHERE ...
+```
+
+This replaces what would be 4+ separate queries (clear FK, delete old rows, insert new rows, update FK) with one network round-trip. The Rust code binds 10 parameters to this single query. This is a performance pattern that works in any language, but the scraper's consistent use of it shows how Rust codebases tend to optimize for throughput from the start.
+
+### 17.10 Function Pointers and Strategy Pattern
+
+The bill pipeline uses function pointers to choose between XML and JSON parsers at runtime:
+
+```rust
+type BillParser = fn(&Path) -> Result<ParsedBill>;
+
+struct BillJob {
+    path: PathBuf,
+    parse: BillParser,
+    display: String,
+}
+```
+
+During file discovery, each job gets the appropriate parser:
+
+```rust
+if file_exists(&xml_path) {
+    jobs.push(BillJob { path: xml_path, parse: parse_bill_xml, display: name });
+} else if file_exists(&json_path) {
+    jobs.push(BillJob { path: json_path, parse: parse_bill_json, display: name });
+}
+```
+
+Later, the parser is called via the function pointer:
+
+```rust
+let parsed_bill = (job.parse)(&job.path)?;
+```
+
+In Python, you'd store a function reference the same way (`parser = parse_bill_xml`), but without any type checking. In Rust, `fn(&Path) -> Result<ParsedBill>` guarantees that both parsers have exactly the same signature. If you change one parser's return type, the other must change too — the compiler enforces it.
+
+This is the Strategy pattern without any trait objects or dynamic dispatch overhead. Function pointers are zero-cost — they're just addresses.
+
+### 17.11 Subprocess Management with Tokio
+
+The `python.rs` module spawns a Python subprocess and streams its output:
+
+```rust
+let mut child = Command::new("python3")
+    .arg(&run_py)
+    .args(args)
+    .current_dir(&congress_dir)
+    .env("PYTHONPATH", python_path)
+    .stdout(std::process::Stdio::piped())
+    .stderr(std::process::Stdio::piped())
+    .spawn()?;
+
+let stdout = child.stdout.take().context("missing python stdout")?;
+let stderr = child.stderr.take().context("missing python stderr")?;
+
+let stdout_task = tokio::spawn(stream_output("stdout", stdout));
+let stderr_task = tokio::spawn(stream_output("stderr", stderr));
+
+let status = child.wait().await?;
+stdout_task.await??;
+stderr_task.await??;
+```
+
+Key Rust patterns:
+
+- **`.take()`** extracts the stdout/stderr handles from the child, replacing them with `None`. This transfers ownership — the child no longer owns the handles, so the spawned tasks can consume them. In Python, you'd just pass `child.stdout` to another coroutine without thinking about ownership.
+- **Two concurrent tasks for stdout/stderr**. Reading them sequentially could deadlock if one stream's buffer fills up. `tokio::spawn` runs both concurrently. In Python, you'd use `asyncio.create_task()` for the same reason.
+- **`stdout_task.await??`** — the double `?`. The first `?` unwraps the `JoinHandle` (did the task panic?). The second `?` unwraps the `Result` from `stream_output` (did I/O fail?). This two-level error handling is a recurring Rust pattern for spawned tasks.
+- **`&'static str` for the stream label**. The `stream_output` function takes `source: &'static str` because `tokio::spawn` requires `'static` — the task might outlive the current function. String literals like `"stdout"` are `'static` because they're baked into the binary.
+
+### 17.12 Testing Patterns
+
+The scraper's tests demonstrate several Rust-specific testing patterns.
+
+#### Tests live next to the code
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn load_config_from_env() {
+        let _guard = env_lock().lock().unwrap();
+        let temp_dir = TempDir::new().unwrap();
+        unsafe {
+            env::set_var("CONGRESSDIR", temp_dir.path());
+            env::set_var("POSTGRESURI", "localhost");
+        }
+        let cfg = Config::load().unwrap();
+        assert_eq!(cfg.congress_dir, temp_dir.path());
+    }
+}
+```
+
+- **`#[cfg(test)]`** means this module is completely stripped from the production binary. It only exists when running `cargo test`.
+- **`use super::*`** imports everything from the parent module, including private items. This lets tests access internal functions without making them public.
+- **`unsafe { env::set_var(...) }`** — modifying environment variables is `unsafe` in Rust because env vars are process-global mutable state. Rust forces you to acknowledge this explicitly. In Python, `os.environ["KEY"] = value` is just as unsafe, but the language doesn't make you think about it.
+- **Mutex for test isolation** — since env vars are global, tests that modify them must not run in parallel. The `env_lock()` function returns a global mutex that serializes these tests. In Python, you'd use `unittest.mock.patch.dict(os.environ, ...)` or `monkeypatch`.
+- **`TempDir`** from the `tempfile` crate creates a temporary directory that's automatically deleted when the `TempDir` value is dropped (RAII again). Like Python's `tempfile.TemporaryDirectory()` context manager, but without the `with` block.
+
+#### Testing with real file I/O
+
+```rust
+#[test]
+fn parse_vote_skips_legacy_string_markers() {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join("data.json");
+    let payload = r#"{ "vote_id": "s47-110.2008", "votes": { "Yea": ["VP", {...}] } }"#;
+    fs::write(&path, payload).unwrap();
+
+    let parsed = parse_vote(&path).unwrap();
+    assert_eq!(parsed.members.len(), 1);
+    assert_eq!(parsed.members[0].position, "yea");
+}
+```
+
+The tests write real files to temp directories and parse them. This tests the full parsing pipeline including file I/O, serde deserialization, and data normalization. No mocking needed — the functions take `&Path` parameters, so you just point them at temp files.
+
+### 17.13 Patterns Worth Studying
+
+These patterns from the scraper are worth internalizing for any Rust project:
+
+- **`Option` chains for fallback values**: `.ok().and_then(|v| v.parse().ok()).unwrap_or(default)` replaces Python's `int(os.getenv("KEY", "default"))` with explicit handling of every failure mode.
+- **`Arc<HashMap>` for read-only shared state**: Clone the data once, wrap in `Arc`, share across tasks. No locks needed because the data is immutable.
+- **`Semaphore` for concurrency limiting**: Controls how many tasks run simultaneously without manual counting or queuing.
+- **`spawn_blocking` for CPU work in async context**: Keeps the async executor responsive by offloading heavy computation to a dedicated thread pool.
+- **RAII everywhere**: Transactions roll back on drop. Semaphore permits release on drop. Temp directories clean up on drop. Mutex guards release on drop. No `try/finally` needed.
+- **Function pointers for strategy selection**: `type Parser = fn(&Path) -> Result<T>` gives you runtime polymorphism without trait objects or dynamic dispatch overhead.
+- **Structured enums for outcomes**: `enum VoteParseOutcome { Changed(ChangedVote), Skipped, Missing }` makes every possible result explicit and forces callers to handle all cases.
+- **`.context()` on every fallible operation**: Builds error chains that read like stack traces but with human-written messages at each level.
+- **Parallel arrays + UNNEST for batch SQL**: Transforms `Vec<Struct>` into parallel `Vec<Column>` for single-round-trip batch inserts.
+- **Two-phase pipelines**: Parse on blocking threads (CPU-bound), write on async tasks (I/O-bound), with semaphores gating each phase independently.
+
+### 17.14 What a Python Developer Would Do Differently
+
+| Python approach | Rust approach in this scraper | Why the difference |
+|---|---|---|
+| `dict` for everything | Typed structs for every data shape | Compiler catches field typos and type mismatches |
+| `try/except` with broad catches | `?` propagation with `.context()` | Every error site is visible; no silent swallowing |
+| `asyncio.gather()` | `JoinSet` + `join_next()` | Drain results incrementally instead of waiting for all |
+| `json.loads()` returns `dict` | `serde_json::from_str()` returns typed struct | Deserialization validates structure at parse time |
+| `threading.Semaphore` | `tokio::sync::Semaphore` + `Arc` | Explicit shared ownership; no GIL to hide races |
+| `subprocess.run()` | `tokio::process::Command` + concurrent stream reading | Non-blocking subprocess I/O on the async runtime |
+| `os.getenv("KEY", "default")` | `env::var().ok().and_then().unwrap_or()` | Each failure mode (missing, empty, unparseable) handled explicitly |
+| `with conn.transaction():` | `let tx = pool.begin(); ... tx.commit()` | RAII auto-rollback on drop instead of context manager |
+| `pickle.dump(data, f)` | `bincode::serialize()` + `fs::write()` | Compact binary format, cross-platform, no arbitrary code execution risk |
+| Global mutable state | `&mut` references passed explicitly | Compiler tracks who can mutate what and when |
+
+The scraper is a good case study because it does things Python developers do every day — parse files, talk to databases, manage subprocesses, handle errors — but through Rust's ownership and type system. The patterns feel verbose at first, but they eliminate entire categories of runtime bugs that Python developers spend time debugging in production.

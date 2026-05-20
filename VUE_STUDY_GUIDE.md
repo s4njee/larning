@@ -941,3 +941,426 @@ Build these to demonstrate job-ready Vue.js skills:
 - **Accessibility standards and patterns**:
   - [WAI-ARIA Authoring Practices Guide](https://www.w3.org/WAI/ARIA/apg/)
   - [WCAG Overview](https://www.w3.org/WAI/standards-guidelines/wcag/)
+
+---
+
+## Phase 11: Nuxt 3 In Practice — Anatomy of a Real Application
+
+This section walks through the design choices in a production Nuxt 3 application (CSearch, a congressional data explorer) and contrasts them with alternatives available in the Vue ecosystem. Each subsection maps a concrete pattern from the codebase to the broader set of options you would evaluate when building your own app.
+
+### 11.1 Why Nuxt Over Plain Vue + Vite
+
+CSearch uses Nuxt 4 (the latest major at time of writing) instead of a hand-rolled Vue + Vite SPA. The reasons are practical:
+
+- **File-based routing** eliminates manual route definitions. The `pages/` directory structure *is* the route table. Nested folders like `pages/bills/[category]/[congress]/[number].vue` produce deeply nested dynamic routes (`/bills/hr/118/1`) without writing a single `createRouter()` call.
+  - In a plain Vue app you would define these in `router/index.ts` with `children` arrays and `path: ':category'` segments. That works, but the mapping between files and routes becomes a maintenance burden once you have 10+ route-level components.
+- **Auto-imports** for composables, components, and Vue APIs. CSearch never writes `import { ref, computed, watch } from 'vue'` or `import { useRoute } from 'vue-router'` — Nuxt resolves them automatically.
+  - The tradeoff is that explicit imports make dependencies visible at a glance. Some teams prefer explicit imports for library code and auto-imports only for Vue primitives. Nuxt lets you configure this granularity in `nuxt.config.ts` via `imports.autoImport`.
+- **Hybrid rendering** via `routeRules` and `nitro.prerender`. CSearch pre-renders a set of known routes (`/`, `/votes`, `/explore`, `/committees`, all eight bill category index pages) at build time while leaving detail pages like `/bills/hr/118/1` as client-rendered SPAs. This gives search engines and first-time visitors fast static HTML for the most-visited pages without requiring a running Node server.
+  - The alternative rendering strategies in Nuxt are: full SSR (every request rendered on the server), full SSG (every page pre-rendered at build time), ISR (incremental static regeneration with a TTL), and SWR (stale-while-revalidate at the edge). Each has different infrastructure and caching implications; docs: [Nuxt Rendering Modes](https://nuxt.com/docs/guide/concepts/rendering).
+- **Nitro server engine** powers the API proxy (`routeRules: { '/api/**': { proxy: '...' } }`) and the pre-render crawler. CSearch uses this to avoid CORS issues during local development by proxying `/api/**` to the backend.
+  - In a plain Vue app you would configure Vite's `server.proxy` for dev and handle CORS headers or a reverse proxy (nginx, Cloudflare Workers) in production. Nitro unifies both under one config.
+
+**When Nuxt is overkill**: If your app is a purely client-rendered dashboard behind authentication with no SEO requirements, plain Vue + Vite is simpler. Nuxt's value scales with the number of conventions you actually use.
+
+### 11.2 Project Structure Choices
+
+CSearch's directory layout:
+
+```
+app.vue                    # Root shell — nav bar + <NuxtPage />
+pages/
+  index.vue                # Home / overview
+  explore.vue              # Explore query catalog
+  representatives.vue      # ZIP code → representatives lookup
+  bills/
+    [category]/
+      index.vue            # Bill list for a given type (hr, s, etc.)
+      [congress]/
+        [number].vue       # Individual bill detail
+  votes/
+    index.vue              # Vote list by chamber
+    [voteid].vue           # Individual vote detail
+  members/
+    [bioguide_id].vue      # Member profile
+  committees/
+    index.vue              # Committee list
+    [code].vue             # Committee detail
+components/
+  ExploreChart.client.vue  # Plotly chart (client-only)
+  VoteBreakdownChart.client.vue
+composables/
+  useApiBase.ts            # Runtime API origin resolution
+  useCongressApi.ts        # All API fetch functions
+  useFormatters.ts         # Date, chamber, party display helpers
+types/
+  congress.ts              # TypeScript interfaces + UI constants
+middleware/
+  redirect.js              # (Currently disabled) route redirect
+assets/css/
+  base.css                 # CSS custom properties, resets
+  main.css                 # All component/layout styles
+public/
+  runtime-config.js        # Injected at build time for deploy-time API override
+scripts/
+  write-runtime-config.mjs # Prebuild script that writes runtime-config.js
+```
+
+**Design choices and alternatives**:
+
+- **No `layouts/` directory**. CSearch puts the nav bar directly in `app.vue` and uses a single shell for every page. Nuxt supports a `layouts/` directory where you define named layouts (`default.vue`, `admin.vue`, `auth.vue`) and assign them per-page via `definePageMeta({ layout: 'admin' })`. Use layouts when different sections of your app need fundamentally different chrome (e.g., a marketing site vs. an authenticated dashboard).
+- **No Pinia stores**. All server state lives in composables that call `$fetch` or `useAsyncData` directly. This is a deliberate choice for a read-heavy, mostly-stateless data explorer. If CSearch had user accounts, a shopping cart, or cross-page form state, Pinia would be the right tool. The lesson: not every Nuxt app needs a store.
+- **Types and UI constants co-located in one file** (`types/congress.ts`). This file contains TypeScript interfaces, display option arrays (`BILL_TYPE_OPTIONS`, `VOTE_CHAMBER_OPTIONS`), API family metadata, and explore group definitions. An alternative is to split types from constants, but co-location works well when the constants are tightly coupled to the type definitions and both are imported together.
+- **No `server/api/` routes**. CSearch's backend is a separate Python service. Nuxt's `server/` directory supports full-stack API routes (file-based, like pages), which is powerful when you want to keep your API and frontend in one repo. CSearch only has a `server/tsconfig.json` placeholder.
+
+### 11.3 Data Fetching Patterns in Nuxt
+
+Nuxt provides two primary data-fetching composables that differ from plain Vue patterns:
+
+#### `useAsyncData` — The Nuxt Way
+
+CSearch uses `useAsyncData` for detail pages and list pages where the data depends on route params:
+
+```typescript
+const { data: bill, pending: loading, error: fetchError } = await useAsyncData<BillDetail>(
+  `bill-${billtype}-${congress}-${billnumber}`,
+  () => getBill(billtype, congress, billnumber),
+  { lazy: true }
+)
+```
+
+Key patterns from the codebase:
+
+- **Cache keys derived from route params** (`bill-${billtype}-${congress}-${billnumber}`). This ensures Nuxt caches each bill separately and doesn't serve stale data when navigating between bills.
+- **`lazy: true`** defers the fetch until the component is mounted, showing a loading state instead of blocking navigation. Without `lazy`, Nuxt would await the data before rendering the page (useful for SSR, less useful for client-only detail pages).
+- **`server: false`** on the representatives page prevents the fetch from running during SSR/SSG. This makes sense when the data depends on user input (a ZIP code from the query string) that doesn't exist at build time.
+- **`watch: [zip]`** re-fetches when the reactive dependency changes, similar to a `watch` + manual fetch in plain Vue but with built-in pending/error state management.
+
+#### `$fetch` — Direct Fetching
+
+The `useCongressApi` composable uses `$fetch` (Nuxt's enhanced fetch, powered by `ofetch`) for imperative calls triggered by user actions:
+
+```typescript
+async function apiFetch<T>(path: string): Promise<T> {
+  return await $fetch<T>(`${apiBase}${path}`)
+}
+```
+
+This is used for search, explore queries, and any fetch triggered by a button click or form submission rather than route navigation. The composable manages its own `loading` and `errorMessage` refs.
+
+**When to use which**:
+- `useAsyncData` / `useFetch`: Route-driven data that should integrate with Nuxt's SSR hydration, caching, and navigation lifecycle.
+- `$fetch`: User-triggered actions, mutations, or fetches inside event handlers where you manage loading state yourself.
+
+**Alternative: TanStack Query (Vue Query)**. For apps with complex caching, optimistic updates, background refetching, and pagination, TanStack Query provides a more powerful caching layer than Nuxt's built-in composables. CSearch doesn't need it because the data is read-only and the caching requirements are simple.
+
+### 11.4 Composable Architecture
+
+CSearch splits its composables into three focused modules:
+
+#### `useApiBase` — Runtime Configuration Resolution
+
+```typescript
+export function useApiBase() {
+  const config = useRuntimeConfig()
+  if (import.meta.client) {
+    const runtimeApi = window.__CSEARCH_RUNTIME_CONFIG__?.API_SERVER
+    if (runtimeApi) return runtimeApi
+  }
+  return config.public.API_SERVER
+}
+```
+
+This composable solves a real deployment problem: the API origin needs to be different in local dev, staging, and production, and it needs to be overridable *after* the static site is built (via a `runtime-config.js` script injected into the HTML head). The pattern is:
+
+1. A prebuild script (`write-runtime-config.mjs`) writes a `window.__CSEARCH_RUNTIME_CONFIG__` object into `public/runtime-config.js`.
+2. `nuxt.config.ts` injects this script into the `<head>`.
+3. `useApiBase` checks the window global first (client-side), then falls back to `useRuntimeConfig().public.API_SERVER`.
+
+This is a common pattern for static deployments (Cloudflare Pages, Netlify, S3) where you can't set environment variables at request time. The alternative in SSR mode is to use Nuxt's server-side `runtimeConfig` which reads `process.env` on every request.
+
+#### `useCongressApi` — API Service Layer as a Composable
+
+Instead of a plain service module (like the Axios pattern in Phase 6), CSearch wraps all API calls in a composable that calls `useApiBase()` internally. This means every component that needs API access just calls `const { latestBills, getBill, searchVotes } = useCongressApi()`.
+
+Notable patterns:
+
+- **Semantic search with retry and timeout**: The `fetchSemanticRows` function implements a 10-second timeout and one retry for the embedding endpoint, with a graceful fallback to keyword search if the semantic endpoint fails entirely. This is a production-grade resilience pattern.
+- **Response normalization**: `normalizeSemanticBill` maps snake_case API fields to the standard `BillRecord` interface. This keeps the rest of the app insulated from backend field naming.
+- **No global state**: The composable is stateless — it returns functions, not refs. State lives in the page components that call these functions. This is a valid alternative to putting everything in Pinia.
+
+**Alternative approaches**:
+- **Pinia stores with actions**: Move API calls into store actions so fetched data is globally cached and shared across components. Better when multiple components on the same page need the same data.
+- **TanStack Query**: Wrap each API call in `useQuery` for automatic caching, deduplication, and background refetching.
+- **Nuxt `useFetch` wrappers**: Create thin composables that return `useFetch` calls with pre-configured base URLs and headers.
+
+#### `useFormatters` — Pure Display Logic
+
+```typescript
+export function useFormatters() {
+  function formatDate(value?: string | null): string { /* ... */ }
+  function formatChamber(value?: string | null): string { /* ... */ }
+  function partyLabel(party?: string | null): string { /* ... */ }
+  function voteResultClass(result?: string | null): string { /* ... */ }
+  function summarizeText(value?: string | null, limit = 160): string { /* ... */ }
+  return { formatDate, formatChamber, partyLabel, voteResultClass, summarizeText }
+}
+```
+
+These are pure functions with no reactive state. They could live in a `utils/` file instead of a composable, but wrapping them in `useFormatters()` keeps the import pattern consistent across the codebase and makes them auto-importable in Nuxt.
+
+**Alternative**: Export them as named functions from `utils/formatters.ts`. The composable wrapper is a style choice, not a technical requirement.
+
+### 11.5 Component Design Patterns
+
+#### Client-Only Components (`.client.vue` Suffix)
+
+CSearch's chart components use the `.client.vue` naming convention:
+
+```
+components/
+  ExploreChart.client.vue
+  VoteBreakdownChart.client.vue
+```
+
+The `.client.vue` suffix tells Nuxt to skip these components during SSR/SSG. This is essential because Plotly.js requires a DOM and `window` object that don't exist on the server. In a plain Vue SSR app, you would use `defineAsyncComponent` with a client-only wrapper or check `import.meta.client` before rendering.
+
+**Alternative approaches to client-only rendering**:
+- `<ClientOnly>` wrapper component: `<ClientOnly><ExploreChart /></ClientOnly>` — works but requires the parent to know about the rendering constraint.
+- Dynamic import with `defineAsyncComponent`: More verbose but gives you loading/error states.
+- `import.meta.client` guards: Check at the script level before initializing browser-only libraries.
+
+#### Third-Party Library Integration (Plotly)
+
+The chart components demonstrate a clean pattern for integrating imperative charting libraries into Vue's reactive world:
+
+1. **Template ref** for the DOM container: `const chartEl = ref<HTMLDivElement | null>(null)`
+2. **`onMounted`** to render the initial chart (DOM must exist).
+3. **`watch`** on props to re-render when data changes, with `nextTick()` to ensure the DOM is ready.
+4. **`onUnmounted`** to call `Plotly.purge()` and prevent memory leaks.
+5. **`Plotly.react()`** instead of `Plotly.newPlot()` for efficient updates without full re-creation.
+
+This lifecycle pattern applies to any imperative library (Chart.js, D3, Mapbox, CodeMirror). The key insight is that Vue manages *when* to render, but the library manages *how* to render.
+
+**Alternative charting approaches in Vue**:
+- `vue-chartjs`: A Vue wrapper around Chart.js that exposes charts as reactive components with props. Less control, more convenience.
+- `vue-echarts`: Apache ECharts with a Vue component wrapper. Good for complex interactive dashboards.
+- D3 + Vue: Use D3 for data transforms and Vue's template for DOM rendering, or use D3 imperatively inside a composable.
+
+#### Minimal Component Count
+
+CSearch has only two components in `components/` — both are charts. Everything else is page-level. This is a deliberate choice for a small team: extracting components adds indirection, and the pages are not large enough to benefit from decomposition.
+
+**When to extract components**:
+- When the same UI pattern appears on 3+ pages (e.g., bill cards, vote badges, member links).
+- When a section of a page has its own state and lifecycle (e.g., a search autocomplete widget).
+- When you want to test a piece of UI in isolation.
+
+CSearch could benefit from extracting a `BillCard`, `VoteCard`, and `MemberCard` component since those patterns repeat across bills, votes, members, and committee detail pages. The cosponsor grid and action timeline are also candidates.
+
+### 11.6 Routing Patterns
+
+#### Deeply Nested Dynamic Routes
+
+The bill detail route `pages/bills/[category]/[congress]/[number].vue` produces URLs like `/bills/hr/118/1`. Each bracket segment becomes a route param:
+
+```typescript
+const billtype = route.params.category as string
+const congress = route.params.congress as string
+const billnumber = route.params.number as string
+```
+
+**Design choice**: Using folder nesting instead of a flat `pages/bills/[...slug].vue` catch-all. Folder nesting gives you:
+- A natural place for the category index page (`pages/bills/[category]/index.vue`).
+- Type-safe param names (each segment has its own name).
+- Easier mental mapping between URL structure and file structure.
+
+The catch-all alternative (`[...slug].vue`) is better when the URL depth is variable or when you want one component to handle multiple URL shapes.
+
+#### Query Parameter–Driven State
+
+The bills list page (`pages/bills/[category]/index.vue`) is a masterclass in URL-driven state management. Every filter (congress, chamber, policy area, status, sponsor party, committee, month, min cosponsors, sort mode, search query) is synced bidirectionally with the URL query string:
+
+1. **Route → Component**: A `watch` on route query params calls `syncBillFacetsFromRoute()` to update local refs.
+2. **Component → Route**: A separate `watch` on filter refs calls `router.replace()` to update the URL.
+3. **Guard against loops**: `billQueryMatchesRoute()` prevents the component→route watcher from firing when the route→component watcher already set the same values.
+
+This pattern means every filter combination is a shareable, bookmarkable URL. Users can share `/bills/hr?congress=118&party=D&status=introduced` and the recipient sees the exact same view.
+
+**Alternative approaches**:
+- **Pinia store + URL sync plugin**: Store filter state in Pinia and use a plugin to sync with the URL. More structured but more moving parts.
+- **`useUrlSearchParams` from VueUse**: A composable that creates reactive refs backed by URL query params. Less boilerplate than manual sync.
+- **Component-only state**: Keep filters in local refs without URL sync. Simpler but loses shareability and back-button behavior.
+
+#### Route Middleware
+
+CSearch has a middleware file (`middleware/redirect.js`) that is currently commented out. Nuxt middleware runs before every navigation and is the right place for:
+- Authentication checks (redirect to `/login` if not authenticated).
+- Feature flags (redirect to a maintenance page).
+- Data preloading that should block navigation.
+
+Nuxt supports both global middleware (runs on every route) and named middleware (applied per-page via `definePageMeta({ middleware: 'auth' })`).
+
+### 11.7 Styling Architecture
+
+#### CSS Custom Properties as a Design System
+
+CSearch defines its entire color palette and spacing system in `assets/css/base.css` using CSS custom properties:
+
+```css
+:root {
+  color-scheme: dark;
+  --bg-deep: #04060f;
+  --bg-panel: rgba(10, 13, 26, 0.97);
+  --border-soft: rgba(79, 142, 247, 0.14);
+  --text-main: #dde4f0;
+  --text-muted: rgba(170, 185, 210, 0.82);
+  --accent-primary: #4f8ef7;
+  --accent-senate: #4f8ef7;
+  --accent-house: #e05252;
+  /* ... */
+}
+```
+
+Every component references these variables instead of hardcoding colors. This makes theming (e.g., adding a light mode) a matter of redefining the variables under a different selector.
+
+**Design choice**: CSearch uses plain CSS with custom properties instead of Tailwind utility classes for most of its styling, despite having Tailwind installed and configured. The `tailwind.config.js` is minimal (no custom theme extensions), and the actual styles live in `main.css` with BEM-like class naming (`.result-card__header`, `.bill-suggest__item`).
+
+**Alternative CSS approaches in the Vue ecosystem**:
+
+| Approach | Tradeoffs |
+|---|---|
+| Tailwind utility classes | Fast prototyping, consistent spacing/color, but templates get verbose. Best when the whole team commits to utility-first. |
+| Scoped `<style>` per component | Strong isolation, co-located with logic, but harder to share patterns across components. |
+| CSS Modules (`<style module>`) | Explicit class binding (`$style.card`), good for libraries where consumers shouldn't depend on class names. |
+| UnoCSS | Faster atomic CSS generation than Tailwind, more flexible preset system. Worth evaluating for large apps. |
+| Component library (Vuetify, PrimeVue, shadcn-vue) | Pre-built accessible components. Best when you want to move fast and don't need a fully custom design. |
+
+CSearch's hybrid approach (Tailwind installed for utility access, but primary styles in a global CSS file) is common in projects that started with custom design and added Tailwind later for convenience classes.
+
+#### No Scoped Styles on Most Pages
+
+Most page components in CSearch have no `<style scoped>` block — they rely on the global `main.css` classes. Only a few pages (bill detail, representatives, vote detail) add scoped styles for page-specific layout tweaks.
+
+This works because the class naming is disciplined (`.result-card`, `.detail-grid`, `.summary-strip`) and the app has a single visual language. In a larger app with multiple teams, scoped styles or CSS Modules would be safer to prevent accidental collisions.
+
+### 11.8 Static Site Generation and Deployment
+
+#### Hybrid SSG Strategy
+
+CSearch uses `nuxt generate` to produce a fully static site deployed to Cloudflare Pages. The `nitro.prerender` config explicitly lists which routes to pre-render:
+
+```typescript
+nitro: {
+  prerender: {
+    crawlLinks: false,
+    routes: ['/', '/votes', '/explore', '/representatives',
+             '/bills/hr', '/bills/s', '/bills/hres', '/bills/sres',
+             '/bills/hjres', '/bills/sjres', '/bills/hconres', '/bills/sconres',
+             '/committees'],
+  }
+}
+```
+
+`crawlLinks: false` prevents Nuxt from following links in the rendered HTML to discover more routes. This is intentional — there are thousands of bill and vote detail pages that would be impractical to pre-render. Those pages render client-side when visited.
+
+**Alternative deployment strategies**:
+
+| Strategy | When to use |
+|---|---|
+| Full SSG (`crawlLinks: true`) | Small sites where every page can be pre-rendered. Blog, docs, marketing site. |
+| SSR on Node | When you need per-request rendering (personalization, auth, real-time data). Deploy to any Node host or serverless platform. |
+| SSR on edge (Cloudflare Workers, Vercel Edge) | Low-latency SSR close to users. Nuxt + Nitro support this natively. |
+| ISR (`routeRules: { '/bills/**': { isr: 3600 } }`) | Pre-render on first request, cache for N seconds. Good for semi-static content. |
+| SPA mode (`ssr: false`) | Pure client-side rendering. Simplest deployment (any static host), but no SEO benefit. |
+
+#### Runtime Configuration for Static Deploys
+
+The `runtime-config.js` pattern deserves attention. In a static deploy, environment variables are baked in at build time. But CSearch needs to change the API origin without rebuilding (e.g., pointing a staging deploy at a different backend). The solution:
+
+1. A prebuild script writes `window.__CSEARCH_RUNTIME_CONFIG__` into a JS file in `public/`.
+2. The script tag is injected into every page's `<head>`.
+3. `useApiBase()` reads the window global at runtime, falling back to the build-time `runtimeConfig.public.API_SERVER`.
+
+This is a well-known pattern for Docker and static deploys where you want to configure the app at deploy time, not build time.
+
+### 11.9 TypeScript Patterns
+
+#### Interface Design for API Responses
+
+CSearch's `types/congress.ts` demonstrates thoughtful optionality conventions:
+
+```typescript
+// `| null`  — the field is always present but its value can be null
+// `?`       — the field may be absent from the response entirely
+export interface BillRecord {
+  billid: string                        // always present, never null
+  shorttitle?: string | null            // may be absent OR null
+  statusat: string                      // always present, never null
+  cosponsor_count?: number | null       // may be absent OR null
+}
+```
+
+This distinction matters because `bill.shorttitle` (optional) needs an existence check before access, while `bill.statusat` (required) is always safe to use. The comment at the top of the file documents this convention for future contributors.
+
+#### UI Constants as Typed Arrays
+
+```typescript
+export const BILL_TYPE_OPTIONS: BillTypeOption[] = [
+  { code: 'hr', shortLabel: 'H.R.', longLabel: 'House bills', chamber: 'house', description: '...' },
+  // ...
+]
+```
+
+Keeping UI constants in the types file (rather than scattered across components) means every page that needs bill type metadata imports from one source of truth. The `as const` assertions on some arrays (`BILL_FILTER_OPTIONS`, `API_FAMILIES`) give TypeScript narrower literal types for better inference.
+
+### 11.10 Patterns Worth Adopting and Patterns to Reconsider
+
+#### Worth adopting in your own projects
+
+- **Composable-based API layer** with no global state for read-heavy apps. It's simpler than Pinia when you don't need cross-component state sharing.
+- **URL-driven filter state** with bidirectional sync. Every meaningful view state should be in the URL.
+- **`.client.vue` suffix** for browser-only components. Cleaner than wrapping in `<ClientOnly>`.
+- **Runtime config injection** for static deploys. Avoids rebuilding when only the API origin changes.
+- **Explicit prerender route lists** instead of crawling. Gives you control over build time and output size.
+- **CSS custom properties** as a lightweight design token system. Works without any build tooling.
+- **Typed API interfaces with documented optionality conventions**. Prevents null-reference bugs across the entire frontend.
+
+#### Worth reconsidering or evolving
+
+- **Large page components without extraction**. The bills list page (`pages/bills/[category]/index.vue`) is 400+ lines of script with complex filter logic, URL sync, and data fetching. Extracting a `useBillFilters()` composable and a `BillCard` component would improve testability and readability.
+- **Duplicated card markup**. The cosponsor card, result card, and member card patterns repeat across 4+ pages with slight variations. A shared component would reduce drift.
+- **Global CSS for everything**. As the app grows, the 600+ line `main.css` will become harder to maintain. Migrating to scoped styles or Tailwind utilities per component would improve locality.
+- **No error boundary components**. API failures show inline error text, but there's no `<ErrorBoundary>` wrapper to catch unexpected rendering errors gracefully.
+- **No loading skeletons**. Pages show "Loading..." text instead of skeleton placeholders. Skeleton screens improve perceived performance significantly.
+- **Middleware is commented out**. If the redirect logic is no longer needed, removing the file is cleaner than leaving dead code.
+
+### 11.11 The Broader Nuxt Ecosystem
+
+Beyond what CSearch uses, Nuxt has a rich module ecosystem that solves common problems:
+
+| Module | Purpose | When to reach for it |
+|---|---|---|
+| [`@nuxtjs/i18n`](https://i18n.nuxtjs.org/) | Internationalization | Multi-language support with route-based locale switching |
+| [`@nuxt/image`](https://image.nuxt.com/) | Image optimization | Automatic resizing, format conversion, lazy loading |
+| [`@nuxt/content`](https://content.nuxt.com/) | Markdown/YAML content | Documentation sites, blogs, content-driven pages |
+| [`@nuxt/fonts`](https://fonts.nuxt.com/) | Font optimization | Self-hosting Google Fonts with zero layout shift |
+| [`@sidebase/nuxt-auth`](https://sidebase.io/nuxt-auth/) | Authentication | OAuth, JWT, session-based auth with route guards |
+| [`@pinia/nuxt`](https://pinia.vuejs.org/ssr/nuxt.html) | Pinia integration | SSR-safe store hydration and auto-imports |
+| [`nuxt-security`](https://nuxt-security.vercel.app/) | Security headers | CSP, CORS, rate limiting, XSS protection |
+| [`@vueuse/nuxt`](https://vueuse.org/nuxt/README.html) | VueUse integration | Auto-imported VueUse composables |
+| [`@nuxt/test-utils`](https://nuxt.com/docs/getting-started/testing) | Testing | Nuxt-aware component and E2E testing helpers |
+| [`nuxt-og-image`](https://nuxtseo.com/og-image) | Open Graph images | Dynamic social media preview images |
+
+### 11.12 Nuxt vs. Other Vue Meta-Frameworks
+
+| Framework | Rendering | Best for |
+|---|---|---|
+| [Nuxt](https://nuxt.com/) | SSR, SSG, ISR, SPA, Edge | Full-stack Vue apps, SEO, conventions-heavy projects |
+| [VitePress](https://vitepress.dev/) | SSG (Markdown-first) | Documentation sites, knowledge bases |
+| [Quasar](https://quasar.dev/) | SPA, SSR, Electron, Capacitor | Cross-platform apps from one codebase |
+| [Analog](https://analogjs.org/) | SSR, SSG (Angular-inspired) | File-based routing with Vite, lighter than Nuxt |
+
+Nuxt is the default choice for most Vue production apps because it has the largest community, the most modules, and the deepest integration with the Vue core team's tooling.
+
+---
