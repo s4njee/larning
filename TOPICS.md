@@ -13,9 +13,7 @@ Topics already covered live in [README.md](README.md) and are not repeated here.
 - **GCP** — third leg of the cloud stool; worth a guide that focuses on what's idiomatic in GCP (project model, IAM hierarchy, BigQuery, Cloud Run, GKE Autopilot) rather than a mechanical translation from AWS.
 - **Docker (Deep)** — image layers, BuildKit, multi-stage builds, OCI runtimes, security contexts, rootless. The existing networking guide covers networking; this would cover the rest.
 - **Nginx & Reverse Proxies** — config language, upstream blocks, caching, TLS termination, rate limiting, the `ngx_http_*` module landscape. Still the most common load balancer on the planet.
-- **Observability** — Prometheus, OpenTelemetry, Grafana, traces vs. metrics vs. logs, RED/USE methods, alert design. Goes beyond "install Prometheus" into how to *think* about production signal.
 - **GitHub Actions** — workflow syntax, runners, matrix builds, secrets, OIDC to cloud, reusable workflows, caching. The default CI for most modern repos; deserves a proper treatment.
-- **Ansible** — inventories, modules, playbooks, roles, the agentless model. Still the right tool for many configuration jobs even in a Terraform world.
 - **Pulumi & Crossplane** — IaC beyond Terraform: real programming languages (Pulumi) and Kubernetes-native infra (Crossplane). Both fill gaps Terraform doesn't.
 
 ---

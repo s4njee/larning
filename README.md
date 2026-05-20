@@ -4,6 +4,11 @@ This repository collects practical study guides for cloud, frontend, systems, an
 
 ## Guides
 
+### Ansible
+This guide is a depth-first treatment of Ansible for engineers configuring real machines: the agentless model, inventories, modules, playbooks, roles, variables and Jinja2, control flow, templates, collections, testing, and production patterns — followed by an honest comparison against Terraform, Puppet, Salt, and cloud-init. It closes with concrete recipes: a full nginx role with every file, a rolling-deploy playbook with block-rescue rollback, a common-patterns cookbook (bootstrap, users, dotfiles, Vault secrets), and an end-to-end walkthrough of a production playbook repo.
+
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/ANSIBLE_STUDY_GUIDE.md)
+
 ### Azure for AWS Solutions Architect
 This guide helps AWS-minded architects map familiar ideas to Azure services, terminology, and design patterns. It is especially useful if you already think in AWS primitives and want a fast, practical translation into Azure without losing sight of architecture tradeoffs.
 
@@ -68,6 +73,11 @@ This guide is a depth-first foundation for how computer networks actually work: 
 This guide covers Next.js as a full-stack React framework, with an emphasis on the parts that matter when you are building production apps. It focuses on routing, rendering strategies, data loading, API handling, and the tradeoffs that come with framework-driven React.
 
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/NEXTJS_STUDY_GUIDE.md)
+
+### Observability
+This guide goes beyond "install Prometheus" into how to think about production signal: metrics with PromQL, structured logs, distributed tracing with OpenTelemetry, events and profiling, SLI/SLO/SLA with multi-window burn-rate alerts, alert design via RED and USE, dashboards that earn their screen real estate, the tooling landscape honestly, and the operational realities (cost, cardinality, sampling). It closes with recipes: instrumenting a Go HTTP service end to end with OpenTelemetry, writing a burn-rate SLO alert in PromQL, writing a runbook that actually helps oncall, and an end-to-end walkthrough of a production observability stack.
+
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/OBSERVABILITY_STUDY_GUIDE.md)
 
 ### Qt
 This guide introduces Qt as a toolkit for building cross-platform desktop applications with a strong UI and event-driven architecture. It is aimed at helping you understand the core concepts, widgets, and app structure that make Qt practical for real software.
