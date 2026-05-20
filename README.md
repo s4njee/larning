@@ -22,7 +22,7 @@ This guide covers Django as a productive web framework with a strong opinionated
 ### Docker and Kubernetes Networking
 This guide connects container networking concepts to their Kubernetes equivalents so the jump from local container work to cluster networking feels natural. It emphasizes the practical patterns you will actually use for services, ingress, debugging, and traffic flow.
 
-[Open on GitHub](https://github.com/s4njee/larning/blob/main/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md)
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md)
 
 ### Dotnet for Python Developers
 This guide is for Python developers who want to become comfortable in the .NET ecosystem without having to relearn everything at once. It focuses on translating familiar Python mental models into C#, tooling, and common application structure.
@@ -39,10 +39,15 @@ This guide is a detailed, lab-first introduction to Kali Linux and the major pen
 
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/KALI_LINUX_STUDY_GUIDE.md)
 
+### Kubernetes
+This guide covers Kubernetes as a working operator: the API model, workloads, scheduling, storage, and the day-2 operations that matter once you move past `hello world`. It pairs with the networking and security guides below for a complete picture.
+
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/k8s/KUBERNETES_STUDY_GUIDE.md)
+
 ### Kubernetes Security
 This guide walks through Kubernetes security as a layered system of identity, access control, workload hardening, secrets handling, and detection. It is written to help you think in terms of blast radius, trust boundaries, and production hardening rather than just individual YAML fields.
 
-[Open on GitHub](https://github.com/s4njee/larning/blob/main/KUBERNETES_SECURITY_STUDY_GUIDE.md)
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md)
 
 ### Next.js
 This guide covers Next.js as a full-stack React framework, with an emphasis on the parts that matter when you are building production apps. It focuses on routing, rendering strategies, data loading, API handling, and the tradeoffs that come with framework-driven React.
