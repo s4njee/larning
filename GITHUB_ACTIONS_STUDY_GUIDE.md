@@ -1175,3 +1175,59 @@ When a run misbehaves:
 - **Step debug logging:** set the repository secret/variable `ACTIONS_STEP_DEBUG` to `true` for verbose runner logs ([enabling debug logging](https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/enabling-debug-logging)).
 - **Interactive SSH:** drop [`mxschmitt/action-tmate`](https://github.com/mxschmitt/action-tmate) into a workflow to open an SSH session into the live runner and poke around — invaluable for "works locally, fails in CI."
 - **Run locally with [`act`](https://github.com/nektos/act):** it executes workflows on your machine in Docker containers. Fidelity isn't perfect (it approximates the hosted images), but the feedback loop beats push-and-wait. Requires Docker — see the [Docker guide](DOCKER_STUDY_GUIDE.md).
+
+---
+
+## Part 9 — Comparison to Alternatives
+
+GitHub Actions isn't the only CI/CD system and isn't always the right one. Here's an honest read on where it sits.
+
+### The Landscape
+
+| Tool | Model | Where it shines | Where Actions wins |
+|---|---|---|---|
+| **GitLab CI/CD** | YAML pipelines, integrated with GitLab | One platform for repo + CI + registry + security; powerful `rules:`; built-in environments | It's already in GitHub; far larger marketplace of reusable actions |
+| **CircleCI** | YAML, SaaS; "orbs" for reuse | Fast, mature caching/parallelism; strong macOS support | No separate SaaS account; tighter GitHub integration; free for public repos |
+| **Jenkins** | Self-hosted, Groovy pipelines, plugins | Ultimate flexibility; runs anywhere; vast plugin ecosystem; full on-prem control | No server to run or patch; YAML over Groovy; managed runners |
+| **Buildkite** | Hybrid: SaaS control plane, your own agents | Scales massively on your own infra; excellent for big monorepos | Fully hosted option; no agents to manage for the common case |
+| **Dagger** | Pipelines as code (Go/Python/etc.), run in containers | Portable — the *same* pipeline runs locally and on any CI; strong caching | Native GitHub integration; no extra engine to learn |
+
+The throughlines: Actions wins on **integration** (it's already in your repo and your PRs) and **ecosystem** (the Marketplace). It loses to Jenkins on raw flexibility and on-prem control, to GitLab on being a single integrated DevOps platform, to Buildkite on very-large-scale self-hosted throughput, and to Dagger on running the identical pipeline off-CI.
+
+### Migrating to Actions
+
+GitHub publishes [migration guides](https://docs.github.com/en/actions/migrating-to-github-actions); the two most common sources:
+
+**From GitLab CI** (`.gitlab-ci.yml` → workflows) — the concepts map cleanly:
+
+| GitLab CI | GitHub Actions |
+|---|---|
+| `stages:` + `stage:` | `jobs` + `needs:` (build the DAG explicitly) |
+| `script:` | `run:` steps |
+| `rules:` / `only`/`except` | `on:` filters + `if:` conditions |
+| `image:` | a container job (`container:`) or `services:` |
+| `artifacts:` / `cache:` | `actions/upload-artifact` / `actions/cache` |
+| `include:` | reusable workflows / composite actions |
+
+The main mental shift: GitLab sequences by *stage*; Actions sequences by *explicit `needs` dependencies* — there's no implicit ordering.
+
+**From Jenkins** (`Jenkinsfile` → workflows) — a bigger leap, since you trade imperative Groovy for declarative YAML:
+
+- `stage('X') { ... }` → a job (or a group of steps).
+- `agent { ... }` → `runs-on:`.
+- Shared libraries → custom/composite actions and reusable workflows.
+- Plugins → Marketplace actions (most common plugins have an equivalent; some don't).
+- Credentials plugin → secrets + OIDC.
+
+Expect to *redesign* rather than transliterate — Jenkins pipelines often encode logic that belongs in scripts or actions.
+
+### When *Not* to Reach for Actions
+
+The honest misfits:
+
+- **Your source isn't on GitHub** (GitLab, Bitbucket, self-hosted) — use that platform's native CI.
+- **You have a large, working Jenkins estate** with deep plugin dependencies — migration cost can outweigh the benefit.
+- **You need pipelines that run identically outside any CI** (locally, across multiple vendors) — a portable engine like Dagger fits better.
+- **Heavy, long-running, exotic-hardware builds** where you'd self-host everything anyway — Buildkite or Jenkins may model that more naturally.
+
+For most teams already on GitHub, none of these apply, and the integration advantage is decisive.
