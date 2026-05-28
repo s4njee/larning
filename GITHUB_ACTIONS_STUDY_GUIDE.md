@@ -102,3 +102,193 @@ If you remember one thing from Part 1: the runner starts empty and disappears wh
 ### A Note on Pinning
 
 Throughout the early chapters you'll see actions referenced by a version tag, like `actions/checkout@v4`, because it reads cleanly while you're learning. In production you should pin third-party actions to a full commit SHA instead — tags are mutable and that has real security consequences. [Part 7](#part-7--security-hardening) explains exactly why and how; until then, the `@v4` style keeps examples readable.
+
+---
+
+## Part 2 — The Workflow Language
+
+Part 1 gave you the model; this is the vocabulary. Nearly everything in a workflow file answers one of four questions: *when* it runs (`on:`), *where and in what order* (`jobs`, `runs-on`, `needs`), *what data is available* (contexts and expressions), and *what environment* the steps run in (env, shell, permissions).
+
+### Triggers: the `on:` Key
+
+`on:` declares the events that start the workflow. The [full event list](https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows) is long; these are the ones you'll actually reach for.
+
+**Push and pull request, with filters** — the two workhorses:
+
+```yaml
+on:
+  push:
+    branches: [main, 'release/**']    # only pushes to these branches (glob patterns allowed)
+    paths: ['src/**', 'package.json']  # ...and only when these files changed
+  pull_request:
+    branches: [main]                   # PRs *targeting* main
+    types: [opened, synchronize, reopened]  # which PR activities (these three are the default)
+```
+
+- `branches`/`branches-ignore` and `paths`/`paths-ignore` filter *which* pushes and PRs count. Use one side of each pair, not both.
+- `paths` filtering is how you avoid running the whole pipeline when only docs changed.
+- For `pull_request`, the activity `types` narrow the trigger — `synchronize` means "new commits were pushed to the PR." It has a security-critical sibling, `pull_request_target`, deliberately held back to [Part 7](#part-7--security-hardening).
+
+**Scheduled runs (cron):**
+
+```yaml
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # 06:00 UTC every Monday — fields: minute hour day-of-month month day-of-week
+```
+
+Cron is the standard five fields and is **always in UTC**. Scheduled workflows run against the **default branch's** copy of the file. GitHub may delay scheduled runs under load, so don't depend on exact timing.
+
+**Manual triggers with typed inputs:**
+
+```yaml
+on:
+  workflow_dispatch:          # adds a "Run workflow" button in the UI and enables `gh workflow run`
+    inputs:
+      environment:
+        description: 'Target environment'
+        type: choice          # one of: string | boolean | choice | environment | number
+        options: [staging, production]
+        default: staging
+        required: true
+```
+
+Read these through the `inputs` context: `${{ inputs.environment }}`. This is the clean way to make a workflow parameterized and human-triggered — a manual deploy, a one-off backfill.
+
+**Also worth knowing:** `workflow_run` (start a workflow when *another named workflow* finishes — handy for splitting build from deploy) and `repository_dispatch` (trigger via an authenticated API call from an external system).
+
+### Jobs, Steps, Runners, and the Job Graph
+
+A job picks a runner and lists ordered steps:
+
+```yaml
+jobs:
+  test:
+    runs-on: ubuntu-latest    # ubuntu-latest | windows-latest | macos-latest | self-hosted | <label>
+    steps:
+      - uses: actions/checkout@v4   # a `uses` step: run a published action
+      - name: Run tests             # `name` is the label shown in the logs (optional)
+        id: tests                   # `id` lets later steps/jobs reference this step's outputs
+        run: ./run-tests.sh         # a `run` step: execute a shell command
+```
+
+- `runs-on` selects the runner image — a GitHub-hosted image, or `self-hosted` plus labels for your own machines ([Part 8](#part-8--operations-at-scale)).
+- A step is **either** `uses:` (an action) **or** `run:` (a shell command), never both.
+- `name` is cosmetic; `id` is functional — it's how you read a step's outputs later.
+
+**Sequencing with `needs` — the job DAG.** Jobs run in parallel unless you declare dependencies. `needs` wires them into a directed graph:
+
+```yaml
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "linting"
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "testing"
+  deploy:
+    needs: [lint, test]       # waits until BOTH lint and test succeed
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "deploying"
+```
+
+`lint` and `test` run concurrently; `deploy` is a fan-in that starts only after both pass. If a needed job fails, its dependents are skipped by default.
+
+**Conditional execution with `if:`.** Both jobs and steps accept an `if:`:
+
+```yaml
+  deploy:
+    needs: [lint, test]
+    if: github.ref == 'refs/heads/main'   # job-level: only on the main branch
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./deploy.sh
+      - run: ./notify-failure.sh
+        if: failure()                       # step-level: run only if an earlier step failed
+```
+
+Inside `if:` the `${{ }}` wrapper is implied, so you can omit it (both forms are valid).
+
+### Contexts and Expressions
+
+`${{ ... }}` is the expression syntax. Inside it you read **contexts** — structured objects Actions exposes. The ones you'll use constantly ([contexts reference](https://docs.github.com/en/actions/learn-github-actions/contexts)):
+
+| Context | What it holds | Example |
+|---|---|---|
+| `github` | Event and repo metadata | `github.sha`, `github.ref`, `github.event_name`, `github.actor` |
+| `env` | Environment variables you set | `env.NODE_ENV` |
+| `vars` | Non-secret configuration variables | `vars.REGISTRY` |
+| `secrets` | Encrypted secrets | `secrets.GITHUB_TOKEN` |
+| `matrix` | The current matrix combination | `matrix.os` |
+| `needs` | Outputs of jobs you depend on | `needs.build.outputs.version` |
+| `steps` | Outputs of earlier steps (by `id`) | `steps.tests.outputs.coverage` |
+| `runner` | Runner info | `runner.os`, `runner.temp` |
+
+**Operators and functions.** Expressions support `==`, `!=`, `&&`, `||`, `!`, plus built-in functions ([expressions reference](https://docs.github.com/en/actions/learn-github-actions/expressions)): `contains()`, `startsWith()`, `endsWith()`, `format()`, `join()`, `toJSON()`, `fromJSON()`, and `hashFiles()`. There are also **status functions** that only make sense in `if:`: `success()` (the implicit default), `failure()`, `always()` (run even after a failure or cancellation), and `cancelled()`.
+
+A representative `if:` combining a context and a status function:
+
+```yaml
+      - run: ./publish-docs.sh
+        # only on pushes (not PRs) to main, and only if earlier steps succeeded
+        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+```
+
+**Passing data between steps — `$GITHUB_OUTPUT`.** A step writes `name=value` lines to the file named by `$GITHUB_OUTPUT`; later steps read them through the `steps` context, keyed by the producing step's `id`:
+
+```yaml
+      - id: meta
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"   # define an output named "version"
+      - run: echo "Releasing ${{ steps.meta.outputs.version }}"  # read it back in a later step
+```
+
+(Passing data between *jobs* means promoting a step output to a **job output** — covered in [Part 3](#part-3--build-test-cache-artifacts), where it pairs naturally with artifacts.)
+
+### Environment Variables, Defaults, and Shells
+
+**`env` at three scopes**, narrowest wins:
+
+```yaml
+env:
+  STAGE: global              # visible to every job and step in the workflow
+jobs:
+  build:
+    env:
+      STAGE: job             # overrides the global value for this job
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "$STAGE"   # prints "job"
+      - run: echo "$STAGE"
+        env:
+          STAGE: step        # overrides again, only for this step → prints "step"
+```
+
+**Exporting env between steps — `$GITHUB_ENV`.** Each `run` is a fresh shell, so a variable set in one step does *not* survive to the next. To persist one, append to `$GITHUB_ENV`:
+
+```yaml
+      - run: echo "BUILD_ID=$(date +%s)" >> "$GITHUB_ENV"  # exported as $BUILD_ID to later steps
+      - run: echo "Build was $BUILD_ID"
+```
+
+**Defaults and shells.** `defaults.run` sets the shell and working directory for every `run` step:
+
+```yaml
+defaults:
+  run:
+    shell: bash                # default is bash on Linux/macOS, pwsh on Windows
+    working-directory: ./app   # run commands from ./app instead of the repo root
+```
+
+Worth knowing when debugging: on Linux the default `bash` runs with `-e` and pipefail, so a failing command aborts the step — which is what you want, but it explains "why did my step stop in the middle."
+
+**First look at `GITHUB_TOKEN` and `permissions`.** Every run gets an automatic, short-lived token in `secrets.GITHUB_TOKEN` that authenticates against your repo (to post a check, push a tag, comment on a PR). Its power is governed by `permissions:`:
+
+```yaml
+permissions:
+  contents: read     # least privilege: read the repo, nothing more
+```
+
+Set it restrictively at the workflow level and grant extra scopes only on the jobs that need them. The default scopes, the real risks, and the least-privilege patterns are all in [Part 7](#part-7--security-hardening).
