@@ -506,3 +506,140 @@ jobs:
 ```
 
 The health checks are not optional in practice: without them, your tests can start before the database accepts connections and fail intermittently — one of the most common flaky-CI causes. For what to actually exercise behind these connections, see the [Postgres guide](POSTGRES_STUDY_GUIDE.md) and [Redis guide](REDIS_STUDY_GUIDE.md).
+
+---
+
+## Part 4 — Composition & Reuse
+
+Once you have more than a couple of workflows, copy-paste sets in: the same build job, the same setup steps, pasted everywhere and drifting out of sync. Actions offers reuse at three granularities — **composite actions** (a bundle of steps), **reusable workflows** (whole jobs), and **custom actions** (a distributable unit, [Part 5](#part-5--writing-custom-actions)). This part covers the first two and exactly when to use which.
+
+### Reusable Workflows
+
+A [reusable workflow](https://docs.github.com/en/actions/using-workflows/reusing-workflows) is a workflow other workflows can call as a job, via `on: workflow_call`. It declares a typed interface — inputs, secrets, outputs:
+
+```yaml
+# .github/workflows/reusable-build.yml
+name: Reusable build
+on:
+  workflow_call:                # makes this workflow callable from other workflows
+    inputs:
+      node-version:
+        type: string            # one of: string | number | boolean
+        required: false
+        default: '20'
+    secrets:
+      npm-token:
+        required: true          # callers must supply this secret
+    outputs:
+      artifact-name:
+        description: Name of the uploaded build artifact
+        value: ${{ jobs.build.outputs.artifact-name }}   # surfaced from a job output below
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-name: site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+      - run: npm ci && npm run build
+        env:
+          NPM_TOKEN: ${{ secrets.npm-token }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: dist/
+```
+
+A caller references it at the **job level** with `uses:`:
+
+```yaml
+# .github/workflows/app-ci.yml
+name: CI
+on: [push]
+jobs:
+  build:
+    uses: ./.github/workflows/reusable-build.yml   # local path (or owner/repo/.github/workflows/x.yml@ref)
+    with:
+      node-version: '22'
+    secrets:
+      npm-token: ${{ secrets.NPM_TOKEN }}
+      # alternatively, forward ALL of the caller's secrets:  secrets: inherit
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Built artifact ${{ needs.build.outputs.artifact-name }}"
+```
+
+What to internalize:
+
+- A called workflow runs as its **own job(s)**, shown nested under the caller. To read its outputs, `needs:` the calling job and reference `needs.<job>.outputs.<name>`.
+- `secrets: inherit` forwards every secret the caller has — convenient but the opposite of least privilege. Prefer naming only the secrets you need.
+- Reusable workflows can be called **across repos** (`owner/repo/.github/workflows/wf.yml@v1`), which is how organizations share a canonical pipeline. Pin that ref like any other dependency ([Part 7](#part-7--security-hardening)).
+- There's a fixed **nesting limit** (you can chain calls only a few levels deep) and a cap on how many workflow files one run may call.
+
+### Composite Actions
+
+A [composite action](https://docs.github.com/en/actions/creating-actions/creating-a-composite-action) bundles several steps into a single `uses:` step. It lives in its own directory with an `action.yml`:
+
+```yaml
+# .github/actions/setup-project/action.yml
+name: Setup project
+description: Set up Node and install dependencies
+inputs:
+  node-version:
+    description: Node version
+    required: false
+    default: '20'
+runs:
+  using: composite            # this is what makes it a composite action
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+    - run: npm ci
+      shell: bash             # REQUIRED: every `run` step in a composite action must name a shell
+```
+
+Invoke it like any other action, by path to its directory:
+
+```yaml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-project   # local composite action
+        with:
+          node-version: '22'
+      - run: npm test
+```
+
+The gotcha that catches everyone: **a composite action's `run` steps must each set `shell:`** — there's no default. Composite actions execute *inside the caller's job* on the same runner, so they factor out **steps**, not whole jobs.
+
+### Org-Level Reuse
+
+Two mechanisms operate across an entire organization:
+
+- **Starter workflows** — templates that appear in the "New workflow" UI of every repo in the org. Put them in a special `.github` repository under `workflow-templates/` (a `*.yml` next to a `*.properties.json` that describes it). New repos start from a sanctioned pipeline instead of copying a random one.
+- **Required workflows / rulesets** — let an org *enforce* that specific checks run on PRs across many repos, configured centrally through repository rulesets rather than per repo.
+
+```json
+// .github/workflow-templates/node-ci.properties.json
+{
+  "name": "Node CI",
+  "description": "Lint and test a Node project",
+  "iconName": "example",
+  "categories": ["JavaScript", "CI"]
+}
+```
+
+### Which One to Reach For
+
+| Mechanism | Granularity | Runs as | Reach for it when… |
+|---|---|---|---|
+| **Composite action** | A bundle of steps | Inside the caller's job (same runner) | You repeat the same *sequence of steps* across jobs (setup, shared tooling). |
+| **Reusable workflow** | One or more whole jobs | Its own job(s) under the caller | You repeat *whole jobs/pipelines* across workflows or repos (a standard build or deploy). |
+| **Custom action** ([Part 5](#part-5--writing-custom-actions)) | A distributable unit (JS/Docker/composite) | A single step | You want a versioned, publishable building block — possibly for the Marketplace. |
+
+Rule of thumb: factoring out *steps within a job* → composite action; factoring out *entire jobs* → reusable workflow; building something *others install* → custom action.
