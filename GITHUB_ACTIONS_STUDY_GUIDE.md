@@ -643,3 +643,143 @@ Two mechanisms operate across an entire organization:
 | **Custom action** ([Part 5](#part-5--writing-custom-actions)) | A distributable unit (JS/Docker/composite) | A single step | You want a versioned, publishable building block — possibly for the Marketplace. |
 
 Rule of thumb: factoring out *steps within a job* → composite action; factoring out *entire jobs* → reusable workflow; building something *others install* → custom action.
+
+---
+
+## Part 5 — Writing Custom Actions
+
+When the Marketplace doesn't have what you need — or you want a versioned building block of your own — you [write a custom action](https://docs.github.com/en/actions/creating-actions). There are three flavors, and choosing the right one is most of the decision.
+
+### The Three Kinds
+
+| Kind | What it is | Where it runs | Best for |
+|---|---|---|---|
+| **Composite** | YAML bundling steps (Part 4) | In the caller's job, same runner | Wrapping shell commands / other actions; no extra runtime |
+| **JavaScript** | A Node program the runner executes | Node on the runner — any OS | Logic, API calls, cross-platform actions; fastest startup |
+| **Docker container** | A container the runner builds and runs | **Linux runners only** | Bringing a specific OS / toolchain along; heavier startup |
+
+- **JavaScript** actions run directly under Node on the runner, so they start fast and work on Linux, macOS, and Windows. This is the default choice for anything with real logic.
+- **Docker** actions can package arbitrary tools, but only run on Linux runners and pay the image build/pull cost on every run. Use them when you need an environment that's painful to set up otherwise.
+- **Composite** (from Part 4) is the no-runtime option when your action is "just some steps."
+
+### action.yml Anatomy
+
+Every action — whichever kind — has a [metadata file](https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions) (`action.yml`) at its root:
+
+```yaml
+name: My Action               # display name (must be unique if published to the Marketplace)
+description: What it does
+author: you
+inputs:
+  who:
+    description: Name to greet
+    required: false
+    default: world
+outputs:
+  greeting:
+    description: The greeting that was produced
+runs:
+  using: node20               # composite | node20 | docker — this selects the kind
+  main: dist/index.js         # (JavaScript) the entrypoint file
+branding:                     # optional; controls the Marketplace listing's icon/color
+  icon: activity
+  color: purple
+```
+
+### A JavaScript Action
+
+JS actions use the official toolkit: `@actions/core` (inputs, outputs, logging, failing the step) and `@actions/github` (the event `context` and a ready-made authenticated Octokit client).
+
+```yaml
+# action.yml
+name: Greet
+description: Print a greeting and output it
+inputs:
+  who:
+    description: Name to greet
+    default: world
+outputs:
+  greeting:
+    description: The produced greeting
+runs:
+  using: node20
+  main: dist/index.js
+```
+
+```javascript
+// index.js
+const core = require('@actions/core');
+const github = require('@actions/github');
+
+try {
+  const who = core.getInput('who');                  // read an input declared in action.yml
+  const greeting = `Hello, ${who}!`;
+  core.info(`Triggered by: ${github.context.eventName}`); // read the event from the context
+  core.setOutput('greeting', greeting);              // expose an output to later steps
+  console.log(greeting);
+} catch (err) {
+  core.setFailed(err.message);                       // mark the step failed with a clear message
+}
+```
+
+The step nearly everyone forgets: an action referenced by `uses:` must carry its **runtime dependencies committed in the repo**, because the runner does not `npm install` your action before running it. The standard fix is to bundle everything into one file with [`@vercel/ncc`](https://github.com/vercel/ncc) and commit the result:
+
+```bash
+npm i -D @vercel/ncc            # dev dependency
+npx ncc build index.js -o dist  # produces dist/index.js with all deps inlined
+git add dist && git commit -m "build"   # commit the bundle so consumers receive it
+```
+
+Either commit `dist/` directly (simplest) or build it in a release workflow and attach it to the tag (cleaner history). Consumers then write `uses: your-org/greet@v1`.
+
+### A Docker-Container Action
+
+A [Docker action](https://docs.github.com/en/actions/creating-actions/creating-a-docker-container-action) packages a tool plus its environment; the runner builds the image from your `Dockerfile` and runs it:
+
+```yaml
+# action.yml
+name: Lint with my tool
+description: Run a containerized linter
+inputs:
+  path:
+    description: Path to lint
+    default: .
+runs:
+  using: docker
+  image: Dockerfile         # build from this Dockerfile (or a prebuilt image: docker://ghcr.io/org/img:tag)
+  args:
+    - ${{ inputs.path }}    # passed to the entrypoint as positional arguments
+```
+
+```dockerfile
+# Dockerfile
+FROM alpine:3.20
+RUN apk add --no-cache bash
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+```
+
+```bash
+# entrypoint.sh
+#!/usr/bin/env bash
+set -euo pipefail
+echo "Linting path: $1"               # the action.yml `args` arrive as positional parameters
+echo "via env: ${INPUT_PATH}"         # inputs are ALSO exposed as INPUT_<UPPERCASE_NAME>
+echo "result=ok" >> "$GITHUB_OUTPUT"  # outputs go to $GITHUB_OUTPUT, same as anywhere
+```
+
+Inputs reach a Docker action two ways: as `args` (positional) and automatically as `INPUT_<NAME>` environment variables (name uppercased). Outputs use `$GITHUB_OUTPUT` like every other step.
+
+### Versioning & Distribution
+
+Consumers pin to a ref, so **your tags are your public API**:
+
+- Cut **semver tags** (`v1.2.0`) for releases.
+- Maintain a **floating major tag** (`v1`) that you re-point to the latest `v1.x.y`. This is the convention that lets consumers write `@v1` and pick up non-breaking updates:
+  ```bash
+  git tag -f v1 v1.2.0      # move the v1 tag onto the new release
+  git push -f origin v1
+  ```
+- Security-conscious consumers will pin your **commit SHA** instead of `@v1` ([Part 7](#part-7--security-hardening)). That's expected — design your changelog around it.
+- To list on the [Marketplace](https://docs.github.com/en/actions/creating-actions/publishing-actions-in-github-marketplace), the repo needs a single root `action.yml`, a good README, and a published release.
