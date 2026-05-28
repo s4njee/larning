@@ -22,7 +22,17 @@
 - **Complete-workflow tagging:** any code block that is a *full, valid workflow file* must start with a first-line comment naming its path, e.g. `# .github/workflows/ci.yml`. Partial snippets (illustrating one key like `strategy:`) must NOT carry that comment.
 - **Action pinning:** in examples that demonstrate good practice (especially Part 6 onward), pin third-party actions to a full commit SHA with a trailing version comment, e.g. `uses: actions/checkout@<40-char-sha> # v4`. In early teaching examples (Parts 1–3) a major-version tag like `actions/checkout@v4` is fine for readability; add a one-line note in Part 1 that Part 7 explains why production code pins to SHAs. Use a clearly fake-but-well-formed 40-hex placeholder SHA (e.g. `a1b2c3d4...`) only if a real one isn't known, and say so in a note; prefer real pins where known.
 - **Cross-references:** link to sibling guides where natural (Postgres/Redis service containers → those guides; image builds → Docker; ARC/deploys → Kubernetes; edge/static deploys → Cloudflare; OIDC trust → Cryptography). Use repo-relative links like `[Docker guide](DOCKER_STUDY_GUIDE.md)`.
-- **Per-task self-check before committing:** (a) all listed subsections present; (b) every complete workflow is tagged and well-formed YAML; (c) code comments explain each meaningful line; (d) the Part's entries already exist in the Table of Contents (created in Task 1).
+- **Official documentation links:** Link inline to the canonical GitHub Actions docs (`https://docs.github.com/en/actions/...`) at the point each feature is introduced, and to canonical action repos (e.g. `https://github.com/actions/checkout`) when an action first appears. Match the inline density of the Ansible/Observability guides — a few per Part on the key terms, not one per sentence, and not a "Further Reading" dump. **GitHub periodically reorganizes the Actions docs IA, so confirm each link resolves and substitute the current canonical page if one 404s** (Task 12 Step 5 checks this). Suggested starting pages by Part (verify before use):
+  - Part 1: `…/actions/about-github-actions/understanding-github-actions`
+  - Part 2: events `…/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows`; contexts `…/actions/learn-github-actions/contexts`; expressions `…/actions/learn-github-actions/expressions`; workflow syntax reference
+  - Part 3: caching `…/actions/using-workflows/caching-dependencies-to-speed-up-workflows`; matrix `…/actions/using-jobs/using-a-matrix-for-your-jobs`; artifacts `…/actions/using-workflows/storing-workflow-data-as-artifacts`; service containers `…/actions/using-containerized-services/about-service-containers`
+  - Part 4: reusing workflows `…/actions/using-workflows/reusing-workflows`; composite `…/actions/creating-actions/creating-a-composite-action`
+  - Part 5: creating actions index `…/actions/creating-actions`; JS, Docker, and metadata-syntax pages under it
+  - Part 6: environments `…/actions/deployment/targeting-different-environments/using-environments-for-deployment`; OIDC `…/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect`; OIDC-in-AWS page; publishing `…/actions/publishing-packages`
+  - Part 7: security hardening `…/actions/security-guides/security-hardening-for-github-actions`; secrets `…/actions/security-guides/using-secrets-in-github-actions`; automatic token `…/actions/security-guides/automatic-token-authentication`; permissions `…/actions/using-jobs/assigning-permissions-to-jobs`
+  - Part 8: self-hosted `…/actions/hosting-your-own-runners`; ARC page under it; concurrency `…/actions/using-jobs/using-concurrency`; billing `…/billing/managing-billing-for-github-actions`; debug logging `…/actions/monitoring-and-troubleshooting-workflows/enabling-debug-logging`
+  - Part 10: link back to the most relevant of the above per recipe rather than introducing new ones.
+- **Per-task self-check before committing:** (a) all listed subsections present; (b) every complete workflow is tagged and well-formed YAML; (c) code comments explain each meaningful line; (d) the Part's entries already exist in the Table of Contents (created in Task 1); (e) inline official-doc links for this Part's key features are present and well-formed.
 - **Commit** after each task with `git add GITHUB_ACTIONS_STUDY_GUIDE.md && git commit -m "<msg>"`. End every commit message with the Co-Authored-By trailer:
   ```
   Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
@@ -505,9 +515,21 @@ Open `docs/superpowers/specs/2026-05-28-github-actions-guide-design.md` and conf
 
 Confirm every `## Part N` heading has a matching Table of Contents link and the anchors resolve (slugs match headings). Fix mismatches.
 
-- [ ] **Step 5: Final confirmation**
+- [ ] **Step 5: Official-documentation link check**
 
-Run: `git log --oneline` and confirm one commit per Part plus the integration commit. Report the guide's final line count (`wc -l GITHUB_ACTIONS_STUDY_GUIDE.md`) and the actionlint result. Do not claim completion unless Step 2 exited 0 and Step 3 found no gaps.
+Extract all unique `docs.github.com` links and best-effort verify they resolve:
+```bash
+cd /Users/sanjee/Documents/projects/study_guides
+grep -oE 'https://docs\.github\.com/[^) ]+' GITHUB_ACTIONS_STUDY_GUIDE.md | sort -u | while read -r url; do
+  code=$(curl -s -o /dev/null -w '%{http_code}' -L --max-time 15 "$url" || echo ERR)
+  echo "$code  $url"
+done
+```
+Expected: every line is `200`. A `404`/`301`-to-404 means the page moved — fix the link in the relevant Part and re-commit it. `ERR`/`000` means the network was unavailable in this environment (not a link defect) — note it and re-verify with network access if possible. Also confirm the count of `docs.github.com` links is non-zero and spread across Parts (not all in one place).
+
+- [ ] **Step 6: Final confirmation**
+
+Run: `git log --oneline` and confirm one commit per Part plus the integration commit. Report the guide's final line count (`wc -l GITHUB_ACTIONS_STUDY_GUIDE.md`), the actionlint result, and the link-check summary. Do not claim completion unless Step 2 exited 0, Step 3 found no gaps, and Step 5 found no `404`s (network-unavailable `ERR` is acceptable but must be reported).
 
 ---
 

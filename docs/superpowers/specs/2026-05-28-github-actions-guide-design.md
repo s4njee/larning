@@ -58,6 +58,10 @@ Derived from the existing guides:
   line. YAML and shell are the dominant languages; JS/TS and Dockerfile appear in the
   custom-actions chapter.
 - Prose explains the *why* and the tradeoffs, not just the *how*.
+- **Inline links to official GitHub documentation** (`docs.github.com/en/actions/...`) at the
+  point each feature is introduced, plus canonical action repos (e.g. `actions/checkout`),
+  matching the inline-link density of the Ansible/Terraform/Observability guides — a few per
+  Part on the key terms, not a "Further Reading" dump.
 - An honest "comparison to alternatives" chapter (cf. Ansible vs Terraform/Puppet/Salt).
 - A debugging/diagnostic section (cf. Networking's diagnostic toolkit).
 - Closes with concrete recipes and an end-to-end walkthrough (cf. Observability, Ansible).
@@ -219,4 +223,7 @@ should note when a tag is used for readability), consistent with Part 7.
   SHA-pinning, and least-privilege `permissions`.
 - Closes with the five recipes and the end-to-end walkthrough.
 - `README.md` and `TOPICS.md` are updated as above.
+- Inline official-documentation links (`docs.github.com`) appear in each major Part where
+  appropriate, matching the linking style of the existing deep guides, and they resolve
+  (no 404s).
 - Tone, structure, and code-comment density match the existing guides.
