@@ -292,3 +292,217 @@ permissions:
 ```
 
 Set it restrictively at the workflow level and grant extra scopes only on the jobs that need them. The default scopes, the real risks, and the least-privilege patterns are all in [Part 7](#part-7--security-hardening).
+
+---
+
+## Part 3 — Build, Test, Cache, Artifacts
+
+This is the part you'll use every day: get a toolchain onto the runner, install dependencies fast, run tests across versions, and move results around. The examples deliberately span ecosystems — the *shape* is identical across languages, which is the point.
+
+### Setting Up Toolchains (Pattern-First, Multi-Stack)
+
+Every build/test job has the same skeleton: check out the code, install the language toolchain (with its dependency cache), install dependencies, run tests. The `actions/setup-*` family handles the toolchain *and* the dependency cache for you.
+
+```yaml
+# Node — actions/setup-node
+- uses: actions/setup-node@v4
+  with:
+    node-version: '20'
+    cache: npm           # transparently caches ~/.npm, keyed on package-lock.json
+- run: npm ci            # clean install honoring the lockfile exactly
+- run: npm test
+```
+
+```yaml
+# Python — actions/setup-python
+- uses: actions/setup-python@v5
+  with:
+    python-version: '3.12'
+    cache: pip           # caches the pip download cache, keyed on requirements files
+- run: pip install -r requirements.txt
+- run: pytest
+```
+
+```yaml
+# Go — actions/setup-go
+- uses: actions/setup-go@v5
+  with:
+    go-version: '1.22'   # caches the module and build cache by default (cache: true)
+- run: go test ./...
+```
+
+```yaml
+# Rust — community-standard toolchain + cache actions
+- uses: dtolnay/rust-toolchain@stable   # installs rustc/cargo for the chosen channel
+- uses: Swatinem/rust-cache@v2          # caches ~/.cargo and ./target, keyed on Cargo.lock
+- run: cargo test
+```
+
+Only the tool names change. Lean on each `setup-*` action's built-in `cache:` — it's the cheapest performance win you'll get.
+
+### Caching Dependencies
+
+When the built-in cache isn't enough — or you need to cache something a `setup-*` action doesn't manage — use [`actions/cache`](https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows) directly:
+
+```yaml
+- uses: actions/cache@v4
+  with:
+    path: ~/.cache/pip                                              # what to cache
+    key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}  # exact, content-addressed key
+    restore-keys: |
+      ${{ runner.os }}-pip-                                         # prefix fallbacks on a miss
+```
+
+The mechanics that matter:
+
+- On a **miss** for `key`, Actions walks the `restore-keys` prefixes and restores the most recent match — a stale-but-warm cache beats a cold one. At job end, if `key` didn't already exist, the `path` is saved under it.
+- `hashFiles()` over the lockfile makes the key change *exactly* when dependencies change. That's the whole idiom: same deps → same key → hit; changed deps → new key → fresh save.
+- A key, once written, is **immutable** — you cannot overwrite it. This is why the key must encode the dependency set.
+- Caches are **scoped per branch**, with read-through to the base/default branch. A PR can read the base branch's cache but not an unrelated branch's.
+- There's a per-repo size cap, and caches are evicted after about a week unused (or when the repo total is exceeded). Don't cache anything you can recompute cheaply.
+
+Rule of thumb: if a `setup-*` action offers `cache:`, use it; reach for `actions/cache` for compiler caches (ccache, sccache), custom build outputs, or downloaded fixtures.
+
+### Matrix Builds
+
+A matrix runs one job definition across a set of dimensions, in parallel ([matrix docs](https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs)):
+
+```yaml
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false        # don't cancel the other combos when one fails
+      max-parallel: 4         # optional cap on concurrent combos
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [18, 20, 22]
+        include:
+          - os: ubuntu-latest # enrich one specific combo with an extra property
+            node: 22
+            coverage: true
+        exclude:
+          - os: windows-latest  # drop a combo you don't support
+            node: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}   # read the current combo from the matrix context
+      - run: npm ci && npm test
+```
+
+- The base matrix is 3 OSes × 3 Node versions = 9 jobs; `exclude` removes one (→ 8), `include` enriches one.
+- `fail-fast: true` (the default) cancels the remaining combos the instant one fails — fast feedback, but you lose the full failure picture. Set it `false` when you want every combo's result (e.g. "does this break only on Windows + Node 18?").
+
+**Dynamic matrices.** When the set isn't static — say "test every package directory" — emit it as JSON from one job and feed it to another with `fromJSON`:
+
+```yaml
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      pkgs: ${{ steps.set.outputs.pkgs }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: set
+        run: |
+          # emit a JSON array of package names as a step output
+          echo "pkgs=$(ls packages | jq -R -s -c 'split("\n") | map(select(length > 0))')" >> "$GITHUB_OUTPUT"
+  test:
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pkg: ${{ fromJSON(needs.discover.outputs.pkgs) }}   # build the matrix from upstream JSON
+    steps:
+      - run: echo "testing ${{ matrix.pkg }}"
+```
+
+### Artifacts and Moving Data Between Jobs
+
+Because jobs are isolated, handing files from one to another means uploading an **artifact** and downloading it downstream:
+
+```yaml
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci && npm run build      # produces ./dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site                       # the artifact's name
+          path: dist/                       # file(s)/dir(s) to store
+          retention-days: 7                 # optional; otherwise the repo default (max 90)
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: site                        # restores the artifact into the working dir
+      - run: ./publish.sh
+```
+
+Two mechanisms, two purposes:
+
+- **Artifacts** are for *files* — build output, test reports, coverage, logs. They survive the run (per retention) and are downloadable from the run's UI. Note the artifact actions are at **v4**, which changed behavior: an uploaded artifact is immutable, and you can't have multiple jobs append to one name.
+- **Job outputs** are for *small strings* — a version, a computed flag. A job exposes `outputs:` sourced from a step output, and dependents read `needs.<job>.outputs.<name>`:
+
+```yaml
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}       # promote a step output to a job output
+    steps:
+      - id: v
+        run: echo "tag=v1.4.2" >> "$GITHUB_OUTPUT"
+  release:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Releasing ${{ needs.version.outputs.tag }}"
+```
+
+Rule of thumb: a **file** → artifact; a **string** → job output.
+
+### Service Containers
+
+Integration tests often need a real database or cache. [`services:`](https://docs.github.com/en/actions/using-containerized-services/about-service-containers) starts containers next to your job on the same network; your steps reach them on `localhost`:
+
+```yaml
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres        # configure the container through its own env vars
+        ports:
+          - 5432:5432                         # publish the container port to localhost on the runner
+        options: >-                           # health check — the job waits until Postgres is ready
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./run-integration-tests.sh       # connects to localhost:5432 and localhost:6379
+```
+
+The health checks are not optional in practice: without them, your tests can start before the database accepts connections and fail intermittently — one of the most common flaky-CI causes. For what to actually exercise behind these connections, see the [Postgres guide](POSTGRES_STUDY_GUIDE.md) and [Redis guide](REDIS_STUDY_GUIDE.md).
