@@ -1,91 +1,51 @@
 # Future Study Guide Topics
 
-A curated list of topics that would each justify their own study guide in this repo. Organized by area, with a one-line rationale for each. The bar is "deep enough that a thoughtful 400–800 line depth-first guide would teach something a working engineer would actually use."
+A **prioritized** shortlist of topics that would each justify their own study guide in this repo. The bar is "a depth-first guide that teaches a working engineer something they'd actually use." Topics already covered live in [README.md](README.md) and aren't repeated here.
 
-Topics already covered live in [README.md](README.md) and are not repeated here.
-
----
-
-## Systems & Infrastructure
-
-- **Linux Fundamentals** — process model, file descriptors, signals, systemd, cgroups, namespaces. The substrate every other infra topic sits on; deserves a proper grounding rather than being inherited from osmosis.
-- **AWS** — counterpart to the existing Azure-for-AWS-architect guide, written for someone coming in fresh. Covers IAM, VPC, compute, storage, managed databases, and the cross-service patterns that actually matter.
-- **GCP** — third leg of the cloud stool; worth a guide that focuses on what's idiomatic in GCP (project model, IAM hierarchy, BigQuery, Cloud Run, GKE Autopilot) rather than a mechanical translation from AWS.
-- **Nginx & Reverse Proxies** — config language, upstream blocks, caching, TLS termination, rate limiting, the `ngx_http_*` module landscape. Still the most common load balancer on the planet.
-- **Pulumi & Crossplane** — IaC beyond Terraform: real programming languages (Pulumi) and Kubernetes-native infra (Crossplane). Both fill gaps Terraform doesn't.
+Ranking weights, in order: (1) **solves a current problem**, (2) **adjacent to an existing guide** — shared context speeds the writing and the reading, (3) **high signal** in real engineering work or the job market, (4) **underserved** by existing resources. Tier 1 is what I'd write next; Tier 3 is a keep-warm backlog.
 
 ---
 
-## Languages
+## Tier 1 — Write these next
 
-- **Modern JavaScript & Web Platform** — modules, iterators, async/await internals, structured clone, the platform APIs (Fetch, Streams, IndexedDB, Service Workers). The non-framework half of frontend.
-- **React (Fundamentals)** — components, hooks, reconciliation, Suspense, server components, the mental model. Distinct from Next.js — many React jobs don't use Next.
-- **Python (Advanced)** — typing, packaging, async deep dive, the CPython object model, descriptors, metaclasses. Companion to the existing concurrency guide.
-- **Bash & Shell Scripting** — proper scripting (`set -euo pipefail`, traps, process substitution, arrays), POSIX vs. Bash, when to reach for awk/sed. Most engineers write shell badly; a guide would pay back fast.
-- **SQL (Beyond Postgres)** — window functions, CTEs, query planning concepts that apply across engines. Complement the Postgres-specific guides with portable SQL fluency.
-- **C & Systems Programming** — pointers, memory layout, the build/link model, calling conventions, undefined behavior. Pairs naturally with the Rust guide as the "thing Rust is reacting against."
-- **Zig** — comptime, error unions, allocators, the "no hidden control flow" philosophy. A genuinely interesting newer systems language.
-- **Elixir & OTP** — the actor model, supervision trees, GenServers, hot code reload. The right introduction to fault-tolerant distributed thinking.
-- **Lua** — small, embeddable, surprisingly powerful. Useful for Neovim config, game scripting, Redis, Nginx.
+1. **Linux Fundamentals** *(Systems)* — process model, file descriptors, signals, systemd, cgroups, namespaces. The substrate under Docker, Kubernetes, Kali, and the Pi; cgroups and namespaces are literally how containers work, so it retroactively deepens half the repo. The most load-bearing gap in the collection.
+2. **Testing** *(Cross-cutting)* — the testing pyramid, test doubles, fixtures, property-based testing, integration vs. e2e, flaky-test triage. It touches every language guide in the repo and is currently absent entirely — high leverage precisely because it's cross-cutting.
+3. **AWS** *(Systems)* — a from-scratch counterpart to the existing Azure-for-AWS-architect guide, which assumes an AWS fluency no guide here actually provides. IAM, VPC, compute, storage, managed databases, and the cross-service patterns that matter. Closes an obvious loop and carries top market signal.
+4. **System Design & Distributed Systems** *(Architecture)* — consensus (Raft, Paxos), CAP, consistency models, then assembling them into real systems (caching, sharding, queues, idempotency). The conceptual glue behind every infra guide, and the highest-signal interview and real-work topic.
+5. **SQL (Beyond Postgres)** *(Languages/Data)* — window functions, CTEs, and query-planning concepts that port across engines. Directly deepens the Postgres guides and your day-to-day work; the adjacency and personal-stack fit make it cheap to write and high-return.
 
 ---
 
-## Data & ML
+## Tier 2 — High value
 
-- **Kafka & Streaming** — topics, partitions, consumer groups, exactly-once semantics, the broker/producer/consumer model. The dominant streaming substrate.
-- **Local LLMs** — llama.cpp, Ollama, GGUF, quantization, hardware considerations. Particularly relevant for Pi-class hardware experiments.
-- **Vector Databases** — embeddings, ANN indexes (HNSW, IVF), pgvector vs. dedicated stores. Foundation for any retrieval-augmented system.
-
----
-
-## Security
-
-- **Web Application Security** — OWASP Top 10 with depth: how each class of bug actually works, how to test for it, how to prevent it. Complement to the Kali guide on the offensive side.
-- **Threat Modeling** — STRIDE, attack trees, trust boundaries. The discipline of thinking about security *before* the code is written.
-- **Reverse Engineering** — Ghidra/IDA, ELF/PE/Mach-O, dynamic analysis, anti-debugging. Pairs with the Kali guide for the binary-analysis half of pentesting.
-- **Binary Exploitation** — stack/heap exploitation, ROP, modern mitigations (ASLR, CFI, stack canaries). The CTF-leaning end of security.
+6. **Kafka & Streaming** *(Data)* — topics, partitions, consumer groups, exactly-once semantics, the broker/producer/consumer model. The dominant streaming substrate; the Data Engineering guide references it but it deserves its own.
+7. **API Design** *(Architecture)* — REST, GraphQL, gRPC, OpenAPI, versioning, pagination, error models — opinionated and worked, not "REST 101." Applies to nearly everything you build.
+8. **Web Application Security** *(Security)* — the OWASP Top 10 with depth: how each bug class actually works, how to test for it, how to prevent it. The defensive complement to the offensive Kali guide.
+9. **Python (Advanced)** *(Languages)* — typing, packaging, async internals, the CPython object model, descriptors, metaclasses. Companion to the existing concurrency guide and squarely in your stack.
+10. **Nginx & Reverse Proxies** *(Systems)* — config language, upstreams, caching, TLS termination, rate limiting. Still the most common proxy/load balancer on the planet; pairs with the Networking and Docker/Kubernetes guides.
+11. **Embedded Linux on the Raspberry Pi Zero 2 W** *(Hardware)* — boot process, GPIO, I2C/SPI/UART, device-tree overlays, low-power modes. The most directly actionable topic given the hardware already on your desk.
+12. **Modern CSS** *(Frontend)* — Grid, Flexbox, container queries, custom properties, cascade layers, modern selectors. Framework-agnostic, so it pays off across the Vue/Next/Svelte guides, and CSS has changed enough recently to warrant a current treatment.
 
 ---
 
-## Architecture
+## Tier 3 — Backlog (worthwhile, lower priority)
 
-- **Distributed Systems** — consensus (Raft, Paxos), CAP, consistency models, vector clocks, the canon (Lamport, Brewer, Vogels). The conceptual backbone behind every modern infra topic.
-- **API Design** — REST, GraphQL, gRPC, OpenAPI, versioning, pagination, error models. Specific, opinionated, with worked examples — not "REST 101."
-- **Event-Driven Architecture** — event sourcing, CQRS, sagas, idempotency, the operational realities. Pairs with the Kafka guide.
-- **Domain-Driven Design** — strategic design (bounded contexts, context maps) and tactical patterns (aggregates, entities, value objects). The bridge from "code that works" to "code that scales as a team's understanding."
+Good ideas that are more niche, more situational, or simply lower-leverage than the above right now:
 
----
-
-## Frontend
-
-- **Modern CSS** — Grid, Flexbox, container queries, custom properties, cascade layers, modern selectors. CSS has changed enough recently that a current guide would be genuinely useful.
-- **Web Components** — custom elements, shadow DOM, slots, the framework-agnostic component model. Increasingly viable for design systems.
-- **Tailwind** — utility-first philosophy, the design-system angle, when it's the right call and when it isn't.
-- **Astro** — islands architecture, partial hydration, content-collection model. The pragmatic answer for content-heavy sites.
-- **Tauri** — Rust + webview desktop apps. Pairs naturally with the Rust guide and the Pi Zero 2 W interest for cross-platform GUI work.
-
----
-
-## OS, Hardware, Embedded
-
-- **Embedded Linux on Raspberry Pi** — Pi Zero 2 W specifically: boot process, GPIO, I2C/SPI/UART, device tree overlays, low-power modes. Directly applicable to hardware in hand.
-- **MicroPython / CircuitPython** — Python on microcontrollers. Lowest-friction path from Python to hardware.
-- **ARM Assembly (AArch64)** — basics of the instruction set, calling conventions, looking at compiler output. The kind of literacy that pays off across systems languages.
-
----
-
-## Tools
-
-- **Neovim** — modal editing, motions, text objects, LSP, Treesitter, plugin ecosystem. Configurable enough to be its own subject.
-- **tmux** — sessions, windows, panes, scripting, integration with editors. The right complement to Neovim for terminal-driven work.
-- **Make & Build Systems** — Make, then a tour of the alternatives (Ninja, Bazel, just). The mental model of "declare dependencies, derive a graph" applies everywhere.
-
----
-
-## How to Pick the Next One
-
-Loose criteria, in order of weight:
-1. **Solves a current problem you have.** Always wins.
-2. **Adjacent to something already in this repo.** Existing context speeds the writing and the reading.
-3. **High signal in the job market or in real engineering work.** Avoid topics that are mostly buzz.
-4. **Underserved by existing online resources.** Don't write what's already well-written elsewhere.
+- **React (Fundamentals)** *(Languages)* — hooks, reconciliation, server components; lots of React jobs, but lower personal fit given Vue.
+- **Tauri** *(Frontend)* — Rust + webview desktop apps; pairs with the Rust and Qt guides and the Pi interest.
+- **Event-Driven Architecture** *(Architecture)* — event sourcing, CQRS, sagas, idempotency; best written after Kafka.
+- **GCP** *(Systems)* — the third cloud; a natural follow-on once AWS exists.
+- **Bash & Shell Scripting** *(Languages)* — `set -euo pipefail`, traps, process substitution, arrays; pays back fast but narrow in scope.
+- **C & Systems Programming** *(Languages)* — pointers, memory layout, the build/link model, undefined behavior; the "thing Rust is reacting against."
+- **Modern JavaScript & Web Platform** *(Languages)* — modules, async internals, Fetch/Streams/Service Workers; the non-framework half of frontend.
+- **Domain-Driven Design** *(Architecture)* — bounded contexts, aggregates, value objects; scales a team's shared understanding.
+- **Vector Databases** *(Data)* — embeddings, ANN indexes (HNSW, IVF), pgvector vs. dedicated stores; overlaps the LLM App Dev guide.
+- **Local LLMs** *(Data)* — llama.cpp, Ollama, GGUF, quantization; relevant to Pi-class hardware experiments.
+- **Threat Modeling** *(Security)* — STRIDE, attack trees, trust boundaries; design-time security.
+- **Reverse Engineering** / **Binary Exploitation** *(Security)* — Ghidra/IDA, ELF/PE/Mach-O, ROP, modern mitigations; the binary-analysis and CTF end, fairly niche.
+- **Pulumi & Crossplane** *(Systems)* — IaC beyond Terraform: real languages, and Kubernetes-native infra.
+- **Web Components**, **Tailwind**, **Astro** *(Frontend)* — design-system and content-site niches.
+- **Zig**, **Elixir & OTP**, **Lua** *(Languages)* — interesting but specialized language picks.
+- **MicroPython / CircuitPython**, **ARM Assembly (AArch64)** *(Hardware)* — microcontroller and low-level literacy.
+- **Neovim**, **tmux**, **Make & Build Systems** *(Tools)* — editor, terminal, and build-system tooling.
