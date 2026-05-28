@@ -501,6 +501,7 @@ for i, b in enumerate(wf):
     name = first.split("/")[-1].strip() or f"wf{i}.yml"
     pathlib.Path(f"{tmp}/.github/workflows/{name}").write_text(b)
 print(f"Extracted {len(wf)} complete workflows to {tmp}")
+subprocess.run(["git", "init", "-q"], cwd=tmp, check=True)  # actionlint needs a git project root
 r = subprocess.run(["actionlint"], cwd=tmp)
 sys.exit(r.returncode)
 PY
