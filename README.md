@@ -44,6 +44,11 @@ This guide is for Python developers who want to become comfortable in the .NET e
 
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/DOTNET_FOR_PYTHON_DEVS.md)
 
+### GitHub Actions
+This guide is a depth-first, pattern-first treatment of GitHub Actions for engineers building real CI/CD: the execution model (events, workflows, jobs, steps, runners), the workflow language, caching and matrix builds, composition with reusable and composite actions, and authoring your own JavaScript and Docker actions. It then goes deep on what bites in production — security hardening (the `pull_request_target` footgun, script injection, SHA-pinning actions, least-privilege `permissions`), deployment and release automation with OIDC to the cloud (no stored credentials), and operating runners at scale with Actions Runner Controller — before an honest comparison to GitLab CI, Jenkins, CircleCI, Buildkite, and Dagger. It closes with five copy-paste recipes and an end-to-end walkthrough from an empty repo to a reviewer-gated production pipeline, with examples spanning Node, Python, Go, and Rust.
+
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/GITHUB_ACTIONS_STUDY_GUIDE.md)
+
 ### Golang for Python Developers
 This guide helps Python developers understand Go through comparison rather than jargon. It focuses on the language features, concurrency model, packaging, and standard library patterns that make Go feel different but approachable.
 

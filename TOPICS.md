@@ -11,16 +11,13 @@ Topics already covered live in [README.md](README.md) and are not repeated here.
 - **Linux Fundamentals** — process model, file descriptors, signals, systemd, cgroups, namespaces. The substrate every other infra topic sits on; deserves a proper grounding rather than being inherited from osmosis.
 - **AWS** — counterpart to the existing Azure-for-AWS-architect guide, written for someone coming in fresh. Covers IAM, VPC, compute, storage, managed databases, and the cross-service patterns that actually matter.
 - **GCP** — third leg of the cloud stool; worth a guide that focuses on what's idiomatic in GCP (project model, IAM hierarchy, BigQuery, Cloud Run, GKE Autopilot) rather than a mechanical translation from AWS.
-- **Docker (Deep)** — image layers, BuildKit, multi-stage builds, OCI runtimes, security contexts, rootless. The existing networking guide covers networking; this would cover the rest.
 - **Nginx & Reverse Proxies** — config language, upstream blocks, caching, TLS termination, rate limiting, the `ngx_http_*` module landscape. Still the most common load balancer on the planet.
-- **GitHub Actions** — workflow syntax, runners, matrix builds, secrets, OIDC to cloud, reusable workflows, caching. The default CI for most modern repos; deserves a proper treatment.
 - **Pulumi & Crossplane** — IaC beyond Terraform: real programming languages (Pulumi) and Kubernetes-native infra (Crossplane). Both fill gaps Terraform doesn't.
 
 ---
 
 ## Languages
 
-- **TypeScript (Deep)** — the type system as its own subject: conditional types, mapped types, inference, branding, narrowing. The other JS-framework guides assume TS; this would be the foundation.
 - **Modern JavaScript & Web Platform** — modules, iterators, async/await internals, structured clone, the platform APIs (Fetch, Streams, IndexedDB, Service Workers). The non-framework half of frontend.
 - **React (Fundamentals)** — components, hooks, reconciliation, Suspense, server components, the mental model. Distinct from Next.js — many React jobs don't use Next.
 - **Python (Advanced)** — typing, packaging, async deep dive, the CPython object model, descriptors, metaclasses. Companion to the existing concurrency guide.
@@ -36,8 +33,6 @@ Topics already covered live in [README.md](README.md) and are not repeated here.
 ## Data & ML
 
 - **Kafka & Streaming** — topics, partitions, consumer groups, exactly-once semantics, the broker/producer/consumer model. The dominant streaming substrate.
-- **Redis** — data structures beyond key-value, pub/sub, streams, persistence trade-offs, Cluster mode. Used as cache, queue, lock, session store, and more.
-- **LLM Application Development** — prompt engineering, tool use, agents, retrieval, evals, cost/latency trade-offs. The current state of the art for shipping LLM-backed features.
 - **Local LLMs** — llama.cpp, Ollama, GGUF, quantization, hardware considerations. Particularly relevant for Pi-class hardware experiments.
 - **Vector Databases** — embeddings, ANN indexes (HNSW, IVF), pgvector vs. dedicated stores. Foundation for any retrieval-augmented system.
 
@@ -81,7 +76,6 @@ Topics already covered live in [README.md](README.md) and are not repeated here.
 
 ## Tools
 
-- **Git (Deep)** — the object model, refs, plumbing vs. porcelain, rebase/cherry-pick/reflog as everyday tools, recovery from disasters. Most engineers use 10% of Git; the other 90% is the difference between fluent and not.
 - **Neovim** — modal editing, motions, text objects, LSP, Treesitter, plugin ecosystem. Configurable enough to be its own subject.
 - **tmux** — sessions, windows, panes, scripting, integration with editors. The right complement to Neovim for terminal-driven work.
 - **Make & Build Systems** — Make, then a tour of the alternatives (Ninja, Bazel, just). The mental model of "declare dependencies, derive a graph" applies everywhere.
