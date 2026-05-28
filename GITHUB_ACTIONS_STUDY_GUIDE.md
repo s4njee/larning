@@ -783,3 +783,172 @@ Consumers pin to a ref, so **your tags are your public API**:
   ```
 - Security-conscious consumers will pin your **commit SHA** instead of `@v1` ([Part 7](#part-7--security-hardening)). That's expected — design your changelog around it.
 - To list on the [Marketplace](https://docs.github.com/en/actions/creating-actions/publishing-actions-in-github-marketplace), the repo needs a single root `action.yml`, a good README, and a published release.
+
+---
+
+## Part 6 — Deployment & Release Automation
+
+This is where CI turns into CD. Two themes run through it: getting credentials to your cloud *safely* (short-lived OIDC, not long-lived keys), and turning a passing build into a published artifact.
+
+### Environments
+
+A deployment [environment](https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment) is a named target — `staging`, `production` — with protection rules attached. A job opts into one with `environment:`:
+
+```yaml
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+    environment: production      # bind this job to the "production" environment
+    steps:
+      - run: ./deploy.sh
+        env:
+          API_KEY: ${{ secrets.API_KEY }}   # resolves to the environment's secret if one is set
+```
+
+What that buys you:
+
+- **Required reviewers** — the job *pauses* until a named person or team approves. This is your manual production gate, enforced by GitHub.
+- **Wait timer** — a forced delay before the job proceeds (a cool-off window to abort).
+- **Deployment branches** — restrict which branches may deploy to this environment (e.g. only `main` reaches production).
+- **Environment-scoped secrets/variables** — `secrets.API_KEY` resolves to *this environment's* value, so staging and production hold different credentials under the same name.
+
+### Secrets and Variables
+
+Three scopes, most-specific wins: **repository**, **environment**, and **organization** (org secrets can be shared across selected repos). Use `secrets.*` for sensitive values, `vars.*` for non-secret config.
+
+Two facts that bite people:
+
+- **Masking has limits.** Actions masks known secret values in logs, but a secret that's been transformed — base64-encoded, split, embedded in JSON — can slip past the masker. Never `echo` a secret or pass it somewhere it gets printed.
+- **Fork pull requests get no secrets.** A `pull_request` from a fork runs with no access to your secrets and a read-only token, *by design* — so a stranger's PR can't exfiltrate them. This shapes how you structure PR CI ([Part 7](#part-7--security-hardening)).
+
+For anything beyond static secrets, prefer **OIDC** (next) or fetch from an external secret manager at runtime.
+
+### OIDC to Cloud (No Stored Credentials)
+
+The single biggest security upgrade for a deploy pipeline: stop storing long-lived cloud keys as secrets. With [OpenID Connect](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect), the workflow requests a short-lived, signed **OIDC token** from GitHub that describes the run (repo, branch, environment); your cloud is configured to *trust GitHub's OIDC provider* and exchange that token for short-lived credentials. Nothing long-lived is stored anywhere.
+
+The trust is scoped by the token's claims — above all `sub` (subject), which encodes values like `repo:ORG/REPO:ref:refs/heads/main` or `repo:ORG/REPO:environment:production`. You write a condition that matches exactly the runs you trust. (For the JWT and token-signing background, see the [Cryptography guide](CRYPTO_FUNDAMENTALS.md).)
+
+**AWS, end to end.** First, an IAM role whose trust policy accepts GitHub's OIDC tokens for your repo's `main` branch:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": { "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com" },
+    "Action": "sts:AssumeRoleWithWebIdentity",
+    "Condition": {
+      "StringEquals": {
+        "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+      },
+      "StringLike": {
+        "token.actions.githubusercontent.com:sub": "repo:<ORG>/<REPO>:ref:refs/heads/main"
+      }
+    }
+  }]
+}
+```
+
+Then the workflow assumes that role. Note `permissions: id-token: write` — that scope is what lets the run request the OIDC token at all:
+
+```yaml
+# .github/workflows/deploy-aws.yml
+name: Deploy to AWS
+on:
+  push:
+    branches: [main]
+permissions:
+  id-token: write      # REQUIRED to request the OIDC token
+  contents: read       # least privilege for everything else
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::<ACCOUNT_ID>:role/github-actions-deploy
+          aws-region: us-east-1
+      - run: aws sts get-caller-identity   # proves the assumed creds work; replace with the real deploy
+```
+
+The same pattern covers the other clouds — only the trust setup and the auth action change:
+
+- **Azure** — `azure/login` with a federated credential on an app registration (see the [Azure guide](AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md)).
+- **GCP** — Workload Identity Federation, exchanging the token via `google-github-actions/auth`.
+- **Cloudflare** — scoped API tokens, or OIDC where supported (see the [Cloudflare guide](CLOUDFLARE_STUDY_GUIDE.md)).
+- **HashiCorp Vault** — Vault's JWT auth method validates the same GitHub OIDC token and returns a short-lived Vault token.
+
+### Deployment Patterns
+
+With credentials solved, the deploy step itself is usually mundane:
+
+- **Container image** → build and push to a registry (next section), then tell your platform to roll it out.
+- **Static site** → upload to object storage, a CDN, or Pages.
+- **Kubernetes** → `kubectl apply` or a GitOps nudge, authenticating to the cluster's cloud via OIDC. See the [Kubernetes guide](k8s/KUBERNETES_STUDY_GUIDE.md).
+
+Two cross-cutting concerns: gate production behind an `environment:` with a required reviewer, and use `concurrency:` so two deploys can't race (detailed in [Part 8](#part-8--operations-at-scale)):
+
+```yaml
+concurrency:
+  group: deploy-production       # serialize everything in this group
+  cancel-in-progress: false      # let an in-flight deploy finish; queue the next rather than cancel
+```
+
+### Release & Publishing Automation
+
+Releases are usually **tag-driven**: pushing a `v*` tag triggers the publish.
+
+**Container image to GHCR** (GitHub's own registry), authenticating with the built-in token — no PAT required:
+
+```yaml
+# .github/workflows/publish-image.yml
+name: Publish image
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+  packages: write              # required to push to GHCR
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}   # ref_name is the tag, e.g. v1.2.0
+```
+
+**A Python library to PyPI via trusted publishing** — OIDC again, so there's no API token to store. Register the project as a "trusted publisher" on PyPI, then:
+
+```yaml
+# .github/workflows/publish-pypi.yml
+name: Publish to PyPI
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+  id-token: write              # trusted publishing exchanges an OIDC token, not a stored password
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi            # optional: gate the publish behind an environment
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install build && python -m build    # produces dist/*.whl and dist/*.tar.gz
+      - uses: pypa/gh-action-pypi-publish@release/v1  # reads the OIDC token; no username/password
+```
+
+npm and crates.io follow the same shape: build, then publish with a token in `NODE_AUTH_TOKEN` / `CARGO_REGISTRY_TOKEN` (npm now also supports OIDC trusted publishing). And when you create a GitHub **Release**, it can [auto-generate release notes](https://docs.github.com/en/actions/publishing-packages) from merged PRs — a changelog for free.
