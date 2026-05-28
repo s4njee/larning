@@ -1077,3 +1077,101 @@ Rounding out the defenses ([security hardening](https://docs.github.com/en/actio
 - **Restrict which actions can run.** Org/repo settings can limit `uses:` to GitHub-authored and verified-creator actions, or an explicit allowlist — a strong supply-chain control.
 - **Attest your builds.** `actions/attest-build-provenance` produces signed provenance for your artifacts and images, so downstream consumers can verify what built them.
 - **Audit third-party actions** before adopting: read the source at the SHA you pin, prefer verified publishers, and remember that a *transitive* action (one your action depends on) inherits the same access.
+
+---
+
+## Part 8 — Operations at Scale
+
+Hosted runners and the defaults carry you a long way. This part is what changes once you're running thousands of jobs, need special hardware, or have to reach private infrastructure.
+
+### Hosted vs Self-Hosted Runners
+
+GitHub-hosted runners are fresh, fully managed VMs billed per minute. Add or switch to [self-hosted runners](https://docs.github.com/en/actions/hosting-your-own-runners) when you need:
+
+- special hardware (GPUs, large memory, Apple silicon you control),
+- access to a private network (an internal database, an on-prem registry),
+- a custom OS or pre-baked image, or
+- to control cost at very high volume.
+
+The trade-off: you now own the patching, isolation, and security of those machines.
+
+### Self-Hosted Runners
+
+A self-hosted runner is the runner agent registered to your repo or org. The registration flow (token comes from repo/org settings) is:
+
+```bash
+# on the machine that will run jobs
+./config.sh --url https://github.com/<ORG>/<REPO> --token <REG_TOKEN> --labels gpu,linux
+./run.sh    # start the agent; it polls GitHub for jobs whose runs-on matches its labels
+```
+
+Target it from a workflow by label:
+
+```yaml
+jobs:
+  train:
+    runs-on: [self-hosted, gpu]   # matches a runner advertising BOTH labels
+```
+
+**The critical caveat:** never attach a self-hosted runner to a **public** repository that accepts fork PRs. A fork's pull request could run arbitrary code on your runner — your hardware, your network, your blast radius. For public repos, stay on hosted runners. And prefer **ephemeral** runners (one job, then deregister) so no state leaks between jobs:
+
+```bash
+./config.sh --url https://github.com/<ORG> --token <REG_TOKEN> --ephemeral
+```
+
+### Autoscaling with Actions Runner Controller (ARC)
+
+Idle standing runners are wasteful; scaling them by hand is toil. [Actions Runner Controller](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners-with-actions-runner-controller/about-actions-runner-controller) (ARC) runs runners as pods on Kubernetes and scales them with demand. You install the controller, then a *runner scale set* via Helm:
+
+```yaml
+# values.yaml for the gha-runner-scale-set Helm chart (helm install ... -f values.yaml)
+githubConfigUrl: https://github.com/<ORG>
+githubConfigSecret: arc-github-secret   # holds a GitHub App or PAT used to register runners
+minRunners: 0                           # scale to zero when there's no work
+maxRunners: 50                          # cap on concurrent runner pods
+runnerScaleSetName: linux-arc           # this name becomes the runs-on label
+```
+
+```yaml
+jobs:
+  build:
+    runs-on: linux-arc   # the scale-set name is what you target
+```
+
+Pods are created on demand and torn down afterward, so you pay only for what runs; this pairs naturally with cluster autoscaling — see the [Kubernetes guide](k8s/KUBERNETES_STUDY_GUIDE.md). If you'd rather not operate ARC, GitHub also sells **larger hosted runners** (more CPU/RAM, optional static IPs) and **runner groups** for access control — the simpler, paid path.
+
+### Concurrency Control
+
+By default every trigger starts a run, so pushes pile up and deploys can race. `concurrency:` groups runs so only one per group is active at a time ([concurrency docs](https://docs.github.com/en/actions/using-jobs/using-concurrency)):
+
+```yaml
+# CI: when newer commits arrive on the same branch/PR, cancel the superseded run
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true     # older runs are pointless once newer commits exist — save the minutes
+```
+
+```yaml
+# Deploy: never cancel a deploy mid-flight; queue the next one instead
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false    # let the running deploy finish, then run the latest queued run
+```
+
+The pattern: `cancel-in-progress: true` for CI (only the latest commit matters), `false` for deploys (don't interrupt a half-applied rollout).
+
+### Cost and Optimization
+
+Hosted minutes are free for public repos and included up to a quota for private ones, then billed. Two things to internalize:
+
+- **OS multipliers.** Linux is billed at 1×, but Windows and especially macOS minutes cost a multiple — keep expensive-OS jobs lean.
+- **The fastest way to cut the bill is to cut runtime:** cache aggressively (Part 3), right-size matrices (don't run 9 combos when 3 cover the risk), use `paths` filters to skip irrelevant runs, and use `concurrency` to cancel superseded CI. ([Billing reference](https://docs.github.com/en/billing/managing-billing-for-github-actions).)
+
+### Debugging Workflows
+
+When a run misbehaves:
+
+- **Re-run** the whole workflow, or just the failed jobs, from the UI — handy for flaky external dependencies.
+- **Step debug logging:** set the repository secret/variable `ACTIONS_STEP_DEBUG` to `true` for verbose runner logs ([enabling debug logging](https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/enabling-debug-logging)).
+- **Interactive SSH:** drop [`mxschmitt/action-tmate`](https://github.com/mxschmitt/action-tmate) into a workflow to open an SSH session into the live runner and poke around — invaluable for "works locally, fails in CI."
+- **Run locally with [`act`](https://github.com/nektos/act):** it executes workflows on your machine in Docker containers. Fidelity isn't perfect (it approximates the hosted images), but the feedback loop beats push-and-wait. Requires Docker — see the [Docker guide](DOCKER_STUDY_GUIDE.md).
