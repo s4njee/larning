@@ -1231,3 +1231,249 @@ The honest misfits:
 - **Heavy, long-running, exotic-hardware builds** where you'd self-host everything anyway — Buildkite or Jenkins may model that more naturally.
 
 For most teams already on GitHub, none of these apply, and the integration advantage is decisive.
+
+---
+
+## Part 10 — Recipes & End-to-End Walkthrough
+
+Everything so far, assembled into things you can copy. Each recipe is a complete, valid workflow file — adapt the names and commands to your project. The chapter closes by walking a single service from an empty repo to a production pipeline.
+
+### Recipe 1: Lint, Test, Build — Across Versions and OSes
+
+The default CI workflow: a matrix running lint, test, and build on every push to `main` and every PR.
+
+```yaml
+# .github/workflows/ci.yml
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false               # show every combo's result, not just the first failure
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+```
+
+### Recipe 2: Monorepo CI with Change Detection
+
+In a monorepo you only want to build what changed. [`dorny/paths-filter`](https://github.com/dorny/paths-filter) computes which paths a PR touched; downstream jobs gate on its outputs, so untouched packages are skipped.
+
+```yaml
+# .github/workflows/monorepo-ci.yml
+name: Monorepo CI
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}     # 'true' if any api path changed
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'services/api/**'
+            web:
+              - 'apps/web/**'
+  api:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'    # only run when the api changed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "build & test api"
+  web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "build & test web"
+```
+
+### Recipe 3: Build and Push a Container to GHCR with Provenance
+
+On a version tag, build the image, push it to GHCR, and attach signed [build provenance](https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds) so consumers can verify its origin (Part 7).
+
+```yaml
+# .github/workflows/release-image.yml
+name: Release image
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+  packages: write       # push to GHCR
+  id-token: write       # sign the provenance attestation
+  attestations: write   # record the attestation
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: push
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+      - uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.push.outputs.digest }}   # digest output by build-push-action
+          push-to-registry: true
+```
+
+### Recipe 4: OIDC Deploy to AWS — No Stored Credentials
+
+The Part 6 pattern, condensed and gated behind a `production` environment.
+
+```yaml
+# .github/workflows/deploy-oidc.yml
+name: Deploy (OIDC)
+on:
+  push:
+    branches: [main]
+permissions:
+  id-token: write       # request the OIDC token
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production              # can require a reviewer before it runs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-actions-deploy
+          aws-region: us-east-1
+      - run: ./deploy.sh                 # runs with short-lived, assumed-role credentials
+```
+
+### Recipe 5: Publish a Library on Tag
+
+Push a `v*` tag; publish to npm with provenance.
+
+```yaml
+# .github/workflows/publish.yml
+name: Publish package
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+  id-token: write              # required for npm --provenance
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm publish --provenance --access public   # attaches build provenance to the package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+```
+
+### End-to-End: From Empty Repo to Production Pipeline
+
+Now assemble a real delivery pipeline for a containerized web service. The goal: every PR is validated, every merge to `main` builds an image and rolls to staging automatically, and production is a gated promotion.
+
+**The decisions, in order:**
+
+1. **Validate PRs cheaply and safely.** Use Recipe 1's `ci.yml` on `pull_request` — lint and test under a read-only token with no secrets, so fork PRs are safe (Part 7). Make it the merge gate by requiring it as a status check in branch protection.
+2. **On merge to `main`, build once and deploy.** A separate `deliver.yml` runs on `push` to `main`: re-run tests (the merge result can differ from the PR), build the image tagged by commit SHA, push to GHCR, then deploy.
+3. **Stage before prod.** `deploy-staging` runs automatically. `deploy-production` `needs` it and binds to a **protected `production` environment** — configured in repo settings with a *required reviewer*, so the run pauses for a human click before touching prod.
+4. **Don't let deploys race.** A `concurrency` group serializes deliveries with `cancel-in-progress: false`, so a half-finished rollout is never interrupted.
+
+The whole merge-to-prod path in one file:
+
+```yaml
+# .github/workflows/deliver.yml
+name: Deliver
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+concurrency:
+  group: deliver-${{ github.ref }}
+  cancel-in-progress: false        # never interrupt an in-flight delivery
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+  image:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}    # publish the built tag for downstream jobs
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: echo "tag=ghcr.io/${{ github.repository }}:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ${{ steps.meta.outputs.tag }}
+  deploy-staging:
+    needs: image
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - run: echo "Deploying ${{ needs.image.outputs.tag }} to staging"
+  deploy-production:
+    needs: [image, deploy-staging]
+    runs-on: ubuntu-latest
+    environment: production            # protected: requires reviewer approval before running
+    steps:
+      - run: echo "Deploying ${{ needs.image.outputs.tag }} to production"
+```
+
+Read it as a flow: `test` → `image` (build, push, expose the tag as a job output) → `deploy-staging` → `deploy-production`. The only manual step is approving the production environment; everything else is automatic and repeatable. Combine it with Recipe 3's provenance and Recipe 1's PR gate and you have a pipeline that is fast, safe, and auditable — exactly the three properties from Part 1: a tight feedback loop, repeatability, and an enforceable gate.
+
+That's the guide. From here the highest-leverage next steps are the three from Part 7 that most improve a real pipeline: default `permissions` to read-only, SHA-pin your actions, and move cloud deploys to OIDC.
