@@ -17,13 +17,14 @@ Pricing, plan limits, and product availability can change over time, so use the 
 7. [R2 (Object Storage)](#7-r2-object-storage)
 8. [D1 (Serverless Database)](#8-d1-serverless-database)
 9. [KV (Key-Value Store)](#9-kv-key-value-store)
-10. [Zero Trust / Access](#10-zero-trust--access)
-11. [Cloudflare Tunnels](#11-cloudflare-tunnels)
-12. [Images & Stream (Media)](#12-images--stream-media)
-13. [Load Balancing](#13-load-balancing)
-14. [Rate Limiting](#14-rate-limiting)
-15. [Argo Smart Routing](#15-argo-smart-routing)
-16. [Plan Comparison](#16-plan-comparison)
+10. [AI at the Edge (Workers AI & Vectorize)](#10-ai-at-the-edge-workers-ai--vectorize)
+11. [Zero Trust / Access](#11-zero-trust--access)
+12. [Cloudflare Tunnels](#12-cloudflare-tunnels)
+13. [Images & Stream (Media)](#13-images--stream-media)
+14. [Load Balancing](#14-load-balancing)
+15. [Rate Limiting](#15-rate-limiting)
+16. [Argo Smart Routing](#16-argo-smart-routing)
+17. [Plan Comparison](#17-plan-comparison)
 
 ---
 
@@ -189,10 +190,16 @@ Cloudflare Workers is a **serverless execution platform** that runs JavaScript/T
   - Isolates are why Workers can spin up quickly at the edge without the heavier lifecycle costs of a traditional container platform; docs: [Cloudflare Workers](https://developers.cloudflare.com/workers/).
 - **Bindings** -- connect to KV, R2, D1, Durable Objects, Queues, and other Cloudflare services
   - Bindings let your code talk to platform services without manually wiring secrets, hostnames, or internal network calls; docs: [Cloudflare Workers](https://developers.cloudflare.com/workers/).
+- **RPC (Remote Procedure Call)** -- seamless cross-worker communication
+  - RPC replaces traditional HTTP subrequests. It allows a Worker to directly call a class method on another Worker (or a Durable Object) and pass complex types (like Maps, Sets, or functions) with zero serialization overhead.
 - **Cron Triggers** -- scheduled execution
   - This is the edge-native replacement for many background jobs, maintenance tasks, and periodic sync workflows; docs: [Cloudflare Workers](https://developers.cloudflare.com/workers/).
 - **Durable Objects** -- strongly consistent, stateful serverless objects with co-located storage
-  - Reach for Durable Objects when one logical entity needs ordered writes, coordination, or real-time shared state that KV cannot guarantee; docs: [Durable Objects](https://developers.cloudflare.com/durable-objects/).
+  - Reach for Durable Objects when one logical entity needs ordered writes, coordination, or real-time shared state that KV cannot guarantee. Typical architectural patterns include WebSockets for collaborative editing, rate-limiting counters, and multiplayer gaming backends; docs: [Durable Objects](https://developers.cloudflare.com/durable-objects/).
+- **Cloudflare Queues** -- guaranteed delivery message queuing
+  - Queues decouple edge workers from backend bottlenecks. You can ingest high-throughput events at the edge (like analytics or webhook payloads) and process them in batches asynchronously; docs: [Cloudflare Queues](https://developers.cloudflare.com/queues/).
+- **Hyperdrive** -- accelerating regional databases from the edge
+  - Hyperdrive maintains a global pool of connections to your existing regional databases (like PostgreSQL on AWS/GCP). This eliminates the massive latency penalty of creating new database connections from edge workers on every request; docs: [Hyperdrive](https://developers.cloudflare.com/hyperdrive/).
 - **Static Assets** -- serve static files directly from Workers
   - This makes it possible to ship one deployment unit that combines routing logic, API behavior, and asset delivery; docs: [Cloudflare Workers](https://developers.cloudflare.com/workers/).
 - **Workflows** -- multi-step, durable execution
@@ -278,6 +285,10 @@ S3-compatible object storage with **zero egress fees**. Designed for storing lar
   - This is the feature people remember because it can change the cost model of read-heavy media, downloads, and analytics pipelines; docs: [Cloudflare R2](https://developers.cloudflare.com/r2/).
 - **Workers API** -- native binding from Workers
   - Native bindings make R2 a natural storage layer for upload APIs, asset pipelines, and user-generated content on the same platform; docs: [Cloudflare R2](https://developers.cloudflare.com/r2/).
+- **Event Notifications** -- automatically trigger Workers/Queues on bucket changes
+  - This is crucial for event-driven architectures. You can trigger a Worker to resize an image, transcode a video, or update a database immediately after an object is uploaded to an R2 bucket.
+- **Presigned URLs** -- secure, temporary access to objects
+  - Using the S3 API or Workers, you can generate short-lived URLs that allow clients to upload files directly to R2 (bypassing your API servers entirely) or download private objects.
 - **Public Buckets** -- serve files directly via custom domain
   - This is useful for static file delivery, asset hosting, and simple public download workflows without standing up a separate origin.
 - **Storage Classes** -- Standard and Infrequent Access (30-day minimum duration)
@@ -389,7 +400,27 @@ A global, low-latency key-value data store optimized for **read-heavy workloads*
 
 ---
 
-## 10. Zero Trust / Access
+## 10. AI at the Edge (Workers AI & Vectorize)
+
+Cloudflare provides an AI stack designed specifically for edge execution, allowing you to run models and query vector databases close to the user without managing infrastructure.
+
+### Key Components
+
+- **Workers AI** -- serverless GPU inference on Cloudflare's edge network
+  - You can run open-source models (like Llama for text generation, Whisper for speech-to-text, or embedding models) directly from a Worker using a simple API binding. You are billed based on the number of neurons processed, not GPU idle time.
+- **Vectorize** -- managed vector database
+  - Vectorize stores and queries vector embeddings (numeric representations of text/images). This is essential for Retrieval-Augmented Generation (RAG) and semantic search architectures. It integrates natively with Workers AI for embedding generation and D1 for storing metadata.
+- **AI Gateway** -- observability and control for external AI APIs
+  - Even if you use OpenAI or Anthropic instead of Workers AI, AI Gateway acts as a proxy to cache responses, rate limit users, and provide analytics on your token usage.
+
+### Pricing
+
+- **Workers AI**: Priced per million neurons processed (extremely cheap for simple inference tasks). Generous free tier.
+- **Vectorize**: $0.05 per 1,000 queries. Free tier includes 5M queried dimensions per month.
+
+---
+
+## 11. Zero Trust / Access
 
 Cloudflare Zero Trust replaces traditional VPNs and network perimeters with **identity-aware, context-based access controls**. Verifies every request regardless of user location.
 
@@ -398,7 +429,10 @@ Cloudflare Zero Trust replaces traditional VPNs and network perimeters with **id
 | Component | What It Does |
 |-----------|--------------|
 | **Access (ZTNA)** | Secures internal apps with identity verification. Supports SSO/IdP integration (Okta, Azure AD, Google). |
-| **Gateway (SWG)** | Secure Web Gateway -- filters DNS, HTTP, and network traffic. Blocks malware and phishing. |
+| **Gateway (SWG)** | Secure Web Gateway -- inspects outbound traffic, filters DNS/HTTP, and blocks malware/phishing. |
+| **Magic Transit** | BGP-based network protection. Cloudflare advertises your IP subnets, scrubs traffic for DDoS, and routes clean traffic to your data centers. |
+| **Magic Firewall** | Cloud-based network firewall. Replaces on-premise hardware firewalls to filter traffic globally across all ports/protocols. |
+| **CASB** | Cloud Access Security Broker -- scans SaaS apps (like Microsoft 365, Google Workspace) for misconfigurations and shadow IT. |
 | **WARP Client** | Device agent that routes traffic through Cloudflare for Gateway filtering and private network access. |
 | **Browser Isolation** | Runs web browsing in the cloud, sending only safe pixels to the user's device. |
 | **DLP** | Data Loss Prevention -- inspect and control sensitive data in transit. |
@@ -426,7 +460,7 @@ Reference docs: [Cloudflare One / Zero Trust](https://developers.cloudflare.com/
 
 ---
 
-## 11. Cloudflare Tunnels
+## 12. Cloudflare Tunnels
 
 Cloudflare Tunnel creates **secure, outbound-only connections** from your infrastructure to Cloudflare's network. No public IPs, no open inbound ports, no firewall changes needed.
 
@@ -468,7 +502,7 @@ Cloudflare Tunnel creates **secure, outbound-only connections** from your infras
 
 ---
 
-## 12. Images & Stream (Media)
+## 13. Images & Stream (Media)
 
 ### Cloudflare Images
 
@@ -510,7 +544,7 @@ Cloudflare Tunnel creates **secure, outbound-only connections** from your infras
 
 ---
 
-## 13. Load Balancing
+## 14. Load Balancing
 
 DNS-based and HTTP-based load balancing across multiple origin servers, with health checking and automatic failover.
 
@@ -545,7 +579,7 @@ Starts at **$5/month** base. Add-ons for additional origins, faster health check
 
 ---
 
-## 14. Rate Limiting
+## 15. Rate Limiting
 
 Defines thresholds for incoming request rates and takes action when limits are exceeded. Now integrated into the WAF as **"Rate Limiting Rules."**
 
@@ -583,7 +617,7 @@ Defines thresholds for incoming request rates and takes action when limits are e
 
 ---
 
-## 15. Argo Smart Routing
+## 16. Argo Smart Routing
 
 Finds the **fastest network paths** across Cloudflare's global network to route traffic between edge and origin, avoiding congestion and packet loss on the public internet.
 
@@ -617,7 +651,7 @@ Paid add-on (usage-based). Enterprise customers can preview as a non-contract se
 
 ---
 
-## 16. Plan Comparison
+## 17. Plan Comparison
 
 ### Overall Plans
 
@@ -646,18 +680,38 @@ All developer platform products have **generous free tiers**. The **Workers Paid
 
 ## Quick Reference: When to Use What
 
+### Web Security & Delivery
 | Need | Service |
 |------|---------|
 | Speed up your website globally | CDN + Argo Smart Routing |
 | Protect from attacks | DDoS Protection + WAF |
+| Distribute traffic across servers | Load Balancing |
+| Prevent API abuse | Rate Limiting |
+
+### Edge Compute & Storage
+| Need | Service |
+|------|---------|
 | Host a static site / JAMstack app | Pages |
 | Run server-side logic at the edge | Workers |
+| Pool DB connections from the edge | Hyperdrive |
+| Asynchronous message delivery | Queues |
 | Store files (S3 alternative) | R2 |
 | SQL database for your app | D1 |
 | Cache config/feature flags at the edge | KV |
-| Replace your VPN | Zero Trust + Access |
-| Expose local services securely | Tunnels |
 | Serve/optimize images | Images |
 | Host video content | Stream |
-| Distribute traffic across servers | Load Balancing |
-| Prevent API abuse | Rate Limiting |
+
+### Zero Trust & Network Security
+| Need | Service |
+|------|---------|
+| Replace your VPN | Zero Trust + Access |
+| Expose local services securely | Tunnels |
+| Protect corporate IP subnets (BGP) | Magic Transit |
+| Secure outbound SaaS access | Gateway (SWG) & CASB |
+
+### AI & Data Services
+| Need | Service |
+|------|---------|
+| Run LLMs at the edge (inference) | Workers AI |
+| Store and query vector embeddings | Vectorize |
+| Cache/monitor external AI API calls | AI Gateway |
