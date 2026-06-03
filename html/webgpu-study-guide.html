@@ -1,0 +1,2709 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: WebGPU Study Guide.">
+<title>WebGPU Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#ad65e4; --accent2:#df60df; --accent-weak:rgba(173,101,228,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#ad65e4; --accent2:#df60df; --accent-weak:rgba(173,101,228,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">W</span><span>WebGPU Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-what-webgpu-is" data-target="part-1-what-webgpu-is">Part 1 - What WebGPU Is</a></li><li class="toc-l3"><a href="#the-one-sentence-version" data-target="the-one-sentence-version">The One-Sentence Version</a></li><li class="toc-l3"><a href="#why-it-exists" data-target="why-it-exists">Why It Exists</a></li><li class="toc-l3"><a href="#what-webgpu-adds-over-webgl" data-target="what-webgpu-adds-over-webgl">What WebGPU Adds Over WebGL</a></li><li class="toc-l3"><a href="#what-webgpu-does-not-do-for-you" data-target="what-webgpu-does-not-do-for-you">What WebGPU Does Not Do For You</a></li><li class="toc-l3"><a href="#current-support-reality" data-target="current-support-reality">Current Support Reality</a></li><li class="toc-l2"><a href="#part-2-webgpu-vs-webgl" data-target="part-2-webgpu-vs-webgl">Part 2 - WebGPU vs WebGL</a></li><li class="toc-l3"><a href="#quick-comparison" data-target="quick-comparison">Quick Comparison</a></li><li class="toc-l3"><a href="#global-state-vs-explicit-pipelines" data-target="global-state-vs-explicit-pipelines">Global State vs Explicit Pipelines</a></li><li class="toc-l3"><a href="#synchronous-vs-asynchronous-thinking" data-target="synchronous-vs-asynchronous-thinking">Synchronous vs Asynchronous Thinking</a></li><li class="toc-l3"><a href="#glsl-vs-wgsl" data-target="glsl-vs-wgsl">GLSL vs WGSL</a></li><li class="toc-l3"><a href="#uniforms-vs-bind-groups" data-target="uniforms-vs-bind-groups">Uniforms vs Bind Groups</a></li><li class="toc-l3"><a href="#graphics-only-vs-graphics-plus-compute" data-target="graphics-only-vs-graphics-plus-compute">Graphics Only vs Graphics Plus Compute</a></li><li class="toc-l3"><a href="#compatibility-vs-capability" data-target="compatibility-vs-capability">Compatibility vs Capability</a></li><li class="toc-l2"><a href="#part-3-when-to-use-webgpu-and-when-to-use-webgl" data-target="part-3-when-to-use-webgpu-and-when-to-use-webgl">Part 3 - When to Use WebGPU and When to Use WebGL</a></li><li class="toc-l3"><a href="#use-webgpu-for" data-target="use-webgpu-for">Use WebGPU For</a></li><li class="toc-l3"><a href="#use-webgl-for" data-target="use-webgl-for">Use WebGL For</a></li><li class="toc-l3"><a href="#use-neither-for" data-target="use-neither-for">Use Neither For</a></li><li class="toc-l3"><a href="#decision-tree" data-target="decision-tree">Decision Tree</a></li><li class="toc-l3"><a href="#progressive-enhancement-strategy" data-target="progressive-enhancement-strategy">Progressive Enhancement Strategy</a></li><li class="toc-l2"><a href="#part-4-the-webgpu-mental-model" data-target="part-4-the-webgpu-mental-model">Part 4 - The WebGPU Mental Model</a></li><li class="toc-l3"><a href="#the-core-objects" data-target="the-core-objects">The Core Objects</a></li><li class="toc-l3"><a href="#the-basic-flow" data-target="the-basic-flow">The Basic Flow</a></li><li class="toc-l3"><a href="#adapter-and-device" data-target="adapter-and-device">Adapter and Device</a></li><li class="toc-l3"><a href="#features-and-limits" data-target="features-and-limits">Features and Limits</a></li><li class="toc-l3"><a href="#queue" data-target="queue">Queue</a></li><li class="toc-l3"><a href="#buffers" data-target="buffers">Buffers</a></li><li class="toc-l3"><a href="#textures" data-target="textures">Textures</a></li><li class="toc-l3"><a href="#pipelines" data-target="pipelines">Pipelines</a></li><li class="toc-l3"><a href="#bind-groups" data-target="bind-groups">Bind Groups</a></li><li class="toc-l3"><a href="#command-encoding" data-target="command-encoding">Command Encoding</a></li><li class="toc-l2"><a href="#part-5-wgsl-the-shader-language" data-target="part-5-wgsl-the-shader-language">Part 5 - WGSL: The Shader Language</a></li><li class="toc-l3"><a href="#shader-stages" data-target="shader-stages">Shader Stages</a></li><li class="toc-l3"><a href="#a-minimal-render-shader" data-target="a-minimal-render-shader">A Minimal Render Shader</a></li><li class="toc-l3"><a href="#types" data-target="types">Types</a></li><li class="toc-l3"><a href="#address-spaces" data-target="address-spaces">Address Spaces</a></li><li class="toc-l3"><a href="#locations-bindings-and-builtins" data-target="locations-bindings-and-builtins">Locations, Bindings, and Builtins</a></li><li class="toc-l3"><a href="#memory-layout-matters" data-target="memory-layout-matters">Memory Layout Matters</a></li><li class="toc-l3"><a href="#wgsl-common-mistakes" data-target="wgsl-common-mistakes">WGSL Common Mistakes</a></li><li class="toc-l2"><a href="#part-6-your-first-webgpu-app" data-target="part-6-your-first-webgpu-app">Part 6 - Your First WebGPU App</a></li><li class="toc-l3"><a href="#html" data-target="html">HTML</a></li><li class="toc-l3"><a href="#initialization" data-target="initialization">Initialization</a></li><li class="toc-l3"><a href="#vertex-data" data-target="vertex-data">Vertex Data</a></li><li class="toc-l3"><a href="#shader" data-target="shader">Shader</a></li><li class="toc-l3"><a href="#vertex-buffer-layout" data-target="vertex-buffer-layout">Vertex Buffer Layout</a></li><li class="toc-l3"><a href="#pipeline" data-target="pipeline">Pipeline</a></li><li class="toc-l3"><a href="#draw" data-target="draw">Draw</a></li><li class="toc-l3"><a href="#complete-minimal-module" data-target="complete-minimal-module">Complete Minimal Module</a></li><li class="toc-l2"><a href="#part-7-buffers-uniforms-and-bind-groups" data-target="part-7-buffers-uniforms-and-bind-groups">Part 7 - Buffers, Uniforms, and Bind Groups</a></li><li class="toc-l3"><a href="#buffer-upload-patterns" data-target="buffer-upload-patterns">Buffer Upload Patterns</a></li><li class="toc-l3"><a href="#uniform-buffer-example" data-target="uniform-buffer-example">Uniform Buffer Example</a></li><li class="toc-l3"><a href="#updating-uniforms-per-frame" data-target="updating-uniforms-per-frame">Updating Uniforms Per Frame</a></li><li class="toc-l3"><a href="#storage-buffers" data-target="storage-buffers">Storage Buffers</a></li><li class="toc-l3"><a href="#bind-group-design" data-target="bind-group-design">Bind Group Design</a></li><li class="toc-l3"><a href="#usage-flags-are-contracts" data-target="usage-flags-are-contracts">Usage Flags Are Contracts</a></li><li class="toc-l2"><a href="#part-8-textures-samplers-and-render-targets" data-target="part-8-textures-samplers-and-render-targets">Part 8 - Textures, Samplers, and Render Targets</a></li><li class="toc-l3"><a href="#texture-basics" data-target="texture-basics">Texture Basics</a></li><li class="toc-l3"><a href="#wgsl-texture-sampling" data-target="wgsl-texture-sampling">WGSL Texture Sampling</a></li><li class="toc-l3"><a href="#render-targets" data-target="render-targets">Render Targets</a></li><li class="toc-l3"><a href="#depth-textures" data-target="depth-textures">Depth Textures</a></li><li class="toc-l3"><a href="#mipmaps" data-target="mipmaps">Mipmaps</a></li><li class="toc-l2"><a href="#part-9-compute-shaders" data-target="part-9-compute-shaders">Part 9 - Compute Shaders</a></li><li class="toc-l3"><a href="#what-compute-is" data-target="what-compute-is">What Compute Is</a></li><li class="toc-l3"><a href="#doubling-an-array" data-target="doubling-an-array">Doubling an Array</a></li><li class="toc-l3"><a href="#bounds-checks" data-target="bounds-checks">Bounds Checks</a></li><li class="toc-l3"><a href="#workgroups" data-target="workgroups">Workgroups</a></li><li class="toc-l3"><a href="#keep-data-on-the-gpu" data-target="keep-data-on-the-gpu">Keep Data on the GPU</a></li><li class="toc-l2"><a href="#part-10-render-loops-resize-and-presentation" data-target="part-10-render-loops-resize-and-presentation">Part 10 - Render Loops, Resize, and Presentation</a></li><li class="toc-l3"><a href="#animation-loop" data-target="animation-loop">Animation Loop</a></li><li class="toc-l3"><a href="#canvas-resize" data-target="canvas-resize">Canvas Resize</a></li><li class="toc-l3"><a href="#device-pixel-ratio" data-target="device-pixel-ratio">Device Pixel Ratio</a></li><li class="toc-l3"><a href="#multiple-passes" data-target="multiple-passes">Multiple Passes</a></li><li class="toc-l3"><a href="#presentation-format" data-target="presentation-format">Presentation Format</a></li><li class="toc-l3"><a href="#device-loss" data-target="device-loss">Device Loss</a></li><li class="toc-l2"><a href="#part-11-debugging-errors-and-validation" data-target="part-11-debugging-errors-and-validation">Part 11 - Debugging, Errors, and Validation</a></li><li class="toc-l3"><a href="#label-everything" data-target="label-everything">Label Everything</a></li><li class="toc-l3"><a href="#uncaptured-errors" data-target="uncaptured-errors">Uncaptured Errors</a></li><li class="toc-l3"><a href="#error-scopes" data-target="error-scopes">Error Scopes</a></li><li class="toc-l3"><a href="#shader-compilation-info" data-target="shader-compilation-info">Shader Compilation Info</a></li><li class="toc-l3"><a href="#common-validation-errors" data-target="common-validation-errors">Common Validation Errors</a></li><li class="toc-l3"><a href="#debugging-strategy" data-target="debugging-strategy">Debugging Strategy</a></li><li class="toc-l3"><a href="#browser-tools" data-target="browser-tools">Browser Tools</a></li><li class="toc-l2"><a href="#part-12-performance-and-production-practices" data-target="part-12-performance-and-production-practices">Part 12 - Performance and Production Practices</a></li><li class="toc-l3"><a href="#the-performance-thesis" data-target="the-performance-thesis">The Performance Thesis</a></li><li class="toc-l3"><a href="#avoid-per-frame-resource-creation" data-target="avoid-per-frame-resource-creation">Avoid Per-Frame Resource Creation</a></li><li class="toc-l3"><a href="#batch-work" data-target="batch-work">Batch Work</a></li><li class="toc-l3"><a href="#minimize-readback" data-target="minimize-readback">Minimize Readback</a></li><li class="toc-l3"><a href="#use-staging-buffers" data-target="use-staging-buffers">Use Staging Buffers</a></li><li class="toc-l3"><a href="#measure-correctly" data-target="measure-correctly">Measure Correctly</a></li><li class="toc-l3"><a href="#feature-detection" data-target="feature-detection">Feature Detection</a></li><li class="toc-l3"><a href="#security-and-privacy-model" data-target="security-and-privacy-model">Security and Privacy Model</a></li><li class="toc-l3"><a href="#production-checklist" data-target="production-checklist">Production Checklist</a></li><li class="toc-l2"><a href="#part-13-ecosystem-migration-and-recipes" data-target="part-13-ecosystem-migration-and-recipes">Part 13 - Ecosystem, Migration, and Recipes</a></li><li class="toc-l3"><a href="#libraries-and-engines" data-target="libraries-and-engines">Libraries and Engines</a></li><li class="toc-l3"><a href="#migrating-from-webgl" data-target="migrating-from-webgl">Migrating from WebGL</a></li><li class="toc-l3"><a href="#recipe-hardcoded-triangle-without-vertex-buffer" data-target="recipe-hardcoded-triangle-without-vertex-buffer">Recipe: Hardcoded Triangle Without Vertex Buffer</a></li><li class="toc-l3"><a href="#recipe-instanced-drawing" data-target="recipe-instanced-drawing">Recipe: Instanced Drawing</a></li><li class="toc-l3"><a href="#recipe-post-processing" data-target="recipe-post-processing">Recipe: Post-Processing</a></li><li class="toc-l3"><a href="#recipe-gpu-particle-system" data-target="recipe-gpu-particle-system">Recipe: GPU Particle System</a></li><li class="toc-l3"><a href="#recipe-picking" data-target="recipe-picking">Recipe: Picking</a></li><li class="toc-l3"><a href="#learning-path" data-target="learning-path">Learning Path</a></li><li class="toc-l3"><a href="#the-final-mental-model" data-target="the-final-mental-model">The Final Mental Model</a></li></ul></nav></aside>
+  <main><h1 id="webgpu-study-guide">WebGPU Study Guide</h1>
+<p>A depth-first guide to WebGPU for engineers who know JavaScript and the web platform but may not have written low-level graphics code before. It starts with what WebGPU is, why it exists, and how it differs from WebGL. It then builds the working mental model: adapters, devices, queues, buffers, textures, bind groups, pipelines, command encoders, render passes, compute passes, and WGSL shaders. The final chapters give a practical primer for drawing, moving data to the GPU, using textures, writing compute shaders, debugging, choosing libraries, and deciding when WebGPU or WebGL is the right tool.</p>
+<p>The throughline is this: <strong>WebGPU is the web's modern explicit GPU API</strong>. WebGL made GPU graphics possible in the browser by exposing an OpenGL ES style API. WebGPU exposes a model closer to Vulkan, Metal, and Direct3D 12: explicit resources, immutable pipelines, command buffers, asynchronous errors, compute shaders, and a binding model designed for modern hardware. That extra explicitness is more work at first, but it buys performance, predictability, compute, and a better fit for advanced rendering and browser-side AI.</p>
+<p>This guide pairs naturally with the <a href="advanced-nodejs-study-guide.html">Advanced Node.js guide</a>, <a href="typescript-study-guide.html">TypeScript guide</a>, <a href="websockets-study-guide.html">WebSockets guide</a>, <a href="llm-app-dev-study-guide.html">LLM Application Development guide</a>, and <a href="electron-study-guide.html">Electron guide</a>. WebGPU is browser technology, but it touches systems thinking: memory layout, parallelism, pipelines, synchronization, and performance measurement.</p>
+<p>Primary references: <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API">MDN WebGPU API</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API">MDN WebGL API</a>, the <a href="https://www.w3.org/TR/webgpu/">W3C WebGPU specification</a>, the <a href="https://www.w3.org/TR/WGSL/">W3C WGSL specification</a>, Chrome's <a href="https://developer.chrome.com/docs/web-platform/webgpu/overview">Overview of WebGPU</a>, Chrome's <a href="https://developer.chrome.com/docs/web-platform/webgpu/from-webgl-to-webgpu">From WebGL to WebGPU</a>, Chrome's <a href="https://developer.chrome.com/docs/capabilities/web-apis/gpu-compute">GPU compute guide</a>, <a href="https://webgpufundamentals.org/">WebGPU Fundamentals</a>, and the official <a href="https://webgpu.github.io/webgpu-samples/">WebGPU samples</a>.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1-what-webgpu-is">Part 1 - What WebGPU Is</a></li>
+<li><a href="#part-2-webgpu-vs-webgl">Part 2 - WebGPU vs WebGL</a></li>
+<li><a href="#part-3-when-to-use-webgpu-and-when-to-use-webgl">Part 3 - When to Use WebGPU and When to Use WebGL</a></li>
+<li><a href="#part-4-the-webgpu-mental-model">Part 4 - The WebGPU Mental Model</a></li>
+<li><a href="#part-5-wgsl-the-shader-language">Part 5 - WGSL: The Shader Language</a></li>
+<li><a href="#part-6-your-first-webgpu-app">Part 6 - Your First WebGPU App</a></li>
+<li><a href="#part-7-buffers-uniforms-and-bind-groups">Part 7 - Buffers, Uniforms, and Bind Groups</a></li>
+<li><a href="#part-8-textures-samplers-and-render-targets">Part 8 - Textures, Samplers, and Render Targets</a></li>
+<li><a href="#part-9-compute-shaders">Part 9 - Compute Shaders</a></li>
+<li><a href="#part-10-render-loops-resize-and-presentation">Part 10 - Render Loops, Resize, and Presentation</a></li>
+<li><a href="#part-11-debugging-errors-and-validation">Part 11 - Debugging, Errors, and Validation</a></li>
+<li><a href="#part-12-performance-and-production-practices">Part 12 - Performance and Production Practices</a></li>
+<li><a href="#part-13-ecosystem-migration-and-recipes">Part 13 - Ecosystem, Migration, and Recipes</a></li>
+</ol>
+<hr>
+<h2 id="part-1-what-webgpu-is">Part 1 - What WebGPU Is</h2>
+<p>WebGPU is a JavaScript API that lets web applications use the GPU for rendering and general-purpose computation. It is exposed through <code>navigator.gpu</code>, works with <code>canvas</code>, and uses a shader language called <strong>WGSL</strong> (WebGPU Shading Language).</p>
+<p>If you have used the web platform for years, put WebGPU in this family:</p>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>What it gives you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Canvas 2D</td>
+<td>Immediate-mode 2D drawing from JavaScript</td>
+</tr>
+<tr>
+<td>SVG</td>
+<td>Declarative vector graphics in the DOM</td>
+</tr>
+<tr>
+<td>CSS transforms/filters</td>
+<td>Browser-managed GPU acceleration for UI effects</td>
+</tr>
+<tr>
+<td>WebGL</td>
+<td>Low-level GPU rasterization through an OpenGL ES style API</td>
+</tr>
+<tr>
+<td>WebGPU</td>
+<td>Modern explicit GPU rendering and compute</td>
+</tr>
+</tbody>
+</table>
+<p>WebGPU is not a scene graph, game engine, charting library, or magic performance button. It is a low-level API. You create GPU resources, write shaders, define pipelines, encode commands, submit them to a queue, and let the GPU execute them asynchronously.</p>
+<h3 id="the-one-sentence-version">The One-Sentence Version</h3>
+<p>WebGPU lets JavaScript describe GPU work explicitly enough that the browser can map it efficiently onto Metal on Apple platforms, Direct3D 12 on Windows, Vulkan on many other platforms, and compatible lower-level backends where supported.</p>
+<h3 id="why-it-exists">Why It Exists</h3>
+<p>WebGL was a huge success. It brought programmable GPU graphics to browsers and powered games, maps, CAD viewers, data visualizations, creative coding, scientific visualization, and 3D engines. But WebGL is based on OpenGL ES, an older global-state graphics API. Modern native graphics moved toward explicit APIs:</p>
+<ul>
+<li>Metal,</li>
+<li>Vulkan,</li>
+<li>Direct3D 12.</li>
+</ul>
+<p>Those APIs make the developer describe resources, bindings, synchronization, and pipelines more explicitly. That is more verbose, but it reduces hidden driver work and maps better to modern GPUs.</p>
+<p>WebGPU brings that style to the web.</p>
+<h3 id="what-webgpu-adds-over-webgl">What WebGPU Adds Over WebGL</h3>
+<p>The biggest additions:</p>
+<ul>
+<li><strong>Compute shaders</strong> for general-purpose GPU work.</li>
+<li><strong>Storage buffers and storage textures</strong> for large writable shader data.</li>
+<li><strong>Explicit pipelines</strong> instead of many bits of mutable global state.</li>
+<li><strong>Command encoders and command buffers</strong> to batch GPU work.</li>
+<li><strong>Modern binding model</strong> through bind groups and pipeline layouts.</li>
+<li><strong>WGSL</strong> as a safe, portable shader language for the web.</li>
+<li><strong>Better error model</strong> with validation and asynchronous error scopes.</li>
+<li><strong>Better fit for modern engines</strong> that already target Vulkan/Metal/D3D12.</li>
+</ul>
+<h3 id="what-webgpu-does-not-do-for-you">What WebGPU Does Not Do For You</h3>
+<p>WebGPU does not:</p>
+<ul>
+<li>load 3D models,</li>
+<li>manage cameras,</li>
+<li>build a material system,</li>
+<li>generate mipmaps automatically,</li>
+<li>choose your render graph,</li>
+<li>make bad shaders fast,</li>
+<li>hide memory layout rules,</li>
+<li>support every device identically,</li>
+<li>replace accessibility or semantic HTML.</li>
+</ul>
+<p>If you want a high-level renderer, use Three.js, Babylon.js, PlayCanvas, regl, PixiJS, or engine-specific abstractions. Learn raw WebGPU when you need to understand what those libraries are doing or when you need control they do not expose.</p>
+<h3 id="current-support-reality">Current Support Reality</h3>
+<p>As of June 3, 2026, WebGPU is usable on modern browser stacks, but you should still treat it as progressive enhancement:</p>
+<ul>
+<li>MDN marks WebGPU as <strong>limited availability</strong> because some widely used browser/platform combinations do not support it.</li>
+<li>WebGPU requires a secure context, so use HTTPS or localhost.</li>
+<li>Chrome shipped WebGPU first and remains a strong target.</li>
+<li>Firefox and Safari have shipped support on important platforms, but platform coverage and feature details still need testing.</li>
+<li>WebGL remains the mature universal fallback for many web graphics products.</li>
+</ul>
+<p>The practical rule: <strong>feature-detect WebGPU and keep a fallback path when broad reach matters</strong>.</p>
+<pre><code class="language-javascript">if (!('gpu' in navigator)) {
+  showWebGLFallbackOrMessage();
+}
+</code></pre>
+<hr>
+<h2 id="part-2-webgpu-vs-webgl">Part 2 - WebGPU vs WebGL</h2>
+<p>WebGPU and WebGL share the same big idea: JavaScript sends data and shader programs to the GPU, then the GPU runs massively parallel work to draw pixels. The difference is the programming model.</p>
+<h3 id="quick-comparison">Quick Comparison</h3>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>WebGL</th>
+<th>WebGPU</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Era</td>
+<td>OpenGL ES style</td>
+<td>Vulkan/Metal/D3D12 style</td>
+</tr>
+<tr>
+<td>Primary use</td>
+<td>Graphics</td>
+<td>Graphics and compute</td>
+</tr>
+<tr>
+<td>Shader language</td>
+<td>GLSL ES</td>
+<td>WGSL</td>
+</tr>
+<tr>
+<td>State model</td>
+<td>Mutable global context state</td>
+<td>Explicit immutable pipeline objects</td>
+</tr>
+<tr>
+<td>Commands</td>
+<td>Mostly immediate API calls on context</td>
+<td>Recorded into command encoders and submitted</td>
+</tr>
+<tr>
+<td>Compute shaders</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Storage buffers</td>
+<td>No direct equivalent</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Error model</td>
+<td><code>gl.getError()</code> and context loss</td>
+<td>Validation, error scopes, device loss</td>
+</tr>
+<tr>
+<td>Resource binding</td>
+<td>Texture units, uniforms, attributes</td>
+<td>Bind groups, bind group layouts</td>
+</tr>
+<tr>
+<td>Browser reach</td>
+<td>Very broad and mature</td>
+<td>Modern and growing, but still check support</td>
+</tr>
+<tr>
+<td>Learning curve</td>
+<td>Smaller for simple examples</td>
+<td>Higher upfront, cleaner for large apps</td>
+</tr>
+<tr>
+<td>Performance ceiling</td>
+<td>Good, but constrained by old model</td>
+<td>Higher for modern workloads</td>
+</tr>
+</tbody>
+</table>
+<h3 id="global-state-vs-explicit-pipelines">Global State vs Explicit Pipelines</h3>
+<p>WebGL is stateful:</p>
+<pre><code class="language-javascript">gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+gl.useProgram(program);
+gl.bindTexture(gl.TEXTURE_2D, texture);
+gl.drawArrays(gl.TRIANGLES, 0, 3);
+</code></pre>
+<p>The current buffer, current program, current texture, current blend state, current viewport, and many other things live in the context. If another part of your code changes that state and forgets to restore it, your draw breaks.</p>
+<p>WebGPU is explicit:</p>
+<pre><code class="language-javascript">const pass = encoder.beginRenderPass(renderPassDescriptor);
+pass.setPipeline(pipeline);
+pass.setVertexBuffer(0, vertexBuffer);
+pass.setBindGroup(0, bindGroup);
+pass.draw(3);
+pass.end();
+device.queue.submit([encoder.finish()]);
+</code></pre>
+<p>The pipeline bundles much of what WebGL stores as mutable state. Bind groups bundle resources. Command encoders batch work. This is more ceremony at first, but more reliable in larger systems.</p>
+<h3 id="synchronous-vs-asynchronous-thinking">Synchronous vs Asynchronous Thinking</h3>
+<p>WebGL exposes synchronous queries like <code>gl.getError()</code>. Synchronous CPU-to-GPU checks can force the browser process and GPU process to coordinate immediately.</p>
+<p>WebGPU is designed around async behavior:</p>
+<ul>
+<li>creating resources validates later,</li>
+<li>errors are reported through error scopes or events,</li>
+<li>reading GPU results uses promises,</li>
+<li>command submission returns before GPU work has necessarily completed.</li>
+</ul>
+<p>That model matches real GPU execution. The CPU records work, the GPU consumes it later.</p>
+<h3 id="glsl-vs-wgsl">GLSL vs WGSL</h3>
+<p>WebGL shaders use GLSL ES:</p>
+<pre><code class="language-glsl">attribute vec2 position;
+
+void main() {
+  gl_Position = vec4(position, 0.0, 1.0);
+}
+</code></pre>
+<p>WebGPU shaders usually use WGSL:</p>
+<pre><code class="language-wgsl">@vertex
+fn vertexMain(@location(0) position: vec2&lt;f32&gt;) -&gt; @builtin(position) vec4&lt;f32&gt; {
+  return vec4&lt;f32&gt;(position, 0.0, 1.0);
+}
+</code></pre>
+<p>WGSL looks more explicit because it names shader stages, input locations, address spaces, bindings, and builtins directly in the language.</p>
+<h3 id="uniforms-vs-bind-groups">Uniforms vs Bind Groups</h3>
+<p>WebGL code often sets uniforms directly:</p>
+<pre><code class="language-javascript">gl.useProgram(program);
+gl.uniformMatrix4fv(matrixLocation, false, matrix);
+</code></pre>
+<p>WebGPU usually stores uniform data in a buffer and connects that buffer to a shader through a bind group:</p>
+<pre><code class="language-javascript">const bindGroup = device.createBindGroup({
+  layout: pipeline.getBindGroupLayout(0),
+  entries: [{ binding: 0, resource: { buffer: uniformBuffer } }],
+});
+</code></pre>
+<p>In WGSL:</p>
+<pre><code class="language-wgsl">struct Uniforms {
+  matrix: mat4x4&lt;f32&gt;,
+};
+
+@group(0) @binding(0)
+var&lt;uniform&gt; uniforms: Uniforms;
+</code></pre>
+<p>This binding model is more verbose, but it scales better to many resources.</p>
+<h3 id="graphics-only-vs-graphics-plus-compute">Graphics Only vs Graphics Plus Compute</h3>
+<p>WebGL draws. You can abuse fragment shaders and textures for computation, but the API was not designed for general compute.</p>
+<p>WebGPU has compute shaders:</p>
+<pre><code class="language-wgsl">@group(0) @binding(0) var&lt;storage, read&gt; input: array&lt;f32&gt;;
+@group(0) @binding(1) var&lt;storage, read_write&gt; output: array&lt;f32&gt;;
+
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) id: vec3&lt;u32&gt;) {
+  let i = id.x;
+  output[i] = input[i] * 2.0;
+}
+</code></pre>
+<p>That opens use cases like:</p>
+<ul>
+<li>physics simulation,</li>
+<li>particles,</li>
+<li>image processing,</li>
+<li>video processing,</li>
+<li>data transforms,</li>
+<li>local ML inference,</li>
+<li>GPGPU algorithms,</li>
+<li>culling and level-of-detail preparation.</li>
+</ul>
+<h3 id="compatibility-vs-capability">Compatibility vs Capability</h3>
+<p>WebGL wins reach. WebGPU wins capability.</p>
+<p>If you need maximum compatibility today, WebGL is still hard to beat. If you need compute, modern rendering, high object counts, GPU-side simulation, or a future-facing engine architecture, WebGPU is the better target.</p>
+<hr>
+<h2 id="part-3-when-to-use-webgpu-and-when-to-use-webgl">Part 3 - When to Use WebGPU and When to Use WebGL</h2>
+<p>Do not choose WebGPU because it is newer. Choose it because the workload benefits from the model.</p>
+<h3 id="use-webgpu-for">Use WebGPU For</h3>
+<table>
+<thead>
+<tr>
+<th>Use case</th>
+<th>Why WebGPU fits</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Modern 3D engines</td>
+<td>Pipelines, bind groups, storage buffers, compute, modern backend mapping</td>
+</tr>
+<tr>
+<td>Browser games with many objects</td>
+<td>Better batching, GPU culling, compute-driven updates</td>
+</tr>
+<tr>
+<td>CAD/BIM/medical/scientific viewers</td>
+<td>Large geometry, precise control, advanced rendering</td>
+</tr>
+<tr>
+<td>Data visualization at scale</td>
+<td>GPU transforms, instancing, large buffers</td>
+</tr>
+<tr>
+<td>Image/video processing</td>
+<td>Compute shaders, external textures, parallel pixel operations</td>
+</tr>
+<tr>
+<td>Local ML inference</td>
+<td>Compute shaders and storage buffers</td>
+</tr>
+<tr>
+<td>Particle systems and simulations</td>
+<td>Compute updates without CPU readback</td>
+</tr>
+<tr>
+<td>Custom post-processing</td>
+<td>Explicit render targets and texture pipelines</td>
+</tr>
+<tr>
+<td>Native-to-web engine ports</td>
+<td>Closer to Vulkan/Metal/D3D12 mental model</td>
+</tr>
+</tbody>
+</table>
+<h3 id="use-webgl-for">Use WebGL For</h3>
+<table>
+<thead>
+<tr>
+<th>Use case</th>
+<th>Why WebGL still fits</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Maximum browser reach</td>
+<td>WebGL support is broader and more mature</td>
+</tr>
+<tr>
+<td>Simple 2D/3D effects</td>
+<td>Less ceremony for small projects</td>
+</tr>
+<tr>
+<td>Existing stable app</td>
+<td>Migration cost may not pay off</td>
+</tr>
+<tr>
+<td>Library with mature WebGL backend</td>
+<td>Three.js/Babylon/Pixi workflows may already solve the problem</td>
+</tr>
+<tr>
+<td>Education and quick demos</td>
+<td>Simpler first triangle path</td>
+</tr>
+<tr>
+<td>Older devices/platforms</td>
+<td>WebGPU may be unavailable or restricted</td>
+</tr>
+<tr>
+<td>Fallback renderer</td>
+<td>Essential for broad deployment</td>
+</tr>
+</tbody>
+</table>
+<h3 id="use-neither-for">Use Neither For</h3>
+<table>
+<thead>
+<tr>
+<th>Use case</th>
+<th>Better option</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Normal UI layout</td>
+<td>HTML and CSS</td>
+</tr>
+<tr>
+<td>Simple charts</td>
+<td>SVG, Canvas 2D, or a charting library</td>
+</tr>
+<tr>
+<td>Accessible content</td>
+<td>DOM first; canvas only for visualization</td>
+</tr>
+<tr>
+<td>Basic image filters</td>
+<td>CSS filters or Canvas 2D may be enough</td>
+</tr>
+<tr>
+<td>Static diagrams</td>
+<td>SVG</td>
+</tr>
+</tbody>
+</table>
+<p>GPU APIs are powerful, but they are not automatically the best user-interface tool. Canvas and GPU-rendered content usually need extra work for accessibility, text selection, forms, semantics, SEO, and responsive layout.</p>
+<h3 id="decision-tree">Decision Tree</h3>
+<pre><code class="language-text">Do you need GPU rendering or compute?
+  no -&gt; use DOM/CSS/SVG/Canvas 2D
+  yes -&gt;
+    Do you need broad compatibility on older browsers/devices?
+      yes -&gt; WebGL or high-level library with WebGL fallback
+      no -&gt;
+        Do you need compute shaders, storage buffers, or modern engine architecture?
+          yes -&gt; WebGPU
+          no -&gt;
+            Are you using an existing library?
+              yes -&gt; choose the best backend the library supports
+              no -&gt; WebGL for simpler graphics, WebGPU for long-term control
+</code></pre>
+<h3 id="progressive-enhancement-strategy">Progressive Enhancement Strategy</h3>
+<p>For production apps:</p>
+<pre><code class="language-javascript">const supportsWebGPU = !!navigator.gpu;
+
+if (supportsWebGPU) {
+  await startWebGPURenderer();
+} else if (supportsWebGL2()) {
+  startWebGLRenderer();
+} else {
+  showStaticFallback();
+}
+</code></pre>
+<p>Use WebGPU where it creates value. Keep WebGL where reach matters. Keep non-canvas fallbacks where accessibility and content matter.</p>
+<hr>
+<h2 id="part-4-the-webgpu-mental-model">Part 4 - The WebGPU Mental Model</h2>
+<p>The most important step in learning WebGPU is getting the object model right.</p>
+<h3 id="the-core-objects">The Core Objects</h3>
+<table>
+<thead>
+<tr>
+<th>Object</th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GPU</code></td>
+<td>Entry point at <code>navigator.gpu</code></td>
+</tr>
+<tr>
+<td><code>GPUAdapter</code></td>
+<td>A physical or logical GPU option selected by the browser</td>
+</tr>
+<tr>
+<td><code>GPUDevice</code></td>
+<td>Your application's connection to that adapter</td>
+</tr>
+<tr>
+<td><code>GPUQueue</code></td>
+<td>Submission queue for command buffers and data uploads</td>
+</tr>
+<tr>
+<td><code>GPUBuffer</code></td>
+<td>Raw GPU memory</td>
+</tr>
+<tr>
+<td><code>GPUTexture</code></td>
+<td>Image-like GPU memory</td>
+</tr>
+<tr>
+<td><code>GPUSampler</code></td>
+<td>Texture sampling rules</td>
+</tr>
+<tr>
+<td><code>GPUShaderModule</code></td>
+<td>Compiled WGSL shader code</td>
+</tr>
+<tr>
+<td><code>GPURenderPipeline</code></td>
+<td>Immutable render state and shader entry points</td>
+</tr>
+<tr>
+<td><code>GPUComputePipeline</code></td>
+<td>Immutable compute state and shader entry point</td>
+</tr>
+<tr>
+<td><code>GPUBindGroupLayout</code></td>
+<td>Shape of resources expected by shaders</td>
+</tr>
+<tr>
+<td><code>GPUBindGroup</code></td>
+<td>Actual resources bound to shader slots</td>
+</tr>
+<tr>
+<td><code>GPUCommandEncoder</code></td>
+<td>Records commands</td>
+</tr>
+<tr>
+<td><code>GPURenderPassEncoder</code></td>
+<td>Records render pass commands</td>
+</tr>
+<tr>
+<td><code>GPUComputePassEncoder</code></td>
+<td>Records compute pass commands</td>
+</tr>
+<tr>
+<td><code>GPUCommandBuffer</code></td>
+<td>Finished command list submitted to the queue</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-basic-flow">The Basic Flow</h3>
+<p>Every WebGPU app follows this shape:</p>
+<pre><code class="language-text">1. Check navigator.gpu
+2. Request an adapter
+3. Request a device
+4. Configure a canvas context
+5. Create resources: buffers, textures, samplers
+6. Create shader modules
+7. Create pipelines
+8. Create bind groups
+9. Encode commands
+10. Submit commands to the queue
+11. Repeat per frame
+</code></pre>
+<h3 id="adapter-and-device">Adapter and Device</h3>
+<p>The adapter is the browser's representation of a GPU option:</p>
+<pre><code class="language-javascript">const adapter = await navigator.gpu.requestAdapter({
+  powerPreference: 'high-performance',
+});
+</code></pre>
+<p>The device is the object you actually use:</p>
+<pre><code class="language-javascript">const device = await adapter.requestDevice();
+</code></pre>
+<p>The split matters because the adapter exposes features and limits, while the device is created with the features and limits you request.</p>
+<h3 id="features-and-limits">Features and Limits</h3>
+<p>Do not assume every GPU supports everything. Ask:</p>
+<pre><code class="language-javascript">console.log(adapter.features);
+console.log(adapter.limits);
+</code></pre>
+<p>Request optional features deliberately:</p>
+<pre><code class="language-javascript">const requiredFeatures = [];
+
+if (adapter.features.has('timestamp-query')) {
+  requiredFeatures.push('timestamp-query');
+}
+
+const device = await adapter.requestDevice({ requiredFeatures });
+</code></pre>
+<p>Do not request a feature just because it exists. Request features that your app can actually use, and keep fallbacks for devices that do not support them.</p>
+<h3 id="queue">Queue</h3>
+<p>The device has a queue:</p>
+<pre><code class="language-javascript">device.queue.submit([commandBuffer]);
+device.queue.writeBuffer(buffer, 0, data);
+device.queue.writeTexture(destination, data, dataLayout, size);
+</code></pre>
+<p>The queue is how CPU-side JavaScript sends work and data to the GPU.</p>
+<h3 id="buffers">Buffers</h3>
+<p>Buffers are raw byte ranges with usage flags:</p>
+<pre><code class="language-javascript">const vertexBuffer = device.createBuffer({
+  label: 'triangle vertices',
+  size: vertices.byteLength,
+  usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+});
+
+device.queue.writeBuffer(vertexBuffer, 0, vertices);
+</code></pre>
+<p>Usage flags are not decorative. A buffer can only be used in ways declared at creation time. If you need a buffer as a vertex buffer and a copy destination, include both flags.</p>
+<p>Common buffer usages:</p>
+<table>
+<thead>
+<tr>
+<th>Usage</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>VERTEX</code></td>
+<td>Vertex input</td>
+</tr>
+<tr>
+<td><code>INDEX</code></td>
+<td>Index input</td>
+</tr>
+<tr>
+<td><code>UNIFORM</code></td>
+<td>Small read-only shader data</td>
+</tr>
+<tr>
+<td><code>STORAGE</code></td>
+<td>Larger shader data, possibly writable</td>
+</tr>
+<tr>
+<td><code>COPY_SRC</code></td>
+<td>Source of a GPU copy</td>
+</tr>
+<tr>
+<td><code>COPY_DST</code></td>
+<td>Destination of a GPU copy or <code>queue.writeBuffer</code></td>
+</tr>
+<tr>
+<td><code>MAP_READ</code></td>
+<td>CPU can map for reading</td>
+</tr>
+<tr>
+<td><code>MAP_WRITE</code></td>
+<td>CPU can map for writing</td>
+</tr>
+</tbody>
+</table>
+<h3 id="textures">Textures</h3>
+<p>Textures are image-like GPU resources:</p>
+<pre><code class="language-javascript">const texture = device.createTexture({
+  label: 'color target',
+  size: [width, height],
+  format: 'rgba8unorm',
+  usage: GPUTextureUsage.TEXTURE_BINDING |
+         GPUTextureUsage.COPY_DST |
+         GPUTextureUsage.RENDER_ATTACHMENT,
+});
+</code></pre>
+<p>You usually bind a texture through a texture view:</p>
+<pre><code class="language-javascript">const view = texture.createView();
+</code></pre>
+<h3 id="pipelines">Pipelines</h3>
+<p>A render pipeline describes:</p>
+<ul>
+<li>vertex shader,</li>
+<li>fragment shader,</li>
+<li>vertex buffer layouts,</li>
+<li>target texture formats,</li>
+<li>primitive topology,</li>
+<li>depth/stencil state,</li>
+<li>blending,</li>
+<li>multisampling,</li>
+<li>bind group layouts.</li>
+</ul>
+<pre><code class="language-javascript">const pipeline = device.createRenderPipeline({
+  layout: 'auto',
+  vertex: {
+    module: shaderModule,
+    entryPoint: 'vertexMain',
+    buffers: [vertexBufferLayout],
+  },
+  fragment: {
+    module: shaderModule,
+    entryPoint: 'fragmentMain',
+    targets: [{ format }],
+  },
+  primitive: { topology: 'triangle-list' },
+});
+</code></pre>
+<p>Pipelines are immutable. If you need different blending or a different shader, create another pipeline.</p>
+<h3 id="bind-groups">Bind Groups</h3>
+<p>Bind groups connect shader declarations to actual resources.</p>
+<p>WGSL:</p>
+<pre><code class="language-wgsl">@group(0) @binding(0)
+var&lt;uniform&gt; uniforms: Uniforms;
+</code></pre>
+<p>JavaScript:</p>
+<pre><code class="language-javascript">const bindGroup = device.createBindGroup({
+  layout: pipeline.getBindGroupLayout(0),
+  entries: [
+    { binding: 0, resource: { buffer: uniformBuffer } },
+  ],
+});
+</code></pre>
+<p>The <code>group</code> and <code>binding</code> numbers in WGSL must match the JavaScript bind group entries.</p>
+<h3 id="command-encoding">Command Encoding</h3>
+<p>You do not draw directly. You record commands:</p>
+<pre><code class="language-javascript">const encoder = device.createCommandEncoder();
+const pass = encoder.beginRenderPass(renderPassDescriptor);
+pass.setPipeline(pipeline);
+pass.draw(3);
+pass.end();
+
+const commandBuffer = encoder.finish();
+device.queue.submit([commandBuffer]);
+</code></pre>
+<p>This is the explicit API style. Record, finish, submit.</p>
+<hr>
+<h2 id="part-5-wgsl-the-shader-language">Part 5 - WGSL: The Shader Language</h2>
+<p>WGSL is the shader language for WebGPU. It is designed for safety, portability, and predictable translation to native GPU backends.</p>
+<h3 id="shader-stages">Shader Stages</h3>
+<p>WebGPU has three programmable shader stages:</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Vertex</td>
+<td>Runs per vertex; emits clip-space position and varying data</td>
+</tr>
+<tr>
+<td>Fragment</td>
+<td>Runs per pixel/fragment; emits color/depth outputs</td>
+</tr>
+<tr>
+<td>Compute</td>
+<td>Runs arbitrary workgroups for non-render or render-adjacent computation</td>
+</tr>
+</tbody>
+</table>
+<h3 id="a-minimal-render-shader">A Minimal Render Shader</h3>
+<pre><code class="language-wgsl">struct VertexOut {
+  @builtin(position) position: vec4&lt;f32&gt;,
+  @location(0) color: vec3&lt;f32&gt;,
+};
+
+@vertex
+fn vertexMain(@location(0) position: vec2&lt;f32&gt;,
+              @location(1) color: vec3&lt;f32&gt;) -&gt; VertexOut {
+  var out: VertexOut;
+  out.position = vec4&lt;f32&gt;(position, 0.0, 1.0);
+  out.color = color;
+  return out;
+}
+
+@fragment
+fn fragmentMain(in: VertexOut) -&gt; @location(0) vec4&lt;f32&gt; {
+  return vec4&lt;f32&gt;(in.color, 1.0);
+}
+</code></pre>
+<p>The vertex stage receives attributes at locations 0 and 1. It returns a struct containing the required built-in clip-space position plus a color passed to the fragment stage.</p>
+<h3 id="types">Types</h3>
+<p>Common WGSL scalar types:</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>f32</code></td>
+<td>32-bit float</td>
+</tr>
+<tr>
+<td><code>f16</code></td>
+<td>16-bit float when feature-supported</td>
+</tr>
+<tr>
+<td><code>i32</code></td>
+<td>32-bit signed integer</td>
+</tr>
+<tr>
+<td><code>u32</code></td>
+<td>32-bit unsigned integer</td>
+</tr>
+<tr>
+<td><code>bool</code></td>
+<td>Boolean</td>
+</tr>
+</tbody>
+</table>
+<p>Common compound types:</p>
+<pre><code class="language-wgsl">vec2&lt;f32&gt;
+vec3&lt;f32&gt;
+vec4&lt;f32&gt;
+mat4x4&lt;f32&gt;
+array&lt;f32, 16&gt;
+array&lt;Particle&gt;
+</code></pre>
+<h3 id="address-spaces">Address Spaces</h3>
+<p>WGSL variables can live in different address spaces:</p>
+<table>
+<thead>
+<tr>
+<th>Address space</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>private</code></td>
+<td>Per-invocation private data</td>
+</tr>
+<tr>
+<td><code>function</code></td>
+<td>Function-local data</td>
+</tr>
+<tr>
+<td><code>uniform</code></td>
+<td>Read-only uniform buffer data</td>
+</tr>
+<tr>
+<td><code>storage</code></td>
+<td>Storage buffer data, readable or writable</td>
+</tr>
+<tr>
+<td><code>workgroup</code></td>
+<td>Shared memory for a compute workgroup</td>
+</tr>
+</tbody>
+</table>
+<p>Examples:</p>
+<pre><code class="language-wgsl">@group(0) @binding(0)
+var&lt;uniform&gt; camera: Camera;
+
+@group(0) @binding(1)
+var&lt;storage, read&gt; particlesIn: array&lt;Particle&gt;;
+
+@group(0) @binding(2)
+var&lt;storage, read_write&gt; particlesOut: array&lt;Particle&gt;;
+</code></pre>
+<h3 id="locations-bindings-and-builtins">Locations, Bindings, and Builtins</h3>
+<p>WGSL uses attributes:</p>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@vertex</code></td>
+<td>Vertex shader entry point</td>
+</tr>
+<tr>
+<td><code>@fragment</code></td>
+<td>Fragment shader entry point</td>
+</tr>
+<tr>
+<td><code>@compute</code></td>
+<td>Compute shader entry point</td>
+</tr>
+<tr>
+<td><code>@location(n)</code></td>
+<td>User-defined input/output slot</td>
+</tr>
+<tr>
+<td><code>@builtin(name)</code></td>
+<td>Built-in value such as position or invocation ID</td>
+</tr>
+<tr>
+<td><code>@group(n)</code></td>
+<td>Bind group index</td>
+</tr>
+<tr>
+<td><code>@binding(n)</code></td>
+<td>Binding index within a group</td>
+</tr>
+<tr>
+<td><code>@workgroup_size(x, y, z)</code></td>
+<td>Compute workgroup dimensions</td>
+</tr>
+</tbody>
+</table>
+<h3 id="memory-layout-matters">Memory Layout Matters</h3>
+<p>JavaScript writes bytes. WGSL reads typed values. Both sides must agree on layout.</p>
+<p>Uniform buffers have alignment rules. A common beginner mistake is assuming a WGSL struct packs exactly like a JavaScript object.</p>
+<p>For example:</p>
+<pre><code class="language-wgsl">struct Uniforms {
+  color: vec4&lt;f32&gt;,
+  scale: f32,
+};
+</code></pre>
+<p>Do not casually write 20 bytes and assume you are done. Alignment and padding can make the expected buffer size larger. Use a helper library, carefully follow WGSL layout rules, or structure uniforms in simple aligned chunks such as <code>vec4&amp;lt;f32&amp;gt;</code> and <code>mat4x4&amp;lt;f32&amp;gt;</code>.</p>
+<p>Practical beginner rule:</p>
+<ul>
+<li>use <code>Float32Array</code>,</li>
+<li>group values into 4-float chunks,</li>
+<li>keep matrices as 16 floats,</li>
+<li>verify offsets,</li>
+<li>label buffers and bind groups.</li>
+</ul>
+<h3 id="wgsl-common-mistakes">WGSL Common Mistakes</h3>
+<table>
+<thead>
+<tr>
+<th>Mistake</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Binding numbers do not match JavaScript</td>
+<td>Keep <code>@group</code>/<code>@binding</code> and bind group entries side by side</td>
+</tr>
+<tr>
+<td>Vertex attribute format mismatch</td>
+<td>Match <code>float32x2</code>, <code>float32x3</code>, etc. to WGSL locations</td>
+</tr>
+<tr>
+<td>Uniform buffer too small</td>
+<td>Account for alignment and padding</td>
+</tr>
+<tr>
+<td>Writing to read-only storage</td>
+<td>Use <code>read_write</code> where needed</td>
+</tr>
+<tr>
+<td>Using runtime array outside storage buffer</td>
+<td>Runtime-sized arrays belong in storage buffers</td>
+</tr>
+<tr>
+<td>Out-of-bounds indexing</td>
+<td>Check lengths or dispatch exact work sizes</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="part-6-your-first-webgpu-app">Part 6 - Your First WebGPU App</h2>
+<p>This part builds the smallest useful WebGPU renderer: draw a colored triangle.</p>
+<h3 id="html">HTML</h3>
+<pre><code class="language-html">&lt;canvas id=&quot;gpu-canvas&quot;&gt;&lt;/canvas&gt;
+&lt;script type=&quot;module&quot; src=&quot;/main.js&quot;&gt;&lt;/script&gt;
+</code></pre>
+<p>Give the canvas a size in CSS and configure its drawing buffer in JavaScript.</p>
+<h3 id="initialization">Initialization</h3>
+<pre><code class="language-javascript">const canvas = document.querySelector('#gpu-canvas');
+
+if (!navigator.gpu) {
+  throw new Error('WebGPU is not supported in this browser.');
+}
+
+const adapter = await navigator.gpu.requestAdapter();
+if (!adapter) {
+  throw new Error('No suitable GPU adapter found.');
+}
+
+const device = await adapter.requestDevice();
+const context = canvas.getContext('webgpu');
+const format = navigator.gpu.getPreferredCanvasFormat();
+
+context.configure({
+  device,
+  format,
+  alphaMode: 'premultiplied',
+});
+</code></pre>
+<p>Key points:</p>
+<ul>
+<li><code>navigator.gpu</code> is the feature check.</li>
+<li><code>requestAdapter()</code> can return <code>null</code>.</li>
+<li><code>requestDevice()</code> can fail if you request unsupported features or limits.</li>
+<li><code>getPreferredCanvasFormat()</code> chooses the best presentation format.</li>
+<li><code>context.configure()</code> connects the canvas to the device.</li>
+</ul>
+<h3 id="vertex-data">Vertex Data</h3>
+<p>Create interleaved position and color data:</p>
+<pre><code class="language-javascript">const vertices = new Float32Array([
+  // x,    y,     r,   g,   b
+   0.0,   0.6,   1.0, 0.2, 0.2,
+  -0.6,  -0.6,   0.2, 1.0, 0.2,
+   0.6,  -0.6,   0.2, 0.4, 1.0,
+]);
+
+const vertexBuffer = device.createBuffer({
+  label: 'triangle vertex buffer',
+  size: vertices.byteLength,
+  usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+});
+
+device.queue.writeBuffer(vertexBuffer, 0, vertices);
+</code></pre>
+<p>Each vertex has 5 floats:</p>
+<ul>
+<li>2 floats for position,</li>
+<li>3 floats for color.</li>
+</ul>
+<p>Each float is 4 bytes, so each vertex is 20 bytes.</p>
+<h3 id="shader">Shader</h3>
+<pre><code class="language-javascript">const shaderModule = device.createShaderModule({
+  label: 'triangle shader',
+  code: `
+    struct VertexOut {
+      @builtin(position) position: vec4&lt;f32&gt;,
+      @location(0) color: vec3&lt;f32&gt;,
+    };
+
+    @vertex
+    fn vertexMain(@location(0) position: vec2&lt;f32&gt;,
+                  @location(1) color: vec3&lt;f32&gt;) -&gt; VertexOut {
+      var out: VertexOut;
+      out.position = vec4&lt;f32&gt;(position, 0.0, 1.0);
+      out.color = color;
+      return out;
+    }
+
+    @fragment
+    fn fragmentMain(in: VertexOut) -&gt; @location(0) vec4&lt;f32&gt; {
+      return vec4&lt;f32&gt;(in.color, 1.0);
+    }
+  `,
+});
+</code></pre>
+<h3 id="vertex-buffer-layout">Vertex Buffer Layout</h3>
+<p>Tell WebGPU how to read each vertex:</p>
+<pre><code class="language-javascript">const vertexBufferLayout = {
+  arrayStride: 5 * 4,
+  attributes: [
+    {
+      shaderLocation: 0,
+      offset: 0,
+      format: 'float32x2',
+    },
+    {
+      shaderLocation: 1,
+      offset: 2 * 4,
+      format: 'float32x3',
+    },
+  ],
+};
+</code></pre>
+<p>The <code>shaderLocation</code> values match WGSL <code>@location(0)</code> and <code>@location(1)</code>.</p>
+<h3 id="pipeline">Pipeline</h3>
+<pre><code class="language-javascript">const pipeline = device.createRenderPipeline({
+  label: 'triangle pipeline',
+  layout: 'auto',
+  vertex: {
+    module: shaderModule,
+    entryPoint: 'vertexMain',
+    buffers: [vertexBufferLayout],
+  },
+  fragment: {
+    module: shaderModule,
+    entryPoint: 'fragmentMain',
+    targets: [{ format }],
+  },
+  primitive: {
+    topology: 'triangle-list',
+  },
+});
+</code></pre>
+<h3 id="draw">Draw</h3>
+<pre><code class="language-javascript">function render() {
+  const encoder = device.createCommandEncoder({ label: 'triangle encoder' });
+  const view = context.getCurrentTexture().createView();
+
+  const pass = encoder.beginRenderPass({
+    label: 'triangle render pass',
+    colorAttachments: [
+      {
+        view,
+        clearValue: { r: 0.02, g: 0.02, b: 0.03, a: 1 },
+        loadOp: 'clear',
+        storeOp: 'store',
+      },
+    ],
+  });
+
+  pass.setPipeline(pipeline);
+  pass.setVertexBuffer(0, vertexBuffer);
+  pass.draw(3);
+  pass.end();
+
+  device.queue.submit([encoder.finish()]);
+}
+
+render();
+</code></pre>
+<p>That is the full loop:</p>
+<pre><code class="language-text">buffer -&gt; shader -&gt; pipeline -&gt; command encoder -&gt; render pass -&gt; submit
+</code></pre>
+<h3 id="complete-minimal-module">Complete Minimal Module</h3>
+<pre><code class="language-javascript">const canvas = document.querySelector('#gpu-canvas');
+
+if (!navigator.gpu) {
+  throw new Error('WebGPU is not supported in this browser.');
+}
+
+const adapter = await navigator.gpu.requestAdapter();
+if (!adapter) {
+  throw new Error('No suitable GPU adapter found.');
+}
+
+const device = await adapter.requestDevice();
+const context = canvas.getContext('webgpu');
+const format = navigator.gpu.getPreferredCanvasFormat();
+
+context.configure({ device, format, alphaMode: 'premultiplied' });
+
+const vertices = new Float32Array([
+   0.0,   0.6,  1.0, 0.2, 0.2,
+  -0.6,  -0.6,  0.2, 1.0, 0.2,
+   0.6,  -0.6,  0.2, 0.4, 1.0,
+]);
+
+const vertexBuffer = device.createBuffer({
+  label: 'triangle vertex buffer',
+  size: vertices.byteLength,
+  usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
+});
+device.queue.writeBuffer(vertexBuffer, 0, vertices);
+
+const shaderModule = device.createShaderModule({
+  label: 'triangle shader',
+  code: `
+    struct VertexOut {
+      @builtin(position) position: vec4&lt;f32&gt;,
+      @location(0) color: vec3&lt;f32&gt;,
+    };
+
+    @vertex
+    fn vertexMain(@location(0) position: vec2&lt;f32&gt;,
+                  @location(1) color: vec3&lt;f32&gt;) -&gt; VertexOut {
+      var out: VertexOut;
+      out.position = vec4&lt;f32&gt;(position, 0.0, 1.0);
+      out.color = color;
+      return out;
+    }
+
+    @fragment
+    fn fragmentMain(in: VertexOut) -&gt; @location(0) vec4&lt;f32&gt; {
+      return vec4&lt;f32&gt;(in.color, 1.0);
+    }
+  `,
+});
+
+const pipeline = device.createRenderPipeline({
+  label: 'triangle pipeline',
+  layout: 'auto',
+  vertex: {
+    module: shaderModule,
+    entryPoint: 'vertexMain',
+    buffers: [
+      {
+        arrayStride: 5 * 4,
+        attributes: [
+          { shaderLocation: 0, offset: 0, format: 'float32x2' },
+          { shaderLocation: 1, offset: 2 * 4, format: 'float32x3' },
+        ],
+      },
+    ],
+  },
+  fragment: {
+    module: shaderModule,
+    entryPoint: 'fragmentMain',
+    targets: [{ format }],
+  },
+  primitive: { topology: 'triangle-list' },
+});
+
+const encoder = device.createCommandEncoder();
+const pass = encoder.beginRenderPass({
+  colorAttachments: [
+    {
+      view: context.getCurrentTexture().createView(),
+      clearValue: { r: 0.02, g: 0.02, b: 0.03, a: 1 },
+      loadOp: 'clear',
+      storeOp: 'store',
+    },
+  ],
+});
+pass.setPipeline(pipeline);
+pass.setVertexBuffer(0, vertexBuffer);
+pass.draw(3);
+pass.end();
+device.queue.submit([encoder.finish()]);
+</code></pre>
+<hr>
+<h2 id="part-7-buffers-uniforms-and-bind-groups">Part 7 - Buffers, Uniforms, and Bind Groups</h2>
+<p>The first triangle used only a vertex buffer. Real apps need changing data: camera matrices, time, colors, material parameters, lights, particle data, instance transforms, and compute inputs.</p>
+<h3 id="buffer-upload-patterns">Buffer Upload Patterns</h3>
+<p>There are three common CPU-to-GPU patterns:</p>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>queue.writeBuffer</code></td>
+<td>Simple updates from JavaScript to GPU</td>
+</tr>
+<tr>
+<td><code>mappedAtCreation</code></td>
+<td>Initialize buffer contents at creation</td>
+</tr>
+<tr>
+<td><code>mapAsync</code></td>
+<td>Read from or write to mappable buffers, often staging buffers</td>
+</tr>
+</tbody>
+</table>
+<p>For frequent small updates, <code>queue.writeBuffer</code> is usually the place to start.</p>
+<h3 id="uniform-buffer-example">Uniform Buffer Example</h3>
+<p>WGSL:</p>
+<pre><code class="language-wgsl">struct Uniforms {
+  color: vec4&lt;f32&gt;,
+  offset: vec2&lt;f32&gt;,
+  scale: vec2&lt;f32&gt;,
+};
+
+@group(0) @binding(0)
+var&lt;uniform&gt; uniforms: Uniforms;
+
+@vertex
+fn vertexMain(@location(0) position: vec2&lt;f32&gt;) -&gt; @builtin(position) vec4&lt;f32&gt; {
+  let p = position * uniforms.scale + uniforms.offset;
+  return vec4&lt;f32&gt;(p, 0.0, 1.0);
+}
+
+@fragment
+fn fragmentMain() -&gt; @location(0) vec4&lt;f32&gt; {
+  return uniforms.color;
+}
+</code></pre>
+<p>JavaScript:</p>
+<pre><code class="language-javascript">const uniformValues = new Float32Array([
+  // color vec4
+  1.0, 0.3, 0.2, 1.0,
+  // offset vec2, scale vec2
+  0.0, 0.0, 1.0, 1.0,
+]);
+
+const uniformBuffer = device.createBuffer({
+  label: 'uniform buffer',
+  size: uniformValues.byteLength,
+  usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+});
+
+device.queue.writeBuffer(uniformBuffer, 0, uniformValues);
+
+const bindGroup = device.createBindGroup({
+  layout: pipeline.getBindGroupLayout(0),
+  entries: [
+    { binding: 0, resource: { buffer: uniformBuffer } },
+  ],
+});
+</code></pre>
+<p>In the render pass:</p>
+<pre><code class="language-javascript">pass.setPipeline(pipeline);
+pass.setBindGroup(0, bindGroup);
+pass.setVertexBuffer(0, vertexBuffer);
+pass.draw(3);
+</code></pre>
+<h3 id="updating-uniforms-per-frame">Updating Uniforms Per Frame</h3>
+<pre><code class="language-javascript">function render(timeMs) {
+  const t = timeMs * 0.001;
+  uniformValues[4] = Math.sin(t) * 0.5; // offset x
+  uniformValues[5] = Math.cos(t) * 0.3; // offset y
+  device.queue.writeBuffer(uniformBuffer, 0, uniformValues);
+
+  // encode render pass...
+  requestAnimationFrame(render);
+}
+</code></pre>
+<p>For small examples, this is fine. For large engines, you usually use ring buffers, dynamic offsets, or per-frame uniform allocations to avoid overwriting data the GPU may still be reading.</p>
+<h3 id="storage-buffers">Storage Buffers</h3>
+<p>Uniform buffers are for relatively small read-only data. Storage buffers can be much larger and can be writable in shaders.</p>
+<p>WGSL:</p>
+<pre><code class="language-wgsl">struct Particle {
+  position: vec2&lt;f32&gt;,
+  velocity: vec2&lt;f32&gt;,
+};
+
+@group(0) @binding(0)
+var&lt;storage, read_write&gt; particles: array&lt;Particle&gt;;
+</code></pre>
+<p>JavaScript:</p>
+<pre><code class="language-javascript">const particleBuffer = device.createBuffer({
+  size: particleData.byteLength,
+  usage: GPUBufferUsage.STORAGE |
+         GPUBufferUsage.VERTEX |
+         GPUBufferUsage.COPY_DST,
+});
+device.queue.writeBuffer(particleBuffer, 0, particleData);
+</code></pre>
+<p>Storage buffers are a major reason to use WebGPU. They enable GPU-side algorithms that are awkward or impossible in WebGL.</p>
+<h3 id="bind-group-design">Bind Group Design</h3>
+<p>A common layout:</p>
+<pre><code class="language-text">group 0: frame-global resources
+  binding 0: camera uniforms
+  binding 1: lights buffer
+  binding 2: shadow map sampler
+
+group 1: material resources
+  binding 0: material uniforms
+  binding 1: base color texture
+  binding 2: normal texture
+  binding 3: sampler
+
+group 2: object resources
+  binding 0: model matrix buffer
+</code></pre>
+<p>The goal is to minimize expensive changes. Put resources that change at the same frequency together.</p>
+<h3 id="usage-flags-are-contracts">Usage Flags Are Contracts</h3>
+<p>If you create:</p>
+<pre><code class="language-javascript">usage: GPUBufferUsage.UNIFORM
+</code></pre>
+<p>you cannot later use that buffer as <code>COPY_DST</code>. Create it with all intended uses:</p>
+<pre><code class="language-javascript">usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+</code></pre>
+<p>The same applies to textures.</p>
+<hr>
+<h2 id="part-8-textures-samplers-and-render-targets">Part 8 - Textures, Samplers, and Render Targets</h2>
+<p>Textures are how you work with images, render targets, depth buffers, shadow maps, G-buffers, video frames, post-processing inputs, and storage images.</p>
+<h3 id="texture-basics">Texture Basics</h3>
+<p>Create a texture:</p>
+<pre><code class="language-javascript">const texture = device.createTexture({
+  label: 'image texture',
+  size: [imageBitmap.width, imageBitmap.height],
+  format: 'rgba8unorm',
+  usage: GPUTextureUsage.TEXTURE_BINDING |
+         GPUTextureUsage.COPY_DST |
+         GPUTextureUsage.RENDER_ATTACHMENT,
+});
+</code></pre>
+<p>Upload image data:</p>
+<pre><code class="language-javascript">device.queue.copyExternalImageToTexture(
+  { source: imageBitmap },
+  { texture },
+  [imageBitmap.width, imageBitmap.height],
+);
+</code></pre>
+<p>Create a view:</p>
+<pre><code class="language-javascript">const textureView = texture.createView();
+</code></pre>
+<p>Create a sampler:</p>
+<pre><code class="language-javascript">const sampler = device.createSampler({
+  magFilter: 'linear',
+  minFilter: 'linear',
+  mipmapFilter: 'linear',
+  addressModeU: 'repeat',
+  addressModeV: 'repeat',
+});
+</code></pre>
+<h3 id="wgsl-texture-sampling">WGSL Texture Sampling</h3>
+<pre><code class="language-wgsl">@group(0) @binding(0)
+var myTexture: texture_2d&lt;f32&gt;;
+
+@group(0) @binding(1)
+var mySampler: sampler;
+
+@fragment
+fn fragmentMain(@location(0) uv: vec2&lt;f32&gt;) -&gt; @location(0) vec4&lt;f32&gt; {
+  return textureSample(myTexture, mySampler, uv);
+}
+</code></pre>
+<p>Bind group:</p>
+<pre><code class="language-javascript">const bindGroup = device.createBindGroup({
+  layout: pipeline.getBindGroupLayout(0),
+  entries: [
+    { binding: 0, resource: textureView },
+    { binding: 1, resource: sampler },
+  ],
+});
+</code></pre>
+<h3 id="render-targets">Render Targets</h3>
+<p>The canvas texture is one render target:</p>
+<pre><code class="language-javascript">const view = context.getCurrentTexture().createView();
+</code></pre>
+<p>You can also render to your own texture:</p>
+<pre><code class="language-javascript">const offscreen = device.createTexture({
+  size: [width, height],
+  format,
+  usage: GPUTextureUsage.RENDER_ATTACHMENT |
+         GPUTextureUsage.TEXTURE_BINDING,
+});
+</code></pre>
+<p>This enables:</p>
+<ul>
+<li>post-processing,</li>
+<li>shadow maps,</li>
+<li>reflections,</li>
+<li>deferred rendering,</li>
+<li>bloom,</li>
+<li>picking buffers,</li>
+<li>minimaps,</li>
+<li>multi-pass effects.</li>
+</ul>
+<h3 id="depth-textures">Depth Textures</h3>
+<p>3D rendering usually needs depth:</p>
+<pre><code class="language-javascript">const depthTexture = device.createTexture({
+  size: [canvas.width, canvas.height],
+  format: 'depth24plus',
+  usage: GPUTextureUsage.RENDER_ATTACHMENT,
+});
+</code></pre>
+<p>Pipeline:</p>
+<pre><code class="language-javascript">depthStencil: {
+  format: 'depth24plus',
+  depthWriteEnabled: true,
+  depthCompare: 'less',
+}
+</code></pre>
+<p>Render pass:</p>
+<pre><code class="language-javascript">depthStencilAttachment: {
+  view: depthTexture.createView(),
+  depthClearValue: 1.0,
+  depthLoadOp: 'clear',
+  depthStoreOp: 'store',
+}
+</code></pre>
+<p>Remember that WebGPU's clip-space depth range is <code>0..1</code>, unlike WebGL's <code>-1..1</code>.</p>
+<h3 id="mipmaps">Mipmaps</h3>
+<p>WebGL has <code>gl.generateMipmap()</code>. WebGPU does not have a built-in one-call mipmap generator. You generate mipmaps yourself, use a helper library, or avoid mipmaps where appropriate.</p>
+<p>This is a good example of the WebGPU philosophy: fewer hidden helpers, more explicit control.</p>
+<hr>
+<h2 id="part-9-compute-shaders">Part 9 - Compute Shaders</h2>
+<p>Compute shaders are the feature that most clearly separates WebGPU from WebGL.</p>
+<h3 id="what-compute-is">What Compute Is</h3>
+<p>A compute shader runs work items on the GPU without directly drawing triangles. You dispatch a grid of invocations. Each invocation runs the same shader function with a different ID.</p>
+<p>Use compute when:</p>
+<ul>
+<li>the same operation applies to many elements,</li>
+<li>the data is already on the GPU or can stay there,</li>
+<li>the work is parallel,</li>
+<li>CPU round trips would be expensive.</li>
+</ul>
+<h3 id="doubling-an-array">Doubling an Array</h3>
+<p>WGSL:</p>
+<pre><code class="language-wgsl">@group(0) @binding(0)
+var&lt;storage, read&gt; inputData: array&lt;f32&gt;;
+
+@group(0) @binding(1)
+var&lt;storage, read_write&gt; outputData: array&lt;f32&gt;;
+
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) id: vec3&lt;u32&gt;) {
+  let i = id.x;
+  outputData[i] = inputData[i] * 2.0;
+}
+</code></pre>
+<p>JavaScript setup:</p>
+<pre><code class="language-javascript">const input = new Float32Array([1, 2, 3, 4, 5, 6, 7, 8]);
+
+const inputBuffer = device.createBuffer({
+  size: input.byteLength,
+  usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST,
+});
+device.queue.writeBuffer(inputBuffer, 0, input);
+
+const outputBuffer = device.createBuffer({
+  size: input.byteLength,
+  usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC,
+});
+
+const readbackBuffer = device.createBuffer({
+  size: input.byteLength,
+  usage: GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ,
+});
+</code></pre>
+<p>Pipeline and bind group:</p>
+<pre><code class="language-javascript">const shaderModule = device.createShaderModule({ code: computeShaderCode });
+
+const pipeline = device.createComputePipeline({
+  layout: 'auto',
+  compute: {
+    module: shaderModule,
+    entryPoint: 'main',
+  },
+});
+
+const bindGroup = device.createBindGroup({
+  layout: pipeline.getBindGroupLayout(0),
+  entries: [
+    { binding: 0, resource: { buffer: inputBuffer } },
+    { binding: 1, resource: { buffer: outputBuffer } },
+  ],
+});
+</code></pre>
+<p>Dispatch:</p>
+<pre><code class="language-javascript">const encoder = device.createCommandEncoder();
+const pass = encoder.beginComputePass();
+pass.setPipeline(pipeline);
+pass.setBindGroup(0, bindGroup);
+pass.dispatchWorkgroups(Math.ceil(input.length / 64));
+pass.end();
+
+encoder.copyBufferToBuffer(
+  outputBuffer, 0,
+  readbackBuffer, 0,
+  input.byteLength,
+);
+
+device.queue.submit([encoder.finish()]);
+
+await readbackBuffer.mapAsync(GPUMapMode.READ);
+const result = new Float32Array(readbackBuffer.getMappedRange().slice(0));
+readbackBuffer.unmap();
+
+console.log(result);
+</code></pre>
+<h3 id="bounds-checks">Bounds Checks</h3>
+<p>The example above has a hidden bug if the input length is not a multiple of 64: extra invocations write out of bounds. Pass the length:</p>
+<pre><code class="language-wgsl">struct Params {
+  length: u32,
+};
+
+@group(0) @binding(2)
+var&lt;uniform&gt; params: Params;
+
+@compute @workgroup_size(64)
+fn main(@builtin(global_invocation_id) id: vec3&lt;u32&gt;) {
+  let i = id.x;
+  if (i &gt;= params.length) {
+    return;
+  }
+  outputData[i] = inputData[i] * 2.0;
+}
+</code></pre>
+<p>Always think about dispatch size vs data size.</p>
+<h3 id="workgroups">Workgroups</h3>
+<p><code>@workgroup_size(64)</code> means each workgroup contains 64 invocations in x. Dispatching:</p>
+<pre><code class="language-javascript">pass.dispatchWorkgroups(10);
+</code></pre>
+<p>launches 10 workgroups, so 640 invocations.</p>
+<p>For 2D image work:</p>
+<pre><code class="language-wgsl">@compute @workgroup_size(8, 8)
+fn main(@builtin(global_invocation_id) id: vec3&lt;u32&gt;) {
+  let x = id.x;
+  let y = id.y;
+  // process pixel x,y
+}
+</code></pre>
+<p>Dispatch:</p>
+<pre><code class="language-javascript">pass.dispatchWorkgroups(
+  Math.ceil(width / 8),
+  Math.ceil(height / 8),
+);
+</code></pre>
+<h3 id="keep-data-on-the-gpu">Keep Data on the GPU</h3>
+<p>Readback is expensive. If compute output is used for rendering, keep it in a GPU buffer or texture and consume it in a render pass. Avoid:</p>
+<pre><code class="language-text">GPU -&gt; CPU -&gt; GPU
+</code></pre>
+<p>Prefer:</p>
+<pre><code class="language-text">GPU compute -&gt; GPU render
+</code></pre>
+<p>This is how particle systems, GPU culling, simulations, and post-processing become fast.</p>
+<hr>
+<h2 id="part-10-render-loops-resize-and-presentation">Part 10 - Render Loops, Resize, and Presentation</h2>
+<p>A real renderer is not one draw call. It runs every frame, responds to canvas size changes, updates resources, and handles device loss.</p>
+<h3 id="animation-loop">Animation Loop</h3>
+<pre><code class="language-javascript">let lastTime = 0;
+
+function frame(timeMs) {
+  const dt = (timeMs - lastTime) * 0.001;
+  lastTime = timeMs;
+
+  update(dt);
+  render();
+
+  requestAnimationFrame(frame);
+}
+
+requestAnimationFrame(frame);
+</code></pre>
+<p>Keep CPU update and GPU command encoding conceptually separate:</p>
+<pre><code class="language-text">update app state
+upload changed data
+encode render/compute passes
+submit
+</code></pre>
+<h3 id="canvas-resize">Canvas Resize</h3>
+<p>The canvas has CSS size and drawing-buffer size. They are not the same.</p>
+<pre><code class="language-javascript">function resizeCanvasToDisplaySize(canvas) {
+  const devicePixelRatio = window.devicePixelRatio || 1;
+  const width = Math.max(1, Math.floor(canvas.clientWidth * devicePixelRatio));
+  const height = Math.max(1, Math.floor(canvas.clientHeight * devicePixelRatio));
+
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+    return true;
+  }
+  return false;
+}
+</code></pre>
+<p>On resize, recreate size-dependent resources:</p>
+<ul>
+<li>depth texture,</li>
+<li>multisample texture,</li>
+<li>offscreen render targets,</li>
+<li>projection matrix,</li>
+<li>screen-space buffers.</li>
+</ul>
+<h3 id="device-pixel-ratio">Device Pixel Ratio</h3>
+<p>Rendering at full device pixel ratio can be expensive on high-DPI screens. Consider a cap:</p>
+<pre><code class="language-javascript">const dpr = Math.min(window.devicePixelRatio || 1, 2);
+</code></pre>
+<p>This is a product decision. A CAD viewer may prefer crispness; a battery-sensitive app may prefer lower resolution.</p>
+<h3 id="multiple-passes">Multiple Passes</h3>
+<p>A frame may encode several passes:</p>
+<pre><code class="language-text">compute pass: update particles
+render pass: shadow map
+render pass: main scene to offscreen texture
+render pass: post-process to canvas
+</code></pre>
+<p>In WebGPU, this is natural. You create one command encoder, record multiple passes, finish, and submit.</p>
+<pre><code class="language-javascript">const encoder = device.createCommandEncoder();
+
+const computePass = encoder.beginComputePass();
+// ...
+computePass.end();
+
+const renderPass = encoder.beginRenderPass(mainPassDescriptor);
+// ...
+renderPass.end();
+
+device.queue.submit([encoder.finish()]);
+</code></pre>
+<h3 id="presentation-format">Presentation Format</h3>
+<p>Use:</p>
+<pre><code class="language-javascript">const format = navigator.gpu.getPreferredCanvasFormat();
+</code></pre>
+<p>Do not hardcode a canvas format unless you have a specific reason.</p>
+<h3 id="device-loss">Device Loss</h3>
+<p>Devices can be lost. Drivers reset. Browsers revoke resources. Laptops switch GPUs.</p>
+<pre><code class="language-javascript">device.lost.then((info) =&gt; {
+  console.error(`WebGPU device lost: ${info.reason}`, info.message);
+  // Reinitialize if appropriate.
+});
+</code></pre>
+<p>Production apps need a plan:</p>
+<ul>
+<li>show a clear message,</li>
+<li>try to reinitialize,</li>
+<li>fall back to WebGL/static rendering,</li>
+<li>preserve user state if possible.</li>
+</ul>
+<hr>
+<h2 id="part-11-debugging-errors-and-validation">Part 11 - Debugging, Errors, and Validation</h2>
+<p>WebGPU has a much better validation model than WebGL, but it is asynchronous and strict.</p>
+<h3 id="label-everything">Label Everything</h3>
+<p>Labels show up in errors and developer tools:</p>
+<pre><code class="language-javascript">const buffer = device.createBuffer({
+  label: 'particles position buffer',
+  size,
+  usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX,
+});
+</code></pre>
+<p>Label:</p>
+<ul>
+<li>buffers,</li>
+<li>textures,</li>
+<li>shader modules,</li>
+<li>pipelines,</li>
+<li>bind groups,</li>
+<li>command encoders,</li>
+<li>passes.</li>
+</ul>
+<p>Future you will be grateful.</p>
+<h3 id="uncaptured-errors">Uncaptured Errors</h3>
+<pre><code class="language-javascript">device.addEventListener('uncapturederror', (event) =&gt; {
+  console.error('WebGPU error:', event.error);
+});
+</code></pre>
+<p>This catches errors that are not handled through an error scope.</p>
+<h3 id="error-scopes">Error Scopes</h3>
+<p>Use error scopes around operations you expect might fail:</p>
+<pre><code class="language-javascript">device.pushErrorScope('validation');
+
+const pipeline = device.createRenderPipeline(pipelineDescriptor);
+
+const error = await device.popErrorScope();
+if (error) {
+  console.error('Pipeline validation failed:', error.message);
+}
+</code></pre>
+<p>Common scope filters:</p>
+<ul>
+<li><code>validation</code>,</li>
+<li><code>out-of-memory</code>,</li>
+<li><code>internal</code>.</li>
+</ul>
+<h3 id="shader-compilation-info">Shader Compilation Info</h3>
+<pre><code class="language-javascript">const module = device.createShaderModule({ code });
+const info = await module.getCompilationInfo();
+
+for (const message of info.messages) {
+  console.warn(`${message.type}: ${message.message}`);
+}
+</code></pre>
+<p>Do this in development tools or shader hot-reload flows.</p>
+<h3 id="common-validation-errors">Common Validation Errors</h3>
+<table>
+<thead>
+<tr>
+<th>Error</th>
+<th>Likely cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Buffer usage missing</td>
+<td>Forgot <code>COPY_DST</code>, <code>VERTEX</code>, <code>UNIFORM</code>, etc.</td>
+</tr>
+<tr>
+<td>Binding mismatch</td>
+<td>WGSL <code>@binding</code> does not match bind group</td>
+</tr>
+<tr>
+<td>Shader location mismatch</td>
+<td>Vertex layout does not match <code>@location</code> inputs</td>
+</tr>
+<tr>
+<td>Texture format mismatch</td>
+<td>Pipeline target format differs from render attachment</td>
+</tr>
+<tr>
+<td>Buffer too small</td>
+<td>Uniform/storage buffer size or dynamic offset wrong</td>
+</tr>
+<tr>
+<td>Resource destroyed</td>
+<td>Using a destroyed GPU resource</td>
+</tr>
+<tr>
+<td>Mapped buffer submitted</td>
+<td>Buffer must be unmapped before GPU use</td>
+</tr>
+</tbody>
+</table>
+<h3 id="debugging-strategy">Debugging Strategy</h3>
+<ol>
+<li>Reduce to one pass.</li>
+<li>Clear the screen to a loud color.</li>
+<li>Draw a hardcoded triangle with no buffers.</li>
+<li>Add vertex buffers.</li>
+<li>Add uniforms.</li>
+<li>Add textures.</li>
+<li>Add depth.</li>
+<li>Add compute.</li>
+<li>Add post-processing.</li>
+</ol>
+<p>When the screen is black, ask:</p>
+<ul>
+<li>did initialization succeed?</li>
+<li>is the canvas configured?</li>
+<li>is the render pass clearing?</li>
+<li>is the pipeline valid?</li>
+<li>are vertices in clip space?</li>
+<li>is depth testing hiding everything?</li>
+<li>is culling discarding triangles?</li>
+<li>are bind groups set?</li>
+<li>are texture formats correct?</li>
+<li>are command buffers submitted?</li>
+</ul>
+<h3 id="browser-tools">Browser Tools</h3>
+<p>Use:</p>
+<ul>
+<li>browser console validation messages,</li>
+<li>Chrome WebGPU developer features where available,</li>
+<li>GPU object labels,</li>
+<li>shader compilation info,</li>
+<li>WebGPU samples for comparison,</li>
+<li>RenderDoc/native tools when using Dawn or wgpu outside the browser,</li>
+<li>small repros.</li>
+</ul>
+<hr>
+<h2 id="part-12-performance-and-production-practices">Part 12 - Performance and Production Practices</h2>
+<p>WebGPU can be fast, but the API will not save a poor data flow.</p>
+<h3 id="the-performance-thesis">The Performance Thesis</h3>
+<p>Fast WebGPU code usually:</p>
+<ul>
+<li>creates pipelines up front,</li>
+<li>reuses buffers and bind groups,</li>
+<li>minimizes CPU-to-GPU uploads,</li>
+<li>avoids GPU-to-CPU readback,</li>
+<li>batches draws,</li>
+<li>uses instancing,</li>
+<li>keeps data in GPU-friendly layouts,</li>
+<li>avoids per-frame allocation churn,</li>
+<li>uses compute to prepare render data when useful,</li>
+<li>measures rather than guesses.</li>
+</ul>
+<h3 id="avoid-per-frame-resource-creation">Avoid Per-Frame Resource Creation</h3>
+<p>Bad:</p>
+<pre><code class="language-javascript">function render() {
+  const buffer = device.createBuffer(...);
+  const pipeline = device.createRenderPipeline(...);
+  const bindGroup = device.createBindGroup(...);
+}
+</code></pre>
+<p>Good:</p>
+<pre><code class="language-javascript">const pipeline = createPipeline();
+const persistentBuffers = createBuffers();
+
+function render() {
+  updateBuffers();
+  encodeCommands();
+}
+</code></pre>
+<p>Some per-frame resources are normal, especially command encoders and current canvas texture views. Pipelines and large buffers usually are not.</p>
+<h3 id="batch-work">Batch Work</h3>
+<p>Each draw call has overhead. Use:</p>
+<ul>
+<li>instancing,</li>
+<li>texture atlases or arrays,</li>
+<li>material sorting,</li>
+<li>bind group reuse,</li>
+<li>indirect drawing where supported and useful,</li>
+<li>compute culling for large scenes.</li>
+</ul>
+<h3 id="minimize-readback">Minimize Readback</h3>
+<p>Reading GPU data back to JavaScript stalls your mental model and often your performance. It is necessary for:</p>
+<ul>
+<li>compute results needed by CPU,</li>
+<li>tests,</li>
+<li>screenshots/picking in some designs,</li>
+<li>diagnostics.</li>
+</ul>
+<p>But avoid it in the frame loop unless you know the cost.</p>
+<h3 id="use-staging-buffers">Use Staging Buffers</h3>
+<p>Mappable buffers and GPU-usable buffers have different constraints. A common readback path:</p>
+<pre><code class="language-text">storage/output buffer -&gt; copy to MAP_READ staging buffer -&gt; mapAsync -&gt; read
+</code></pre>
+<p>A common upload path:</p>
+<pre><code class="language-text">TypedArray -&gt; queue.writeBuffer -&gt; GPU buffer
+</code></pre>
+<p>For large streaming uploads, design a staging/ring-buffer system instead of allocating constantly.</p>
+<h3 id="measure-correctly">Measure Correctly</h3>
+<p>CPU time is not GPU time. <code>performance.now()</code> around <code>queue.submit()</code> measures command encoding and submission, not necessarily GPU execution.</p>
+<p>Use:</p>
+<ul>
+<li>browser performance tools,</li>
+<li>timestamp queries where supported and enabled,</li>
+<li>frame-time graphs,</li>
+<li>GPU workload reduction experiments,</li>
+<li>controlled scene sizes,</li>
+<li>production telemetry for real devices.</li>
+</ul>
+<h3 id="feature-detection">Feature Detection</h3>
+<p>Do not detect by browser name. Detect capabilities:</p>
+<pre><code class="language-javascript">if (!navigator.gpu) {
+  return fallback();
+}
+
+const adapter = await navigator.gpu.requestAdapter();
+if (!adapter) {
+  return fallback();
+}
+
+if (!adapter.features.has('texture-compression-bc')) {
+  useUncompressedOrAlternativeTextures();
+}
+</code></pre>
+<h3 id="security-and-privacy-model">Security and Privacy Model</h3>
+<p>WebGPU is powerful, so browsers constrain it:</p>
+<ul>
+<li>secure contexts only,</li>
+<li>validation of API usage,</li>
+<li>shader language restrictions,</li>
+<li>limits to reduce fingerprinting,</li>
+<li>robust resource initialization,</li>
+<li>device loss and error handling,</li>
+<li>implementation-defined feature exposure.</li>
+</ul>
+<p>Do not expect native-level unrestricted GPU access. The browser remains a security boundary.</p>
+<h3 id="production-checklist">Production Checklist</h3>
+<ul>
+<li>Feature-detect <code>navigator.gpu</code>.</li>
+<li>Provide WebGL/static fallback when needed.</li>
+<li>Request only required features and limits.</li>
+<li>Label all GPU objects in development.</li>
+<li>Handle adapter/device failure.</li>
+<li>Handle device loss.</li>
+<li>Recreate size-dependent textures on resize.</li>
+<li>Avoid creating pipelines in the frame loop.</li>
+<li>Avoid GPU readback in normal rendering.</li>
+<li>Validate memory layouts.</li>
+<li>Test on Chrome, Firefox, Safari, and target mobile devices.</li>
+<li>Test integrated and discrete GPUs.</li>
+<li>Cap device pixel ratio when appropriate.</li>
+<li>Track frame time, not only FPS.</li>
+</ul>
+<hr>
+<h2 id="part-13-ecosystem-migration-and-recipes">Part 13 - Ecosystem, Migration, and Recipes</h2>
+<p>Most production teams should not start with raw WebGPU for everything. Use the right layer.</p>
+<h3 id="libraries-and-engines">Libraries and Engines</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>WebGPU role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Babylon.js</td>
+<td>Mature engine with WebGPU support</td>
+</tr>
+<tr>
+<td>Three.js</td>
+<td>WebGPU renderer evolving alongside WebGL renderer</td>
+</tr>
+<tr>
+<td>PlayCanvas</td>
+<td>Web engine with WebGPU support</td>
+</tr>
+<tr>
+<td>TensorFlow.js</td>
+<td>WebGPU backend for many ML operators</td>
+</tr>
+<tr>
+<td>ONNX Runtime Web</td>
+<td>WebGPU execution provider in supported scenarios</td>
+</tr>
+<tr>
+<td>wgpu</td>
+<td>Rust/native/WebAssembly-friendly WebGPU-style implementation</td>
+</tr>
+<tr>
+<td>Dawn</td>
+<td>Chromium's native WebGPU implementation</td>
+</tr>
+<tr>
+<td>webgpu-utils</td>
+<td>Helpers for common WebGPU boilerplate</td>
+</tr>
+<tr>
+<td>WebGPU Fundamentals</td>
+<td>Learning resource with practical examples</td>
+</tr>
+</tbody>
+</table>
+<p>Use high-level libraries when:</p>
+<ul>
+<li>you need cameras, loaders, materials, lights, scene graphs,</li>
+<li>you need cross-browser fallbacks,</li>
+<li>your team is product-focused,</li>
+<li>raw GPU control is not the differentiator.</li>
+</ul>
+<p>Use raw WebGPU when:</p>
+<ul>
+<li>you are building a renderer/engine,</li>
+<li>you need compute,</li>
+<li>you need custom memory/layout control,</li>
+<li>you are learning deeply,</li>
+<li>existing libraries hide the thing you need.</li>
+</ul>
+<h3 id="migrating-from-webgl">Migrating from WebGL</h3>
+<p>Map concepts:</p>
+<table>
+<thead>
+<tr>
+<th>WebGL</th>
+<th>WebGPU</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>WebGLRenderingContext</code></td>
+<td><code>GPUDevice</code> plus canvas <code>GPUCanvasContext</code></td>
+</tr>
+<tr>
+<td>GLSL shaders</td>
+<td>WGSL shader modules</td>
+</tr>
+<tr>
+<td>Program</td>
+<td>Render/compute pipeline</td>
+</tr>
+<tr>
+<td>Global state</td>
+<td>Pipeline plus explicit pass state</td>
+</tr>
+<tr>
+<td>Uniforms</td>
+<td>Uniform buffers and bind groups</td>
+</tr>
+<tr>
+<td>Texture units</td>
+<td>Bind group texture/sampler bindings</td>
+</tr>
+<tr>
+<td><code>gl.drawArrays</code></td>
+<td><code>pass.draw</code></td>
+</tr>
+<tr>
+<td><code>gl.drawElements</code></td>
+<td><code>pass.drawIndexed</code></td>
+</tr>
+<tr>
+<td>Framebuffer</td>
+<td>Render pass attachments / texture views</td>
+</tr>
+<tr>
+<td>Transform feedback hacks</td>
+<td>Compute shaders / storage buffers</td>
+</tr>
+<tr>
+<td><code>gl.getError()</code></td>
+<td>Error scopes and uncaptured errors</td>
+</tr>
+</tbody>
+</table>
+<p>Migration strategy:</p>
+<ol>
+<li>Keep the WebGL renderer working.</li>
+<li>Introduce an abstraction over renderer capabilities.</li>
+<li>Port asset loading and math first.</li>
+<li>Convert shaders from GLSL to WGSL.</li>
+<li>Convert uniforms to buffers and bind groups.</li>
+<li>Convert framebuffer passes to render pass descriptors.</li>
+<li>Add WebGPU-only features after parity.</li>
+<li>Keep fallback until analytics prove you can drop it.</li>
+</ol>
+<h3 id="recipe-hardcoded-triangle-without-vertex-buffer">Recipe: Hardcoded Triangle Without Vertex Buffer</h3>
+<p>For debugging, draw a triangle from <code>vertex_index</code>:</p>
+<pre><code class="language-wgsl">@vertex
+fn vertexMain(@builtin(vertex_index) i: u32) -&gt; @builtin(position) vec4&lt;f32&gt; {
+  var positions = array&lt;vec2&lt;f32&gt;, 3&gt;(
+    vec2&lt;f32&gt;(0.0, 0.6),
+    vec2&lt;f32&gt;(-0.6, -0.6),
+    vec2&lt;f32&gt;(0.6, -0.6),
+  );
+  let p = positions[i];
+  return vec4&lt;f32&gt;(p, 0.0, 1.0);
+}
+
+@fragment
+fn fragmentMain() -&gt; @location(0) vec4&lt;f32&gt; {
+  return vec4&lt;f32&gt;(1.0, 0.4, 0.2, 1.0);
+}
+</code></pre>
+<p>This removes vertex buffers from the equation. If this does not render, your issue is initialization, pipeline, render pass, or submission.</p>
+<h3 id="recipe-instanced-drawing">Recipe: Instanced Drawing</h3>
+<p>Use one geometry buffer and draw many instances:</p>
+<pre><code class="language-javascript">pass.setPipeline(pipeline);
+pass.setVertexBuffer(0, meshVertexBuffer);
+pass.setVertexBuffer(1, instanceBuffer);
+pass.draw(vertexCount, instanceCount);
+</code></pre>
+<p>Vertex layout:</p>
+<pre><code class="language-javascript">const instanceLayout = {
+  arrayStride: 4 * 4,
+  stepMode: 'instance',
+  attributes: [
+    { shaderLocation: 2, offset: 0, format: 'float32x2' }, // offset
+    { shaderLocation: 3, offset: 8, format: 'float32x2' }, // scale
+  ],
+};
+</code></pre>
+<p>WGSL:</p>
+<pre><code class="language-wgsl">@vertex
+fn vertexMain(@location(0) position: vec2&lt;f32&gt;,
+              @location(2) offset: vec2&lt;f32&gt;,
+              @location(3) scale: vec2&lt;f32&gt;) -&gt; @builtin(position) vec4&lt;f32&gt; {
+  let p = position * scale + offset;
+  return vec4&lt;f32&gt;(p, 0.0, 1.0);
+}
+</code></pre>
+<p>Instancing is a key technique for sprites, particles, vegetation, icons, markers, and repeated meshes.</p>
+<h3 id="recipe-post-processing">Recipe: Post-Processing</h3>
+<ol>
+<li>Render scene into an offscreen texture.</li>
+<li>Bind that texture as input.</li>
+<li>Draw a fullscreen triangle to the canvas.</li>
+<li>Fragment shader samples and modifies color.</li>
+</ol>
+<p>This supports:</p>
+<ul>
+<li>bloom,</li>
+<li>tone mapping,</li>
+<li>color grading,</li>
+<li>blur,</li>
+<li>edge detection,</li>
+<li>CRT effects,</li>
+<li>anti-aliasing passes.</li>
+</ul>
+<h3 id="recipe-gpu-particle-system">Recipe: GPU Particle System</h3>
+<pre><code class="language-text">storage buffer A: current particles
+storage buffer B: next particles
+
+frame:
+  compute pass reads A, writes B
+  render pass draws B
+  swap A and B
+</code></pre>
+<p>The CPU never reads particle positions. It only dispatches compute and draw work.</p>
+<h3 id="recipe-picking">Recipe: Picking</h3>
+<p>Options:</p>
+<ul>
+<li>CPU ray casting against simplified geometry,</li>
+<li>render object IDs to an offscreen integer-like target where supported,</li>
+<li>use a small picking pass around the cursor,</li>
+<li>maintain spatial acceleration structures.</li>
+</ul>
+<p>Avoid reading a full frame back to the CPU. If you need GPU readback, read a tiny region.</p>
+<h3 id="learning-path">Learning Path</h3>
+<ol>
+<li>Draw a hardcoded triangle.</li>
+<li>Draw a triangle from a vertex buffer.</li>
+<li>Add uniforms for color and transform.</li>
+<li>Animate with <code>requestAnimationFrame</code>.</li>
+<li>Handle resize and depth.</li>
+<li>Draw indexed geometry.</li>
+<li>Load and sample a texture.</li>
+<li>Render to an offscreen texture.</li>
+<li>Add a post-processing pass.</li>
+<li>Write a compute shader that transforms a buffer.</li>
+<li>Feed compute output into rendering.</li>
+<li>Build a small particle system.</li>
+<li>Add profiling and cross-browser testing.</li>
+</ol>
+<h3 id="the-final-mental-model">The Final Mental Model</h3>
+<p>WebGPU is not "WebGL but faster." It is a different level of explicitness.</p>
+<p>In WebGL, you often think:</p>
+<pre><code class="language-text">Set global state, then draw.
+</code></pre>
+<p>In WebGPU, think:</p>
+<pre><code class="language-text">Create resources and pipelines.
+Bind resources explicitly.
+Record commands.
+Submit batches.
+Keep data on the GPU.
+Handle errors asynchronously.
+</code></pre>
+<p>That model is the price of admission. The reward is a browser GPU API that finally matches modern hardware: graphics, compute, predictable resource binding, and enough control to build the next generation of web games, creative tools, visualization systems, and local AI experiences.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

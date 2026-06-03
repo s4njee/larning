@@ -1,0 +1,1367 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Desktop GUI Development with Electron.">
+<title>Desktop GUI Development with Electron - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#e0718b; --accent2:#da826c; --accent-weak:rgba(224,113,139,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#e0718b; --accent2:#da826c; --accent-weak:rgba(224,113,139,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">D</span><span>Desktop GUI Development with Electron</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-from-web-to-the-desktop" data-target="part-1-from-web-to-the-desktop">Part 1 — From Web to the Desktop</a></li><li class="toc-l3"><a href="#whats-the-same-your-existing-skills" data-target="whats-the-same-your-existing-skills">What's the Same (Your Existing Skills)</a></li><li class="toc-l3"><a href="#whats-genuinely-new-where-to-spend-your-energy" data-target="whats-genuinely-new-where-to-spend-your-energy">What's Genuinely New (Where to Spend Your Energy)</a></li><li class="toc-l3"><a href="#why-electron-is-the-right-first-gui-framework-for-you" data-target="why-electron-is-the-right-first-gui-framework-for-you">Why Electron Is the Right First GUI Framework for You</a></li><li class="toc-l2"><a href="#part-2-the-multi-process-architecture" data-target="part-2-the-multi-process-architecture">Part 2 — The Multi-Process Architecture</a></li><li class="toc-l3"><a href="#the-three-kinds-of-code" data-target="the-three-kinds-of-code">The Three Kinds of Code</a></li><li class="toc-l3"><a href="#why-three-processes-the-reason-maps-to-your-instincts" data-target="why-three-processes-the-reason-maps-to-your-instincts">Why Three Processes? (The Reason Maps to Your Instincts)</a></li><li class="toc-l3"><a href="#your-first-window" data-target="your-first-window">Your First Window</a></li><li class="toc-l3"><a href="#the-application-lifecycle-and-its-cross-platform-traps" data-target="the-application-lifecycle-and-its-cross-platform-traps">The Application Lifecycle (and Its Cross-Platform Traps)</a></li><li class="toc-l3"><a href="#single-instance-apps" data-target="single-instance-apps">Single-Instance Apps</a></li><li class="toc-l2"><a href="#part-3-ipc-the-process-boundary" data-target="part-3-ipc-the-process-boundary">Part 3 — IPC &amp; the Process Boundary</a></li><li class="toc-l3"><a href="#the-mental-model-its-an-api" data-target="the-mental-model-its-an-api">The Mental Model: It's an API</a></li><li class="toc-l3"><a href="#the-two-patterns" data-target="the-two-patterns">The Two Patterns</a></li><li class="toc-l3"><a href="#wiring-it-through-the-preload-the-right-way" data-target="wiring-it-through-the-preload-the-right-way">Wiring It Through the Preload (the Right Way)</a></li><li class="toc-l3"><a href="#type-the-boundary" data-target="type-the-boundary">Type the Boundary</a></li><li class="toc-l3"><a href="#ipc-design-principles" data-target="ipc-design-principles">IPC Design Principles</a></li><li class="toc-l2"><a href="#part-4-the-renderer-your-web-skills" data-target="part-4-the-renderer-your-web-skills">Part 4 — The Renderer &amp; Your Web Skills</a></li><li class="toc-l3"><a href="#use-your-framework-probably-vue" data-target="use-your-framework-probably-vue">Use Your Framework — Probably Vue</a></li><li class="toc-l3"><a href="#whats-different-from-a-browser-tab" data-target="whats-different-from-a-browser-tab">What's Different From a Browser Tab</a></li><li class="toc-l3"><a href="#multiple-windows-and-views" data-target="multiple-windows-and-views">Multiple Windows and Views</a></li><li class="toc-l3"><a href="#the-renderer-can-still-block-its-still-one-thread" data-target="the-renderer-can-still-block-its-still-one-thread">The Renderer Can Still Block — It's Still One Thread</a></li><li class="toc-l2"><a href="#part-5-native-os-integration" data-target="part-5-native-os-integration">Part 5 — Native OS Integration</a></li><li class="toc-l3"><a href="#menus" data-target="menus">Menus</a></li><li class="toc-l3"><a href="#the-system-tray" data-target="the-system-tray">The System Tray</a></li><li class="toc-l3"><a href="#native-dialogs-notifications-and-shell" data-target="native-dialogs-notifications-and-shell">Native Dialogs, Notifications, and Shell</a></li><li class="toc-l3"><a href="#global-shortcuts-theme-and-power" data-target="global-shortcuts-theme-and-power">Global Shortcuts, Theme, and Power</a></li><li class="toc-l3"><a href="#deep-links-and-file-associations" data-target="deep-links-and-file-associations">Deep Links and File Associations</a></li><li class="toc-l3"><a href="#the-cross-platform-reality" data-target="the-cross-platform-reality">The Cross-Platform Reality</a></li><li class="toc-l2"><a href="#part-6-data-files-storage" data-target="part-6-data-files-storage">Part 6 — Data Files &amp; Storage</a></li><li class="toc-l3"><a href="#where-data-goes-appgetpath" data-target="where-data-goes-appgetpath">Where Data Goes: app.getPath</a></li><li class="toc-l3"><a href="#choosing-a-storage-mechanism" data-target="choosing-a-storage-mechanism">Choosing a Storage Mechanism</a></li><li class="toc-l3"><a href="#the-golden-rule-filesystem-access-lives-in-main" data-target="the-golden-rule-filesystem-access-lives-in-main">The Golden Rule: Filesystem Access Lives in Main</a></li><li class="toc-l3"><a href="#native-modules-the-electron-rebuild-gotcha" data-target="native-modules-the-electron-rebuild-gotcha">Native Modules: The electron-rebuild Gotcha</a></li><li class="toc-l3"><a href="#data-and-app-updates" data-target="data-and-app-updates">Data and App Updates</a></li><li class="toc-l2"><a href="#part-7-security" data-target="part-7-security">Part 7 — Security</a></li><li class="toc-l3"><a href="#the-threat-model" data-target="the-threat-model">The Threat Model</a></li><li class="toc-l3"><a href="#the-non-negotiable-defaults" data-target="the-non-negotiable-defaults">The Non-Negotiable Defaults</a></li><li class="toc-l3"><a href="#guard-the-preload-bridge" data-target="guard-the-preload-bridge">Guard the Preload Bridge</a></li><li class="toc-l3"><a href="#control-navigation-and-window-creation" data-target="control-navigation-and-window-creation">Control Navigation and Window Creation</a></li><li class="toc-l3"><a href="#content-security-policy" data-target="content-security-policy">Content Security Policy</a></li><li class="toc-l3"><a href="#dont-load-untrusted-remote-content-and-if-you-must-isolate-it" data-target="dont-load-untrusted-remote-content-and-if-you-must-isolate-it">Don't Load Untrusted Remote Content (and If You Must, Isolate It)</a></li><li class="toc-l3"><a href="#keep-electron-updated-this-is-a-real-obligation" data-target="keep-electron-updated-this-is-a-real-obligation">Keep Electron Updated — This Is a Real Obligation</a></li><li class="toc-l3"><a href="#audit-your-supply-chain" data-target="audit-your-supply-chain">Audit Your Supply Chain</a></li><li class="toc-l2"><a href="#part-8-packaging-distribution" data-target="part-8-packaging-distribution">Part 8 — Packaging &amp; Distribution</a></li><li class="toc-l3"><a href="#from-source-to-app-the-build-toolchain" data-target="from-source-to-app-the-build-toolchain">From Source to App: The Build Toolchain</a></li><li class="toc-l3"><a href="#per-platform-targets" data-target="per-platform-targets">Per-Platform Targets</a></li><li class="toc-l3"><a href="#code-signing-the-tax-you-cannot-skip" data-target="code-signing-the-tax-you-cannot-skip">Code Signing: The Tax You Cannot Skip</a></li><li class="toc-l3"><a href="#linux-distribution-your-home-turf" data-target="linux-distribution-your-home-turf">Linux Distribution (Your Home Turf)</a></li><li class="toc-l3"><a href="#building-on-ci-the-real-answer-to-cross-compilation" data-target="building-on-ci-the-real-answer-to-cross-compilation">Building on CI (The Real Answer to Cross-Compilation)</a></li><li class="toc-l2"><a href="#part-9-auto-updates-performance" data-target="part-9-auto-updates-performance">Part 9 — Auto-Updates &amp; Performance</a></li><li class="toc-l3"><a href="#auto-updates-the-desktop-deploy" data-target="auto-updates-the-desktop-deploy">Auto-Updates: The Desktop "Deploy"</a></li><li class="toc-l3"><a href="#performance-the-honest-accounting" data-target="performance-the-honest-accounting">Performance: The Honest Accounting</a></li><li class="toc-l3"><a href="#dont-block-the-main-process" data-target="dont-block-the-main-process">Don't Block the Main Process</a></li><li class="toc-l3"><a href="#other-performance-levers" data-target="other-performance-levers">Other Performance Levers</a></li><li class="toc-l2"><a href="#part-10-alternatives-a-build-walkthrough" data-target="part-10-alternatives-a-build-walkthrough">Part 10 — Alternatives &amp; a Build Walkthrough</a></li><li class="toc-l3"><a href="#electron-vs-tauri" data-target="electron-vs-tauri">Electron vs. Tauri</a></li><li class="toc-l3"><a href="#electron-vs-qt-vs-native-vs-the-web" data-target="electron-vs-qt-vs-native-vs-the-web">Electron vs. Qt vs. Native vs. the Web</a></li><li class="toc-l3"><a href="#when-to-use-electron-the-decision" data-target="when-to-use-electron-the-decision">When to Use Electron (the Decision)</a></li><li class="toc-l3"><a href="#end-to-end-walkthrough" data-target="end-to-end-walkthrough">End-to-End Walkthrough</a></li><li class="toc-l3"><a href="#the-closing-take" data-target="the-closing-take">The Closing Take</a></li></ul></nav></aside>
+  <main><h1 id="desktop-gui-development-with-electron">Desktop GUI Development with Electron</h1>
+<p>A depth-first guide to building desktop GUI applications, using Electron as the example framework — written specifically for engineers who come from <strong>web development and Linux/backend systems and have never built a desktop GUI app.</strong> If your experience looks like the rest of this repo — you're comfortable with Vue, TypeScript, and Node.js on the front, and Docker, distributed systems, and Linux on the back, but "build a native desktop app" has always been someone else's job — this guide is the bridge.</p>
+<p>That background is not a disadvantage here; it's the on-ramp. Electron is, quite literally, <strong>a web front-end (Chromium) wired to a Node.js back-end</strong>, packaged as a desktop app. So roughly 80% of Electron is skills you already have: the UI is web (use Vue — your stack — or React or Svelte), and the privileged "backend" of the app is Node.js (the subject of the <a href="advanced-nodejs-study-guide.html">Advanced Node.js guide</a>). The communication between them is a client-server message boundary, which you already understand from the <a href="distributed-systems-study-guide.html">Distributed Systems</a> and <a href="websockets-study-guide.html">WebSockets</a> guides. <strong>This guide spends most of its energy on the other 20% — the parts that have no web or backend analogue and are where every web developer building their first desktop app gets surprised:</strong> the desktop process and lifecycle model, native OS integration, the security model of running web code with system access, and the genuinely hard problem of <em>packaging, signing, and shipping</em> software that runs on someone else's machine instead of your server.</p>
+<p>It's opinionated where it should be — including an honest accounting of Electron's costs (memory, bundle size) and a clear-eyed comparison to <strong>Tauri</strong> (Rust + the OS webview — relevant given you're learning Rust) and to native toolkits like <strong>Qt</strong> (covered in the <a href="qt-study-guide.html">Qt guide</a>). By the end you'll know not just how to build an Electron app, but when <em>not</em> to.</p>
+<p>Primary references: the <a href="https://www.electronjs.org/docs/latest/">Electron documentation</a> (excellent — read the Process Model and Security pages in full), <a href="https://www.electronjs.org/fiddle">Electron Fiddle</a> (a scratchpad for trying APIs), and <a href="https://www.electronforge.io/">Electron Forge</a> (the official build toolchain). Companion guides in this repo: <a href="advanced-nodejs-study-guide.html">Advanced Node.js</a>, <a href="vue-study-guide.html">Vue</a>, <a href="typescript-study-guide.html">TypeScript</a>, and <a href="github-actions-study-guide.html">GitHub Actions</a> (for CI builds).</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1--from-web-to-the-desktop">Part 1 — From Web to the Desktop</a></li>
+<li><a href="#part-2--the-multi-process-architecture">Part 2 — The Multi-Process Architecture</a></li>
+<li><a href="#part-3--ipc--the-process-boundary">Part 3 — IPC &amp; the Process Boundary</a></li>
+<li><a href="#part-4--the-renderer--your-web-skills">Part 4 — The Renderer &amp; Your Web Skills</a></li>
+<li><a href="#part-5--native-os-integration">Part 5 — Native OS Integration</a></li>
+<li><a href="#part-6--data-files--storage">Part 6 — Data Files &amp; Storage</a></li>
+<li><a href="#part-7--security">Part 7 — Security</a></li>
+<li><a href="#part-8--packaging--distribution">Part 8 — Packaging &amp; Distribution</a></li>
+<li><a href="#part-9--auto-updates--performance">Part 9 — Auto-Updates &amp; Performance</a></li>
+<li><a href="#part-10--alternatives--a-build-walkthrough">Part 10 — Alternatives &amp; a Build Walkthrough</a></li>
+</ol>
+<hr>
+<h2 id="part-1-from-web-to-the-desktop">Part 1 — From Web to the Desktop</h2>
+<p>Before any code, the mindset shift. You already know how to build software that runs on a server you control and is delivered to a browser you don't. Desktop development inverts several of those assumptions, and naming the inversions up front prevents most of the confusion that follows.</p>
+<h3 id="whats-the-same-your-existing-skills">What's the Same (Your Existing Skills)</h3>
+<p>Electron is Chromium + Node.js in a trench coat, so a large amount transfers directly:</p>
+<ul>
+<li><strong>The UI is a web page.</strong> HTML, CSS, the DOM, your framework of choice (Vue, React, Svelte), your bundler (Vite). Everything you know about building a web front-end applies unchanged. A <code>&amp;lt;button&amp;gt;</code> is a <code>&amp;lt;button&amp;gt;</code>.</li>
+<li><strong>The privileged layer is Node.js.</strong> The part of the app that touches the operating system is a Node process — same <code>fs</code>, <code>path</code>, <code>process</code>, npm ecosystem, <code>async</code>/<code>await</code>, and event-loop discipline from the <a href="advanced-nodejs-study-guide.html">Advanced Node.js guide</a>. If you've written a Node service, you've written half of an Electron app.</li>
+<li><strong>The two halves talk over a message boundary.</strong> Not HTTP, but the <em>shape</em> is the same as any client-server system: a less-trusted client (the UI) asks a more-trusted server (the Node layer) to do things, over a serialized channel. Your instincts from APIs, WebSockets, and distributed systems all apply.</li>
+</ul>
+<h3 id="whats-genuinely-new-where-to-spend-your-energy">What's Genuinely New (Where to Spend Your Energy)</h3>
+<p>These have no clean web or backend analogue, and they are the real content of this guide:</p>
+<ol>
+<li><strong>Your code runs on the user's machine, not your server.</strong> This is the deepest shift. You don't control the OS, the hardware, the other software, the antivirus, or <em>when the user updates</em>. There is no "deploy" button that atomically replaces the running version for everyone. You ship a binary and lose control of it. Everything about distribution (Part 8) and auto-updates (Part 9) exists because of this one fact.</li>
+<li><strong>The app is long-lived and stateful, not request-scoped.</strong> A web request is born, serves a response, and dies — statelessness is a virtue you've been taught to cultivate. A desktop app <em>opens</em>, lives for hours or days holding in-memory state, manages windows, responds to the OS sleeping and waking, and <em>quits</em>. You think in terms of an application <em>lifecycle</em> and <em>event loop over the app's whole lifetime</em>, not per-request handlers.</li>
+<li><strong>You own the whole window, and the OS has opinions.</strong> There's no browser chrome handed to you — you decide whether there's a title bar, a menu, a tray icon, what the close button does. And each OS (Windows, macOS, Linux) has different, strongly-held conventions you must respect (Part 5). "Cross-platform" means <em>three platforms' worth of native behavior</em>, not one.</li>
+<li><strong>Local-first data.</strong> No central Postgres that every client shares. Data lives on the user's disk — files, a local SQLite database, app preferences — and <em>maybe</em> syncs to a server. Your data-modeling instincts from the <a href="postgres-study-guide.html">Postgres guide</a> transfer, but the deployment target is "a few hundred MB on a laptop," not "a managed cluster."</li>
+<li><strong>Shipping is hard in a way web shipping is not.</strong> Web deploy is <code>git push</code> and a CI pipeline. Desktop "deploy" is: build a native installer for each OS, <strong>cryptographically sign it</strong> (or the OS refuses to run it), get macOS to <strong>notarize</strong> it, host it somewhere, and build an <strong>auto-update</strong> mechanism so users actually get your fixes. This is the part that shocks every web developer, and Part 8 is devoted to it.</li>
+</ol>
+<h3 id="why-electron-is-the-right-first-gui-framework-for-you">Why Electron Is the Right First GUI Framework for You</h3>
+<p>There are many ways to build a desktop GUI — native toolkits (Qt, GTK, WinUI, Swift), Flutter, Tauri. For <em>your</em> background specifically, Electron is the gentlest on-ramp precisely because it minimizes the new material:</p>
+<ul>
+<li>You build the UI with <strong>web technology you already know</strong>, so the "how do I lay out a UI" problem (huge in Qt or native toolkits, which have their own widget systems and layout models) is already solved for you.</li>
+<li>The native/privileged layer is <strong>Node.js</strong>, which you know.</li>
+<li>It is <strong>truly cross-platform with consistent rendering</strong> — the same Chromium renders your UI identically on all three OSes, so you don't fight per-platform rendering bugs (this is Electron's headline advantage over Tauri, Part 10).</li>
+</ul>
+<p>The price — and it's real — is that you ship an entire browser engine with your app: ~100–150 MB of binary and a baseline of ~100+ MB of RAM before your app does anything. Whether that price is worth it is the central question of Part 10. For learning GUI development from a web background, it's absolutely the place to start, and for a great many real apps (VS Code, Slack, Discord, Figma's desktop app, Obsidian, Notion) it's the production choice.</p>
+<p>If you remember one thing from Part 1: <strong>Electron lets you reuse your web (UI) and Node (system) skills, so concentrate your learning on the five things that are actually new — running on the user's machine, the app lifecycle, owning the window, local-first data, and the hard problem of shipping signed installers with auto-updates.</strong></p>
+<hr>
+<h2 id="part-2-the-multi-process-architecture">Part 2 — The Multi-Process Architecture</h2>
+<p>Electron's architecture is the first thing to internalize, and your distributed-systems background makes it easy: <strong>an Electron app is a tiny client-server system running on one machine.</strong> There is one privileged "server," one or more sandboxed "clients," and a carefully controlled boundary between them.</p>
+<h3 id="the-three-kinds-of-code">The Three Kinds of Code</h3>
+<p>Every Electron app has three distinct execution contexts. Confusing which code runs where is the single most common beginner mistake, so anchor these firmly:</p>
+<table>
+<thead>
+<tr>
+<th>Context</th>
+<th>Runs</th>
+<th>Has Node.js access?</th>
+<th>Analogy (from your world)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Main process</strong></td>
+<td>Node.js</td>
+<td>✅ full</td>
+<td>The backend server — privileged, one per app</td>
+</tr>
+<tr>
+<td><strong>Renderer process</strong></td>
+<td>Chromium (a web page)</td>
+<td>❌ no (by default)</td>
+<td>A browser tab / untrusted client — one per window</td>
+</tr>
+<tr>
+<td><strong>Preload script</strong></td>
+<td>Chromium context, before page load</td>
+<td>⚠️ limited, bridged</td>
+<td>The API gateway / contract between them</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The main process</strong> is the entry point and the brain. It's a full Node.js environment (the <a href="advanced-nodejs-study-guide.html">Advanced Node.js guide</a> applies directly). It creates windows, controls the application lifecycle, and is the <em>only</em> place with unrestricted access to the operating system — the filesystem, native menus, dialogs, the tray, OS notifications. There is exactly <strong>one</strong> main process. Think of it as your backend server: privileged, trusted, and the thing everything else asks for favors.</p>
+<p><strong>A renderer process</strong> runs a web page inside a Chromium instance — one renderer per <code>BrowserWindow</code>. This is where your Vue/React/Svelte app lives. Critically, <strong>by modern defaults a renderer has no Node.js access at all</strong> — it's as sandboxed as a normal web page in a browser. It cannot read files, spawn processes, or touch the OS. It can only render UI and ask the main process to do privileged things, through the boundary. Treat it exactly as you'd treat an untrusted browser client: it might be compromised by malicious content or XSS, so it gets no direct power.</p>
+<p><strong>The preload script</strong> is the clever bit and the part with no web analogue. It runs <em>in the renderer's context</em> but <em>before your web page loads</em>, and it has access to a limited set of Node/Electron APIs <strong>and</strong> the page's <code>window</code> object. Its job is to be the <strong>bridge</strong>: it uses <code>contextBridge</code> to expose a small, specific, validated API to the renderer — never raw power, only named functions. It's the API contract / gateway between your untrusted UI and your privileged backend. (Security details in Part 7; for now, just know the preload is <em>where you decide exactly what the UI is allowed to ask for</em>.)</p>
+<h3 id="why-three-processes-the-reason-maps-to-your-instincts">Why Three Processes? (The Reason Maps to Your Instincts)</h3>
+<p>This split exists for the same reasons you separate a web client from a server: <strong>security and stability.</strong></p>
+<ul>
+<li><strong>Security:</strong> the renderer loads and runs web content, which is the attackable surface (XSS, malicious markup). If that code had direct OS access, an XSS bug would become <em>remote code execution on the user's laptop</em> — catastrophically worse than XSS on a website. So the renderer is locked down and the privileged code lives elsewhere, behind a validated boundary. This is "never trust the client," made load-bearing.</li>
+<li><strong>Stability:</strong> processes are isolated. A renderer that crashes (a runaway script, an out-of-memory tab) takes down <em>its window</em>, not the whole app — the main process survives and can recover. This is the same blast-radius reasoning from the <a href="distributed-systems-study-guide.html">Distributed Systems guide</a>, applied locally.</li>
+</ul>
+<p>They don't share memory. Like separate machines, they communicate only by passing serialized messages (Part 3).</p>
+<h3 id="your-first-window">Your First Window</h3>
+<p>Here's a minimal main process. Every line maps to a lifecycle concept:</p>
+<pre><code class="language-javascript">// main.js — the main process (Node.js)
+import { app, BrowserWindow } from &quot;electron&quot;;
+import path from &quot;node:path&quot;;
+
+function createWindow() {
+  const win = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    show: false,                          // don't show until ready (avoids a white flash)
+    webPreferences: {
+      preload: path.join(import.meta.dirname, &quot;preload.js&quot;),
+      contextIsolation: true,             // default — keep it on (Part 7)
+      nodeIntegration: false,             // default — keep it off (Part 7)
+      sandbox: true,                       // default — keep it on (Part 7)
+    },
+  });
+
+  win.once(&quot;ready-to-show&quot;, () =&gt; win.show());   // show only when the page is painted
+
+  if (process.env.NODE_ENV === &quot;development&quot;) {
+    win.loadURL(&quot;http://localhost:5173&quot;);        // Vite dev server (HMR) — Part 4
+    win.webContents.openDevTools();
+  } else {
+    win.loadFile(&quot;dist/index.html&quot;);             // built assets in production
+  }
+}
+
+app.whenReady().then(createWindow);
+</code></pre>
+<h3 id="the-application-lifecycle-and-its-cross-platform-traps">The Application Lifecycle (and Its Cross-Platform Traps)</h3>
+<p>A web app has no "lifecycle" to speak of; a desktop app's lifecycle is central, and it differs by OS in ways that <em>will</em> trip you up:</p>
+<pre><code class="language-javascript">// The canonical lifecycle handling, with the macOS conventions baked in:
+
+app.on(&quot;window-all-closed&quot;, () =&gt; {
+  // Windows/Linux: closing the last window quits the app.
+  // macOS: apps conventionally STAY RUNNING (in the dock) with no windows.
+  if (process.platform !== &quot;darwin&quot;) app.quit();
+});
+
+app.on(&quot;activate&quot;, () =&gt; {
+  // macOS: clicking the dock icon with no windows open should re-create one.
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
+
+app.on(&quot;before-quit&quot;, () =&gt; {
+  // Last chance to save state, flush data, clean up. The app is shutting down.
+});
+</code></pre>
+<p>That <code>process.platform !== "darwin"</code> check is the first piece of genuinely desktop-specific knowledge you need, and it encodes a real convention: macOS users expect apps to persist after the last window closes; Windows and Linux users expect the app to quit. Getting this wrong makes your app feel "wrong" on each platform in a way users notice immediately. Cross-platform desktop development is full of these — Part 5 has more.</p>
+<h3 id="single-instance-apps">Single-Instance Apps</h3>
+<p>Most desktop apps should run as a single instance — if the user launches it again, focus the existing window rather than opening a second copy:</p>
+<pre><code class="language-javascript">const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();                              // another instance is already running
+} else {
+  app.on(&quot;second-instance&quot;, () =&gt; {        // fired in the FIRST instance when a 2nd launches
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win) { win.restore(); win.focus(); }
+  });
+}
+</code></pre>
+<p>If you remember one thing from Part 2: <strong>an Electron app is a one-machine client-server system — one privileged Node.js main process (the backend), N sandboxed Chromium renderers (the clients/windows), and a preload bridge (the API contract) — and the app lifecycle, with its per-OS conventions, is something you now own and must handle explicitly.</strong></p>
+<hr>
+<h2 id="part-3-ipc-the-process-boundary">Part 3 — IPC &amp; the Process Boundary</h2>
+<p>The renderer can't touch the OS; the main process can. So everything privileged the UI needs — read a file, show a save dialog, query the local database — is a <strong>request across the process boundary.</strong> This is Inter-Process Communication (IPC), and for someone with your background it's the most familiar "new" concept in the guide: it's an API boundary, and you design it like one.</p>
+<h3 id="the-mental-model-its-an-api">The Mental Model: It's an API</h3>
+<p>Treat IPC exactly as you'd treat a client-server API (the <a href="distributed-systems-study-guide.html">API design instincts</a> you have all apply):</p>
+<ul>
+<li>The renderer is the <strong>client</strong>; the main process is the <strong>server</strong>.</li>
+<li>Messages are <strong>serialized</strong> (via the structured clone algorithm — same as <code>postMessage</code> and Web Workers), so you can pass plain objects, arrays, numbers, strings, <code>ArrayBuffer</code>s — but <strong>not</strong> functions, class instances with methods, DOM nodes, or anything with behavior. If it doesn't survive <code>JSON</code>-ish serialization (plus a few extras like <code>Date</code> and <code>ArrayBuffer</code>), it can't cross.</li>
+<li>You <strong>never trust the input</strong> on the server side. The renderer could be compromised; validate every argument in the main process before acting (Part 7).</li>
+</ul>
+<h3 id="the-two-patterns">The Two Patterns</h3>
+<p><strong>1. Request-response (<code>invoke</code>/<code>handle</code>) — the modern default.</strong> The renderer asks for something and awaits a result. This is the one you'll use 90% of the time. It's async and returns a Promise — exactly like calling an API:</p>
+<pre><code class="language-javascript">// main.js — the &quot;server&quot; handler
+import { ipcMain, dialog } from &quot;electron&quot;;
+
+ipcMain.handle(&quot;dialog:openFile&quot;, async () =&gt; {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: [&quot;openFile&quot;],
+  });
+  if (canceled) return null;
+  return filePaths[0];                      // returned value resolves the renderer's Promise
+});
+</code></pre>
+<pre><code class="language-javascript">// renderer (via the preload bridge — see below)
+const filePath = await window.api.openFile();   // feels like any async API call
+</code></pre>
+<p><strong>2. One-way / push (<code>send</code>/<code>on</code> and <code>webContents.send</code>).</strong> Fire-and-forget events. Renderer → main with <code>ipcRenderer.send</code> + <code>ipcMain.on</code>; and crucially <strong>main → renderer</strong> with <code>webContents.send</code> (the only way to <em>push</em> to the UI — for progress updates, menu actions, OS events):</p>
+<pre><code class="language-javascript">// main.js — push an event TO a renderer (e.g., download progress)
+win.webContents.send(&quot;download:progress&quot;, { percent: 42 });
+
+// also: main listening to a fire-and-forget message from the renderer
+ipcMain.on(&quot;analytics:event&quot;, (event, payload) =&gt; track(payload));   // no response
+</code></pre>
+<pre><code class="language-javascript">// renderer — subscribe to pushed events
+window.api.onDownloadProgress((data) =&gt; updateProgressBar(data.percent));
+</code></pre>
+<h3 id="wiring-it-through-the-preload-the-right-way">Wiring It Through the Preload (the Right Way)</h3>
+<p>Here's the full, secure pattern — and it's worth memorizing because it's <em>the</em> idiom. The preload uses <code>contextBridge</code> to expose <strong>specific named functions</strong>, never the raw <code>ipcRenderer</code> object:</p>
+<pre><code class="language-javascript">// preload.js — the bridge / API contract
+import { contextBridge, ipcRenderer } from &quot;electron&quot;;
+
+contextBridge.exposeInMainWorld(&quot;api&quot;, {
+  // request-response: expose a clean async function, not the channel
+  openFile: () =&gt; ipcRenderer.invoke(&quot;dialog:openFile&quot;),
+  saveNote: (note) =&gt; ipcRenderer.invoke(&quot;notes:save&quot;, note),
+
+  // push: wrap the listener so the renderer can't access the raw event
+  onDownloadProgress: (callback) =&gt;
+    ipcRenderer.on(&quot;download:progress&quot;, (_event, data) =&gt; callback(data)),
+});
+</code></pre>
+<p>Now the renderer calls <code>window.api.openFile()</code> — a clean, typed, minimal surface. It cannot invoke arbitrary channels, cannot reach <code>ipcRenderer</code> directly, and cannot do anything you didn't explicitly expose. This is least-privilege API design, and it's both the ergonomic <em>and</em> the secure choice (Part 7 explains why exposing raw <code>ipcRenderer</code> is dangerous).</p>
+<h3 id="type-the-boundary">Type the Boundary</h3>
+<p>Because the renderer and main are separate bundles, the IPC boundary is exactly the kind of place bugs hide — a renamed channel, a changed payload shape. Use TypeScript (the <a href="typescript-study-guide.html">TypeScript guide</a>) to define the contract once and share it:</p>
+<pre><code class="language-typescript">// shared/api.ts — the contract both sides import
+export interface Api {
+  openFile(): Promise&lt;string | null&gt;;
+  saveNote(note: Note): Promise&lt;{ id: string }&gt;;
+  onDownloadProgress(cb: (data: { percent: number }) =&gt; void): void;
+}
+declare global {
+  interface Window { api: Api; }   // now window.api is typed in the renderer
+}
+</code></pre>
+<h3 id="ipc-design-principles">IPC Design Principles</h3>
+<p>The same discipline you'd apply to any API:</p>
+<ul>
+<li><strong>Coarse-grained, intent-named channels</strong>, not chatty ones. <code>notes:save</code> (one round trip) beats <code>db:open</code> + <code>db:write</code> + <code>db:close</code> (three). Each crossing has serialization cost.</li>
+<li><strong>Validate every payload in main.</strong> The renderer is untrusted. A <code>notes:save</code> handler must check that the note is well-formed before writing it — never pass renderer input straight to <code>fs</code> or a SQL query.</li>
+<li><strong>Don't leak privilege.</strong> Expose <code>saveNote(note)</code>, not <code>writeFile(path, data)</code>. The narrower the API, the smaller the blast radius if the renderer is compromised. Never expose a function that lets the renderer specify an arbitrary path or command.</li>
+<li><strong>Keep big data out of frequent messages.</strong> Serialization copies. Streaming a large file byte-by-byte over IPC is slow; instead pass a path and let main stream it, or use a <code>MessagePort</code> for high-throughput channels.</li>
+</ul>
+<p>If you remember one thing from Part 3: <strong>IPC is an API boundary between an untrusted client (renderer) and a trusted server (main) — design it exactly as you'd design any client-server API: coarse-grained intent-named channels, exposed as specific functions through the preload bridge, with every payload validated in main.</strong></p>
+<h2 id="part-4-the-renderer-your-web-skills">Part 4 — The Renderer &amp; Your Web Skills</h2>
+<p>This is the part you already know — so this chapter is short on fundamentals and long on <em>what's different about web development when the browser is yours</em>. The renderer is a Chromium page; your entire web toolkit applies. The differences are subtle but real, and they're mostly about the freedoms and responsibilities of controlling the whole browser.</p>
+<h3 id="use-your-framework-probably-vue">Use Your Framework — Probably Vue</h3>
+<p>The renderer is a web app, full stop. Use Vue (your stack — the <a href="vue-study-guide.html">Vue guide</a>), React, Svelte, or nothing. Use Vite for the build and dev server. The modern, well-trodden setup is <strong>electron-vite</strong> or <strong>Electron Forge's Vite template</strong>, which wires up three build targets — main, preload, and renderer — with hot-module reload for the renderer and auto-restart for main:</p>
+<pre><code class="language-bash"># Scaffold with Electron Forge + Vite + TypeScript:
+npm init electron-app@latest my-app -- --template=vite-typescript
+# Then drop your Vue app into the renderer source and point Vite at it.
+</code></pre>
+<p>The dev-vs-prod loading split from Part 2 is the key integration point: in development the <code>BrowserWindow</code> loads <code>http://localhost:5173</code> (the Vite dev server, so you get instant HMR while editing your Vue components); in production it loads the built <code>index.html</code> from disk. Your Vue dev loop is <em>exactly</em> what you're used to — edit a component, see it update — just inside a desktop window.</p>
+<h3 id="whats-different-from-a-browser-tab">What's Different From a Browser Tab</h3>
+<p>You now control the browser, which removes some web constraints and adds some responsibilities:</p>
+<ul>
+<li><strong>No deployment, no cache-busting, no "works in Safari?"</strong> You ship one known version of Chromium. The entire category of cross-browser bugs vanishes — you target one engine, the one you bundled. (This is the headline advantage over Tauri, Part 10.)</li>
+<li><strong>CORS and same-origin still exist but matter differently.</strong> Your UI is loaded from <code>file://</code> or a local dev server, and it talks to the OS through IPC, not <code>fetch</code>. You'll still <code>fetch</code> remote APIs, and CORS applies to those — but most of your "backend" calls are IPC, not HTTP.</li>
+<li><strong>You own the window chrome.</strong> No browser toolbar, no tabs unless you build them. You decide whether there's a native title bar (<code>titleBarStyle</code>), whether the window is resizable, frameless, transparent, always-on-top. A <strong>frameless window</strong> (<code>frame: false</code>) with a custom CSS title bar is how apps like VS Code and Slack get their look — but then <em>you</em> must implement dragging (<code>-webkit-app-region: drag</code> in CSS), the minimize/maximize/close buttons, and their per-OS placement (macOS left, Windows right).</li>
+<li><strong><code>localStorage</code>, <code>IndexedDB</code>, and the Cache API work</strong> — they're Chromium features — and persist per-renderer. But for app data you'll usually want something more robust (Part 6).</li>
+<li><strong>DevTools are the same Chrome DevTools you know</strong> (<code>win.webContents.openDevTools()</code>), with the full Elements/Console/Network/Performance/Memory panels. Renderer debugging is identical to web debugging.</li>
+</ul>
+<h3 id="multiple-windows-and-views">Multiple Windows and Views</h3>
+<p>A web app is one page; a desktop app may have many windows — a main window, a preferences window, an about dialog, a spotlight-style quick-entry popup. Each <code>BrowserWindow</code> is its own renderer (its own process, its own state). They coordinate <em>through the main process</em> (Part 3), not directly — main is the shared, authoritative coordinator, the same role a server plays for multiple web clients.</p>
+<p>For embedding web content <em>within</em> a window (a preview pane, an OAuth flow), modern Electron uses <strong><code>WebContentsView</code></strong> (the successor to the old <code>&amp;lt;webview&amp;gt;</code> tag and <code>BrowserView</code>), which lets you composite multiple web contents in one window with proper isolation. Avoid the legacy <code>&amp;lt;webview&amp;gt;</code> tag — it's heavier and has sharp security edges.</p>
+<h3 id="the-renderer-can-still-block-its-still-one-thread">The Renderer Can Still Block — It's Still One Thread</h3>
+<p>Your async discipline carries over directly: the renderer has a single main thread (the <a href="advanced-nodejs-study-guide.html">Advanced Node.js guide</a> Part 3 and the <a href="python-vs-nodejs-async-study-guide.html">async comparison guide</a> both apply). A heavy synchronous computation in the renderer <strong>freezes the UI</strong> — the desktop version of "janky web page," but worse because users expect <em>native</em> responsiveness from an installed app. Offload CPU work to a Web Worker (in the renderer) or, better, to the main process / a utility process (Part 9). The rule "never block the event loop" is now "never block the UI thread," and it's the same rule.</p>
+<p>If you remember one thing from Part 4: <strong>the renderer is just a web app with your framework of choice and full Chromium DevTools — what changes is that you own the whole window (chrome, multiple windows, no cross-browser worries) and you must still respect the single UI thread.</strong></p>
+<hr>
+<h2 id="part-5-native-os-integration">Part 5 — Native OS Integration</h2>
+<p>This is the first chapter that is <em>entirely</em> new — none of it has a web or backend analogue. Native integration is what makes an app feel like a real desktop application instead of a website in a frame, and it's where "cross-platform" reveals itself to mean "three platforms, each with its own conventions." Get these right and your app feels native; get them wrong and it feels like a port.</p>
+<h3 id="menus">Menus</h3>
+<p>Desktop apps have menus, and the conventions differ sharply by OS:</p>
+<ul>
+<li><strong>macOS</strong> has a single global <strong>menu bar</strong> at the top of the screen, always present, with a mandatory app-named first menu. The first menu item conventions (About, Preferences with ⌘,, Quit with ⌘Q) are deeply ingrained.</li>
+<li><strong>Windows and Linux</strong> put the menu <strong>inside the window</strong>, and many modern apps hide it behind a hamburger or custom UI.</li>
+</ul>
+<p>Electron's <code>Menu</code> API builds from a template, and <strong>roles</strong> give you correct, localized, platform-appropriate behavior for free:</p>
+<pre><code class="language-javascript">import { Menu } from &quot;electron&quot;;
+
+const isMac = process.platform === &quot;darwin&quot;;
+const template = [
+  // macOS needs the app menu as the first item:
+  ...(isMac ? [{ role: &quot;appMenu&quot; }] : []),
+  {
+    label: &quot;File&quot;,
+    submenu: [
+      { label: &quot;New Note&quot;, accelerator: &quot;CmdOrCtrl+N&quot;, click: () =&gt; createNote() },
+      { type: &quot;separator&quot; },
+      isMac ? { role: &quot;close&quot; } : { role: &quot;quit&quot; },   // per-OS convention
+    ],
+  },
+  { role: &quot;editMenu&quot; },     // Undo/Redo/Cut/Copy/Paste — correct on every OS, free
+  { role: &quot;viewMenu&quot; },     // Reload, DevTools, zoom — handy in dev
+];
+Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+</code></pre>
+<p>Use <code>role</code> wherever one exists — <code>CmdOrCtrl</code> automatically maps to ⌘ on macOS and Ctrl elsewhere, and roles like <code>editMenu</code> produce the entire standard Edit menu with working shortcuts on all three platforms. <strong>Hand-rolling copy/paste is a classic beginner mistake</strong>; the role does it correctly.</p>
+<h3 id="the-system-tray">The System Tray</h3>
+<p>A tray icon (menu-bar icon on macOS, system-tray/notification-area icon on Windows/Linux) lets your app live in the background — essential for chat apps, sync clients, and utilities:</p>
+<pre><code class="language-javascript">import { Tray, Menu, nativeImage } from &quot;electron&quot;;
+
+let tray;   // keep a reference, or it gets garbage-collected and disappears
+app.whenReady().then(() =&gt; {
+  tray = new Tray(nativeImage.createFromPath(&quot;assets/trayTemplate.png&quot;));
+  tray.setToolTip(&quot;My App&quot;);
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: &quot;Open&quot;, click: () =&gt; showMainWindow() },
+    { label: &quot;Quit&quot;, role: &quot;quit&quot; },
+  ]));
+});
+</code></pre>
+<p>(A gotcha worth the comment: forget to hold the <code>tray</code> reference and V8 garbage-collects it, and your icon mysteriously vanishes. Name your template icons <code>…Template.png</code> on macOS for automatic dark/light adaptation.)</p>
+<h3 id="native-dialogs-notifications-and-shell">Native Dialogs, Notifications, and Shell</h3>
+<p>These bridge to OS features the user already trusts:</p>
+<pre><code class="language-javascript">import { dialog, Notification, shell } from &quot;electron&quot;;
+
+// Native file picker (returns real filesystem paths):
+const { filePaths } = await dialog.showOpenDialog({ properties: [&quot;openFile&quot;, &quot;multiSelections&quot;] });
+
+// Native save dialog:
+const { filePath } = await dialog.showSaveDialog({ defaultPath: &quot;untitled.md&quot; });
+
+// Native OS notification (the web Notification API also works in the renderer):
+new Notification({ title: &quot;Sync complete&quot;, body: &quot;42 notes updated&quot; }).show();
+
+// Hand off to the OS — open a URL in the default browser, reveal a file, etc.:
+shell.openExternal(&quot;https://example.com&quot;);     // default browser, NOT an Electron window
+shell.showItemInFolder(&quot;/path/to/file&quot;);        // open the OS file manager at this file
+shell.openPath(&quot;/path/to/document.pdf&quot;);        // open in the default app
+</code></pre>
+<p><code>shell.openExternal</code> is important and easy to get wrong: <strong>external links must open in the user's real browser, not inside your app's window.</strong> Letting a remote URL load inside a <code>BrowserWindow</code> is both a UX mistake and a security hole (Part 7). Intercept link clicks and route them through <code>shell.openExternal</code>.</p>
+<h3 id="global-shortcuts-theme-and-power">Global Shortcuts, Theme, and Power</h3>
+<pre><code class="language-javascript">import { globalShortcut, nativeTheme, powerMonitor } from &quot;electron&quot;;
+
+// A shortcut that works even when your app isn't focused (use sparingly — they're global):
+app.whenReady().then(() =&gt; {
+  globalShortcut.register(&quot;CmdOrCtrl+Shift+Space&quot;, () =&gt; toggleQuickEntry());
+});
+
+// Follow the OS dark/light setting (and react when the user changes it):
+const isDark = nativeTheme.shouldUseDarkColors;
+nativeTheme.on(&quot;updated&quot;, () =&gt; updateTheme(nativeTheme.shouldUseDarkColors));
+
+// React to the machine sleeping/waking — pause sync, reconnect sockets, etc.:
+powerMonitor.on(&quot;suspend&quot;, () =&gt; pauseSync());
+powerMonitor.on(&quot;resume&quot;, () =&gt; resumeSync());
+</code></pre>
+<h3 id="deep-links-and-file-associations">Deep Links and File Associations</h3>
+<p>To make your app open when the user clicks a <code>myapp://...</code> link or double-clicks a <code>.mynote</code> file:</p>
+<ul>
+<li><strong>Custom protocol:</strong> <code>app.setAsDefaultProtocolClient("myapp")</code>, then handle the <code>open-url</code> event (macOS) or parse <code>process.argv</code> (Windows/Linux) where the URL arrives. Deep links are how OAuth callbacks and "open in app" buttons reach your app.</li>
+<li><strong>File associations</strong> are declared in the packaging config (Part 8) and arrive via the <code>open-file</code> event (macOS) or <code>argv</code>.</li>
+</ul>
+<h3 id="the-cross-platform-reality">The Cross-Platform Reality</h3>
+<p>Notice how often <code>process.platform</code> appeared. This is the texture of desktop development: the <em>capabilities</em> are cross-platform, but the <em>conventions</em> are not. macOS wants a global menu bar and apps that outlive their windows; Windows wants in-window menus and an installer with Start-menu entries; Linux wants <code>.desktop</code> files and respects a dozen desktop environments. <strong>Budget real time for per-platform polish and testing on each OS</strong> — a VM or a CI matrix (Part 8) is not optional. "Write once, run anywhere" is true for your <em>logic</em> and a polite fiction for your <em>native feel</em>.</p>
+<p>If you remember one thing from Part 5: <strong>native integration (menus, tray, dialogs, shortcuts, theme, deep links) is what separates a real app from a web page in a frame — lean on Electron's <code>role</code>-based menus and native APIs, and accept that each OS has conventions you must honor with <code>process.platform</code> branches.</strong></p>
+<hr>
+<h2 id="part-6-data-files-storage">Part 6 — Data Files &amp; Storage</h2>
+<p>A web app's data lives in a database you control on a server. A desktop app's data lives on the user's disk, and <em>you</em> are responsible for where it goes, how it's structured, and what happens when the app updates. Your SQL and data-modeling skills transfer (the <a href="postgres-study-guide.html">Postgres guide</a> applies), but the deployment target and the access model are new.</p>
+<h3 id="where-data-goes-appgetpath">Where Data Goes: <code>app.getPath</code></h3>
+<p>Never hardcode paths — every OS has different conventions for where app data belongs, and writing to the wrong place breaks on locked-down systems. <code>app.getPath</code> gives you the correct, per-OS location:</p>
+<pre><code class="language-javascript">import { app } from &quot;electron&quot;;
+
+app.getPath(&quot;userData&quot;);   // YOUR app's data dir — the main one you'll use
+//   macOS:   ~/Library/Application Support/&lt;AppName&gt;
+//   Windows: C:\Users\&lt;user&gt;\AppData\Roaming\&lt;AppName&gt;
+//   Linux:   ~/.config/&lt;AppName&gt;
+app.getPath(&quot;documents&quot;);  // the user's Documents folder
+app.getPath(&quot;downloads&quot;);  // Downloads
+app.getPath(&quot;temp&quot;);       // temp dir
+app.getPath(&quot;logs&quot;);       // log dir
+</code></pre>
+<p><code>userData</code> is your app's private sandbox — config, database, caches all go under it. Using it (instead of, say, writing next to the executable, which may be read-only) is the difference between an app that works and one that crashes on a managed corporate laptop.</p>
+<h3 id="choosing-a-storage-mechanism">Choosing a Storage Mechanism</h3>
+<table>
+<thead>
+<tr>
+<th>Need</th>
+<th>Use</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>App preferences, small config</td>
+<td><strong><code>electron-store</code></strong></td>
+<td>JSON file under <code>userData</code>, dead simple, schema + migrations</td>
+</tr>
+<tr>
+<td>Structured/relational data, queries</td>
+<td><strong><code>better-sqlite3</code></strong></td>
+<td>A real SQL database, local, <em>synchronous</em>, very fast — runs in main</td>
+</tr>
+<tr>
+<td>Large blobs (images, attachments)</td>
+<td>files under <code>userData</code></td>
+<td>store paths in your DB, blobs on disk</td>
+</tr>
+<tr>
+<td>Renderer-local, web-style storage</td>
+<td><code>IndexedDB</code> / <code>localStorage</code></td>
+<td>fine for UI state; not your source of truth</td>
+</tr>
+</tbody>
+</table>
+<p><strong>For anything beyond preferences, reach for SQLite via <code>better-sqlite3</code>.</strong> This is where your database skills pay off directly: it's real SQL — tables, indexes, transactions, joins, <code>WHERE</code> clauses — just running locally against a file instead of a server. Everything you know from the <a href="postgres-study-guide.html">Postgres guide</a> about schema design, indexing, and queries applies (with SQLite's smaller feature set). <code>better-sqlite3</code> is <em>synchronous</em>, which is unusual but correct here: it's so fast for local single-user access that synchronous calls in the main process are fine, and the API is simpler for it.</p>
+<pre><code class="language-javascript">// main process — a local SQLite database
+import Database from &quot;better-sqlite3&quot;;
+import path from &quot;node:path&quot;;
+import { app } from &quot;electron&quot;;
+
+const db = new Database(path.join(app.getPath(&quot;userData&quot;), &quot;notes.db&quot;));
+db.pragma(&quot;journal_mode = WAL&quot;);          // better concurrency/durability (your Postgres WAL knowledge applies)
+
+db.exec(`CREATE TABLE IF NOT EXISTS notes (
+  id    TEXT PRIMARY KEY,
+  body  TEXT NOT NULL,
+  updated_at INTEGER NOT NULL
+)`);
+
+// Prepared statements — same discipline as any SQL (prevents injection, faster):
+const insert = db.prepare(&quot;INSERT INTO notes (id, body, updated_at) VALUES (?, ?, ?)&quot;);
+
+// Expose via IPC — the renderer asks, main executes (Part 3):
+ipcMain.handle(&quot;notes:save&quot;, (event, note) =&gt; {
+  // VALIDATE first — never trust renderer input in a SQL statement (Part 7)
+  insert.run(note.id, note.body, Date.now());
+  return { id: note.id };
+});
+</code></pre>
+<h3 id="the-golden-rule-filesystem-access-lives-in-main">The Golden Rule: Filesystem Access Lives in Main</h3>
+<p>The renderer is sandboxed and <em>should not</em> touch the filesystem directly (Part 7). All file and database access happens <strong>in the main process</strong>, exposed to the UI through validated IPC handlers (Part 3). The renderer says "save this note" (<code>window.api.saveNote(note)</code>); main validates and writes it. This is the same trust boundary as a web app: the client never gets a raw database handle, it calls an endpoint that does the work after checking the request.</p>
+<h3 id="native-modules-the-electron-rebuild-gotcha">Native Modules: The <code>electron-rebuild</code> Gotcha</h3>
+<p><code>better-sqlite3</code> and other native modules are compiled C/C++ addons. Here's a sharp edge that will bite you: <strong>native modules are compiled against a specific V8/Node ABI, and Electron bundles its <em>own</em> version of V8</strong> — different from your system Node. So a native module installed with plain <code>npm install</code> is built for the wrong runtime and will fail to load in Electron with a cryptic version-mismatch error. The fix is to rebuild native modules against Electron's ABI:</p>
+<pre><code class="language-bash">npx @electron/rebuild        # rebuilds native modules for Electron's V8 ABI
+</code></pre>
+<p>Electron Forge and electron-builder run this automatically, which is one more reason to use them (Part 8). But when you hit "Module was compiled against a different Node.js version," this is why — and now you know the fix.</p>
+<h3 id="data-and-app-updates">Data and App Updates</h3>
+<p>One local-first consideration with no web equivalent: when your app auto-updates (Part 9), the new version runs against the <em>old version's data on disk</em>. You own <strong>schema migrations</strong> on the client, running them at startup — the same discipline as server-side DB migrations, but now executing on thousands of users' machines with no DBA watching. Version your schema, migrate forward on launch, and never assume the data on disk matches your current code.</p>
+<p>If you remember one thing from Part 6: <strong>data lives on the user's disk under <code>app.getPath("userData")</code>; use <code>electron-store</code> for preferences and <code>better-sqlite3</code> for real data (your SQL skills transfer directly); keep <em>all</em> filesystem access in the main process behind validated IPC; and own your client-side schema migrations because the next app version inherits the last version's data.</strong></p>
+<h2 id="part-7-security">Part 7 — Security</h2>
+<p>This is the chapter where your backend instincts make you <em>better</em> than the average Electron developer. Electron is web code with operating-system access, which means a web vulnerability can become a native compromise — an XSS that would merely deface a website can, in a misconfigured Electron app, read every file on the user's disk or run arbitrary commands. The good news: the threat model is one you already think in (<em>never trust the client</em>), and the defaults are now safe. Your job is to not turn them off and to guard the boundary you control.</p>
+<h3 id="the-threat-model">The Threat Model</h3>
+<p>State it plainly: <strong>the renderer is untrusted, like any web client, but it lives inside a process that can reach the OS.</strong> The attacker's path is: get malicious JavaScript running in your renderer (via an XSS in your own UI, a compromised npm dependency, or untrusted remote content you loaded), then use whatever power the renderer has — or can reach through the preload — to attack the user's machine. Every security control below is about shrinking what a compromised renderer can do.</p>
+<p>This maps exactly to the "never trust the client" principle from web/backend security, with the stakes raised: the "client" is running on the victim's own computer with a Node.js process next door.</p>
+<h3 id="the-non-negotiable-defaults">The Non-Negotiable Defaults</h3>
+<p>Modern Electron ships secure by default. The cardinal rule is <strong>do not disable these</strong> — and you'll see tutorials (especially old ones) that do:</p>
+<pre><code class="language-javascript">new BrowserWindow({
+  webPreferences: {
+    contextIsolation: true,    // ✅ KEEP ON — isolates preload/Electron internals from page JS
+    nodeIntegration: false,    // ✅ KEEP OFF — no require()/Node globals in the renderer
+    sandbox: true,             // ✅ KEEP ON — renderer runs in an OS-level sandbox
+    webSecurity: true,         // ✅ KEEP ON — enforces same-origin, CSP, etc.
+  },
+});
+</code></pre>
+<ul>
+<li><strong><code>nodeIntegration: false</code></strong> — the renderer gets no <code>require</code>, no <code>process</code>, no Node globals. Without this, an XSS is instant remote code execution (<code>require('child_process').exec(...)</code>). This single setting is the difference between "annoying web bug" and "the attacker owns the laptop."</li>
+<li><strong><code>contextIsolation: true</code></strong> — your preload script and Electron's internals run in a <em>separate JavaScript context</em> from the page, so page scripts can't reach in and tamper with them (e.g., overwrite a prototype to hijack your bridged functions). This is what makes <code>contextBridge</code> actually safe.</li>
+<li><strong><code>sandbox: true</code></strong> — the renderer runs in a Chromium OS-level sandbox, limiting what even native code can do if Chromium itself is exploited.</li>
+</ul>
+<p>The old <code>nodeIntegration: true</code> pattern (Node directly in the renderer) appears all over old tutorials and Stack Overflow. <strong>It is the single biggest Electron security mistake.</strong> If a guide tells you to turn it on for convenience, close the guide.</p>
+<h3 id="guard-the-preload-bridge">Guard the Preload Bridge</h3>
+<p>Part 3 said expose specific functions, not raw <code>ipcRenderer</code> — here's the security reason. If you do this:</p>
+<pre><code class="language-javascript">// ❌ DANGEROUS — exposes the entire IPC surface to page JavaScript
+contextBridge.exposeInMainWorld(&quot;ipc&quot;, ipcRenderer);
+</code></pre>
+<p>then any XSS can invoke <em>any</em> IPC channel with <em>any</em> payload — it's a skeleton key to your whole main-process API. Instead, expose minimal, purpose-built functions, and <strong>validate their arguments in main</strong> (Part 3):</p>
+<pre><code class="language-javascript">// ✅ SAFE — a narrow, named API; the renderer can't reach arbitrary channels
+contextBridge.exposeInMainWorld(&quot;api&quot;, {
+  saveNote: (note) =&gt; ipcRenderer.invoke(&quot;notes:save&quot;, note),
+});
+</code></pre>
+<p>And in the handler, treat the payload as hostile — exactly as you'd validate a request body on a web server:</p>
+<pre><code class="language-javascript">ipcMain.handle(&quot;notes:save&quot;, (event, note) =&gt; {
+  if (typeof note?.id !== &quot;string&quot; || typeof note?.body !== &quot;string&quot;) {
+    throw new Error(&quot;invalid note&quot;);          // reject malformed input
+  }
+  // never interpolate into SQL/shell/path; use prepared statements / allowlists
+  insert.run(note.id, note.body, Date.now());
+});
+</code></pre>
+<p>A particularly important version of this: <strong>never let the renderer specify a filesystem path, shell command, or URL that main acts on without validation.</strong> <code>openFile(path)</code> where <code>path</code> comes from the renderer is a directory-traversal/arbitrary-read waiting to happen. Expose intent (<code>openProjectFile(id)</code>), resolve the path <em>in main</em> from trusted state, and validate it stays within an allowed directory.</p>
+<h3 id="control-navigation-and-window-creation">Control Navigation and Window Creation</h3>
+<p>A renderer that can navigate to an attacker's page, or open one, is a renderer that can load hostile code into your privileged context. Lock both down in main:</p>
+<pre><code class="language-javascript">app.on(&quot;web-contents-created&quot;, (_e, contents) =&gt; {
+  // Block navigation away from your own app:
+  contents.on(&quot;will-navigate&quot;, (event, url) =&gt; {
+    if (!url.startsWith(&quot;file://&quot;) &amp;&amp; !url.startsWith(&quot;http://localhost:5173&quot;)) {
+      event.preventDefault();
+    }
+  });
+  // Force window.open / target=_blank links to the real browser, not a new BrowserWindow:
+  contents.setWindowOpenHandler(({ url }) =&gt; {
+    shell.openExternal(url);
+    return { action: &quot;deny&quot; };
+  });
+});
+</code></pre>
+<p>This is the enforcement behind Part 5's "external links open in the user's browser" — it's both UX and security.</p>
+<h3 id="content-security-policy">Content Security Policy</h3>
+<p>Defense-in-depth against XSS in the first place: set a strict CSP so that even if markup is injected, it can't load or execute arbitrary scripts. Deliver it as an HTTP header (best) or a meta tag:</p>
+<pre><code class="language-html">&lt;meta http-equiv=&quot;Content-Security-Policy&quot;
+      content=&quot;default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'&quot;&gt;
+</code></pre>
+<p>A tight CSP plus framework auto-escaping (Vue/React escape interpolated content by default) is your primary XSS defense — and XSS is the entry point for nearly every Electron attack, so this is high-value.</p>
+<h3 id="dont-load-untrusted-remote-content-and-if-you-must-isolate-it">Don't Load Untrusted Remote Content (and If You Must, Isolate It)</h3>
+<p>The most dangerous thing an Electron app can do is load arbitrary remote web content into a privileged renderer. If your app must show third-party web content (an embedded site, user-supplied URLs), isolate it: load it in a separate <code>WebContentsView</code> with its own locked-down session/partition, <code>sandbox: true</code>, no preload, and the navigation guards above. Never load untrusted content in a window that has your preload bridge attached.</p>
+<h3 id="keep-electron-updated-this-is-a-real-obligation">Keep Electron Updated — This Is a Real Obligation</h3>
+<p>Electron bundles Chromium and Node.js, which means <strong>you are now shipping a browser engine, and you inherit its security vulnerabilities.</strong> When Chromium patches a critical CVE (which is often), you must update Electron and ship a new build to your users, or every install is running known-vulnerable browser code. This is a genuine, ongoing maintenance burden with no web equivalent (where the browser updates itself out from under you). It's a core reason auto-updates (Part 9) aren't optional: they're how you deliver security patches. Track Electron's release cadence and treat its security releases like the production incidents they are.</p>
+<h3 id="audit-your-supply-chain">Audit Your Supply Chain</h3>
+<p>You're shipping <code>node_modules</code> to users' machines. A compromised dependency runs with your app's privileges on their computer. Apply the supply-chain discipline from server-side work: lockfiles, <code>npm audit</code>, minimal dependencies, and scrutiny of anything in the main process or preload (which have the most power). Electron's official <strong><code>@electron/fuses</code></strong> lets you flip off dangerous capabilities (like <code>runAsNode</code>) at the binary level for defense-in-depth, and the <strong>Electronegativity</strong> tool statically scans your app for misconfigurations — run it in CI.</p>
+<p>If you remember one thing from Part 7: <strong>the renderer is untrusted code with an OS-capable process next door, so keep the secure defaults on (<code>contextIsolation</code>, <code>sandbox</code>, <code>nodeIntegration: false</code>), expose only narrow validated functions through the preload, control navigation, set a strict CSP, and keep Electron updated — because you now ship the browser and own its CVEs.</strong></p>
+<hr>
+<h2 id="part-8-packaging-distribution">Part 8 — Packaging &amp; Distribution</h2>
+<p>Here is the part that genuinely shocks every web developer, and the reason desktop development has a reputation for pain. On the web, "ship it" is <code>git push</code> and a CI deploy. On the desktop, "ship it" means: produce a native installer <strong>for each operating system</strong>, <strong>cryptographically sign</strong> it so the OS will run it without scary warnings, get Apple to <strong>notarize</strong> the macOS build, host the artifacts somewhere, and wire up <strong>auto-updates</strong> (Part 9) so users actually receive your fixes. Budget for this; it's often as much work as a feature.</p>
+<h3 id="from-source-to-app-the-build-toolchain">From Source to App: The Build Toolchain</h3>
+<p>You don't assemble installers by hand. Two tools dominate:</p>
+<ul>
+<li><strong>Electron Forge</strong> — the official, all-in-one toolchain (scaffolding, dev server, native-module rebuilding, packaging, and publishing in one config). <strong>Recommended default</strong>, especially for a first app.</li>
+<li><strong>electron-builder</strong> — the most popular community tool, extremely powerful and configurable (more target formats, finer control over signing and updates). Reach for it when Forge's defaults aren't enough.</li>
+</ul>
+<p>Both turn your built main/preload/renderer bundles into platform installers. The packaging step bundles your app source into an <strong>ASAR archive</strong> — a single concatenated file (<code>app.asar</code>) that slightly speeds loading and provides mild tamper-resistance (it is <em>not</em> encryption or real security — anyone can extract an ASAR; never put secrets in your bundle).</p>
+<h3 id="per-platform-targets">Per-Platform Targets</h3>
+<p>"Cross-platform" ends at packaging — each OS has its own formats and rules:</p>
+<table>
+<thead>
+<tr>
+<th>OS</th>
+<th>Installer formats</th>
+<th>Signing requirement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Windows</strong></td>
+<td>NSIS (<code>.exe</code>), MSI, Squirrel, <code>.appx</code></td>
+<td>Authenticode code-signing cert; unsigned apps trigger SmartScreen "Unknown publisher" warnings</td>
+</tr>
+<tr>
+<td><strong>macOS</strong></td>
+<td><code>.dmg</code>, <code>.pkg</code></td>
+<td>Apple Developer ID signing <strong>+ notarization</strong> (mandatory) + hardened runtime + entitlements</td>
+</tr>
+<tr>
+<td><strong>Linux</strong></td>
+<td>AppImage, <code>.deb</code>, <code>.rpm</code>, Snap, Flatpak</td>
+<td>no OS-mandated signing (repos/Flatpak have their own)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="code-signing-the-tax-you-cannot-skip">Code Signing: The Tax You Cannot Skip</h3>
+<p>On Windows and macOS, <strong>an unsigned app is treated as malware by the OS</strong>, and your users will see frightening warnings (or be blocked outright). Signing is not optional for real distribution:</p>
+<ul>
+<li><strong>macOS</strong> is the strictest. You need an Apple Developer account ($99/yr). You sign with a <strong>Developer ID</strong> certificate, enable the <strong>hardened runtime</strong> with the right <strong>entitlements</strong>, then submit the build to Apple for <strong>notarization</strong> (an automated malware scan via <code>notarytool</code>) and <strong>staple</strong> the result. Without notarization, Gatekeeper refuses to launch your app on a normal user's Mac. This pipeline is fiddly and is the #1 source of "it works on my machine but won't open on theirs."</li>
+<li><strong>Windows</strong> needs an Authenticode certificate. A standard cert still accumulates SmartScreen warnings until your app builds "reputation"; an <strong>EV (Extended Validation) certificate</strong> (pricier, often on a hardware token or cloud HSM) grants instant SmartScreen trust. Signing cleanly in CI with a token-based cert is its own minor saga (cloud signing services like Azure Trusted Signing help).</li>
+<li><strong>Linux</strong>, refreshingly for you, has <strong>no OS-level signing mandate</strong> — AppImage just runs, and <code>.deb</code>/<code>.rpm</code>/Flatpak rely on repository or Flatpak signing instead. Given your Linux background, Linux distribution will feel the most natural of the three.</li>
+</ul>
+<p><strong>Opinion:</strong> code signing is the single most painful part of Electron (and of <em>all</em> desktop distribution — it's not Electron's fault), and it's worth setting up <em>early</em>, not at release crunch. The certificates, the macOS notarization dance, and CI signing all take longer than you expect.</p>
+<h3 id="linux-distribution-your-home-turf">Linux Distribution (Your Home Turf)</h3>
+<p>Since this is your comfort zone, the practical lay of the land:</p>
+<ul>
+<li><strong>AppImage</strong> — a single self-contained executable that runs on most distros with no install step. The easiest "download and run" option; great default for direct distribution.</li>
+<li><strong><code>.deb</code> / <code>.rpm</code></strong> — native packages for Debian/Ubuntu and Fedora/RHEL families, installable via <code>apt</code>/<code>dnf</code>. Best when you'll host an apt/yum repo.</li>
+<li><strong>Flatpak</strong> and <strong>Snap</strong> — sandboxed, store-distributed formats (Flathub, Snap Store) with their own permission models and auto-update built in. Flatpak is the more community-favored; Snap is Canonical's. Both add a sandbox layer that can complicate filesystem access (your <code>app.getPath</code> usage must respect the sandbox's portals).</li>
+</ul>
+<p>Forge/electron-builder produce all of these from one config.</p>
+<h3 id="building-on-ci-the-real-answer-to-cross-compilation">Building on CI (The Real Answer to Cross-Compilation)</h3>
+<p>You generally <strong>cannot fully cross-compile</strong> — macOS builds must be signed and notarized on macOS, and signing tooling is platform-specific. The professional answer is a <strong>CI matrix</strong> that builds each target on its native OS runner. This is exactly what the <a href="github-actions-study-guide.html">GitHub Actions guide</a> is for:</p>
+<pre><code class="language-yaml"># .github/workflows/release.yml (sketch — see the GitHub Actions guide for depth)
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: npm ci
+      - run: npm run make             # Forge: build + package the native installer
+        env:                          # signing secrets injected per-OS
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PW }}
+          CSC_LINK: ${{ secrets.WINDOWS_CERT }}
+      - uses: actions/upload-artifact@v4
+        with: { name: ${{ matrix.os }}, path: out/make/** }
+</code></pre>
+<p>Three native runners, three sets of signing secrets, three installer formats — assembled into a release. Store signing certificates as encrypted CI secrets (the <a href="github-actions-study-guide.html">GitHub Actions guide</a>'s security section covers handling these safely).</p>
+<p>If you remember one thing from Part 8: <strong>shipping is the hard part of desktop dev — use Electron Forge to build per-OS installers, accept that code signing (and macOS notarization) is a mandatory, fiddly tax on Windows and macOS, lean on your Linux comfort for AppImage/deb/Flatpak, and build everything on a native-OS CI matrix.</strong></p>
+<hr>
+<h2 id="part-9-auto-updates-performance">Part 9 — Auto-Updates &amp; Performance</h2>
+<p>Two final operational concerns that distinguish a hobby build from a shippable product: getting fixes onto users' machines after they've installed (auto-updates), and keeping a Chromium-based app from being a resource hog (performance).</p>
+<h3 id="auto-updates-the-desktop-deploy">Auto-Updates: The Desktop "Deploy"</h3>
+<p>On the web, every user gets your latest code on the next page load. On the desktop, <strong>users run whatever version they installed until something updates it</strong> — and "something" is your job. Without auto-updates, your bug fixes and <em>security patches</em> (Part 7) never reach the people running old versions. This is not a nice-to-have; it's how you stay patched.</p>
+<p>The standard mechanism is <strong><code>electron-updater</code></strong> (from electron-builder; more flexible than the built-in <code>autoUpdater</code>). It checks an update server, downloads new signed builds in the background, and installs on restart:</p>
+<pre><code class="language-javascript">// main process
+import { autoUpdater } from &quot;electron-updater&quot;;
+
+app.whenReady().then(() =&gt; {
+  autoUpdater.checkForUpdatesAndNotify();     // check on launch; notify when ready
+});
+
+autoUpdater.on(&quot;update-downloaded&quot;, () =&gt; {
+  // Prompt the user, then: autoUpdater.quitAndInstall();
+});
+</code></pre>
+<p>The pieces:</p>
+<ul>
+<li><strong>An update feed/server.</strong> The easiest is <strong>GitHub Releases</strong> (electron-updater reads release artifacts directly) — publish your signed installers there and clients find them. Alternatives: an S3 bucket, a generic HTTP server, or hosted services (<code>update.electronjs.org</code> for open-source apps).</li>
+<li><strong>Signed updates.</strong> Updates must be signed with the same identity as the installed app, or the OS/updater rejects them — this prevents an attacker from pushing a malicious "update." Your Part 8 signing setup feeds directly into this.</li>
+<li><strong>Staged rollouts and channels.</strong> For real products: release to a small percentage first, watch for crashes, then ramp — and offer beta/stable channels. The <a href="distributed-systems-study-guide.html">Distributed Systems guide</a>'s canary-deploy thinking applies, except you can't roll back an update that's already installed on a laptop, so <em>staged</em> rollout matters even more.</li>
+</ul>
+<p>Platform notes: macOS auto-update <em>requires</em> the app to be signed (unsigned apps can't auto-update at all); Linux auto-update works for AppImage but Flatpak/Snap update through their stores instead.</p>
+<h3 id="performance-the-honest-accounting">Performance: The Honest Accounting</h3>
+<p>Electron's reputation for being heavy is <em>earned</em>, and pretending otherwise helps no one. The baseline costs:</p>
+<ul>
+<li><strong>Disk:</strong> each app bundles its own Chromium + Node — roughly <strong>100–150 MB</strong> installed, before your code. (This is the core of the Tauri comparison, Part 10.)</li>
+<li><strong>Memory:</strong> a baseline of <strong>~100+ MB RAM</strong> for one window, more per additional window/process. Several Electron apps open at once is why your laptop's RAM evaporates.</li>
+</ul>
+<p>You can't eliminate these (they're the price of bundling a browser), but you can avoid making them worse, and you can keep the app <em>feeling</em> fast — which matters more to users than raw numbers.</p>
+<h3 id="dont-block-the-main-process">Don't Block the Main Process</h3>
+<p>This is the performance rule that matters most, and it's the same one from every async guide in this repo, with higher stakes. <strong>The main process controls every window.</strong> If you do heavy synchronous work there — parse a huge file, run a big computation, a synchronous DB migration — <em>every window freezes</em>, because the process that manages them is busy. It's the <a href="advanced-nodejs-study-guide.html">event-loop-blocking</a> sin from the Node guide, except the blast radius is your entire UI.</p>
+<p>Offload heavy work off the main process:</p>
+<pre><code class="language-javascript">import { utilityProcess } from &quot;electron&quot;;
+
+// utilityProcess: Electron's blessed way to spawn a Node child process for heavy work.
+// It runs off the main process, so a long computation won't freeze any window.
+const child = utilityProcess.fork(path.join(import.meta.dirname, &quot;heavy-worker.js&quot;));
+child.postMessage({ task: &quot;reindex&quot;, data });
+child.on(&quot;message&quot;, (result) =&gt; win.webContents.send(&quot;reindex:done&quot;, result));
+</code></pre>
+<p>Options, in order of preference: a <strong><code>utilityProcess</code></strong> (Electron's managed child process for background work), <strong><code>worker_threads</code></strong> (from the Node guide — for CPU work in the main process's neighborhood), or offloading to the renderer's <strong>Web Workers</strong> for UI-side computation. The principle is identical across all of them and across this whole repo: <em>keep the thread that handles events free to handle events.</em></p>
+<h3 id="other-performance-levers">Other Performance Levers</h3>
+<ul>
+<li><strong>Startup time:</strong> lazy-load heavy modules (don't <code>import</code> everything at top of main), use <code>ready-to-show</code> to avoid a white flash (Part 2), and consider <strong>V8 snapshots</strong> for faster cold start. Show a window fast, fill it progressively.</li>
+<li><strong>Memory:</strong> prefer one window with in-app views over many <code>BrowserWindow</code>s (each is a full process). Destroy windows/views you're done with. Watch for the usual JS leaks (the <a href="advanced-nodejs-study-guide.html">Advanced Node.js guide</a> Part 7 — listeners, caches, closures) in <em>both</em> main and renderer.</li>
+<li><strong>Renderer perf is web perf</strong> — your existing skills. Profile with Chrome DevTools' Performance panel; it's the same tooling you use for websites.</li>
+<li><strong>Measure both sides:</strong> renderer via DevTools (built in); main via <code>node --inspect</code> semantics (<code>win.webContents</code> aside, launch with <code>--inspect</code> and attach Chrome/VS Code to the main process).</li>
+</ul>
+<p>If you remember one thing from Part 9: <strong>auto-updates are how you ship fixes and security patches to machines you don't control — wire up <code>electron-updater</code> against GitHub Releases with signed builds and staged rollouts — and the top performance rule is the familiar one: never block the main process, because it owns every window, so offload heavy work to a <code>utilityProcess</code> or worker.</strong></p>
+<h2 id="part-10-alternatives-a-build-walkthrough">Part 10 — Alternatives &amp; a Build Walkthrough</h2>
+<p>You should never reach for a tool without knowing when <em>not</em> to. This closing part is the opinionated comparison — Electron versus the realistic alternatives — followed by an end-to-end walkthrough that ties the whole guide together.</p>
+<h3 id="electron-vs-tauri">Electron vs. Tauri</h3>
+<p><strong>Tauri</strong> is the alternative you should care about most, both because it's the strongest competitor and because it's built in Rust — the language you're learning. The core difference: where Electron <em>bundles</em> Chromium, Tauri uses the <strong>operating system's built-in webview</strong> (WebView2/Chromium on Windows, WebKitGTK on Linux, WKWebView on macOS) and a Rust backend instead of Node.js.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Electron</strong></th>
+<th><strong>Tauri</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rendering engine</td>
+<td>bundled Chromium (consistent everywhere)</td>
+<td>OS webview (<strong>varies by platform</strong>)</td>
+</tr>
+<tr>
+<td>Backend language</td>
+<td>Node.js</td>
+<td><strong>Rust</strong></td>
+</tr>
+<tr>
+<td>App size</td>
+<td>~100–150 MB</td>
+<td><strong>~3–10 MB</strong></td>
+</tr>
+<tr>
+<td>Baseline memory</td>
+<td>~100+ MB</td>
+<td>significantly lower</td>
+</tr>
+<tr>
+<td>Rendering consistency</td>
+<td><strong>identical on all OSes</strong></td>
+<td><strong>differs per OS</strong> (the cross-browser problem returns)</td>
+</tr>
+<tr>
+<td>Ecosystem / maturity</td>
+<td><strong>huge, battle-tested</strong></td>
+<td>younger, growing fast</td>
+</tr>
+<tr>
+<td>Security defaults</td>
+<td>safe (if you don't disable them)</td>
+<td><strong>stricter by default</strong>, smaller attack surface</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The trade is rendering consistency for footprint.</strong> Tauri apps are dramatically smaller and lighter because they don't ship a browser — but they render on <em>whatever webview the OS provides</em>, so you're back to fighting per-engine differences (a WebKitGTK quirk on Linux that doesn't reproduce on Windows' Chromium-based WebView2). It's the exact cross-browser-compatibility problem Electron eliminates.</p>
+<p><strong>Opinion:</strong> for <em>your</em> situation — a web developer learning GUI development — <strong>start with Electron.</strong> Consistent rendering means you debug your app, not three webview engines, and the Node.js backend is a language you already know while you're still learning Rust. Once you're fluent in both desktop development <em>and</em> Rust, Tauri becomes very attractive for shipping — its size and memory wins are real and large, and its security model is excellent. Many teams prototype in Electron and consider Tauri once the footprint matters. (Tauri is on this repo's <a href="topics.html">TOPICS</a> backlog precisely because of the Rust adjacency.)</p>
+<h3 id="electron-vs-qt-vs-native-vs-the-web">Electron vs. Qt vs. Native vs. the Web</h3>
+<p>The rest of the landscape, briefly and honestly:</p>
+<ul>
+<li><strong>Qt</strong> (the <a href="qt-study-guide.html">Qt guide</a>) — <strong>native widgets</strong>, C++ or Python (PyQt/PySide). True native look and performance, tiny footprint, deep platform integration. But you write the UI in Qt's widget-and-layout model, which is a <em>whole new UI paradigm</em> for a web developer — no HTML/CSS, no DOM, no Vue. For your background, Qt is a much steeper climb than Electron, justified when you need native performance/feel or are in a C++/Python-native shop. If your <em>Python</em> skills dominate and you want lighter-weight, PySide is worth a look.</li>
+<li><strong>Native</strong> (Swift/SwiftUI on macOS, WinUI/C# on Windows, GTK on Linux) — the best possible look, feel, and performance on each platform, and the only real choice for deep OS integration — but it's <strong>one codebase per platform</strong>, and none of them reuse your web skills. Right for platform-exclusive flagship apps, wrong for cross-platform with a small team.</li>
+<li><strong>Flutter Desktop / .NET MAUI</strong> — single-codebase cross-platform with their own UI frameworks (Dart/C#). Viable, but again a new UI paradigm, and desktop is a secondary target for both.</li>
+<li><strong>Just ship a web app / PWA</strong> — the question to always ask first. If your app doesn't <em>need</em> the filesystem, native menus, tray, offline-first local data, or OS integration, <strong>it might not need to be a desktop app at all.</strong> A PWA installs to the dock/taskbar, works offline, and costs you none of the packaging/signing/update pain of Parts 7–9. Don't take on desktop distribution unless the native capabilities earn it.</li>
+</ul>
+<h3 id="when-to-use-electron-the-decision">When to Use Electron (the Decision)</h3>
+<p><strong>Reach for Electron when:</strong> you have web skills or an existing web codebase to reuse; you need true cross-platform with <em>consistent</em> rendering; your UI is rich/custom (where web's styling power shines); and the ~150 MB / ~100 MB-RAM footprint is acceptable for your users (desktop-class machines, not embedded). The marquee apps — VS Code, Slack, Discord, Figma, Obsidian, Notion, 1Password — chose it for exactly these reasons.</p>
+<p><strong>Don't reach for Electron when:</strong> footprint is critical (resource-constrained machines, or you ship many small utilities) → <strong>Tauri</strong>; you need maximum native performance/feel or deep OS integration → <strong>native or Qt</strong>; the app is simple and could be a web app/PWA → <strong>just ship the web app</strong>; or you need a single tiny CLI-adjacent tool → desktop GUI may be overkill entirely.</p>
+<h3 id="end-to-end-walkthrough">End-to-End Walkthrough</h3>
+<p>Tying it together — from nothing to a shippable Linux app, with the concepts from each part labeled:</p>
+<pre><code class="language-bash"># 1. Scaffold (Part 4) — Forge + Vite + TypeScript, three build targets wired up
+npm init electron-app@latest notes-app -- --template=vite-typescript
+cd notes-app
+npm install better-sqlite3 electron-updater          # local DB (Part 6), updates (Part 9)
+npx @electron/rebuild                                 # rebuild native module for Electron ABI (Part 6)
+</code></pre>
+<p><strong>2. The main process</strong> (Part 2) creates a secure window (Part 7), sets up the database (Part 6), and registers IPC handlers (Part 3):</p>
+<pre><code class="language-javascript">// src/main.ts
+import { app, BrowserWindow, ipcMain } from &quot;electron&quot;;
+import Database from &quot;better-sqlite3&quot;;
+import path from &quot;node:path&quot;;
+
+const db = new Database(path.join(app.getPath(&quot;userData&quot;), &quot;notes.db&quot;));   // Part 6
+db.exec(&quot;CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY, body TEXT, ts INTEGER)&quot;);
+const save = db.prepare(&quot;INSERT OR REPLACE INTO notes VALUES (?, ?, ?)&quot;);
+const list = db.prepare(&quot;SELECT * FROM notes ORDER BY ts DESC&quot;);
+
+ipcMain.handle(&quot;notes:save&quot;, (_e, note) =&gt; {                              // Part 3
+  if (typeof note?.id !== &quot;string&quot; || typeof note?.body !== &quot;string&quot;)     // Part 7: validate
+    throw new Error(&quot;invalid note&quot;);
+  save.run(note.id, note.body, Date.now());
+  return { ok: true };
+});
+ipcMain.handle(&quot;notes:list&quot;, () =&gt; list.all());
+
+function createWindow() {
+  const win = new BrowserWindow({
+    width: 1000, height: 700, show: false,
+    webPreferences: {                                                      // Part 7: secure defaults
+      preload: path.join(import.meta.dirname, &quot;preload.js&quot;),
+      contextIsolation: true, nodeIntegration: false, sandbox: true,
+    },
+  });
+  win.once(&quot;ready-to-show&quot;, () =&gt; win.show());                            // Part 2 / Part 9
+  win.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL ?? `file://${__dirname}/index.html`);  // Part 4
+}
+
+app.whenReady().then(createWindow);
+app.on(&quot;window-all-closed&quot;, () =&gt; { if (process.platform !== &quot;darwin&quot;) app.quit(); });  // Part 2
+</code></pre>
+<p><strong>3. The preload bridge</strong> (Part 3) exposes a narrow, validated API (Part 7):</p>
+<pre><code class="language-javascript">// src/preload.ts
+import { contextBridge, ipcRenderer } from &quot;electron&quot;;
+contextBridge.exposeInMainWorld(&quot;api&quot;, {
+  saveNote: (note: { id: string; body: string }) =&gt; ipcRenderer.invoke(&quot;notes:save&quot;, note),
+  listNotes: () =&gt; ipcRenderer.invoke(&quot;notes:list&quot;),
+});
+</code></pre>
+<p><strong>4. The renderer</strong> (Part 4) — your Vue app, calling the bridge like any async API:</p>
+<pre><code class="language-javascript">// src/renderer — inside a Vue component
+const notes = ref(await window.api.listNotes());
+async function add(body: string) {
+  await window.api.saveNote({ id: crypto.randomUUID(), body });
+  notes.value = await window.api.listNotes();
+}
+</code></pre>
+<p><strong>5. Package for Linux</strong> (Part 8) — your home turf:</p>
+<pre><code class="language-bash">npm run make -- --targets=@electron-forge/maker-deb,@electron-forge/maker-appimage
+# produces a .deb and an AppImage in out/make/
+</code></pre>
+<p><strong>6. Ship with updates</strong> (Part 9): add <code>electron-updater</code> pointed at GitHub Releases, build the Windows/macOS targets on a CI matrix (Part 8) with signing secrets, and <code>autoUpdater.checkForUpdatesAndNotify()</code> on launch.</p>
+<p>That's a complete, secure, locally-persistent, auto-updating desktop app — built almost entirely from skills you already had, plus the desktop-specific layer this guide added.</p>
+<h3 id="the-closing-take">The Closing Take</h3>
+<p>Desktop GUI development feels intimidating from the outside, but for a web and backend engineer the intimidation is misplaced. The <em>UI</em> is web (you know it), the <em>privileged layer</em> is Node (you know it), and the <em>boundary</em> between them is a client-server API (you know it). What's genuinely new is a contained, learnable set: the multi-process lifecycle, native OS integration, the heightened security model, and — the real work — packaging, signing, and shipping software to machines you don't control. Electron is the right framework to learn all of that on, precisely because it lets you spend your effort on what's new instead of relearning how to build a UI.</p>
+<p>That's the guide. From here the highest-leverage next step is to build the walkthrough app above for real, ship the Linux AppImage to yourself, and feel the one thing no guide can convey: the difference between <code>git push</code> and watching a signed installer land on a machine you'll never see again. Once you've shipped one, the model is yours — and Tauri, Qt, and native are all just variations on the architecture you now understand.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

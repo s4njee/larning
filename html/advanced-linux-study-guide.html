@@ -1,0 +1,2561 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Advanced Linux.">
+<title>Advanced Linux - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#e48152; --accent2:#dfbb4e; --accent-weak:rgba(228,129,82,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#e48152; --accent2:#dfbb4e; --accent-weak:rgba(228,129,82,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">A</span><span>Advanced Linux</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-the-scheduler" data-target="part-1-the-scheduler">Part 1 — The Scheduler</a></li><li class="toc-l3"><a href="#scheduling-classes" data-target="scheduling-classes">Scheduling Classes</a></li><li class="toc-l3"><a href="#cfs-completely-fair-scheduler" data-target="cfs-completely-fair-scheduler">CFS (Completely Fair Scheduler)</a></li><li class="toc-l3"><a href="#eevdf-earliest-eligible-virtual-deadline-first" data-target="eevdf-earliest-eligible-virtual-deadline-first">EEVDF (Earliest Eligible Virtual Deadline First)</a></li><li class="toc-l3"><a href="#cpu-affinity-and-isolation" data-target="cpu-affinity-and-isolation">CPU Affinity and Isolation</a></li><li class="toc-l3"><a href="#cfs-bandwidth-control-how-k8s-cpu-limits-work" data-target="cfs-bandwidth-control-how-k8s-cpu-limits-work">CFS Bandwidth Control (How K8s CPU Limits Work)</a></li><li class="toc-l3"><a href="#the-scheduler-and-numa" data-target="the-scheduler-and-numa">The Scheduler and NUMA</a></li><li class="toc-l2"><a href="#part-2-memory-management" data-target="part-2-memory-management">Part 2 — Memory Management</a></li><li class="toc-l3"><a href="#virtual-memory-and-page-tables" data-target="virtual-memory-and-page-tables">Virtual Memory and Page Tables</a></li><li class="toc-l3"><a href="#demand-paging-and-copy-on-write" data-target="demand-paging-and-copy-on-write">Demand Paging and Copy-on-Write</a></li><li class="toc-l3"><a href="#huge-pages" data-target="huge-pages">Huge Pages</a></li><li class="toc-l3"><a href="#the-page-cache" data-target="the-page-cache">The Page Cache</a></li><li class="toc-l3"><a href="#memory-reclaim-and-swappiness" data-target="memory-reclaim-and-swappiness">Memory Reclaim and Swappiness</a></li><li class="toc-l3"><a href="#the-oom-killer-in-depth" data-target="the-oom-killer-in-depth">The OOM Killer in Depth</a></li><li class="toc-l3"><a href="#cgroups-v2-memory-controller" data-target="cgroups-v2-memory-controller">cgroups v2 Memory Controller</a></li><li class="toc-l3"><a href="#psi-pressure-stall-information" data-target="psi-pressure-stall-information">PSI (Pressure Stall Information)</a></li><li class="toc-l3"><a href="#numa-memory-policy" data-target="numa-memory-policy">NUMA Memory Policy</a></li><li class="toc-l2"><a href="#part-3-the-io-stack" data-target="part-3-the-io-stack">Part 3 — The I/O Stack</a></li><li class="toc-l3"><a href="#the-io-path" data-target="the-io-path">The I/O Path</a></li><li class="toc-l3"><a href="#buffered-vs-direct-io" data-target="buffered-vs-direct-io">Buffered vs. Direct I/O</a></li><li class="toc-l3"><a href="#durability-fsync-fdatasync-and-barriers" data-target="durability-fsync-fdatasync-and-barriers">Durability: fsync, fdatasync, and Barriers</a></li><li class="toc-l3"><a href="#io-schedulers" data-target="io-schedulers">I/O Schedulers</a></li><li class="toc-l3"><a href="#io_uring-the-modern-io-interface" data-target="io_uring-the-modern-io-interface">io_uring: The Modern I/O Interface</a></li><li class="toc-l3"><a href="#readahead" data-target="readahead">Readahead</a></li><li class="toc-l3"><a href="#writeback" data-target="writeback">Writeback</a></li><li class="toc-l3"><a href="#benchmarking-io-with-fio" data-target="benchmarking-io-with-fio">Benchmarking I/O with fio</a></li><li class="toc-l2"><a href="#part-4-advanced-networking" data-target="part-4-advanced-networking">Part 4 — Advanced Networking</a></li><li class="toc-l3"><a href="#the-network-processing-pipeline" data-target="the-network-processing-pipeline">The Network Processing Pipeline</a></li><li class="toc-l3"><a href="#nftables-the-modern-firewall" data-target="nftables-the-modern-firewall">nftables: The Modern Firewall</a></li><li class="toc-l3"><a href="#tcp-tuning" data-target="tcp-tuning">TCP Tuning</a></li><li class="toc-l3"><a href="#ipvs-ip-virtual-server" data-target="ipvs-ip-virtual-server">IPVS (IP Virtual Server)</a></li><li class="toc-l3"><a href="#traffic-control-tc" data-target="traffic-control-tc">Traffic Control (tc)</a></li><li class="toc-l3"><a href="#conntrack-connection-tracking" data-target="conntrack-connection-tracking">Conntrack (Connection Tracking)</a></li><li class="toc-l3"><a href="#unix-domain-sockets" data-target="unix-domain-sockets">Unix Domain Sockets</a></li><li class="toc-l2"><a href="#part-5-ebpf" data-target="part-5-ebpf">Part 5 — eBPF</a></li><li class="toc-l3"><a href="#what-ebpf-is" data-target="what-ebpf-is">What eBPF Is</a></li><li class="toc-l3"><a href="#the-verifier" data-target="the-verifier">The Verifier</a></li><li class="toc-l3"><a href="#ebpf-maps" data-target="ebpf-maps">eBPF Maps</a></li><li class="toc-l3"><a href="#ebpf-program-types" data-target="ebpf-program-types">eBPF Program Types</a></li><li class="toc-l3"><a href="#xdp-express-data-path" data-target="xdp-express-data-path">XDP (eXpress Data Path)</a></li><li class="toc-l3"><a href="#bpftrace-the-high-level-tool" data-target="bpftrace-the-high-level-tool">bpftrace: The High-Level Tool</a></li><li class="toc-l3"><a href="#bcc-tools-the-pre-built-toolkit" data-target="bcc-tools-the-pre-built-toolkit">BCC Tools: The Pre-Built Toolkit</a></li><li class="toc-l3"><a href="#co-re-compile-once-run-everywhere" data-target="co-re-compile-once-run-everywhere">CO-RE (Compile Once, Run Everywhere)</a></li><li class="toc-l3"><a href="#libbpf-the-production-library" data-target="libbpf-the-production-library">libbpf: The Production Library</a></li><li class="toc-l3"><a href="#ebpf-in-production-2026" data-target="ebpf-in-production-2026">eBPF in Production (2026)</a></li><li class="toc-l2"><a href="#part-6-performance-analysis" data-target="part-6-performance-analysis">Part 6 — Performance Analysis</a></li><li class="toc-l3"><a href="#the-use-method" data-target="the-use-method">The USE Method</a></li><li class="toc-l3"><a href="#the-red-method-for-services" data-target="the-red-method-for-services">The RED Method (for Services)</a></li><li class="toc-l3"><a href="#perf-the-swiss-army-knife" data-target="perf-the-swiss-army-knife">perf: The Swiss Army Knife</a></li><li class="toc-l3"><a href="#flame-graphs" data-target="flame-graphs">Flame Graphs</a></li><li class="toc-l3"><a href="#ftrace-kernel-function-tracing" data-target="ftrace-kernel-function-tracing">ftrace: Kernel Function Tracing</a></li><li class="toc-l3"><a href="#advanced-diagnostic-patterns" data-target="advanced-diagnostic-patterns">Advanced Diagnostic Patterns</a></li><li class="toc-l3"><a href="#the-performance-analysis-workflow" data-target="the-performance-analysis-workflow">The Performance Analysis Workflow</a></li><li class="toc-l2"><a href="#part-7-security-hardening" data-target="part-7-security-hardening">Part 7 — Security Hardening</a></li><li class="toc-l3"><a href="#mandatory-access-control-selinux-and-apparmor" data-target="mandatory-access-control-selinux-and-apparmor">Mandatory Access Control: SELinux and AppArmor</a></li><li class="toc-l3"><a href="#seccomp-bpf-syscall-filtering" data-target="seccomp-bpf-syscall-filtering">seccomp-bpf: Syscall Filtering</a></li><li class="toc-l3"><a href="#the-audit-framework" data-target="the-audit-framework">The Audit Framework</a></li><li class="toc-l3"><a href="#ssh-hardening" data-target="ssh-hardening">SSH Hardening</a></li><li class="toc-l3"><a href="#pam-pluggable-authentication-modules" data-target="pam-pluggable-authentication-modules">PAM (Pluggable Authentication Modules)</a></li><li class="toc-l3"><a href="#systemd-sandboxing-full-reference" data-target="systemd-sandboxing-full-reference">systemd Sandboxing (Full Reference)</a></li><li class="toc-l3"><a href="#kernel-hardening" data-target="kernel-hardening">Kernel Hardening</a></li><li class="toc-l2"><a href="#part-8-advanced-filesystems-storage" data-target="part-8-advanced-filesystems-storage">Part 8 — Advanced Filesystems &amp; Storage</a></li><li class="toc-l3"><a href="#filesystem-comparison" data-target="filesystem-comparison">Filesystem Comparison</a></li><li class="toc-l3"><a href="#filesystem-tuning" data-target="filesystem-tuning">Filesystem Tuning</a></li><li class="toc-l3"><a href="#lvm-logical-volume-manager" data-target="lvm-logical-volume-manager">LVM (Logical Volume Manager)</a></li><li class="toc-l3"><a href="#luks-encryption" data-target="luks-encryption">LUKS Encryption</a></li><li class="toc-l3"><a href="#raid-with-mdadm" data-target="raid-with-mdadm">RAID with mdadm</a></li><li class="toc-l3"><a href="#posix-acls" data-target="posix-acls">POSIX ACLs</a></li><li class="toc-l3"><a href="#overlayfs-how-docker-images-work" data-target="overlayfs-how-docker-images-work">OverlayFS (How Docker Images Work)</a></li><li class="toc-l3"><a href="#mount-propagation" data-target="mount-propagation">Mount Propagation</a></li><li class="toc-l3"><a href="#bind-mounts" data-target="bind-mounts">Bind Mounts</a></li><li class="toc-l2"><a href="#part-9-kernel-tuning" data-target="part-9-kernel-tuning">Part 9 — Kernel Tuning</a></li><li class="toc-l3"><a href="#sysctl-the-tuning-interface" data-target="sysctl-the-tuning-interface">sysctl: The Tuning Interface</a></li><li class="toc-l3"><a href="#network-parameters-that-matter" data-target="network-parameters-that-matter">Network Parameters That Matter</a></li><li class="toc-l3"><a href="#memory-parameters-that-matter" data-target="memory-parameters-that-matter">Memory Parameters That Matter</a></li><li class="toc-l3"><a href="#file-and-process-parameters" data-target="file-and-process-parameters">File and Process Parameters</a></li><li class="toc-l3"><a href="#kernel-command-line-parameters" data-target="kernel-command-line-parameters">Kernel Command Line Parameters</a></li><li class="toc-l3"><a href="#dkms-dynamic-kernel-module-support" data-target="dkms-dynamic-kernel-module-support">DKMS (Dynamic Kernel Module Support)</a></li><li class="toc-l2"><a href="#part-10-the-boot-process" data-target="part-10-the-boot-process">Part 10 — The Boot Process</a></li><li class="toc-l3"><a href="#the-full-sequence" data-target="the-full-sequence">The Full Sequence</a></li><li class="toc-l3"><a href="#uefi-vs-bios" data-target="uefi-vs-bios">UEFI vs. BIOS</a></li><li class="toc-l3"><a href="#grub2" data-target="grub2">GRUB2</a></li><li class="toc-l3"><a href="#initramfs-the-bridge-to-the-real-root" data-target="initramfs-the-bridge-to-the-real-root">initramfs: The Bridge to the Real Root</a></li><li class="toc-l3"><a href="#systemd-boot-orchestration" data-target="systemd-boot-orchestration">systemd Boot Orchestration</a></li><li class="toc-l3"><a href="#systemd-targets-runlevels" data-target="systemd-targets-runlevels">systemd Targets (Runlevels)</a></li><li class="toc-l3"><a href="#rescue-and-recovery" data-target="rescue-and-recovery">Rescue and Recovery</a></li></ul></nav></aside>
+  <main><h1 id="advanced-linux">Advanced Linux</h1>
+<p>A depth-first guide to the tunable, observable, optimizable internals of Linux — the scheduler, memory management, the I/O stack, advanced networking, eBPF, performance analysis, security hardening, and the boot process — for engineers who understand the fundamentals (processes, file descriptors, signals, namespaces, cgroups) and want to go deeper into why their production systems behave the way they do. This is the companion to the <a href="linux-fundamentals-study-guide.html">Linux Fundamentals guide</a>, which covers the substrate; this guide covers what you tune, trace, and harden on top of it.</p>
+<p>Assumes you've read (or could read) the fundamentals guide — you understand fork/exec, file descriptors and epoll, signals and graceful shutdown, permissions and capabilities, systemd units, namespaces and cgroups, and basic diagnostic tools (ps, top, strace, ss). This guide won't repeat those; it builds on them.</p>
+<p>Primary references: Brendan Gregg's <a href="https://www.brendangregg.com/systems-performance-2nd-edition-book.html">Systems Performance</a> and <a href="https://www.brendangregg.com/bpf-performance-tools-book.html">BPF Performance Tools</a>, the <a href="https://www.kernel.org/doc/html/latest/">kernel documentation</a>, Michael Kerrisk's <a href="https://man7.org/tlpi/">The Linux Programming Interface</a>, and the man pages (always <code>man 2</code> for syscalls, <code>man 7</code> for overviews).</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1--the-scheduler">Part 1 — The Scheduler</a></li>
+<li><a href="#part-2--memory-management">Part 2 — Memory Management</a></li>
+<li><a href="#part-3--the-io-stack">Part 3 — The I/O Stack</a></li>
+<li><a href="#part-4--advanced-networking">Part 4 — Advanced Networking</a></li>
+<li><a href="#part-5--ebpf">Part 5 — eBPF</a></li>
+<li><a href="#part-6--performance-analysis">Part 6 — Performance Analysis</a></li>
+<li><a href="#part-7--security-hardening">Part 7 — Security Hardening</a></li>
+<li><a href="#part-8--advanced-filesystems--storage">Part 8 — Advanced Filesystems &amp; Storage</a></li>
+<li><a href="#part-9--kernel-tuning">Part 9 — Kernel Tuning</a></li>
+<li><a href="#part-10--the-boot-process">Part 10 — The Boot Process</a></li>
+</ol>
+<hr>
+<h2 id="part-1-the-scheduler">Part 1 — The Scheduler</h2>
+<p>The fundamentals guide said "a process is in the run queue or it's sleeping." This part explains what the run queue actually is, how the kernel decides which task runs next, and why your container's CPU limit causes throttling — not denial.</p>
+<h3 id="scheduling-classes">Scheduling Classes</h3>
+<p>The Linux scheduler isn't a single algorithm — it's a hierarchy of <strong>scheduling classes</strong>, each implementing a different policy. The scheduler checks them in priority order and runs the highest-priority runnable task:</p>
+<table>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Class</th>
+<th>Policy</th>
+<th>Used By</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Highest</td>
+<td><strong>Stop</strong></td>
+<td>—</td>
+<td>kernel internal (migration, watchdog)</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>Deadline</strong></td>
+<td><code>SCHED_DEADLINE</code></td>
+<td>real-time tasks with explicit deadlines (audio, robotics)</td>
+</tr>
+<tr>
+<td></td>
+<td><strong>Real-time</strong></td>
+<td><code>SCHED_FIFO</code>, <code>SCHED_RR</code></td>
+<td>latency-sensitive tasks that must preempt everything else</td>
+</tr>
+<tr>
+<td>Lowest</td>
+<td><strong>Fair</strong></td>
+<td><code>SCHED_OTHER</code> (CFS/EEVDF)</td>
+<td><strong>everything else</strong> — 99.9% of your workloads</td>
+</tr>
+</tbody>
+</table>
+<p>Almost every process you care about runs in the <strong>fair</strong> class. Real-time and deadline scheduling exist for specialized use cases (audio processing, industrial control) and can starve the entire system if misconfigured — which is why they require <code>CAP_SYS_NICE</code> or root.</p>
+<h3 id="cfs-completely-fair-scheduler">CFS (Completely Fair Scheduler)</h3>
+<p>CFS has been the default fair scheduler since kernel 2.6.23 (2007). Its design principle: <strong>give every task its fair share of CPU time, weighted by priority (nice value).</strong></p>
+<p>CFS doesn't use time slices in the traditional sense. Instead, it tracks how much CPU time each task has consumed (<strong>virtual runtime</strong>, <code>vruntime</code>) and always picks the task with the <strong>lowest vruntime</strong> — the task that has been treated most unfairly. Tasks that have used less CPU get picked sooner; tasks that have used more get delayed.</p>
+<pre><code class="language-text">vruntime is tracked per-task:
+
+  Task A: vruntime = 100ms   ← has used the most CPU, runs last
+  Task B: vruntime = 80ms
+  Task C: vruntime = 50ms    ← has used the least CPU, runs next
+
+The scheduler picks C, runs it, C's vruntime increases.
+Eventually C's vruntime exceeds B's, so B runs next.
+This naturally converges to fair sharing.
+</code></pre>
+<p>CFS stores runnable tasks in a <strong>red-black tree</strong> (a self-balancing BST) ordered by vruntime. Picking the next task is O(1) (the leftmost node is cached). Adding/removing tasks is O(log n). For most workloads this is fast enough, but it matters at extreme scale — systems with thousands of runnable tasks per CPU.</p>
+<p><strong>Nice values</strong> adjust the weight. Nice ranges from -20 (highest priority, more CPU share) to +19 (lowest priority, less CPU share). Default is 0. Each nice level roughly corresponds to a 10% change in CPU share:</p>
+<pre><code class="language-bash">nice -n 10 ./batch-job          # run with reduced priority
+renice -n -5 -p 12345           # increase priority of a running process
+</code></pre>
+<p><code>nice</code> only affects scheduling within the fair class — it doesn't make a process real-time.</p>
+<h3 id="eevdf-earliest-eligible-virtual-deadline-first">EEVDF (Earliest Eligible Virtual Deadline First)</h3>
+<p>Kernel 6.6 (October 2023) replaced CFS with <strong>EEVDF</strong> as the default fair scheduler. EEVDF adds a <strong>virtual deadline</strong> to each task: <code>deadline = eligible_time + (slice / weight)</code>. The scheduler picks the eligible task with the earliest virtual deadline.</p>
+<p>The practical difference from CFS:</p>
+<ul>
+<li><strong>Better latency fairness.</strong> CFS could starve short-running tasks when long-running tasks monopolized the leftmost position in the tree. EEVDF's deadline mechanism ensures latency-sensitive tasks (interactive, I/O-bound) get scheduled promptly even alongside CPU hogs.</li>
+<li><strong>The <code>sched_ext</code> hook.</strong> EEVDF is the foundation for <code>sched_ext</code> (kernel 6.12+), which lets you write <strong>custom schedulers in eBPF</strong> — loaded and replaced at runtime without recompiling the kernel. This is the most exciting scheduler development in years: Google, Meta, and game developers are using it for workload-specific scheduling.</li>
+<li><strong>Mostly transparent.</strong> For typical server workloads, you won't notice the difference. EEVDF is a better CFS, not a different paradigm.</li>
+</ul>
+<pre><code class="language-bash"># check your kernel's scheduler
+uname -r                         # kernel version (6.6+ = EEVDF)
+cat /proc/sched_debug | head     # scheduler debug info
+</code></pre>
+<h3 id="cpu-affinity-and-isolation">CPU Affinity and Isolation</h3>
+<p><strong>CPU affinity</strong> pins a process to specific CPU cores:</p>
+<pre><code class="language-bash">taskset -c 0,1 ./myapp           # run on cores 0 and 1 only
+taskset -cp 2-5 12345            # change a running process to cores 2-5
+</code></pre>
+<p>Why pin? <strong>Cache locality.</strong> When a process migrates between cores, its L1/L2 cache is cold on the new core — a migration penalty of microseconds to milliseconds. For latency-sensitive workloads (trading systems, game servers), pinning avoids this.</p>
+<p><strong><code>isolcpus</code></strong> reserves CPU cores exclusively for specific workloads by removing them from the general scheduler. The kernel won't schedule any task on isolated CPUs unless explicitly placed there:</p>
+<pre><code class="language-bash"># kernel command line (GRUB)
+isolcpus=4-7                     # cores 4-7 are isolated
+
+# then pin your latency-sensitive app to isolated cores
+taskset -c 4-7 ./low-latency-app
+</code></pre>
+<p>This is the gold standard for latency-sensitive workloads: isolated CPUs have zero contention from other tasks, no scheduler interrupts, no cache pollution.</p>
+<h3 id="cfs-bandwidth-control-how-k8s-cpu-limits-work">CFS Bandwidth Control (How K8s CPU Limits Work)</h3>
+<p>The fundamentals guide mentioned that <code>--cpus 2</code> in Docker maps to a cgroup CPU limit. Here's exactly how it works:</p>
+<p>CFS bandwidth control enforces a <strong>quota</strong> of CPU time per <strong>period</strong>:</p>
+<pre><code class="language-text">quota = allowed CPU microseconds per period
+period = 100,000 µs (100ms) by default
+
+--cpus 2  →  quota = 200,000 µs / period = 100,000 µs
+           = the process can use 200ms of CPU per 100ms wall clock
+           = effectively 2 full cores
+</code></pre>
+<p>When a cgroup exhausts its quota within a period, all tasks in that cgroup are <strong>throttled</strong> — the scheduler won't run them until the next period starts. This shows up as:</p>
+<pre><code class="language-bash"># check throttling (cgroups v1)
+cat /sys/fs/cgroup/cpu/docker/&lt;container-id&gt;/cpu.stat
+# nr_periods 1000      ← total periods
+# nr_throttled 150     ← periods where throttling occurred (15%!)
+# throttled_time 45000000000  ← total nanoseconds spent throttled
+</code></pre>
+<p><strong>This is the #1 production CPU performance issue in Kubernetes.</strong> A container with CPU limits set will be throttled even if the node has idle CPUs. CPU <em>requests</em> affect scheduling (which node the pod lands on), but CPU <em>limits</em> enforce hard throttling. Many production teams set CPU requests but deliberately omit CPU limits for this reason (the "burstable" QoS class).</p>
+<pre><code class="language-bash"># cgroups v2 (modern systems)
+cat /sys/fs/cgroup/&lt;path&gt;/cpu.max
+# 200000 100000        ← quota period (200ms per 100ms = 2 CPUs)
+# max 100000           ← &quot;max&quot; means no limit
+
+cat /sys/fs/cgroup/&lt;path&gt;/cpu.stat
+# usage_usec, throttled_usec, nr_throttled, etc.
+</code></pre>
+<h3 id="the-scheduler-and-numa">The Scheduler and NUMA</h3>
+<p>On multi-socket servers (and increasingly on modern CPUs with chiplet architectures like AMD EPYC), not all memory is equally fast to access. <strong>NUMA (Non-Uniform Memory Access)</strong> means each CPU socket has local memory (fast) and remote memory (slower — typically 1.5-2× latency).</p>
+<p>The scheduler is NUMA-aware: it tries to keep tasks running near their memory allocations. But migration between NUMA nodes is expensive — not just cache cold, but also remote memory access for all existing allocations.</p>
+<pre><code class="language-bash">numactl --hardware               # show NUMA topology
+numactl --cpunodebind=0 --membind=0 ./myapp   # pin to NUMA node 0
+lscpu | grep NUMA                # quick topology overview
+numastat                         # NUMA memory allocation statistics
+</code></pre>
+<p>For database servers and JVM workloads, NUMA misalignment (the process runs on node 0 but its memory is on node 1) can cause a 10-30% performance degradation — a problem that looks like "slow queries" but is actually memory latency.</p>
+<p>If you remember one thing from Part 1: <strong>the scheduler picks the task with the lowest virtual runtime (CFS) or earliest virtual deadline (EEVDF), nice values adjust the weight, and Kubernetes CPU limits work by throttling tasks when they exhaust their CFS bandwidth quota — which is why CPU-limited containers are slow even on idle nodes. Check <code>cpu.stat</code> for <code>nr_throttled</code>.</strong></p>
+<hr>
+<h2 id="part-2-memory-management">Part 2 — Memory Management</h2>
+<p>The fundamentals guide covered the OOM killer and cgroup memory limits. This part goes into how Linux manages physical memory, virtual memory, the page cache, and what all those numbers in <code>/proc/meminfo</code> actually mean.</p>
+<h3 id="virtual-memory-and-page-tables">Virtual Memory and Page Tables</h3>
+<p>Every process sees its own <strong>virtual address space</strong> — a flat range of addresses (0 to 2^47 on x86-64, 128 TB) that the CPU's <strong>MMU (Memory Management Unit)</strong> translates to physical addresses using <strong>page tables</strong>. The unit of translation is a <strong>page</strong> — 4 KB by default on x86-64.</p>
+<pre><code class="language-text">Virtual Address Space (per process)        Physical Memory (shared)
+┌──────────────────────┐                   ┌──────────────────────┐
+│ Stack                │─────┐             │ Page frame 0         │
+│                      │     │             │ Page frame 1  ←──────│── Process A's code
+│ (grows down)         │     │             │ Page frame 2  ←──────│── Process B's code
+│                      │     │             │ Page frame 3  ←──────│── Page cache (file data)
+│ [unmapped gap]       │     │             │ Page frame 4         │
+│                      │     └────────────▶│ Page frame 5         │
+│ Heap (grows up)      │──────────────────▶│ Page frame 6         │
+│                      │                   │ ...                  │
+│ BSS, Data, Code      │──────────────────▶│ Page frame N         │
+└──────────────────────┘                   └──────────────────────┘
+</code></pre>
+<p>The translation uses a <strong>multi-level page table</strong> (4 levels on x86-64: PGD → PUD → PMD → PTE). Walking the page table on every memory access would be prohibitively slow, so the CPU caches recent translations in the <strong>TLB (Translation Lookaside Buffer)</strong>. TLB misses are expensive (10-100 cycles) and are a real performance concern for memory-intensive workloads.</p>
+<h3 id="demand-paging-and-copy-on-write">Demand Paging and Copy-on-Write</h3>
+<p>When a process allocates memory (<code>malloc</code>, <code>mmap</code>), the kernel doesn't immediately allocate physical pages. It creates a virtual mapping and marks it as <strong>not present</strong>. Only when the process actually <em>accesses</em> the address does the CPU fault, and the kernel allocates a physical page (<strong>demand paging</strong>). This is why a process can <code>malloc(1GB)</code> and show 1 GB of virtual memory but near-zero resident memory — no physical pages are allocated until they're touched.</p>
+<pre><code class="language-bash"># a process's virtual vs. resident memory
+ps aux | grep myapp
+# VSZ (virtual) = 1,048,576 KB (1 GB allocated)
+# RSS (resident) = 256,000 KB (250 MB actually in physical memory)
+</code></pre>
+<p><strong>Copy-on-write (COW):</strong> when <code>fork()</code> creates a child, the kernel doesn't copy the parent's memory. It marks all pages as read-only in both parent and child, pointing to the same physical frames. Only when either process <em>writes</em> to a page does the kernel copy it — the write triggers a page fault, the kernel allocates a new frame, copies the data, and updates the page table. This makes <code>fork()</code> cheap regardless of process size, and is why Redis's background save (<code>BGSAVE</code>) can fork a multi-GB process almost instantly.</p>
+<h3 id="huge-pages">Huge Pages</h3>
+<p>The default 4 KB page size means a 1 GB working set needs 262,144 page table entries. The TLB can only cache a few thousand entries, so large working sets cause constant TLB misses.</p>
+<p><strong>Huge pages</strong> use larger page sizes — 2 MB or 1 GB on x86-64 — reducing the number of TLB entries needed by 512× or 262,144×:</p>
+<pre><code class="language-bash"># check current huge page configuration
+cat /proc/meminfo | grep Huge
+# HugePages_Total:       0
+# HugePages_Free:        0
+# Hugepagesize:       2048 kB
+</code></pre>
+<p><strong>Transparent Huge Pages (THP):</strong> the kernel automatically promotes regular 4 KB pages to 2 MB huge pages when it detects large contiguous allocations. Enabled by default on most distros:</p>
+<pre><code class="language-bash">cat /sys/kernel/mm/transparent_hugepage/enabled
+# [always] madvise never
+</code></pre>
+<p><strong>The THP controversy:</strong> THP works well for large, stable allocations (databases, JVMs) but can cause <strong>latency spikes</strong> due to background compaction (the kernel shuffling pages to create contiguous 2 MB blocks) and increased memory waste (a partial 2 MB page wastes more than a partial 4 KB page). Many database operators disable THP:</p>
+<pre><code class="language-bash"># Redis, MongoDB, and others recommend disabling THP
+echo never &gt; /sys/kernel/mm/transparent_hugepage/enabled
+</code></pre>
+<p><strong>Explicit huge pages</strong> (<code>hugetlbfs</code>) pre-allocate huge pages at boot time. No compaction needed, no latency spikes, but you must specify the count upfront. Used by databases and DPDK (network-intensive applications):</p>
+<pre><code class="language-bash"># allocate 1024 × 2MB huge pages (2 GB)
+echo 1024 &gt; /proc/sys/vm/nr_hugepages
+</code></pre>
+<h3 id="the-page-cache">The Page Cache</h3>
+<p>The <strong>page cache</strong> is one of Linux's most important performance features — and one of the most misunderstood. The kernel uses <strong>all available free memory</strong> as a cache for file data. When you read a file, the data is kept in memory. When you read it again, it's served from the page cache — no disk I/O.</p>
+<pre><code class="language-bash">free -h
+#               total        used        free      shared  buff/cache   available
+# Mem:           32Gi        12Gi       1.2Gi       256Mi        18Gi        19Gi
+</code></pre>
+<p>The <code>buff/cache</code> column (18 GB in this example) is mostly page cache. <code>available</code> (19 GB) is what's actually available to new processes — the kernel will reclaim page cache as needed. <strong>A system with 1 GB "free" and 18 GB in cache is healthy, not low on memory.</strong> The cache is reclaimable.</p>
+<p>This is the source of the classic confusion: "my server has no free memory!" when <code>free</code> shows 1 GB free but 18 GB in cache. The memory isn't "used" in the sense that it's unavailable — it's in use as a performance optimization that the kernel will give up under memory pressure.</p>
+<pre><code class="language-bash"># drop the page cache (diagnostic only — don't do this in production)
+echo 3 &gt; /proc/sys/vm/drop_caches
+
+# see per-file cache usage
+vmtouch /var/lib/postgresql/data/base/*     # shows how much of each file is cached
+fincore /path/to/file                       # newer tool, shows cached pages per file
+</code></pre>
+<h3 id="memory-reclaim-and-swappiness">Memory Reclaim and Swappiness</h3>
+<p>When memory pressure increases (new allocations need pages), the kernel's <strong>memory reclaim</strong> system decides what to evict. It has two pools to reclaim from:</p>
+<ol>
+<li><strong>Page cache</strong> — file-backed pages that can be evicted and re-read from disk.</li>
+<li><strong>Anonymous pages</strong> — heap, stack, mmap'd private data. These can only be reclaimed by swapping to disk (swap space).</li>
+</ol>
+<p><code>vm.swappiness</code> (0–200, default 60) controls the <strong>balance</strong> between reclaiming page cache and swapping anonymous pages:</p>
+<pre><code class="language-bash">cat /proc/sys/vm/swappiness
+# 60 (default)
+
+# swappiness=0:   strongly prefer reclaiming page cache, avoid swap
+# swappiness=60:  balanced (default)
+# swappiness=100: treat page cache and anonymous pages equally
+# swappiness=200: strongly prefer swapping (unusual)
+</code></pre>
+<p><strong>Common tuning:</strong>
+- <strong>Databases</strong> (<code>swappiness=1</code> or <code>swappiness=10</code>): databases manage their own buffer pools and page cache is critical for performance. Swapping database pages to disk is catastrophic for latency — a single swap-in can add 10ms+ to a query.
+- <strong>Container hosts</strong> (<code>swappiness=60</code>, default): balanced is usually fine. Kubernetes memory limits use cgroup memory controllers, which enforce limits per-pod.
+- <strong>Swap-off</strong> is common in Kubernetes clusters (kubelet historically required <code>swapoff</code>, though swap support with cgroup v2 has been added in recent versions).</p>
+<h3 id="the-oom-killer-in-depth">The OOM Killer in Depth</h3>
+<p>When the system (or a cgroup) is truly out of memory — all page cache is reclaimed, all swap is used — the <strong>OOM killer</strong> selects and kills a process. The selection uses an <strong>OOM score</strong> (0–1000):</p>
+<pre><code class="language-bash">cat /proc/[pid]/oom_score       # current OOM score (higher = more likely to be killed)
+cat /proc/[pid]/oom_score_adj   # adjustment (-1000 to +1000)
+
+# protect a critical process from OOM killing
+echo -1000 &gt; /proc/[pid]/oom_score_adj  # effectively OOM-immune
+
+# make a process a preferred OOM target
+echo 1000 &gt; /proc/[pid]/oom_score_adj
+</code></pre>
+<p>The OOM score is based on the proportion of memory the process uses, adjusted by <code>oom_score_adj</code>. Kubernetes sets <code>oom_score_adj</code> based on QoS class:
+- <strong>Guaranteed</strong> pods (requests == limits): <code>oom_score_adj = -997</code> (almost immune)
+- <strong>Burstable</strong> pods: adjusted based on memory request ratio
+- <strong>BestEffort</strong> pods (no requests/limits): <code>oom_score_adj = 1000</code> (killed first)</p>
+<h3 id="cgroups-v2-memory-controller">cgroups v2 Memory Controller</h3>
+<p>The fundamentals guide covered <code>memory.max</code> (hard limit → OOM kill). cgroups v2 has a richer interface:</p>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>memory.max</code></td>
+<td>Hard limit. Exceeding → OOM kill. This is K8s <code>limits.memory</code>.</td>
+</tr>
+<tr>
+<td><code>memory.high</code></td>
+<td>Soft limit. Exceeding → throttled (reclaim pressure applied, slowing the process). K8s doesn't expose this directly, but it's the more production-friendly limit.</td>
+</tr>
+<tr>
+<td><code>memory.low</code></td>
+<td>Best-effort protection. Memory below this threshold is protected from reclaim.</td>
+</tr>
+<tr>
+<td><code>memory.min</code></td>
+<td>Hard protection. Memory below this threshold is never reclaimed.</td>
+</tr>
+<tr>
+<td><code>memory.current</code></td>
+<td>Current usage.</td>
+</tr>
+<tr>
+<td><code>memory.stat</code></td>
+<td>Detailed breakdown: anon, file, slab, shmem, etc.</td>
+</tr>
+<tr>
+<td><code>memory.pressure</code></td>
+<td>PSI (Pressure Stall Information) — how much time tasks are stalled waiting for memory.</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>memory.high</code> throttling (introduced in cgroups v2) is often better than <code>memory.max</code> OOM killing for production workloads — it slows the process down instead of killing it, giving the application time to adapt (GC, release caches). However, Kubernetes doesn't yet expose a native way to set <code>memory.high</code> independently.</p>
+<h3 id="psi-pressure-stall-information">PSI (Pressure Stall Information)</h3>
+<p>PSI (kernel 4.20+) quantifies resource pressure — how much time processes spend stalled waiting for CPU, memory, or I/O:</p>
+<pre><code class="language-bash">cat /proc/pressure/memory
+# some avg10=0.00 avg60=0.00 avg300=0.00 total=0
+# full avg10=0.00 avg60=0.00 avg300=0.00 total=0
+
+cat /proc/pressure/cpu
+# some avg10=5.23 avg60=3.10 avg300=2.45 total=123456789
+
+cat /proc/pressure/io
+# some avg10=0.50 avg60=0.30 avg300=0.20 total=987654321
+# full avg10=0.10 avg60=0.05 avg300=0.03 total=123456789
+</code></pre>
+<ul>
+<li><strong><code>some</code></strong>: percentage of time <em>at least one task</em> is stalled waiting for the resource.</li>
+<li><strong><code>full</code></strong>: percentage of time <em>all tasks</em> are stalled (the system is completely blocked).</li>
+</ul>
+<p>PSI is the modern way to detect resource pressure before it becomes a crisis. <code>cgroup.controllers</code> exposes per-cgroup PSI (<code>memory.pressure</code>, <code>cpu.pressure</code>, <code>io.pressure</code>), and systemd can trigger actions based on PSI thresholds (<code>MemoryPressureWatch=</code> in unit files).</p>
+<h3 id="numa-memory-policy">NUMA Memory Policy</h3>
+<p>On NUMA systems, memory allocation policy determines where physical pages are allocated:</p>
+<pre><code class="language-bash">numactl --interleave=all ./myapp     # spread allocations across all nodes (good for throughput)
+numactl --membind=0 ./myapp          # all allocations on node 0 (good for latency with pinned CPU)
+numactl --preferred=0 ./myapp        # prefer node 0, fall back to others
+</code></pre>
+<p><code>numastat -p [pid]</code> shows per-node allocation breakdown for a running process. <code>numastat -m</code> shows per-node memory statistics. A high "Other Node" hit count in <code>numastat</code> indicates cross-node access — a performance problem.</p>
+<p>If you remember one thing from Part 2: <strong>Linux uses all free memory as page cache (so "no free memory" usually means "great caching, not a problem" — check <code>available</code> instead of <code>free</code>), swappiness controls the balance between evicting cache and swapping, and the OOM killer's behavior in containers is controlled by cgroup memory limits (<code>memory.max</code> for hard kill, <code>memory.high</code> for graceful throttling) — and Kubernetes sets <code>oom_score_adj</code> by QoS class to decide which pod dies first.</strong></p>
+<hr>
+<h2 id="part-3-the-io-stack">Part 3 — The I/O Stack</h2>
+<p>The I/O path from your application's <code>write()</code> call to bits on the storage device is a deep stack of layers, each with tunable behavior. Understanding it explains why <code>fsync</code> is slow, why <code>io_uring</code> is fast, and how to diagnose I/O bottlenecks.</p>
+<h3 id="the-io-path">The I/O Path</h3>
+<pre><code class="language-text">Application
+    │
+    ▼
+ VFS (Virtual File System)         ← file-system-agnostic layer
+    │
+    ▼
+ Filesystem (ext4, xfs, btrfs)    ← translates files to blocks
+    │
+    ▼
+ Page Cache                        ← buffered I/O lives here
+    │
+    ▼
+ Block Layer                       ← I/O scheduling, merging, plugging
+    │
+    ▼
+ Device Driver (NVMe, SCSI, etc.)  ← talks to hardware
+    │
+    ▼
+ Storage Device (SSD, HDD, NVMe)
+</code></pre>
+<h3 id="buffered-vs-direct-io">Buffered vs. Direct I/O</h3>
+<p><strong>Buffered I/O</strong> (the default): reads and writes go through the <strong>page cache</strong>.
+- <code>write()</code> copies data to the page cache and returns immediately. The kernel writes it to disk later ("writeback"). Fast from the application's perspective.
+- <code>read()</code> checks the page cache first. Cache hit = no disk I/O. Cache miss = read from disk, populate cache.
+- Trade-off: data isn't durable until the kernel writes it back. Crash between <code>write()</code> and writeback = data loss.</p>
+<p><strong>Direct I/O</strong> (<code>O_DIRECT</code>): bypasses the page cache entirely. Data goes directly between the application's buffer and the storage device.
+- Used by databases (PostgreSQL, MySQL, RocksDB) that manage their own buffer pool and don't want the kernel double-caching their data.
+- Requires page-aligned buffers and page-aligned offsets.
+- Eliminates cache pollution for large sequential scans.</p>
+<pre><code class="language-c">int fd = open(&quot;/path/to/file&quot;, O_RDWR | O_DIRECT);
+// reads and writes bypass the page cache
+</code></pre>
+<h3 id="durability-fsync-fdatasync-and-barriers">Durability: fsync, fdatasync, and Barriers</h3>
+<p>The critical question for data integrity: <strong>when is my data actually on the storage device?</strong></p>
+<table>
+<thead>
+<tr>
+<th>Call</th>
+<th>Guarantee</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>write()</code></td>
+<td>Data is in the page cache. Survives process crash, NOT system crash.</td>
+</tr>
+<tr>
+<td><code>fsync(fd)</code></td>
+<td>Data AND metadata (size, timestamps) are on the storage device. Survives system crash. <strong>Expensive</strong> — waits for device to acknowledge write.</td>
+</tr>
+<tr>
+<td><code>fdatasync(fd)</code></td>
+<td>Data is on device. Metadata only if it affects retrieval (e.g., file size changed). Slightly cheaper than <code>fsync</code>.</td>
+</tr>
+<tr>
+<td><code>sync()</code></td>
+<td>Flushes ALL dirty pages for all files. Nuclear option.</td>
+</tr>
+<tr>
+<td><code>O_SYNC</code></td>
+<td>Every <code>write()</code> is implicitly <code>fsync</code>'d. Very expensive.</td>
+</tr>
+<tr>
+<td><code>O_DSYNC</code></td>
+<td>Every <code>write()</code> is implicitly <code>fdatasync</code>'d.</td>
+</tr>
+</tbody>
+</table>
+<p>Databases call <code>fdatasync</code> after every WAL (write-ahead log) write to guarantee durability. This is the single most latency-sensitive syscall in a database workload — and why NVMe drives (with ~20 µs fsync latency) transformed database performance versus SATA SSDs (~100-500 µs) and HDDs (~5-15 ms).</p>
+<h3 id="io-schedulers">I/O Schedulers</h3>
+<p>The block layer's I/O scheduler reorders and merges I/O requests before sending them to the device:</p>
+<table>
+<thead>
+<tr>
+<th>Scheduler</th>
+<th>How it works</th>
+<th>Best for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>none</strong></td>
+<td>No reordering — FIFO. Let the device sort it out.</td>
+<td>NVMe SSDs (which have their own sophisticated queue management)</td>
+</tr>
+<tr>
+<td><strong>mq-deadline</strong></td>
+<td>Ensures reads and writes complete within a deadline. Prevents starvation.</td>
+<td>General-purpose, HDDs, SATA SSDs</td>
+</tr>
+<tr>
+<td><strong>bfq</strong> (Budget Fair Queueing)</td>
+<td>Fair bandwidth sharing between processes, with prioritization.</td>
+<td>Desktop, interactive workloads</td>
+</tr>
+<tr>
+<td><strong>kyber</strong></td>
+<td>Lightweight token-based scheduler for fast devices.</td>
+<td>Fast SSDs that need minimal scheduling</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-bash"># check current scheduler
+cat /sys/block/sda/queue/scheduler
+# [mq-deadline] kyber bfq none
+
+# change scheduler (runtime)
+echo none &gt; /sys/block/nvme0n1/queue/scheduler
+</code></pre>
+<p>Modern NVMe drives have internal parallelism and their own scheduling — adding a software scheduler on top adds latency for no benefit. Use <code>none</code> for NVMe.</p>
+<h3 id="io_uring-the-modern-io-interface">io_uring: The Modern I/O Interface</h3>
+<p><code>io_uring</code> (kernel 5.1+, mature by 6.x) is the biggest I/O development of the last decade. It replaces the aging <code>read</code>/<code>write</code>/<code>pread</code>/<code>pwrite</code>/<code>aio</code> interfaces with a high-performance asynchronous I/O mechanism.</p>
+<p>The core idea: <strong>two shared-memory ring buffers</strong> between userspace and the kernel — a <strong>submission queue (SQ)</strong> and a <strong>completion queue (CQ)</strong>. The application pushes I/O requests to the SQ; the kernel processes them and pushes completions to the CQ. No system call overhead per I/O operation.</p>
+<pre><code class="language-text">User Space                          Kernel
+┌──────────────────┐               ┌──────────────────┐
+│ Submit I/O       │──── SQ Ring ──▶│ Process I/O      │
+│ operations       │               │ (async)          │
+│                  │◀── CQ Ring ───│ Return results   │
+│ Poll completions │               │                  │
+└──────────────────┘               └──────────────────┘
+
+Key: the rings are shared memory — no copying, no syscalls per I/O.
+io_uring_enter() can submit a batch AND poll completions in one syscall.
+With SQPOLL, even that syscall is eliminated — a kernel thread polls the SQ.
+</code></pre>
+<p><strong>Why io_uring is fast:</strong>
+1. <strong>Batched submission and completion</strong> — amortize syscall overhead across many I/O operations.
+2. <strong>Zero-copy</strong> — shared memory rings, no data copying between user/kernel for metadata.
+3. <strong>Kernel-side polling (SQPOLL)</strong> — a dedicated kernel thread polls the SQ, eliminating syscalls entirely for submission.
+4. <strong>Fixed buffers and files</strong> — register buffers and file descriptors once, reference them by index (avoids repeated kernel lookups).</p>
+<p><strong>io_uring supports more than disk I/O:</strong>
+- Network I/O (accept, connect, send, recv)
+- File operations (open, close, stat, rename)
+- Timers, cancellation, linked operations</p>
+<p>This makes io_uring a potential replacement for <code>epoll</code> as a general-purpose event loop — and frameworks like Rust's Tokio (via io_uring backend) and new C/C++ servers are adopting it.</p>
+<pre><code class="language-bash"># check io_uring support
+cat /proc/sys/kernel/io_uring_disabled
+# 0 = enabled (default)
+# 1 = disabled for unprivileged users
+# 2 = disabled for all
+</code></pre>
+<p><strong>Security note:</strong> io_uring's broad kernel interface has been a source of security vulnerabilities. Some organizations (Google, internally) have disabled it for unprivileged users. Container runtimes may restrict it via seccomp profiles.</p>
+<h3 id="readahead">Readahead</h3>
+<p>The kernel performs <strong>readahead</strong> — predicting that if you're reading sequentially, you'll want the <em>next</em> blocks too, and pre-fetching them into the page cache before you ask for them. This is why sequential reads are fast (the data is already in cache by the time you need it).</p>
+<pre><code class="language-bash"># check/set readahead (in 512-byte sectors)
+blockdev --getra /dev/sda          # default is typically 256 (128 KB)
+blockdev --setra 2048 /dev/sda     # set to 1 MB (good for sequential workloads)
+</code></pre>
+<p>For databases doing mostly random I/O, reducing readahead can save memory (no wasted prefetching). For streaming workloads (video, backups, large file copies), increasing it improves throughput.</p>
+<h3 id="writeback">Writeback</h3>
+<p>When you <code>write()</code> to a file (buffered I/O), the kernel marks the page as <strong>dirty</strong> and returns immediately. Background kernel threads (<code>kworker/flush</code>) write dirty pages to disk periodically:</p>
+<pre><code class="language-bash"># dirty page thresholds
+cat /proc/sys/vm/dirty_ratio
+# 20  (% of total memory — if dirty pages exceed this, processes block on write())
+
+cat /proc/sys/vm/dirty_background_ratio
+# 10  (% — background writeback starts when dirty pages exceed this)
+
+cat /proc/sys/vm/dirty_expire_centisecs
+# 3000  (30 seconds — dirty pages older than this are written back)
+
+cat /proc/sys/vm/dirty_writeback_centisecs
+# 500  (5 seconds — how often the writeback thread wakes up)
+</code></pre>
+<p>Tuning these affects the trade-off between write throughput (batch more dirty pages = fewer I/O operations) and data-at-risk (more dirty pages = more data lost on crash).</p>
+<h3 id="benchmarking-io-with-fio">Benchmarking I/O with fio</h3>
+<p><code>fio</code> (Flexible I/O Tester) is the standard tool for I/O benchmarking:</p>
+<pre><code class="language-bash"># sequential read throughput
+fio --name=seqread --rw=read --bs=1M --size=1G --numjobs=1 --runtime=30 --time_based
+
+# random read IOPS (the database-relevant benchmark)
+fio --name=randread --rw=randread --bs=4k --size=1G --numjobs=4 --iodepth=32 --runtime=30 --time_based
+
+# random write latency
+fio --name=randwrite --rw=randwrite --bs=4k --size=1G --numjobs=1 --iodepth=1 --fsync=1 --runtime=30 --time_based
+
+# io_uring engine
+fio --name=io_uring_test --ioengine=io_uring --rw=randread --bs=4k --size=1G --iodepth=64 --runtime=30 --time_based
+</code></pre>
+<p>Key metrics: <strong>IOPS</strong> (operations/sec — matters for databases), <strong>throughput</strong> (MB/s — matters for sequential workloads), <strong>latency</strong> (especially p99 — matters for everything).</p>
+<p>The <code>--fsync=1</code> flag makes fio call fsync after every write — the realistic scenario for databases. Without it, writes land in the page cache and look impossibly fast.</p>
+<p>If you remember one thing from Part 3: <strong><code>write()</code> only goes to the page cache — data isn't durable until <code>fsync</code>/<code>fdatasync</code>, use <code>none</code> scheduler for NVMe, and io_uring is the modern high-performance I/O interface that eliminates per-operation syscall overhead through shared-memory ring buffers — and it's increasingly used for networking too, not just disk.</strong></p>
+<hr>
+<h2 id="part-4-advanced-networking">Part 4 — Advanced Networking</h2>
+<p>The fundamentals guide covered interfaces, veth pairs, bridges, and iptables. This part goes deeper into the mechanisms that power production networking — traffic control, TCP tuning, nftables, IPVS, and the kernel's network processing pipeline.</p>
+<h3 id="the-network-processing-pipeline">The Network Processing Pipeline</h3>
+<p>When a packet arrives at a network interface, it traverses a complex kernel pipeline:</p>
+<pre><code class="language-text">NIC hardware → Driver → GRO → XDP (eBPF hook) → Netfilter/nftables
+    → Routing decision → Local delivery or Forwarding
+    → Transport (TCP/UDP) → Socket buffer → Application read()
+</code></pre>
+<p>Each stage is a hook point where you can inspect, modify, or drop packets. Understanding this pipeline is how you reason about where to place your firewall rules, traffic shaping, and eBPF programs for maximum efficiency.</p>
+<p><strong>GRO (Generic Receive Offload):</strong> the driver coalesces small packets into larger ones before passing them up the stack, reducing per-packet processing overhead. This is why a busy network interface doesn't show millions of tiny packets — GRO batches them.</p>
+<p><strong>NAPI (New API):</strong> instead of firing an interrupt per packet (expensive at high rates), NAPI switches to polling mode during high traffic — the kernel polls the NIC for batches of packets. This prevents interrupt storms on busy servers.</p>
+<h3 id="nftables-the-modern-firewall">nftables: The Modern Firewall</h3>
+<p>nftables replaced iptables starting with kernel 3.13 and is the default on modern distros. It provides a unified framework for packet filtering, NAT, and traffic classification:</p>
+<pre><code class="language-bash"># list all rules
+nft list ruleset
+
+# create a basic firewall
+nft add table inet filter
+nft add chain inet filter input { type filter hook input priority 0 \; policy drop \; }
+nft add rule inet filter input ct state established,related accept
+nft add rule inet filter input iifname &quot;lo&quot; accept
+nft add rule inet filter input tcp dport { 22, 80, 443 } accept
+nft add rule inet filter input counter drop
+</code></pre>
+<p><strong>Advantages over iptables:</strong>
+- <strong>Single tool</strong> for IPv4, IPv6, ARP, and bridging (iptables needed separate tools: <code>iptables</code>, <code>ip6tables</code>, <code>ebtables</code>, <code>arptables</code>).
+- <strong>Better performance</strong> — a single rule can match multiple values (sets, maps, concatenations) instead of one rule per value.
+- <strong>Atomic rule updates</strong> — replace entire rulesets atomically (iptables restores are not atomic).
+- <strong>First-class sets and maps</strong> — <code>nft add set inet filter allowed_ips { type ipv4_addr \; }</code> creates a set you can add/remove elements from without touching rules.</p>
+<p>iptables still works (via a compatibility layer) but new deployments should use nftables.</p>
+<h3 id="tcp-tuning">TCP Tuning</h3>
+<p>TCP performance on Linux is largely controlled by buffer sizes and congestion control. The defaults are reasonable for LAN traffic but often suboptimal for high-bandwidth or high-latency networks.</p>
+<p><strong>Buffer sizes:</strong></p>
+<pre><code class="language-bash"># TCP receive buffer (min, default, max)
+cat /proc/sys/net/ipv4/tcp_rmem
+# 4096  131072  6291456   (4KB min, 128KB default, 6MB max)
+
+# TCP send buffer
+cat /proc/sys/net/ipv4/tcp_wmem
+# 4096  16384   4194304   (4KB min, 16KB default, 4MB max)
+
+# for high-bandwidth links (10+ Gbps), increase the max:
+sysctl -w net.ipv4.tcp_rmem=&quot;4096 131072 16777216&quot;   # 16MB max receive
+sysctl -w net.ipv4.tcp_wmem=&quot;4096 65536 16777216&quot;    # 16MB max send
+sysctl -w net.core.rmem_max=16777216
+sysctl -w net.core.wmem_max=16777216
+</code></pre>
+<p><strong>Congestion control:</strong></p>
+<pre><code class="language-bash"># available algorithms
+cat /proc/sys/net/ipv4/tcp_available_congestion_control
+# reno cubic bbr
+
+# current default
+cat /proc/sys/net/ipv4/tcp_congestion_control
+# cubic (the default since kernel 2.6.19)
+
+# switch to BBR (Google's congestion control — better for WAN/internet traffic)
+sysctl -w net.ipv4.tcp_congestion_control=bbr
+sysctl -w net.core.default_qdisc=fq   # BBR requires the fq qdisc
+</code></pre>
+<p><strong>BBR (Bottleneck Bandwidth and Round-trip propagation time)</strong> is a model-based congestion control algorithm developed by Google. Unlike Cubic (which reacts to packet loss), BBR probes for available bandwidth and minimum RTT, achieving better throughput on lossy networks (internet, WAN links) and faster convergence. BBR v3 (kernel 6.x+) fixes fairness issues from BBR v1.</p>
+<p><strong><code>SO_REUSEPORT</code>:</strong></p>
+<pre><code class="language-c">int opt = 1;
+setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &amp;opt, sizeof(opt));
+</code></pre>
+<p>Allows multiple processes/threads to bind to the same port. The kernel distributes incoming connections across the listeners using a hash. This is how Nginx and Envoy achieve per-CPU accept() parallelism — each worker binds to the same port, and the kernel load-balances at the socket level. Without <code>SO_REUSEPORT</code>, only one process can accept() at a time (the thundering-herd problem).</p>
+<h3 id="ipvs-ip-virtual-server">IPVS (IP Virtual Server)</h3>
+<p>IPVS is a transport-layer (L4) load balancer built into the Linux kernel. It's an alternative to iptables-based load balancing for Kubernetes Services:</p>
+<pre><code class="language-bash"># Kubernetes kube-proxy in IPVS mode
+ipvsadm -Ln
+# TCP  10.96.0.1:443 rr
+#   -&gt; 10.244.0.5:6443    Masq    1      0          0
+#   -&gt; 10.244.1.3:6443    Masq    1      0          0
+</code></pre>
+<p><strong>IPVS vs. iptables for Kubernetes Services:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>iptables</th>
+<th>IPVS</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Performance</strong></td>
+<td>O(n) rule traversal per packet</td>
+<td>O(1) hash lookup</td>
+</tr>
+<tr>
+<td><strong>Scale</strong></td>
+<td>degrades badly above ~5,000 Services</td>
+<td>handles 10,000+ Services</td>
+</tr>
+<tr>
+<td><strong>Algorithms</strong></td>
+<td>random (probabilistic DNAT rules)</td>
+<td>rr, wrr, lc, wlc, sh, sed, nq</td>
+</tr>
+<tr>
+<td><strong>Connection tracking</strong></td>
+<td>via conntrack</td>
+<td>via conntrack</td>
+</tr>
+</tbody>
+</table>
+<p>For clusters with more than a few thousand Services, IPVS mode is strongly recommended.</p>
+<h3 id="traffic-control-tc">Traffic Control (tc)</h3>
+<p><code>tc</code> is the kernel's traffic control framework — it shapes, schedules, and polices network traffic using <strong>queuing disciplines (qdiscs)</strong>:</p>
+<pre><code class="language-bash"># show current qdisc on an interface
+tc qdisc show dev eth0
+
+# rate-limit outgoing traffic to 100 Mbit/s
+tc qdisc add dev eth0 root tbf rate 100mbit burst 32kbit latency 400ms
+
+# add 100ms latency (useful for testing)
+tc qdisc add dev eth0 root netem delay 100ms
+
+# simulate packet loss (for testing)
+tc qdisc add dev eth0 root netem loss 1%
+
+# simulate jitter
+tc qdisc add dev eth0 root netem delay 100ms 30ms distribution normal
+
+# remove qdisc
+tc qdisc del dev eth0 root
+</code></pre>
+<p><code>netem</code> (Network Emulator) is particularly useful for testing how your application handles degraded networks — simulate latency, jitter, loss, and reordering in a controlled environment.</p>
+<h3 id="conntrack-connection-tracking">Conntrack (Connection Tracking)</h3>
+<p><strong>conntrack</strong> is the kernel's connection tracking subsystem — it tracks the state of network connections (TCP, UDP, ICMP) for stateful firewalling and NAT. Every connection passing through netfilter/nftables is tracked:</p>
+<pre><code class="language-bash"># view active connections
+conntrack -L
+conntrack -L -p tcp --dport 80   # filter by protocol and port
+conntrack -C                      # count of tracked connections
+
+# conntrack table size
+cat /proc/sys/net/netfilter/nf_conntrack_max
+# 262144 (default — may need to be raised for busy load balancers)
+
+sysctl -w net.netfilter.nf_conntrack_max=524288
+</code></pre>
+<p><strong>Conntrack table exhaustion</strong> is a common production issue on busy Kubernetes nodes and load balancers. When the table fills up, new connections are dropped. Symptoms: random connection failures, "nf_conntrack: table full, dropping packet" in <code>dmesg</code>. Fix: raise <code>nf_conntrack_max</code> or reduce <code>nf_conntrack_tcp_timeout_time_wait</code>.</p>
+<h3 id="unix-domain-sockets">Unix Domain Sockets</h3>
+<p>For inter-process communication on the same host, <strong>Unix domain sockets</strong> are significantly faster than TCP loopback (127.0.0.1) because they bypass the entire TCP/IP stack — no checksums, no routing, no network-layer headers:</p>
+<pre><code class="language-bash"># Docker daemon listens on a Unix socket
+ls -l /var/run/docker.sock
+# srw-rw---- 1 root docker 0 Jan 1 00:00 /var/run/docker.sock
+
+# connect to it
+curl --unix-socket /var/run/docker.sock http://localhost/version
+</code></pre>
+<p>PostgreSQL, MySQL, Redis, and Docker all prefer Unix domain sockets for local connections. Performance difference vs. TCP loopback is typically 30–50% higher throughput and lower latency.</p>
+<p>If you remember one thing from Part 4: <strong>nftables replaces iptables with a cleaner, faster, atomic-update model; BBR congestion control is better than Cubic for internet traffic; SO_REUSEPORT enables per-CPU accept() parallelism; IPVS is O(1) for Service load balancing while iptables is O(n); conntrack table exhaustion kills connections on busy nodes; and Unix domain sockets bypass the TCP/IP stack entirely for same-host IPC.</strong></p>
+<hr>
+<h2 id="part-5-ebpf">Part 5 — eBPF</h2>
+<p>eBPF (extended Berkeley Packet Filter) is a technology that lets you run sandboxed programs in the Linux kernel — without modifying the kernel source or loading kernel modules. It's the most transformative Linux technology of the last decade, powering modern networking (Cilium), security (Falco, Tetragon), and observability (Pixie, continuous profiling).</p>
+<h3 id="what-ebpf-is">What eBPF Is</h3>
+<pre><code class="language-text">┌──────────────────────────────────────────────────────────────────┐
+│                         Kernel                                   │
+│                                                                  │
+│  ┌─────────┐   ┌──────────┐   ┌──────────────┐                  │
+│  │Scheduler│   │ Network  │   │ Filesystem   │                  │
+│  │         │   │ Stack    │   │              │                  │
+│  │ ▲       │   │ ▲        │   │ ▲            │                  │
+│  │ │       │   │ │        │   │ │            │                  │
+│  │ │eBPF   │   │ │eBPF    │   │ │eBPF        │  ← hook points  │
+│  │ │program │   │ │program │   │ │program     │                  │
+│  └─────────┘   └──────────┘   └──────────────┘                  │
+│       ▲              ▲              ▲                            │
+│       │              │              │    ┌──────────┐            │
+│       └──────────────┴──────────────┴────│ Verifier │            │
+│                                          │ (safety) │            │
+│                                          └──────────┘            │
+└──────────────────────────────────────────────────────────────────┘
+         ▲                    │
+         │ load program       │ maps (shared data)
+         │                    ▼
+┌──────────────────────────────────────────────────────────────────┐
+│                        User Space                                │
+│  bpftrace, bcc tools, Cilium, Falco, custom programs            │
+└──────────────────────────────────────────────────────────────────┘
+</code></pre>
+<p><strong>The lifecycle:</strong>
+1. You write an eBPF program (in C, Rust, or a high-level DSL like bpftrace).
+2. The <strong>verifier</strong> statically analyzes the program to guarantee safety — no infinite loops, no invalid memory access, no crashing the kernel. If it passes, the program is loaded into the kernel.
+3. The program is <strong>attached to a hook point</strong> — a specific kernel event (syscall, network packet, tracepoint, scheduler event).
+4. When the event fires, the eBPF program runs in the kernel context — fast, with access to kernel data structures.
+5. Programs communicate with userspace through <strong>maps</strong> — shared data structures (hash maps, arrays, ring buffers, LRU caches, stacks, queues).</p>
+<h3 id="the-verifier">The Verifier</h3>
+<p>The verifier is what makes eBPF safe — it statically analyzes every program before loading to guarantee:</p>
+<ul>
+<li><strong>Terminates.</strong> No loops without bounded iteration counts (recently relaxed for known-bounded loops). The program cannot hang the kernel.</li>
+<li><strong>Memory safety.</strong> All pointer accesses are validated — no reading outside allocated buffers, no writing to read-only kernel memory.</li>
+<li><strong>Stack limit.</strong> Maximum 512 bytes of stack space (prevents stack overflow in kernel context).</li>
+<li><strong>No sleeping.</strong> eBPF programs run in atomic context — they cannot sleep, allocate memory with GFP_KERNEL, or call arbitrary kernel functions (only approved "helper functions").</li>
+</ul>
+<p>The verifier rejects programs it can't prove safe — which sometimes means you need to restructure your code to help the verifier understand your bounds. This is the main source of friction when writing eBPF programs.</p>
+<h3 id="ebpf-maps">eBPF Maps</h3>
+<p>Maps are shared data structures accessible from both eBPF programs (kernel side) and userspace:</p>
+<table>
+<thead>
+<tr>
+<th>Map Type</th>
+<th>Description</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BPF_MAP_TYPE_HASH</code></td>
+<td>Key-value hash table</td>
+<td>Per-IP counters, connection tracking</td>
+</tr>
+<tr>
+<td><code>BPF_MAP_TYPE_ARRAY</code></td>
+<td>Fixed-size array indexed by integer</td>
+<td>Per-CPU counters, configuration</td>
+</tr>
+<tr>
+<td><code>BPF_MAP_TYPE_RINGBUF</code></td>
+<td>Lock-free ring buffer for events</td>
+<td>Streaming events to userspace</td>
+</tr>
+<tr>
+<td><code>BPF_MAP_TYPE_LRU_HASH</code></td>
+<td>Hash table with LRU eviction</td>
+<td>Caches that shouldn't grow unbounded</td>
+</tr>
+<tr>
+<td><code>BPF_MAP_TYPE_PERCPU_HASH</code></td>
+<td>Per-CPU hash table</td>
+<td>High-throughput counters without locking</td>
+</tr>
+<tr>
+<td><code>BPF_MAP_TYPE_PERF_EVENT_ARRAY</code></td>
+<td>Per-CPU event buffers</td>
+<td>Older event streaming (ringbuf preferred)</td>
+</tr>
+<tr>
+<td><code>BPF_MAP_TYPE_STACK_TRACE</code></td>
+<td>Stack trace storage</td>
+<td>Profiling</td>
+</tr>
+</tbody>
+</table>
+<h3 id="ebpf-program-types">eBPF Program Types</h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Hook Point</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>kprobe/kretprobe</strong></td>
+<td>any kernel function entry/return</td>
+<td>tracing, debugging</td>
+</tr>
+<tr>
+<td><strong>tracepoint</strong></td>
+<td>stable kernel trace points</td>
+<td>observability (more stable than kprobes)</td>
+</tr>
+<tr>
+<td><strong>uprobe/uretprobe</strong></td>
+<td>any userspace function entry/return</td>
+<td>application-level tracing without modifying the app</td>
+</tr>
+<tr>
+<td><strong>XDP</strong></td>
+<td>network driver (before the kernel processes the packet)</td>
+<td>ultra-fast packet filtering, DDoS mitigation</td>
+</tr>
+<tr>
+<td><strong>TC</strong></td>
+<td>traffic control layer</td>
+<td>packet manipulation, policy enforcement</td>
+</tr>
+<tr>
+<td><strong>cgroup</strong></td>
+<td>cgroup events (socket, device, sysctl)</td>
+<td>container networking, per-cgroup policy</td>
+</tr>
+<tr>
+<td><strong>LSM</strong></td>
+<td>Linux Security Module hooks</td>
+<td>security policy enforcement</td>
+</tr>
+<tr>
+<td><strong>sched_ext</strong></td>
+<td>scheduler</td>
+<td>custom scheduling policies (kernel 6.12+)</td>
+</tr>
+<tr>
+<td><strong>perf_event</strong></td>
+<td>hardware/software performance counters</td>
+<td>profiling</td>
+</tr>
+<tr>
+<td><strong>fentry/fexit</strong></td>
+<td>kernel function entry/exit (faster than kprobe)</td>
+<td>modern tracing with lower overhead</td>
+</tr>
+</tbody>
+</table>
+<h3 id="xdp-express-data-path">XDP (eXpress Data Path)</h3>
+<p>XDP runs eBPF programs at the <strong>earliest possible point</strong> in the network stack — in the network driver, before the kernel allocates an <code>sk_buff</code> (the per-packet data structure). This makes XDP extremely fast for packet filtering:</p>
+<pre><code class="language-text">Without XDP:                        With XDP:
+NIC → driver → sk_buff alloc →     NIC → driver → XDP program → DROP
+      netfilter → routing →                     ↓
+      transport → socket →                     PASS → normal stack
+      application                              TX → redirect to another NIC
+</code></pre>
+<p>XDP actions:
+- <code>XDP_DROP</code> — drop the packet (DDoS mitigation)
+- <code>XDP_PASS</code> — continue normal kernel processing
+- <code>XDP_TX</code> — reflect the packet back out the same NIC
+- <code>XDP_REDIRECT</code> — forward to another NIC, CPU, or AF_XDP socket</p>
+<p>XDP can drop 10+ million packets per second per core — compared to iptables' ~1-2 million. This is why Cloudflare and Facebook use XDP for DDoS mitigation.</p>
+<h3 id="bpftrace-the-high-level-tool">bpftrace: The High-Level Tool</h3>
+<p><code>bpftrace</code> is a high-level tracing language (like awk for eBPF):</p>
+<pre><code class="language-bash"># trace all open() syscalls, showing PID and filename
+bpftrace -e 'tracepoint:syscalls:sys_enter_openat { printf(&quot;%d %s %s\n&quot;, pid, comm, str(args-&gt;filename)); }'
+
+# histogram of read() return values (bytes read)
+bpftrace -e 'tracepoint:syscalls:sys_exit_read /args-&gt;ret &gt; 0/ { @bytes = hist(args-&gt;ret); }'
+
+# count syscalls by process
+bpftrace -e 'tracepoint:raw_syscalls:sys_enter { @[comm] = count(); }'
+
+# latency histogram for block I/O
+bpftrace -e 'tracepoint:block:block_rq_issue { @start[args-&gt;dev, args-&gt;sector] = nsecs; }
+              tracepoint:block:block_rq_complete /@start[args-&gt;dev, args-&gt;sector]/ {
+                @usecs = hist((nsecs - @start[args-&gt;dev, args-&gt;sector]) / 1000);
+                delete(@start[args-&gt;dev, args-&gt;sector]);
+              }'
+
+# trace TCP retransmissions
+bpftrace -e 'kprobe:tcp_retransmit_skb { @retransmits[comm, pid] = count(); }'
+
+# who is calling write() on a specific file?
+bpftrace -e 'tracepoint:syscalls:sys_enter_write /args-&gt;fd == 3/ { printf(&quot;%s %d\n&quot;, comm, pid); }'
+</code></pre>
+<h3 id="bcc-tools-the-pre-built-toolkit">BCC Tools: The Pre-Built Toolkit</h3>
+<p>BCC (BPF Compiler Collection) provides 100+ ready-made eBPF tools:</p>
+<pre><code class="language-bash"># trace TCP connections
+tcpconnect                       # trace outgoing TCP connections
+tcpaccept                        # trace incoming TCP connections
+tcplife                          # trace TCP session lifetimes
+tcpretrans                       # trace TCP retransmissions
+
+# trace file I/O
+fileslower 10                    # files taking &gt;10ms to read/write
+opensnoop                        # trace file opens
+filelife                         # trace file creation and deletion
+
+# trace process activity
+execsnoop                        # trace new process executions (see every exec on the system)
+runqlat                          # scheduler run queue latency histogram
+cpudist                          # on-CPU time distribution per process
+exitsnoop                        # trace process exits with exit code
+
+# trace memory
+memleak                          # detect memory leaks (tracks allocations)
+oomkill                          # trace OOM killer events
+cachestat                        # page cache hit/miss statistics
+
+# trace disk
+biolatency                       # block I/O latency histogram
+biosnoop                         # trace individual block I/O requests
+biotop                           # top-like for block I/O
+</code></pre>
+<h3 id="co-re-compile-once-run-everywhere">CO-RE (Compile Once, Run Everywhere)</h3>
+<p>eBPF programs traditionally needed to be compiled against the specific kernel headers of the target machine. <strong>CO-RE</strong> (kernel 5.4+, via BTF — BPF Type Format) enables compiling an eBPF program once and running it on any kernel version — the loader adjusts field offsets at load time. This is what makes production eBPF tools portable.</p>
+<pre><code class="language-bash"># check if your kernel has BTF (required for CO-RE)
+ls /sys/kernel/btf/vmlinux
+# if it exists, BTF is available
+</code></pre>
+<h3 id="libbpf-the-production-library">libbpf: The Production Library</h3>
+<p><code>libbpf</code> is the standard C library for loading and interacting with eBPF programs. The modern workflow:</p>
+<ol>
+<li>Write the eBPF program in C</li>
+<li>Compile it with clang to BPF bytecode</li>
+<li>Use libbpf in userspace to load, attach, and read maps</li>
+<li>CO-RE + BTF makes it portable</li>
+</ol>
+<p>For Go, the <code>cilium/ebpf</code> library is the standard. For Rust, <code>aya</code>. For Python, <code>bcc</code> (easier but less portable than libbpf).</p>
+<h3 id="ebpf-in-production-2026">eBPF in Production (2026)</h3>
+<table>
+<thead>
+<tr>
+<th>Project</th>
+<th>Use Case</th>
+<th>What It Replaces</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Cilium</strong></td>
+<td>Kubernetes CNI — networking, load balancing, network policy</td>
+<td>kube-proxy (iptables/IPVS), Calico iptables mode</td>
+</tr>
+<tr>
+<td><strong>Tetragon</strong></td>
+<td>Runtime security — syscall monitoring, process policy</td>
+<td>auditd, traditional LSMs for runtime detection</td>
+</tr>
+<tr>
+<td><strong>Falco</strong></td>
+<td>Threat detection — anomaly detection at the syscall level</td>
+<td>host-based IDS</td>
+</tr>
+<tr>
+<td><strong>Pixie</strong></td>
+<td>Kubernetes observability — auto-instrumentation</td>
+<td>manual instrumentation, sidecars</td>
+</tr>
+<tr>
+<td><strong>Parca / Pyroscope</strong></td>
+<td>Continuous profiling</td>
+<td>periodic profiling, manual perf runs</td>
+</tr>
+<tr>
+<td><strong>Grafana Beyla</strong></td>
+<td>Auto-instrumented application observability (HTTP, gRPC, DB)</td>
+<td>OpenTelemetry manual instrumentation</td>
+</tr>
+<tr>
+<td><strong>sched_ext</strong></td>
+<td>Custom kernel scheduling in eBPF</td>
+<td>kernel recompilation for scheduler changes</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Cilium deserves special attention:</strong> it replaces kube-proxy entirely, implementing Kubernetes Services and Network Policies in eBPF — O(1) per packet instead of iptables' O(n). At scale (thousands of Services), this is a massive performance improvement. Cilium can also enforce L7 (HTTP, gRPC) policies — something iptables cannot do at all.</p>
+<p>If you remember one thing from Part 5: <strong>eBPF lets you run custom programs inside the kernel — safely, with no recompilation — at hook points across networking, scheduling, security, and filesystems. In 2026, Cilium (networking), Tetragon/Falco (security), and bpftrace (tracing) are the three most impactful eBPF applications, and <code>sched_ext</code> (custom schedulers in eBPF) is the most exciting new development.</strong></p>
+<hr>
+<h2 id="part-6-performance-analysis">Part 6 — Performance Analysis</h2>
+<p>The fundamentals guide covered <code>ps</code>, <code>top</code>, <code>strace</code>, and <code>ss</code>. This part covers systematic performance analysis methodology and the advanced tools.</p>
+<h3 id="the-use-method">The USE Method</h3>
+<p>Brendan Gregg's <strong>USE Method</strong> (Utilization, Saturation, Errors) provides a systematic checklist for every resource:</p>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Utilization (busy %)</th>
+<th>Saturation (queue depth)</th>
+<th>Errors</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CPU</strong></td>
+<td><code>mpstat -P ALL 1</code> (%usr+%sys)</td>
+<td><code>vmstat 1</code> → r column (run queue), <code>runqlat</code></td>
+<td><code>perf stat</code> → cache misses</td>
+</tr>
+<tr>
+<td><strong>Memory</strong></td>
+<td><code>free -h</code> → used/total</td>
+<td><code>vmstat 1</code> → si/so (swap in/out), <code>sar -B</code> (page scans)</td>
+<td><code>dmesg</code> → OOM messages</td>
+</tr>
+<tr>
+<td><strong>Disk</strong></td>
+<td><code>iostat -x 1</code> → %util per device</td>
+<td><code>iostat -x 1</code> → avgqu-sz</td>
+<td><code>iostat -x 1</code> → errors, <code>smartctl</code></td>
+</tr>
+<tr>
+<td><strong>Network</strong></td>
+<td><code>sar -n DEV 1</code> → rxkB/s, txkB/s vs capacity</td>
+<td><code>ss -tanp</code> → send/recv queue sizes</td>
+<td><code>ip -s link</code> → errors, drops</td>
+</tr>
+<tr>
+<td><strong>File descriptors</strong></td>
+<td><code>lsof -p [pid] \| wc -l</code> vs <code>ulimit -n</code></td>
+<td>—</td>
+<td><code>dmesg</code>, errno EMFILE/ENFILE</td>
+</tr>
+</tbody>
+</table>
+<p>Work through this list for each resource when diagnosing performance problems. Most problems show up as high utilization or saturation on one specific resource.</p>
+<h3 id="the-red-method-for-services">The RED Method (for Services)</h3>
+<p>While USE works for infrastructure, the <strong>RED Method</strong> works for services:</p>
+<ul>
+<li><strong>Rate</strong> — requests per second</li>
+<li><strong>Errors</strong> — failed requests per second</li>
+<li><strong>Duration</strong> — request latency distribution (especially p50, p95, p99)</li>
+</ul>
+<p>USE and RED are complementary: RED tells you <em>what's wrong from the user's perspective</em> (slow requests), USE tells you <em>why</em> (disk is saturated).</p>
+<h3 id="perf-the-swiss-army-knife">perf: The Swiss Army Knife</h3>
+<p><code>perf</code> is the kernel's built-in profiling tool, using hardware performance counters (PMU):</p>
+<pre><code class="language-bash"># CPU profiling — where is CPU time going?
+perf record -g -p 12345 -- sleep 30     # record call stacks for 30s
+perf report                              # interactive TUI
+perf script | stackcollapse-perf.pl | flamegraph.pl &gt; flame.svg  # flame graph
+
+# count events
+perf stat -p 12345 -- sleep 10
+# Performance counter stats for PID 12345:
+#   2,500,000,000  cycles
+#   1,200,000,000  instructions  # IPC = 0.48 (low — likely memory-bound)
+#      50,000,000  cache-misses  # 5% miss rate
+#     800,000,000  cache-references
+
+# trace specific events
+perf trace -p 12345                      # trace syscalls (like strace but lower overhead)
+perf trace -e sched:sched_switch         # trace scheduler context switches
+
+# list available events
+perf list                                # hundreds of events: hardware, software, tracepoints
+</code></pre>
+<p><strong>Key insight:</strong> the <strong>instructions per cycle (IPC)</strong> from <code>perf stat</code> tells you whether a workload is CPU-bound (high IPC, &gt;1.0) or memory-bound (low IPC, &lt;0.5). A memory-bound workload with low IPC won't benefit from a faster clock — it needs better cache utilization or memory access patterns.</p>
+<h3 id="flame-graphs">Flame Graphs</h3>
+<p>Flame graphs visualize <strong>where CPU time is spent</strong> across the entire call stack. The x-axis is not time — it's the alphabetically sorted set of stack frames. The width of a frame is the proportion of total samples that include it.</p>
+<pre><code class="language-bash"># CPU flame graph (on-CPU analysis)
+perf record -F 99 -g -p 12345 -- sleep 30
+perf script &gt; perf.stacks
+stackcollapse-perf.pl perf.stacks | flamegraph.pl &gt; cpu.svg
+
+# off-CPU flame graph (where is the process WAITING?)
+# use 'offcputime' from BCC tools
+offcputime-bpfcc -p 12345 30 &gt; offcpu.stacks
+flamegraph.pl --color=io &lt; offcpu.stacks &gt; offcpu.svg
+</code></pre>
+<p><strong>On-CPU</strong> flame graphs show where processing time goes (computation, cache misses, page faults). <strong>Off-CPU</strong> flame graphs show where waiting time goes (I/O, locks, sleep, scheduling delays). A process that's slow but with low CPU usage needs an off-CPU analysis — the bottleneck is waiting, not computing.</p>
+<h3 id="ftrace-kernel-function-tracing">ftrace: Kernel Function Tracing</h3>
+<p><code>ftrace</code> is the kernel's built-in tracing infrastructure:</p>
+<pre><code class="language-bash"># trace all kernel functions called during a command
+trace-cmd record -p function_graph ls
+trace-cmd report
+
+# trace specific functions
+echo do_sys_openat2 &gt; /sys/kernel/debug/tracing/set_ftrace_filter
+echo function &gt; /sys/kernel/debug/tracing/current_tracer
+cat /sys/kernel/debug/tracing/trace_pipe
+</code></pre>
+<h3 id="advanced-diagnostic-patterns">Advanced Diagnostic Patterns</h3>
+<p><strong>Latency analysis — where does request time go?</strong></p>
+<pre><code class="language-bash"># 1. is it on-CPU or off-CPU?
+pidstat -p 12345 1               # high %CPU → on-CPU, low %CPU → off-CPU
+
+# 2. if on-CPU: where in the code?
+perf record -g -p 12345 -- sleep 10
+perf report
+
+# 3. if off-CPU: what is it waiting for?
+offcputime-bpfcc -p 12345 10     # stack traces of where it's sleeping
+# or:
+bpftrace -e 'tracepoint:sched:sched_switch /pid == 12345/ { printf(&quot;%s\n&quot;, kstack); }'
+
+# 4. common off-CPU causes:
+#    - futex (lock contention) → profile locks
+#    - epoll_wait (waiting for I/O) → check what I/O
+#    - read/write on a specific fd → trace that fd
+</code></pre>
+<p><strong>Lock contention analysis:</strong></p>
+<pre><code class="language-bash"># mutex contention (BCC tool)
+offcputime-bpfcc -K -p 12345 10   # -K for kernel stacks
+# look for futex_wait in the stacks → lock contention
+
+# or use perf's lock analysis
+perf lock record -p 12345 -- sleep 10
+perf lock report
+</code></pre>
+<p><strong>Memory leak detection:</strong></p>
+<pre><code class="language-bash"># BCC memleak tool
+memleak-bpfcc -p 12345 10        # track allocations for 10 seconds
+# shows stack traces for allocations that were never freed
+</code></pre>
+<h3 id="the-performance-analysis-workflow">The Performance Analysis Workflow</h3>
+<pre><code class="language-text">1. Define the problem clearly
+   &quot;API latency p99 increased from 50ms to 200ms since yesterday&quot;
+
+2. USE Method — check every resource
+   CPU: mpstat → not saturated (40% util)
+   Memory: free → fine, no OOM
+   Disk: iostat → %util 95% on sda! → FOUND IT
+   Network: sar → fine
+
+3. Drill down on the bottleneck
+   biolatency → latency histogram shows bimodal: most &lt;1ms, some &gt;50ms
+   biosnoop → specific files causing slow I/O
+   → identified: a background cron job doing sequential scans is evicting
+     database data from the page cache
+
+4. Confirm and fix
+   → move cron job to off-peak hours / use O_DIRECT / add more RAM
+   → verify: p99 back to 50ms
+</code></pre>
+<p>If you remember one thing from Part 6: <strong>use the USE Method (Utilization, Saturation, Errors) as a checklist for every resource, <code>perf stat</code> IPC tells you if you're CPU-bound or memory-bound, flame graphs show where time is spent (on-CPU) or waited (off-CPU), and most performance problems show up as high utilization or saturation on one specific resource — find that resource first.</strong></p>
+<hr>
+<h2 id="part-7-security-hardening">Part 7 — Security Hardening</h2>
+<p>The fundamentals guide covered permissions, capabilities, and the container security model. This part covers the active defense mechanisms — mandatory access control, syscall filtering, audit, and hardening practices.</p>
+<h3 id="mandatory-access-control-selinux-and-apparmor">Mandatory Access Control: SELinux and AppArmor</h3>
+<p>Standard Unix permissions (DAC — Discretionary Access Control) have a fundamental limitation: the file owner controls access. If a process is compromised, it has all the permissions of the user it runs as. <strong>Mandatory Access Control (MAC)</strong> adds a second layer where the <strong>system administrator</strong> defines policies that even the file owner can't override.</p>
+<p><strong>SELinux</strong> (Security-Enhanced Linux) — developed by the NSA, default on RHEL/Fedora/CentOS:</p>
+<pre><code class="language-bash"># check SELinux status
+getenforce
+# Enforcing / Permissive / Disabled
+
+# temporarily set to permissive (logs violations but doesn't block)
+setenforce 0
+
+# view the security context of a file
+ls -Z /var/www/html/index.html
+# system_u:object_r:httpd_sys_content_t:s0
+
+# view the security context of a process
+ps auxZ | grep nginx
+# system_u:system_r:httpd_t:s0  nginx ...
+
+# SELinux denies nginx from reading a file with the wrong type:
+# httpd_t (nginx) can read httpd_sys_content_t, NOT user_home_t
+# fix: change the file's type
+chcon -t httpd_sys_content_t /var/www/html/newfile.html
+# or make it permanent:
+semanage fcontext -a -t httpd_sys_content_t &quot;/var/www/html(/.*)?&quot;
+restorecon -rv /var/www/html
+</code></pre>
+<p>SELinux uses <strong>type enforcement</strong>: every process has a <strong>domain</strong> (e.g., <code>httpd_t</code>), every file has a <strong>type</strong> (e.g., <code>httpd_sys_content_t</code>), and the policy defines which domains can access which types. If the policy doesn't allow it, the access is denied — regardless of Unix permissions.</p>
+<p><strong>AppArmor</strong> — default on Ubuntu/Debian/SUSE. Simpler than SELinux, path-based instead of label-based:</p>
+<pre><code class="language-bash"># check AppArmor status
+aa-status
+
+# an AppArmor profile for nginx
+# /etc/apparmor.d/usr.sbin.nginx
+profile nginx /usr/sbin/nginx {
+  /var/www/html/** r,           # can read web content
+  /var/log/nginx/** w,          # can write logs
+  /etc/nginx/** r,              # can read config
+  /run/nginx.pid rw,            # PID file
+  network inet stream,           # TCP sockets
+  deny /etc/shadow r,            # explicitly deny shadow
+}
+</code></pre>
+<p><strong>SELinux vs. AppArmor:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>SELinux</th>
+<th>AppArmor</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Model</strong></td>
+<td>Label-based (security contexts on every object)</td>
+<td>Path-based (rules reference file paths)</td>
+</tr>
+<tr>
+<td><strong>Complexity</strong></td>
+<td>Complex, powerful, steep learning curve</td>
+<td>Simpler, easier to write custom profiles</td>
+</tr>
+<tr>
+<td><strong>Granularity</strong></td>
+<td>Very fine-grained</td>
+<td>Good, but less granular</td>
+</tr>
+<tr>
+<td><strong>Default on</strong></td>
+<td>RHEL, Fedora, CentOS</td>
+<td>Ubuntu, Debian, SUSE</td>
+</tr>
+<tr>
+<td><strong>Container support</strong></td>
+<td>Both Docker and K8s support SELinux contexts</td>
+<td>Both support AppArmor profiles</td>
+</tr>
+</tbody>
+</table>
+<h3 id="seccomp-bpf-syscall-filtering">seccomp-bpf: Syscall Filtering</h3>
+<p><strong>seccomp-bpf</strong> restricts which <strong>system calls</strong> a process can make. Since every kernel interaction goes through syscalls, restricting them is a powerful defense — a compromised process can't call <code>mount()</code>, <code>ptrace()</code>, or <code>reboot()</code> if the seccomp profile denies them.</p>
+<pre><code class="language-json">// Docker's default seccomp profile blocks ~44 dangerous syscalls:
+{
+  &quot;defaultAction&quot;: &quot;SCMP_ACT_ERRNO&quot;,
+  &quot;architectures&quot;: [&quot;SCMP_ARCH_X86_64&quot;],
+  &quot;syscalls&quot;: [
+    { &quot;names&quot;: [&quot;read&quot;, &quot;write&quot;, &quot;open&quot;, &quot;close&quot;, &quot;...&quot;], &quot;action&quot;: &quot;SCMP_ACT_ALLOW&quot; }
+    // blocked by default: mount, umount2, ptrace, reboot, settimeofday,
+    // swapon, swapoff, init_module, delete_module, ...
+  ]
+}
+</code></pre>
+<p>Kubernetes supports seccomp profiles per pod:</p>
+<pre><code class="language-yaml">securityContext:
+  seccompProfile:
+    type: RuntimeDefault    # use the container runtime's default profile
+    # type: Localhost
+    # localhostProfile: profiles/my-custom-profile.json
+</code></pre>
+<p><strong>Generating custom profiles:</strong> tools like <code>oci-seccomp-bpf-hook</code> and <code>strace</code> can record which syscalls your application actually uses, allowing you to create a minimal allowlist.</p>
+<h3 id="the-audit-framework">The Audit Framework</h3>
+<p><code>auditd</code> is the Linux kernel's audit system — it logs security-relevant events (file access, syscalls, authentication, policy changes) to an audit trail:</p>
+<pre><code class="language-bash"># watch for changes to /etc/passwd
+auditctl -w /etc/passwd -p wa -k passwd_changes
+
+# watch for execve syscalls (new process execution)
+auditctl -a always,exit -F arch=b64 -S execve -k exec_commands
+
+# watch for failed file access
+auditctl -a always,exit -F arch=b64 -S open -F success=0 -k failed_opens
+
+# watch for privilege escalation (setuid)
+auditctl -a always,exit -F arch=b64 -S setuid -k priv_escalation
+
+# search audit logs
+ausearch -k passwd_changes
+ausearch -k exec_commands --start recent
+ausearch -m USER_LOGIN --success no   # failed logins
+
+# generate a report
+aureport --summary
+aureport --auth                       # authentication report
+aureport --file                       # file access report
+</code></pre>
+<p>Audit logs are critical for compliance (PCI-DSS, HIPAA, SOC 2) and incident response. In production, forward them to a centralized log system.</p>
+<h3 id="ssh-hardening">SSH Hardening</h3>
+<p>A hardened <code>/etc/ssh/sshd_config</code>:</p>
+<pre><code class="language-ini"># authentication
+PermitRootLogin no                    # never allow root SSH login
+PasswordAuthentication no             # keys only — no passwords
+PubkeyAuthentication yes
+AuthenticationMethods publickey       # require key auth
+MaxAuthTries 3
+
+# access control
+AllowUsers deploy monitoring          # whitelist specific users
+AllowGroups ssh-users                 # or whitelist by group
+
+# protocol
+Ciphers aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+KexAlgorithms curve25519-sha256,curve25519-sha256@libssh.org
+
+# misc
+X11Forwarding no
+AllowTcpForwarding no
+ClientAliveInterval 300
+ClientAliveCountMax 2
+</code></pre>
+<h3 id="pam-pluggable-authentication-modules">PAM (Pluggable Authentication Modules)</h3>
+<p>PAM is the framework that controls how users authenticate on Linux. Every authentication decision — SSH login, sudo, su, local console — goes through PAM:</p>
+<pre><code class="language-bash"># PAM config for sshd
+cat /etc/pam.d/sshd
+# @include common-auth
+# @include common-account
+# @include common-session
+
+# fail2ban-style lockout via PAM
+# /etc/pam.d/common-auth
+auth required pam_faillock.so preauth deny=5 unlock_time=900
+auth required pam_faillock.so authfail deny=5 unlock_time=900
+# locks account for 15 minutes after 5 failed attempts
+</code></pre>
+<h3 id="systemd-sandboxing-full-reference">systemd Sandboxing (Full Reference)</h3>
+<p>The fundamentals guide showed basic systemd unit hardening. The full toolkit:</p>
+<pre><code class="language-ini">[Service]
+# user/group
+User=myapp
+Group=myapp
+DynamicUser=true                      # allocate a temporary UID (no /etc/passwd entry needed)
+
+# filesystem
+ProtectSystem=strict                  # mount / read-only
+ProtectHome=true                      # hide /home, /root, /run/user
+PrivateTmp=true                       # isolated /tmp
+ReadWritePaths=/var/lib/myapp         # explicit write access
+ReadOnlyPaths=/etc/myapp              # explicit read-only
+InaccessiblePaths=/boot               # completely hidden
+
+# capabilities
+NoNewPrivileges=true                  # block SUID
+CapabilityBoundingSet=                # drop ALL capabilities
+AmbientCapabilities=CAP_NET_BIND_SERVICE  # add back only what's needed
+
+# syscall filtering
+SystemCallFilter=@system-service      # allow only syscalls needed by typical services
+SystemCallFilter=~@mount @reboot @swap  # deny specific groups
+
+# network
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX  # only IPv4, IPv6, Unix sockets
+PrivateNetwork=false                  # true would isolate networking entirely
+
+# namespaces
+PrivateUsers=true                     # user namespace isolation
+ProtectKernelTunables=true            # prevent sysctl modification
+ProtectKernelModules=true             # prevent module loading
+ProtectKernelLogs=true                # prevent reading kernel logs
+ProtectControlGroups=true             # prevent cgroup modification
+ProtectClock=true                     # prevent clock modification
+LockPersonality=true                  # prevent changing execution domain
+RestrictRealtime=true                 # prevent real-time scheduling
+MemoryDenyWriteExecute=true           # prevent W^X violations (JIT, ROP protection)
+</code></pre>
+<p><code>systemd-analyze security myapp</code> scores your unit file's sandboxing (0–10, lower is more secure). Use it as a checklist after writing any new unit.</p>
+<h3 id="kernel-hardening">Kernel Hardening</h3>
+<p>Modern Linux kernels ship with hardening features enabled by default:</p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>What It Does</th>
+<th>Check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>KASLR</strong></td>
+<td>Randomize kernel address layout (defeats ROP)</td>
+<td><code>cat /proc/cmdline \| grep nokaslr</code> (absent = enabled)</td>
+</tr>
+<tr>
+<td><strong>SMEP/SMAP</strong></td>
+<td>Prevent kernel from executing/reading userspace memory</td>
+<td><code>grep -E 'smep\|smap' /proc/cpuinfo</code></td>
+</tr>
+<tr>
+<td><strong>Stack protector</strong></td>
+<td>Detect stack buffer overflows</td>
+<td>enabled at compile time</td>
+</tr>
+<tr>
+<td><strong>Control flow integrity</strong></td>
+<td>Prevent ROP/JOP attacks</td>
+<td>kernel 6.x+ with <code>CONFIG_CFI_CLANG</code></td>
+</tr>
+<tr>
+<td><strong>Lockdown mode</strong></td>
+<td>Prevent even root from modifying kernel at runtime</td>
+<td><code>cat /sys/kernel/security/lockdown</code></td>
+</tr>
+</tbody>
+</table>
+<p>If you remember one thing from Part 7: <strong>defense in depth — Unix permissions (DAC) + MAC (SELinux or AppArmor) + seccomp (syscall filtering) + capabilities (fine-grained root) + audit (logging) + systemd sandboxing (namespace/filesystem isolation). Each layer catches what the others miss, and <code>systemd-analyze security</code> tells you how well your service unit is hardened.</strong></p>
+<hr>
+<h2 id="part-8-advanced-filesystems-storage">Part 8 — Advanced Filesystems &amp; Storage</h2>
+<p>Beyond inodes and mount points — the storage stack that sits under your data.</p>
+<h3 id="filesystem-comparison">Filesystem Comparison</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>ext4</th>
+<th>XFS</th>
+<th>Btrfs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Default on</strong></td>
+<td>Ubuntu, Debian</td>
+<td>RHEL 7+, Fedora</td>
+<td>SUSE, Fedora (optional)</td>
+</tr>
+<tr>
+<td><strong>Max file size</strong></td>
+<td>16 TB</td>
+<td>8 EB</td>
+<td>16 EB</td>
+</tr>
+<tr>
+<td><strong>Max volume size</strong></td>
+<td>1 EB</td>
+<td>8 EB</td>
+<td>16 EB</td>
+</tr>
+<tr>
+<td><strong>Copy-on-write</strong></td>
+<td>No</td>
+<td>No</td>
+<td><strong>Yes</strong></td>
+</tr>
+<tr>
+<td><strong>Snapshots</strong></td>
+<td>No</td>
+<td>No</td>
+<td><strong>Yes</strong> (native, cheap)</td>
+</tr>
+<tr>
+<td><strong>Checksums</strong></td>
+<td>Metadata only</td>
+<td>Metadata only</td>
+<td><strong>Data + metadata</strong></td>
+</tr>
+<tr>
+<td><strong>RAID</strong></td>
+<td>No (use mdadm)</td>
+<td>No (use mdadm)</td>
+<td><strong>Yes</strong> (native RAID 0/1/5/6/10)</td>
+</tr>
+<tr>
+<td><strong>Compression</strong></td>
+<td>No</td>
+<td>No</td>
+<td><strong>Yes</strong> (zstd, zlib, lzo)</td>
+</tr>
+<tr>
+<td><strong>Defrag</strong></td>
+<td>Online</td>
+<td>Online</td>
+<td>Online</td>
+</tr>
+<tr>
+<td><strong>Shrink</strong></td>
+<td>Yes</td>
+<td><strong>No</strong> (grow only)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><strong>Best for</strong></td>
+<td>General purpose, reliability</td>
+<td>Large files, high throughput, databases</td>
+<td>Snapshots, data integrity, flexible storage</td>
+</tr>
+</tbody>
+</table>
+<p><strong>ext4</strong> is the safe default — battle-tested, well-understood, excellent tools. Choose ext4 unless you have a specific reason not to.</p>
+<p><strong>XFS</strong> excels at large files and high-throughput parallel I/O. It's the default on RHEL and the choice for many database and analytics workloads. XFS can only be grown, never shrunk.</p>
+<p><strong>Btrfs</strong> is the most feature-rich — copy-on-write, snapshots, checksums, built-in RAID, compression. It's stable for RAID 0/1/10 and single-disk, but RAID 5/6 is still considered fragile. The snapshot capability alone makes it compelling for systems that need rollback.</p>
+<h3 id="filesystem-tuning">Filesystem Tuning</h3>
+<pre><code class="language-bash"># ext4 tuning
+tune2fs -l /dev/sda1                  # show filesystem parameters
+tune2fs -m 1 /dev/sda1                # reduce reserved blocks from 5% to 1% (data partitions)
+tune2fs -o journal_data_writeback /dev/sda1  # faster but less safe journaling mode
+
+# XFS tuning
+xfs_info /dev/sda1                    # show filesystem parameters
+# XFS is largely self-tuning — the main lever is the log (journal) device
+mkfs.xfs -l logdev=/dev/nvme0n1p1 /dev/sda1  # put journal on fast NVMe
+
+# Btrfs
+btrfs filesystem show /               # show filesystem layout
+btrfs filesystem df /                  # show space usage by type
+btrfs subvolume snapshot / /snapshots/$(date +%Y%m%d)  # create a snapshot
+btrfs property set /mnt/data compression zstd  # enable compression
+</code></pre>
+<h3 id="lvm-logical-volume-manager">LVM (Logical Volume Manager)</h3>
+<p>LVM adds a layer of abstraction between physical storage and filesystems, enabling resize, snapshots, and spanning multiple disks:</p>
+<pre><code class="language-text">Physical Volumes (PV)    Volume Group (VG)       Logical Volumes (LV)
+┌──────────┐             ┌──────────────┐        ┌──────────────┐
+│ /dev/sda1│─────┐       │              │        │ lv_root      │ → /
+└──────────┘     ├──────▶│   vg_data    │───────▶│ lv_home      │ → /home
+┌──────────┐     │       │              │        │ lv_var       │ → /var
+│ /dev/sdb1│─────┘       └──────────────┘        └──────────────┘
+└──────────┘
+</code></pre>
+<pre><code class="language-bash"># create a physical volume, volume group, and logical volume
+pvcreate /dev/sdb1
+vgcreate vg_data /dev/sdb1
+lvcreate -L 50G -n lv_app vg_data
+mkfs.ext4 /dev/vg_data/lv_app
+mount /dev/vg_data/lv_app /opt/app
+
+# grow a logical volume (online, no downtime for ext4 and XFS)
+lvextend -L +20G /dev/vg_data/lv_app
+resize2fs /dev/vg_data/lv_app        # ext4
+# xfs_growfs /opt/app                # XFS
+
+# shrink a logical volume (ext4 only, offline)
+umount /opt/app
+e2fsck -f /dev/vg_data/lv_app        # must check first
+resize2fs /dev/vg_data/lv_app 30G    # shrink filesystem
+lvreduce -L 30G /dev/vg_data/lv_app  # shrink LV
+
+# thin provisioning (overcommit storage)
+lvcreate -L 100G --thinpool thin_pool vg_data
+lvcreate -V 50G --thin -n lv_thin1 vg_data/thin_pool
+# the thin pool uses space only as data is written (like memory overcommit)
+
+# LVM snapshots
+lvcreate -L 5G -s -n snap_app /dev/vg_data/lv_app  # snapshot (CoW)
+mount /dev/vg_data/snap_app /mnt/snapshot            # mount read-only for backup
+</code></pre>
+<h3 id="luks-encryption">LUKS Encryption</h3>
+<p>LUKS (Linux Unified Key Setup) provides full-disk encryption:</p>
+<pre><code class="language-bash"># encrypt a partition
+cryptsetup luksFormat /dev/sdb1
+cryptsetup open /dev/sdb1 encrypted_data
+mkfs.ext4 /dev/mapper/encrypted_data
+mount /dev/mapper/encrypted_data /mnt/secure
+
+# close
+umount /mnt/secure
+cryptsetup close encrypted_data
+
+# manage keys
+cryptsetup luksDump /dev/sdb1         # show key slots
+cryptsetup luksAddKey /dev/sdb1       # add a key
+cryptsetup luksRemoveKey /dev/sdb1    # remove a key
+
+# auto-unlock at boot (/etc/crypttab)
+# encrypted_data  /dev/sdb1  /etc/keys/disk.key  luks
+</code></pre>
+<p>LUKS encryption is transparent to the filesystem and applications. Performance overhead on modern CPUs with AES-NI is minimal (1-5%).</p>
+<h3 id="raid-with-mdadm">RAID with mdadm</h3>
+<pre><code class="language-bash"># create a RAID 1 (mirror)
+mdadm --create /dev/md0 --level=1 --raid-devices=2 /dev/sdb1 /dev/sdc1
+mkfs.ext4 /dev/md0
+
+# create a RAID 5 (striping with parity — N-1 capacity)
+mdadm --create /dev/md1 --level=5 --raid-devices=3 /dev/sdd1 /dev/sde1 /dev/sdf1
+
+# check RAID status
+cat /proc/mdstat
+mdadm --detail /dev/md0
+
+# replace a failed disk
+mdadm /dev/md0 --remove /dev/sdc1
+mdadm /dev/md0 --add /dev/sdd1
+# rebuild starts automatically
+</code></pre>
+<h3 id="posix-acls">POSIX ACLs</h3>
+<p>When basic user/group/other permissions aren't enough, ACLs let you set per-user or per-group permissions on individual files:</p>
+<pre><code class="language-bash"># grant user bob read access to a file
+setfacl -m u:bob:r /var/log/app.log
+
+# grant group devs read+write to a directory (and all future files)
+setfacl -m g:devs:rw /opt/app
+setfacl -d -m g:devs:rw /opt/app      # -d = default ACL for new files
+
+# view ACLs
+getfacl /opt/app
+
+# remove ACLs
+setfacl -b /opt/app                    # remove all ACLs
+</code></pre>
+<h3 id="overlayfs-how-docker-images-work">OverlayFS (How Docker Images Work)</h3>
+<p>The fundamentals guide mentioned overlay filesystems. Here's the mechanics:</p>
+<pre><code class="language-bash"># manual overlayfs mount
+mount -t overlay overlay \
+  -o lowerdir=/layer1:/layer2:/layer3,upperdir=/writable,workdir=/work \
+  /merged
+</code></pre>
+<p><code>lowerdir</code> is a stack of read-only layers (the Docker image layers). <code>upperdir</code> is the writable layer (the container's changes). <code>workdir</code> is a scratch directory for atomic operations. The merged view shows all layers composited, with <code>upperdir</code> taking precedence.</p>
+<p>When a file in a lower layer is modified, it's <strong>copied up</strong> to the upper layer first (copy-on-write). Deletes create <strong>whiteout files</strong> in the upper layer that hide the lower-layer file. This is the exact mechanism behind Docker's layer model.</p>
+<h3 id="mount-propagation">Mount Propagation</h3>
+<p>Mount propagation controls how mounts in one namespace are visible in others:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>shared</strong></td>
+<td>mounts propagate bidirectionally between namespace and parent</td>
+</tr>
+<tr>
+<td><strong>slave</strong></td>
+<td>mounts propagate from parent to namespace, not the reverse</td>
+</tr>
+<tr>
+<td><strong>private</strong></td>
+<td>no propagation (default for most mounts)</td>
+</tr>
+<tr>
+<td><strong>unbindable</strong></td>
+<td>like private, plus cannot be bind-mounted</td>
+</tr>
+</tbody>
+</table>
+<p>This matters for containers: Docker uses <code>rprivate</code> by default (no propagation), but some volume plugins need <code>rshared</code> to propagate host mounts into containers.</p>
+<pre><code class="language-bash">mount --make-shared /mnt/shared        # enable bidirectional propagation
+mount --make-slave /mnt/shared         # one-way propagation
+mount --make-private /mnt/private      # no propagation
+</code></pre>
+<h3 id="bind-mounts">Bind Mounts</h3>
+<p>A bind mount makes a directory accessible from a second location — the same data, visible at two paths:</p>
+<pre><code class="language-bash">mount --bind /var/lib/app/data /mnt/app-data
+# /mnt/app-data now shows the same files as /var/lib/app/data
+
+# read-only bind mount
+mount --bind /var/lib/app/data /mnt/app-data
+mount -o remount,ro,bind /mnt/app-data
+</code></pre>
+<p>Docker volumes and Kubernetes <code>hostPath</code> volumes are bind mounts under the hood. Understanding this explains why permission issues with Docker volumes are actually permission issues with the underlying host directory.</p>
+<p>If you remember one thing from Part 8: <strong>ext4 is the safe default, XFS for high-throughput, Btrfs for snapshots and data integrity; LVM lets you resize and manage storage flexibly; LUKS encryption is transparent with minimal overhead on modern CPUs; and Docker's overlay filesystem is just overlayfs — read-only lower layers plus a writable upper layer with copy-on-write.</strong></p>
+<hr>
+<h2 id="part-9-kernel-tuning">Part 9 — Kernel Tuning</h2>
+<p>The kernel exposes thousands of tunable parameters through <code>/proc/sys/</code> and <code>sysctl</code>. Most should be left at defaults. This section covers the ones that actually matter for production servers.</p>
+<h3 id="sysctl-the-tuning-interface">sysctl: The Tuning Interface</h3>
+<pre><code class="language-bash"># read a parameter
+sysctl net.ipv4.tcp_congestion_control
+
+# set a parameter (runtime, non-persistent)
+sysctl -w net.ipv4.tcp_congestion_control=bbr
+
+# set permanently
+echo &quot;net.ipv4.tcp_congestion_control = bbr&quot; &gt;&gt; /etc/sysctl.d/99-custom.conf
+sysctl --system   # reload
+
+# dump all parameters
+sysctl -a | wc -l   # typically 1000+
+</code></pre>
+<h3 id="network-parameters-that-matter">Network Parameters That Matter</h3>
+<pre><code class="language-ini"># /etc/sysctl.d/99-network.conf
+
+# connection backlog — max pending connections before the kernel drops them
+net.core.somaxconn = 65535                   # default 4096 (was 128!). raise for busy servers
+net.ipv4.tcp_max_syn_backlog = 65535         # SYN queue depth
+
+# TCP keepalive — detect dead connections
+net.ipv4.tcp_keepalive_time = 600            # seconds before first probe (default 7200!)
+net.ipv4.tcp_keepalive_intvl = 60            # interval between probes
+net.ipv4.tcp_keepalive_probes = 5            # probes before declaring dead
+
+# TIME_WAIT — reuse sockets faster
+net.ipv4.tcp_tw_reuse = 1                    # reuse TIME_WAIT sockets for new outgoing connections
+
+# buffer sizes (covered in Part 4)
+net.core.rmem_max = 16777216
+net.core.wmem_max = 16777216
+net.ipv4.tcp_rmem = 4096 131072 16777216
+net.ipv4.tcp_wmem = 4096 65536 16777216
+
+# congestion control
+net.ipv4.tcp_congestion_control = bbr
+net.core.default_qdisc = fq
+
+# port range for ephemeral ports
+net.ipv4.ip_local_port_range = 1024 65535    # default 32768-60999
+
+# reverse path filtering (anti-spoofing)
+net.ipv4.conf.all.rp_filter = 1
+
+# ignore ICMP redirects (security)
+net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.all.send_redirects = 0
+
+# SYN flood protection
+net.ipv4.tcp_syncookies = 1                  # enabled by default, keep it on
+
+# conntrack (Part 4)
+net.netfilter.nf_conntrack_max = 524288
+</code></pre>
+<h3 id="memory-parameters-that-matter">Memory Parameters That Matter</h3>
+<pre><code class="language-ini"># /etc/sysctl.d/99-memory.conf
+
+# swappiness (covered in Part 2)
+vm.swappiness = 10                           # prefer cache reclaim over swap for servers
+
+# dirty page writeback thresholds
+vm.dirty_ratio = 40                          # % of total memory before synchronous writeback
+vm.dirty_background_ratio = 10               # % before background writeback starts
+# lower dirty_ratio = more frequent writes, less data at risk
+# higher dirty_ratio = better throughput, more data at risk on crash
+
+# overcommit
+vm.overcommit_memory = 0                     # default: heuristic overcommit
+# 0: kernel estimates if there's enough memory (the default, usually fine)
+# 1: always allow (never fail malloc — dangerous but used by Redis)
+# 2: never overcommit (strict — commit must not exceed swap + ratio*RAM)
+vm.overcommit_ratio = 50                     # used when overcommit_memory=2
+
+# max memory map areas (needed by some apps like Elasticsearch)
+vm.max_map_count = 262144                    # default 65530
+
+# panic on OOM (for clusters where restart is preferred over degraded state)
+vm.panic_on_oom = 0                          # 0 = kill process (default), 1 = panic/reboot
+</code></pre>
+<h3 id="file-and-process-parameters">File and Process Parameters</h3>
+<pre><code class="language-ini"># /etc/sysctl.d/99-system.conf
+
+# max open files system-wide
+fs.file-max = 2097152                        # default varies. raise for busy servers
+
+# max inotify watches (IDEs, file watchers)
+fs.inotify.max_user_watches = 524288         # default 8192. VS Code, webpack need more
+fs.inotify.max_user_instances = 512
+
+# max PID value
+kernel.pid_max = 4194304                     # default 32768. raise for container hosts
+
+# max queued signals
+kernel.pid_max = 4194304
+
+# core dumps
+kernel.core_pattern = /var/crash/core.%e.%p.%t
+</code></pre>
+<h3 id="kernel-command-line-parameters">Kernel Command Line Parameters</h3>
+<p>Set at boot time in GRUB (<code>/etc/default/grub</code> → <code>GRUB_CMDLINE_LINUX</code>):</p>
+<pre><code class="language-ini"># CPU isolation (Part 1)
+isolcpus=4-7                                 # reserve cores for latency-sensitive work
+nohz_full=4-7                                # disable timer ticks on isolated cores
+rcu_nocbs=4-7                                # offload RCU callbacks from isolated cores
+
+# NUMA
+numa_balancing=0                             # disable automatic NUMA balancing (if you pin manually)
+
+# Huge pages (Part 2)
+default_hugepagesz=2M hugepagesz=2M hugepages=1024
+
+# Transparent huge pages
+transparent_hugepage=madvise                 # only use THP when app requests it
+
+# Security
+random.trust_cpu=on                          # trust CPU RNG for early entropy
+lockdown=integrity                           # prevent unsigned kernel modules
+
+# io_uring (Part 3)
+# io_uring_disabled=1                        # disable for unprivileged users (security)
+
+# mitigations (security vs. performance trade-off)
+# mitigations=off                            # disable ALL CPU vulnerability mitigations (danger!)
+# mitigations=auto,nosmt                     # default + disable SMT (strongest protection)
+</code></pre>
+<p>After editing, run <code>update-grub</code> (Debian/Ubuntu) or <code>grub2-mkconfig -o /boot/grub2/grub.cfg</code> (RHEL/Fedora) and reboot.</p>
+<h3 id="dkms-dynamic-kernel-module-support">DKMS (Dynamic Kernel Module Support)</h3>
+<p>DKMS automatically recompiles out-of-tree kernel modules when the kernel is updated — preventing the "I upgraded the kernel and my driver broke" problem:</p>
+<pre><code class="language-bash"># check DKMS status
+dkms status
+# nvidia/535.129.03, 6.5.0-35-generic, x86_64: installed
+
+# modules are in /usr/src/&lt;module&gt;-&lt;version&gt;/
+# DKMS automatically rebuilds them on kernel upgrade
+</code></pre>
+<p>If you remember one thing from Part 9: <strong>most sysctl defaults are fine — the ones worth changing are <code>somaxconn</code> (raise for busy servers), <code>tcp_tw_reuse</code> (faster socket recycling), <code>swappiness</code> (lower for databases), <code>tcp_congestion_control=bbr</code> (better internet throughput), <code>fs.inotify.max_user_watches</code> (raise for IDEs and file watchers), and <code>nf_conntrack_max</code> (raise for busy load balancers/K8s nodes).</strong></p>
+<hr>
+<h2 id="part-10-the-boot-process">Part 10 — The Boot Process</h2>
+<p>What happens between pressing the power button and getting a login prompt. Understanding this explains why your server takes 2 minutes to boot, why initramfs exists, and how systemd orchestrates the startup.</p>
+<h3 id="the-full-sequence">The Full Sequence</h3>
+<pre><code class="language-text">Power On
+    │
+    ▼
+┌───────────────┐
+│ Firmware       │  UEFI (modern) or BIOS (legacy)
+│                │  POST, hardware init, find boot device
+└───────────────┘
+    │
+    ▼
+┌───────────────┐
+│ Boot Loader    │  GRUB2 (most distros)
+│                │  Read config, select kernel, load kernel + initramfs
+└───────────────┘
+    │
+    ▼
+┌───────────────┐
+│ Kernel Init    │  Decompress, hardware probing, mount initramfs as /
+│                │  Run /init from initramfs
+└───────────────┘
+    │
+    ▼
+┌───────────────┐
+│ initramfs      │  Load storage drivers, assemble RAID/LVM, decrypt LUKS
+│                │  Mount the real root filesystem
+│                │  pivot_root to real root, exec systemd
+└───────────────┘
+    │
+    ▼
+┌───────────────┐
+│ systemd (PID 1)│  Read unit files, build dependency tree
+│                │  Start services in parallel
+│                │  Reach default target (multi-user.target or graphical.target)
+└───────────────┘
+    │
+    ▼
+ Login prompt / GUI
+</code></pre>
+<h3 id="uefi-vs-bios">UEFI vs. BIOS</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>BIOS</th>
+<th>UEFI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Age</strong></td>
+<td>1975</td>
+<td>2005+</td>
+</tr>
+<tr>
+<td><strong>Boot mode</strong></td>
+<td>MBR (Master Boot Record)</td>
+<td>GPT (GUID Partition Table)</td>
+</tr>
+<tr>
+<td><strong>Max disk size</strong></td>
+<td>2 TB</td>
+<td>9.4 ZB</td>
+</tr>
+<tr>
+<td><strong>Max partitions</strong></td>
+<td>4 primary</td>
+<td>128</td>
+</tr>
+<tr>
+<td><strong>Secure Boot</strong></td>
+<td>No</td>
+<td>Yes — verifies signed bootloader/kernel</td>
+</tr>
+<tr>
+<td><strong>Boot speed</strong></td>
+<td>Slower (sequential hardware init)</td>
+<td>Faster (parallel init, drivers in firmware)</td>
+</tr>
+</tbody>
+</table>
+<p>All modern servers use UEFI. The <strong>EFI System Partition (ESP)</strong> is a FAT32 partition (typically <code>/boot/efi</code>) containing the bootloader. UEFI firmware reads the bootloader directly from the ESP — no MBR needed.</p>
+<p><strong>Secure Boot</strong> verifies that the bootloader and kernel are signed with a trusted key. This prevents rootkits from modifying the boot chain. Most distros ship signed kernels that work with Secure Boot out of the box.</p>
+<pre><code class="language-bash"># check if you're booted in UEFI or BIOS mode
+ls /sys/firmware/efi                   # exists = UEFI, doesn't exist = BIOS
+
+# check Secure Boot status
+mokutil --sb-state
+# SecureBoot enabled / disabled
+
+# list boot entries
+efibootmgr -v
+</code></pre>
+<h3 id="grub2">GRUB2</h3>
+<p>GRUB2 is the boot loader on most Linux distros. It presents a menu (if configured), loads the selected kernel and initramfs into memory, and transfers control to the kernel.</p>
+<pre><code class="language-bash"># GRUB config
+cat /etc/default/grub
+# GRUB_DEFAULT=0
+# GRUB_TIMEOUT=5
+# GRUB_CMDLINE_LINUX=&quot;quiet splash&quot;
+# GRUB_CMDLINE_LINUX_DEFAULT=&quot;&quot;
+
+# regenerate GRUB config after changes
+update-grub                          # Debian/Ubuntu
+grub2-mkconfig -o /boot/grub2/grub.cfg  # RHEL/Fedora
+
+# kernel command line parameters go in GRUB_CMDLINE_LINUX
+# these are passed to the kernel at boot
+
+# list installed kernels
+ls /boot/vmlinuz-*
+
+# boot into a specific kernel (one-time, for testing)
+# use GRUB menu at boot, or:
+grub-reboot &quot;Advanced options for Ubuntu&gt;Ubuntu, with Linux 6.5.0-35-generic&quot;
+reboot
+</code></pre>
+<h3 id="initramfs-the-bridge-to-the-real-root">initramfs: The Bridge to the Real Root</h3>
+<p><strong>initramfs</strong> (initial RAM filesystem) is a small filesystem loaded into memory by the bootloader alongside the kernel. It contains the minimum tools and drivers needed to mount the real root filesystem.</p>
+<p>Why it exists: the kernel needs storage drivers to read the root filesystem, but those drivers might be in the root filesystem (chicken-and-egg). initramfs solves this by providing the drivers in a pre-loaded memory filesystem.</p>
+<p>What initramfs does:
+1. The kernel mounts initramfs as the initial <code>/</code>
+2. Runs <code>/init</code> (a script or binary in initramfs)
+3. Loads storage drivers (RAID, LVM, NVMe, SCSI)
+4. Assembles RAID arrays, activates LVM volumes
+5. Decrypts LUKS-encrypted volumes (prompts for passphrase or reads from keyfile)
+6. Mounts the real root filesystem
+7. <code>pivot_root</code> to the real root
+8. <code>exec</code>s the real init system (systemd)</p>
+<pre><code class="language-bash"># list contents of initramfs
+lsinitramfs /boot/initrd.img-$(uname -r)       # Debian/Ubuntu
+lsinitrd /boot/initramfs-$(uname -r).img       # RHEL/Fedora
+
+# regenerate initramfs (after adding drivers or changing config)
+update-initramfs -u                             # Debian/Ubuntu
+dracut --force                                  # RHEL/Fedora
+
+# include a custom module in initramfs
+echo &quot;my_driver&quot; &gt;&gt; /etc/initramfs-tools/modules
+update-initramfs -u
+</code></pre>
+<h3 id="systemd-boot-orchestration">systemd Boot Orchestration</h3>
+<p>Once systemd takes over as PID 1, it:</p>
+<ol>
+<li><strong>Reads unit files</strong> from <code>/etc/systemd/system/</code>, <code>/usr/lib/systemd/system/</code>, etc.</li>
+<li><strong>Builds a dependency tree</strong> from <code>After=</code>, <code>Requires=</code>, <code>Wants=</code> directives.</li>
+<li><strong>Starts units in parallel</strong> wherever dependencies allow. This is why systemd boots faster than SysV init (which started services sequentially).</li>
+<li><strong>Reaches the default target</strong> (<code>multi-user.target</code> for servers, <code>graphical.target</code> for desktops).</li>
+</ol>
+<pre><code class="language-bash"># see what's taking the most time during boot
+systemd-analyze                      # total boot time
+# Startup finished in 3.5s (firmware) + 1.2s (loader) + 2.1s (kernel) + 8.3s (userspace) = 15.1s
+
+systemd-analyze blame                # time per unit, sorted
+# 4.5s  NetworkManager-wait-online.service
+# 2.1s  dev-sda1.device
+# 1.8s  snapd.service
+# ...
+
+systemd-analyze critical-chain       # critical path (the longest dependency chain)
+# multi-user.target @8.3s
+# └─ postgresql.service @5.1s +2.2s
+#    └─ network-online.target @5.0s
+#       └─ NetworkManager-wait-online.service @1.2s +3.8s
+
+# visualize the boot process
+systemd-analyze plot &gt; boot.svg      # SVG timeline of the boot
+</code></pre>
+<p><code>systemd-analyze blame</code> is the first tool to reach for when boot is slow — it shows exactly which units took the longest. Common culprits: network wait services, filesystem checks, slow hardware detection.</p>
+<h3 id="systemd-targets-runlevels">systemd Targets (Runlevels)</h3>
+<p>systemd uses <strong>targets</strong> instead of SysV runlevels:</p>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th>SysV Equivalent</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>poweroff.target</code></td>
+<td>0</td>
+<td>System halt</td>
+</tr>
+<tr>
+<td><code>rescue.target</code></td>
+<td>1</td>
+<td>Single-user mode (recovery)</td>
+</tr>
+<tr>
+<td><code>multi-user.target</code></td>
+<td>3</td>
+<td>Multi-user, no GUI (servers)</td>
+</tr>
+<tr>
+<td><code>graphical.target</code></td>
+<td>5</td>
+<td>Multi-user with GUI (desktops)</td>
+</tr>
+<tr>
+<td><code>reboot.target</code></td>
+<td>6</td>
+<td>Reboot</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-bash"># check current default target
+systemctl get-default
+# multi-user.target
+
+# change default (permanent)
+systemctl set-default multi-user.target
+
+# switch target now (temporary)
+systemctl isolate rescue.target        # enter rescue mode
+</code></pre>
+<h3 id="rescue-and-recovery">Rescue and Recovery</h3>
+<p>When a system won't boot:</p>
+<pre><code class="language-bash"># 1. Hold Shift during boot to get the GRUB menu
+# 2. Select &quot;Advanced options&quot; → &quot;recovery mode&quot;
+# 3. Or edit the kernel command line in GRUB:
+#    - add &quot;single&quot; or &quot;init=/bin/bash&quot; to boot into a minimal shell
+
+# once in rescue/recovery:
+mount -o remount,rw /                  # remount root read-write
+journalctl -b -1                       # view logs from the previous (failed) boot
+systemctl list-units --failed           # show failed units
+</code></pre>
+<p>If you remember one thing from Part 10: <strong>the boot sequence is firmware (UEFI) → bootloader (GRUB) → kernel → initramfs (load drivers, mount root) → systemd (PID 1, parallel service startup), and <code>systemd-analyze blame</code> shows you which services are making boot slow. When things go wrong, <code>journalctl -b -1</code> shows you the previous boot's logs.</strong></p>
+<hr>
+<p>That's the guide. From here, the highest-leverage next steps are to connect these internals to your actual systems: run <code>perf stat</code> on a production service to check IPC, run <code>biolatency</code> to see your real disk latency distribution, check <code>cpu.stat</code> in your container's cgroup for throttling, and run <code>systemd-analyze security</code> on your service units to see how well they're sandboxed. Once you've seen CFS throttling flatten your p99, or watched the OOM killer fire via <code>oomkill</code> from BCC — the kernel stops being abstract and starts being the explanation for the behavior you see every day.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

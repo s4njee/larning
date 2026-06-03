@@ -1,0 +1,775 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Study Guides.">
+<title>Study Guides - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#53d980; --accent2:#4fd3b4; --accent-weak:rgba(83,217,128,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#53d980; --accent2:#4fd3b4; --accent-weak:rgba(83,217,128,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">SG</span><span>Study Guides</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#website" data-target="website">Website</a></li><li class="toc-l2"><a href="#guides" data-target="guides">Guides</a></li><li class="toc-l3"><a href="#advanced-go" data-target="advanced-go">Advanced Go</a></li><li class="toc-l3"><a href="#advanced-linux" data-target="advanced-linux">Advanced Linux</a></li><li class="toc-l3"><a href="#advanced-nodejs" data-target="advanced-nodejs">Advanced Node.js</a></li><li class="toc-l3"><a href="#advanced-python" data-target="advanced-python">Advanced Python</a></li><li class="toc-l3"><a href="#ai-engineering-agents-tool-use" data-target="ai-engineering-agents-tool-use">AI Engineering: Agents &amp; Tool Use</a></li><li class="toc-l3"><a href="#ansible" data-target="ansible">Ansible</a></li><li class="toc-l3"><a href="#asyncio-aiohttp" data-target="asyncio-aiohttp">Asyncio &amp; aiohttp</a></li><li class="toc-l3"><a href="#authentication-authorization-identity" data-target="authentication-authorization-identity">Authentication &amp; Authorization (Identity)</a></li><li class="toc-l3"><a href="#azure-for-aws-solutions-architect" data-target="azure-for-aws-solutions-architect">Azure for AWS Solutions Architect</a></li><li class="toc-l3"><a href="#gcp-for-aws-solutions-architect" data-target="gcp-for-aws-solutions-architect">GCP for AWS Solutions Architect</a></li><li class="toc-l3"><a href="#caddy" data-target="caddy">Caddy</a></li><li class="toc-l3"><a href="#cloudflare" data-target="cloudflare">Cloudflare</a></li><li class="toc-l3"><a href="#c26-modern-c" data-target="c26-modern-c">C++26 &amp; Modern C++</a></li><li class="toc-l3"><a href="#cryptography-fundamentals" data-target="cryptography-fundamentals">Cryptography Fundamentals</a></li><li class="toc-l3"><a href="#data-engineering" data-target="data-engineering">Data Engineering</a></li><li class="toc-l3"><a href="#distributed-systems" data-target="distributed-systems">Distributed Systems</a></li><li class="toc-l3"><a href="#django" data-target="django">Django</a></li><li class="toc-l3"><a href="#docker" data-target="docker">Docker</a></li><li class="toc-l3"><a href="#docker-and-kubernetes-networking" data-target="docker-and-kubernetes-networking">Docker and Kubernetes Networking</a></li><li class="toc-l3"><a href="#dotnet-for-python-developers" data-target="dotnet-for-python-developers">Dotnet for Python Developers</a></li><li class="toc-l3"><a href="#ebpf" data-target="ebpf">eBPF</a></li><li class="toc-l3"><a href="#electron" data-target="electron">Electron</a></li><li class="toc-l3"><a href="#esp32" data-target="esp32">ESP32</a></li><li class="toc-l3"><a href="#git" data-target="git">Git</a></li><li class="toc-l3"><a href="#github-actions" data-target="github-actions">GitHub Actions</a></li><li class="toc-l3"><a href="#golang-for-python-developers" data-target="golang-for-python-developers">Golang for Python Developers</a></li><li class="toc-l3"><a href="#ios-development" data-target="ios-development">iOS Development</a></li><li class="toc-l3"><a href="#kali-linux" data-target="kali-linux">Kali Linux</a></li><li class="toc-l3"><a href="#kubernetes" data-target="kubernetes">Kubernetes</a></li><li class="toc-l3"><a href="#kubernetes-advanced" data-target="kubernetes-advanced">Kubernetes (Advanced)</a></li><li class="toc-l3"><a href="#kubernetes-security" data-target="kubernetes-security">Kubernetes Security</a></li><li class="toc-l3"><a href="#linux-fundamentals" data-target="linux-fundamentals">Linux Fundamentals</a></li><li class="toc-l3"><a href="#llm-application-development" data-target="llm-application-development">LLM Application Development</a></li><li class="toc-l3"><a href="#networking-fundamentals" data-target="networking-fundamentals">Networking Fundamentals</a></li><li class="toc-l3"><a href="#nextjs" data-target="nextjs">Next.js</a></li><li class="toc-l3"><a href="#observability" data-target="observability">Observability</a></li><li class="toc-l3"><a href="#postgresql" data-target="postgresql">PostgreSQL</a></li><li class="toc-l3"><a href="#postgresql-feature-reference" data-target="postgresql-feature-reference">PostgreSQL Feature Reference</a></li><li class="toc-l3"><a href="#python-concurrency" data-target="python-concurrency">Python Concurrency</a></li><li class="toc-l3"><a href="#python-vs-nodejs-async" data-target="python-vs-nodejs-async">Python vs Node.js Async</a></li><li class="toc-l3"><a href="#qt" data-target="qt">Qt</a></li><li class="toc-l3"><a href="#redis" data-target="redis">Redis</a></li><li class="toc-l3"><a href="#rust-for-python-developers" data-target="rust-for-python-developers">Rust for Python Developers</a></li><li class="toc-l3"><a href="#sveltekit" data-target="sveltekit">SvelteKit</a></li><li class="toc-l3"><a href="#swift" data-target="swift">Swift</a></li><li class="toc-l3"><a href="#terraform" data-target="terraform">Terraform</a></li><li class="toc-l3"><a href="#testing" data-target="testing">Testing</a></li><li class="toc-l3"><a href="#typescript" data-target="typescript">TypeScript</a></li><li class="toc-l3"><a href="#vim" data-target="vim">Vim</a></li><li class="toc-l3"><a href="#vue" data-target="vue">Vue</a></li><li class="toc-l3"><a href="#webgpu" data-target="webgpu">WebGPU</a></li><li class="toc-l3"><a href="#websockets" data-target="websockets">WebSockets</a></li><li class="toc-l2"><a href="#notes" data-target="notes">Notes</a></li></ul></nav></aside>
+  <main><h1 id="study-guides">Study Guides</h1>
+<p>This repository collects practical study guides for cloud, frontend, systems, and security topics. Each guide is written to be usable on its own, with the goal of helping you learn the subject by connecting concepts to real-world workflows and examples.</p>
+<h2 id="website">Website</h2>
+<p>The generated self-contained website lives in <code>html/</code>, with <code>html/index.html</code> as the table of contents. GitHub Pages is deployed from that folder by <code>.github/workflows/pages.yml</code>, and the workflow rebuilds every guide before publishing so the index is not stale.</p>
+<p>To rebuild locally:</p>
+<pre><code class="language-bash">python3 build_all_guides.py
+</code></pre>
+<h2 id="guides">Guides</h2>
+<h3 id="advanced-go">Advanced Go</h3>
+<p>This guide is a depth-first treatment of the Go runtime and high-performance Go for engineers who already write Go and want to understand what happens beneath their code. Its thesis ties it to its sibling guides: in Python you fight the interpreter and in Node you fight the event loop, but in Go — already compiled to native code — you fight the allocator and the garbage collector. It covers the runtime model (native compilation, the embedded runtime, value semantics), the GMP scheduler (goroutines, work-stealing, the netpoller, async preemption, and container-aware <code>GOMAXPROCS</code>), escape analysis and allocation (stack vs heap, <code>-gcflags=-m</code>, interface boxing — the single highest-return lever), the garbage collector (concurrent low-latency mark-sweep, <code>GOGC</code> and <code>GOMEMLIMIT</code>), data structures and memory layout (slice preallocation, <code>[]T</code> vs <code>[]*T</code>, struct field packing, <code>strings.Builder</code>, cache locality), and concurrency for performance (channels vs mutexes vs atomics, contention, <code>sync.Pool</code>, bounded <code>errgroup</code>, goroutine leaks, the race detector). It then covers the compiler and PGO (inlining, devirtualization, a free 2–14% from profile-guided optimization, and why cgo is <em>slower</em>), profiling (<code>pprof</code> flame graphs, <code>b.Loop</code> benchmarks with <code>-benchmem</code>, <code>benchstat</code>, the execution tracer), the full ladder of performance levers, and ten worked recipes — preallocation, <code>sync.Pool</code>, bounded fan-out, atomic counters, allocation hunting, faster JSON, buffered I/O, container runtime tuning, PGO, and sharded maps — plus a decision tree.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/ADVANCED_GO_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="advanced-linux">Advanced Linux</h3>
+<p>This guide is a depth-first treatment of the tunable, observable, optimizable internals of Linux — the companion to the Linux Fundamentals guide, which covers the substrate (processes, file descriptors, signals, namespaces, cgroups); this guide covers what you tune, trace, and harden on top of it. It starts with the scheduler (CFS and its vruntime red-black tree, EEVDF in kernel 6.6+ with virtual deadlines and the sched_ext eBPF hook, scheduling classes, nice values, CPU affinity and isolcpus, and the full mechanics of CFS bandwidth control — how Kubernetes CPU limits cause throttling even on idle nodes, and why checking cpu.stat for nr_throttled is the first move for container CPU issues). It then goes deep on memory management (virtual memory and page tables, TLB and its performance impact, demand paging and copy-on-write, huge pages — transparent vs explicit and the THP controversy for databases, the page cache and the classic "no free memory" misunderstanding, memory reclaim and swappiness tuning, the OOM killer's scoring system and how Kubernetes sets oom_score_adj by QoS class, the cgroups v2 memory controller in full — memory.high throttling vs memory.max killing — and PSI pressure stall information), the I/O stack (the full path from write() to device, buffered vs direct I/O, durability guarantees — fsync/fdatasync/O_SYNC, I/O schedulers and why NVMe should use none, io_uring — the shared-memory ring buffer architecture that eliminates per-I/O syscall overhead — readahead, writeback tuning, and benchmarking with fio), advanced networking (the kernel packet pipeline, nftables as the iptables successor, TCP tuning — buffer sizes and BBR congestion control, SO_REUSEPORT for per-CPU accept parallelism, IPVS for O(1) Kubernetes Service load balancing, traffic control with tc and netem, conntrack table exhaustion, and Unix domain sockets), eBPF (the verifier, maps, program types — kprobe/tracepoint/uprobe/XDP/TC/cgroup/LSM/sched_ext, XDP for 10M+ pps packet filtering, bpftrace one-liners, the BCC toolkit, CO-RE portability, libbpf, and the 2026 production landscape — Cilium, Tetragon, Falco, Pixie, Grafana Beyla, sched_ext), performance analysis (the USE method as a systematic checklist, the RED method for services, perf stat IPC for CPU-vs-memory-bound diagnosis, flame graphs — on-CPU and off-CPU, ftrace, advanced diagnostic patterns for latency, lock contention, and memory leaks), security hardening (SELinux vs AppArmor, seccomp-bpf syscall filtering, the audit framework, SSH hardening, PAM, the full systemd sandboxing reference, and kernel hardening features), advanced filesystems and storage (ext4 vs XFS vs Btrfs comparison, filesystem tuning, LVM — thin provisioning and snapshots, LUKS encryption, mdadm RAID, POSIX ACLs, overlayfs mechanics, mount propagation, and bind mounts), kernel tuning (the sysctl parameters that actually matter — somaxconn, tcp_tw_reuse, swappiness, BBR, inotify watches, conntrack_max — kernel command line parameters including isolcpus, nohz_full, and rcu_nocbs, and DKMS), and the boot process (the full sequence from power-on — UEFI vs BIOS, Secure Boot, GRUB2, initramfs as the driver-loading bridge to the real root, systemd's parallel startup orchestration, systemd-analyze for boot profiling, targets, and rescue/recovery).</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/ADVANCED_LINUX_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="advanced-nodejs">Advanced Node.js</h3>
+<p>This guide is a depth-first treatment of Node.js internals and high-performance patterns for engineers who already build production services with it. It starts with the runtime model (V8 + libuv + kernel async I/O, why single-threaded doesn't mean single-process, the thread pool), then goes deep on V8's JIT pipeline (Ignition → Maglev → TurboFan, hidden classes, inline caches, SMIs vs HeapNumbers, typed arrays, and the deoptimization traps that silently slow code by 100×). The event loop gets an honest treatment — the actual phase sequence (timers → poll → check), microtask queues, <code>process.nextTick</code> vs <code>queueMicrotask</code> vs <code>setImmediate</code>, and blocking-the-loop detection. It then covers async patterns and pitfalls (sequential vs concurrent <code>await</code>, <code>Promise.all</code>/<code>allSettled</code>, bounded concurrency, <code>AbortController</code>), streams and backpressure (<code>pipeline</code>, async iterators, <code>highWaterMark</code>), Worker Threads and clustering (offloading CPU work with <code>piscina</code>, <code>transferList</code> zero-copy, cluster vs Workers), memory management (V8's generational heap, the three-snapshot leak technique, common leak patterns, GC tuning), profiling (flame charts, Clinic.js, <code>monitorEventLoopDelay</code>), and the full ladder of performance levers — faster framework (Fastify), schema-compiled JSON, streaming, connection pooling, V8 shape discipline, caching, clustering, and native/Wasm. It closes with ten worked recipes: schema-compiled serialization, stream transforms, bounded fan-out, worker-pool image processing, database pooling, LRU with stale-while-revalidate, <code>setImmediate</code> chunking, zero-copy buffers, undici connection pooling, and graceful shutdown — plus a decision tree.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/ADVANCED_NODEJS_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="advanced-python">Advanced Python</h3>
+<p>This guide is a depth-first treatment of the Python language and CPython runtime for engineers who already write Python professionally and want to write it <em>fast</em>. It starts with the runtime model (heap-allocated objects, reference counting, the GIL, bytecode, the specializing interpreter, and the experimental JIT and free-threaded builds), the data model (dunder protocols, the attribute lookup chain, container/numeric/callable/context-manager protocols, <code>__init_subclass__</code>), descriptors (<code>property</code>, method binding, <code>__slots__</code>, reusable validators), metaclasses and class machinery (<code>type</code>, <code>__prepare__</code>, <code>@dataclass</code>, the MRO), and iterators/generators/<code>itertools</code> for lazy constant-memory pipelines. It then covers the type system (generics, <code>Protocol</code>, <code>TypedDict</code>, strict mypy/pyright), modern packaging with <code>uv</code> and <code>ruff</code>, profiling and measurement (<code>cProfile</code>, <code>line_profiler</code>, <code>tracemalloc</code>, <code>timeit</code>), and the full ladder of performance levers — right data structure, move-the-loop-into-C, NumPy vectorization, caching, <code>__slots__</code>, string performance, concurrency, compiled extensions (Cython, Numba, PyO3/Rust, PyPy), and algorithm choice. It closes with ten worked, profiled high-performance recipes: set membership, batch inserts, large-file streaming, NumPy vectorization, Numba JIT, async HTTP fan-out, multiprocessing, <code>__slots__</code> memory, string building, and a decision tree for choosing the right lever.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/ADVANCED_PYTHON_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="ai-engineering-agents-tool-use">AI Engineering: Agents &amp; Tool Use</h3>
+<p>This guide is a depth-first treatment of building, orchestrating, and operating AI agents in production — the companion to the LLM Application Development guide, going deep on what changes when the LLM is in a loop. It starts with the mental model (the spectrum from single calls to multi-agent systems, Anthropic's workflows-vs-agents distinction, the five composable workflow patterns), then the agent loop itself (the minimal ~30-line loop in both Anthropic and OpenAI variants, ReAct, plan-and-execute, reflexion, and the full production checklist — cost tracking, loop detection, tool validation, human-in-the-loop). It goes deep on tool use (design principles, parallel calls, tool routing for large catalogs, result handling, provider comparison), structured outputs for agents (native constrained decoding, Instructor, structured internal state), guardrails (defense-in-depth with rule-based/ML/LLM layers, prompt injection defense, PII detection, action validation, Guardrails AI vs. NeMo Guardrails, the self-correction pattern), and cost control (the four levers — prompt caching, model routing and cascading, semantic caching, token budgeting — with an implementation roadmap). It then covers multi-agent orchestration (orchestrator-workers, sequential pipelines, fan-out/fan-in, debate, handoffs, shared state, production guardrails for multi-agent), MCP (the Model Context Protocol — architecture, three primitives, transport, writing servers and clients, security, 2026 status), A2A (Google's Agent-to-Agent protocol — Agent Cards, task lifecycle, how MCP and A2A compose), memory systems (the CoALA taxonomy of working/episodic/semantic/procedural memory, tools like Mem0, Zep, and Letta, the active reflection pattern), computer use and browser agents (the hybrid architecture, Anthropic computer use, frameworks), agent observability and evaluation (tracing, key metrics, platforms, trajectory evaluation, the production-to-eval pipeline), agent safety and alignment (risk taxonomy, least privilege, action classification, staged autonomy, red-teaming, regulatory frameworks), context engineering (the shift from prompt engineering, principles for information timing, tool descriptions, context hygiene), and the critical question of when to skip the framework (the case for raw SDKs, the case for frameworks, the hybrid approach, the Anthropic principle). It closes with a framework landscape comparison (LangGraph, OpenAI Agents SDK, CrewAI, AutoGen — with a selection matrix), four production recipes (customer support agent, research agent with memory, multi-agent code review pipeline, cost-optimized agent with model routing), common mistakes, and decision trees for agent, framework, and model selection.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/AI_AGENTS_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="ansible">Ansible</h3>
+<p>This guide is a depth-first treatment of Ansible for engineers configuring real machines: the agentless model, inventories, modules, playbooks, roles, variables and Jinja2, control flow, templates, collections, testing, and production patterns — followed by an honest comparison against Terraform, Puppet, Salt, and cloud-init. It closes with concrete recipes: a full nginx role with every file, a rolling-deploy playbook with block-rescue rollback, a common-patterns cookbook (bootstrap, users, dotfiles, Vault secrets), and an end-to-end walkthrough of a production playbook repo.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/ANSIBLE_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="asyncio-aiohttp">Asyncio &amp; aiohttp</h3>
+<p>This guide is a depth-first treatment of Python's <code>asyncio</code> for engineers making I/O-bound code fast and keeping it correct, with heavy weight on <code>aiohttp</code> and practical performance. It starts with the mental model (why async eliminates idle waiting, I/O-bound vs CPU-bound, the event loop, coroutines vs tasks vs futures), then the concurrency toolkit (<code>gather</code>, <code>TaskGroup</code>, <code>as_completed</code>, <code>wait</code>), cancellation/timeouts/exception groups, coordination and backpressure (<code>Semaphore</code>, <code>Queue</code>, <code>Lock</code>, <code>Event</code>), and the cardinal rule of never blocking the loop (detection, <code>to_thread</code>, executors, <code>aiofiles</code>). It then goes deep on <code>aiohttp</code> — the client (session reuse, connection pooling, timeouts, streaming, bounded fan-out, retries) and the server (application lifecycle, middleware, streaming, WebSockets, multi-worker deployment) — and on talking to data (<code>asyncpg</code> vs <code>aiopg</code>, pools, the accidental-serialization trap, <code>aiofiles</code>). It closes with a performance chapter (measuring, <code>uvloop</code>, killing serialization, batching with <code>COPY</code>, pool sizing, when async stops helping), a production/debugging field guide, and five performance recipes including concurrent download-to-disk and a streaming file-to-Postgres ETL pipeline.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/ASYNCIO_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="authentication-authorization-identity">Authentication &amp; Authorization (Identity)</h3>
+<p>This guide is a depth-first treatment of identity in modern distributed systems, answering the applied "how do I do auth in my app" question. It bridges the gap between cryptographic primitives and cluster-level access. It covers the fundamentals (stateful sessions vs. stateless JWTs, the LocalStorage vs. HttpOnly cookie debate for XSS/CSRF), OAuth 2.0 and OIDC (the Authorization Code flow with PKCE, the distinction between Access Tokens and ID Tokens), token lifecycles (refresh-token rotation, compromise detection, revocation strategies like blocklists and Bloom filters), enterprise SSO (SAML 2.0 vs. OIDC, SCIM for directory sync), and authorization models (RBAC, ABAC, ReBAC via Google Zanzibar/SpiceDB, and multi-tenant authz isolation). It then covers application architecture patterns (API Gateways, the Phantom Token pattern, the WebSockets auth-header problem) and passkeys/WebAuthn. It closes with common pitfalls like the <code>alg=none</code> vulnerability, confused deputy/audience checks, and token exfiltration via <code>Referer</code>.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/AUTH_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="azure-for-aws-solutions-architect">Azure for AWS Solutions Architect</h3>
+<p>This guide helps AWS-minded architects map familiar ideas to Azure services, terminology, and design patterns. It is especially useful if you already think in AWS primitives and want a fast, practical translation into Azure without losing sight of architecture tradeoffs.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md">Open on GitHub</a></p>
+<h3 id="gcp-for-aws-solutions-architect">GCP for AWS Solutions Architect</h3>
+<p>This guide helps AWS-minded architects map familiar ideas to Google Cloud Platform (GCP) services, resource hierarchies, global networking, and design patterns. It is especially useful if you already think in AWS primitives and want a fast, practical translation into GCP.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md">Open on GitHub</a></p>
+<h3 id="caddy">Caddy</h3>
+<p>This guide is a depth-first treatment of the Caddy web server for engineers running real services: the architecture (single binary, Go module system), the Caddyfile language (site blocks, directives, matchers, snippets), automatic HTTPS (ACME, Let's Encrypt, internal CA, on-demand TLS, wildcard certificates), reverse proxying (load balancing, health checks, WebSockets, dynamic upstreams), static file serving (compression, SPA fallback), request handling (headers, redirects, rewrites, templates), authentication (basic auth, forward auth with Authelia/OAuth2 Proxy), the JSON config and admin API for dynamic reconfiguration, logging and observability (structured logs, Prometheus metrics, OpenTelemetry tracing), and production operations (systemd, Docker, Kubernetes, certificate storage, graceful reloads). It closes with an honest comparison to Nginx, Apache, Traefik, HAProxy, and Envoy, followed by seven copy-paste recipes and an end-to-end walkthrough of a multi-service production deployment.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/CADDY_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="cloudflare">Cloudflare</h3>
+<p>This guide explains Cloudflare from a builder's point of view, focusing on the tools and services you are most likely to use in real projects. It is meant to make the platform feel less like a bundle of products and more like a set of choices you can compose for delivery, security, and edge compute.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/CLOUDFLARE_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="c26-modern-c">C++26 &amp; Modern C++</h3>
+<p>This guide is a depth-first treatment of the C++26 standard and the paradigms that define modern C++ in 2026 — for engineers who know C++ (any vintage) and want to understand what changed, what to adopt, and what to abandon. It starts with the C++ timeline, then covers the modern paradigm shift: RAII, value semantics, Rule of Zero, move semantics, compile-time programming, concepts, ranges, sum types via <code>std::optional</code>/<code>variant</code>/<code>expected</code>, and deducing <code>this</code>. It goes deep on the three headline C++26 features: static reflection, contracts, and <code>std::execution</code>, while also covering the everyday concurrency toolkit (<code>std::jthread</code>, <code>stop_token</code>, C++20 synchronization primitives, and coroutines), C++26 language and library additions, and the honest state of C++ safety compared with Rust. The expanded practical sections are intentionally opinionated: project layout, house style, ownership/lifetime policy, API design, error handling, structured concurrency, testing and quality gates, performance defaults, banned/blessed idioms, code review, dependency management, ABI reality, and a staged modernization strategy for enterprise codebases. It closes with an old-way-vs-new-way reference table, and cross-links to the Rust, Advanced Go, Python Concurrency, ESP32, and GitHub Actions guides.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/CPP26_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="cryptography-fundamentals">Cryptography Fundamentals</h3>
+<p>This guide covers applied cryptography for engineers: the primitives (hashing, symmetric, asymmetric, signatures, key exchange), the protocols (TLS, OIDC, JWT), the engineering concerns (key management, side channels, constant-time code), and the applied recipes you actually ship (auth in Node.js and Go, webhook signing, envelope encryption with KMS, file encryption with age). The goal is to be fluent enough to read a spec, choose the right library, and recognize when something is dangerously wrong.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/CRYPTO_FUNDAMENTALS.md">Open on GitHub</a></p>
+<h3 id="data-engineering">Data Engineering</h3>
+<p>This guide covers what data engineers actually build: storage formats, warehouses and lakehouses, ingestion (CDC, Kafka, SaaS), transformation with dbt, orchestration with Airflow/Dagster/Prefect, distributed compute with Spark, streaming, modeling, quality, and governance. It closes with concrete recipes for a real dbt project layout, Airflow DAG patterns, warehouse cost optimization, and a full walkthrough of a production pipeline from source systems to BI.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/DATA_ENGINEERING_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="distributed-systems">Distributed Systems</h3>
+<p>This guide is a concept-first but relentlessly OSS-grounded treatment of distributed systems for engineers who build and operate them. It builds bottom-up: first the physics (partial failure, the unreliable network, why clocks lie, logical and vector clocks, gossip, and the FLP and Two Generals impossibility results), then the core techniques layered on top — replication and the consistency spectrum (single-leader/multi-leader/leaderless, quorums, CAP done honestly and PACELC, CRDTs), consensus (the replicated-state-machine model, Paxos intuition, Raft in depth, and why clusters run 3 or 5 nodes), and partitioning (range vs. hash, consistent hashing with virtual nodes, hotspots, rebalancing, request routing). It then assembles those primitives into real systems: coordination services and the distributed-locks-are-dangerous cautionary tale (fencing tokens, the Redlock critique), transactions and ordering (the dual-write problem, idempotency, why 2PC is avoided, sagas, the outbox pattern, TrueTime/HLC), and messaging and streaming (queue vs. log, Kafka as a worked example, delivery semantics, backpressure, dead-letter queues) — before a production chapter on operating them (distributed tracing, the failure taxonomy of cascades, retry storms, and metastable failure, and the survival toolkit of timeouts, backoff with jitter, circuit breakers, bulkheads, and load shedding). Every concept is anchored in open-source systems you can run — Kafka, Cassandra, etcd, ZooKeeper, Consul, Redis Cluster, CockroachDB, Elasticsearch, Kubernetes — and it closes with a field guide that maps the concepts onto those systems plus end-to-end walkthroughs of a write through Kafka, a write-and-read in Cassandra, and Kubernetes as a distributed system in its own right.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="django">Django</h3>
+<p>This guide covers Django as a productive web framework with a strong opinionated core. It focuses on the parts that matter most in day-to-day development: models, views, templates, forms, admin, auth, and how those pieces fit together in a maintainable app.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/DJANGO_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="docker">Docker</h3>
+<p>This guide is a practical, under-the-hood treatment of Docker for engineers who've already run <code>docker run</code> and written a Dockerfile. It covers what each component does and how it actually works: images and layers, the Dockerfile in depth, multi-stage builds and BuildKit, volumes and bind mounts, networking, Docker Compose, health checks and restart policies, and resource limits. For the cluster-networking side specifically, it hands off to the Docker and Kubernetes Networking guide below.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/DOCKER_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="docker-and-kubernetes-networking">Docker and Kubernetes Networking</h3>
+<p>This guide connects container networking concepts to their Kubernetes equivalents so the jump from local container work to cluster networking feels natural. It emphasizes the practical patterns you will actually use for services, ingress, debugging, and traffic flow.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="dotnet-for-python-developers">Dotnet for Python Developers</h3>
+<p>This guide is for Python developers who want to become comfortable in the .NET ecosystem without having to relearn everything at once. It focuses on translating familiar Python mental models into C#, tooling, and common application structure.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/DOTNET_FOR_PYTHON_DEVS.md">Open on GitHub</a></p>
+<h3 id="ebpf">eBPF</h3>
+<p>This guide is a depth-first treatment of eBPF — the technology that lets you run sandboxed programs inside the Linux kernel without modifying it or rebooting — for engineers who want to understand why it has become the foundational layer beneath modern Kubernetes networking, security, and observability. It starts with the problem eBPF solves (extending the kernel safely and dynamically, the JavaScript-of-the-kernel analogy, the capability timeline from kernel 3.15 through 6.12), the architecture (the full lifecycle from writing to loading through the verifier and JIT compiler to attachment at hook points, the eBPF instruction set and 512-byte stack limit, helper functions as the curated kernel API), program types and hook points (tracing — kprobes, tracepoints, fentry/fexit, uprobes, USDT, perf_event; networking — XDP at 10M+ pps, TC, socket filters, sk_msg, cgroup hooks; security — LSM hooks; scheduling — sched_ext and struct_ops), maps in depth (hash, array, per-CPU variants for lock-free counters, LRU, ring buffer vs perf_event_array, stack trace, prog_array for tail calls, bloom filter, LPM trie — with code examples for per-CPU counting and ring buffer event streaming), the verifier (what it checks — termination, memory safety, register tracking, helper validation, instruction limits — common rejections and how to fix them), bpftrace (the tracing Swiss Army Knife — 15+ production one-liners for file opens, syscall latency histograms, process execution, TCP connections and retransmits, block I/O latency, page cache stats, memory allocation, scheduler run queue latency, off-CPU analysis, and DNS query sniffing, plus the full language reference), BCC tools (the 100+ pre-built toolkit — execsnoop, runqlat, cpudist, offcputime, biolatency, biosnoop, biotop, fileslower, cachestat, tcpconnect, tcplife, tcpretrans, tcpdrop, memleak, oomkill, opensnoop, capable), writing eBPF programs (CO-RE and BTF for compile-once-run-everywhere portability, the ecosystem comparison — libbpf/C, cilium/ebpf/Go with bpf2go, aya/Rust, bcc/Python — with workflow examples for each, and bpftool as the inspector), networking with eBPF (Cilium as the dominant Kubernetes CNI — how it replaces kube-proxy with O(1) eBPF hash lookups, Hubble for zero-instrumentation network observability, XDP firewall code example), security with eBPF (Tetragon for in-kernel runtime enforcement — TracingPolicy examples that kill processes on policy violation, Falco for behavioral threat detection — rule examples, and the Tetragon-vs-Falco comparison), observability with eBPF (Grafana Beyla for auto-instrumented HTTP/gRPC/SQL metrics without code changes, Parca and Pyroscope for continuous profiling, Pixie for full Kubernetes observability), sched_ext (custom CPU schedulers in eBPF that can be hot-swapped at runtime — why custom scheduling matters for gaming, databases, and AI training, the struct_ops callback model, existing schedulers like scx_rusty and scx_lavd, and the safety model of automatic revert on crash), eBPF security considerations (the attack surface — verifier vulnerabilities, privileged access requirements, information leakage; container security — why workloads should never have CAP_BPF; restrictions and hardening), and the full 2026 ecosystem landscape map with a learning path from using tools through writing programs to production deployment.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/EBPF_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="electron">Electron</h3>
+<p>This guide teaches desktop GUI development through Electron, written specifically for web and Linux/backend engineers who have never built a native app. Its framing: Electron is a web front-end (Chromium) wired to a Node.js back-end, so ~80% of it is skills you already have — the UI is web (use Vue), the privileged layer is Node, and the boundary between them is a client-server API — and the guide spends its energy on the genuinely new 20%. It covers the multi-process architecture (main vs renderer vs preload, mapped to a one-machine client-server system), IPC as a typed API boundary, the renderer as a web app you fully control, native OS integration (menus, tray, dialogs, shortcuts, deep links, and the per-OS conventions), local-first data (<code>app.getPath</code>, <code>electron-store</code>, SQLite via <code>better-sqlite3</code>, the native-module rebuild gotcha), and the security model (untrusted renderer with OS access — context isolation, sandbox, validated IPC, CSP, navigation control, and owning Chromium's CVEs). It then tackles the parts that shock every web developer — packaging and code signing per OS (NSIS/Authenticode, macOS notarization, and Linux AppImage/deb/Flatpak), auto-updates as the desktop "deploy," and performance (the honest memory/size cost, never blocking the main process). It closes with an opinionated comparison to Tauri, Qt, native, and PWAs — when to use Electron and when not to — and an end-to-end build walkthrough.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/ELECTRON_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="esp32">ESP32</h3>
+<p>This guide teaches the ESP32 — the Wi-Fi/Bluetooth microcontroller behind most hobbyist and commercial IoT — for software engineers who've never programmed a microcontroller, framed throughout by contrast with the Raspberry Pi/Linux world: a microcontroller is a complete computer on a chip that runs one program forever with no OS, no shell, and tiny fixed memory, programmed by cross-compiling and flashing over USB. It covers the microcontroller mindset (bare metal, the no-OS development loop, serial debugging), the chip and the variant family (original ESP32 vs S2/S3/C3/C6/H2, boards vs modules vs chips, and the GPIO pin caveats that bite everyone), the three toolchains (Arduino, ESP-IDF, MicroPython — and PlatformIO), GPIO and the digital world (pull resistors, debouncing, interrupts, persistent storage), analog and buses (ADC, PWM, and I2C/SPI/UART with the sensor-library pattern), FreeRTOS and dual-core concurrency (why <code>delay()</code> is the cardinal beginner trap, the non-blocking <code>millis()</code> pattern, tasks and queues, the Wi-Fi core), Wi-Fi/Bluetooth/networking (station and AP provisioning, MQTT pub/sub as the IoT default, BLE, and the TLS-and-secrets security you can't skip), and power management and deep sleep (the 20,000× active-to-deep-sleep current drop that turns a half-day battery into a multi-year one). It then devotes a full part to five escalating, complete sample projects — blink, button+interrupt, a Wi-Fi/MQTT weather station, a deep-sleep battery sensor, and a web-controlled device — and closes with production concerns (crash backtraces, brownouts, OTA updates, Secure Boot and Flash Encryption, per-device provisioning, and an honest ESP32-vs-Pi "which do I reach for" verdict).</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/ESP32_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="git">Git</h3>
+<p>This guide goes past the tutorial level into Git's internals — enough to use the tool fluently and recover from almost anything. It starts with the object model, refs, HEAD, and the index, then works through commits, branching and merging, rebasing, cherry-pick, reset/restore/revert, stash, interactive rebase, and worktrees — with the reflog presented as the safety net that gets your work back when something goes wrong.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/GIT_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="github-actions">GitHub Actions</h3>
+<p>This guide is a depth-first, pattern-first treatment of GitHub Actions for engineers building real CI/CD: the execution model (events, workflows, jobs, steps, runners), the workflow language, caching and matrix builds, composition with reusable and composite actions, and authoring your own JavaScript and Docker actions. It then goes deep on what bites in production — security hardening (the <code>pull_request_target</code> footgun, script injection, SHA-pinning actions, least-privilege <code>permissions</code>), deployment and release automation with OIDC to the cloud (no stored credentials), and operating runners at scale with Actions Runner Controller — before an honest comparison to GitLab CI, Jenkins, CircleCI, Buildkite, and Dagger. It closes with five copy-paste recipes and an end-to-end walkthrough from an empty repo to a reviewer-gated production pipeline, with examples spanning Node, Python, Go, and Rust.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/GITHUB_ACTIONS_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="golang-for-python-developers">Golang for Python Developers</h3>
+<p>This guide helps Python developers understand Go through comparison rather than jargon. It focuses on the language features, concurrency model, packaging, and standard library patterns that make Go feel different but approachable.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/GOLANG_FOR_PYTHON_DEVS.md">Open on GitHub</a></p>
+<h3 id="ios-development">iOS Development</h3>
+<p>This guide is a depth-first treatment of iOS development in 2026 — for engineers who can program but have never shipped an iOS app, or who learned iOS years ago and need to understand the modern landscape. It starts with Swift the language (value types vs reference types and why structs are the default, optionals and safe unwrapping patterns, enums as algebraic data types with associated values and exhaustive pattern matching, protocols and protocol-oriented programming with <code>some</code> vs <code>any</code>, closures and trailing closure syntax, generics, error handling with typed throws, and property wrappers), then SwiftUI (declarative views as structs, the layout system — VStack/HStack/ZStack/LazyVStack/Grid/Spacer, Lists with swipe actions and pull-to-refresh, modifier chaining and why order matters, SF Symbols), state management in depth (the <code>@State</code>/<code>@Binding</code>/<code>@Observable</code>/<code>@Environment</code>/<code>@AppStorage</code> decision table, why <code>@Observable</code> replaced <code>ObservableObject</code> with granular property tracking, injecting shared services via environment), navigation (<code>NavigationStack</code> with type-safe <code>navigationDestination</code>, programmatic routing with a Router pattern using <code>NavigationPath</code> and route enums, tabs, sheets with <code>presentationDetents</code>), Swift 6 concurrency (async/await, structured concurrency with TaskGroup and <code>async let</code>, actors for thread-safe shared state, <code>@MainActor</code> for UI safety, <code>Sendable</code> protocol and region-based isolation, task cancellation), architecture (MVVM with Repository layer as the 2026 default, feature-based project structure, the path to modularization via Swift Package Manager), data persistence (SwiftData with <code>@Model</code> and <code>@Query</code> macros, auto-saving, relationships, when to use Core Data instead, Keychain for secrets), networking (URLSession with async/await, a typed APIClient pattern, <code>AsyncImage</code> for remote images), platform APIs (push notifications and APNs token registration, background tasks with BGTaskScheduler, biometric auth with LocalAuthentication, WidgetKit), UIKit interop (<code>UIViewRepresentable</code> and <code>UIHostingController</code> for bridging), testing (Swift Testing framework with <code>@Test</code> and <code>#expect</code>, snapshot testing, UI testing with XCUIApplication), tooling (Xcode shortcuts, SwiftUI previews and <code>_printChanges()</code> debugging, Instruments profiling, Swift Package Manager), and distribution (certificates and provisioning, TestFlight beta distribution, App Store submission checklist, the yearly WWDC cycle).</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/IOS_DEVELOPMENT_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="kali-linux">Kali Linux</h3>
+<p>This guide is a detailed, lab-first introduction to Kali Linux and the major pentesting tool families it ships with. It organizes the distribution by workflow so you can learn the tools as part of a real assessment process instead of as a random list of commands.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/KALI_LINUX_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="kubernetes">Kubernetes</h3>
+<p>This guide covers Kubernetes as a working operator: the API model, workloads, scheduling, storage, and the day-2 operations that matter once you move past <code>hello world</code>. It pairs with the networking and security guides below for a complete picture.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/k8s/KUBERNETES_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="kubernetes-advanced">Kubernetes (Advanced)</h3>
+<p>This guide picks up where the Kubernetes fundamentals, security, and networking guides leave off — covering the control plane's internals and how to program against it. It starts with etcd deeply (performance, sizing, backup/recovery), the API server (watches, the watch cache, API priority and fairness, admission webhook latency), and the reconciliation model that underlies every controller. It then covers the API machinery and extension model (GVR, CRDs with validation and subresources, Server-Side Apply, CEL admission policies), building operators with Kubebuilder/controller-runtime (the reconcile loop, owner references, idempotency, testing with envtest), advanced scheduling (the scheduling framework plugin model, pod topology spread, GPU/accelerator scheduling with device plugins and DRA, the descheduler), advanced workloads and scaling (PodDisruptionBudgets, VPA, KEDA for event-driven scale-to-zero, and progressive delivery with Argo Rollouts), multi-tenancy and resource governance (ResourceQuotas, LimitRanges, policy engines — Kyverno, OPA/Gatekeeper, CEL — and cost management), GitOps with Argo CD and Flux (repo structure, Kustomize overlays, image automation, drift detection), multi-cluster and federation (Cluster API, hub-and-spoke, cross-cluster networking), supply-chain security (Cosign image signing, SBOMs, SLSA, Trivy, registry restrictions) and production operations (upgrade strategy, disaster recovery, control-plane observability), and platform engineering (golden paths, Backstage, abstraction CRDs, and the maturity model).</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/k8s/ADVANCED_KUBERNETES_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="kubernetes-security">Kubernetes Security</h3>
+<p>This guide walks through Kubernetes security as a layered system of identity, access control, workload hardening, secrets handling, and detection. It is written to help you think in terms of blast radius, trust boundaries, and production hardening rather than just individual YAML fields.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="linux-fundamentals">Linux Fundamentals</h3>
+<p>This guide is a depth-first treatment of how Linux actually works, for engineers who use it daily but have never looked beneath <code>ps</code>, <code>kill</code>, and <code>chmod</code> — and it's the substrate under much of the rest of the repo (Docker, Kubernetes, Kali, the language runtimes). It builds on one principle (everything is a file, including process and kernel state in <code>/proc</code> and <code>/sys</code>), then works through the process model (<code>fork</code>/<code>exec</code>, the process tree, states, zombies, threads, and what exit code 137 means), file descriptors and I/O (stdin/stdout/stderr, the <code>nofile</code> limit, and how <code>epoll</code> watching many fds is the mechanism under every event loop — Node's, Go's, Python's), signals (SIGTERM vs SIGKILL, graceful shutdown, and the PID 1 problem in containers), users/permissions/capabilities (the model under <code>runAsNonRoot</code> and <code>securityContext</code>), the filesystem in depth (inodes, hard vs symbolic links, mounts, tmpfs, "disk full but <code>df</code> disagrees"), and systemd (units, journald, timers, and how its resource directives map to cgroups). It then reaches the chapter the repo builds toward — namespaces and cgroups, showing that a container is just a Linux process with isolation (what it can see) and limits (what it can use), with the OOM killer as the SIGKILL behind a Kubernetes exit-137 — followed by the network stack from the OS side (veth pairs, bridges, iptables/NAT, how Services are DNAT rules) and a diagnostic toolkit organized as a workflow, ending on <code>strace</code> as the universal debugger.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/LINUX_FUNDAMENTALS_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="llm-application-development">LLM Application Development</h3>
+<p>This guide covers building applications on top of large language models, focused on the patterns that hold across providers and frameworks rather than any single API's surface. It works through the mental model, the anatomy of an API call, prompt-engineering patterns, structured output, tool use (function calling), retrieval-augmented generation, agents, streaming, context-window management, and caching, with examples in Python and pseudocode.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/LLM_APP_DEV_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="networking-fundamentals">Networking Fundamentals</h3>
+<p>This guide is a depth-first foundation for how computer networks actually work: layered architecture, Ethernet and ARP, IP and routing, NAT and firewalls, TCP and UDP, DNS, the networking view of TLS, and HTTP/1.1 vs. 2 vs. 3 — followed by load balancing, modern realities (CDNs, eBPF, service mesh), a diagnostic toolkit, a hands-on recipe for connecting two Linux machines directly with an Ethernet cable, the real-world problems that keep recurring, and an end-to-end walkthrough of what happens when you type a URL into the browser.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/NETWORKING_FUNDAMENTALS.md">Open on GitHub</a></p>
+<h3 id="nextjs">Next.js</h3>
+<p>This guide covers Next.js as a full-stack React framework, with an emphasis on the parts that matter when you are building production apps. It focuses on routing, rendering strategies, data loading, API handling, and the tradeoffs that come with framework-driven React.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/NEXTJS_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="observability">Observability</h3>
+<p>This guide goes beyond "install Prometheus" into how to think about production signal: metrics with PromQL, structured logs, distributed tracing with OpenTelemetry, events and profiling, SLI/SLO/SLA with multi-window burn-rate alerts, alert design via RED and USE, dashboards that earn their screen real estate, the tooling landscape honestly, and the operational realities (cost, cardinality, sampling). It closes with recipes: instrumenting a Go HTTP service end to end with OpenTelemetry, writing a burn-rate SLO alert in PromQL, writing a runbook that actually helps oncall, and an end-to-end walkthrough of a production observability stack.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/OBSERVABILITY_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="postgresql">PostgreSQL</h3>
+<p>This guide is a comprehensive, depth-first path to mastering PostgreSQL, organized in ten phases that build on each other and pitched at the knowledge expected in a senior database role. It starts with the architecture (the process model, shared buffers, MVCC, the WAL), then works through query mastery, indexing and performance, schemas/roles/security, server-side programming, advanced features, replication and high availability, operations and observability, and production patterns and pitfalls. For a scan-and-dive feature catalog rather than a learning path, pair it with the PostgreSQL Feature Reference below.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/POSTGRES_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="postgresql-feature-reference">PostgreSQL Feature Reference</h3>
+<p>This is a reference-style tour of PostgreSQL features, meant to be read like API docs — scan the headings, dive into what's relevant, move on. Each entry says what a feature is and when you'd reach for it, with concrete examples, spanning data types, constraints, indexes, JSON/JSONB, arrays and ranges, full-text search, CTEs and window functions, LATERAL joins, materialized views, and partitioning. It complements the depth-first PostgreSQL guide above.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/POSTGRES.md">Open on GitHub</a></p>
+<h3 id="python-concurrency">Python Concurrency</h3>
+<p>This guide is the map and decision guide for Python concurrency — it covers the whole landscape, explains <em>why</em> each model behaves as it does, and helps you choose, built around one master distinction: is the work I/O-bound (overlap the waiting with threads or async) or CPU-bound (parallelize the computing with processes)? It works through the mental model (concurrency vs parallelism, the I/O-vs-CPU classification), the GIL in depth (what it is, why it exists, what it blocks and releases, how the switch happens), threading (the niche, races and locks, the synchronization toolkit), multiprocessing (true parallelism, start methods — fork/spawn/forkserver — pickling, shared memory, and when a GIL-releasing native library beats it), <code>concurrent.futures</code> as the unifying layer (one API for threads and processes, <code>submit</code> vs <code>map</code>, the silent-exception trap, pool sizing), and a survey of <code>asyncio</code> (cooperative single-threaded concurrency, the key primitives, the ecosystem tax — handing off to the Asyncio &amp; aiohttp guide for mastery). It then gives a full decision framework (a decision tree plus the ThreadPoolExecutor-vs-asyncio fork), the model-independent concurrency patterns (bounded concurrency, producer/consumer with backpressure, fan-out/fan-in, pipelines, timeouts and cancellation), a 2026 look at the future (free-threaded CPython and per-interpreter sub-interpreters — the GIL's end), and closes with copy-paste recipes and the eight pitfalls that cost the most debugging time. For the depth-first dive into async itself, it hands off to the companion Asyncio &amp; aiohttp guide; for the runtime underneath, the Advanced Python guide.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/PYTHON_CONCURRENCY.md">Open on GitHub</a></p>
+<h3 id="python-vs-nodejs-async">Python vs Node.js Async</h3>
+<p>This guide is an opinionated, side-by-side comparison of asynchronous programming in Python and Node.js — what each gets right, what each gets wrong, and which to choose when. Its thesis: both made the same bet (a single-threaded cooperative event loop) but arrived from opposite directions — Node async-from-birth and uniform, Python async-bolted-on and fragmented — and that history explains every practical difference. It works through the execution models side by side (libuv runs under both, via uvloop on the Python side), the deepest semantic split (eager JavaScript async functions vs lazy Python coroutines, and their opposite failure modes for a forgotten <code>await</code>), the object models (one Promise vs coroutine/Task/Future, and Python's first-class cancellation vs Node's bolted-on <code>AbortController</code>), the colored-function problem (and why Python's sync/async ecosystem split makes it worse), blocking the event loop (Node's decisive structural advantage — you can't accidentally grab a blocking I/O library), structured concurrency (Python's decisive win — <code>TaskGroup</code>, <code>ExceptionGroup</code>, timeouts that actually cancel, built-in primitives), CPU-bound parallelism (the GIL vs Worker Threads), and performance and ecosystem honestly. It closes with a dimension-by-dimension scorecard, an opinionated summary, and a when-to-choose-which decision framework. Pairs with the Asyncio &amp; aiohttp, Advanced Node.js, and Python Concurrency guides.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="qt">Qt</h3>
+<p>This guide introduces Qt as a toolkit for building cross-platform desktop applications with a strong UI and event-driven architecture. It is aimed at helping you understand the core concepts, widgets, and app structure that make Qt practical for real software.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/QT_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="redis">Redis</h3>
+<p>This guide is a practical deep dive into Redis — its data structures, the usage patterns each enables, and the operational concerns of running it. It works through strings, hashes, lists, sets, sorted sets, and streams, then the specialized types (HyperLogLog, bitmaps, bitfields), key expiration and eviction, pub/sub, transactions and Lua scripting, and pipelining — with an eye throughout to when each capability is the right tool.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/REDIS_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="rust-for-python-developers">Rust for Python Developers</h3>
+<p>This guide helps Python developers get comfortable with Rust by focusing on the differences that matter most: ownership, borrowing, safety, and performance. It is designed to make Rust feel less mysterious and more like a careful, deliberate tool for systems work.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/RUST_FOR_PYTHON_DEVS.md">Open on GitHub</a></p>
+<h3 id="sveltekit">SvelteKit</h3>
+<p>This guide explains SvelteKit as a modern app framework with a lightweight, ergonomic developer experience. It focuses on the patterns you need to understand to build real apps: routing, data loading, component structure, and deployment flow.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/SVELTEKIT_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="swift">Swift</h3>
+<p>This guide is a depth-first treatment of the Swift programming language in 2026. It covers the type system, memory management (ARC), optionals, closures, enums and pattern matching, protocols, generics, collections, strings, error handling, Swift 6 concurrency, macros, result builders, ownership, and noncopyable types.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/SWIFT_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="terraform">Terraform</h3>
+<p>This guide treats Terraform as an infrastructure workflow tool, not just a syntax exercise. It emphasizes how providers, state, modules, plans, and applies fit into a safe and repeatable provisioning process.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/TERRAFORM_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="testing">Testing</h3>
+<p>This guide is a comprehensive, cross-language treatment of software testing for working engineers. It covers the mental model of tests as executable confidence, the practical test portfolio (unit, integration, component, contract, E2E, property, fuzz, performance, security, accessibility, and exploratory testing), and the mechanics of writing durable tests in Python, Node.js, and Go. It then goes deep on enterprise testing strategy: shift-left and shift-right, test ownership, CI/CD gates, flaky-test management, test data and environments, contract testing between services, non-deterministic systems, legacy-code characterization, and checklists for adding tests to real production work.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/TESTING_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="typescript">TypeScript</h3>
+<p>This guide is a deep dive into the TypeScript type system for developers already fluent in modern JavaScript. Starting from the mental model that types are sets, it builds through annotations and inference, unions and intersections, literal types and narrowing, type guards and control-flow analysis, generics, the utility types, and the advanced machinery — conditional types, mapped types, template literal types, and the <code>infer</code> keyword.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/TYPESCRIPT_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="vim">Vim</h3>
+<p>This guide is a depth-first treatment of Vim built around one idea: modal editing is a <em>language</em>, not a list of shortcuts, and learning its grammar is how you edit faster than any point-and-click editor. It starts with the mental model (why modes exist, the map between Normal/Insert/Visual/Command-line, and why your hands never leave the home row), then teaches the grammar at the core of everything — operators (verbs) composed with motions and text objects (nouns), multiplied by counts and the linewise-doubling rule. From there it goes deep on each piece: precision motions (word/WORD, find-and-till, search-as-motion, marks and jumps, and the inclusive/exclusive quirk behind <code>cw</code>), the text objects that make editing feel telepathic (<code>ci"</code>, <code>dap</code>, <code>cit</code>, inner vs. around), changing text and the register system (the <code>.</code> repeat command, the yank and black-hole registers that stop your clipboard betraying you, undo as a tree), search and its underused power tools (<code>:substitute</code> with ranges and capture groups, the <code>:global</code> command, and the <code>*</code>-<code>cgn</code>-<code>.</code> answer to multiple cursors), and macros for repetitive multi-step edits. It closes with the multi-file model (buffers vs. windows vs. tabs, <code>:argdo</code>, Ex ranges, filtering through shell commands), a sane starter config, the plugin and Neovim ecosystem, Vim mode in VS Code/JetBrains/your shell, an honest "when not to go all-in," a concrete path to learning it in a month, and a speed cookbook of edits that are reflexes in Vim and a chore everywhere else.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/VIM_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="vue">Vue</h3>
+<p>This guide introduces Vue through the lens of practical app building, focusing on the parts most developers reach for every day. It covers component structure, reactivity, templates, and the broader ecosystem so the framework feels organized rather than fragmented.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/VUE_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="webgpu">WebGPU</h3>
+<p>This guide is a depth-first introduction to WebGPU, the modern explicit GPU API for the web. It explains what WebGPU is, why it exists, how it maps to modern graphics APIs, and how it compares with WebGL across state management, shaders, resources, compute, performance, compatibility, and developer experience. It then gives a practical primer on using WebGPU: adapters and devices, canvas configuration, buffers, textures, bind groups, render pipelines, WGSL, drawing a triangle, uniforms, render loops, compute shaders, debugging, performance practices, migration from WebGL, and when to use WebGPU, WebGL, or neither.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/WEBGPU_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h3 id="websockets">WebSockets</h3>
+<p>This guide is a protocol-first, depth-first treatment of WebSockets for engineers building real-time features, with worked examples in both Node.js and Python. It starts on the wire — the HTTP upgrade handshake, frames, opcodes, close codes, <code>ws://</code> vs <code>wss://</code>, subprotocols — then builds up through the browser client API (events, binary data, reconnection with backoff), Node.js servers with <code>ws</code> (broadcasting, manual upgrade handling, heartbeats), Socket.IO (rooms, acknowledgements, and when not to use it), and Python servers (<code>websockets</code>, FastAPI/Starlette, Django Channels, python-socketio). It then goes deep on the hard parts: message-design patterns (envelopes, pub/sub, request-response, presence, framing), scaling stateful connections with a Redis backplane and sticky sessions, production concerns (the browser auth-header problem, Cross-Site WebSocket Hijacking, backpressure, heartbeats, reverse proxies), and reliability (delivery guarantees, at-least-once with acks/dedup, state recovery, the thundering herd). It closes with an honest comparison to SSE, long-polling, WebTransport, gRPC streaming, and WebRTC — including when <em>not</em> to use WebSockets — followed by five copy-paste recipes and an end-to-end walkthrough of a scalable, authenticated chat service.</p>
+<p><a href="https://github.com/s4njee/larning/blob/main/WEBSOCKETS_STUDY_GUIDE.md">Open on GitHub</a></p>
+<h2 id="notes">Notes</h2>
+<p>The GitHub links above point directly to the markdown files in the <code>main</code> branch of the public repository. If you want, I can also turn this README into a cleaner index with a table of contents, categories, or short tags for each topic.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1265 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Authentication &amp; Authorization (Identity).">
+<title>Authentication &amp; Authorization (Identity) - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#e9dd59; --accent2:#b2e454; --accent-weak:rgba(233,221,89,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#e9dd59; --accent2:#b2e454; --accent-weak:rgba(233,221,89,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">A</span><span>Authentication &amp; Authorization (Identity)</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-the-mental-model-authn-vs-authz-sessions-vs-tokens" data-target="part-1-the-mental-model-authn-vs-authz-sessions-vs-tokens">Part 1 — The Mental Model: AuthN vs AuthZ, Sessions vs Tokens</a></li><li class="toc-l3"><a href="#the-two-questions" data-target="the-two-questions">The Two Questions</a></li><li class="toc-l3"><a href="#the-credential-problem" data-target="the-credential-problem">The Credential Problem</a></li><li class="toc-l3"><a href="#model-a-stateful-sessions" data-target="model-a-stateful-sessions">Model A: Stateful Sessions</a></li><li class="toc-l3"><a href="#model-b-stateless-tokens" data-target="model-b-stateless-tokens">Model B: Stateless Tokens</a></li><li class="toc-l3"><a href="#the-honest-default" data-target="the-honest-default">The Honest Default</a></li><li class="toc-l3"><a href="#where-to-store-the-credential-in-a-browser-xss-vs-csrf" data-target="where-to-store-the-credential-in-a-browser-xss-vs-csrf">Where to Store the Credential in a Browser: XSS vs CSRF</a></li><li class="toc-l2"><a href="#part-2-passwords-credential-storage" data-target="part-2-passwords-credential-storage">Part 2 — Passwords &amp; Credential Storage</a></li><li class="toc-l3"><a href="#never-store-what-you-can-verify" data-target="never-store-what-you-can-verify">Never Store What You Can Verify</a></li><li class="toc-l3"><a href="#the-right-algorithms" data-target="the-right-algorithms">The Right Algorithms</a></li><li class="toc-l3"><a href="#worked-example" data-target="worked-example">Worked Example</a></li><li class="toc-l3"><a href="#defending-the-login-endpoint" data-target="defending-the-login-endpoint">Defending the Login Endpoint</a></li><li class="toc-l2"><a href="#part-3-mfa-account-lifecycle" data-target="part-3-mfa-account-lifecycle">Part 3 — MFA &amp; Account Lifecycle</a></li><li class="toc-l3"><a href="#multi-factor-authentication" data-target="multi-factor-authentication">Multi-Factor Authentication</a></li><li class="toc-l3"><a href="#the-account-lifecycle" data-target="the-account-lifecycle">The Account Lifecycle</a></li><li class="toc-l2"><a href="#part-4-jwts-in-depth" data-target="part-4-jwts-in-depth">Part 4 — JWTs in Depth</a></li><li class="toc-l3"><a href="#anatomy" data-target="anatomy">Anatomy</a></li><li class="toc-l3"><a href="#signing-symmetric-vs-asymmetric" data-target="signing-symmetric-vs-asymmetric">Signing: Symmetric vs Asymmetric</a></li><li class="toc-l3"><a href="#the-verification-checklist" data-target="the-verification-checklist">The Verification Checklist</a></li><li class="toc-l2"><a href="#part-5-oauth-20-openid-connect" data-target="part-5-oauth-20-openid-connect">Part 5 — OAuth 2.0 &amp; OpenID Connect</a></li><li class="toc-l3"><a href="#the-crucial-distinction" data-target="the-crucial-distinction">The Crucial Distinction</a></li><li class="toc-l3"><a href="#the-four-roles" data-target="the-four-roles">The Four Roles</a></li><li class="toc-l3"><a href="#the-authorization-code-flow-with-pkce" data-target="the-authorization-code-flow-with-pkce">The Authorization Code Flow with PKCE</a></li><li class="toc-l3"><a href="#access-token-vs-id-token-dont-mix-them-up" data-target="access-token-vs-id-token-dont-mix-them-up">Access Token vs ID Token — Don't Mix Them Up</a></li><li class="toc-l3"><a href="#other-grant-types" data-target="other-grant-types">Other Grant Types</a></li><li class="toc-l2"><a href="#part-6-token-lifecycle-revocation" data-target="part-6-token-lifecycle-revocation">Part 6 — Token Lifecycle &amp; Revocation</a></li><li class="toc-l3"><a href="#short-lived-access-long-lived-refresh" data-target="short-lived-access-long-lived-refresh">Short-Lived Access + Long-Lived Refresh</a></li><li class="toc-l3"><a href="#refresh-token-rotation-reuse-detection" data-target="refresh-token-rotation-reuse-detection">Refresh Token Rotation + Reuse Detection</a></li><li class="toc-l3"><a href="#revoking-a-stateless-access-token-the-hard-problem" data-target="revoking-a-stateless-access-token-the-hard-problem">Revoking a Stateless Access Token — The Hard Problem</a></li><li class="toc-l2"><a href="#part-7-enterprise-sso-saml-scim" data-target="part-7-enterprise-sso-saml-scim">Part 7 — Enterprise SSO: SAML &amp; SCIM</a></li><li class="toc-l3"><a href="#saml-20" data-target="saml-20">SAML 2.0</a></li><li class="toc-l3"><a href="#oidc-for-sso-the-modern-path" data-target="oidc-for-sso-the-modern-path">OIDC for SSO — The Modern Path</a></li><li class="toc-l3"><a href="#scim-the-provisioning-half-everyone-forgets" data-target="scim-the-provisioning-half-everyone-forgets">SCIM — The Provisioning Half Everyone Forgets</a></li><li class="toc-l2"><a href="#part-8-authorization-models-rbac-abac-rebac" data-target="part-8-authorization-models-rbac-abac-rebac">Part 8 — Authorization Models (RBAC, ABAC, ReBAC)</a></li><li class="toc-l3"><a href="#rbac-role-based-access-control" data-target="rbac-role-based-access-control">RBAC: Role-Based Access Control</a></li><li class="toc-l3"><a href="#abac-attribute-based-access-control" data-target="abac-attribute-based-access-control">ABAC: Attribute-Based Access Control</a></li><li class="toc-l3"><a href="#rebac-relationship-based-access-control-zanzibar" data-target="rebac-relationship-based-access-control-zanzibar">ReBAC: Relationship-Based Access Control (Zanzibar)</a></li><li class="toc-l3"><a href="#multi-tenant-authorization" data-target="multi-tenant-authorization">Multi-Tenant Authorization</a></li><li class="toc-l2"><a href="#part-9-service-to-service-auth" data-target="part-9-service-to-service-auth">Part 9 — Service-to-Service Auth</a></li><li class="toc-l3"><a href="#the-spectrum-weakest-to-strongest" data-target="the-spectrum-weakest-to-strongest">The Spectrum, Weakest to Strongest</a></li><li class="toc-l3"><a href="#how-the-mesh-makes-this-disappear" data-target="how-the-mesh-makes-this-disappear">How the Mesh Makes This Disappear</a></li><li class="toc-l3"><a href="#cloud-workload-identity" data-target="cloud-workload-identity">Cloud Workload Identity</a></li><li class="toc-l2"><a href="#part-10-application-architecture-patterns" data-target="part-10-application-architecture-patterns">Part 10 — Application Architecture &amp; Patterns</a></li><li class="toc-l3"><a href="#where-to-validate-the-api-gateway-pattern" data-target="where-to-validate-the-api-gateway-pattern">Where to Validate: The API Gateway Pattern</a></li><li class="toc-l3"><a href="#the-trust-boundary" data-target="the-trust-boundary">The Trust Boundary</a></li><li class="toc-l3"><a href="#the-websockets-problem" data-target="the-websockets-problem">The WebSockets Problem</a></li><li class="toc-l2"><a href="#part-11-passkeys-pitfalls-a-walkthrough" data-target="part-11-passkeys-pitfalls-a-walkthrough">Part 11 — Passkeys, Pitfalls &amp; a Walkthrough</a></li><li class="toc-l3"><a href="#passkeys-webauthn-the-endgame" data-target="passkeys-webauthn-the-endgame">Passkeys &amp; WebAuthn — The Endgame</a></li><li class="toc-l3"><a href="#common-pitfalls" data-target="common-pitfalls">Common Pitfalls</a></li><li class="toc-l3"><a href="#end-to-end-walkthrough-a-multi-tenant-b2b-saas" data-target="end-to-end-walkthrough-a-multi-tenant-b2b-saas">End-to-End Walkthrough: A Multi-Tenant B2B SaaS</a></li></ul></nav></aside>
+  <main><h1 id="authentication-authorization-identity">Authentication &amp; Authorization (Identity)</h1>
+<p>A depth-first guide to identity, authentication, and authorization in modern applications and distributed systems — the applied "how do I actually do auth securely in my app?" guide. It assumes you can build a web service and have <em>used</em> login forms and API tokens, but not that you understand what a JWT actually is, why password reset is the most-exploited flow in your app, or how Google decides whether you can open a Doc. The approach is concept-first but relentlessly worked: nearly every idea here comes with code, because auth is a domain where the gap between "I understand it" and "I implemented it correctly" is exactly where breaches live.</p>
+<p>This guide sits deliberately between two others in the repo. The <a href="crypto-fundamentals.html">Cryptography Fundamentals guide</a> covers the <em>primitives</em> underneath everything here — hashing, signatures, key exchange, TLS — and you should reach for it whenever this guide says "signed" or "hashed" and you want to know how. The <a href="kubernetes-security-study-guide.html">Kubernetes Security guide</a> covers <em>cluster-level</em> identity (RBAC, ServiceAccounts, admission control). This guide covers the layer in between: <strong>identity in your application</strong> — who the user is, how they prove it, and what they're allowed to do. It also connects to the <a href="websockets-study-guide.html">WebSockets guide</a> (the browser auth-header problem), the <a href="distributed-systems-study-guide.html">Distributed Systems guide</a> (revocation as a consistency problem), and the <a href="networking-fundamentals.html">Networking Fundamentals guide</a> (TLS, cookies, CORS).</p>
+<p>Primary references: the <a href="https://oauth.net/2.1/">OAuth 2.1 draft</a>, <a href="https://openid.net/specs/openid-connect-core-1_0.html">OpenID Connect Core</a>, the <a href="https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html">OWASP Authentication</a>, <a href="https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html">Session Management</a>, and <a href="https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html">Password Storage</a> cheat sheets, the <a href="https://www.w3.org/TR/webauthn-3/">WebAuthn spec</a>, and Google's <a href="https://research.google/pubs/pub48190/">Zanzibar paper</a>.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1--the-mental-model-authn-vs-authz-sessions-vs-tokens">Part 1 — The Mental Model: AuthN vs AuthZ, Sessions vs Tokens</a></li>
+<li><a href="#part-2--passwords--credential-storage">Part 2 — Passwords &amp; Credential Storage</a></li>
+<li><a href="#part-3--mfa--account-lifecycle">Part 3 — MFA &amp; Account Lifecycle</a></li>
+<li><a href="#part-4--jwts-in-depth">Part 4 — JWTs in Depth</a></li>
+<li><a href="#part-5--oauth-20--openid-connect">Part 5 — OAuth 2.0 &amp; OpenID Connect</a></li>
+<li><a href="#part-6--token-lifecycle--revocation">Part 6 — Token Lifecycle &amp; Revocation</a></li>
+<li><a href="#part-7--enterprise-sso-saml--scim">Part 7 — Enterprise SSO: SAML &amp; SCIM</a></li>
+<li><a href="#part-8--authorization-models-rbac-abac-rebac">Part 8 — Authorization Models (RBAC, ABAC, ReBAC)</a></li>
+<li><a href="#part-9--service-to-service-auth">Part 9 — Service-to-Service Auth</a></li>
+<li><a href="#part-10--application-architecture--patterns">Part 10 — Application Architecture &amp; Patterns</a></li>
+<li><a href="#part-11--passkeys-pitfalls--a-walkthrough">Part 11 — Passkeys, Pitfalls &amp; a Walkthrough</a></li>
+</ol>
+<hr>
+<h2 id="part-1-the-mental-model-authn-vs-authz-sessions-vs-tokens">Part 1 — The Mental Model: AuthN vs AuthZ, Sessions vs Tokens</h2>
+<p>Before any code, pin down the two words people conflate and the one architectural fork that shapes everything after it.</p>
+<h3 id="the-two-questions">The Two Questions</h3>
+<p>Every identity system answers two distinct questions, and keeping them separate is the foundation of reasoning clearly about auth:</p>
+<ul>
+<li><strong>Authentication (AuthN) — <em>Who are you?</em></strong> Proving identity. Passwords, passkeys, "log in with Google," a fingerprint. The output is a verified principal: "this request is from user 42."</li>
+<li><strong>Authorization (AuthZ) — <em>What are you allowed to do?</em></strong> Deciding whether a known principal may perform an action. "User 42 may read document 7 but not delete it." The output is a yes/no decision on a specific action against a specific resource.</li>
+</ul>
+<p>They run in that order — authenticate first, then authorize — and they fail differently: an AuthN failure is <code>401 Unauthorized</code> ("I don't know who you are"), an AuthZ failure is <code>403 Forbidden</code> ("I know who you are, and the answer is no"). Mixing them up is the source of endless confused error handling; get the two status codes right and you've already clarified your own thinking. Parts 1–7 are mostly about AuthN; Parts 8–10 are mostly about AuthZ.</p>
+<h3 id="the-credential-problem">The Credential Problem</h3>
+<p>HTTP is stateless: every request arrives with no memory of the last. So after a user authenticates <em>once</em>, the system must issue a <strong>credential</strong> the client presents on every subsequent request to re-prove identity without re-entering a password. The entire design space of "how do I stay logged in" is about what that credential is and how it's verified. There are two fundamental models, and the choice between them ripples through your whole architecture.</p>
+<h3 id="model-a-stateful-sessions">Model A: Stateful Sessions</h3>
+<p>The traditional model — the server remembers, the client holds only a pointer:</p>
+<ol>
+<li>User logs in with credentials.</li>
+<li>Server creates a <strong>session record</strong> in a store (Redis, Postgres) keyed by a cryptographically random <code>session_id</code>.</li>
+<li>Server returns the <code>session_id</code> in a <code>Set-Cookie</code> header.</li>
+<li>Browser sends the cookie automatically on every subsequent request; the server looks up the <code>session_id</code> to find the user.</li>
+</ol>
+<pre><code class="language-python">import secrets, redis, json
+r = redis.Redis()
+
+def login(user_id: int, response):
+    session_id = secrets.token_urlsafe(32)          # 256 bits of entropy — unguessable
+    r.setex(f&quot;session:{session_id}&quot;, 3600,           # 1-hour TTL, refreshed on use
+            json.dumps({&quot;user_id&quot;: user_id, &quot;created&quot;: time.time()}))
+    response.set_cookie(&quot;sid&quot;, session_id,
+                        httponly=True, secure=True, samesite=&quot;Strict&quot;, max_age=3600)
+
+def authenticate(request) -&gt; int | None:
+    sid = request.cookies.get(&quot;sid&quot;)
+    if not sid: return None
+    raw = r.get(f&quot;session:{sid}&quot;)
+    return json.loads(raw)[&quot;user_id&quot;] if raw else None
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Instant revocation</strong> — delete the record, the user is logged out <em>now</em></td>
+<td><strong>Stateful</strong> — every request hits the session store (cheap with Redis, but a dependency)</td>
+</tr>
+<tr>
+<td><strong>Always fresh</strong> — each request re-reads current roles/permissions</td>
+<td><strong>Cross-domain friction</strong> — cookies are domain-bound; sharing across <code>app.x.com</code> and <code>api.y.com</code> needs care</td>
+</tr>
+<tr>
+<td><strong>Simple to reason about</strong> — the server is the source of truth</td>
+<td>Scaling requires a <em>shared</em> session store (not in-process memory) across instances</td>
+</tr>
+</tbody>
+</table>
+<h3 id="model-b-stateless-tokens">Model B: Stateless Tokens</h3>
+<p>The distributed model — the credential <em>contains</em> the identity, cryptographically signed, so no lookup is needed:</p>
+<ol>
+<li>User logs in.</li>
+<li>Server builds a <strong>JWT</strong> containing the user ID, roles, and expiry, and <strong>signs</strong> it (Part 4).</li>
+<li>Client stores the token and sends it as <code>Authorization: Bearer &amp;lt;token&amp;gt;</code>.</li>
+<li>Server <strong>verifies the signature mathematically</strong> — no database lookup.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Stateless</strong> — verify by signature alone; ideal for microservices and edge compute</td>
+<td><strong>Revocation is hard</strong> — a signed token is valid until it expires (Part 6)</td>
+</tr>
+<tr>
+<td><strong>Cross-domain</strong> — send the header to any origin</td>
+<td><strong>Staleness</strong> — a role change doesn't take effect until the token expires</td>
+</tr>
+<tr>
+<td>No shared session store needed</td>
+<td>Larger per-request payload; secrets/keys must be managed</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-honest-default">The Honest Default</h3>
+<p>The industry over-rotated to "JWTs everywhere" in the 2010s and has since walked it back. The pragmatic 2026 guidance:</p>
+<ul>
+<li><strong>For a normal web app where you control the frontend and backend → use stateful sessions</strong> (or the hybrid below). They're simpler, instantly revocable, and the "statefulness" cost is a Redis call. Most apps that reached for JWTs never needed them.</li>
+<li><strong>For APIs consumed by third parties, mobile apps, microservices, or true cross-domain SPAs → use tokens</strong> (OAuth2/OIDC, Parts 5–6), where statelessness genuinely pays off.</li>
+<li><strong>The common hybrid:</strong> a short-lived stateless <em>access token</em> for fast API verification, plus a stateful, revocable <em>refresh token</em> (Part 6). You get fast reads and real revocation.</li>
+</ul>
+<h3 id="where-to-store-the-credential-in-a-browser-xss-vs-csrf">Where to Store the Credential in a Browser: XSS vs CSRF</h3>
+<p>If the client is a browser, <em>where</em> the credential lives determines which attack you're exposed to — and you must pick your poison consciously:</p>
+<ul>
+<li><strong><code>localStorage</code> / JS-readable:</strong> vulnerable to <strong>XSS</strong> (any injected script reads it and exfiltrates it) but immune to <strong>CSRF</strong> (the browser doesn't auto-send it; your code attaches the header explicitly).</li>
+<li><strong><code>HttpOnly</code> cookie:</strong> immune to <strong>XSS</strong> (JS cannot read it) but exposed to <strong>CSRF</strong> (the browser auto-attaches it to <em>any</em> request to your domain, including ones a malicious site triggers).</li>
+</ul>
+<p><strong>The best practice:</strong> store the credential in an <strong><code>HttpOnly</code>, <code>Secure</code>, <code>SameSite=Lax</code> (or <code>Strict</code>) cookie</strong> when client and API share a registrable domain. <code>SameSite</code> is what neutralizes CSRF for free — the cookie isn't sent on cross-site requests — which is why cookies beat <code>localStorage</code> for most apps. Reserve the <code>Authorization</code> header for cases where cookies can't work (native mobile, genuinely cross-domain), and pair it with a strict <strong>Content-Security-Policy</strong> (see the <a href="websockets-study-guide.html">WebSockets guide</a> and the web-security literature) to shrink the XSS surface. Never put long-lived credentials in <code>localStorage</code> if you can avoid it.</p>
+<p>If you remember one thing from Part 1: <strong>separate AuthN ("who are you?", 401) from AuthZ ("may you?", 403); then choose your credential model deliberately — stateful sessions for most apps (simple, instantly revocable), stateless tokens when you genuinely need cross-domain or microservice statelessness — and in browsers prefer <code>HttpOnly; Secure; SameSite</code> cookies, because <code>SameSite</code> kills CSRF and <code>HttpOnly</code> kills XSS-theft.</strong></p>
+<hr>
+<h2 id="part-2-passwords-credential-storage">Part 2 — Passwords &amp; Credential Storage</h2>
+<p>Most guides skip straight to sessions and tokens — but the front door of almost every system is still a password, and it's where the most catastrophic, most common breaches happen. Get this wrong and nothing else matters: an attacker who dumps your user table walks in the front door of every account. This part is the non-negotiable baseline.</p>
+<h3 id="never-store-what-you-can-verify">Never Store What You Can Verify</h3>
+<p>The cardinal rule: <strong>you never store passwords — you store a one-way hash of them, and you verify by re-hashing.</strong> When a user logs in, you hash the submitted password and compare it to the stored hash. If your database leaks, the attacker gets hashes, not passwords — and a <em>correctly</em> chosen hash makes reversing them economically infeasible.</p>
+<p>The critical distinction the <a href="crypto-fundamentals.html">Crypto guide</a> hammers: <strong>a password hash is not a general-purpose hash.</strong> SHA-256 is <em>wrong</em> for passwords — it's designed to be <em>fast</em>, and fast is exactly what you don't want, because fast means an attacker can try billions of guesses per second against a leaked hash. Password hashing wants to be <strong>deliberately slow and memory-hard.</strong></p>
+<h3 id="the-right-algorithms">The Right Algorithms</h3>
+<p>Use a purpose-built password hash, in this order of preference (2026):</p>
+<ol>
+<li><strong>Argon2id</strong> — the winner of the Password Hashing Competition and the current default recommendation. Memory-hard (resists GPU/ASIC cracking) and tunable along time, memory, and parallelism.</li>
+<li><strong>scrypt</strong> — also memory-hard; a solid choice where Argon2 isn't available.</li>
+<li><strong>bcrypt</strong> — older but still acceptable and battle-tested; note its ~72-byte input truncation. Ubiquitous library support.</li>
+<li><strong>PBKDF2</strong> — only when you need FIPS compliance; it's not memory-hard, so it's the weakest of the four.</li>
+</ol>
+<p>Three properties every password hash must have, and which these algorithms provide for you:</p>
+<ul>
+<li><strong>Salt</strong> — a unique random value per password, stored alongside the hash. It ensures two users with the same password get different hashes, defeating <strong>rainbow tables</strong> (precomputed hash lookups) and stopping an attacker from seeing which users share a password. Modern libraries generate and embed the salt automatically — <em>don't roll your own.</em></li>
+<li><strong>Cost / work factor</strong> — a tunable that makes hashing slow (e.g., bcrypt's rounds, Argon2's memory/time). Set it so a single hash takes ~100–250ms on your hardware; re-tune upward as hardware improves.</li>
+<li><strong>(Optional) Pepper</strong> — a secret added to all passwords, stored <em>outside</em> the database (in a secrets manager / HSM). If only the DB leaks, the pepper is still missing. Defense-in-depth, not a substitute for salt.</li>
+</ul>
+<h3 id="worked-example">Worked Example</h3>
+<pre><code class="language-python">from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
+
+ph = PasswordHasher()                 # sane defaults: Argon2id, salt auto-generated &amp; embedded
+
+# Registration: hash and store. The output string ENCODES the algorithm, params, salt, and hash.
+def register(username: str, password: str):
+    hashed = ph.hash(password)
+    # e.g. &quot;$argon2id$v=19$m=65536,t=3,p=4$&lt;salt&gt;$&lt;hash&gt;&quot;  ← all self-contained
+    db.users.insert(username=username, password_hash=hashed)
+
+# Login: verify by re-hashing (the library extracts the salt+params from the stored string).
+def verify_login(username: str, password: str) -&gt; bool:
+    user = db.users.get(username=username)
+    if not user:
+        ph.hash(password)             # ← dummy hash anyway to equalize timing (see below)
+        return False
+    try:
+        ph.verify(user.password_hash, password)
+    except VerifyMismatchError:
+        return False
+    # Opportunistic upgrade: if you've raised the cost since this hash was made, re-hash now.
+    if ph.check_needs_rehash(user.password_hash):
+        db.users.update(username, password_hash=ph.hash(password))
+    return True
+</code></pre>
+<p>Two subtleties in that code worth their own callout:</p>
+<ul>
+<li><strong>Timing attacks / user enumeration.</strong> Notice the dummy <code>ph.hash</code> when the user doesn't exist. If "no such user" returns instantly but "wrong password" takes 200ms, an attacker can <em>enumerate valid usernames</em> by timing. Always do equivalent work on both paths — and return the <em>same generic error</em> ("invalid username or password") regardless of which was wrong.</li>
+<li><strong><code>check_needs_rehash</code></strong> lets you transparently upgrade the work factor (or migrate bcrypt→Argon2) on each successful login, without forcing a password reset on every user.</li>
+</ul>
+<h3 id="defending-the-login-endpoint">Defending the Login Endpoint</h3>
+<p>Hashing protects you <em>after</em> a DB leak. You also have to protect the live login endpoint from online guessing:</p>
+<ul>
+<li><strong>Rate limiting</strong> — cap attempts per IP <em>and</em> per account (an attacker rotating IPs against one account, or one IP spraying many accounts — <strong>credential stuffing</strong> — both need covering). Exponential backoff after failures.</li>
+<li><strong>Account lockout</strong> — temporary lock after N failures. Beware: aggressive lockout becomes a <em>denial-of-service</em> vector (an attacker locks out a victim on purpose). Prefer rate-limiting + step-up challenges (CAPTCHA, MFA) over hard lockout.</li>
+<li><strong>Breached-password check</strong> — reject passwords found in known breach corpora (the <a href="https://haveibeenpwned.com/Passwords">Have I Been Pwned</a> k-anonymity API lets you check without sending the password). This is higher-value than most composition rules.</li>
+<li><strong>Drop the silly rules.</strong> Modern guidance (NIST 800-63B) is: require <em>length</em> (≥8, ideally allow long passphrases up to 64+), screen against breach lists, and <strong>stop</strong> forcing periodic rotation and arbitrary character-class rules — they push users toward <code>Password1!</code> and predictable mutations.</li>
+</ul>
+<p>If you remember one thing from Part 2: <strong>store passwords as Argon2id (or bcrypt/scrypt) hashes — never a fast hash like SHA-256, never plaintext — let the library handle the per-password salt, tune the cost to ~100–250ms, equalize timing to prevent user enumeration, and defend the live endpoint with rate limiting and breached-password screening.</strong></p>
+<hr>
+<h2 id="part-3-mfa-account-lifecycle">Part 3 — MFA &amp; Account Lifecycle</h2>
+<p>A password is one factor. Real accounts need a second factor and a <em>lifecycle</em> — registration, verification, recovery — and the recovery flows are, paradoxically, the most attacked part of any auth system, because they're designed to bypass the password.</p>
+<h3 id="multi-factor-authentication">Multi-Factor Authentication</h3>
+<p>The factors, classically: <strong>something you know</strong> (password), <strong>something you have</strong> (phone, security key), <strong>something you are</strong> (biometric). MFA requires two of different kinds, so stealing one isn't enough. The options, weakest to strongest:</p>
+<ul>
+<li><strong>SMS OTP — weak, but better than nothing.</strong> Vulnerable to <strong>SIM-swapping</strong> (attacker ports the victim's number) and SS7 interception. NIST discourages it. Acceptable as a fallback, not as a primary second factor.</li>
+<li><strong>TOTP (Time-based One-Time Password) — the solid default.</strong> The RFC 6238 standard behind Google Authenticator, Authy, 1Password. Server and app share a secret at enrollment; both compute the same 6-digit code from <code>HMAC(secret, current_30s_window)</code>. No network needed, phishing-resistant only weakly (a fooled user can still type the code into a fake site).</li>
+<li><strong>Push notifications</strong> — approve/deny on a trusted device. Good UX, but beware <strong>MFA fatigue</strong> attacks (spam the user with prompts until they tap "approve"). Mitigate with number-matching.</li>
+<li><strong>WebAuthn / Passkeys — the strongest, and <em>phishing-resistant by design</em></strong> (Part 11). The credential is cryptographically bound to your domain, so it simply won't produce a valid response on <code>paypa1.com</code>. This is the endgame; everything else is transitional.</li>
+</ul>
+<p>TOTP is simple enough to show end to end:</p>
+<pre><code class="language-python">import pyotp, qrcode
+
+# Enrollment: generate a secret, show it as a QR code for the user's authenticator app.
+def enroll_totp(user) -&gt; str:
+    secret = pyotp.random_base32()
+    db.users.update(user.id, totp_secret=secret, totp_enabled=False)   # not yet confirmed
+    uri = pyotp.totp.TOTP(secret).provisioning_uri(
+        name=user.email, issuer_name=&quot;MyApp&quot;)
+    return uri                         # render as QR; user scans it into their app
+
+# Confirm enrollment: user types a code to prove the secret synced before you ENABLE it.
+def confirm_totp(user, code: str) -&gt; bool:
+    if pyotp.TOTP(user.totp_secret).verify(code, valid_window=1):   # ±1 window for clock skew
+        db.users.update(user.id, totp_enabled=True)
+        return True
+    return False
+
+# Login second step:
+def verify_totp(user, code: str) -&gt; bool:
+    return pyotp.TOTP(user.totp_secret).verify(code, valid_window=1)
+</code></pre>
+<p>Two production essentials around MFA: <strong>recovery codes</strong> (one-time backup codes generated at enrollment, stored <em>hashed</em> like passwords, for when the device is lost) and <strong>step-up authentication</strong> (don't demand MFA for reading a profile, <em>do</em> demand it for changing a password or transferring money — re-challenge for sensitive actions even within an active session).</p>
+<h3 id="the-account-lifecycle">The Account Lifecycle</h3>
+<p>Auth isn't just login — it's the whole arc of an identity, and each transition is a security boundary:</p>
+<p><strong>Registration + email verification.</strong> Never trust an email address until proven. Issue a signed, expiring, single-use token, email a link, and only mark the address verified when it's clicked:</p>
+<pre><code class="language-python">import secrets, hashlib, time
+
+def start_verification(user):
+    raw = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(raw.encode()).hexdigest()    # store the HASH, not the token
+    db.verifications.insert(user_id=user.id, token_hash=token_hash,
+                            expires=time.time() + 86400, used=False)
+    send_email(user.email, link=f&quot;https://app.example.com/verify?token={raw}&quot;)
+
+def complete_verification(raw_token: str) -&gt; bool:
+    token_hash = hashlib.sha256(raw_token.encode()).hexdigest()
+    rec = db.verifications.get(token_hash=token_hash)
+    if not rec or rec.used or rec.expires &lt; time.time():
+        return False
+    db.verifications.mark_used(rec.id)            # single-use
+    db.users.update(rec.user_id, email_verified=True)
+    return True
+</code></pre>
+<p>Note the pattern that recurs for <em>every</em> emailed token (verification, password reset, magic links): <strong>store the hash of the token, not the token itself, give it a short expiry, and make it single-use.</strong> A leaked verifications/resets table should reveal nothing usable — same reasoning as password hashing.</p>
+<p><strong>Password reset — the most-attacked flow in your app.</strong> It's a deliberate authentication <em>bypass</em>, so it must be built with paranoia:</p>
+<ul>
+<li>Use the same hashed-token-via-email pattern, with a <em>short</em> expiry (15–60 min) and single use.</li>
+<li><strong>Don't leak account existence</strong>: "If an account exists for that email, we've sent a link" — <em>always</em>, whether or not the email is registered.</li>
+<li><strong>Invalidate all existing sessions</strong> on a successful reset (a reset often <em>means</em> the account was compromised — log the attacker out).</li>
+<li><strong>Don't auto-login</strong> from the reset link, and require the new password to pass the same strength/breach checks as registration.</li>
+<li>Rate-limit reset requests (an attacker can use them to spam a victim, or as an enumeration oracle if you're careless about the response).</li>
+</ul>
+<p><strong>Logout &amp; session management.</strong> "Log out" deletes the session record (trivial for stateful sessions; for tokens, see Part 6's revocation). "Log out everywhere" — invalidate <em>all</em> a user's sessions — is a feature users expect after a compromise; it's a one-liner with a session store (delete all <code>session:*</code> for the user) and a real engineering problem with stateless JWTs (Part 6). Also enforce <strong>idle timeout</strong> (logged out after inactivity) <em>and</em> <strong>absolute timeout</strong> (re-auth after N hours regardless of activity) for sensitive apps.</p>
+<p>If you remember one thing from Part 3: <strong>add a second factor (TOTP as the solid default, passkeys as the endgame, SMS only as fallback), and treat the account lifecycle — especially password reset — as a security-critical surface: every emailed token is hashed-at-rest, short-lived, and single-use; reset flows never leak account existence and always invalidate existing sessions.</strong></p>
+<hr>
+<h2 id="part-4-jwts-in-depth">Part 4 — JWTs in Depth</h2>
+<p>JSON Web Tokens are the workhorse credential of stateless auth, and they're misunderstood often enough to be dangerous. This part dissects what's actually in one, how verification works, and the choices that make the difference between a secure system and a forgeable one.</p>
+<h3 id="anatomy">Anatomy</h3>
+<p>A JWT is three Base64URL-encoded segments joined by dots — <code>header.payload.signature</code>:</p>
+<pre><code class="language-text">eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9 . eyJzdWIiOiI0MiIsInJvbGUiOiJ1c2VyIiwiZXhwIjoxNzM... . &lt;signature&gt;
+└──────────── header ────────────┘   └──────────── payload (claims) ──────────┘   └─ signature ─┘
+</code></pre>
+<ul>
+<li><strong>Header</strong> — <code>{"alg": "RS256", "typ": "JWT"}</code> — the signing algorithm and token type.</li>
+<li><strong>Payload</strong> — the <strong>claims</strong>, a JSON object of statements about the subject. Standard registered claims (RFC 7519) carry real security meaning:</li>
+<li><code>sub</code> — subject (the user ID)</li>
+<li><code>iss</code> — issuer (who minted the token)</li>
+<li><code>aud</code> — audience (who it's <em>for</em> — which API should accept it)</li>
+<li><code>exp</code> — expiration (Unix time; reject after this)</li>
+<li><code>iat</code> — issued-at; <code>nbf</code> — not-before</li>
+<li><code>jti</code> — unique token ID (used for revocation/blocklists, Part 6)</li>
+<li><strong>Signature</strong> — the issuer signs <code>base64(header) + "." + base64(payload)</code> so any tampering is detectable.</li>
+</ul>
+<p><strong>The single most important property to internalize: the payload is <em>signed, not encrypted</em>.</strong> Anyone can Base64-decode and read it — paste any JWT into <a href="https://jwt.io">jwt.io</a> and you'll see the claims in plaintext. So <strong>never put secrets in a JWT payload.</strong> The signature guarantees <em>integrity</em> (it hasn't been altered) and <em>authenticity</em> (it came from the issuer), not <em>confidentiality</em>. (If you genuinely need an encrypted token, that's JWE, a separate and rarer beast.)</p>
+<h3 id="signing-symmetric-vs-asymmetric">Signing: Symmetric vs Asymmetric</h3>
+<p>How the token is signed determines who can verify it — and this choice is architectural:</p>
+<ul>
+<li><strong>HS256 (symmetric, HMAC):</strong> one shared secret both signs <em>and</em> verifies. Fine for a <strong>monolith</strong> where the same codebase mints and checks tokens. The danger: every service that needs to <em>verify</em> also holds the power to <em>forge</em>. If any holder leaks the secret, attackers mint arbitrary tokens.</li>
+<li><strong>RS256 / ES256 (asymmetric):</strong> a <strong>private key signs</strong> (held only by the auth server) and a <strong>public key verifies</strong> (distributed freely to every API). A verifier can check tokens but <em>cannot forge</em> them. This is the standard for <strong>distributed systems</strong> and any third-party scenario — and it's how OIDC works (Part 5). The public keys are published at a <strong>JWKS</strong> (JSON Web Key Set) endpoint that verifiers fetch and cache.</li>
+</ul>
+<pre><code class="language-python">import jwt   # PyJWT
+from datetime import datetime, timedelta, timezone
+
+# Mint (auth server, asymmetric — signs with the PRIVATE key):
+def issue_access_token(user_id: int, role: str, private_key: str) -&gt; str:
+    now = datetime.now(timezone.utc)
+    claims = {
+        &quot;sub&quot;: str(user_id),
+        &quot;role&quot;: role,
+        &quot;iss&quot;: &quot;https://auth.example.com&quot;,
+        &quot;aud&quot;: &quot;https://api.example.com&quot;,     # who may accept this token
+        &quot;iat&quot;: now,
+        &quot;exp&quot;: now + timedelta(minutes=15),    # short-lived (Part 6)
+        &quot;jti&quot;: secrets.token_hex(16),          # for revocation
+    }
+    return jwt.encode(claims, private_key, algorithm=&quot;RS256&quot;)
+
+# Verify (any API — verifies with the PUBLIC key; CANNOT forge):
+def verify_access_token(token: str, public_key: str) -&gt; dict:
+    return jwt.decode(
+        token, public_key,
+        algorithms=[&quot;RS256&quot;],                  # ← hardcode the algorithm (see alg=none below)
+        audience=&quot;https://api.example.com&quot;,    # ← verify aud or reject
+        issuer=&quot;https://auth.example.com&quot;,     # ← verify iss or reject
+        options={&quot;require&quot;: [&quot;exp&quot;, &quot;iat&quot;, &quot;sub&quot;, &quot;aud&quot;, &quot;iss&quot;]},
+    )   # raises on bad signature, expiry, wrong audience/issuer
+</code></pre>
+<h3 id="the-verification-checklist">The Verification Checklist</h3>
+<p>A JWT library checks the signature, but <em>you</em> must insist on the rest. A "valid signature" alone is not a valid token. Always:</p>
+<ol>
+<li><strong>Verify the signature</strong> — obviously, with the right key.</li>
+<li><strong>Pin the algorithm.</strong> Pass an explicit <code>algorithms=[...]</code> allowlist. This defends against the infamous <strong><code>alg=none</code> attack</strong> (a token with <code>{"alg":"none"}</code> and no signature — naive libraries once accepted it) and the <strong>RS256→HS256 confusion attack</strong> (an attacker re-signs with the <em>public</em> key as if it were an HMAC secret; if your verifier accepts <code>HS256</code> and you handed it the public key as the "secret," it validates). Pin to exactly the algorithm you expect.</li>
+<li><strong>Check <code>exp</code></strong> — reject expired tokens (allow small clock skew, ~30–60s).</li>
+<li><strong>Check <code>aud</code></strong> — reject tokens not minted for <em>your</em> API. This stops the <strong>confused-deputy</strong> problem: a token your auth server issued for App A must not be replayable against App B.</li>
+<li><strong>Check <code>iss</code></strong> — reject tokens from issuers you don't trust.</li>
+</ol>
+<p>If you remember one thing from Part 4: <strong>a JWT is signed, not encrypted — readable by anyone, so never put secrets in it — and "the signature is valid" is not enough: pin the algorithm (kill <code>alg=none</code> and RS256→HS256 confusion), and verify <code>exp</code>, <code>aud</code>, and <code>iss</code> on every request. Use HS256 only inside a monolith; use RS256/JWKS the moment more than one service verifies.</strong></p>
+<h2 id="part-5-oauth-20-openid-connect">Part 5 — OAuth 2.0 &amp; OpenID Connect</h2>
+<p>OAuth 2.0 and OIDC are the standards behind "Log in with Google," third-party API access, and most modern SSO. They're widely misunderstood because the two solve <em>different</em> problems and are constantly conflated — so start there.</p>
+<h3 id="the-crucial-distinction">The Crucial Distinction</h3>
+<ul>
+<li><strong>OAuth 2.0 is an <em>authorization</em> framework.</strong> Its job: let a user grant a third-party app limited access to their resources <em>without sharing their password</em>. "Let this calendar app read my Google Calendar." The output is an <strong>access token</strong> scoped to certain permissions. OAuth says nothing, by itself, about <em>who the user is</em>.</li>
+<li><strong>OpenID Connect (OIDC) is an <em>authentication</em> layer built on top of OAuth 2.0.</strong> It adds a standard way to learn the user's identity, via an <strong>ID token</strong>. "Log in with Google" is OIDC.</li>
+</ul>
+<p>The historical mistake — using raw OAuth 2.0 for login by treating "I got an access token for their profile" as "they're authenticated" — leads to real vulnerabilities (the access token says nothing verifiable about <em>who</em> logged in or <em>which app</em> it was issued to). <strong>If you want login, use OIDC, not bare OAuth.</strong></p>
+<h3 id="the-four-roles">The Four Roles</h3>
+<p>Memorize these; every flow is a conversation between them:</p>
+<ul>
+<li><strong>Resource Owner</strong> — the user who owns the data.</li>
+<li><strong>Client</strong> — the application requesting access (your web/mobile app).</li>
+<li><strong>Authorization Server</strong> — verifies identity and issues tokens (Google, Auth0, Keycloak, Okta, Entra ID).</li>
+<li><strong>Resource Server</strong> — the API holding the data, which accepts and validates the access tokens.</li>
+</ul>
+<h3 id="the-authorization-code-flow-with-pkce">The Authorization Code Flow with PKCE</h3>
+<p>This is <em>the</em> flow for essentially all modern apps — SPAs, mobile, and traditional web. It replaced the old Implicit Flow (now deprecated — it leaked tokens in URLs). <strong>PKCE</strong> ("pixie," Proof Key for Code Exchange) is the addition that makes it safe for public clients that can't keep a secret.</p>
+<pre><code class="language-text">1. Client generates a random code_verifier, and code_challenge = SHA256(code_verifier).
+2. Client redirects user to the Authorization Server, sending the code_challenge.
+        ──►  https://auth.example.com/authorize?
+                response_type=code&amp;client_id=...&amp;redirect_uri=...&amp;
+                scope=openid profile email&amp;state=&lt;csrf&gt;&amp;
+                code_challenge=&lt;hash&gt;&amp;code_challenge_method=S256
+3. User logs in and consents.
+4. Auth Server redirects back to the Client with a one-time authorization_code.
+        ◄──  https://app.example.com/callback?code=&lt;code&gt;&amp;state=&lt;csrf&gt;
+5. Client makes a BACK-CHANNEL POST to the token endpoint, sending the code
+   AND the original plaintext code_verifier.
+        ──►  POST /token  { code, code_verifier, client_id, redirect_uri }
+6. Auth Server computes SHA256(code_verifier); if it matches the code_challenge
+   from step 2, it returns the tokens.
+        ◄──  { access_token, id_token, refresh_token, expires_in }
+</code></pre>
+<p><strong>Why PKCE matters:</strong> if an attacker intercepts the <code>authorization_code</code> in step 4 (e.g., a malicious app hijacking a mobile custom-URL-scheme redirect), they still can't exchange it for tokens in step 5 — they don't have the secret <code>code_verifier</code>, and the code alone is useless. PKCE binds the code to the client that started the flow. (The separate <code>state</code> parameter is a CSRF token for the redirect — always verify it on return.)</p>
+<pre><code class="language-python">import secrets, hashlib, base64
+
+def start_oauth():
+    code_verifier = secrets.token_urlsafe(64)
+    code_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode()).digest()
+    ).rstrip(b&quot;=&quot;).decode()
+    state = secrets.token_urlsafe(16)               # CSRF protection for the redirect
+    session[&quot;code_verifier&quot;] = code_verifier        # stash for step 5
+    session[&quot;oauth_state&quot;] = state
+    return redirect(
+        f&quot;{AUTH_SERVER}/authorize?response_type=code&amp;client_id={CLIENT_ID}&quot;
+        f&quot;&amp;redirect_uri={REDIRECT_URI}&amp;scope=openid+profile+email&quot;
+        f&quot;&amp;state={state}&amp;code_challenge={code_challenge}&amp;code_challenge_method=S256&quot;
+    )
+
+def oauth_callback(request):
+    if request.args[&quot;state&quot;] != session[&quot;oauth_state&quot;]:   # verify CSRF state FIRST
+        abort(400, &quot;state mismatch&quot;)
+    resp = httpx.post(f&quot;{AUTH_SERVER}/token&quot;, data={
+        &quot;grant_type&quot;: &quot;authorization_code&quot;,
+        &quot;code&quot;: request.args[&quot;code&quot;],
+        &quot;code_verifier&quot;: session[&quot;code_verifier&quot;],         # the PKCE proof
+        &quot;client_id&quot;: CLIENT_ID,
+        &quot;redirect_uri&quot;: REDIRECT_URI,
+    })
+    tokens = resp.json()    # { access_token, id_token, refresh_token, ... }
+    claims = verify_id_token(tokens[&quot;id_token&quot;])           # OIDC: who logged in (Part 4)
+    ...
+</code></pre>
+<h3 id="access-token-vs-id-token-dont-mix-them-up">Access Token vs ID Token — Don't Mix Them Up</h3>
+<p>The two tokens have <em>different audiences and different jobs</em>, and confusing them is a classic bug:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>Access Token</strong> (OAuth)</th>
+<th><strong>ID Token</strong> (OIDC)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Answers</td>
+<td><em>What may the bearer do?</em> (authorization)</td>
+<td><em>Who logged in?</em> (authentication)</td>
+</tr>
+<tr>
+<td>For</td>
+<td>the <strong>Resource Server</strong> (the API)</td>
+<td>the <strong>Client</strong> application</td>
+</tr>
+<tr>
+<td>Format</td>
+<td>opaque string <em>or</em> JWT</td>
+<td><strong>always</strong> a JWT</td>
+</tr>
+<tr>
+<td>Client should inspect it?</td>
+<td><strong>No</strong> — just forward it to the API</td>
+<td><strong>Yes</strong> — that's its whole purpose</td>
+</tr>
+<tr>
+<td>Sent to an API as proof?</td>
+<td><strong>Yes</strong></td>
+<td><strong>Never</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The two rules that fall out: <strong>the client must not parse the access token</strong> (treat it as opaque; only the API it's for should validate it), and <strong>the ID token must never be sent to an API as an authorization credential</strong> (it's proof of <em>login to the client</em>, not permission to <em>call the API</em>). Violating either is a recurring source of broken-auth bugs.</p>
+<h3 id="other-grant-types">Other Grant Types</h3>
+<p>The auth-code+PKCE flow covers user-facing apps. Two others you'll meet:</p>
+<ul>
+<li><strong>Client Credentials</strong> — for <strong>machine-to-machine</strong> (no user involved): a service authenticates with its own client ID + secret to get an access token. This is the OAuth path for service-to-service auth (Part 9).</li>
+<li><strong>Device Authorization</strong> — for input-constrained devices (a TV, a CLI): the device shows a code, you approve it on your phone. (You've done this with <code>gh auth login</code> or a streaming-box login.)</li>
+</ul>
+<p>The <strong>deprecated</strong> ones to avoid: <strong>Implicit</strong> (tokens in the URL fragment — replaced by auth-code+PKCE) and <strong>Resource Owner Password Credentials</strong> (the app collects the user's password directly — defeats the entire point of OAuth; never use it).</p>
+<p>If you remember one thing from Part 5: <strong>OAuth 2.0 authorizes (access tokens for APIs); OIDC authenticates (ID tokens for your app) — use OIDC for login, not bare OAuth. The auth-code flow with PKCE is the one flow for user-facing apps; keep the access token opaque to the client and never send the ID token to an API.</strong></p>
+<hr>
+<h2 id="part-6-token-lifecycle-revocation">Part 6 — Token Lifecycle &amp; Revocation</h2>
+<p>Tokens are credentials, and a stolen credential is a breach. Their power comes from being self-validating; their danger is the same thing — a signed token is valid until it expires, whether or not you still want it to be. This part is about managing that tension: short lifetimes, refresh, rotation, and the genuinely hard problem of revocation.</p>
+<h3 id="short-lived-access-long-lived-refresh">Short-Lived Access + Long-Lived Refresh</h3>
+<p>The standard pattern resolves the staleness/revocation problem of stateless tokens (Part 1) by splitting the credential in two:</p>
+<ul>
+<li><strong>Access token — short-lived (5–15 min).</strong> Carried on every API request, verified by signature alone (fast, stateless). Its short life is the whole security argument: a stolen access token is useless within minutes, and a role change propagates within minutes.</li>
+<li><strong>Refresh token — long-lived (days–weeks), but revocable.</strong> Never sent to resource servers — only to the auth server, to mint a <em>new</em> access token when the old one expires. It's stored server-side (or otherwise tracked), so it <em>can</em> be revoked. Treated as highly sensitive: <code>HttpOnly</code> cookie for web, Keychain/Keystore for mobile.</li>
+</ul>
+<p>So you get the best of both models from Part 1: fast stateless verification on the hot path (access token), and real revocation on the cold path (refresh token).</p>
+<h3 id="refresh-token-rotation-reuse-detection">Refresh Token Rotation + Reuse Detection</h3>
+<p>The critical hardening for public clients (SPAs, mobile) where the refresh token can't be perfectly secured: <strong>rotate on every use, and treat reuse as a breach.</strong></p>
+<pre><code class="language-text">1. Client presents refresh token RT1 to get a new access token.
+2. Auth server issues a new access token AND a new refresh token RT2,
+   then invalidates RT1.
+3. Next refresh uses RT2 → issues RT3, invalidates RT2.  (the chain rotates)
+
+   ── Reuse detection ──
+4. If RT1 (already invalidated) is EVER presented again, the server concludes
+   the token was stolen (either the attacker or the legitimate client is
+   replaying an old token) and REVOKES THE ENTIRE TOKEN FAMILY — forcing a
+   full re-login. The thief and the victim both get locked out; the victim
+   logs back in, the thief can't.
+</code></pre>
+<p>This turns a stolen-and-replayed refresh token from a silent persistent compromise into a detectable, self-healing event. It's the single most valuable refresh-token feature; any serious auth server (and OAuth 2.1) builds it in.</p>
+<h3 id="revoking-a-stateless-access-token-the-hard-problem">Revoking a Stateless Access Token — The Hard Problem</h3>
+<p>Here's the question that exposes the cost of statelessness: <em>a user is banned, but they hold a valid, unexpired 15-minute JWT — how do you stop it?</em> By design, you can't <em>just</em> invalidate it; the API validates by signature and never asks a database. Your options, in increasing strength and cost:</p>
+<ol>
+<li><strong>Wait it out.</strong> Accept the ≤15-minute window. For many apps this is genuinely fine — that's <em>why</em> you keep access tokens short. The simplest correct answer.</li>
+<li><strong>Tiered checks.</strong> Validate by signature for cheap reads (<code>GET /profile</code>), but do a live DB/cache check for sensitive actions (<code>POST /transfer</code>). You pay the statefulness cost only where it matters.</li>
+<li><strong>A revocation blocklist by <code>jti</code>.</strong> Maintain a (small, fast) set of revoked token IDs — keyed by the <code>jti</code> claim (Part 4) — in Redis, checked on each request. It re-introduces a lookup, but the set is tiny (only <em>revoked, not-yet-expired</em> tokens) and you can expire entries at the token's own <code>exp</code>. This is the common production middle ground.</li>
+<li><strong>Push-based invalidation (CAE).</strong> The API subscribes to an event stream from the identity provider; when a user is revoked, it receives an invalidation event and updates a local blocklist. This is essentially the <a href="distributed-systems-study-guide.html">Distributed Systems guide</a>'s cache-invalidation problem — eventual consistency with a propagation delay you must bound.</li>
+</ol>
+<p>Recognize the shape: <strong>revocation is fundamentally a distributed-cache-invalidation problem.</strong> A JWT is a cached copy of an authorization decision; revoking it means invalidating that cache everywhere it's trusted, which is exactly as hard as cache invalidation always is. Stateful sessions sidestep this entirely (delete the record) — which is, again, why they're the better default for apps that don't need statelessness.</p>
+<p>If you remember one thing from Part 6: <strong>pair a short-lived (5–15 min) stateless access token with a long-lived, revocable refresh token that rotates on every use and revokes the whole family on reuse — and accept that revoking an unexpired access token is a cache-invalidation problem, solved by keeping it short, checking a <code>jti</code> blocklist, or doing live checks on sensitive actions.</strong></p>
+<hr>
+<h2 id="part-7-enterprise-sso-saml-scim">Part 7 — Enterprise SSO: SAML &amp; SCIM</h2>
+<p>The moment you sell software to a company, they will demand <strong>Single Sign-On</strong> — their employees log in through the company's identity provider (Okta, Microsoft Entra ID, Google Workspace), not a password in your app. "SSO" is frequently a hard requirement in enterprise procurement, so it's worth understanding even though the protocols are crusty.</p>
+<h3 id="saml-20">SAML 2.0</h3>
+<p>The long-standing enterprise SSO standard. It's XML-based and uses XML Digital Signatures — which are <em>notoriously</em> complex and a historical source of signature-bypass vulnerabilities, so <strong>use a vetted library; never hand-parse SAML.</strong></p>
+<pre><code class="language-text">SP-Initiated flow (your app = Service Provider, the customer's Okta = Identity Provider):
+
+1. User hits your app (the SP) and needs to log in.
+2. Your app builds a SAML AuthnRequest (XML), encodes it, and redirects the
+   user's browser to the customer's IdP (Okta).
+3. User authenticates at Okta (the IdP).
+4. Okta POSTs a signed SAML Response (XML with Assertions about the user) to
+   your app's ACS (Assertion Consumer Service) URL.
+5. Your app verifies the XML signature against the IdP's public cert, reads the
+   assertions (email, name, groups), and logs the user in.
+</code></pre>
+<p>The vocabulary you'll configure:</p>
+<ul>
+<li><strong>Entity ID</strong> — a unique identifier for the SP or IdP.</li>
+<li><strong>ACS URL</strong> — the endpoint on <em>your</em> app that receives the SAML Response.</li>
+<li><strong>Metadata XML</strong> — a config document exchanged between SP and IdP carrying public certs and endpoint URLs (it automates setup).</li>
+<li><strong>Assertions</strong> — the signed statements about the user (identity + attributes/groups).</li>
+</ul>
+<h3 id="oidc-for-sso-the-modern-path">OIDC for SSO — The Modern Path</h3>
+<p>Increasingly, enterprises support <strong>OIDC</strong> (Part 5) for SSO instead of SAML, and you should prefer it for new integrations: JSON instead of XML, standard OAuth flows you already implement, far simpler and less error-prone. The mechanics are exactly the OIDC of Part 5, with the enterprise IdP as the authorization server. Offer both if you sell broadly (some large customers are still SAML-only), but reach for OIDC first.</p>
+<h3 id="scim-the-provisioning-half-everyone-forgets">SCIM — The Provisioning Half Everyone Forgets</h3>
+<p>SSO handles <strong>authentication</strong> — but it doesn't answer: how does your app know a user <em>exists</em> before they first log in? How is access <em>revoked the instant</em> someone is fired? That's <strong>provisioning</strong>, and the standard is <strong>SCIM</strong> (System for Cross-domain Identity Management) — a standardized REST API for syncing users and groups:</p>
+<ul>
+<li>The IdP (Okta) is the <strong>client</strong>; your app implements the <strong>SCIM server</strong> (<code>POST /scim/v2/Users</code>, <code>PATCH /scim/v2/Users/{id}</code>, <code>DELETE</code>, plus <code>/Groups</code>).</li>
+<li>HR adds an employee in Okta → Okta calls your SCIM API to <strong>create</strong> the account (often before the user ever logs in).</li>
+<li>HR deactivates them → Okta calls your API to <strong>deprovision</strong> — which is the security-critical half: <strong>instant offboarding.</strong> Without SCIM, a fired employee's access lingers until tokens/sessions expire, which is exactly the gap attackers and auditors care about.</li>
+</ul>
+<p>If you remember one thing from Part 7: <strong>enterprise SSO means delegating authentication to the customer's IdP — prefer OIDC over the crusty XML of SAML for new integrations (but support SAML where required, with a vetted library) — and don't forget SCIM, the provisioning API that creates accounts on hire and, critically, revokes them instantly on termination.</strong></p>
+<hr>
+<h2 id="part-8-authorization-models-rbac-abac-rebac">Part 8 — Authorization Models (RBAC, ABAC, ReBAC)</h2>
+<p>Authentication is settled by Part 7; the rest of the guide is authorization — <em>what an authenticated principal may do</em>. There are three dominant models, increasing in power and complexity, and choosing the right one for your app's shape is one of the higher-leverage design decisions you'll make.</p>
+<h3 id="rbac-role-based-access-control">RBAC: Role-Based Access Control</h3>
+<p>Users get <strong>roles</strong>; roles carry <strong>permissions</strong>. Alice is an <code>Admin</code>; <code>Admin</code> has <code>delete_user</code>.</p>
+<pre><code class="language-python">ROLE_PERMISSIONS = {
+    &quot;admin&quot;:  {&quot;user:read&quot;, &quot;user:write&quot;, &quot;user:delete&quot;, &quot;billing:manage&quot;},
+    &quot;editor&quot;: {&quot;doc:read&quot;, &quot;doc:write&quot;},
+    &quot;viewer&quot;: {&quot;doc:read&quot;},
+}
+def can(user, permission: str) -&gt; bool:
+    return any(permission in ROLE_PERMISSIONS.get(r, set()) for r in user.roles)
+</code></pre>
+<ul>
+<li><strong>Pros:</strong> simple, universally understood, easy to audit ("what can an editor do?" is a lookup).</li>
+<li><strong>Cons:</strong> <strong>role explosion</strong> — real orgs grow roles like <code>US_East_Billing_Viewer_ReadOnly_Temp</code> as combinations multiply. And it's <strong>coarse</strong>: RBAC says "editors can edit documents," but struggles with "Alice can edit <em>document 1</em> but only view <em>document 2</em>" — per-resource access. When you find yourself encoding resource IDs into role names, you've outgrown RBAC.</li>
+</ul>
+<p>RBAC is the right default for most apps. Reach further only when per-resource or relationship-driven access becomes central.</p>
+<h3 id="abac-attribute-based-access-control">ABAC: Attribute-Based Access Control</h3>
+<p>Decisions are computed from <strong>attributes</strong> of the user, the resource, and the environment, evaluated by a policy at request time:</p>
+<pre><code class="language-text">Allow  action=edit
+  if   user.department == resource.department
+  and  user.clearance &gt;= resource.classification
+  and  request.time.hour &lt; 18
+</code></pre>
+<ul>
+<li><strong>Pros:</strong> extremely flexible and granular; expresses context-dependent rules RBAC can't.</li>
+<li><strong>Cons:</strong> <strong>hard to audit.</strong> Because decisions are computed at runtime from dynamic state, answering "<em>list every document Alice can access</em>" is difficult — you'd have to evaluate the policy against every resource. <strong>AWS IAM is the canonical ABAC system</strong> (policies over principals, resources, conditions), and anyone who's debugged an IAM <code>Deny</code> knows both the power and the pain.</li>
+</ul>
+<p>ABAC is often implemented with a policy engine — <strong>Open Policy Agent (OPA)</strong> with its Rego language, or <strong>AWS Cedar</strong> — that you query for a decision, keeping policy out of your business logic (more in Part 10).</p>
+<h3 id="rebac-relationship-based-access-control-zanzibar">ReBAC: Relationship-Based Access Control (Zanzibar)</h3>
+<p>The modern model for complex, hierarchical, multi-tenant apps — and the one behind Google Docs/Drive. Access is determined by <strong>traversing a graph of relationships</strong>, formalized in Google's <strong>Zanzibar</strong> paper and implemented by open-source <strong>SpiceDB</strong> and <strong>OpenFGA</strong>.</p>
+<pre><code class="language-text">Relationship tuples:  Object#Relation@Subject
+    document:1   #owner   @user:alice
+    folder:eng   #viewer  @group:engineering#member
+    document:1   #parent  @folder:eng
+
+Policy (schema):  &quot;you may VIEW a document if you are its owner,
+                   OR a viewer of its parent folder (transitively).&quot;
+
+Question: &quot;can user:alice view document:1?&quot; → traverse the graph → yes/no.
+</code></pre>
+<ul>
+<li><strong>Pros:</strong> naturally models ownership, sharing, inheritance, and groups; and it <strong>solves the "list all documents Alice can view" problem</strong> because the whole permission model is a queryable graph (traverse from Alice). This reverse-index capability is exactly what ABAC struggles with.</li>
+<li><strong>Cons:</strong> new infrastructure (a dedicated authz service holding the relationship graph), and a learning curve. But it's the gold standard for Google-Docs-style sharing and complex B2B hierarchies.</li>
+</ul>
+<h3 id="multi-tenant-authorization">Multi-Tenant Authorization</h3>
+<p>In B2B SaaS, the same human is <code>admin</code> in Tenant A and <code>viewer</code> in Tenant B — so <strong>roles are never global, they're per-tenant.</strong> The rules that prevent cross-tenant data leaks (the worst class of SaaS bug):</p>
+<hr>
+<h2 id="part-9-service-to-service-auth">Part 9 — Service-to-Service Auth</h2>
+<p>Everything so far assumed a human at the other end. But in a microservice or distributed system, most authentication is <strong>machine-to-machine</strong> — service A calling service B, a job calling an API, a pod calling the database. There's no password, no browser, no consent screen. This part covers how services prove identity to each other, and it connects directly to the <a href="kubernetes-security-study-guide.html">Kubernetes Security guide</a> and <a href="distributed-systems-study-guide.html">Distributed Systems guide</a>.</p>
+<h3 id="the-spectrum-weakest-to-strongest">The Spectrum, Weakest to Strongest</h3>
+<ul>
+<li><strong>Shared API keys / static secrets.</strong> The simplest: service B issues service A a long random key; A sends it on every request. Easy, but the key is a long-lived bearer credential — if it leaks (a logged header, a committed <code>.env</code>, a breached service), the attacker is indistinguishable from A until you rotate. Acceptable for low-stakes internal calls <em>if</em> you rotate regularly and scope tightly; avoid as your primary mechanism at scale.</li>
+<li><strong>OAuth Client Credentials grant</strong> (Part 5). Service A authenticates to an auth server with its client ID/secret and receives a <em>short-lived</em> access token for service B. Better than static keys because the token expires (bounded blast radius) and is centrally issued and auditable. The standard for M2M when you already run an OAuth server.</li>
+<li><strong>mTLS (mutual TLS).</strong> Both sides present X.509 certificates during the TLS handshake; each verifies the other's cert against a trusted CA. Identity <em>is</em> the certificate, authentication happens as part of establishing the connection, and traffic is encrypted in transit by definition. Strong — but you now own a <strong>certificate lifecycle</strong> (issuance, distribution, rotation, revocation), which is real operational weight, and exactly what service meshes automate.</li>
+<li><strong>Workload identity (SPIFFE/SPIRE).</strong> The modern, platform-native answer: a workload's identity is derived from <em>what and where it is</em> (its Kubernetes ServiceAccount, namespace, node) rather than a secret it carries. <strong>SPIFFE</strong> defines a universal identity format (the SVID — SPIFFE Verifiable Identity Document, an X.509 cert or JWT); <strong>SPIRE</strong> is the runtime that attests workloads and issues short-lived SVIDs automatically. No long-lived secret to leak, identity is cryptographically attested, and rotation is continuous and invisible.</li>
+</ul>
+<h3 id="how-the-mesh-makes-this-disappear">How the Mesh Makes This Disappear</h3>
+<p>The reason most teams don't hand-roll mTLS is the <strong>service mesh</strong> (Istio, Linkerd, Cilium — see the <a href="docker-kubernetes-networking-study-guide.html">Docker &amp; Kubernetes Networking guide</a>). The mesh injects a sidecar proxy beside each service and <strong>automatically establishes mTLS between every pair of sidecars</strong> — issuing certs, rotating them, and enforcing identity-based policy ("service <code>frontend</code> may call <code>backend</code>, but not <code>payments</code>") — all without the application code knowing. Your service makes a plain HTTP call to <code>localhost</code>; the sidecar wraps it in authenticated, encrypted mTLS. This is the cleanest way to get strong service identity at scale: it's infrastructure, not application code.</p>
+<h3 id="cloud-workload-identity">Cloud Workload Identity</h3>
+<p>In a managed cloud, the equivalent is <strong>workload identity federation</strong>: instead of stuffing AWS keys or a GCP service-account JSON into your pod (a long-lived secret to leak), the workload's <em>platform identity</em> (its Kubernetes ServiceAccount, bound via OIDC to a cloud IAM role) is exchanged for short-lived cloud credentials on demand. AWS IRSA / EKS Pod Identity, GKE Workload Identity, and Azure Workload Identity all implement this. The principle is identical to SPIFFE: <strong>derive identity from the platform, mint short-lived credentials, store no long-lived secret.</strong> It's also how CI gets cloud access without stored keys — the OIDC-to-cloud pattern in the <a href="github-actions-study-guide.html">GitHub Actions guide</a>.</p>
+<p>If you remember one thing from Part 9: <strong>machine-to-machine auth should avoid long-lived static secrets — prefer short-lived tokens (OAuth client credentials), mTLS for mutual cryptographic identity, and workload identity (SPIFFE/SPIRE or cloud workload-identity federation) where the platform attests <em>what</em> a workload is so there's no secret to leak — and let a service mesh automate the mTLS so it never touches your application code.</strong></p>
+<hr>
+<h2 id="part-10-application-architecture-patterns">Part 10 — Application Architecture &amp; Patterns</h2>
+<p>How do all these pieces assemble in a real system? This part is the architectural glue — where tokens get validated, how the edge talks to internal services, and the patterns that recur in every production deployment.</p>
+<h3 id="where-to-validate-the-api-gateway-pattern">Where to Validate: The API Gateway Pattern</h3>
+<p>In a microservice architecture, you do <strong>not</strong> want every internal service independently fetching JWKS, validating OAuth tokens, and handling external-identity nuance — that's duplicated, error-prone, and couples every service to your IdP. Instead, <strong>terminate external auth at the edge</strong> (an API gateway), and pass a simpler, trusted identity inward.</p>
+<p><strong>The Phantom Token pattern</strong> is the clean version of this:</p>
+<pre><code class="language-text">1. The browser/client holds an OPAQUE access token (a random string — reveals nothing,
+   can't be inspected, easy to revoke).
+2. Client -&gt; API Gateway with the opaque token.
+3. The Gateway introspects it (a cached lookup or RFC 7662 introspection call to the auth
+   server) and exchanges it for a rich, signed JWT (user id, roles, tenant context).
+4. The Gateway forwards the request inward, attaching the JWT.
+5. Internal services just verify the JWT signature (fast, cached public key) and trust the claims.
+</code></pre>
+<p>The external world holds revocable opaque tokens; the internal world enjoys fast stateless JWT verification. The gateway is the single place that knows about the IdP, JWKS, introspection, and revocation — internal services stay simple. (It's also where you'd enforce coarse authz, rate limiting, and tenant routing.)</p>
+<h3 id="the-trust-boundary">The Trust Boundary</h3>
+<p>The principle underneath that pattern: <strong>establish a trust boundary at the edge, and define what "trusted" means inside it.</strong> Inside the boundary, services trust the gateway-minted JWT and don't re-authenticate the <em>user</em> on every hop — but in a zero-trust deployment they still authenticate <em>each other</em> (Part 9's mTLS) so a compromised internal service can't impersonate others. "Authenticate the user once at the edge; authenticate services on every hop" is the modern shape.</p>
+<h3 id="the-websockets-problem">The WebSockets Problem</h3>
+<p>A specific, common snag also covered from the protocol side in the <a href="websockets-study-guide.html">WebSockets guide</a>: the browser <code>WebSocket</code> API <strong>cannot set custom headers</strong> on the handshake, so you can't send <code>Authorization: Bearer &amp;lt;token&amp;gt;</code> the way you do for HTTP. Three options, in order of preference:</p>
+<ol>
+<li><strong>Cookie-based</strong> — if the WS endpoint shares the domain, the browser sends the auth cookie automatically on the handshake (the cleanest path, and another point for cookies over <code>localStorage</code>).</li>
+<li><strong>Ticket pattern</strong> — the client makes a normal authenticated <code>POST /ws-ticket</code>, gets a short-lived (~10s) single-use ticket, and connects to <code>wss://.../stream?ticket=...</code>. The server consumes the ticket to establish the session. Safe because the ticket is ephemeral and single-use.</li>
+<li><strong>First-message auth</strong> — open the socket unauthenticated, require <code>{"type":"auth","token":"..."}</code> as the first frame within a few seconds, and drop the connection otherwise.</li>
+</ol>
+<p><strong>Avoid</strong> putting a long-lived token directly in the URL query string (<code>?token=&amp;lt;jwt&amp;gt;</code>) — URLs land in access logs, proxy logs, and browser history, leaking the credential. The ticket pattern exists precisely to make the query-string approach safe by making the value worthless after one use.</p>
+<p>If you remember one thing from Part 10: <strong>terminate external auth at an API gateway (the Phantom Token pattern — opaque revocable tokens outside, fast signed JWTs inside) so internal services stay simple; define a clear trust boundary (authenticate the user once at the edge, services on every hop); and for WebSockets, use cookies or the single-use ticket pattern, never a long-lived token in the URL.</strong></p>
+<hr>
+<h2 id="part-11-passkeys-pitfalls-a-walkthrough">Part 11 — Passkeys, Pitfalls &amp; a Walkthrough</h2>
+<p>The closing part: where authentication is heading (passwordless), the mistakes that recur across every system in this guide, and an end-to-end assembly of the pieces.</p>
+<h3 id="passkeys-webauthn-the-endgame">Passkeys &amp; WebAuthn — The Endgame</h3>
+<p>The future of authentication is <strong>passwordless</strong>, built on the <strong>FIDO2 / WebAuthn</strong> standards, and <strong>passkeys</strong> are its consumer form. They replace the shared secret (a password the server stores and an attacker can steal) with <strong>public-key cryptography</strong> where the server only ever holds a <em>public</em> key — useless to a thief.</p>
+<pre><code class="language-text">Registration:
+1. The user's device generates a public/private key pair, scoped to YOUR domain.
+2. The private key never leaves the device's secure hardware (Secure Enclave / TPM),
+   or is synced encrypted via the platform keychain (iCloud Keychain, Google Password Manager).
+3. The PUBLIC key is sent to your server and stored against the account.
+
+Authentication:
+1. Server sends a random challenge.
+2. The device prompts for a local gesture — FaceID, TouchID, PIN — to unlock the private key.
+3. The device signs the challenge with the private key.
+4. Server verifies the signature with the stored public key.  -&gt; logged in.
+</code></pre>
+<p>Why this is the endgame, not just an incremental improvement:</p>
+<ul>
+<li><strong>Phishing-resistant <em>by construction</em>.</strong> The credential is cryptographically bound to your origin (the registrable domain). On <code>paypa1.com</code>, the browser simply won't offer or produce a valid assertion — the wrong-domain check is in the protocol, not in the user's vigilance. This defeats the entire category of credential phishing that MFA only partially addresses.</li>
+<li><strong>Nothing shared to steal.</strong> The server stores public keys. A database breach yields nothing an attacker can authenticate with — contrast Part 2, where even hashed passwords are crackable given time.</li>
+<li><strong>No password reset to attack.</strong> The most-exploited flow (Part 3) largely disappears; account recovery shifts to device/platform recovery and backup keys.</li>
+<li><strong>Excellent UX.</strong> A biometric tap — no password to remember or type.</li>
+</ul>
+<p>The practical 2026 posture: <strong>offer passkeys as a first-class option</strong> (browsers and platforms now broadly support them), keep a fallback (TOTP, or password+MFA) for users and devices that aren't ready, and treat passkeys as the direction the whole industry is converging on. A passkey is simultaneously a <em>factor</em> (something you have + something you are) and a complete login mechanism.</p>
+<h3 id="common-pitfalls">Common Pitfalls</h3>
+<p>The recurring mistakes, each tied back to where this guide covered it:</p>
+<ol>
+<li><strong><code>alg=none</code> / algorithm confusion</strong> (Part 4). Always pin the expected algorithm in JWT verification; never let the token's header choose. Defends against unsigned tokens and RS256-&gt;HS256 confusion.</li>
+<li><strong>Confused deputy — unchecked <code>aud</code></strong> (Part 4). A token minted for App A replayed against App B. Always verify the audience claim is <em>your</em> service.</li>
+<li><strong>Fast hashes for passwords</strong> (Part 2). SHA-256/MD5 for passwords is a breach waiting to happen. Argon2id/bcrypt/scrypt only.</li>
+<li><strong>Secrets in JWTs</strong> (Part 4). The payload is signed, not encrypted — readable by anyone. Never put anything sensitive in it.</li>
+<li><strong>Token in the URL</strong> (Parts 10, 11). Query strings leak to logs, history, and the <code>Referer</code> header sent to third-party resources. Use headers, cookies, or single-use tickets.</li>
+<li><strong>User enumeration via timing or messages</strong> (Parts 2, 3). "No such user" vs "wrong password" — same generic error, same timing. Same for "email not found" on password reset.</li>
+<li><strong>Password reset that doesn't invalidate sessions</strong> (Part 3). A reset often <em>means</em> compromise — log everyone out.</li>
+<li><strong>Cross-tenant data access / IDOR</strong> (Part 8). Always scope queries by <code>tenant_id</code> <em>and</em> owner, never trust a resource ID alone.</li>
+<li><strong>Long-lived, unrotated, broadly-scoped secrets</strong> (Parts 6, 9). Short-lived and rotated beats long-lived and static, every time.</li>
+<li><strong><code>localStorage</code> for tokens with a weak CSP</strong> (Part 1). Prefer <code>HttpOnly; Secure; SameSite</code> cookies; if you must use the header pattern, lock down XSS hard.</li>
+</ol>
+<h3 id="end-to-end-walkthrough-a-multi-tenant-b2b-saas">End-to-End Walkthrough: A Multi-Tenant B2B SaaS</h3>
+<p>Tying the guide together — the auth architecture of a realistic product, each decision pointing back to its Part:</p>
+<pre><code class="language-text">SIGN-UP &amp; LOGIN (Parts 1-4)
+  - Consumers: email + password (Argon2id, breach-checked) -&gt; email verification (hashed,
+    single-use token) -&gt; TOTP enrollment offered, passkeys offered as the preferred option.
+  - Credential lives in an HttpOnly; Secure; SameSite=Lax cookie (client &amp; app share a domain).
+  - Sensitive actions (change password, billing) trigger step-up re-authentication.
+
+ENTERPRISE CUSTOMERS (Part 7)
+  - SSO via OIDC (SAML offered for those who require it) -&gt; users log in through their own Okta.
+  - SCIM provisions accounts on hire and -- critically -- deprovisions instantly on termination.
+
+THE TOKEN ARCHITECTURE (Parts 5, 6, 10)
+  - Auth handled by an OIDC provider (Keycloak/Auth0); Authorization Code + PKCE flow.
+  - API gateway terminates external auth: opaque token outside -&gt; introspect -&gt; rich signed
+    JWT (sub, per-tenant role, tenant_id) inside.  Access token 15 min; refresh token rotated.
+  - Internal microservices verify the JWT signature via cached JWKS -- fast, stateless.
+
+AUTHORIZATION (Part 8)
+  - RBAC per tenant for coarse roles (admin/editor/viewer), resolved at the gateway from tenant_id.
+  - ReBAC (OpenFGA) for the document-sharing feature, where &quot;who can see this?&quot; is a graph.
+  - Every data query scoped:  WHERE id = ? AND tenant_id = ?  -- enforced in middleware.
+
+SERVICE-TO-SERVICE (Part 9)
+  - A service mesh provides automatic mTLS between all internal services -- no app-level secrets.
+  - Cloud access via workload identity federation -- no stored cloud keys in any pod.
+
+REVOCATION &amp; LIFECYCLE (Parts 3, 6)
+  - &quot;Log out everywhere&quot; deletes all refresh tokens for the user.
+  - Refresh-token reuse -&gt; revoke the whole family (breach signal).
+  - Password reset / SCIM-deprovision -&gt; immediately invalidate all sessions.
+</code></pre>
+<p>Notice that <strong>every layer is defense-in-depth</strong>: a stolen access token dies in 15 minutes; a stolen refresh token is detected on reuse; a phished password is stopped by MFA (or made impossible by passkeys); a compromised internal service can't impersonate others (mTLS); a leaked DB yields only public keys and uncrackable hashes. No single failure is catastrophic — which is the entire point of an auth architecture.</p>
+<p>If you remember one thing from Part 11: <strong>passkeys/WebAuthn are the phishing-resistant, nothing-to-steal endgame — adopt them as a first-class option now — and a real auth system is defense-in-depth: short-lived tokens, MFA, per-tenant scoping, mTLS between services, and the discipline that every one of the ten pitfalls above is closed.</strong></p>
+<hr>
+<p>That's the guide. From here the highest-leverage next step is to audit one real system against Part 11's pitfall list and walkthrough: confirm passwords are Argon2id, JWT verification pins the algorithm and checks <code>aud</code>, password reset invalidates sessions, every query is tenant-scoped, and no long-lived secrets sit in environment variables. Auth is the domain where "I understand it" and "I implemented it correctly" are different skills — and the gap between them is exactly where the breaches are. For the cryptographic primitives underneath all of this, see the <a href="crypto-fundamentals.html">Cryptography Fundamentals guide</a>; for cluster identity, the <a href="kubernetes-security-study-guide.html">Kubernetes Security guide</a>; for protocol-level WebSocket and TLS detail, the <a href="websockets-study-guide.html">WebSockets</a> and <a href="networking-fundamentals.html">Networking Fundamentals</a> guides.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

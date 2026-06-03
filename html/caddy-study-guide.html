@@ -1,0 +1,3055 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive, depth-first study guide to Caddy: automatic HTTPS, the Caddyfile, reverse proxy, the JSON admin API, production operations, and how it compares to Nginx, Traefik, HAProxy, and Envoy.">
+<title>Caddy Study Guide — Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#2dd4bf; --accent2:#38bdf8; --accent-weak:rgba(45,212,191,.12);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#0d9488; --accent2:#0284c7; --accent-weak:rgba(13,148,136,.10);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">C</span><span>Caddy Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide…" aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-foundations-mental-model" data-target="part-1-foundations-mental-model">Part 1 — Foundations &amp; Mental Model</a></li><li class="toc-l3"><a href="#11-what-caddy-is" data-target="11-what-caddy-is">1.1 What Caddy Is</a></li><li class="toc-l3"><a href="#12-the-architecture" data-target="12-the-architecture">1.2 The Architecture</a></li><li class="toc-l3"><a href="#13-the-two-configuration-modes" data-target="13-the-two-configuration-modes">1.3 The Two Configuration Modes</a></li><li class="toc-l3"><a href="#14-where-caddy-fits-in-2026" data-target="14-where-caddy-fits-in-2026">1.4 Where Caddy Fits in 2026</a></li><li class="toc-l3"><a href="#15-caddy-vs-nginx-the-mental-model-shift" data-target="15-caddy-vs-nginx-the-mental-model-shift">1.5 Caddy vs. Nginx — The Mental Model Shift</a></li><li class="toc-l2"><a href="#part-2-installation" data-target="part-2-installation">Part 2 — Installation</a></li><li class="toc-l3"><a href="#21-package-managers" data-target="21-package-managers">2.1 Package Managers</a></li><li class="toc-l3"><a href="#22-static-binary" data-target="22-static-binary">2.2 Static Binary</a></li><li class="toc-l3"><a href="#23-docker" data-target="23-docker">2.3 Docker</a></li><li class="toc-l3"><a href="#24-building-with-plugins-xcaddy" data-target="24-building-with-plugins-xcaddy">2.4 Building with Plugins — xcaddy</a></li><li class="toc-l3"><a href="#25-first-run" data-target="25-first-run">2.5 First Run</a></li><li class="toc-l2"><a href="#part-3-the-caddyfile" data-target="part-3-the-caddyfile">Part 3 — The Caddyfile</a></li><li class="toc-l3"><a href="#31-site-blocks" data-target="31-site-blocks">3.1 Site Blocks</a></li><li class="toc-l3"><a href="#32-directives" data-target="32-directives">3.2 Directives</a></li><li class="toc-l3"><a href="#33-matchers" data-target="33-matchers">3.3 Matchers</a></li><li class="toc-l3"><a href="#34-placeholders" data-target="34-placeholders">3.4 Placeholders</a></li><li class="toc-l3"><a href="#35-snippets-and-imports" data-target="35-snippets-and-imports">3.5 Snippets and Imports</a></li><li class="toc-l3"><a href="#36-global-options-and-the-route-directive" data-target="36-global-options-and-the-route-directive">3.6 Global Options and the Route Directive</a></li><li class="toc-l3"><a href="#37-handle-vs-handle_path" data-target="37-handle-vs-handle_path">3.7 handle vs. handle_path</a></li><li class="toc-l3"><a href="#38-environment-variables" data-target="38-environment-variables">3.8 Environment Variables</a></li><li class="toc-l2"><a href="#part-4-automatic-https" data-target="part-4-automatic-https">Part 4 — Automatic HTTPS</a></li><li class="toc-l3"><a href="#41-how-it-works" data-target="41-how-it-works">4.1 How It Works</a></li><li class="toc-l3"><a href="#42-acme-challenge-types" data-target="42-acme-challenge-types">4.2 ACME Challenge Types</a></li><li class="toc-l3"><a href="#43-wildcard-certificates" data-target="43-wildcard-certificates">4.3 Wildcard Certificates</a></li><li class="toc-l3"><a href="#44-internal-ca-local-development-with-https" data-target="44-internal-ca-local-development-with-https">4.4 Internal CA — Local Development with HTTPS</a></li><li class="toc-l3"><a href="#45-on-demand-tls" data-target="45-on-demand-tls">4.5 On-Demand TLS</a></li><li class="toc-l3"><a href="#46-using-your-own-certificates" data-target="46-using-your-own-certificates">4.6 Using Your Own Certificates</a></li><li class="toc-l3"><a href="#47-disabling-automatic-https" data-target="47-disabling-automatic-https">4.7 Disabling Automatic HTTPS</a></li><li class="toc-l2"><a href="#part-5-reverse-proxy" data-target="part-5-reverse-proxy">Part 5 — Reverse Proxy</a></li><li class="toc-l3"><a href="#51-basic-proxying" data-target="51-basic-proxying">5.1 Basic Proxying</a></li><li class="toc-l3"><a href="#52-multiple-upstreams-and-load-balancing" data-target="52-multiple-upstreams-and-load-balancing">5.2 Multiple Upstreams and Load Balancing</a></li><li class="toc-l3"><a href="#53-health-checks" data-target="53-health-checks">5.3 Health Checks</a></li><li class="toc-l3"><a href="#54-header-manipulation" data-target="54-header-manipulation">5.4 Header Manipulation</a></li><li class="toc-l3"><a href="#55-websockets" data-target="55-websockets">5.5 WebSockets</a></li><li class="toc-l3"><a href="#56-timeouts-and-buffering" data-target="56-timeouts-and-buffering">5.6 Timeouts and Buffering</a></li><li class="toc-l3"><a href="#57-tls-to-backends" data-target="57-tls-to-backends">5.7 TLS to Backends</a></li><li class="toc-l3"><a href="#58-dynamic-upstreams" data-target="58-dynamic-upstreams">5.8 Dynamic Upstreams</a></li><li class="toc-l2"><a href="#part-6-static-file-serving" data-target="part-6-static-file-serving">Part 6 — Static File Serving</a></li><li class="toc-l3"><a href="#61-basic-file-server" data-target="61-basic-file-server">6.1 Basic File Server</a></li><li class="toc-l3"><a href="#62-compression" data-target="62-compression">6.2 Compression</a></li><li class="toc-l3"><a href="#63-spa-fallback-try_files" data-target="63-spa-fallback-try_files">6.3 SPA Fallback (try_files)</a></li><li class="toc-l3"><a href="#64-custom-error-pages" data-target="64-custom-error-pages">6.4 Custom Error Pages</a></li><li class="toc-l2"><a href="#part-7-request-handling" data-target="part-7-request-handling">Part 7 — Request Handling</a></li><li class="toc-l3"><a href="#71-response-headers" data-target="71-response-headers">7.1 Response Headers</a></li><li class="toc-l3"><a href="#72-redirects" data-target="72-redirects">7.2 Redirects</a></li><li class="toc-l3"><a href="#73-rewrites" data-target="73-rewrites">7.3 Rewrites</a></li><li class="toc-l3"><a href="#74-uri-manipulation" data-target="74-uri-manipulation">7.4 URI Manipulation</a></li><li class="toc-l3"><a href="#75-static-responses" data-target="75-static-responses">7.5 Static Responses</a></li><li class="toc-l3"><a href="#76-templates" data-target="76-templates">7.6 Templates</a></li><li class="toc-l3"><a href="#77-request-body-limits" data-target="77-request-body-limits">7.7 Request Body Limits</a></li><li class="toc-l2"><a href="#part-8-authentication-access-control" data-target="part-8-authentication-access-control">Part 8 — Authentication &amp; Access Control</a></li><li class="toc-l3"><a href="#81-basic-authentication" data-target="81-basic-authentication">8.1 Basic Authentication</a></li><li class="toc-l3"><a href="#82-forward-authentication" data-target="82-forward-authentication">8.2 Forward Authentication</a></li><li class="toc-l3"><a href="#83-ip-filtering" data-target="83-ip-filtering">8.3 IP Filtering</a></li><li class="toc-l2"><a href="#part-9-the-json-config-admin-api" data-target="part-9-the-json-config-admin-api">Part 9 — The JSON Config &amp; Admin API</a></li><li class="toc-l3"><a href="#91-the-json-config-structure" data-target="91-the-json-config-structure">9.1 The JSON Config Structure</a></li><li class="toc-l3"><a href="#92-the-admin-api" data-target="92-the-admin-api">9.2 The Admin API</a></li><li class="toc-l3"><a href="#93-dynamic-reconfiguration" data-target="93-dynamic-reconfiguration">9.3 Dynamic Reconfiguration</a></li><li class="toc-l3"><a href="#94-when-to-use-json-vs-caddyfile" data-target="94-when-to-use-json-vs-caddyfile">9.4 When to Use JSON vs. Caddyfile</a></li><li class="toc-l3"><a href="#95-securing-the-admin-api" data-target="95-securing-the-admin-api">9.5 Securing the Admin API</a></li><li class="toc-l2"><a href="#part-10-logging-observability" data-target="part-10-logging-observability">Part 10 — Logging &amp; Observability</a></li><li class="toc-l3"><a href="#101-access-logs" data-target="101-access-logs">10.1 Access Logs</a></li><li class="toc-l3"><a href="#102-filtering-and-sampling" data-target="102-filtering-and-sampling">10.2 Filtering and Sampling</a></li><li class="toc-l3"><a href="#103-caddy-runtime-logs" data-target="103-caddy-runtime-logs">10.3 Caddy Runtime Logs</a></li><li class="toc-l3"><a href="#104-prometheus-metrics" data-target="104-prometheus-metrics">10.4 Prometheus Metrics</a></li><li class="toc-l3"><a href="#105-tracing" data-target="105-tracing">10.5 Tracing</a></li><li class="toc-l2"><a href="#part-11-production-operations" data-target="part-11-production-operations">Part 11 — Production Operations</a></li><li class="toc-l3"><a href="#111-running-with-systemd" data-target="111-running-with-systemd">11.1 Running with systemd</a></li><li class="toc-l3"><a href="#112-docker-in-production" data-target="112-docker-in-production">11.2 Docker in Production</a></li><li class="toc-l3"><a href="#113-kubernetes-ingress" data-target="113-kubernetes-ingress">11.3 Kubernetes Ingress</a></li><li class="toc-l3"><a href="#114-certificate-storage-and-persistence" data-target="114-certificate-storage-and-persistence">11.4 Certificate Storage and Persistence</a></li><li class="toc-l3"><a href="#115-graceful-reloads-and-zero-downtime" data-target="115-graceful-reloads-and-zero-downtime">11.5 Graceful Reloads and Zero-Downtime</a></li><li class="toc-l3"><a href="#116-performance-tuning" data-target="116-performance-tuning">11.6 Performance Tuning</a></li><li class="toc-l3"><a href="#117-upgrading-caddy" data-target="117-upgrading-caddy">11.7 Upgrading Caddy</a></li><li class="toc-l2"><a href="#part-12-comparison-to-alternatives" data-target="part-12-comparison-to-alternatives">Part 12 — Comparison to Alternatives</a></li><li class="toc-l3"><a href="#121-nginx" data-target="121-nginx">12.1 Nginx</a></li><li class="toc-l3"><a href="#122-apache-httpd" data-target="122-apache-httpd">12.2 Apache (httpd)</a></li><li class="toc-l3"><a href="#123-traefik" data-target="123-traefik">12.3 Traefik</a></li><li class="toc-l3"><a href="#124-haproxy" data-target="124-haproxy">12.4 HAProxy</a></li><li class="toc-l3"><a href="#125-envoy" data-target="125-envoy">12.5 Envoy</a></li><li class="toc-l3"><a href="#126-when-not-to-use-caddy" data-target="126-when-not-to-use-caddy">12.6 When NOT to Use Caddy</a></li><li class="toc-l2"><a href="#part-13-recipes-end-to-end-walkthrough" data-target="part-13-recipes-end-to-end-walkthrough">Part 13 — Recipes &amp; End-to-End Walkthrough</a></li><li class="toc-l3"><a href="#recipe-1-multi-site-reverse-proxy-with-security-headers" data-target="recipe-1-multi-site-reverse-proxy-with-security-headers">Recipe 1: Multi-Site Reverse Proxy with Security Headers</a></li><li class="toc-l3"><a href="#recipe-2-spa-api-backend" data-target="recipe-2-spa-api-backend">Recipe 2: SPA + API Backend</a></li><li class="toc-l3"><a href="#recipe-3-wildcard-subdomains-with-dynamic-routing" data-target="recipe-3-wildcard-subdomains-with-dynamic-routing">Recipe 3: Wildcard Subdomains with Dynamic Routing</a></li><li class="toc-l3"><a href="#recipe-4-file-download-server-with-authentication" data-target="recipe-4-file-download-server-with-authentication">Recipe 4: File Download Server with Authentication</a></li><li class="toc-l3"><a href="#recipe-5-local-development-with-https" data-target="recipe-5-local-development-with-https">Recipe 5: Local Development with HTTPS</a></li><li class="toc-l3"><a href="#recipe-6-caddy-as-a-forward-proxy-behind-authelia" data-target="recipe-6-caddy-as-a-forward-proxy-behind-authelia">Recipe 6: Caddy as a Forward Proxy Behind Authelia</a></li><li class="toc-l3"><a href="#recipe-7-rate-limiting" data-target="recipe-7-rate-limiting">Recipe 7: Rate Limiting</a></li><li class="toc-l3"><a href="#end-to-end-walkthrough-from-nothing-to-multi-service-production" data-target="end-to-end-walkthrough-from-nothing-to-multi-service-production">End-to-End Walkthrough: From Nothing to Multi-Service Production</a></li></ul></nav></aside>
+  <main><h1 id="caddy-study-guide">Caddy Study Guide</h1>
+<p>A depth-first guide to Caddy for engineers who run web services in production. Assumes you understand HTTP, DNS, and TLS at a conceptual level (the <a href="networking-fundamentals.html">Networking Fundamentals</a> and <a href="crypto-fundamentals.html">Cryptography</a> guides cover those). Each part builds on the previous. Parts 1–11 are the fundamentals; Parts 12–13 are the comparison and applied recipes.</p>
+<blockquote>
+<p><em>Caddy's thesis is that HTTPS should be the default, not the achievement. Every other design decision — the Caddyfile, the JSON API, the module system — follows from that.</em></p>
+</blockquote>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li><a href="#part-1--foundations--mental-model">Part 1 — Foundations &amp; Mental Model</a></li>
+<li><a href="#part-2--installation">Part 2 — Installation</a></li>
+<li><a href="#part-3--the-caddyfile">Part 3 — The Caddyfile</a></li>
+<li><a href="#part-4--automatic-https">Part 4 — Automatic HTTPS</a></li>
+<li><a href="#part-5--reverse-proxy">Part 5 — Reverse Proxy</a></li>
+<li><a href="#part-6--static-file-serving">Part 6 — Static File Serving</a></li>
+<li><a href="#part-7--request-handling">Part 7 — Request Handling</a></li>
+<li><a href="#part-8--authentication--access-control">Part 8 — Authentication &amp; Access Control</a></li>
+<li><a href="#part-9--the-json-config--admin-api">Part 9 — The JSON Config &amp; Admin API</a></li>
+<li><a href="#part-10--logging--observability">Part 10 — Logging &amp; Observability</a></li>
+<li><a href="#part-11--production-operations">Part 11 — Production Operations</a></li>
+<li><a href="#part-12--comparison-to-alternatives">Part 12 — Comparison to Alternatives</a></li>
+<li><a href="#part-13--recipes--end-to-end-walkthrough">Part 13 — Recipes &amp; End-to-End Walkthrough</a></li>
+</ul>
+<hr>
+<h2 id="part-1-foundations-mental-model">Part 1 — Foundations &amp; Mental Model</h2>
+<h3 id="11-what-caddy-is">1.1 What Caddy Is</h3>
+<p>Caddy is an open-source, extensible web server written in Go. It was created by Matt Holt in 2015, and its defining feature — then and now — is <strong>automatic HTTPS</strong>. Hand Caddy a domain name and it obtains a TLS certificate from Let's Encrypt (or ZeroSSL), configures the TLS listener, redirects HTTP to HTTPS, and renews the certificate before it expires. You don't write a single line of TLS configuration.</p>
+<p>That automatic-HTTPS-by-default stance is what separates Caddy from Nginx, Apache, HAProxy, and Traefik. All of them <em>can</em> do ACME certificates — with plugins, sidecars, or cron jobs — but none of them do it out of the box with zero configuration. Caddy does.</p>
+<p>Caddy is currently on <strong>version 2</strong> (a full rewrite from Caddy v1). Everything in this guide refers to Caddy v2.</p>
+<p>References: <a href="https://caddyserver.com/docs/">Caddy documentation home</a>, <a href="https://caddyserver.com/docs/getting-started">Why Caddy</a>, <a href="https://github.com/caddyserver/caddy">Caddy GitHub repository</a>.</p>
+<h3 id="12-the-architecture">1.2 The Architecture</h3>
+<p>Caddy is a single static binary with no runtime dependencies. Internally, it is organized around a <strong>module system</strong>: every meaningful behavior — serving files, proxying requests, issuing certificates, writing logs — is a Caddy module. The standard distribution ships with a rich set of built-in modules; additional modules are compiled in at build time via <code>xcaddy</code> (Part 2).</p>
+<p>The key architectural layers:</p>
+<pre><code class="language-text">┌─────────────────────────────────────────┐
+│              Caddyfile / JSON           │  ← configuration input
+├─────────────────────────────────────────┤
+│           Config Adapters               │  ← Caddyfile → JSON translation
+├─────────────────────────────────────────┤
+│           Core (App Modules)            │  ← http, tls, pki, logging, ...
+│  ┌──────────┐ ┌──────────┐ ┌────────┐  │
+│  │  HTTP    │ │   TLS    │ │  PKI   │  │
+│  │  Server  │ │  Module  │ │ Module │  │
+│  └──────────┘ └──────────┘ └────────┘  │
+├─────────────────────────────────────────┤
+│          Handler Chain (middleware)      │  ← reverse_proxy, file_server, ...
+├─────────────────────────────────────────┤
+│          Matchers                        │  ← host, path, method, header, ...
+└─────────────────────────────────────────┘
+</code></pre>
+<p><strong>Config adapters</strong> translate human-friendly formats (the Caddyfile) into Caddy's native JSON config. Caddy's internal truth is always JSON; the Caddyfile is syntactic sugar. This is important — anything the Caddyfile can do, the JSON can do, but the JSON can do things the Caddyfile cannot express (Part 9).</p>
+<p><strong>App modules</strong> are top-level subsystems. The <code>http</code> app handles listeners, routing, and middleware. The <code>tls</code> app handles certificate management. The <code>pki</code> app runs Caddy's internal CA for local development.</p>
+<p><strong>Handlers</strong> are the HTTP middleware chain: each request flows through an ordered list of handlers (encode, headers, reverse_proxy, file_server, etc.). Handlers execute in a specific, documented order — not the order you write them in the Caddyfile.</p>
+<p><strong>Matchers</strong> decide which requests a handler applies to. Path matchers, host matchers, header matchers, method matchers — these are the conditional logic of Caddy's routing.</p>
+<p>References: <a href="https://caddyserver.com/docs/architecture">Caddy architecture</a>, <a href="https://caddyserver.com/docs/modules/">Caddy modules</a>.</p>
+<h3 id="13-the-two-configuration-modes">1.3 The Two Configuration Modes</h3>
+<p>Caddy has two distinct configuration interfaces:</p>
+<ol>
+<li>
+<p><strong>The Caddyfile</strong> — a human-readable, domain-specific config language. This is what most people use for most setups. It is concise, readable, and handles 90% of use cases.</p>
+</li>
+<li>
+<p><strong>The JSON API</strong> — Caddy's native configuration format. The Caddyfile is <em>adapted</em> (compiled) into JSON before Caddy uses it. The JSON API is more verbose but supports the full feature set, enables dynamic reconfiguration via HTTP, and is what you use for programmatic control.</p>
+</li>
+</ol>
+<pre><code class="language-text"> Caddyfile          JSON
+┌──────────┐    ┌──────────────┐
+│ Human    │───►│ Config       │───► Caddy runtime
+│ writes   │    │ adapter      │
+└──────────┘    └──────────────┘
+                       ▲
+                       │
+              ┌────────┴──────┐
+              │ Admin API     │◄─── Automation / scripts
+              │ POST /config/ │
+              └───────────────┘
+</code></pre>
+<p>For day-to-day work, use the Caddyfile. For automation, dynamic config, or advanced routing that the Caddyfile can't express, use the JSON API directly.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/concepts">Caddyfile concepts</a>, <a href="https://caddyserver.com/docs/json/">JSON config structure</a>, <a href="https://caddyserver.com/docs/api">API reference</a>.</p>
+<h3 id="14-where-caddy-fits-in-2026">1.4 Where Caddy Fits in 2026</h3>
+<p>Caddy's sweet spots:</p>
+<ul>
+<li><strong>Simple to moderately complex reverse proxy setups</strong> — the automatic HTTPS and clean config make it dramatically less work than Nginx + certbot + cron for 1–50 upstream services.</li>
+<li><strong>Local development with HTTPS</strong> — Caddy's internal CA issues locally-trusted certificates instantly. No more <code>mkcert</code> or self-signed cert warnings.</li>
+<li><strong>API gateways and microservices</strong> — Caddy's reverse proxy has health checks, load balancing, header manipulation, and circuit breaking.</li>
+<li><strong>Static sites</strong> — <code>file_server</code> with compression, SPA fallback, and browse mode is zero-effort.</li>
+<li><strong>Edge/small deployments</strong> — a single binary with no dependencies is ideal for VMs, containers, and embedded devices (like a Raspberry Pi).</li>
+</ul>
+<p>Where Caddy is <strong>not</strong> the best choice:</p>
+<ul>
+<li><strong>Extreme scale (100k+ req/s sustained)</strong> — Nginx and Envoy are more battle-tested at this tier, though Caddy handles far more traffic than most services ever need.</li>
+<li><strong>Complex L4/L7 mesh routing</strong> — Envoy and HAProxy have deeper L4 capabilities. Caddy is primarily an L7 server.</li>
+<li><strong>Deep ecosystem of community modules</strong> — Nginx's third-party module ecosystem is larger (decades of head start). Caddy's is growing but narrower.</li>
+<li><strong>Legacy compatibility</strong> — if your team has a decade of Nginx config, the migration cost may not be justified unless the HTTPS automation or config simplicity solves a real pain point.</li>
+</ul>
+<h3 id="15-caddy-vs-nginx-the-mental-model-shift">1.5 Caddy vs. Nginx — The Mental Model Shift</h3>
+<p>If you're coming from Nginx, the biggest adjustments:</p>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>Nginx</th>
+<th>Caddy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Config format</td>
+<td>Custom DSL with <code>server</code> blocks, <code>location</code> blocks</td>
+<td>Caddyfile with site blocks, or native JSON</td>
+</tr>
+<tr>
+<td>TLS certificates</td>
+<td>Manual (certbot, cron renewal)</td>
+<td>Automatic — just use a domain name</td>
+</tr>
+<tr>
+<td>Reload</td>
+<td><code>nginx -s reload</code> (graceful)</td>
+<td><code>caddy reload</code> or POST to admin API (zero-downtime)</td>
+</tr>
+<tr>
+<td>Directive order</td>
+<td>Order in file matters</td>
+<td>Caddy has a fixed <a href="https://caddyserver.com/docs/caddyfile/directives#directive-order">directive order</a>; file order mostly doesn't matter</td>
+</tr>
+<tr>
+<td>Regex routing</td>
+<td>Heavy use of <code>location ~</code> regex</td>
+<td>Matchers with explicit <code>path_regexp</code>; most routing is prefix/exact</td>
+</tr>
+<tr>
+<td>Worker model</td>
+<td>Multi-process, event-driven per worker</td>
+<td>Single process, goroutines (Go's concurrency model)</td>
+</tr>
+<tr>
+<td>Extend</td>
+<td>C modules compiled in, or dynamic modules</td>
+<td>Go modules compiled in via <code>xcaddy</code>, or via JSON plugins</td>
+</tr>
+</tbody>
+</table>
+<p>The directive-order point trips up Nginx users the most. In Nginx, directive placement determines execution order. In Caddy, the <a href="https://caddyserver.com/docs/caddyfile/directives#directive-order">directive order</a> is predefined — <code>redir</code> always runs before <code>rewrite</code>, <code>rewrite</code> before <code>reverse_proxy</code>, <code>reverse_proxy</code> before <code>file_server</code>, regardless of where you put them in the Caddyfile. You can override this with the <code>order</code> global option or the <code>route</code> directive, but the default order is designed to do the right thing for the vast majority of configurations.</p>
+<div class="addon decision" id="decision-helper">
+  <div class="addon-head">
+    <span class="addon-kicker">Interactive</span>
+    <h3>Should you use Caddy?</h3>
+    <p class="addon-sub">Toggle what's true for your situation. Grounded in Part 1.4 and Part 12.6.</p>
+  </div>
+  <div class="decision-grid">
+    <label class="dchip"><input type="checkbox" data-w="caddy" value="2"> I want HTTPS handled automatically (no certbot/cron)</label>
+    <label class="dchip"><input type="checkbox" data-w="caddy" value="2"> Config simplicity matters more than ecosystem size</label>
+    <label class="dchip"><input type="checkbox" data-w="caddy" value="1"> I need local-dev HTTPS without cert warnings</label>
+    <label class="dchip"><input type="checkbox" data-w="caddy" value="1"> Single static binary / edge or Raspberry Pi deploy</label>
+    <label class="dchip"><input type="checkbox" data-w="caddy" value="1"> I want dynamic reconfiguration via an HTTP API</label>
+    <label class="dchip"><input type="checkbox" data-w="against" value="2"> I must sustain 100k+ concurrent connections</label>
+    <label class="dchip"><input type="checkbox" data-w="against" value="2"> I need a dedicated L4 load balancer or service mesh data plane</label>
+    <label class="dchip"><input type="checkbox" data-w="traefik" value="2"> Docker-label auto-discovery is a core requirement</label>
+    <label class="dchip"><input type="checkbox" data-w="against" value="1"> I need a WAF (ModSecurity-style)</label>
+    <label class="dchip"><input type="checkbox" data-w="against" value="1"> My team runs Nginx well with no pain points</label>
+  </div>
+  <div class="decision-out" id="decision-out" role="status" aria-live="polite">
+    <span class="decision-verdict">Select options above for a recommendation.</span>
+  </div>
+</div>
+<div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>What single feature most distinguishes Caddy from Nginx, Apache, and HAProxy?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Automatic HTTPS by default, with zero TLS configuration</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">It is written in Go</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">It supports reverse proxying</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">It can serve static files</span></button></li></ul><div class="quiz-explain" hidden>All of those servers can do ACME — but only Caddy obtains, configures, redirects, and renews certificates out of the box with no configuration.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>What is Caddy&#x27;s actual internal configuration format?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">The Caddyfile</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">YAML</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">JSON (the Caddyfile is adapted into it)</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">TOML</span></button></li></ul><div class="quiz-explain" hidden>The Caddyfile is syntactic sugar. A config adapter compiles it to JSON, which is Caddy&#x27;s native truth and what the admin API speaks.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q3</span>Does the order you write directives in the Caddyfile determine their execution order?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Yes — top to bottom, like Nginx</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">No — Caddy uses a predefined directive order regardless of file position</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Only inside site blocks</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Only for matchers</span></button></li></ul><div class="quiz-explain" hidden>Caddy has a fixed directive order (redir before rewrite before reverse_proxy before file_server). Use the `route` directive to force written order.</div></div></div>
+<hr>
+<h2 id="part-2-installation">Part 2 — Installation</h2>
+<h3 id="21-package-managers">2.1 Package Managers</h3>
+<p><strong>Debian/Ubuntu:</strong></p>
+<pre><code class="language-bash"># Install the Caddy apt repository
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+
+sudo apt update
+sudo apt install caddy
+</code></pre>
+<p>This installs Caddy as a systemd service. The service file, default Caddyfile (<code>/etc/caddy/Caddyfile</code>), and data directories are set up automatically.</p>
+<p><strong>Fedora/RHEL/CentOS:</strong></p>
+<pre><code class="language-bash">dnf install 'dnf-command(copr)'
+dnf copr enable @caddy/caddy
+dnf install caddy
+</code></pre>
+<p><strong>macOS (Homebrew):</strong></p>
+<pre><code class="language-bash">brew install caddy
+</code></pre>
+<p><strong>Arch Linux:</strong></p>
+<pre><code class="language-bash">pacman -S caddy
+</code></pre>
+<p><strong>Windows (Scoop or Chocolatey):</strong></p>
+<pre><code class="language-powershell">scoop install caddy    # or: choco install caddy
+</code></pre>
+<p>References: <a href="https://caddyserver.com/docs/install">Install Caddy</a>.</p>
+<h3 id="22-static-binary">2.2 Static Binary</h3>
+<p>Caddy is a single binary with no runtime dependencies. Download it directly:</p>
+<pre><code class="language-bash"># Download the latest release for your platform
+curl -o caddy &quot;https://caddyserver.com/api/download?os=linux&amp;arch=amd64&quot;
+chmod +x caddy
+sudo mv caddy /usr/local/bin/
+
+# Verify
+caddy version
+</code></pre>
+<p>The <a href="https://caddyserver.com/download">Caddy download page</a> lets you select your OS, architecture, and optional modules — it builds a custom binary on the fly.</p>
+<h3 id="23-docker">2.3 Docker</h3>
+<p>The official Docker image is <code>caddy</code>:</p>
+<pre><code class="language-yaml"># docker-compose.yml
+services:
+  caddy:
+    image: caddy:2                          # always pin to major version
+    restart: unless-stopped
+    ports:
+      - &quot;80:80&quot;
+      - &quot;443:443&quot;
+      - &quot;443:443/udp&quot;                       # HTTP/3 (QUIC)
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile    # your config
+      - caddy_data:/data                    # TLS certificates and ACME state
+      - caddy_config:/config                # autosaved JSON config
+
+volumes:
+  caddy_data:                               # CRITICAL: persist this volume
+  caddy_config:
+</code></pre>
+<p>The <code>/data</code> volume is essential — it stores TLS certificates, ACME account keys, and OCSP staples. Losing this volume means re-requesting all certificates on next start, which can hit Let's Encrypt rate limits.</p>
+<p>References: <a href="https://hub.docker.com/_/caddy">Caddy Docker image</a>, <a href="https://caddyserver.com/docs/running#docker">Docker-specific docs</a>.</p>
+<h3 id="24-building-with-plugins-xcaddy">2.4 Building with Plugins — xcaddy</h3>
+<p>Caddy's standard binary includes the most common modules. For anything else — Cloudflare DNS challenge, rate limiting, caching, IP geolocation — you build a custom binary with <code>xcaddy</code>:</p>
+<pre><code class="language-bash"># Install xcaddy
+go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+
+# Build Caddy with the Cloudflare DNS module
+xcaddy build --with github.com/caddy-dns/cloudflare
+
+# Build with multiple modules
+xcaddy build \
+  --with github.com/caddy-dns/cloudflare \
+  --with github.com/mholt/caddy-ratelimit \
+  --with github.com/caddyserver/cache-handler
+</code></pre>
+<p>This compiles a new <code>caddy</code> binary in the current directory with the specified modules baked in. Replace the system binary with this custom build to use the extra modules.</p>
+<p><strong>Docker with custom modules:</strong></p>
+<pre><code class="language-dockerfile">FROM caddy:2-builder AS builder
+
+RUN xcaddy build \
+  --with github.com/caddy-dns/cloudflare \
+  --with github.com/mholt/caddy-ratelimit
+
+FROM caddy:2
+
+COPY --from=builder /usr/bin/caddy /usr/bin/caddy
+</code></pre>
+<p>References: <a href="https://github.com/caddyserver/xcaddy">xcaddy</a>, <a href="https://caddyserver.com/download">Caddy modules directory</a>, <a href="https://caddyserver.com/docs/build">Build from source</a>.</p>
+<h3 id="25-first-run">2.5 First Run</h3>
+<p>After installation, verify Caddy works:</p>
+<pre><code class="language-bash"># Run a quick file server in the current directory
+caddy file-server --listen :8080
+
+# Or serve with a one-line Caddyfile from the command line
+caddy respond --listen :8080 &quot;Hello from Caddy&quot;
+
+# Run with a Caddyfile
+caddy run                     # foreground (Ctrl+C to stop)
+caddy start                   # background daemon
+caddy stop                    # stop the background daemon
+caddy reload                  # reload config without downtime
+</code></pre>
+<p><code>caddy run</code> vs <code>caddy start</code>: <code>run</code> stays in the foreground and is what systemd uses. <code>start</code> daemonizes. In production, always let your init system (systemd) manage the process — don't use <code>caddy start</code>.</p>
+<p>References: <a href="https://caddyserver.com/docs/command-line">Command line usage</a>, <a href="https://caddyserver.com/docs/getting-started">Getting started</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>Which tool builds a custom Caddy binary with third-party modules baked in?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">go build</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">xcaddy</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">caddy plugin install</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">apt</span></button></li></ul><div class="quiz-explain" hidden>`xcaddy build --with &lt;module&gt;` compiles a new binary. Caddy modules are compiled in at build time, not loaded dynamically.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>In the Docker setup, which volume is critical to persist?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">/config</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">/etc/caddy</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">/data (certificates + ACME state)</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">/var/log</span></button></li></ul><div class="quiz-explain" hidden>Losing /data means re-requesting every certificate on next start, which can hit Let&#x27;s Encrypt rate limits (50 certs per registered domain per week).</div></div></div>
+<hr>
+<h2 id="part-3-the-caddyfile">Part 3 — The Caddyfile</h2>
+<p>The Caddyfile is Caddy's human-readable configuration format. It is not JSON, YAML, or TOML — it is its own format, optimized for the specific task of configuring a web server.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile">Caddyfile docs</a>, <a href="https://caddyserver.com/docs/caddyfile-tutorial">Caddyfile tutorial</a>.</p>
+<h3 id="31-site-blocks">3.1 Site Blocks</h3>
+<p>The fundamental unit of the Caddyfile is the <strong>site block</strong> — a site address followed by directives in curly braces:</p>
+<pre><code class="language-caddyfile"># Single site
+example.com {
+    respond &quot;Hello, world!&quot;
+}
+
+# Multiple sites on the same config
+example.com {
+    reverse_proxy localhost:8080
+}
+
+blog.example.com {
+    root * /var/www/blog
+    file_server
+}
+
+# Multiple addresses for the same config
+example.com, www.example.com {
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p>The site address determines what Caddy does with HTTPS:</p>
+<table>
+<thead>
+<tr>
+<th>Address</th>
+<th>HTTPS behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>example.com</code></td>
+<td>Automatic HTTPS — obtains a public certificate</td>
+</tr>
+<tr>
+<td><code>localhost</code></td>
+<td>Automatic HTTPS — issues a locally-trusted certificate via Caddy's internal CA</td>
+</tr>
+<tr>
+<td><code>:8080</code></td>
+<td>No HTTPS — just a port, no hostname to get a certificate for</td>
+</tr>
+<tr>
+<td><code>http://example.com</code></td>
+<td>No HTTPS — you explicitly said HTTP</td>
+</tr>
+<tr>
+<td><code>https://example.com</code></td>
+<td>HTTPS — same as bare domain</td>
+</tr>
+<tr>
+<td><code>*.example.com</code></td>
+<td>Wildcard HTTPS — requires a DNS challenge (Part 4)</td>
+</tr>
+</tbody>
+</table>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/concepts#addresses">Caddyfile addresses</a>.</p>
+<h3 id="32-directives">3.2 Directives</h3>
+<p>Directives are the verbs of the Caddyfile. Each one configures a specific behavior:</p>
+<pre><code class="language-caddyfile">example.com {
+    root * /var/www/html             # set the site root
+    encode gzip zstd                 # enable compression
+    file_server                      # serve static files
+    log {                            # configure access logging
+        output file /var/log/caddy/access.log
+    }
+}
+</code></pre>
+<p>The most commonly used directives:</p>
+<table>
+<thead>
+<tr>
+<th>Directive</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>reverse_proxy</code></td>
+<td>Proxy requests to backend services</td>
+</tr>
+<tr>
+<td><code>file_server</code></td>
+<td>Serve static files from disk</td>
+</tr>
+<tr>
+<td><code>root</code></td>
+<td>Set the root directory for the site</td>
+</tr>
+<tr>
+<td><code>encode</code></td>
+<td>Enable compression (gzip, zstd)</td>
+</tr>
+<tr>
+<td><code>header</code></td>
+<td>Add, set, or remove response headers</td>
+</tr>
+<tr>
+<td><code>redir</code></td>
+<td>Issue HTTP redirects</td>
+</tr>
+<tr>
+<td><code>rewrite</code></td>
+<td>Internally rewrite the URI (client doesn't see it)</td>
+</tr>
+<tr>
+<td><code>respond</code></td>
+<td>Return a static response (useful for health checks)</td>
+</tr>
+<tr>
+<td><code>tls</code></td>
+<td>Override automatic TLS settings</td>
+</tr>
+<tr>
+<td><code>log</code></td>
+<td>Configure access logging</td>
+</tr>
+<tr>
+<td><code>basicauth</code> / <code>forward_auth</code></td>
+<td>Authentication</td>
+</tr>
+<tr>
+<td><code>handle</code> / <code>handle_path</code></td>
+<td>Group directives for specific routes</td>
+</tr>
+<tr>
+<td><code>import</code></td>
+<td>Include a snippet or file</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Directive order matters — but not the way you think.</strong> Caddy has a predefined <a href="https://caddyserver.com/docs/caddyfile/directives#directive-order">directive order</a> that controls execution regardless of where you write them in the file. This is the single most common source of confusion for new Caddy users. If you need explicit control over execution order, use the <code>route</code> directive (Section 3.6).</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives">Directives list</a>, <a href="https://caddyserver.com/docs/caddyfile/directives#directive-order">Directive order</a>.</p>
+<h3 id="33-matchers">3.3 Matchers</h3>
+<p>Matchers control <em>which requests</em> a directive applies to. Without a matcher, a directive applies to all requests.</p>
+<pre><code class="language-caddyfile">example.com {
+    # No matcher — applies to all requests
+    encode gzip
+
+    # Path matcher (shorthand) — only requests starting with /api/
+    reverse_proxy /api/* localhost:3000
+
+    # Named matcher — reusable, more expressive
+    @websockets {
+        header Connection *Upgrade*
+        header Upgrade    websocket
+    }
+    reverse_proxy @websockets localhost:3001
+
+    # Named matcher with multiple conditions (AND logic)
+    @post-api {
+        method POST
+        path   /api/*
+    }
+    reverse_proxy @post-api localhost:3002
+
+    # Negate a matcher
+    @not-static {
+        not path /static/*
+    }
+    reverse_proxy @not-static localhost:8080
+}
+</code></pre>
+<p>Matcher types:</p>
+<table>
+<thead>
+<tr>
+<th>Matcher</th>
+<th>Syntax</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Path</td>
+<td><code>path /foo/*</code></td>
+<td>Prefix, suffix (<code>*.html</code>), or exact (<code>/foo</code>)</td>
+</tr>
+<tr>
+<td>Path (regex)</td>
+<td><code>path_regexp pattern</code></td>
+<td><code>path_regexp \.(?:jpg\|png\|gif)$</code></td>
+</tr>
+<tr>
+<td>Method</td>
+<td><code>method GET POST</code></td>
+<td>HTTP method(s)</td>
+</tr>
+<tr>
+<td>Header</td>
+<td><code>header Field value</code></td>
+<td>Match on request header</td>
+</tr>
+<tr>
+<td>Query</td>
+<td><code>query key=value</code></td>
+<td>Match on query parameter</td>
+</tr>
+<tr>
+<td>Remote IP</td>
+<td><code>remote_ip 192.168.1.0/24</code></td>
+<td>Client IP range</td>
+</tr>
+<tr>
+<td>Protocol</td>
+<td><code>protocol https</code></td>
+<td><code>http</code>, <code>https</code>, <code>grpc</code></td>
+</tr>
+<tr>
+<td>Expression</td>
+<td><code>expression {http.request.uri}.contains("/foo")</code></td>
+<td>CEL expression</td>
+</tr>
+<tr>
+<td>Not</td>
+<td><code>not { ... }</code></td>
+<td>Negate any matcher</td>
+</tr>
+</tbody>
+</table>
+<p>Within a named matcher block, conditions are ANDed. To OR conditions, use multiple matchers or a CEL expression.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/matchers">Request matchers</a>.</p>
+<h3 id="34-placeholders">3.4 Placeholders</h3>
+<p>Placeholders are Caddy's variable system. They use <code>{curly.brace.notation}</code> and are available anywhere in the Caddyfile:</p>
+<pre><code class="language-caddyfile">example.com {
+    header X-Request-Id {http.request.uuid}
+
+    log {
+        output file /var/log/caddy/{args[0]}.log
+    }
+
+    respond &quot;Host: {http.request.host}, Path: {http.request.uri.path}&quot;
+}
+</code></pre>
+<p>Common placeholders:</p>
+<table>
+<thead>
+<tr>
+<th>Placeholder</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>{http.request.host}</code></td>
+<td>Request hostname</td>
+</tr>
+<tr>
+<td><code>{http.request.uri}</code></td>
+<td>Full URI (path + query)</td>
+</tr>
+<tr>
+<td><code>{http.request.uri.path}</code></td>
+<td>Just the path</td>
+</tr>
+<tr>
+<td><code>{http.request.uri.query}</code></td>
+<td>Just the query string</td>
+</tr>
+<tr>
+<td><code>{http.request.method}</code></td>
+<td>HTTP method</td>
+</tr>
+<tr>
+<td><code>{http.request.header.X-Name}</code></td>
+<td>Value of a request header</td>
+</tr>
+<tr>
+<td><code>{http.request.remote.host}</code></td>
+<td>Client IP address</td>
+</tr>
+<tr>
+<td><code>{http.request.uuid}</code></td>
+<td>Unique request ID</td>
+</tr>
+<tr>
+<td><code>{http.response.header.Name}</code></td>
+<td>Value of a response header</td>
+</tr>
+<tr>
+<td><code>{env.VAR_NAME}</code></td>
+<td>Environment variable</td>
+</tr>
+<tr>
+<td><code>{args[N]}</code></td>
+<td>Positional argument from <code>import</code></td>
+</tr>
+</tbody>
+</table>
+<p>Shorthand forms exist for common placeholders — <code>{host}</code> for <code>{http.request.host}</code>, <code>{path}</code> for <code>{http.request.uri.path}</code>, <code>{uri}</code> for <code>{http.request.uri}</code>, <code>{method}</code> for <code>{http.request.method}</code>, <code>{remote_host}</code> for <code>{http.request.remote.host}</code>.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/concepts#placeholders">Placeholders</a>, <a href="https://caddyserver.com/docs/json/apps/http/#docs">Full placeholder list</a>.</p>
+<h3 id="35-snippets-and-imports">3.5 Snippets and Imports</h3>
+<p>Snippets let you define reusable blocks. <code>import</code> includes them:</p>
+<pre><code class="language-caddyfile"># Define a snippet (top level, outside any site block)
+(common-headers) {
+    header {
+        X-Content-Type-Options  nosniff
+        X-Frame-Options         DENY
+        Referrer-Policy         strict-origin-when-cross-origin
+        -Server                               # remove the Server header
+    }
+}
+
+(logging) {
+    log {
+        output file /var/log/caddy/{args[0]}.log
+        format json
+    }
+}
+
+# Use snippets in site blocks
+example.com {
+    import common-headers
+    import logging example.com               # {args[0]} = &quot;example.com&quot;
+    reverse_proxy localhost:8080
+}
+
+api.example.com {
+    import common-headers
+    import logging api.example.com
+    reverse_proxy localhost:3000
+}
+</code></pre>
+<p><code>import</code> can also include external files:</p>
+<pre><code class="language-caddyfile"># Import a single file
+import /etc/caddy/sites/example.conf
+
+# Import all files matching a glob
+import /etc/caddy/sites/*.conf
+</code></pre>
+<p>This is how you organize large configurations — one file per site, all imported from a main Caddyfile.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/concepts#snippets">Snippets</a>, <a href="https://caddyserver.com/docs/caddyfile/directives/import">import directive</a>.</p>
+<h3 id="36-global-options-and-the-route-directive">3.6 Global Options and the Route Directive</h3>
+<p>The <strong>global options block</strong> appears at the very top of the Caddyfile (before any site blocks) and configures Caddy-wide settings:</p>
+<pre><code class="language-caddyfile">{
+    # TLS email for ACME account registration
+    email admin@example.com
+
+    # Use the Let's Encrypt staging CA (for testing — avoids rate limits)
+    acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+
+    # Change the admin API listen address (default: localhost:2019)
+    admin localhost:2019
+
+    # Set default SNI for TLS handshakes
+    default_sni example.com
+
+    # Change directive execution order
+    order rate_limit before reverse_proxy
+
+    # Enable debug logging
+    debug
+}
+
+example.com {
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p>The <strong><code>route</code> directive</strong> forces directives inside it to execute in the order written, overriding Caddy's default directive order:</p>
+<pre><code class="language-caddyfile">example.com {
+    route {
+        # These execute top-to-bottom, not in Caddy's default order
+        rewrite /old-path /new-path
+        header X-Rewritten true
+        reverse_proxy localhost:8080
+    }
+}
+</code></pre>
+<p>Use <code>route</code> when the default directive order doesn't do what you need. In practice, you rarely need it — the defaults are well-designed.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/options">Global options</a>, <a href="https://caddyserver.com/docs/caddyfile/directives/route">route directive</a>.</p>
+<h3 id="37-handle-vs-handle_path">3.7 handle vs. handle_path</h3>
+<p><code>handle</code> and <code>handle_path</code> are how you do route-specific configuration — Caddy's equivalent of Nginx's <code>location</code> blocks:</p>
+<pre><code class="language-caddyfile">example.com {
+    # handle: match on the path, but DON'T strip it
+    handle /api/* {
+        reverse_proxy localhost:3000       # backend sees /api/users
+    }
+
+    # handle_path: match on the path AND strip the prefix
+    handle_path /static/* {
+        root * /var/www/static
+        file_server                        # /static/img/logo.png → /img/logo.png
+    }
+
+    # Fallback handle — matches everything not matched above
+    handle {
+        reverse_proxy localhost:8080
+    }
+}
+</code></pre>
+<p><code>handle</code> blocks are mutually exclusive — only the first matching one runs. This is different from directives at the site-block level, where multiple directives can apply to the same request. Think of <code>handle</code> as a router with exclusive routes.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/handle">handle</a>, <a href="https://caddyserver.com/docs/caddyfile/directives/handle_path">handle_path</a>.</p>
+<h3 id="38-environment-variables">3.8 Environment Variables</h3>
+<p>Use <code>{env.VAR_NAME}</code> to reference environment variables anywhere in the Caddyfile:</p>
+<pre><code class="language-caddyfile">{env.DOMAIN} {
+    reverse_proxy localhost:{env.BACKEND_PORT}
+    tls {env.TLS_EMAIL}
+}
+</code></pre>
+<p>This is essential for containerized deployments where config varies per environment. Caddy resolves environment variables at config load time, not at request time.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/concepts#environment-variables">Environment variables in the Caddyfile</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>What is the difference between `handle` and `handle_path`?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">handle is for files, handle_path is for proxies</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">handle_path strips the matched path prefix; handle does not</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">They are identical</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">handle_path requires a regex</span></button></li></ul><div class="quiz-explain" hidden>handle_path /api/* strips /api before passing on (so the backend sees /users, not /api/users). Both are mutually exclusive routers — first match wins.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>Within a single named matcher block, multiple conditions are combined with…</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">OR</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">AND</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">XOR</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">NAND</span></button></li></ul><div class="quiz-explain" hidden>Conditions inside one matcher are ANDed. To OR, use multiple matchers or a CEL `expression` matcher.</div></div></div>
+<hr>
+<h2 id="part-4-automatic-https">Part 4 — Automatic HTTPS</h2>
+<p>Automatic HTTPS is Caddy's signature feature. Understanding how it works — and when to override it — is essential for running Caddy in production.</p>
+<p>References: <a href="https://caddyserver.com/docs/automatic-https">Automatic HTTPS overview</a>, <a href="https://caddyserver.com/docs/quick-starts/https">HTTPS quick-start</a>.</p>
+<h3 id="41-how-it-works">4.1 How It Works</h3>
+<p>When Caddy sees a site address with a qualifying hostname (not bare IP, not <code>localhost</code>, not a port-only address), it:</p>
+<ol>
+<li><strong>Creates an ACME account</strong> with Let's Encrypt (or ZeroSSL) using the <code>email</code> from global options (or generates one).</li>
+<li><strong>Requests a certificate</strong> for the domain using the HTTP-01 or TLS-ALPN-01 ACME challenge.</li>
+<li><strong>Configures the TLS listener</strong> with the obtained certificate.</li>
+<li><strong>Redirects HTTP → HTTPS</strong> by automatically adding an HTTP listener on port 80 that 301-redirects to the HTTPS version.</li>
+<li><strong>Renews the certificate</strong> automatically before it expires (Let's Encrypt certificates last 90 days; Caddy renews at roughly 2/3 of the lifetime).</li>
+<li><strong>Staples OCSP responses</strong> for improved TLS handshake performance.</li>
+</ol>
+<p>All of this happens with zero TLS configuration in the Caddyfile — just use a domain name:</p>
+<pre><code class="language-caddyfile">example.com {
+    respond &quot;I have HTTPS!&quot;
+}
+</code></pre>
+<p>Caddy stores certificates, private keys, ACME account data, and OCSP staples in its <strong>data directory</strong> (<code>~/.local/share/caddy</code> on Linux, or <code>/data</code> in the Docker image). Never delete this directory in production.</p>
+<p>References: <a href="https://caddyserver.com/docs/automatic-https#acme-challenges">ACME challenges</a>, <a href="https://caddyserver.com/docs/caddyfile/directives/tls">Certificate management</a>.</p>
+<h3 id="42-acme-challenge-types">4.2 ACME Challenge Types</h3>
+<p>Caddy supports three ACME challenge types for proving domain ownership:</p>
+<p><strong>HTTP-01 challenge</strong> (default): The ACME server asks Caddy to serve a specific token at <code>http://yourdomain/.well-known/acme-challenge/&lt;token&gt;</code>. Requires port 80 to be publicly reachable. This is the most common and simplest challenge type.</p>
+<p><strong>TLS-ALPN-01 challenge</strong> (default fallback): The ACME server connects to port 443 and verifies a special self-signed certificate with a specific ALPN protocol. Requires port 443 to be publicly reachable. Caddy tries this automatically if HTTP-01 fails.</p>
+<p><strong>DNS-01 challenge</strong> (manual/plugin): Caddy creates a DNS TXT record (<code>_acme-challenge.yourdomain</code>) to prove ownership. Does <strong>not</strong> require ports 80/443 to be reachable — essential for wildcard certificates and internal services behind firewalls. Requires a DNS provider plugin:</p>
+<pre><code class="language-caddyfile"># Requires: xcaddy build --with github.com/caddy-dns/cloudflare
+*.example.com {
+    tls {
+        dns cloudflare {env.CF_API_TOKEN}
+    }
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p>DNS provider plugins exist for Cloudflare, Route 53, Google Cloud DNS, DigitalOcean, Hetzner, and many others. See the <a href="https://github.com/caddy-dns">caddy-dns GitHub organization</a> for the full list.</p>
+<p>References: <a href="https://caddyserver.com/docs/automatic-https#acme-challenges">ACME challenges</a>, <a href="https://github.com/caddy-dns">DNS challenge modules</a>.</p>
+<h3 id="43-wildcard-certificates">4.3 Wildcard Certificates</h3>
+<p>Wildcard certificates (<code>*.example.com</code>) require the DNS-01 challenge because the HTTP-01 and TLS-ALPN-01 challenges can only prove ownership of a specific hostname, not a wildcard:</p>
+<pre><code class="language-caddyfile">*.example.com {
+    tls {
+        dns cloudflare {env.CF_API_TOKEN}
+    }
+
+    @app host app.example.com
+    handle @app {
+        reverse_proxy localhost:3000
+    }
+
+    @api host api.example.com
+    handle @api {
+        reverse_proxy localhost:4000
+    }
+
+    handle {
+        respond &quot;Unknown subdomain&quot; 404
+    }
+}
+</code></pre>
+<p>A wildcard address <code>*.example.com</code> does <strong>not</strong> match the bare domain <code>example.com</code>. If you need both, add both:</p>
+<pre><code class="language-caddyfile">example.com, *.example.com {
+    tls {
+        dns cloudflare {env.CF_API_TOKEN}
+    }
+    # ...
+}
+</code></pre>
+<h3 id="44-internal-ca-local-development-with-https">4.4 Internal CA — Local Development with HTTPS</h3>
+<p>For <code>localhost</code> and other non-public hostnames, Caddy runs a built-in CA (based on its <code>pki</code> module) that issues locally-trusted certificates:</p>
+<pre><code class="language-caddyfile">localhost {
+    respond &quot;HTTPS on localhost, no warnings!&quot;
+}
+
+# Any non-public hostname also gets an internal certificate
+myapp.local {
+    reverse_proxy localhost:3000
+}
+</code></pre>
+<p>On first run, Caddy generates a root CA certificate and installs it into the system trust store (may prompt for <code>sudo</code>). After that, browsers trust Caddy's locally-issued certificates without warnings.</p>
+<p>This eliminates the need for <code>mkcert</code>, self-signed certificates, or <code>NODE_TLS_REJECT_UNAUTHORIZED=0</code> hacks in development.</p>
+<p>References: <a href="https://caddyserver.com/docs/automatic-https#local-https">Local HTTPS</a>.</p>
+<h3 id="45-on-demand-tls">4.5 On-Demand TLS</h3>
+<p>On-demand TLS obtains certificates at the moment of the first TLS handshake, rather than at config load time. This is for SaaS platforms and multi-tenant apps where you don't know all the hostnames in advance:</p>
+<pre><code class="language-caddyfile">{
+    on_demand_tls {
+        # REQUIRED: an endpoint that returns 200 if the domain is allowed
+        ask http://localhost:5000/check-domain
+        # Optional: rate limits
+        burst 5
+        interval 2m
+    }
+}
+
+https:// {
+    tls {
+        on_demand
+    }
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p>The <code>ask</code> endpoint is a critical security gate — without it, anyone could point their domain at your server and Caddy would obtain certificates for it, exhausting your ACME rate limits. The endpoint receives <code>GET /check-domain?domain=example.com</code> and must return 200 to allow issuance.</p>
+<p>References: <a href="https://caddyserver.com/docs/automatic-https#on-demand-tls">On-demand TLS</a>, <a href="https://caddyserver.com/docs/caddyfile/directives/tls">tls directive</a>.</p>
+<h3 id="46-using-your-own-certificates">4.6 Using Your Own Certificates</h3>
+<p>If you have certificates from another CA (corporate PKI, purchased certificates), you can use them instead of ACME:</p>
+<pre><code class="language-caddyfile">example.com {
+    tls /path/to/cert.pem /path/to/key.pem
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p>Caddy will still handle OCSP stapling if possible, but won't manage renewal — that's on you.</p>
+<h3 id="47-disabling-automatic-https">4.7 Disabling Automatic HTTPS</h3>
+<p>Sometimes you need plain HTTP — behind a load balancer that terminates TLS, or in a development environment:</p>
+<pre><code class="language-caddyfile"># Option 1: use http:// prefix
+http://example.com {
+    reverse_proxy localhost:8080
+}
+
+# Option 2: use a port-only address (no host = no TLS)
+:8080 {
+    reverse_proxy localhost:3000
+}
+
+# Option 3: global option to disable
+{
+    auto_https off
+}
+</code></pre>
+<p>Common scenario: Caddy behind a cloud load balancer (ALB, Cloud Load Balancing) that handles TLS. The LB talks to Caddy over plain HTTP on an internal network:</p>
+<pre><code class="language-caddyfile">{
+    auto_https off
+}
+
+:80 {
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p>References: <a href="https://caddyserver.com/docs/automatic-https#disable">Disable automatic HTTPS</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>Which ACME challenge type is required for a wildcard certificate (*.example.com)?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">HTTP-01</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">TLS-ALPN-01</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">DNS-01</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Any of them</span></button></li></ul><div class="quiz-explain" hidden>HTTP-01 and TLS-ALPN-01 can only prove ownership of a specific hostname. Wildcards need DNS-01, which requires a DNS provider plugin.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>What does the on-demand TLS `ask` endpoint protect against?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Slow TLS handshakes</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Anyone pointing a domain at your server and exhausting your ACME rate limits</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Expired certificates</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">OCSP failures</span></button></li></ul><div class="quiz-explain" hidden>Without the `ask` gate, Caddy would obtain a cert for any hostname presented at handshake time — a rate-limit and abuse vector.</div></div></div>
+<hr>
+<h2 id="part-5-reverse-proxy">Part 5 — Reverse Proxy</h2>
+<p>The reverse proxy is Caddy's most-used directive. It handles upstream selection, load balancing, health checks, header manipulation, retries, and transport configuration.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/reverse_proxy">reverse_proxy directive</a>.</p>
+<h3 id="51-basic-proxying">5.1 Basic Proxying</h3>
+<pre><code class="language-caddyfile"># Simple: proxy all requests to a single backend
+example.com {
+    reverse_proxy localhost:8080
+}
+
+# Path-scoped: only proxy /api/* to the backend
+example.com {
+    reverse_proxy /api/* localhost:3000
+
+    # Everything else: serve static files
+    root * /var/www/html
+    file_server
+}
+
+# Strip the path prefix before proxying
+example.com {
+    handle_path /api/* {
+        reverse_proxy localhost:3000        # /api/users → /users on the backend
+    }
+}
+</code></pre>
+<p>Caddy automatically sets the standard proxy headers: <code>X-Forwarded-For</code>, <code>X-Forwarded-Proto</code>, <code>X-Forwarded-Host</code>, and <code>X-Real-Ip</code>. You don't need to configure these unless your backend expects something non-standard.</p>
+<h3 id="52-multiple-upstreams-and-load-balancing">5.2 Multiple Upstreams and Load Balancing</h3>
+<pre><code class="language-caddyfile">example.com {
+    reverse_proxy localhost:8001 localhost:8002 localhost:8003 {
+        # Load balancing policy (default: random)
+        lb_policy round_robin
+    }
+}
+</code></pre>
+<p>Available load balancing policies:</p>
+<table>
+<thead>
+<tr>
+<th>Policy</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>random</code> (default)</td>
+<td>Random selection — surprisingly effective for most workloads</td>
+</tr>
+<tr>
+<td><code>round_robin</code></td>
+<td>Cycle through upstreams in order</td>
+</tr>
+<tr>
+<td><code>least_conn</code></td>
+<td>Send to the upstream with fewest active connections</td>
+</tr>
+<tr>
+<td><code>first</code></td>
+<td>Always use the first available upstream (active-passive)</td>
+</tr>
+<tr>
+<td><code>ip_hash</code></td>
+<td>Hash the client IP for sticky sessions</td>
+</tr>
+<tr>
+<td><code>uri_hash</code></td>
+<td>Hash the URI for cache-friendly routing</td>
+</tr>
+<tr>
+<td><code>cookie</code></td>
+<td>Sticky sessions via a cookie</td>
+</tr>
+<tr>
+<td><code>header</code></td>
+<td>Hash a specific request header</td>
+</tr>
+<tr>
+<td><code>random_choose 2</code></td>
+<td>Pick 2 random upstreams, send to the one with fewer connections (power-of-two-choices)</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-caddyfile"># Sticky sessions with a cookie
+example.com {
+    reverse_proxy localhost:8001 localhost:8002 {
+        lb_policy cookie
+        lb_cookie_name MY_STICKY
+    }
+}
+</code></pre>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/reverse_proxy#load-balancing">Load balancing</a>.</p>
+<h3 id="53-health-checks">5.3 Health Checks</h3>
+<p>Caddy can actively and passively monitor upstream health:</p>
+<pre><code class="language-caddyfile">example.com {
+    reverse_proxy localhost:8001 localhost:8002 localhost:8003 {
+        # Active health checks — Caddy periodically hits the backend
+        health_uri     /healthz
+        health_port    8081                     # optional: use a different port
+        health_interval 10s
+        health_timeout  5s
+        health_status   200                     # expected status code
+        health_body     &quot;ok&quot;                    # optional: expected body substring
+
+        # Passive health checks — mark unhealthy based on real traffic
+        fail_duration   30s                     # how long to remember failures
+        max_fails       3                       # failures before marking unhealthy
+        unhealthy_status 500 502 503            # which status codes count as failures
+        unhealthy_latency 5s                    # responses slower than this count as failures
+    }
+}
+</code></pre>
+<p>Active and passive health checks are independent and complementary. Active checks detect backends that are fully down (not responding). Passive checks detect backends that are responding but producing errors or high latency.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/reverse_proxy#health-checks">Health checks</a>.</p>
+<h3 id="54-header-manipulation">5.4 Header Manipulation</h3>
+<p>Control headers sent to the upstream and returned to the client:</p>
+<pre><code class="language-caddyfile">example.com {
+    reverse_proxy localhost:8080 {
+        # Headers sent TO the upstream (request headers)
+        header_up Host {upstream_hostport}
+        header_up X-Real-IP {remote_host}
+        header_up -Accept-Encoding              # remove a header (prefix with -)
+
+        # Headers sent BACK to the client (response headers)
+        header_down -Server                     # hide the backend's Server header
+        header_down X-Powered-By &quot;Caddy&quot;
+        header_down Strict-Transport-Security &quot;max-age=31536000&quot;
+    }
+}
+</code></pre>
+<p><code>header_up</code> modifies the request going to the upstream. <code>header_down</code> modifies the response coming back to the client. Use <code>-HeaderName</code> to delete a header.</p>
+<h3 id="55-websockets">5.5 WebSockets</h3>
+<p>Caddy proxies WebSocket connections automatically — no special configuration needed. When it sees a request with <code>Connection: Upgrade</code> and <code>Upgrade: websocket</code>, it upgrades the connection:</p>
+<pre><code class="language-caddyfile">example.com {
+    reverse_proxy localhost:8080    # WebSocket connections just work
+}
+
+# If you need WebSocket-specific routing:
+example.com {
+    @ws {
+        header Connection *Upgrade*
+        header Upgrade    websocket
+    }
+    reverse_proxy @ws localhost:9000    # WS backend
+    reverse_proxy localhost:8080         # HTTP backend
+}
+</code></pre>
+<h3 id="56-timeouts-and-buffering">5.6 Timeouts and Buffering</h3>
+<pre><code class="language-caddyfile">example.com {
+    reverse_proxy localhost:8080 {
+        # Timeouts
+        transport http {
+            dial_timeout     5s         # time to establish connection
+            response_header_timeout 30s # time to receive response headers
+            read_timeout     300s       # total read timeout
+            write_timeout    300s       # total write timeout
+            keepalive        30s        # keep-alive duration
+            keepalive_idle_conns 64     # max idle connections per upstream
+        }
+
+        # Buffering
+        flush_interval -1               # -1 = flush immediately (streaming)
+    }
+}
+</code></pre>
+<p><code>flush_interval -1</code> is critical for Server-Sent Events (SSE) and streaming responses. Without it, Caddy may buffer the response and the client won't see events in real time.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/reverse_proxy#the-http-transport">HTTP transport</a>.</p>
+<h3 id="57-tls-to-backends">5.7 TLS to Backends</h3>
+<p>If your upstream expects HTTPS:</p>
+<pre><code class="language-caddyfile">example.com {
+    reverse_proxy https://backend.internal:8443 {
+        transport http {
+            tls                          # enable TLS to upstream
+            tls_server_name backend.internal
+            tls_trusted_ca_certs /path/to/ca.pem   # if using internal CA
+        }
+    }
+}
+</code></pre>
+<h3 id="58-dynamic-upstreams">5.8 Dynamic Upstreams</h3>
+<p>For service discovery, Caddy supports dynamic upstreams via DNS:</p>
+<pre><code class="language-caddyfile">example.com {
+    reverse_proxy {
+        dynamic a backend.service.consul 8080 {
+            refresh 30s            # re-resolve DNS every 30s
+        }
+    }
+}
+</code></pre>
+<p><code>dynamic a</code> resolves A/AAAA records. <code>dynamic srv</code> resolves SRV records, which is common in Consul, Kubernetes headless services, and other service discovery systems.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/reverse_proxy#dynamic-upstreams">Dynamic upstreams</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>Which `flush_interval` value is required for Server-Sent Events / streaming?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">0</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">-1 (flush immediately)</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">30s</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">1ms</span></button></li></ul><div class="quiz-explain" hidden>flush_interval -1 disables buffering so the client sees events in real time.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>What is Caddy&#x27;s default load-balancing policy across multiple upstreams?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">round_robin</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">least_conn</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">random</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">ip_hash</span></button></li></ul><div class="quiz-explain" hidden>random is the default — and surprisingly effective for most workloads. round_robin, least_conn, cookie, and others are opt-in.</div></div></div>
+<hr>
+<h2 id="part-6-static-file-serving">Part 6 — Static File Serving</h2>
+<h3 id="61-basic-file-server">6.1 Basic File Server</h3>
+<pre><code class="language-caddyfile"># Serve the current directory on port 8080 (quick one-liner)
+:8080 {
+    file_server
+}
+
+# Serve from a specific directory
+example.com {
+    root * /var/www/html
+    file_server
+}
+
+# Enable directory browsing
+example.com {
+    root * /var/www/files
+    file_server browse
+}
+</code></pre>
+<p><code>file_server browse</code> renders a navigable directory listing when no index file is found. This is useful for file repositories, documentation hosting, and internal tools.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/file_server">file_server directive</a>, <a href="https://caddyserver.com/docs/caddyfile/directives/root">root directive</a>.</p>
+<h3 id="62-compression">6.2 Compression</h3>
+<p>Enable transparent compression with the <code>encode</code> directive:</p>
+<pre><code class="language-caddyfile">example.com {
+    root * /var/www/html
+    encode zstd gzip                # try zstd first, fall back to gzip
+    file_server
+}
+</code></pre>
+<p>Caddy negotiates compression via the <code>Accept-Encoding</code> request header. Zstandard (<code>zstd</code>) has better compression ratios and speed than gzip, but gzip has wider client support. Listing both in preference order gives you the best of both.</p>
+<p>Caddy also serves pre-compressed files if they exist. If the client accepts gzip and <code>index.html.gz</code> exists alongside <code>index.html</code>, Caddy serves the pre-compressed version without compressing on the fly. This is useful for build pipelines that pre-compress assets.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/encode">encode directive</a>.</p>
+<h3 id="63-spa-fallback-try_files">6.3 SPA Fallback (try_files)</h3>
+<p>Single-page applications need all non-file requests to serve <code>index.html</code> so the client-side router can handle the URL:</p>
+<pre><code class="language-caddyfile">example.com {
+    root * /var/www/app
+
+    # If the requested file exists, serve it. Otherwise, serve index.html.
+    try_files {path} /index.html
+
+    file_server
+}
+
+# With an API backend — serve static files for the SPA, proxy /api to the backend
+example.com {
+    root * /var/www/app
+    encode gzip
+
+    handle /api/* {
+        reverse_proxy localhost:3000
+    }
+
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+}
+</code></pre>
+<p><code>try_files</code> internally rewrites the URI to the first file that exists on disk. It does not issue a redirect — the client sees the original URL.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/try_files">try_files directive</a>.</p>
+<h3 id="64-custom-error-pages">6.4 Custom Error Pages</h3>
+<pre><code class="language-caddyfile">example.com {
+    root * /var/www/html
+    file_server
+
+    handle_errors {
+        @404 expression {err.status_code} == 404
+        handle @404 {
+            rewrite * /404.html
+            file_server
+        }
+
+        @500 expression {err.status_code} &gt;= 500
+        handle @500 {
+            respond &quot;Something went wrong&quot; 500
+        }
+    }
+}
+</code></pre>
+<p><code>handle_errors</code> is a special handler that catches errors from other directives. Inside it, you have access to <code>{err.status_code}</code> and <code>{err.message}</code>.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/handle_errors">handle_errors directive</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>Which directive gives a single-page app its index.html fallback?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">rewrite</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">try_files {path} /index.html</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">redir</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">respond</span></button></li></ul><div class="quiz-explain" hidden>try_files internally rewrites to the first file that exists, falling back to index.html so the client-side router can take over. No redirect is issued.</div></div></div>
+<hr>
+<h2 id="part-7-request-handling">Part 7 — Request Handling</h2>
+<p>Beyond reverse proxying and file serving, Caddy has a rich set of directives for manipulating requests and responses.</p>
+<h3 id="71-response-headers">7.1 Response Headers</h3>
+<p>The <code>header</code> directive adds, sets, removes, or defers response headers:</p>
+<pre><code class="language-caddyfile">example.com {
+    # Set security headers
+    header {
+        Strict-Transport-Security  &quot;max-age=31536000; includeSubDomains; preload&quot;
+        X-Content-Type-Options     nosniff
+        X-Frame-Options            DENY
+        Content-Security-Policy    &quot;default-src 'self'&quot;
+        Referrer-Policy            strict-origin-when-cross-origin
+        Permissions-Policy         &quot;camera=(), microphone=(), geolocation=()&quot;
+        -Server                    # delete the Server header
+    }
+
+    reverse_proxy localhost:8080
+}
+
+# Conditional headers — only on certain paths
+example.com {
+    header /api/* {
+        Access-Control-Allow-Origin   *
+        Access-Control-Allow-Methods  &quot;GET, POST, PUT, DELETE, OPTIONS&quot;
+        Access-Control-Allow-Headers  &quot;Content-Type, Authorization&quot;
+    }
+
+    reverse_proxy localhost:3000
+}
+</code></pre>
+<p>Header operations:</p>
+<table>
+<thead>
+<tr>
+<th>Syntax</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Name "value"</code></td>
+<td>Set the header (replaces any existing value)</td>
+</tr>
+<tr>
+<td><code>+Name "value"</code></td>
+<td>Add the header (appends; doesn't replace)</td>
+</tr>
+<tr>
+<td><code>-Name</code></td>
+<td>Delete the header</td>
+</tr>
+<tr>
+<td><code>?Name "value"</code></td>
+<td>Set only if the header doesn't already exist (default)</td>
+</tr>
+<tr>
+<td><code>&gt;Name "value"</code></td>
+<td>Defer — set on the way out, after other handlers run</td>
+</tr>
+</tbody>
+</table>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/header">header directive</a>.</p>
+<h3 id="72-redirects">7.2 Redirects</h3>
+<pre><code class="language-caddyfile">example.com {
+    # Redirect a single path
+    redir /old-page /new-page
+
+    # Redirect with a specific status code (default is 302)
+    redir /old-blog /blog permanent       # 301 Moved Permanently
+    redir /temp-page /other temporary     # 307 Temporary Redirect
+
+    # Redirect with placeholders
+    redir /users/{http.request.uri.path.1} /people/{http.request.uri.path.1} permanent
+
+    # Redirect all www to non-www
+    @www host www.example.com
+    redir @www https://example.com{uri} permanent
+}
+
+# Common pattern: redirect www to non-www as a separate site block
+www.example.com {
+    redir https://example.com{uri} permanent
+}
+
+example.com {
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/redir">redir directive</a>.</p>
+<h3 id="73-rewrites">7.3 Rewrites</h3>
+<p>Rewrites change the request URI internally — the client never sees the change:</p>
+<pre><code class="language-caddyfile">example.com {
+    # Rewrite a specific path
+    rewrite /about-us /about
+
+    # Rewrite to add a trailing slash (for directory-like URLs)
+    @no-trailing-slash {
+        path_regexp ^/[^.]*[^/]$
+        not path /api/*
+    }
+    rewrite @no-trailing-slash {path}/
+
+    # Strip a prefix (use handle_path instead for reverse_proxy — it's cleaner)
+    rewrite /old-api/* /api/{http.request.uri.path.1}
+
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p>The difference between <code>redir</code> and <code>rewrite</code>: <code>redir</code> sends a response to the client telling it to go elsewhere (301/302/307). <code>rewrite</code> silently changes the URI before passing it to the next handler — the client never knows.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/rewrite">rewrite directive</a>.</p>
+<h3 id="74-uri-manipulation">7.4 URI Manipulation</h3>
+<p>The <code>uri</code> directive provides more targeted URI manipulation than <code>rewrite</code>:</p>
+<pre><code class="language-caddyfile">example.com {
+    # Strip a path prefix
+    uri strip_prefix /api/v1
+
+    # Strip a path suffix
+    uri strip_suffix .html
+
+    # Replace within the URI
+    uri replace /old /new
+
+    # Regular expression replacement
+    uri path_regexp \.php$ .html
+}
+</code></pre>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/uri">uri directive</a>.</p>
+<h3 id="75-static-responses">7.5 Static Responses</h3>
+<p>The <code>respond</code> directive returns a static response without contacting a backend:</p>
+<pre><code class="language-caddyfile">example.com {
+    # Health check endpoint
+    respond /healthz 200 {
+        body &quot;ok&quot;
+    }
+
+    # Block specific paths
+    respond /wp-admin/* &quot;Not found&quot; 404
+    respond /.env &quot;Not found&quot; 404
+
+    # Maintenance mode
+    respond * &quot;We'll be back soon&quot; 503 {
+        header Content-Type text/plain
+    }
+
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p><code>respond</code> is useful for health checks, blocking exploit scanners, maintenance pages, and any response that doesn't need a backend.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/respond">respond directive</a>.</p>
+<h3 id="76-templates">7.6 Templates</h3>
+<p>Caddy can render simple server-side templates:</p>
+<pre><code class="language-caddyfile">example.com {
+    root * /var/www/html
+    templates
+    file_server
+}
+</code></pre>
+<p>With <code>templates</code> enabled, <code>.html</code> files can use Go template syntax:</p>
+<pre><code class="language-html">&lt;!-- /var/www/html/index.html --&gt;
+&lt;html&gt;
+&lt;body&gt;
+  &lt;p&gt;Server time: {{now | date &quot;2006-01-02 15:04:05&quot;}}&lt;/p&gt;
+  &lt;p&gt;Your IP: {{.Req.RemoteAddr}}&lt;/p&gt;
+  &lt;p&gt;Host: {{.Req.Host}}&lt;/p&gt;
+
+  &lt;!-- Include another file --&gt;
+  {{include &quot;/partials/header.html&quot;}}
+
+  &lt;!-- Markdown rendering --&gt;
+  {{markdown &quot;## Hello from Markdown&quot;}}
+
+  &lt;!-- HTTP subrequest (basic SSI) --&gt;
+  {{httpInclude &quot;/api/status&quot;}}
+&lt;/body&gt;
+&lt;/html&gt;
+</code></pre>
+<p>Templates are useful for simple dynamic pages, server-side includes, and adding dynamic fragments to otherwise static sites. For anything complex, use a proper application backend.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/templates">templates directive</a>.</p>
+<h3 id="77-request-body-limits">7.7 Request Body Limits</h3>
+<p>Limit the size of request bodies to prevent abuse:</p>
+<pre><code class="language-caddyfile">example.com {
+    request_body {
+        max_size 10MB
+    }
+    reverse_proxy localhost:8080
+}
+
+# Different limits for different paths
+example.com {
+    @uploads path /upload/*
+    request_body @uploads {
+        max_size 100MB
+    }
+
+    request_body {
+        max_size 1MB
+    }
+
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p>When a request exceeds the limit, Caddy returns a <code>413 Request Entity Too Large</code> response.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/request_body">request_body directive</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>What is the difference between `redir` and `rewrite`?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">redir is faster</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">redir sends a 3xx to the client; rewrite changes the URI internally and invisibly</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">rewrite issues a 301</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">They are aliases</span></button></li></ul><div class="quiz-explain" hidden>redir tells the browser to go elsewhere (301/302/307). rewrite silently changes the URI before the next handler — the client never knows.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>In the `header` directive, what does a leading `-` (e.g. `-Server`) do?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Sets the header</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Appends the header</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Deletes the header</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Defers the header</span></button></li></ul><div class="quiz-explain" hidden>`-Name` deletes. `+Name` appends, `Name` sets/replaces, `&gt;Name` defers until after other handlers run.</div></div></div>
+<hr>
+<h2 id="part-8-authentication-access-control">Part 8 — Authentication &amp; Access Control</h2>
+<h3 id="81-basic-authentication">8.1 Basic Authentication</h3>
+<p><code>basic_auth</code> protects paths with HTTP Basic Authentication:</p>
+<pre><code class="language-caddyfile">example.com {
+    basic_auth /admin/* {
+        # Passwords are bcrypt hashes — generate with: caddy hash-password
+        alice $2a$14$Zkx19XLiW6VYouLRR3bKze0n5IS.KZHM4dc8UhgO8RNScfIuiEXxy
+        bob   $2a$14$Zkx19XLiW6VYouLRR3bKze0n5IS.KZHM4dc8UhgO8RNScfIuiEXxy
+    }
+
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p>Generate password hashes on the command line:</p>
+<pre><code class="language-bash">caddy hash-password
+# Enter password, get bcrypt hash
+</code></pre>
+<p>Basic auth sends credentials in base64 (not encrypted) on every request, so it is <strong>only safe over HTTPS</strong> — which Caddy provides by default. It's fine for simple admin panels, internal tools, and staging environments. For anything user-facing, use <code>forward_auth</code> (below).</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/basic_auth">basic_auth directive</a>.</p>
+<h3 id="82-forward-authentication">8.2 Forward Authentication</h3>
+<p><code>forward_auth</code> delegates authentication to an external service. Caddy sends the request to the auth service; if it returns 2xx, the request proceeds. If it returns anything else, Caddy forwards that response to the client (typically a redirect to a login page).</p>
+<p>This is how you integrate Caddy with <strong>OAuth2 Proxy</strong>, <strong>Authelia</strong>, <strong>Authentik</strong>, <strong>Keycloak</strong>, or any auth middleware:</p>
+<pre><code class="language-caddyfile"># With Authelia
+example.com {
+    forward_auth authelia:9091 {
+        uri /api/authz/forward-auth
+        copy_headers Remote-User Remote-Groups Remote-Email
+    }
+
+    reverse_proxy localhost:8080
+}
+
+# With OAuth2 Proxy
+example.com {
+    forward_auth oauth2-proxy:4180 {
+        uri /oauth2/auth
+        copy_headers {
+            X-Auth-Request-User
+            X-Auth-Request-Email
+            X-Auth-Request-Groups
+        }
+    }
+
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p>The flow:</p>
+<pre><code class="language-text">Client → Caddy → forward_auth service
+                     ├── 200 → proceed to reverse_proxy (copies specified headers)
+                     └── 401 → return auth service response to client (login redirect)
+</code></pre>
+<p><code>copy_headers</code> passes identity information from the auth service to your backend. Your backend receives <code>Remote-User</code>, <code>Remote-Email</code>, etc. as request headers, so it knows who authenticated.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/forward_auth">forward_auth directive</a>.</p>
+<h3 id="83-ip-filtering">8.3 IP Filtering</h3>
+<p>Restrict access by client IP:</p>
+<pre><code class="language-caddyfile">example.com {
+    @blocked remote_ip 10.0.0.0/8 192.168.0.0/16
+    respond @blocked &quot;Forbidden&quot; 403
+
+    # Or allowlist — only certain IPs can access
+    @allowed not remote_ip 203.0.113.0/24 198.51.100.0/24
+    respond @allowed &quot;Forbidden&quot; 403
+
+    reverse_proxy localhost:8080
+}
+
+# Restrict admin paths to internal network
+example.com {
+    @internal-admin {
+        path /admin/*
+        remote_ip 10.0.0.0/8
+    }
+    @external-admin {
+        path /admin/*
+        not remote_ip 10.0.0.0/8
+    }
+    respond @external-admin &quot;Forbidden&quot; 403
+
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p>If Caddy is behind a reverse proxy or load balancer, <code>remote_ip</code> will see the proxy's IP, not the client's. Use the <code>trusted_proxies</code> global option to tell Caddy to trust <code>X-Forwarded-For</code> from specific sources:</p>
+<pre><code class="language-caddyfile">{
+    servers {
+        trusted_proxies static 10.0.0.0/8
+    }
+}
+</code></pre>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/matchers#remote-ip">remote_ip matcher</a>, <a href="https://caddyserver.com/docs/caddyfile/options#trusted-proxies">trusted_proxies</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>In what format does `basic_auth` store passwords?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Plaintext</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">SHA-256</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">bcrypt hash (via `caddy hash-password`)</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Base64</span></button></li></ul><div class="quiz-explain" hidden>Passwords are bcrypt hashes. basic_auth is only safe over HTTPS — which Caddy provides by default.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>With `forward_auth`, the request proceeds to the backend when the auth service returns…</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Any response</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">A 2xx status</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">A 401</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">A redirect</span></button></li></ul><div class="quiz-explain" hidden>2xx means allowed (and copy_headers passes identity to the backend). Anything else is forwarded to the client, typically a login redirect.</div></div></div>
+<hr>
+<h2 id="part-9-the-json-config-admin-api">Part 9 — The JSON Config &amp; Admin API</h2>
+<p>The Caddyfile is syntactic sugar. Caddy's actual configuration language is <strong>JSON</strong>. Understanding the JSON structure and the admin API unlocks dynamic reconfiguration, programmatic control, and features that the Caddyfile can't express.</p>
+<p>References: <a href="https://caddyserver.com/docs/json/">JSON structure</a>, <a href="https://caddyserver.com/docs/api">API docs</a>.</p>
+<h3 id="91-the-json-config-structure">9.1 The JSON Config Structure</h3>
+<p>Every Caddyfile compiles to a JSON document. You can see the translation:</p>
+<pre><code class="language-bash"># Convert a Caddyfile to JSON
+caddy adapt --config Caddyfile --pretty
+</code></pre>
+<p>The top-level JSON structure:</p>
+<pre><code class="language-json">{
+  &quot;admin&quot;: {
+    &quot;listen&quot;: &quot;localhost:2019&quot;
+  },
+  &quot;apps&quot;: {
+    &quot;http&quot;: {
+      &quot;servers&quot;: {
+        &quot;srv0&quot;: {
+          &quot;listen&quot;: [&quot;:443&quot;],
+          &quot;routes&quot;: [
+            {
+              &quot;match&quot;: [{&quot;host&quot;: [&quot;example.com&quot;]}],
+              &quot;handle&quot;: [
+                {
+                  &quot;handler&quot;: &quot;reverse_proxy&quot;,
+                  &quot;upstreams&quot;: [{&quot;dial&quot;: &quot;localhost:8080&quot;}]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    &quot;tls&quot;: {
+      &quot;automation&quot;: {
+        &quot;policies&quot;: [
+          {
+            &quot;subjects&quot;: [&quot;example.com&quot;]
+          }
+        ]
+      }
+    }
+  }
+}
+</code></pre>
+<p>The hierarchy: <code>apps</code> → <code>http</code> → <code>servers</code> → <code>routes</code> → <code>match</code> + <code>handle</code>. Each route has matchers (which requests) and handlers (what to do). This is the same model the Caddyfile uses; the Caddyfile just presents it more concisely.</p>
+<h3 id="92-the-admin-api">9.2 The Admin API</h3>
+<p>Caddy exposes an admin API on <code>localhost:2019</code> by default. This API lets you inspect and modify the running configuration without restarts:</p>
+<pre><code class="language-bash"># Get the current config
+curl localhost:2019/config/
+
+# Get a specific part of the config
+curl localhost:2019/config/apps/http/servers/srv0/routes
+
+# Replace the entire config
+curl -X POST localhost:2019/load \
+  -H &quot;Content-Type: application/json&quot; \
+  -d @config.json
+
+# Update a specific config path (PATCH-like)
+curl -X PATCH localhost:2019/config/apps/http/servers/srv0/routes \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '[{&quot;match&quot;:[{&quot;host&quot;:[&quot;new.example.com&quot;]}],&quot;handle&quot;:[{&quot;handler&quot;:&quot;reverse_proxy&quot;,&quot;upstreams&quot;:[{&quot;dial&quot;:&quot;localhost:9090&quot;}]}]}]'
+
+# Delete a specific config path
+curl -X DELETE localhost:2019/config/apps/http/servers/srv0/routes/1
+
+# Reload from a Caddyfile via the API
+curl -X POST localhost:2019/load \
+  -H &quot;Content-Type: text/caddyfile&quot; \
+  --data-binary @Caddyfile
+</code></pre>
+<p>Key endpoints:</p>
+<table>
+<thead>
+<tr>
+<th>Endpoint</th>
+<th>Method</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/config/</code></td>
+<td>GET</td>
+<td>Retrieve current config</td>
+</tr>
+<tr>
+<td><code>/config/...</code></td>
+<td>POST</td>
+<td>Set a config value at a path</td>
+</tr>
+<tr>
+<td><code>/config/...</code></td>
+<td>PUT</td>
+<td>Replace a config value</td>
+</tr>
+<tr>
+<td><code>/config/...</code></td>
+<td>PATCH</td>
+<td>Append to an array at a path</td>
+</tr>
+<tr>
+<td><code>/config/...</code></td>
+<td>DELETE</td>
+<td>Remove a config value</td>
+</tr>
+<tr>
+<td><code>/load</code></td>
+<td>POST</td>
+<td>Replace the entire config (JSON or Caddyfile)</td>
+</tr>
+<tr>
+<td><code>/stop</code></td>
+<td>POST</td>
+<td>Gracefully stop the server</td>
+</tr>
+<tr>
+<td><code>/reverse_proxy/upstreams</code></td>
+<td>GET</td>
+<td>List upstream health status</td>
+</tr>
+</tbody>
+</table>
+<h3 id="93-dynamic-reconfiguration">9.3 Dynamic Reconfiguration</h3>
+<p>The admin API enables patterns that static config files can't:</p>
+<p><strong>Add a new site at runtime:</strong></p>
+<pre><code class="language-bash"># Add a new route to the existing server
+curl -X PATCH localhost:2019/config/apps/http/servers/srv0/routes \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '[{
+    &quot;match&quot;: [{&quot;host&quot;: [&quot;newsite.example.com&quot;]}],
+    &quot;handle&quot;: [{
+      &quot;handler&quot;: &quot;reverse_proxy&quot;,
+      &quot;upstreams&quot;: [{&quot;dial&quot;: &quot;localhost:5000&quot;}]
+    }]
+  }]'
+</code></pre>
+<p>Caddy will automatically obtain a TLS certificate for the new domain.</p>
+<p><strong>Multi-tenant SaaS:</strong> The admin API + on-demand TLS (Part 4) is how SaaS platforms dynamically add customer domains. Your control plane calls the admin API to add routes; on-demand TLS handles certificates.</p>
+<p><strong>Blue-green deployments:</strong> Update upstream addresses via the API to switch traffic between deployment targets with zero downtime.</p>
+<h3 id="94-when-to-use-json-vs-caddyfile">9.4 When to Use JSON vs. Caddyfile</h3>
+<table>
+<thead>
+<tr>
+<th>Use case</th>
+<th>Recommendation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Static sites, reverse proxy, typical web serving</td>
+<td>Caddyfile — simpler, more readable</td>
+</tr>
+<tr>
+<td>Dynamic route management (SaaS, API gateways)</td>
+<td>JSON API — programmatic control</td>
+</tr>
+<tr>
+<td>Complex routing logic the Caddyfile can't express</td>
+<td>JSON — full feature access</td>
+</tr>
+<tr>
+<td>GitOps / version-controlled config</td>
+<td>Caddyfile — diffs are readable</td>
+</tr>
+<tr>
+<td>Automation / CI pipeline generating configs</td>
+<td>JSON — easier to template programmatically</td>
+</tr>
+</tbody>
+</table>
+<p>You can mix: use a Caddyfile for the base config, then modify at runtime via the JSON API. The API also accepts Caddyfile format via <code>POST /load</code> with <code>Content-Type: text/caddyfile</code>.</p>
+<h3 id="95-securing-the-admin-api">9.5 Securing the Admin API</h3>
+<p>The admin API is powerful — anyone with access can modify your server config. Secure it:</p>
+<pre><code class="language-caddyfile">{
+    # Default: only listen on localhost (safe)
+    admin localhost:2019
+
+    # Disable the admin API entirely
+    admin off
+
+    # Listen on a specific interface with access control
+    admin 0.0.0.0:2019 {
+        origins localhost 10.0.0.0/8
+    }
+}
+</code></pre>
+<p>In production, either keep the default <code>localhost:2019</code> (requires SSH/exec access to the host) or disable it entirely if you don't need dynamic reconfiguration. Never expose the admin API to the public internet.</p>
+<p>References: <a href="https://caddyserver.com/docs/api">Admin API</a>, <a href="https://caddyserver.com/docs/caddyfile/options#admin">Admin options</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>What is the default listen address of Caddy&#x27;s admin API?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">0.0.0.0:2019</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">localhost:2019</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">localhost:443</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">localhost:80</span></button></li></ul><div class="quiz-explain" hidden>It defaults to localhost:2019 — safe because it requires host access. Never expose it to the public internet.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>Which command converts a Caddyfile to its JSON equivalent?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">caddy json</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">caddy adapt</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">caddy convert</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">caddy export</span></button></li></ul><div class="quiz-explain" hidden>`caddy adapt --config Caddyfile --pretty` shows the JSON the Caddyfile compiles to.</div></div></div>
+<hr>
+<h2 id="part-10-logging-observability">Part 10 — Logging &amp; Observability</h2>
+<h3 id="101-access-logs">10.1 Access Logs</h3>
+<p>Caddy's <code>log</code> directive configures structured access logs per site:</p>
+<pre><code class="language-caddyfile">example.com {
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 100MiB          # rotate at 100MB
+            roll_keep 5               # keep 5 rotated files
+            roll_keep_for 720h        # delete rotated files after 30 days
+        }
+        format json                   # structured JSON (default is console)
+        level INFO
+    }
+
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p>Log output destinations:</p>
+<table>
+<thead>
+<tr>
+<th>Output</th>
+<th>Syntax</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>File</td>
+<td><code>output file /path/to/access.log { ... }</code></td>
+</tr>
+<tr>
+<td>Stdout</td>
+<td><code>output stdout</code></td>
+</tr>
+<tr>
+<td>Stderr</td>
+<td><code>output stderr</code></td>
+</tr>
+<tr>
+<td>Discard</td>
+<td><code>output discard</code></td>
+</tr>
+<tr>
+<td>Network (syslog)</td>
+<td><code>output net tcp://log-collector:514</code></td>
+</tr>
+</tbody>
+</table>
+<p>The default format is <code>console</code> (human-readable). <code>json</code> produces structured JSON — one object per line, ready for ingestion by Loki, Elasticsearch, Datadog, or any log aggregator:</p>
+<pre><code class="language-json">{
+  &quot;level&quot;: &quot;info&quot;,
+  &quot;ts&quot;: 1716892800.123,
+  &quot;logger&quot;: &quot;http.log.access.log0&quot;,
+  &quot;msg&quot;: &quot;handled request&quot;,
+  &quot;request&quot;: {
+    &quot;remote_ip&quot;: &quot;203.0.113.50&quot;,
+    &quot;remote_port&quot;: &quot;49812&quot;,
+    &quot;client_ip&quot;: &quot;203.0.113.50&quot;,
+    &quot;proto&quot;: &quot;HTTP/2.0&quot;,
+    &quot;method&quot;: &quot;GET&quot;,
+    &quot;host&quot;: &quot;example.com&quot;,
+    &quot;uri&quot;: &quot;/api/users&quot;,
+    &quot;headers&quot;: { &quot;User-Agent&quot;: [&quot;curl/8.0&quot;] }
+  },
+  &quot;bytes_read&quot;: 0,
+  &quot;user_id&quot;: &quot;&quot;,
+  &quot;duration&quot;: 0.023,
+  &quot;size&quot;: 1234,
+  &quot;status&quot;: 200,
+  &quot;resp_headers&quot;: { &quot;Content-Type&quot;: [&quot;application/json&quot;] }
+}
+</code></pre>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/log">log directive</a>, <a href="https://caddyserver.com/docs/caddyfile/directives/log#output-modules">Log output modules</a>.</p>
+<h3 id="102-filtering-and-sampling">10.2 Filtering and Sampling</h3>
+<p>Filter out noisy log entries:</p>
+<pre><code class="language-caddyfile">example.com {
+    log {
+        output file /var/log/caddy/access.log
+        format filter {
+            wrap json
+
+            # Redact sensitive headers
+            fields {
+                request&gt;headers&gt;Authorization delete
+                request&gt;headers&gt;Cookie        delete
+            }
+        }
+    }
+
+    reverse_proxy localhost:8080
+}
+
+# Skip logging for health check endpoints
+example.com {
+    @healthz path /healthz
+    handle @healthz {
+        skip_log                     # don't log these requests
+        respond 200
+    }
+
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p><code>skip_log</code> is invaluable for health check endpoints that would otherwise flood your logs with noise.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/log#filter-modules">Log filters</a>.</p>
+<h3 id="103-caddy-runtime-logs">10.3 Caddy Runtime Logs</h3>
+<p>Caddy's own runtime logs (startup, TLS events, errors) go to stderr by default. Control them with global options:</p>
+<pre><code class="language-caddyfile">{
+    log {
+        output file /var/log/caddy/caddy.log
+        format json
+        level WARN                   # only warnings and errors
+    }
+
+    # Enable debug logging (very verbose — use for troubleshooting only)
+    debug
+}
+</code></pre>
+<p>The <code>debug</code> global option sets all loggers to DEBUG level. This produces very detailed output including every TLS handshake, ACME challenge step, and config decision. Useful for troubleshooting but far too noisy for production.</p>
+<h3 id="104-prometheus-metrics">10.4 Prometheus Metrics</h3>
+<p>Caddy exposes Prometheus-compatible metrics via the <code>metrics</code> directive:</p>
+<pre><code class="language-caddyfile">{
+    servers {
+        metrics
+    }
+}
+
+# Expose metrics on a separate port (don't expose on the public interface)
+:9180 {
+    metrics /metrics
+}
+
+example.com {
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p>This exposes standard metrics at <code>/metrics</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>caddy_http_requests_total</code></td>
+<td>Counter</td>
+<td>Total requests by server, handler</td>
+</tr>
+<tr>
+<td><code>caddy_http_request_duration_seconds</code></td>
+<td>Histogram</td>
+<td>Request latency distribution</td>
+</tr>
+<tr>
+<td><code>caddy_http_response_size_bytes</code></td>
+<td>Histogram</td>
+<td>Response body sizes</td>
+</tr>
+<tr>
+<td><code>caddy_http_request_size_bytes</code></td>
+<td>Histogram</td>
+<td>Request body sizes</td>
+</tr>
+<tr>
+<td><code>caddy_http_requests_in_flight</code></td>
+<td>Gauge</td>
+<td>Currently active requests</td>
+</tr>
+<tr>
+<td><code>caddy_reverse_proxy_upstreams_healthy</code></td>
+<td>Gauge</td>
+<td>Number of healthy upstreams</td>
+</tr>
+</tbody>
+</table>
+<p>Scrape with Prometheus, feed to Grafana — the standard <a href="observability-study-guide.html">Observability</a> stack.</p>
+<p>References: <a href="https://caddyserver.com/docs/metrics">Monitoring Caddy</a>, <a href="https://caddyserver.com/docs/caddyfile/directives/metrics">metrics directive</a>.</p>
+<h3 id="105-tracing">10.5 Tracing</h3>
+<p>Caddy supports distributed tracing via OpenTelemetry:</p>
+<pre><code class="language-caddyfile">{
+    tracing {
+        span caddy                    # root span name
+    }
+}
+
+example.com {
+    tracing                           # enable per-request tracing
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p>Set the OTLP exporter endpoint via environment variables:</p>
+<pre><code class="language-bash">export OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4318
+export OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf
+caddy run
+</code></pre>
+<p>Caddy will propagate trace context (<code>traceparent</code> / <code>tracestate</code> headers) through to backends, so you get end-to-end distributed traces across Caddy and your application services.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/tracing">Tracing</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>Which directive suppresses access logs for noisy endpoints like health checks?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">log off</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">skip_log</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">no_log</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">silence</span></button></li></ul><div class="quiz-explain" hidden>skip_log inside a handle block keeps health-check spam out of your access logs.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>What Prometheus metric type is `caddy_http_request_duration_seconds`?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Counter</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Gauge</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Histogram</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Summary</span></button></li></ul><div class="quiz-explain" hidden>Latency is a Histogram (buckets you can compute quantiles from). requests_total is a Counter; requests_in_flight is a Gauge.</div></div></div>
+<hr>
+<h2 id="part-11-production-operations">Part 11 — Production Operations</h2>
+<h3 id="111-running-with-systemd">11.1 Running with systemd</h3>
+<p>The package manager installation sets up a systemd service automatically. If you installed from a binary, create the service file:</p>
+<pre><code class="language-ini"># /etc/systemd/system/caddy.service
+[Unit]
+Description=Caddy
+Documentation=https://caddyserver.com/docs/
+After=network.target network-online.target
+Requires=network-online.target
+
+[Service]
+Type=notify
+User=caddy
+Group=caddy
+ExecStart=/usr/bin/caddy run --environ --config /etc/caddy/Caddyfile
+ExecReload=/usr/bin/caddy reload --config /etc/caddy/Caddyfile --force
+TimeoutStopSec=5s
+LimitNOFILE=1048576
+LimitNPROC=512
+PrivateTmp=true
+ProtectSystem=full
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<p>Key points:</p>
+<ul>
+<li><strong><code>Type=notify</code></strong> — Caddy tells systemd when it's ready to serve traffic (not just that the process started). This means <code>systemctl start caddy</code> blocks until Caddy is actually listening.</li>
+<li><strong><code>CAP_NET_BIND_SERVICE</code></strong> — allows the <code>caddy</code> user to bind to ports 80 and 443 without root.</li>
+<li><strong><code>ExecReload</code></strong> — <code>systemctl reload caddy</code> does a zero-downtime config reload, not a restart.</li>
+<li><strong><code>LimitNOFILE</code></strong> — raise the file descriptor limit for high-connection workloads.</li>
+</ul>
+<pre><code class="language-bash"># Enable and start
+sudo systemctl daemon-reload
+sudo systemctl enable --now caddy
+
+# Reload config (zero downtime)
+sudo systemctl reload caddy
+
+# Check status
+sudo systemctl status caddy
+sudo journalctl -u caddy --no-pager -f    # follow logs
+</code></pre>
+<p>References: <a href="https://caddyserver.com/docs/running#linux-service">Running Caddy as a service</a>, <a href="https://github.com/caddyserver/dist/blob/master/init/caddy.service">systemd unit file</a>.</p>
+<h3 id="112-docker-in-production">11.2 Docker in Production</h3>
+<pre><code class="language-yaml"># docker-compose.yml — production-ready
+services:
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    cap_add:
+      - NET_BIND_SERVICE               # bind to 80/443 as non-root
+    cap_drop:
+      - ALL                            # drop everything else
+    read_only: true                    # read-only filesystem
+    ports:
+      - &quot;80:80&quot;
+      - &quot;443:443&quot;
+      - &quot;443:443/udp&quot;                  # HTTP/3 (QUIC)
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro   # config is read-only
+      - caddy_data:/data               # certificates — MUST persist
+      - caddy_config:/config           # autosaved config
+      - /var/www:/var/www:ro           # static files (if serving)
+    environment:
+      - DOMAIN=example.com
+    healthcheck:
+      test: [&quot;CMD&quot;, &quot;caddy&quot;, &quot;version&quot;]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+</code></pre>
+<p>The <code>/data</code> volume is the most critical — it stores TLS certificates, ACME account keys, and OCSP staples. Losing it means re-requesting all certificates, which can hit Let's Encrypt's rate limits (50 certificates per registered domain per week).</p>
+<h3 id="113-kubernetes-ingress">11.3 Kubernetes Ingress</h3>
+<p>Caddy can serve as a Kubernetes Ingress controller, though Traefik and Nginx ingress controllers have more mature Kubernetes integrations. Caddy's strength in Kubernetes is as a sidecar or internal reverse proxy.</p>
+<p><strong>As a sidecar proxy:</strong></p>
+<pre><code class="language-yaml">apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp
+spec:
+  template:
+    spec:
+      containers:
+        - name: caddy
+          image: caddy:2
+          ports:
+            - containerPort: 80
+            - containerPort: 443
+          volumeMounts:
+            - name: caddy-config
+              mountPath: /etc/caddy/Caddyfile
+              subPath: Caddyfile
+            - name: caddy-data
+              mountPath: /data
+        - name: app
+          image: myapp:latest
+          ports:
+            - containerPort: 8080
+      volumes:
+        - name: caddy-config
+          configMap:
+            name: caddy-config
+        - name: caddy-data
+          persistentVolumeClaim:
+            claimName: caddy-data
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: caddy-config
+data:
+  Caddyfile: |
+    :80 {
+      reverse_proxy localhost:8080
+    }
+</code></pre>
+<p>For a full Kubernetes Ingress controller, see the <a href="https://github.com/caddyserver/ingress">caddy-ingress-controller</a> project. It maps Kubernetes Ingress resources to Caddy configuration and handles TLS certificates automatically.</p>
+<p>References: <a href="https://github.com/caddyserver/ingress">Caddy Ingress Controller</a>.</p>
+<h3 id="114-certificate-storage-and-persistence">11.4 Certificate Storage and Persistence</h3>
+<p>Caddy stores all TLS-related state in its <strong>data directory</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>Default data directory</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Linux</td>
+<td><code>$XDG_DATA_HOME/caddy</code> or <code>~/.local/share/caddy</code></td>
+</tr>
+<tr>
+<td>macOS</td>
+<td><code>~/Library/Application Support/Caddy</code></td>
+</tr>
+<tr>
+<td>Docker</td>
+<td><code>/data</code></td>
+</tr>
+<tr>
+<td>Windows</td>
+<td><code>%AppData%\Caddy</code></td>
+</tr>
+</tbody>
+</table>
+<p>Contents:</p>
+<pre><code class="language-text">data/
+├── caddy/
+│   ├── certificates/                # issued certificates and private keys
+│   │   ├── acme-v02.api.letsencrypt.org-directory/
+│   │   │   └── example.com/
+│   │   │       ├── example.com.crt
+│   │   │       └── example.com.key
+│   │   └── local/                   # internal CA certificates
+│   ├── acme/                        # ACME account data
+│   ├── ocsp/                        # OCSP staple cache
+│   └── pki/                         # internal CA root and intermediate
+</code></pre>
+<p><strong>Backup this directory.</strong> If you lose it:
+- All ACME accounts are lost (new accounts created, but old ones can't manage old certificates).
+- All certificates must be re-requested (rate limit risk).
+- The internal CA root key is lost (all locally-trusted certificates break).</p>
+<p>For high-availability setups (multiple Caddy instances), use a shared storage backend. Caddy supports <a href="https://caddyserver.com/docs/json/storage/">storage modules</a> for consul, redis, S3, and databases, so multiple instances can share certificate state.</p>
+<p>References: <a href="https://caddyserver.com/docs/conventions#data-directory">Data directory</a>, <a href="https://caddyserver.com/docs/json/storage/">Storage modules</a>.</p>
+<h3 id="115-graceful-reloads-and-zero-downtime">11.5 Graceful Reloads and Zero-Downtime</h3>
+<pre><code class="language-bash"># Reload config (zero downtime — existing connections are not dropped)
+caddy reload --config /etc/caddy/Caddyfile
+
+# Or via the admin API
+curl -X POST localhost:2019/load \
+  -H &quot;Content-Type: text/caddyfile&quot; \
+  --data-binary @/etc/caddy/Caddyfile
+</code></pre>
+<p>Caddy's reload is truly zero-downtime: it starts new listeners with the new config, drains existing connections on the old config, and transitions seamlessly. There's no brief window where connections are refused (unlike Nginx's graceful reload, which can drop connections during heavy load in rare cases).</p>
+<p><strong>Validating before reload:</strong></p>
+<pre><code class="language-bash"># Check config for errors without applying it
+caddy adapt --config /etc/caddy/Caddyfile --validate
+</code></pre>
+<p>Always validate in CI before deploying config changes to production.</p>
+<h3 id="116-performance-tuning">11.6 Performance Tuning</h3>
+<p>Caddy performs well out of the box. The main tuning knobs:</p>
+<p><strong>File descriptor limits:</strong> High-traffic servers need more file descriptors. Each connection uses at least one FD.</p>
+<pre><code class="language-bash"># Check current limits
+ulimit -n
+
+# Set in systemd (already done in the service file above)
+# LimitNOFILE=1048576
+</code></pre>
+<p><strong>HTTP/3 (QUIC):</strong> Caddy enables HTTP/3 by default when listening on HTTPS. Ensure your firewall allows UDP on port 443:</p>
+<pre><code class="language-bash"># Verify HTTP/3 is working
+curl --http3 https://example.com
+</code></pre>
+<p><strong>Connection timeouts:</strong> Tune for your workload:</p>
+<pre><code class="language-caddyfile">{
+    servers {
+        timeouts {
+            read_body   30s       # time to read the request body
+            read_header 10s       # time to read request headers
+            write       60s       # time to write the response
+            idle        120s      # keep-alive idle timeout
+        }
+    }
+}
+</code></pre>
+<p><strong>Thread/goroutine limits:</strong> Caddy uses Go's goroutine model — thousands of concurrent connections are handled by a modest number of OS threads. You rarely need to tune this. If you do:</p>
+<pre><code class="language-bash"># Go runtime: set max OS threads (default: 10,000)
+export GOMAXPROCS=0   # 0 = use all available CPUs (default)
+</code></pre>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/options#server-options">Server options</a>.</p>
+<h3 id="117-upgrading-caddy">11.7 Upgrading Caddy</h3>
+<pre><code class="language-bash"># If installed via apt
+sudo apt update &amp;&amp; sudo apt upgrade caddy
+
+# If using a static binary
+# Download the new version and replace the binary
+caddy upgrade                         # self-upgrade (downloads from caddyserver.com)
+sudo systemctl restart caddy
+
+# If using xcaddy (custom build)
+xcaddy build --with github.com/caddy-dns/cloudflare   # rebuild with same modules
+sudo mv caddy /usr/bin/caddy
+sudo systemctl restart caddy
+</code></pre>
+<p><code>caddy upgrade</code> is convenient but downloads the standard build (no custom modules). If you built with <code>xcaddy</code>, you must rebuild with the same module list.</p>
+<p>References: <a href="https://caddyserver.com/docs/command-line#caddy-upgrade">Upgrading Caddy</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>Why does the systemd unit use `Type=notify`?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">It restarts Caddy on failure</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Caddy signals systemd when it is actually ready to serve, not just started</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">It enables logging</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">It is required for Docker</span></button></li></ul><div class="quiz-explain" hidden>With Type=notify, `systemctl start caddy` blocks until Caddy is truly listening, so dependent units start in the right order.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>Which Linux capability lets the non-root caddy user bind to ports 80 and 443?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">CAP_SYS_ADMIN</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">CAP_NET_RAW</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">CAP_NET_BIND_SERVICE</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">CAP_DAC_OVERRIDE</span></button></li></ul><div class="quiz-explain" hidden>CAP_NET_BIND_SERVICE grants binding to privileged ports without running as root.</div></div></div>
+<hr>
+<h2 id="part-12-comparison-to-alternatives">Part 12 — Comparison to Alternatives</h2>
+<h3 id="121-nginx">12.1 Nginx</h3>
+<p>Nginx is the incumbent. Most engineers encounter it first, and most production deployments still run it. Here's an honest comparison:</p>
+<p><strong>Where Caddy wins:</strong>
+- <strong>Automatic HTTPS</strong> — this alone eliminates an entire class of operational work (certbot, cron renewal, certificate debugging, mixed-content issues from forgetting the HTTP→HTTPS redirect).
+- <strong>Configuration simplicity</strong> — a Caddy reverse proxy is 3 lines; the equivalent Nginx config is 15–20 lines with <code>proxy_set_header</code>, <code>ssl_certificate</code>, <code>ssl_certificate_key</code>, <code>listen 443 ssl</code>, and the HTTP→HTTPS redirect block.
+- <strong>Zero-downtime reloads</strong> — truly seamless. Nginx's <code>reload</code> can briefly drop connections under very heavy load.
+- <strong>Single binary, no dependencies</strong> — Nginx requires <code>libc</code>, OpenSSL, PCRE, and zlib. Caddy is one file.
+- <strong>Admin API</strong> — dynamic reconfiguration without touching the filesystem.
+- <strong>HTTP/3</strong> — built in and enabled by default. Nginx has experimental QUIC support (as of nginx-quic).</p>
+<p><strong>Where Nginx wins:</strong>
+- <strong>Raw performance at extreme scale</strong> — Nginx's C-based event loop has lower per-connection overhead than Go's goroutine model. For 100k+ concurrent connections, Nginx is measurably faster. For 99% of workloads, you'll never notice the difference.
+- <strong>Third-party module ecosystem</strong> — decades of community modules (Lua/OpenResty, ModSecurity WAF, GeoIP, PageSpeed, etc.). Caddy's module ecosystem is growing but smaller.
+- <strong>Organizational familiarity</strong> — most teams already know Nginx. Migration has a real cost.
+- <strong>L4 proxying</strong> — Nginx's stream module handles arbitrary TCP/UDP proxying. Caddy is primarily L7.
+- <strong>Documentation and Stack Overflow coverage</strong> — Nginx has 15+ years of community knowledge. Caddy's docs are excellent but the community corpus is smaller.</p>
+<p><strong>Configuration comparison — reverse proxy with HTTPS:</strong></p>
+<pre><code class="language-nginx"># Nginx: ~20 lines, plus certbot setup
+server {
+    listen 80;
+    server_name example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+</code></pre>
+<pre><code class="language-caddyfile"># Caddy: 3 lines, HTTPS is automatic
+example.com {
+    reverse_proxy localhost:8080
+}
+</code></pre>
+<p>References: <a href="https://nginx.org/en/docs/">Nginx documentation</a>.</p>
+<h3 id="122-apache-httpd">12.2 Apache (httpd)</h3>
+<p>Apache is the original dominant web server. It pioneered virtual hosting and <code>.htaccess</code> per-directory config. In 2026, it's still widely deployed but losing share to Nginx and Caddy.</p>
+<p><strong>Where Caddy wins:</strong> automatic HTTPS, simpler config, single binary, better performance for reverse proxying (Apache's <code>mod_proxy</code> is functional but not its strength).</p>
+<p><strong>Where Apache wins:</strong> <code>.htaccess</code> files for shared hosting (per-directory config without server restarts), <code>mod_rewrite</code> regex power (arcane but extremely flexible), and legacy PHP integration (<code>mod_php</code> is still the simplest way to run PHP, though PHP-FPM behind Caddy or Nginx is better).</p>
+<p>Apache is rarely the right choice for new projects in 2026 unless you're running shared hosting or have deep <code>mod_rewrite</code> rules that would be expensive to port.</p>
+<p>References: <a href="https://httpd.apache.org/docs/current/">Apache documentation</a>.</p>
+<h3 id="123-traefik">12.3 Traefik</h3>
+<p>Traefik is the closest competitor to Caddy in philosophy: Go-based, automatic HTTPS, modern design. It's especially popular in Docker and Kubernetes environments.</p>
+<p><strong>Where Caddy wins:</strong>
+- <strong>Simpler configuration</strong> — Traefik's config splits across static config (YAML/TOML) and dynamic config (labels, files, Consul, etc.), which adds cognitive overhead. Caddy's Caddyfile is one file.
+- <strong>Caddyfile readability</strong> — Traefik's Docker label syntax (<code>traefik.http.routers.myapp.rule=Host(\</code>example.com`)`) is functional but verbose and error-prone.
+- <strong>Performance</strong> — Caddy benchmarks slightly faster than Traefik in most scenarios.</p>
+<p><strong>Where Traefik wins:</strong>
+- <strong>Docker-native service discovery</strong> — Traefik auto-discovers containers via Docker labels. No config files needed. Caddy can do this with plugins, but Traefik does it natively.
+- <strong>Kubernetes IngressRoute CRD</strong> — Traefik's Kubernetes integration is more mature, with custom CRDs for fine-grained routing.
+- <strong>Dashboard</strong> — Traefik ships a web dashboard for inspecting routes, services, and middleware. Caddy has no built-in UI.
+- <strong>Middleware pipeline</strong> — Traefik's middleware model (rate limiting, circuit breaking, retry, etc.) is richer out of the box.</p>
+<p><strong>Choose Traefik</strong> if you're heavily Docker/Kubernetes-native and want automatic service discovery from container labels. <strong>Choose Caddy</strong> if you want simpler config, better performance, or are running on VMs/bare metal.</p>
+<p>References: <a href="https://doc.traefik.io/traefik/">Traefik documentation</a>.</p>
+<h3 id="124-haproxy">12.4 HAProxy</h3>
+<p>HAProxy is the gold standard for L4/L7 load balancing and high-availability proxying.</p>
+<p><strong>Where Caddy wins:</strong> automatic HTTPS, simpler configuration for web serving use cases, static file serving (HAProxy doesn't serve files at all), and the admin API.</p>
+<p><strong>Where HAProxy wins:</strong> raw TCP/UDP proxying, connection-level load balancing, health checking sophistication, high-availability (active-passive clustering), and extreme-scale performance. HAProxy routinely handles millions of concurrent connections.</p>
+<p>HAProxy is the right choice when you need a dedicated load balancer at scale. Caddy is the right choice when you need a web server that also does load balancing.</p>
+<p>References: <a href="https://docs.haproxy.org/">HAProxy documentation</a>.</p>
+<h3 id="125-envoy">12.5 Envoy</h3>
+<p>Envoy is a high-performance L4/L7 proxy designed for service meshes and cloud-native architectures (Istio, Consul Connect, AWS App Mesh).</p>
+<p><strong>Where Caddy wins:</strong> operational simplicity (Envoy's YAML config is notoriously complex), automatic HTTPS, and file serving.</p>
+<p><strong>Where Envoy wins:</strong> L4 proxying, gRPC-native support, advanced observability (per-upstream metrics, distributed tracing), xDS API for dynamic configuration from a control plane, and service mesh integration.</p>
+<p>Envoy is for platform teams building infrastructure. Caddy is for application teams serving traffic.</p>
+<p>References: <a href="https://www.envoyproxy.io/docs/envoy/latest/">Envoy documentation</a>.</p>
+<h3 id="126-when-not-to-use-caddy">12.6 When NOT to Use Caddy</h3>
+<p>Be honest about when Caddy isn't the right tool:</p>
+<ul>
+<li><strong>You need a dedicated L4 load balancer</strong> → HAProxy or Envoy.</li>
+<li><strong>You need WAF capabilities</strong> → Nginx + ModSecurity, or a cloud WAF (Cloudflare, AWS WAF).</li>
+<li><strong>You need a service mesh data plane</strong> → Envoy (it's what Istio and Consul use).</li>
+<li><strong>You need Docker label-based auto-discovery as a core feature</strong> → Traefik.</li>
+<li><strong>You need to serve 100k+ concurrent connections with minimal resource usage</strong> → Nginx (the performance gap only matters at this scale).</li>
+<li><strong>Your team already runs Nginx well and has no pain points</strong> → the migration cost isn't free. Don't switch just because Caddy is newer.</li>
+</ul><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>At roughly what scale does Nginx&#x27;s raw performance advantage actually start to matter?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">100 req/s</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">1,000 concurrent connections</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">100k+ concurrent connections</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">It always matters</span></button></li></ul><div class="quiz-explain" hidden>For ~99% of workloads you won&#x27;t notice. The C event loop&#x27;s lower per-connection overhead shows up at extreme scale (100k+ concurrent).</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>Which alternative is the strongest pick when you want Docker label-based auto-discovery?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">HAProxy</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Envoy</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Traefik</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Apache</span></button></li></ul><div class="quiz-explain" hidden>Traefik auto-discovers containers via Docker labels natively. Caddy can with plugins, but Traefik does it out of the box.</div></div></div>
+<hr>
+<h2 id="part-13-recipes-end-to-end-walkthrough">Part 13 — Recipes &amp; End-to-End Walkthrough</h2>
+<h3 id="recipe-1-multi-site-reverse-proxy-with-security-headers">Recipe 1: Multi-Site Reverse Proxy with Security Headers</h3>
+<p>The most common Caddy setup — multiple sites, each proxying to a different backend, with shared security headers:</p>
+<pre><code class="language-caddyfile"># Shared security headers
+(security-headers) {
+    header {
+        Strict-Transport-Security  &quot;max-age=31536000; includeSubDomains; preload&quot;
+        X-Content-Type-Options     nosniff
+        X-Frame-Options            DENY
+        Referrer-Policy            strict-origin-when-cross-origin
+        Permissions-Policy         &quot;camera=(), microphone=(), geolocation=()&quot;
+        -Server
+    }
+}
+
+# Main application
+app.example.com {
+    import security-headers
+    encode zstd gzip
+    reverse_proxy localhost:3000
+    log {
+        output file /var/log/caddy/app.log
+        format json
+    }
+}
+
+# API
+api.example.com {
+    import security-headers
+    header /api/* {
+        Access-Control-Allow-Origin   &quot;https://app.example.com&quot;
+        Access-Control-Allow-Methods  &quot;GET, POST, PUT, DELETE, OPTIONS&quot;
+        Access-Control-Allow-Headers  &quot;Content-Type, Authorization&quot;
+    }
+    reverse_proxy localhost:4000
+    log {
+        output file /var/log/caddy/api.log
+        format json
+    }
+}
+
+# Admin panel — restricted to internal network
+admin.example.com {
+    import security-headers
+    @external not remote_ip 10.0.0.0/8
+    respond @external &quot;Forbidden&quot; 403
+    reverse_proxy localhost:5000
+}
+</code></pre>
+<h3 id="recipe-2-spa-api-backend">Recipe 2: SPA + API Backend</h3>
+<p>A React/Vue/Svelte single-page application served from static files, with an API backend:</p>
+<pre><code class="language-caddyfile">example.com {
+    encode zstd gzip
+
+    # API requests go to the backend
+    handle /api/* {
+        reverse_proxy localhost:3000
+    }
+
+    # WebSocket endpoint
+    handle /ws/* {
+        reverse_proxy localhost:3000
+    }
+
+    # Everything else is the SPA
+    handle {
+        root * /var/www/app/dist
+        try_files {path} /index.html
+        file_server
+
+        # Cache static assets aggressively (hashed filenames from build tools)
+        @assets path /assets/*
+        header @assets Cache-Control &quot;public, max-age=31536000, immutable&quot;
+
+        # Don't cache index.html (it references the hashed assets)
+        @html path /index.html
+        header @html Cache-Control &quot;no-cache, no-store, must-revalidate&quot;
+    }
+
+    log {
+        output file /var/log/caddy/access.log
+        format json
+    }
+}
+</code></pre>
+<h3 id="recipe-3-wildcard-subdomains-with-dynamic-routing">Recipe 3: Wildcard Subdomains with Dynamic Routing</h3>
+<p>For multi-tenant SaaS where each tenant gets a subdomain:</p>
+<pre><code class="language-caddyfile"># Requires: xcaddy build --with github.com/caddy-dns/cloudflare
+*.example.com {
+    tls {
+        dns cloudflare {env.CF_API_TOKEN}
+    }
+
+    @app host app.example.com
+    handle @app {
+        reverse_proxy localhost:3000
+    }
+
+    @api host api.example.com
+    handle @api {
+        reverse_proxy localhost:4000
+    }
+
+    @docs host docs.example.com
+    handle @docs {
+        root * /var/www/docs
+        file_server
+    }
+
+    # Catch-all for tenant subdomains — pass the subdomain to the backend
+    handle {
+        reverse_proxy localhost:5000 {
+            header_up X-Tenant {labels.2}    # &quot;foo&quot; from &quot;foo.example.com&quot;
+        }
+    }
+}
+</code></pre>
+<h3 id="recipe-4-file-download-server-with-authentication">Recipe 4: File Download Server with Authentication</h3>
+<p>An internal file repository with basic auth, directory browsing, and bandwidth-friendly settings:</p>
+<pre><code class="language-caddyfile">files.example.com {
+    basic_auth {
+        admin  $2a$14$Zkx19XLiW6VYouLRR3bKze0n5IS.KZHM4dc8UhgO8RNScfIuiEXxy
+        devops $2a$14$Zkx19XLiW6VYouLRR3bKze0n5IS.KZHM4dc8UhgO8RNScfIuiEXxy
+    }
+
+    root * /srv/files
+    file_server browse {
+        hide .git .env *.key          # hide sensitive files from browsing
+    }
+    encode gzip
+
+    log {
+        output file /var/log/caddy/files.log
+        format json
+    }
+}
+</code></pre>
+<h3 id="recipe-5-local-development-with-https">Recipe 5: Local Development with HTTPS</h3>
+<p>A development Caddyfile that gives you real HTTPS for local services:</p>
+<pre><code class="language-caddyfile"># Caddyfile.dev — run with: caddy run --config Caddyfile.dev
+{
+    # No need for ACME — Caddy uses its internal CA for these hostnames
+}
+
+myapp.localhost {
+    reverse_proxy localhost:3000
+}
+
+api.localhost {
+    reverse_proxy localhost:4000
+}
+
+# PHPMyAdmin or Adminer on a local port
+db.localhost {
+    reverse_proxy localhost:8081
+}
+
+# MinIO S3-compatible object storage
+s3.localhost {
+    reverse_proxy localhost:9000
+}
+</code></pre>
+<p>Caddy issues locally-trusted certificates for all <code>*.localhost</code> domains. No browser warnings, no <code>curl -k</code>, no <code>NODE_TLS_REJECT_UNAUTHORIZED=0</code>.</p>
+<h3 id="recipe-6-caddy-as-a-forward-proxy-behind-authelia">Recipe 6: Caddy as a Forward Proxy Behind Authelia</h3>
+<p>Full authentication stack with Authelia handling SSO:</p>
+<pre><code class="language-caddyfile">(authelia) {
+    forward_auth authelia:9091 {
+        uri /api/authz/forward-auth
+        copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+    }
+}
+
+# Authelia itself (no forward_auth loop)
+auth.example.com {
+    reverse_proxy authelia:9091
+}
+
+# Protected services
+grafana.example.com {
+    import authelia
+    reverse_proxy grafana:3000
+}
+
+wiki.example.com {
+    import authelia
+    reverse_proxy wiki:3000
+}
+
+# Public site — no auth
+example.com {
+    root * /var/www/html
+    file_server
+}
+</code></pre>
+<h3 id="recipe-7-rate-limiting">Recipe 7: Rate Limiting</h3>
+<p>Requires the <code>caddy-ratelimit</code> module:</p>
+<pre><code class="language-caddyfile"># Requires: xcaddy build --with github.com/mholt/caddy-ratelimit
+{
+    order rate_limit before reverse_proxy
+}
+
+api.example.com {
+    # 100 requests per minute per client IP
+    rate_limit {remote.ip} 100r/m
+
+    reverse_proxy localhost:3000
+}
+</code></pre>
+<h3 id="end-to-end-walkthrough-from-nothing-to-multi-service-production">End-to-End Walkthrough: From Nothing to Multi-Service Production</h3>
+<p>This walkthrough takes a real scenario — an application with a frontend SPA, an API backend, a WebSocket service, and an admin panel — from a fresh server to a production Caddy deployment.</p>
+<p><strong>Step 1: Install Caddy on a fresh Ubuntu server.</strong></p>
+<pre><code class="language-bash">sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt update &amp;&amp; sudo apt install caddy
+</code></pre>
+<p>Caddy is now running as a systemd service with a default welcome page.</p>
+<p><strong>Step 2: Set up DNS.</strong> Point four A records to your server's public IP:</p>
+<pre><code class="language-text">app.example.com    → 203.0.113.10
+api.example.com    → 203.0.113.10
+ws.example.com     → 203.0.113.10
+admin.example.com  → 203.0.113.10
+</code></pre>
+<p><strong>Step 3: Write the Caddyfile.</strong> Start with a minimal config and iterate:</p>
+<pre><code class="language-caddyfile"># /etc/caddy/Caddyfile
+{
+    email ops@example.com                     # ACME account email
+}
+
+(security-headers) {
+    header {
+        Strict-Transport-Security  &quot;max-age=31536000; includeSubDomains&quot;
+        X-Content-Type-Options     nosniff
+        X-Frame-Options            DENY
+        Referrer-Policy            strict-origin-when-cross-origin
+        -Server
+    }
+}
+
+(standard-log) {
+    log {
+        output file /var/log/caddy/{args[0]}.log {
+            roll_size 50MiB
+            roll_keep 5
+        }
+        format json
+    }
+}
+
+# Frontend SPA
+app.example.com {
+    import security-headers
+    import standard-log app
+
+    encode zstd gzip
+    root * /var/www/app/dist
+    try_files {path} /index.html
+    file_server
+
+    @assets path /assets/*
+    header @assets Cache-Control &quot;public, max-age=31536000, immutable&quot;
+}
+
+# API backend
+api.example.com {
+    import security-headers
+    import standard-log api
+
+    header {
+        Access-Control-Allow-Origin   &quot;https://app.example.com&quot;
+        Access-Control-Allow-Methods  &quot;GET, POST, PUT, DELETE, OPTIONS&quot;
+        Access-Control-Allow-Headers  &quot;Content-Type, Authorization&quot;
+    }
+
+    reverse_proxy localhost:3000 {
+        health_uri  /healthz
+        health_interval 15s
+    }
+}
+
+# WebSocket service
+ws.example.com {
+    import standard-log ws
+
+    reverse_proxy localhost:4000 {
+        flush_interval -1              # streaming — flush immediately
+    }
+}
+
+# Admin panel — restricted access
+admin.example.com {
+    import security-headers
+    import standard-log admin
+
+    @external not remote_ip 10.0.0.0/8 192.168.0.0/16
+    respond @external &quot;Forbidden&quot; 403
+
+    basic_auth {
+        admin $2a$14$Zkx19XLiW6VYouLRR3bKze0n5IS.KZHM4dc8UhgO8RNScfIuiEXxy
+    }
+
+    reverse_proxy localhost:5000
+}
+</code></pre>
+<p><strong>Step 4: Validate and reload.</strong></p>
+<pre><code class="language-bash"># Validate the config
+caddy adapt --config /etc/caddy/Caddyfile --validate
+
+# Reload (zero downtime)
+sudo systemctl reload caddy
+</code></pre>
+<p>Caddy immediately starts obtaining TLS certificates for all four domains. Within seconds, all four sites are live with HTTPS, HTTP→HTTPS redirects, and HTTP/3.</p>
+<p><strong>Step 5: Verify.</strong></p>
+<pre><code class="language-bash"># Check that HTTPS works
+curl -I https://app.example.com
+# Look for: HTTP/2 200, Strict-Transport-Security header
+
+# Check HTTP→HTTPS redirect
+curl -I http://app.example.com
+# Look for: HTTP/1.1 301, Location: https://app.example.com/
+
+# Check certificate details
+openssl s_client -connect app.example.com:443 -servername app.example.com &lt; /dev/null 2&gt;/dev/null | openssl x509 -noout -dates -subject -issuer
+
+# Check admin panel is restricted
+curl -I https://admin.example.com
+# From outside the allowed IPs: 403 Forbidden
+</code></pre>
+<p><strong>Step 6: Monitor.</strong> Add Prometheus metrics:</p>
+<pre><code class="language-caddyfile">{
+    email ops@example.com
+    servers {
+        metrics
+    }
+}
+
+# Metrics endpoint — separate port, not public
+:9180 {
+    metrics /metrics
+}
+</code></pre>
+<p>Scrape <code>http://caddy-host:9180/metrics</code> from your Prometheus instance. You now have request rates, latency histograms, and upstream health in your <a href="observability-study-guide.html">Observability</a> stack.</p>
+<p><strong>What you got with zero TLS configuration:</strong>
+- Valid certificates from Let's Encrypt for all four domains.
+- Automatic renewal before expiry.
+- HTTP→HTTPS redirects on all sites.
+- HTTP/2 and HTTP/3 (QUIC) enabled by default.
+- OCSP stapling for faster TLS handshakes.</p>
+<p>In Nginx, this setup would require certbot installation, manual certificate paths in every server block, a cron job for renewal, separate SSL configuration, and an HTTP→HTTPS redirect block per domain. In Caddy, it's 70 lines with security headers, logging, and access control included.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>For a SPA, how should hashed build assets vs. index.html be cached?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Both no-cache</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Both immutable forever</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Assets: immutable max-age=31536000; index.html: no-cache</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Assets: no-cache; index.html: immutable</span></button></li></ul><div class="quiz-explain" hidden>Hashed asset filenames change on every build, so cache them forever (immutable). index.html references them by hash, so it must never be cached.</div></div></div></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

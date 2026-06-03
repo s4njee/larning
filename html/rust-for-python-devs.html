@@ -1,0 +1,2864 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Rust for Python Developers.">
+<title>Rust for Python Developers - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#f74c00; --accent2:#f74c00; --accent-weak:rgba(247,76,0,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#f74c00; --accent2:#f74c00; --accent-weak:rgba(247,76,0,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">R</span><span>Rust for Python Developers</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#1-the-mental-shift-why-rust-feels-hard" data-target="1-the-mental-shift-why-rust-feels-hard">1. The Mental Shift: Why Rust Feels Hard</a></li><li class="toc-l3"><a href="#what-rust-does-differently" data-target="what-rust-does-differently">What Rust Does Differently</a></li><li class="toc-l3"><a href="#the-compiler-is-your-pair-programmer" data-target="the-compiler-is-your-pair-programmer">The Compiler Is Your Pair Programmer</a></li><li class="toc-l3"><a href="#immutable-by-default" data-target="immutable-by-default">Immutable by Default</a></li><li class="toc-l2"><a href="#2-ownership-move-semantics" data-target="2-ownership-move-semantics">2. Ownership &amp; Move Semantics</a></li><li class="toc-l3"><a href="#the-three-rules-of-ownership" data-target="the-three-rules-of-ownership">The Three Rules of Ownership</a></li><li class="toc-l3"><a href="#move-semantics-the-python-brain-breaker" data-target="move-semantics-the-python-brain-breaker">Move Semantics (The Python Brain-Breaker)</a></li><li class="toc-l3"><a href="#copy-vs-move" data-target="copy-vs-move">Copy vs Move</a></li><li class="toc-l3"><a href="#clone-explicit-deep-copy" data-target="clone-explicit-deep-copy">Clone -- Explicit Deep Copy</a></li><li class="toc-l3"><a href="#ownership-and-functions" data-target="ownership-and-functions">Ownership and Functions</a></li><li class="toc-l2"><a href="#3-borrowing-references" data-target="3-borrowing-references">3. Borrowing &amp; References</a></li><li class="toc-l3"><a href="#references-let-you-use-data-without-taking-ownership" data-target="references-let-you-use-data-without-taking-ownership">References Let You Use Data Without Taking Ownership</a></li><li class="toc-l3"><a href="#the-borrowing-rules" data-target="the-borrowing-rules">The Borrowing Rules</a></li><li class="toc-l3"><a href="#why-this-rule-exists" data-target="why-this-rule-exists">Why This Rule Exists</a></li><li class="toc-l3"><a href="#mutable-references" data-target="mutable-references">Mutable References</a></li><li class="toc-l3"><a href="#slices-borrowing-parts-of-data" data-target="slices-borrowing-parts-of-data">Slices -- Borrowing Parts of Data</a></li><li class="toc-l2"><a href="#4-lifetimes" data-target="4-lifetimes">4. Lifetimes</a></li><li class="toc-l3"><a href="#what-are-lifetimes" data-target="what-are-lifetimes">What Are Lifetimes?</a></li><li class="toc-l3"><a href="#the-dangling-reference-problem" data-target="the-dangling-reference-problem">The Dangling Reference Problem</a></li><li class="toc-l3"><a href="#explicit-lifetime-annotations" data-target="explicit-lifetime-annotations">Explicit Lifetime Annotations</a></li><li class="toc-l3"><a href="#lifetime-elision-rules" data-target="lifetime-elision-rules">Lifetime Elision Rules</a></li><li class="toc-l3"><a href="#lifetimes-in-structs" data-target="lifetimes-in-structs">Lifetimes in Structs</a></li><li class="toc-l3"><a href="#static-lifetime" data-target="static-lifetime">'static Lifetime</a></li><li class="toc-l2"><a href="#5-enums-pattern-matching-optionresult" data-target="5-enums-pattern-matching-optionresult">5. Enums, Pattern Matching &amp; Option/Result</a></li><li class="toc-l3"><a href="#enums-are-not-python-enums" data-target="enums-are-not-python-enums">Enums Are Not Python Enums</a></li><li class="toc-l3"><a href="#pattern-matching-with-match" data-target="pattern-matching-with-match">Pattern Matching with match</a></li><li class="toc-l3"><a href="#optionlttgt-rusts-replacement-for-none" data-target="optionlttgt-rusts-replacement-for-none">Option&amp;lt;T&amp;gt; -- Rust's Replacement for None</a></li><li class="toc-l3"><a href="#common-option-methods" data-target="common-option-methods">Common Option Methods</a></li><li class="toc-l3"><a href="#resultt-e-rusts-replacement-for-exceptions" data-target="resultt-e-rusts-replacement-for-exceptions">Result&lt;T, E&gt; -- Rust's Replacement for Exceptions</a></li><li class="toc-l2"><a href="#6-error-handling" data-target="6-error-handling">6. Error Handling</a></li><li class="toc-l3"><a href="#no-exceptions-no-tryexcept" data-target="no-exceptions-no-tryexcept">No Exceptions, No try/except</a></li><li class="toc-l3"><a href="#the-operator-rusts-error-propagation" data-target="the-operator-rusts-error-propagation">The ? Operator -- Rust's Error Propagation</a></li><li class="toc-l3"><a href="#custom-error-types" data-target="custom-error-types">Custom Error Types</a></li><li class="toc-l3"><a href="#anyhow-for-application-code" data-target="anyhow-for-application-code">anyhow for Application Code</a></li><li class="toc-l3"><a href="#when-to-unwrap-and-expect" data-target="when-to-unwrap-and-expect">When to unwrap() and expect()</a></li><li class="toc-l2"><a href="#7-structs-traits-polymorphism" data-target="7-structs-traits-polymorphism">7. Structs, Traits &amp; Polymorphism</a></li><li class="toc-l3"><a href="#structs-not-classes" data-target="structs-not-classes">Structs (Not Classes)</a></li><li class="toc-l3"><a href="#traits-rusts-interfaces" data-target="traits-rusts-interfaces">Traits -- Rust's Interfaces</a></li><li class="toc-l3"><a href="#no-inheritance-composition-instead" data-target="no-inheritance-composition-instead">No Inheritance -- Composition Instead</a></li><li class="toc-l3"><a href="#trait-objects-dynamic-dispatch" data-target="trait-objects-dynamic-dispatch">Trait Objects (Dynamic Dispatch)</a></li><li class="toc-l3"><a href="#deriving-common-traits" data-target="deriving-common-traits">Deriving Common Traits</a></li><li class="toc-l3"><a href="#operator-overloading-via-traits" data-target="operator-overloading-via-traits">Operator Overloading via Traits</a></li><li class="toc-l2"><a href="#8-generics-trait-bounds" data-target="8-generics-trait-bounds">8. Generics &amp; Trait Bounds</a></li><li class="toc-l3"><a href="#generic-functions" data-target="generic-functions">Generic Functions</a></li><li class="toc-l3"><a href="#trait-bounds" data-target="trait-bounds">Trait Bounds</a></li><li class="toc-l3"><a href="#compared-to-python" data-target="compared-to-python">Compared to Python</a></li><li class="toc-l3"><a href="#generic-structs" data-target="generic-structs">Generic Structs</a></li><li class="toc-l2"><a href="#9-closures-iterators" data-target="9-closures-iterators">9. Closures &amp; Iterators</a></li><li class="toc-l3"><a href="#closures" data-target="closures">Closures</a></li><li class="toc-l3"><a href="#closure-capture-modes" data-target="closure-capture-modes">Closure Capture Modes</a></li><li class="toc-l3"><a href="#iterators-rusts-list-comprehensions" data-target="iterators-rusts-list-comprehensions">Iterators -- Rust's List Comprehensions</a></li><li class="toc-l3"><a href="#common-iterator-methods" data-target="common-iterator-methods">Common Iterator Methods</a></li><li class="toc-l3"><a href="#three-types-of-iteration" data-target="three-types-of-iteration">Three Types of Iteration</a></li><li class="toc-l2"><a href="#10-concurrency-parallelism" data-target="10-concurrency-parallelism">10. Concurrency &amp; Parallelism</a></li><li class="toc-l3"><a href="#rusts-concurrency-promise" data-target="rusts-concurrency-promise">Rust's Concurrency Promise</a></li><li class="toc-l3"><a href="#threads" data-target="threads">Threads</a></li><li class="toc-l3"><a href="#move-closures-for-threads" data-target="move-closures-for-threads">Move Closures for Threads</a></li><li class="toc-l3"><a href="#channels-message-passing" data-target="channels-message-passing">Channels (Message Passing)</a></li><li class="toc-l3"><a href="#shared-state-with-arcmutexlttgt" data-target="shared-state-with-arcmutexlttgt">Shared State with Arc&lt;Mutex&amp;lt;T&amp;gt;&gt;</a></li><li class="toc-l3"><a href="#send-and-sync-traits" data-target="send-and-sync-traits">Send and Sync Traits</a></li><li class="toc-l2"><a href="#11-asyncawait" data-target="11-asyncawait">11. Async/Await</a></li><li class="toc-l3"><a href="#rust-async-vs-python-async" data-target="rust-async-vs-python-async">Rust Async vs Python Async</a></li><li class="toc-l3"><a href="#basic-async" data-target="basic-async">Basic Async</a></li><li class="toc-l3"><a href="#futures-are-lazy" data-target="futures-are-lazy">Futures Are Lazy</a></li><li class="toc-l3"><a href="#concurrent-execution" data-target="concurrent-execution">Concurrent Execution</a></li><li class="toc-l3"><a href="#spawning-tasks" data-target="spawning-tasks">Spawning Tasks</a></li><li class="toc-l3"><a href="#streams-async-iterators" data-target="streams-async-iterators">Streams (Async Iterators)</a></li><li class="toc-l2"><a href="#12-smart-pointers-interior-mutability" data-target="12-smart-pointers-interior-mutability">12. Smart Pointers &amp; Interior Mutability</a></li><li class="toc-l3"><a href="#boxlttgt-heap-allocation" data-target="boxlttgt-heap-allocation">Box&amp;lt;T&amp;gt; -- Heap Allocation</a></li><li class="toc-l3"><a href="#rclttgt-reference-counting-single-thread" data-target="rclttgt-reference-counting-single-thread">Rc&amp;lt;T&amp;gt; -- Reference Counting (Single Thread)</a></li><li class="toc-l3"><a href="#arclttgt-atomic-reference-counting-thread-safe" data-target="arclttgt-atomic-reference-counting-thread-safe">Arc&amp;lt;T&amp;gt; -- Atomic Reference Counting (Thread-Safe)</a></li><li class="toc-l3"><a href="#interior-mutability-refcelllttgt-and-mutexlttgt" data-target="interior-mutability-refcelllttgt-and-mutexlttgt">Interior Mutability -- RefCell&amp;lt;T&amp;gt; and Mutex&amp;lt;T&amp;gt;</a></li><li class="toc-l3"><a href="#common-smart-pointer-combinations" data-target="common-smart-pointer-combinations">Common Smart Pointer Combinations</a></li><li class="toc-l2"><a href="#13-modules-crates-visibility" data-target="13-modules-crates-visibility">13. Modules, Crates &amp; Visibility</a></li><li class="toc-l3"><a href="#terminology" data-target="terminology">Terminology</a></li><li class="toc-l3"><a href="#module-system" data-target="module-system">Module System</a></li><li class="toc-l3"><a href="#visibility" data-target="visibility">Visibility</a></li><li class="toc-l3"><a href="#cargo-commands" data-target="cargo-commands">Cargo Commands</a></li><li class="toc-l2"><a href="#14-testing" data-target="14-testing">14. Testing</a></li><li class="toc-l3"><a href="#built-in-testing" data-target="built-in-testing">Built-in Testing</a></li><li class="toc-l3"><a href="#assertion-macros" data-target="assertion-macros">Assertion Macros</a></li><li class="toc-l3"><a href="#integration-tests" data-target="integration-tests">Integration Tests</a></li><li class="toc-l3"><a href="#running-tests" data-target="running-tests">Running Tests</a></li><li class="toc-l2"><a href="#15-strings-yes-they-deserve-their-own-section" data-target="15-strings-yes-they-deserve-their-own-section">15. Strings (Yes, They Deserve Their Own Section)</a></li><li class="toc-l3"><a href="#why-strings-are-hard-in-rust" data-target="why-strings-are-hard-in-rust">Why Strings Are Hard in Rust</a></li><li class="toc-l3"><a href="#strings-are-utf-8-not-indexable-by-character" data-target="strings-are-utf-8-not-indexable-by-character">Strings Are UTF-8 (Not Indexable by Character)</a></li><li class="toc-l3"><a href="#common-string-operations" data-target="common-string-operations">Common String Operations</a></li><li class="toc-l3"><a href="#when-to-use-which" data-target="when-to-use-which">When to Use Which</a></li><li class="toc-l2"><a href="#16-common-pitfalls-for-python-developers" data-target="16-common-pitfalls-for-python-developers">16. Common Pitfalls for Python Developers</a></li><li class="toc-l3"><a href="#1-fighting-the-borrow-checker" data-target="1-fighting-the-borrow-checker">1. Fighting the Borrow Checker</a></li><li class="toc-l3"><a href="#2-expecting-everything-to-be-a-reference" data-target="2-expecting-everything-to-be-a-reference">2. Expecting Everything to Be a Reference</a></li><li class="toc-l3"><a href="#3-string-confusion" data-target="3-string-confusion">3. String Confusion</a></li><li class="toc-l3"><a href="#4-no-exceptions-means-lots-of-and-match" data-target="4-no-exceptions-means-lots-of-and-match">4. No Exceptions Means Lots of ? and match</a></li><li class="toc-l3"><a href="#5-forgetting-mut" data-target="5-forgetting-mut">5. Forgetting mut</a></li><li class="toc-l3"><a href="#6-confusing-iter-into_iter-iter_mut" data-target="6-confusing-iter-into_iter-iter_mut">6. Confusing iter(), into_iter(), iter_mut()</a></li><li class="toc-l3"><a href="#7-trying-to-store-references-in-structs" data-target="7-trying-to-store-references-in-structs">7. Trying to Store References in Structs</a></li><li class="toc-l3"><a href="#8-the-turbofish" data-target="8-the-turbofish">8. The Turbofish ::&lt;&gt;</a></li><li class="toc-l2"><a href="#quick-reference-cheat-sheet" data-target="quick-reference-cheat-sheet">Quick Reference Cheat Sheet</a></li><li class="toc-l2"><a href="#essential-crates-the-standard-library-everyone-uses" data-target="essential-crates-the-standard-library-everyone-uses">Essential Crates (The "Standard Library" Everyone Uses)</a></li><li class="toc-l2"><a href="#17-rust-in-practice-anatomy-of-a-real-scraper" data-target="17-rust-in-practice-anatomy-of-a-real-scraper">17. Rust In Practice — Anatomy of a Real Scraper</a></li><li class="toc-l3"><a href="#171-project-structure-and-module-system" data-target="171-project-structure-and-module-system">17.1 Project Structure and Module System</a></li><li class="toc-l3"><a href="#172-cargotoml-dependency-management" data-target="172-cargotoml-dependency-management">17.2 Cargo.toml — Dependency Management</a></li><li class="toc-l3"><a href="#173-the-async-runtime-tokio" data-target="173-the-async-runtime-tokio">17.3 The Async Runtime: Tokio</a></li><li class="toc-l3"><a href="#174-configuration-structs-over-dicts" data-target="174-configuration-structs-over-dicts">17.4 Configuration: Structs Over Dicts</a></li><li class="toc-l3"><a href="#175-serde-the-serialization-framework" data-target="175-serde-the-serialization-framework">17.5 Serde: The Serialization Framework</a></li><li class="toc-l3"><a href="#176-error-handling-in-practice" data-target="176-error-handling-in-practice">17.6 Error Handling in Practice</a></li><li class="toc-l3"><a href="#177-async-concurrency-patterns" data-target="177-async-concurrency-patterns">17.7 Async Concurrency Patterns</a></li><li class="toc-l3"><a href="#178-ownership-in-action-the-hash-store" data-target="178-ownership-in-action-the-hash-store">17.8 Ownership in Action: The Hash Store</a></li><li class="toc-l3"><a href="#179-database-patterns-with-sqlx" data-target="179-database-patterns-with-sqlx">17.9 Database Patterns with sqlx</a></li><li class="toc-l3"><a href="#1710-function-pointers-and-strategy-pattern" data-target="1710-function-pointers-and-strategy-pattern">17.10 Function Pointers and Strategy Pattern</a></li><li class="toc-l3"><a href="#1711-subprocess-management-with-tokio" data-target="1711-subprocess-management-with-tokio">17.11 Subprocess Management with Tokio</a></li><li class="toc-l3"><a href="#1712-testing-patterns" data-target="1712-testing-patterns">17.12 Testing Patterns</a></li><li class="toc-l3"><a href="#1713-patterns-worth-studying" data-target="1713-patterns-worth-studying">17.13 Patterns Worth Studying</a></li><li class="toc-l3"><a href="#1714-what-a-python-developer-would-do-differently" data-target="1714-what-a-python-developer-would-do-differently">17.14 What a Python Developer Would Do Differently</a></li></ul></nav></aside>
+  <main><h1 id="rust-for-python-developers">Rust for Python Developers</h1>
+<p>A study guide that skips the basics and focuses on what actually trips up Python developers learning Rust. Covers ownership, borrowing, lifetimes, concurrency, and the mental shifts required.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#1-the-mental-shift-why-rust-feels-hard">The Mental Shift: Why Rust Feels Hard</a></li>
+<li><a href="#2-ownership--move-semantics">Ownership &amp; Move Semantics</a></li>
+<li><a href="#3-borrowing--references">Borrowing &amp; References</a></li>
+<li><a href="#4-lifetimes">Lifetimes</a></li>
+<li><a href="#5-enums-pattern-matching--optionresult">Enums, Pattern Matching &amp; Option/Result</a></li>
+<li><a href="#6-error-handling">Error Handling</a></li>
+<li><a href="#7-structs-traits--polymorphism">Structs, Traits &amp; Polymorphism</a></li>
+<li><a href="#8-generics--trait-bounds">Generics &amp; Trait Bounds</a></li>
+<li><a href="#9-closures--iterators">Closures &amp; Iterators</a></li>
+<li><a href="#10-concurrency--parallelism">Concurrency &amp; Parallelism</a></li>
+<li><a href="#11-asyncawait">Async/Await</a></li>
+<li><a href="#12-smart-pointers--interior-mutability">Smart Pointers &amp; Interior Mutability</a></li>
+<li><a href="#13-modules-crates--visibility">Modules, Crates &amp; Visibility</a></li>
+<li><a href="#14-testing">Testing</a></li>
+<li><a href="#15-strings-yes-they-deserve-their-own-section">Strings (Yes, They Deserve Their Own Section)</a></li>
+<li><a href="#16-common-pitfalls-for-python-developers">Common Pitfalls for Python Developers</a></li>
+</ol>
+<hr>
+<h2 id="1-the-mental-shift-why-rust-feels-hard">1. The Mental Shift: Why Rust Feels Hard</h2>
+<p>Official docs: <a href="https://doc.rust-lang.org/book/ch03-01-variables-and-mutability.html">The Rust Book: Variables and Mutability</a>, <a href="https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html">The Rust Book: Understanding Ownership</a></p>
+<h3 id="what-rust-does-differently">What Rust Does Differently</h3>
+<p>Python manages memory for you with reference counting and garbage collection. You never think about when objects are freed. Rust has <strong>no garbage collector</strong> -- instead, the compiler enforces strict rules about who owns data, who can borrow it, and when it's freed.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Python</th>
+<th>Rust</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Memory management</td>
+<td>GC + reference counting</td>
+<td>Ownership system (compile-time)</td>
+</tr>
+<tr>
+<td>Null</td>
+<td><code>None</code> on any variable</td>
+<td>No null -- use <code>Option&amp;lt;T&amp;gt;</code></td>
+</tr>
+<tr>
+<td>Exceptions</td>
+<td><code>try/except</code></td>
+<td>No exceptions -- use <code>Result&lt;T, E&gt;</code></td>
+</tr>
+<tr>
+<td>Mutability</td>
+<td>Everything mutable by default</td>
+<td>Everything <strong>immutable</strong> by default</td>
+</tr>
+<tr>
+<td>Type system</td>
+<td>Dynamic, optional hints</td>
+<td>Static, strict, inferred</td>
+</tr>
+<tr>
+<td>Runtime cost</td>
+<td>Interpreter overhead</td>
+<td>Zero-cost abstractions</td>
+</tr>
+<tr>
+<td>Data races</td>
+<td>GIL hides most (but not all)</td>
+<td><strong>Impossible</strong> at compile time</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-compiler-is-your-pair-programmer">The Compiler Is Your Pair Programmer</h3>
+<p>In Python, bugs show up at runtime. In Rust, the compiler catches entire categories of bugs before the code runs:
+- Use-after-free
+- Double-free
+- Data races
+- Null pointer dereferences
+- Buffer overflows</p>
+<p>The tradeoff: <strong>you'll fight the compiler</strong>. This is normal. The compiler errors are detailed and usually tell you exactly how to fix the problem. Read them carefully.</p>
+<h3 id="immutable-by-default">Immutable by Default</h3>
+<pre><code class="language-rust">let x = 5;       // immutable
+// x = 6;        // compile error!
+
+let mut y = 5;   // mutable -- must opt in
+y = 6;           // fine
+</code></pre>
+<pre><code class="language-python">x = 5
+x = 6  # always fine -- Python has no concept of immutable bindings
+</code></pre>
+<hr>
+<h2 id="2-ownership-move-semantics">2. Ownership &amp; Move Semantics</h2>
+<p>Official docs: <a href="https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html">The Rust Book: What Is Ownership?</a>, <a href="https://doc.rust-lang.org/std/marker/trait.Copy.html"><code>Copy</code></a>, <a href="https://doc.rust-lang.org/std/clone/trait.Clone.html"><code>Clone</code></a></p>
+<h3 id="the-three-rules-of-ownership">The Three Rules of Ownership</h3>
+<ol>
+<li>Each value in Rust has exactly <strong>one owner</strong></li>
+<li>When the owner goes out of scope, the value is <strong>dropped</strong> (freed)</li>
+<li>Ownership can be <strong>transferred</strong> (moved), but then the original variable is invalid</li>
+</ol>
+<h3 id="move-semantics-the-python-brain-breaker">Move Semantics (The Python Brain-Breaker)</h3>
+<pre><code class="language-rust">let s1 = String::from(&quot;hello&quot;);
+let s2 = s1;        // s1 is MOVED to s2
+
+// println!(&quot;{}&quot;, s1);  // compile error: s1 is no longer valid
+println!(&quot;{}&quot;, s2);     // fine
+</code></pre>
+<pre><code class="language-python">s1 = &quot;hello&quot;
+s2 = s1       # both s1 and s2 point to the same object
+print(s1)     # fine -- Python uses reference counting
+print(s2)     # fine
+</code></pre>
+<p>In Python, assignment creates another reference. In Rust, assignment <strong>transfers ownership</strong> -- the original variable is dead.</p>
+<h3 id="copy-vs-move">Copy vs Move</h3>
+<p>Some types are cheap to copy and implement the <code>Copy</code> trait. These are copied instead of moved:</p>
+<pre><code class="language-rust">let x = 42;     // i32 implements Copy
+let y = x;      // x is COPIED, not moved
+println!(&quot;{x}&quot;); // fine -- x is still valid
+
+let s1 = String::from(&quot;hello&quot;);  // String does NOT implement Copy
+let s2 = s1;                      // MOVED
+// println!(&quot;{s1}&quot;);              // error
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Copy types (stack-only)</th>
+<th>Move types (heap data)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>i32</code>, <code>f64</code>, <code>bool</code>, <code>char</code></td>
+<td><code>String</code>, <code>Vec&amp;lt;T&amp;gt;</code>, <code>HashMap</code></td>
+</tr>
+<tr>
+<td>Tuples of Copy types</td>
+<td><code>Box&amp;lt;T&amp;gt;</code>, any struct with heap data</td>
+</tr>
+<tr>
+<td>Arrays of Copy types</td>
+<td>Most custom structs (unless you derive Copy)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="clone-explicit-deep-copy">Clone -- Explicit Deep Copy</h3>
+<pre><code class="language-rust">let s1 = String::from(&quot;hello&quot;);
+let s2 = s1.clone();   // explicit deep copy
+println!(&quot;{s1}&quot;);       // fine -- s1 was cloned, not moved
+</code></pre>
+<p>Python's equivalent is <code>copy.deepcopy()</code>, but in Python you rarely need it because the GC handles everything.</p>
+<h3 id="ownership-and-functions">Ownership and Functions</h3>
+<pre><code class="language-rust">fn takes_ownership(s: String) {
+    println!(&quot;{s}&quot;);
+}   // s is dropped here
+
+fn main() {
+    let s = String::from(&quot;hello&quot;);
+    takes_ownership(s);
+    // println!(&quot;{s}&quot;);  // error: s was moved into the function
+}
+</code></pre>
+<pre><code class="language-python">def takes_value(s):
+    print(s)
+
+s = &quot;hello&quot;
+takes_value(s)
+print(s)  # fine -- Python doesn't transfer ownership
+</code></pre>
+<p>To "give back" ownership, return the value:</p>
+<pre><code class="language-rust">fn takes_and_gives_back(s: String) -&gt; String {
+    println!(&quot;{s}&quot;);
+    s  // return ownership to the caller
+}
+</code></pre>
+<p>But this gets tedious -- which is why <strong>borrowing</strong> exists.</p>
+<hr>
+<h2 id="3-borrowing-references">3. Borrowing &amp; References</h2>
+<p>Official docs: <a href="https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html">The Rust Book: References and Borrowing</a>, <a href="https://doc.rust-lang.org/book/ch04-03-slices.html">The Rust Book: Slices</a></p>
+<h3 id="references-let-you-use-data-without-taking-ownership">References Let You Use Data Without Taking Ownership</h3>
+<pre><code class="language-rust">fn calculate_length(s: &amp;String) -&gt; usize {  // borrows s
+    s.len()
+}   // s goes out of scope, but since it doesn't own the String, nothing is dropped
+
+fn main() {
+    let s = String::from(&quot;hello&quot;);
+    let len = calculate_length(&amp;s);  // lend s
+    println!(&quot;{s} has length {len}&quot;); // s is still valid
+}
+</code></pre>
+<h3 id="the-borrowing-rules">The Borrowing Rules</h3>
+<ol>
+<li>You can have <strong>either</strong> (not both at the same time):
+   - Any number of <strong>immutable references</strong> (<code>&amp;T</code>)
+   - Exactly <strong>one mutable reference</strong> (<code>&amp;mut T</code>)</li>
+<li>References must always be <strong>valid</strong> (no dangling references)</li>
+</ol>
+<pre><code class="language-rust">let mut s = String::from(&quot;hello&quot;);
+
+let r1 = &amp;s;      // immutable borrow -- fine
+let r2 = &amp;s;      // another immutable borrow -- fine
+// let r3 = &amp;mut s;  // ERROR: can't borrow mutably while immutable borrows exist
+
+println!(&quot;{r1} {r2}&quot;);
+// r1 and r2 are no longer used after this point (NLL - Non-Lexical Lifetimes)
+
+let r3 = &amp;mut s;  // fine now -- r1 and r2 are done
+r3.push_str(&quot; world&quot;);
+</code></pre>
+<h3 id="why-this-rule-exists">Why This Rule Exists</h3>
+<p>This prevents data races <strong>at compile time</strong>:
+- Multiple readers OR one writer, never both
+- No iterator invalidation
+- No concurrent mutation bugs</p>
+<p>Python "solves" this with the GIL (for threads) or just lets you shoot yourself in the foot (mutating a list while iterating it).</p>
+<h3 id="mutable-references">Mutable References</h3>
+<pre><code class="language-rust">fn append_world(s: &amp;mut String) {
+    s.push_str(&quot; world&quot;);
+}
+
+fn main() {
+    let mut s = String::from(&quot;hello&quot;);
+    append_world(&amp;mut s);
+    println!(&quot;{s}&quot;);  // &quot;hello world&quot;
+}
+</code></pre>
+<h3 id="slices-borrowing-parts-of-data">Slices -- Borrowing Parts of Data</h3>
+<pre><code class="language-rust">let s = String::from(&quot;hello world&quot;);
+let hello: &amp;str = &amp;s[0..5];   // string slice -- borrows part of s
+let world: &amp;str = &amp;s[6..11];
+
+let nums = vec![1, 2, 3, 4, 5];
+let mid: &amp;[i32] = &amp;nums[1..4];  // [2, 3, 4] -- slice of the vector
+</code></pre>
+<p>Slices are <strong>borrowed views</strong> -- they don't own data. This is like Python's <code>memoryview</code>, but enforced at compile time.</p>
+<hr>
+<h2 id="4-lifetimes">4. Lifetimes</h2>
+<p>Official docs: <a href="https://doc.rust-lang.org/book/ch10-03-lifetime-syntax.html">The Rust Book: Validating References with Lifetimes</a>, <a href="https://doc.rust-lang.org/reference/lifetime-elision.html">The Rust Reference: Lifetime elision</a></p>
+<p>This is the section that tends to look the most mysterious to Python developers, mostly because the syntax makes it seem like lifetimes are a special advanced type system. In practice, lifetimes are just Rust's way of describing relationships between borrows: which reference depends on which piece of data staying alive.</p>
+<p>The important mindset shift is that a lifetime is usually not "how long an object lives" in a wall-clock sense. It is a compile-time proof that one reference cannot outlast the value it points at. Once that clicks, the annotations stop feeling like magic punctuation and start reading like contracts.</p>
+<h3 id="what-are-lifetimes">What Are Lifetimes?</h3>
+<p>Lifetimes are the compiler's way of ensuring references don't outlive the data they point to. Most of the time, the compiler infers them automatically. You only write them explicitly when the compiler can't figure it out.</p>
+<h3 id="the-dangling-reference-problem">The Dangling Reference Problem</h3>
+<pre><code class="language-rust">// This won't compile:
+fn dangling() -&gt; &amp;String {
+    let s = String::from(&quot;hello&quot;);
+    &amp;s  // ERROR: s is dropped when function returns, reference would dangle
+}
+</code></pre>
+<p>Python never has this problem because the GC keeps objects alive as long as any reference exists.</p>
+<h3 id="explicit-lifetime-annotations">Explicit Lifetime Annotations</h3>
+<pre><code class="language-rust">// &quot;The returned reference lives as long as both input references are valid&quot;
+fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str {
+    if x.len() &gt; y.len() { x } else { y }
+}
+</code></pre>
+<p>Read <code>'a</code> as "lifetime a". This tells the compiler: the returned reference is valid for as long as <strong>both</strong> <code>x</code> and <code>y</code> are valid.</p>
+<p>More precisely, the returned reference is valid for the shorter of the two input lifetimes. That is why <code>longest</code> is safe: the compiler knows the result cannot outlive either input, so any caller must keep both borrowed values alive long enough.</p>
+<pre><code class="language-rust">fn main() {
+    let string1 = String::from(&quot;long string&quot;);
+    let result;
+    {
+        let string2 = String::from(&quot;xyz&quot;);
+        result = longest(&amp;string1, &amp;string2);
+        println!(&quot;{result}&quot;);  // fine -- both strings alive
+    }
+    // println!(&quot;{result}&quot;);  // ERROR: string2 is dropped, result might reference it
+}
+</code></pre>
+<h3 id="lifetime-elision-rules">Lifetime Elision Rules</h3>
+<p>The compiler automatically infers lifetimes in common cases. You usually only need explicit lifetimes when:</p>
+<ol>
+<li>A function returns a reference and has multiple reference parameters</li>
+<li>A struct stores references</li>
+</ol>
+<pre><code class="language-rust">// Compiler infers this:
+fn first_word(s: &amp;str) -&gt; &amp;str { /* ... */ }
+// As if you wrote:
+fn first_word&lt;'a&gt;(s: &amp;'a str) -&gt; &amp;'a str { /* ... */ }
+</code></pre>
+<h3 id="lifetimes-in-structs">Lifetimes in Structs</h3>
+<p>If a struct holds a reference, it needs a lifetime annotation:</p>
+<pre><code class="language-rust">struct Excerpt&lt;'a&gt; {
+    text: &amp;'a str,  // this struct borrows a string
+}
+
+fn main() {
+    let novel = String::from(&quot;Call me Ishmael. Some years ago...&quot;);
+    let first_sentence = &amp;novel[..16];
+    let excerpt = Excerpt { text: first_sentence };
+    // excerpt can't outlive novel
+}
+</code></pre>
+<h3 id="static-lifetime"><code>'static</code> Lifetime</h3>
+<pre><code class="language-rust">// 'static means the reference lives for the entire program
+let s: &amp;'static str = &quot;I'm a string literal&quot;;  // embedded in the binary
+</code></pre>
+<p>Beginners often overuse <code>'static</code> because it sounds like "the easy lifetime." Usually it is not what you want. In most code, if the compiler asks for a lifetime, the fix is to own the data with <code>String</code>, <code>Vec&amp;lt;T&amp;gt;</code>, or <code>Arc&amp;lt;T&amp;gt;</code>, not to force everything toward <code>'static</code>.</p>
+<hr>
+<h2 id="5-enums-pattern-matching-optionresult">5. Enums, Pattern Matching &amp; Option/Result</h2>
+<p>Official docs: <a href="https://doc.rust-lang.org/book/ch06-00-enums.html">The Rust Book: Enums and Pattern Matching</a>, <a href="https://doc.rust-lang.org/book/ch06-02-match.html">The Rust Book: <code>match</code> Control Flow</a>, <a href="https://doc.rust-lang.org/std/option/enum.Option.html"><code>Option</code></a>, <a href="https://doc.rust-lang.org/std/result/enum.Result.html"><code>Result</code></a></p>
+<h3 id="enums-are-not-python-enums">Enums Are Not Python Enums</h3>
+<p>Rust enums can hold <strong>data in each variant</strong> -- they're closer to tagged unions or algebraic data types.</p>
+<pre><code class="language-rust">enum Shape {
+    Circle(f64),                    // holds radius
+    Rectangle(f64, f64),            // holds width, height
+    Triangle { a: f64, b: f64, c: f64 },  // named fields
+    Point,                          // no data
+}
+</code></pre>
+<pre><code class="language-python"># Python enums are just named constants
+from enum import Enum
+
+class Shape(Enum):
+    CIRCLE = &quot;circle&quot;
+    RECTANGLE = &quot;rectangle&quot;
+    # Can't hold per-variant data
+</code></pre>
+<h3 id="pattern-matching-with-match">Pattern Matching with <code>match</code></h3>
+<pre><code class="language-rust">fn area(shape: &amp;Shape) -&gt; f64 {
+    match shape {
+        Shape::Circle(r) =&gt; std::f64::consts::PI * r * r,
+        Shape::Rectangle(w, h) =&gt; w * h,
+        Shape::Triangle { a, b, c } =&gt; {
+            let s = (a + b + c) / 2.0;
+            (s * (s - a) * (s - b) * (s - c)).sqrt()
+        }
+        Shape::Point =&gt; 0.0,
+    }
+}
+</code></pre>
+<p><code>match</code> is <strong>exhaustive</strong> -- you must handle every variant or use a wildcard <code>_</code>. The compiler enforces this.</p>
+<pre><code class="language-python"># Python 3.10+ structural pattern matching
+match shape:
+    case Circle(r):
+        return math.pi * r ** 2
+    case _:
+        return 0
+    # But it's not exhaustive -- missing cases just fall through
+</code></pre>
+<h3 id="optionlttgt-rusts-replacement-for-none"><code>Option&amp;lt;T&amp;gt;</code> -- Rust's Replacement for <code>None</code></h3>
+<p>There is no <code>null</code>/<code>None</code> that any variable can hold. Instead, "might be absent" is explicit:</p>
+<pre><code class="language-rust">enum Option&lt;T&gt; {
+    Some(T),    // has a value
+    None,       // no value
+}
+
+fn find_user(id: u64) -&gt; Option&lt;User&gt; {
+    if id == 1 {
+        Some(User { name: &quot;Alice&quot;.into() })
+    } else {
+        None
+    }
+}
+
+// You MUST handle both cases
+match find_user(42) {
+    Some(user) =&gt; println!(&quot;Found: {}&quot;, user.name),
+    None =&gt; println!(&quot;User not found&quot;),
+}
+</code></pre>
+<pre><code class="language-python"># Python: None can appear anywhere, crashes are at runtime
+def find_user(id: int) -&gt; User | None:
+    ...
+
+user = find_user(42)
+print(user.name)  # AttributeError at runtime if None
+</code></pre>
+<h3 id="common-option-methods">Common <code>Option</code> Methods</h3>
+<pre><code class="language-rust">let x: Option&lt;i32&gt; = Some(42);
+
+x.unwrap();              // 42 -- panics if None (like Python's crash)
+x.unwrap_or(0);          // 42, or 0 if None
+x.unwrap_or_default();   // uses the type's default value if None
+x.map(|v| v * 2);        // Some(84)
+x.and_then(|v| if v &gt; 0 { Some(v) } else { None });
+x.is_some();             // true
+x.is_none();             // false
+
+// if let -- handle only the Some case
+if let Some(value) = x {
+    println!(&quot;Got {value}&quot;);
+}
+</code></pre>
+<h3 id="resultt-e-rusts-replacement-for-exceptions"><code>Result&lt;T, E&gt;</code> -- Rust's Replacement for Exceptions</h3>
+<p><code>Option&amp;lt;T&amp;gt;</code> answers "is there a value?" while <code>Result&lt;T, E&gt;</code> answers "did the operation succeed?" That split is one of Rust's best design choices because it forces APIs to distinguish ordinary absence from an actual failure condition.</p>
+<pre><code class="language-rust">enum Result&lt;T, E&gt; {
+    Ok(T),     // success
+    Err(E),    // failure
+}
+
+fn parse_number(s: &amp;str) -&gt; Result&lt;i32, std::num::ParseIntError&gt; {
+    s.parse::&lt;i32&gt;()
+}
+
+match parse_number(&quot;42&quot;) {
+    Ok(n) =&gt; println!(&quot;Parsed: {n}&quot;),
+    Err(e) =&gt; println!(&quot;Failed: {e}&quot;),
+}
+</code></pre>
+<hr>
+<h2 id="6-error-handling">6. Error Handling</h2>
+<p>Official docs: <a href="https://doc.rust-lang.org/book/ch09-00-error-handling.html">The Rust Book: Error Handling</a>, <a href="https://doc.rust-lang.org/std/result/enum.Result.html"><code>Result</code></a></p>
+<p>Rust error handling gets much easier once you separate library concerns from application concerns. Libraries should preserve structure so callers can inspect failures. Applications often just need good context and a clean error chain for logs or CLI output.</p>
+<h3 id="no-exceptions-no-tryexcept">No Exceptions, No try/except</h3>
+<p>Rust uses <code>Result&lt;T, E&gt;</code> for all recoverable errors. The compiler forces you to handle them.</p>
+<pre><code class="language-rust">use std::fs;
+use std::io;
+
+fn read_config(path: &amp;str) -&gt; Result&lt;String, io::Error&gt; {
+    let content = fs::read_to_string(path)?;  // ? propagates errors
+    Ok(content)
+}
+</code></pre>
+<pre><code class="language-python">def read_config(path: str) -&gt; str:
+    try:
+        with open(path) as f:
+            return f.read()
+    except OSError as e:
+        raise RuntimeError(f&quot;reading config: {e}&quot;) from e
+</code></pre>
+<h3 id="the-operator-rusts-error-propagation">The <code>?</code> Operator -- Rust's Error Propagation</h3>
+<p>The <code>?</code> operator is the single most important thing to learn. It replaces hundreds of lines of match statements:</p>
+<pre><code class="language-rust">// Without ?
+fn read_username() -&gt; Result&lt;String, io::Error&gt; {
+    let file_result = fs::read_to_string(&quot;username.txt&quot;);
+    let username = match file_result {
+        Ok(content) =&gt; content,
+        Err(e) =&gt; return Err(e),
+    };
+    Ok(username.trim().to_string())
+}
+
+// With ? (identical behavior)
+fn read_username() -&gt; Result&lt;String, io::Error&gt; {
+    let username = fs::read_to_string(&quot;username.txt&quot;)?;
+    Ok(username.trim().to_string())
+}
+
+// Chained
+fn read_username() -&gt; Result&lt;String, io::Error&gt; {
+    Ok(fs::read_to_string(&quot;username.txt&quot;)?.trim().to_string())
+}
+</code></pre>
+<p><code>?</code> does: if <code>Err</code>, return the error immediately from the function. If <code>Ok</code>, unwrap the value and continue.</p>
+<p>This is why Rust error-handling code often reads linearly even without exceptions. Instead of building nested control flow, you keep the happy path visible and let <code>?</code> short-circuit failure paths in a type-safe way.</p>
+<h3 id="custom-error-types">Custom Error Types</h3>
+<pre><code class="language-rust">use thiserror::Error;  // popular crate
+
+#[derive(Error, Debug)]
+enum AppError {
+    #[error(&quot;IO error: {0}&quot;)]
+    Io(#[from] std::io::Error),
+
+    #[error(&quot;Parse error: {0}&quot;)]
+    Parse(#[from] serde_json::Error),
+
+    #[error(&quot;User {id} not found&quot;)]
+    NotFound { id: u64 },
+}
+
+fn load_user(id: u64) -&gt; Result&lt;User, AppError&gt; {
+    let data = fs::read_to_string(&quot;users.json&quot;)?;  // io::Error auto-converts
+    let users: Vec&lt;User&gt; = serde_json::from_str(&amp;data)?;  // also auto-converts
+    users.into_iter()
+        .find(|u| u.id == id)
+        .ok_or(AppError::NotFound { id })
+}
+</code></pre>
+<h3 id="anyhow-for-application-code"><code>anyhow</code> for Application Code</h3>
+<pre><code class="language-rust">use anyhow::{Context, Result};
+
+fn main() -&gt; Result&lt;()&gt; {
+    let config = fs::read_to_string(&quot;config.toml&quot;)
+        .context(&quot;Failed to read config file&quot;)?;
+
+    let port: u16 = config.parse()
+        .context(&quot;Invalid port number&quot;)?;
+
+    Ok(())
+}
+</code></pre>
+<p>Use <code>thiserror</code> for libraries (structured errors), <code>anyhow</code> for applications (convenient error chaining).</p>
+<p>That distinction matters. If you are publishing a library, callers may want to <code>match</code> on specific failures. If you are writing a binary, preserving every intermediate error type is often more work than value, and <code>anyhow</code> keeps the code readable.</p>
+<h3 id="when-to-unwrap-and-expect">When to <code>unwrap()</code> and <code>expect()</code></h3>
+<pre><code class="language-rust">// unwrap -- panics with generic message if Err/None
+let value = some_result.unwrap();
+
+// expect -- panics with YOUR message
+let value = some_result.expect(&quot;database should be reachable&quot;);
+
+// Only use these when:
+// 1. You're prototyping
+// 2. You can prove it won't fail
+// 3. Failure means a bug in your code (not a runtime condition)
+</code></pre>
+<hr>
+<h2 id="7-structs-traits-polymorphism">7. Structs, Traits &amp; Polymorphism</h2>
+<p>Official docs: <a href="https://doc.rust-lang.org/book/ch05-00-structs.html">The Rust Book: Using Structs to Structure Related Data</a>, <a href="https://doc.rust-lang.org/book/ch10-02-traits.html">The Rust Book: Traits</a>, <a href="https://doc.rust-lang.org/book/ch18-02-trait-objects.html">The Rust Book: Trait Objects</a>, <a href="https://doc.rust-lang.org/std/ops/trait.Add.html"><code>std::ops::Add</code></a></p>
+<h3 id="structs-not-classes">Structs (Not Classes)</h3>
+<pre><code class="language-rust">struct User {
+    name: String,
+    email: String,
+    age: u32,
+}
+
+impl User {
+    // Associated function (like __init__ / classmethod)
+    fn new(name: &amp;str, email: &amp;str, age: u32) -&gt; Self {
+        Self {
+            name: name.to_string(),
+            email: email.to_string(),
+            age,
+        }
+    }
+
+    // Method (takes &amp;self, &amp;mut self, or self)
+    fn greet(&amp;self) -&gt; String {
+        format!(&quot;Hi, I'm {}&quot;, self.name)
+    }
+
+    fn set_email(&amp;mut self, email: &amp;str) {
+        self.email = email.to_string();
+    }
+}
+</code></pre>
+<pre><code class="language-python">class User:
+    def __init__(self, name: str, email: str, age: int):
+        self.name = name
+        self.email = email
+        self.age = age
+
+    def greet(self) -&gt; str:
+        return f&quot;Hi, I'm {self.name}&quot;
+</code></pre>
+<h3 id="traits-rusts-interfaces">Traits -- Rust's Interfaces</h3>
+<p>Traits define shared behavior. They're like Python's ABCs or Go's interfaces, but explicit.</p>
+<p>They are also more central than Python interfaces usually are. Traits power generic constraints, operator overloading, formatting, iteration, conversion, async behavior, and much of the standard library's design. Once you understand traits, a lot of Rust APIs stop feeling arbitrary.</p>
+<pre><code class="language-rust">trait Drawable {
+    fn draw(&amp;self);
+
+    // Default implementation (like a mixin)
+    fn description(&amp;self) -&gt; String {
+        String::from(&quot;a drawable object&quot;)
+    }
+}
+
+struct Circle {
+    radius: f64,
+}
+
+impl Drawable for Circle {
+    fn draw(&amp;self) {
+        println!(&quot;Drawing circle with radius {}&quot;, self.radius);
+    }
+    // description() uses the default
+}
+</code></pre>
+<pre><code class="language-python">from abc import ABC, abstractmethod
+
+class Drawable(ABC):
+    @abstractmethod
+    def draw(self): ...
+
+    def description(self) -&gt; str:  # default implementation
+        return &quot;a drawable object&quot;
+
+class Circle(Drawable):
+    def __init__(self, radius: float):
+        self.radius = radius
+
+    def draw(self):
+        print(f&quot;Drawing circle with radius {self.radius}&quot;)
+</code></pre>
+<h3 id="no-inheritance-composition-instead">No Inheritance -- Composition Instead</h3>
+<p>Like Go, Rust has no class inheritance. You compose behavior through:</p>
+<ol>
+<li><strong>Trait implementation</strong> -- a type can implement many traits</li>
+<li><strong>Struct composition</strong> -- embed structs inside other structs</li>
+<li><strong>Trait objects</strong> -- dynamic dispatch when needed</li>
+</ol>
+<h3 id="trait-objects-dynamic-dispatch">Trait Objects (Dynamic Dispatch)</h3>
+<p>Most Rust code prefers static dispatch through generics because it is fast and keeps types concrete. Trait objects are the escape hatch when you need heterogenous collections, plugin-style behavior, or runtime polymorphism.</p>
+<pre><code class="language-rust">// Static dispatch (monomorphization) -- fast, but one concrete type
+fn draw_it(item: &amp;impl Drawable) {
+    item.draw();
+}
+
+// Dynamic dispatch (trait object) -- multiple types at runtime
+fn draw_all(items: &amp;[&amp;dyn Drawable]) {
+    for item in items {
+        item.draw();
+    }
+}
+
+// Box&lt;dyn Trait&gt; for owned trait objects
+fn create_shape(kind: &amp;str) -&gt; Box&lt;dyn Drawable&gt; {
+    match kind {
+        &quot;circle&quot; =&gt; Box::new(Circle { radius: 5.0 }),
+        &quot;square&quot; =&gt; Box::new(Square { side: 3.0 }),
+        _ =&gt; panic!(&quot;unknown shape&quot;),
+    }
+}
+</code></pre>
+<pre><code class="language-python"># Python: dynamic dispatch is the default
+def draw_all(items: list[Drawable]):
+    for item in items:
+        item.draw()  # always dynamic dispatch
+</code></pre>
+<p>The tradeoff is worth being explicit about: <code>impl Trait</code> usually gives better performance and better compiler visibility, while <code>dyn Trait</code> buys flexibility at the cost of an indirection and some lost compile-time specialization.</p>
+<h3 id="deriving-common-traits">Deriving Common Traits</h3>
+<pre><code class="language-rust">#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+// Debug     -&gt; like __repr__     -&gt; {:?} formatting
+// Clone     -&gt; like copy.deepcopy -&gt; .clone()
+// PartialEq -&gt; like __eq__       -&gt; == operator
+// Hash      -&gt; like __hash__     -&gt; usable as HashMap key
+</code></pre>
+<h3 id="operator-overloading-via-traits">Operator Overloading via Traits</h3>
+<pre><code class="language-rust">use std::ops::Add;
+
+#[derive(Debug, Clone, Copy)]
+struct Vec2 {
+    x: f64,
+    y: f64,
+}
+
+impl Add for Vec2 {
+    type Output = Vec2;
+
+    fn add(self, other: Vec2) -&gt; Vec2 {
+        Vec2 {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
+}
+
+let a = Vec2 { x: 1.0, y: 2.0 };
+let b = Vec2 { x: 3.0, y: 4.0 };
+let c = a + b;  // Vec2 { x: 4.0, y: 6.0 }
+</code></pre>
+<hr>
+<h2 id="8-generics-trait-bounds">8. Generics &amp; Trait Bounds</h2>
+<p>Official docs: <a href="https://doc.rust-lang.org/book/ch10-00-generics.html">The Rust Book: Generic Types, Traits, and Lifetimes</a>, <a href="https://doc.rust-lang.org/book/ch10-02-traits.html">The Rust Book: Traits</a></p>
+<h3 id="generic-functions">Generic Functions</h3>
+<pre><code class="language-rust">fn largest&lt;T: PartialOrd&gt;(list: &amp;[T]) -&gt; &amp;T {
+    let mut max = &amp;list[0];
+    for item in &amp;list[1..] {
+        if item &gt; max {
+            max = item;
+        }
+    }
+    max
+}
+
+largest(&amp;[1, 5, 3]);         // works with i32
+largest(&amp;[1.5, 0.2, 3.8]);   // works with f64
+</code></pre>
+<h3 id="trait-bounds">Trait Bounds</h3>
+<p>Trait bounds constrain what a generic type can do:</p>
+<pre><code class="language-rust">// Single bound
+fn print_it&lt;T: Display&gt;(item: T) {
+    println!(&quot;{item}&quot;);
+}
+
+// Multiple bounds
+fn compare_and_print&lt;T: Display + PartialOrd&gt;(a: T, b: T) {
+    if a &gt; b { println!(&quot;{a}&quot;) } else { println!(&quot;{b}&quot;) }
+}
+
+// where clause (cleaner for complex bounds)
+fn process&lt;T, U&gt;(t: T, u: U) -&gt; String
+where
+    T: Display + Clone,
+    U: Debug + Into&lt;String&gt;,
+{
+    format!(&quot;{t} and {:?}&quot;, u)
+}
+</code></pre>
+<p>This is the Rust version of saying "generic, but not unconstrained." Python developers often reach for <code>TypeVar</code> bounds mostly for documentation and static tooling. In Rust, the bound is part of what makes the code legal in the first place.</p>
+<h3 id="compared-to-python">Compared to Python</h3>
+<pre><code class="language-python"># Python generics are for type checkers only -- no runtime enforcement
+from typing import TypeVar
+
+T = TypeVar('T', bound=Comparable)
+
+def largest(items: list[T]) -&gt; T:
+    return max(items)  # works... but no compile-time guarantee
+</code></pre>
+<p>Rust generics are <strong>monomorphized</strong> -- the compiler generates specialized code for each concrete type used. Zero runtime cost.</p>
+<p>That is why Rust generics usually feel closer to templates in C++ than to Python's type hints. You get strong static guarantees and optimized concrete code, but compile times and binary size can grow when a generic API is instantiated many different ways.</p>
+<h3 id="generic-structs">Generic Structs</h3>
+<pre><code class="language-rust">struct Cache&lt;K, V&gt; {
+    data: HashMap&lt;K, V&gt;,
+}
+
+impl&lt;K: Eq + Hash, V&gt; Cache&lt;K, V&gt; {
+    fn new() -&gt; Self {
+        Cache { data: HashMap::new() }
+    }
+
+    fn get(&amp;self, key: &amp;K) -&gt; Option&lt;&amp;V&gt; {
+        self.data.get(key)
+    }
+
+    fn set(&amp;mut self, key: K, value: V) {
+        self.data.insert(key, value);
+    }
+}
+</code></pre>
+<hr>
+<h2 id="9-closures-iterators">9. Closures &amp; Iterators</h2>
+<p>Official docs: <a href="https://doc.rust-lang.org/book/ch13-01-closures.html">The Rust Book: Closures</a>, <a href="https://doc.rust-lang.org/book/ch13-02-iterators.html">The Rust Book: Iterators</a></p>
+<h3 id="closures">Closures</h3>
+<pre><code class="language-rust">let add = |a, b| a + b;       // type inferred
+let add: fn(i32, i32) -&gt; i32 = |a, b| a + b;  // explicit
+
+let mut count = 0;
+let mut increment = || {       // captures count by mutable reference
+    count += 1;
+    count
+};
+increment();  // 1
+increment();  // 2
+</code></pre>
+<h3 id="closure-capture-modes">Closure Capture Modes</h3>
+<p>This is where Rust closures differ from Python -- they interact with the ownership system:</p>
+<table>
+<thead>
+<tr>
+<th>Trait</th>
+<th>Captures by</th>
+<th>Python equivalent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Fn</code></td>
+<td>Immutable reference (<code>&amp;T</code>)</td>
+<td>Normal closure</td>
+</tr>
+<tr>
+<td><code>FnMut</code></td>
+<td>Mutable reference (<code>&amp;mut T</code>)</td>
+<td>Closure that mutates outer variable</td>
+</tr>
+<tr>
+<td><code>FnOnce</code></td>
+<td>Ownership (move)</td>
+<td>No direct equivalent</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-rust">// Fn -- borrows immutably
+let name = String::from(&quot;Alice&quot;);
+let greet = || println!(&quot;Hello, {name}&quot;);
+greet();
+greet();           // can call multiple times
+println!(&quot;{name}&quot;); // name still accessible
+
+// FnOnce -- takes ownership
+let name = String::from(&quot;Alice&quot;);
+let consume = move || println!(&quot;Consumed: {name}&quot;);
+consume();
+// println!(&quot;{name}&quot;);  // error: name was moved into closure
+</code></pre>
+<h3 id="iterators-rusts-list-comprehensions">Iterators -- Rust's List Comprehensions</h3>
+<p>Python has list comprehensions. Rust has <strong>iterator chains</strong> -- they're lazy and zero-cost.</p>
+<pre><code class="language-python"># Python
+result = [x ** 2 for x in range(10) if x % 2 == 0]
+</code></pre>
+<pre><code class="language-rust">// Rust
+let result: Vec&lt;i32&gt; = (0..10)
+    .filter(|x| x % 2 == 0)
+    .map(|x| x * x)
+    .collect();
+</code></pre>
+<h3 id="common-iterator-methods">Common Iterator Methods</h3>
+<pre><code class="language-rust">let nums = vec![1, 2, 3, 4, 5];
+
+nums.iter().map(|x| x * 2);              // [2, 4, 6, 8, 10]
+nums.iter().filter(|&amp;&amp;x| x &gt; 3);          // [4, 5]
+nums.iter().fold(0, |acc, x| acc + x);    // 15 (like reduce)
+nums.iter().any(|&amp;x| x &gt; 4);              // true
+nums.iter().all(|&amp;x| x &gt; 0);             // true
+nums.iter().find(|&amp;&amp;x| x == 3);           // Some(&amp;3)
+nums.iter().position(|&amp;x| x == 3);        // Some(2)
+nums.iter().enumerate();                   // [(0,1), (1,2), ...]
+nums.iter().zip(other.iter());             // pairs
+nums.iter().take(3);                       // first 3
+nums.iter().skip(2);                       // skip first 2
+nums.iter().flatten();                     // flatten nested iterators
+nums.iter().chain(other.iter());           // concatenate
+nums.iter().sum::&lt;i32&gt;();                  // 15
+nums.iter().min();                         // Some(1)
+nums.iter().max();                         // Some(5)
+nums.iter().count();                       // 5
+nums.iter().collect::&lt;Vec&lt;_&gt;&gt;();           // back to Vec
+nums.iter().collect::&lt;HashSet&lt;_&gt;&gt;();       // to HashSet
+</code></pre>
+<p>The subtle part is that almost all of these are lazy until you hit a consuming operation like <code>collect</code>, <code>sum</code>, <code>find</code>, or <code>count</code>. If you come from Python's eager list comprehensions, it is easy to assume work already happened when you only built an iterator pipeline.</p>
+<h3 id="three-types-of-iteration">Three Types of Iteration</h3>
+<pre><code class="language-rust">let v = vec![String::from(&quot;a&quot;), String::from(&quot;b&quot;)];
+
+// Borrow (most common)
+for s in &amp;v { }          // s is &amp;String, v still usable after
+
+// Mutable borrow
+for s in &amp;mut v { }      // s is &amp;mut String, can modify in place
+
+// Take ownership (consumes the vec)
+for s in v { }           // s is String, v is gone after this loop
+</code></pre>
+<hr>
+<h2 id="10-concurrency-parallelism">10. Concurrency &amp; Parallelism</h2>
+<p>Official docs: <a href="https://doc.rust-lang.org/book/ch16-00-concurrency.html">The Rust Book: Fearless Concurrency</a>, <a href="https://doc.rust-lang.org/book/ch16-01-threads.html">The Rust Book: Threads</a>, <a href="https://doc.rust-lang.org/book/ch16-02-message-passing.html">The Rust Book: Message Passing</a>, <a href="https://doc.rust-lang.org/book/ch16-03-shared-state.html">The Rust Book: Shared-State Concurrency</a></p>
+<h3 id="rusts-concurrency-promise">Rust's Concurrency Promise</h3>
+<p><strong>"Fearless concurrency"</strong> -- the ownership system prevents data races at compile time.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Python</th>
+<th>Rust</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Threads</td>
+<td>OS threads, but GIL limits parallelism</td>
+<td>OS threads, true parallelism</td>
+</tr>
+<tr>
+<td>Data race prevention</td>
+<td>GIL (partially), locks (manually)</td>
+<td><strong>Compile-time enforcement</strong></td>
+</tr>
+<tr>
+<td>Shared state</td>
+<td>Just share it (GIL protects somewhat)</td>
+<td>Must use <code>Arc&lt;Mutex&amp;lt;T&amp;gt;&gt;</code> or channels</td>
+</tr>
+<tr>
+<td>Message passing</td>
+<td><code>queue.Queue</code></td>
+<td>Channels (<code>std::sync::mpsc</code>)</td>
+</tr>
+<tr>
+<td>Async</td>
+<td><code>asyncio</code> (single-threaded event loop)</td>
+<td><code>async</code>/<code>await</code> (multi-threaded runtimes)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="threads">Threads</h3>
+<pre><code class="language-rust">use std::thread;
+
+let handle = thread::spawn(|| {
+    println!(&quot;Hello from a thread!&quot;);
+    42
+});
+
+let result = handle.join().unwrap();  // 42
+</code></pre>
+<h3 id="move-closures-for-threads">Move Closures for Threads</h3>
+<p>Threads can outlive the function that spawned them, so data must be <strong>moved</strong> in:</p>
+<pre><code class="language-rust">let name = String::from(&quot;Alice&quot;);
+
+let handle = thread::spawn(move || {
+    // name is MOVED into this thread -- the main thread can't use it anymore
+    println!(&quot;Hello, {name}!&quot;);
+});
+
+// println!(&quot;{name}&quot;);  // error: name was moved
+handle.join().unwrap();
+</code></pre>
+<h3 id="channels-message-passing">Channels (Message Passing)</h3>
+<pre><code class="language-rust">use std::sync::mpsc;  // multiple producer, single consumer
+
+let (tx, rx) = mpsc::channel();
+
+thread::spawn(move || {
+    tx.send(&quot;hello from thread&quot;).unwrap();
+    tx.send(&quot;another message&quot;).unwrap();
+});
+
+// Receive
+println!(&quot;{}&quot;, rx.recv().unwrap());  // blocks until message available
+
+// Iterate over received messages
+for msg in rx {
+    println!(&quot;{msg}&quot;);
+}
+</code></pre>
+<p>That <code>for msg in rx</code> loop ends only when all senders are dropped. This is a common beginner gotcha: if you keep an extra <code>tx</code> alive somewhere, the receiver may wait forever because the channel is still considered open.</p>
+<pre><code class="language-python">import queue
+import threading
+
+q = queue.Queue()
+
+def worker():
+    q.put(&quot;hello from thread&quot;)
+
+threading.Thread(target=worker).start()
+print(q.get())
+</code></pre>
+<h3 id="shared-state-with-arcmutexlttgt">Shared State with <code>Arc&lt;Mutex&amp;lt;T&amp;gt;&gt;</code></h3>
+<pre><code class="language-rust">use std::sync::{Arc, Mutex};
+
+let counter = Arc::new(Mutex::new(0));  // Arc = atomic reference count
+let mut handles = vec![];
+
+for _ in 0..10 {
+    let counter = Arc::clone(&amp;counter);  // clone the Arc (not the data)
+    let handle = thread::spawn(move || {
+        let mut num = counter.lock().unwrap();  // acquire lock
+        *num += 1;
+        // lock automatically released when num goes out of scope
+    });
+    handles.push(handle);
+}
+
+for handle in handles {
+    handle.join().unwrap();
+}
+
+println!(&quot;Result: {}&quot;, *counter.lock().unwrap());  // 10
+</code></pre>
+<pre><code class="language-python">import threading
+
+counter = 0
+lock = threading.Lock()
+
+def increment():
+    global counter
+    with lock:
+        counter += 1
+
+threads = [threading.Thread(target=increment) for _ in range(10)]
+for t in threads: t.start()
+for t in threads: t.join()
+print(counter)  # 10
+</code></pre>
+<p>Key difference: Rust <strong>won't compile</strong> if you try to share data across threads without proper synchronization. Python will happily let you create race conditions.</p>
+<h3 id="send-and-sync-traits"><code>Send</code> and <code>Sync</code> Traits</h3>
+<p>The compiler uses two marker traits to enforce thread safety:</p>
+<table>
+<thead>
+<tr>
+<th>Trait</th>
+<th>Meaning</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Send</code></td>
+<td>Ownership can be transferred across threads</td>
+<td>Most types</td>
+</tr>
+<tr>
+<td><code>Sync</code></td>
+<td>Can be referenced from multiple threads</td>
+<td>Types where <code>&amp;T</code> is <code>Send</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>Rc&amp;lt;T&amp;gt;</code> is <strong>not</strong> <code>Send</code> -- use <code>Arc&amp;lt;T&amp;gt;</code> for multi-threaded reference counting. The compiler will refuse to let you send an <code>Rc</code> to another thread.</p>
+<hr>
+<h2 id="11-asyncawait">11. Async/Await</h2>
+<p>Official docs: <a href="https://rust-lang.github.io/async-book/">Async Book</a>, <a href="https://doc.rust-lang.org/std/future/trait.Future.html"><code>Future</code></a></p>
+<h3 id="rust-async-vs-python-async">Rust Async vs Python Async</h3>
+<p>Rust async usually feels lower-level than Python async because the language gives you the syntax, but not the runtime. You choose an executor such as <code>tokio</code>, and that executor decides how tasks are scheduled, what timers and networking primitives exist, and what spawning APIs are available.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Python asyncio</th>
+<th>Rust async</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Runtime</td>
+<td>Built-in (<code>asyncio</code>)</td>
+<td>External crate (<code>tokio</code>, <code>async-std</code>)</td>
+</tr>
+<tr>
+<td>Threading</td>
+<td>Single-threaded event loop</td>
+<td>Multi-threaded by default (tokio)</td>
+</tr>
+<tr>
+<td>Colored functions</td>
+<td>Yes (<code>async def</code> infects callers)</td>
+<td>Yes (<code>async fn</code> infects callers)</td>
+</tr>
+<tr>
+<td>Futures</td>
+<td>Eager (start immediately)</td>
+<td><strong>Lazy</strong> (do nothing until <code>.await</code>ed)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="basic-async">Basic Async</h3>
+<pre><code class="language-rust">// Cargo.toml: tokio = { version = &quot;1&quot;, features = [&quot;full&quot;] }
+
+use tokio;
+
+async fn fetch_data(url: &amp;str) -&gt; Result&lt;String, reqwest::Error&gt; {
+    let body = reqwest::get(url).await?.text().await?;
+    Ok(body)
+}
+
+#[tokio::main]
+async fn main() {
+    let result = fetch_data(&quot;https://example.com&quot;).await;
+    match result {
+        Ok(body) =&gt; println!(&quot;Got {} bytes&quot;, body.len()),
+        Err(e) =&gt; eprintln!(&quot;Error: {e}&quot;),
+    }
+}
+</code></pre>
+<pre><code class="language-python">import asyncio
+import aiohttp
+
+async def fetch_data(url: str) -&gt; str:
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as resp:
+            return await resp.text()
+
+asyncio.run(fetch_data(&quot;https://example.com&quot;))
+</code></pre>
+<h3 id="futures-are-lazy">Futures Are Lazy</h3>
+<pre><code class="language-rust">async fn do_work() -&gt; i32 {
+    println!(&quot;Working...&quot;);
+    42
+}
+
+// This does NOTHING -- the future is not polled
+let future = do_work();
+
+// This actually executes it
+let result = future.await;
+</code></pre>
+<p>In Python, <code>asyncio.create_task()</code> starts execution eagerly. In Rust, futures don't execute until driven by <code>.await</code> or an executor.</p>
+<p>That laziness is powerful, but it also means "creating a future" and "running a task" are separate actions. A lot of early Rust async bugs come from constructing work and forgetting to actually await or spawn it.</p>
+<h3 id="concurrent-execution">Concurrent Execution</h3>
+<pre><code class="language-rust">use tokio;
+
+async fn task_a() -&gt; String { /* ... */ }
+async fn task_b() -&gt; i32 { /* ... */ }
+
+// Run concurrently (like asyncio.gather)
+let (a, b) = tokio::join!(task_a(), task_b());
+
+// Race (like asyncio.wait FIRST_COMPLETED)
+tokio::select! {
+    val = task_a() =&gt; println!(&quot;A finished first: {val}&quot;),
+    val = task_b() =&gt; println!(&quot;B finished first: {val}&quot;),
+}
+</code></pre>
+<h3 id="spawning-tasks">Spawning Tasks</h3>
+<pre><code class="language-rust">// Spawn a task (like asyncio.create_task)
+let handle = tokio::spawn(async {
+    expensive_computation().await
+});
+
+let result = handle.await.unwrap();
+</code></pre>
+<h3 id="streams-async-iterators">Streams (Async Iterators)</h3>
+<pre><code class="language-rust">use tokio_stream::StreamExt;
+
+let mut stream = tokio_stream::iter(vec![1, 2, 3]);
+
+while let Some(value) = stream.next().await {
+    println!(&quot;{value}&quot;);
+}
+</code></pre>
+<pre><code class="language-python">async for value in async_iterable:
+    print(value)
+</code></pre>
+<p>Streams are not built into the language the way Python's async iterators are. They are a trait-based ecosystem pattern, which is flexible but means you will often need helper crates and extension traits to get ergonomic stream combinators.</p>
+<hr>
+<h2 id="12-smart-pointers-interior-mutability">12. Smart Pointers &amp; Interior Mutability</h2>
+<p>Official docs: <a href="https://doc.rust-lang.org/book/ch15-00-smart-pointers.html">The Rust Book: Smart Pointers</a>, <a href="https://doc.rust-lang.org/book/ch15-04-rc.html">The Rust Book: <code>Rc&amp;lt;T&amp;gt;</code></a>, <a href="https://doc.rust-lang.org/book/ch15-05-interior-mutability.html">The Rust Book: Interior Mutability</a>, <a href="https://doc.rust-lang.org/std/sync/struct.Arc.html"><code>Arc</code></a>, <a href="https://doc.rust-lang.org/std/sync/struct.Mutex.html"><code>Mutex</code></a></p>
+<p>Most of the time, plain ownership and borrowing are enough. Smart pointers show up when the basic model is too strict for the shape of your data: recursive trees, shared ownership graphs, GUI state, caches, or thread-safe shared mutation.</p>
+<p>For Python developers, this section helps explain how Rust replaces the "everything is a heap object with references" model with several precise tools, each optimized for a different ownership problem.</p>
+<h3 id="boxlttgt-heap-allocation"><code>Box&amp;lt;T&amp;gt;</code> -- Heap Allocation</h3>
+<pre><code class="language-rust">// Allocate on the heap (like Python does for everything)
+let boxed = Box::new(42);
+println!(&quot;{boxed}&quot;);  // auto-derefs
+
+// Required for recursive types
+enum List {
+    Cons(i32, Box&lt;List&gt;),
+    Nil,
+}
+</code></pre>
+<h3 id="rclttgt-reference-counting-single-thread"><code>Rc&amp;lt;T&amp;gt;</code> -- Reference Counting (Single Thread)</h3>
+<p>Like Python's reference counting, but explicit:</p>
+<pre><code class="language-rust">use std::rc::Rc;
+
+let a = Rc::new(String::from(&quot;shared&quot;));
+let b = Rc::clone(&amp;a);  // increment ref count
+let c = Rc::clone(&amp;a);  // increment ref count
+
+println!(&quot;ref count: {}&quot;, Rc::strong_count(&amp;a));  // 3
+// All three point to the same data
+// Dropped when count reaches 0
+</code></pre>
+<h3 id="arclttgt-atomic-reference-counting-thread-safe"><code>Arc&amp;lt;T&amp;gt;</code> -- Atomic Reference Counting (Thread-Safe)</h3>
+<pre><code class="language-rust">use std::sync::Arc;
+
+let shared = Arc::new(vec![1, 2, 3]);
+let clone = Arc::clone(&amp;shared);
+
+thread::spawn(move || {
+    println!(&quot;{:?}&quot;, clone);  // safe to use in another thread
+});
+</code></pre>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>Rc&amp;lt;T&amp;gt;</code></th>
+<th><code>Arc&amp;lt;T&amp;gt;</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Thread-safe</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Overhead</td>
+<td>Lower</td>
+<td>Slightly higher (atomic operations)</td>
+</tr>
+<tr>
+<td>Use when</td>
+<td>Single-threaded shared ownership</td>
+<td>Multi-threaded shared ownership</td>
+</tr>
+</tbody>
+</table>
+<h3 id="interior-mutability-refcelllttgt-and-mutexlttgt">Interior Mutability -- <code>RefCell&amp;lt;T&amp;gt;</code> and <code>Mutex&amp;lt;T&amp;gt;</code></h3>
+<p>Sometimes you need to mutate data behind an immutable reference. Rust calls this "interior mutability" -- it moves borrow checking to <strong>runtime</strong>.</p>
+<p>That sounds like cheating, and in a sense it is: <code>RefCell&amp;lt;T&amp;gt;</code> and <code>Mutex&amp;lt;T&amp;gt;</code> are controlled escape hatches. They are useful specifically because most of Rust stays statically checked; when you reach for interior mutability, you should know what invariant the compiler can no longer enforce for you.</p>
+<pre><code class="language-rust">use std::cell::RefCell;
+
+let data = RefCell::new(vec![1, 2, 3]);
+
+// Borrow checking happens at RUNTIME
+{
+    let mut v = data.borrow_mut();  // panics if already borrowed
+    v.push(4);
+}
+
+let v = data.borrow();  // immutable borrow
+println!(&quot;{:?}&quot;, *v);
+</code></pre>
+<h3 id="common-smart-pointer-combinations">Common Smart Pointer Combinations</h3>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Box&amp;lt;T&amp;gt;</code></td>
+<td>Single owner, heap allocation</td>
+</tr>
+<tr>
+<td><code>Rc&amp;lt;T&amp;gt;</code></td>
+<td>Multiple owners, single thread</td>
+</tr>
+<tr>
+<td><code>Arc&amp;lt;T&amp;gt;</code></td>
+<td>Multiple owners, multi-threaded</td>
+</tr>
+<tr>
+<td><code>Rc&lt;RefCell&amp;lt;T&amp;gt;&gt;</code></td>
+<td>Multiple owners + mutation, single thread</td>
+</tr>
+<tr>
+<td><code>Arc&lt;Mutex&amp;lt;T&amp;gt;&gt;</code></td>
+<td>Multiple owners + mutation, multi-threaded</td>
+</tr>
+<tr>
+<td><code>Arc&lt;RwLock&amp;lt;T&amp;gt;&gt;</code></td>
+<td>Multiple owners + read-heavy mutation, multi-threaded</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="13-modules-crates-visibility">13. Modules, Crates &amp; Visibility</h2>
+<p>Official docs: <a href="https://doc.rust-lang.org/book/ch07-00-managing-growing-projects-with-packages-crates-and-modules.html">The Rust Book: Packages, Crates, and Modules</a>, <a href="https://doc.rust-lang.org/book/ch07-02-defining-modules-to-control-scope-and-privacy.html">The Rust Book: Defining Modules</a>, <a href="https://doc.rust-lang.org/reference/visibility-and-privacy.html">The Rust Reference: Visibility and Privacy</a>, <a href="https://doc.rust-lang.org/cargo/">The Cargo Book</a></p>
+<p>Rust's module system often feels more mechanical than Python's import system, but it is also much less ambiguous. Visibility, file layout, and crate boundaries are explicit enough that large projects stay easier to reason about once you learn the rules.</p>
+<h3 id="terminology">Terminology</h3>
+<table>
+<thead>
+<tr>
+<th>Rust</th>
+<th>Python Equivalent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Crate</td>
+<td>Package (installable unit)</td>
+</tr>
+<tr>
+<td>Module</td>
+<td>Module (a <code>.py</code> file or <code>__init__.py</code> directory)</td>
+</tr>
+<tr>
+<td><code>Cargo.toml</code></td>
+<td><code>pyproject.toml</code> / <code>requirements.txt</code></td>
+</tr>
+<tr>
+<td><code>Cargo.lock</code></td>
+<td><code>pip freeze</code> / lock file</td>
+</tr>
+<tr>
+<td>crates.io</td>
+<td>PyPI</td>
+</tr>
+<tr>
+<td><code>cargo</code></td>
+<td><code>pip</code> + <code>pytest</code> + <code>build</code> combined</td>
+</tr>
+</tbody>
+</table>
+<h3 id="module-system">Module System</h3>
+<pre><code class="language-text">my_project/
+├── Cargo.toml
+├── src/
+│   ├── main.rs          # binary entry point
+│   ├── lib.rs           # library root
+│   ├── models/
+│   │   ├── mod.rs       # like __init__.py
+│   │   ├── user.rs
+│   │   └── post.rs
+│   └── utils.rs
+</code></pre>
+<pre><code class="language-rust">// src/lib.rs
+pub mod models;   // declares the models module
+mod utils;        // private module
+
+// src/models/mod.rs
+pub mod user;
+pub mod post;
+
+// src/models/user.rs
+pub struct User {
+    pub name: String,     // pub = public field
+    email: String,        // private field (default)
+}
+</code></pre>
+<p>The key thing to notice is that files do not become public just because they exist. You expose modules and items deliberately with <code>mod</code> and <code>pub</code>, which keeps package boundaries tighter than the usual Python convention of "everything is importable unless we politely say otherwise."</p>
+<h3 id="visibility">Visibility</h3>
+<pre><code class="language-rust">pub struct Foo {       // public struct
+    pub x: i32,        // public field
+    y: i32,            // private field (crate-only)
+}
+
+pub fn public_fn() {}  // accessible to external crates
+fn private_fn() {}     // only within this module
+
+pub(crate) fn crate_fn() {}   // accessible anywhere in this crate
+pub(super) fn parent_fn() {}  // accessible in parent module
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Rust</th>
+<th>Python</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pub</code></td>
+<td>No prefix (public by convention)</td>
+</tr>
+<tr>
+<td>No prefix (private)</td>
+<td><code>_single_underscore</code> (convention only)</td>
+</tr>
+<tr>
+<td><code>pub(crate)</code></td>
+<td>No direct equivalent</td>
+</tr>
+</tbody>
+</table>
+<h3 id="cargo-commands">Cargo Commands</h3>
+<pre><code class="language-bash">cargo new my_project     # create new project
+cargo build              # compile
+cargo build --release    # optimized build
+cargo run                # build and run
+cargo test               # run tests
+cargo check              # type-check without building (fast)
+cargo clippy             # linter (like pylint/ruff)
+cargo fmt                # formatter (like black)
+cargo doc --open         # generate and view docs
+cargo add serde          # add dependency (like pip install)
+</code></pre>
+<p>In practice, <code>cargo check</code>, <code>cargo fmt</code>, <code>cargo clippy</code>, and <code>cargo test</code> become your default inner loop. One reason Rust projects feel consistent across teams is that these workflows are standardized instead of being assembled ad hoc from third-party tools.</p>
+<hr>
+<h2 id="14-testing">14. Testing</h2>
+<p>Official docs: <a href="https://doc.rust-lang.org/book/ch11-00-testing.html">The Rust Book: Writing Automated Tests</a>, <a href="https://doc.rust-lang.org/book/ch11-01-writing-tests.html">The Rust Book: How to Write Tests</a>, <a href="https://doc.rust-lang.org/cargo/">The Cargo Book</a></p>
+<p>Rust testing is intentionally boring in a good way. The language and toolchain assume tests live alongside the code or in a standard <code>tests/</code> directory, and <code>cargo test</code> knows how to run all of it without extra framework setup.</p>
+<h3 id="built-in-testing">Built-in Testing</h3>
+<pre><code class="language-rust">// In the same file as the code being tested
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_addition() {
+        assert_eq!(add(2, 3), 5);
+    }
+
+    #[test]
+    fn test_greeting() {
+        let result = greet(&quot;Alice&quot;);
+        assert!(result.contains(&quot;Alice&quot;));
+    }
+
+    #[test]
+    #[should_panic(expected = &quot;division by zero&quot;)]
+    fn test_divide_by_zero() {
+        divide(1, 0);
+    }
+
+    #[test]
+    fn test_result() -&gt; Result&lt;(), String&gt; {
+        let result = parse_number(&quot;42&quot;)?;
+        assert_eq!(result, 42);
+        Ok(())
+    }
+}
+</code></pre>
+<p>Unit tests in the same file can access private items through <code>use super::*</code>, which makes it practical to test internal helpers without turning your crate's public API into a test seam.</p>
+<h3 id="assertion-macros">Assertion Macros</h3>
+<pre><code class="language-rust">assert!(condition);                        // like Python's assert
+assert_eq!(left, right);                   // like assert left == right
+assert_ne!(left, right);                   // like assert left != right
+assert_eq!(a, b, &quot;custom message: {}&quot;, x); // with message
+</code></pre>
+<h3 id="integration-tests">Integration Tests</h3>
+<pre><code class="language-text">my_project/
+├── src/
+│   └── lib.rs
+├── tests/              # integration tests directory
+│   ├── api_tests.rs    # each file is a separate test binary
+│   └── db_tests.rs
+</code></pre>
+<pre><code class="language-rust">// tests/api_tests.rs
+use my_project::api;  // imports from your library crate
+
+#[test]
+fn test_api_endpoint() {
+    let response = api::handle_request(&quot;/users&quot;);
+    assert_eq!(response.status, 200);
+}
+</code></pre>
+<p>Integration tests compile as separate crates, so they only see your public API. That makes them a good fit for higher-level behavior checks, similar to testing your Python package from the outside instead of reaching into implementation details.</p>
+<h3 id="running-tests">Running Tests</h3>
+<pre><code class="language-bash">cargo test                          # all tests
+cargo test test_name                # specific test
+cargo test -- --nocapture           # show println output
+cargo test --test api_tests         # specific integration test file
+cargo test -- --ignored             # run ignored tests
+</code></pre>
+<hr>
+<h2 id="15-strings-yes-they-deserve-their-own-section">15. Strings (Yes, They Deserve Their Own Section)</h2>
+<p>Official docs: <a href="https://doc.rust-lang.org/book/ch08-02-strings.html">The Rust Book: Storing UTF-8 Encoded Text with Strings</a>, <a href="https://doc.rust-lang.org/std/string/struct.String.html"><code>String</code></a>, <a href="https://doc.rust-lang.org/std/primitive.str.html"><code>str</code></a></p>
+<p>Python lets you mostly ignore the difference between owned text, borrowed text, bytes, Unicode scalar values, and display width until edge cases appear. Rust makes those distinctions explicit, which is painful at first but prevents a lot of vague "string-ish" APIs.</p>
+<p>If Rust strings feel awkward, it is usually because the language is forcing you to answer a question Python let you postpone: do you own this text, are you borrowing it, or are you operating on encoded bytes?</p>
+<h3 id="why-strings-are-hard-in-rust">Why Strings Are Hard in Rust</h3>
+<p>Python strings are simple: <code>str</code> is an immutable sequence of Unicode characters. Rust has <strong>two</strong> main string types, and the distinction matters.</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>String</code></th>
+<th><code>&amp;str</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Ownership</td>
+<td>Owned, heap-allocated</td>
+<td>Borrowed reference (slice)</td>
+</tr>
+<tr>
+<td>Mutability</td>
+<td>Growable, modifiable</td>
+<td>Immutable view</td>
+</tr>
+<tr>
+<td>Analogy</td>
+<td><code>list</code> (owned, growable)</td>
+<td>A slice/view into a string</td>
+</tr>
+<tr>
+<td>Created by</td>
+<td><code>String::from("hi")</code>, <code>.to_string()</code></td>
+<td>String literals <code>"hi"</code>, slicing</td>
+</tr>
+<tr>
+<td>Use in structs</td>
+<td>Yes (owns its data)</td>
+<td>Needs lifetime annotations</td>
+</tr>
+<tr>
+<td>As function param</td>
+<td>Prefer <code>&amp;str</code> (accepts both)</td>
+<td>Most common parameter type</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-rust">let owned: String = String::from(&quot;hello&quot;);     // heap-allocated, owned
+let borrowed: &amp;str = &quot;hello&quot;;                  // points to binary data, borrowed
+let slice: &amp;str = &amp;owned[0..3];                // &quot;hel&quot; -- borrows from owned
+
+// Converting between them
+let s: String = borrowed.to_string();          // &amp;str -&gt; String
+let s: String = String::from(borrowed);        // &amp;str -&gt; String
+let b: &amp;str = &amp;owned;                          // String -&gt; &amp;str (auto deref)
+</code></pre>
+<h3 id="strings-are-utf-8-not-indexable-by-character">Strings Are UTF-8 (Not Indexable by Character)</h3>
+<pre><code class="language-rust">let s = String::from(&quot;hello&quot;);
+// let c = s[0];  // ERROR: Rust strings are UTF-8 bytes, not chars
+
+// You must be explicit about what you want:
+let bytes = s.as_bytes();         // &amp;[u8]
+let chars: Vec&lt;char&gt; = s.chars().collect();  // Unicode scalar values
+let c = &amp;s[0..1];                 // byte slice (panics if not on char boundary)
+</code></pre>
+<pre><code class="language-python">s = &quot;hello&quot;
+c = s[0]  # 'h' -- simple indexing
+</code></pre>
+<h3 id="common-string-operations">Common String Operations</h3>
+<pre><code class="language-rust">// Concatenation
+let s = String::from(&quot;hello&quot;) + &quot; &quot; + &quot;world&quot;;  // String + &amp;str
+let s = format!(&quot;{} {}&quot;, &quot;hello&quot;, &quot;world&quot;);       // preferred
+
+// Formatting (like f-strings)
+let name = &quot;Alice&quot;;
+let age = 30;
+let msg = format!(&quot;Hi, I'm {name} and I'm {age} years old&quot;);
+
+// Methods
+s.len();                    // byte length (not char count!)
+s.chars().count();          // character count
+s.contains(&quot;ello&quot;);         // true
+s.starts_with(&quot;hel&quot;);       // true
+s.replace(&quot;hello&quot;, &quot;Hi&quot;);   // &quot;Hi world&quot;
+s.trim();                   // strip whitespace
+s.split_whitespace();       // iterator over words
+s.to_uppercase();           // &quot;HELLO WORLD&quot;
+s.is_empty();               // false
+
+// Building strings
+let mut s = String::new();
+s.push('h');               // single char
+s.push_str(&quot;ello&quot;);        // string slice
+</code></pre>
+<p>Notice how often these APIs separate bytes, chars, slices, and owned strings. That is the recurring theme of Rust text handling: the language wants you to be precise about what unit you are manipulating.</p>
+<h3 id="when-to-use-which">When to Use Which</h3>
+<pre><code class="language-rust">// Function parameters: accept &amp;str (works with both String and &amp;str)
+fn greet(name: &amp;str) -&gt; String {
+    format!(&quot;Hello, {name}!&quot;)
+}
+
+greet(&quot;Alice&quot;);                           // &amp;str literal
+greet(&amp;String::from(&quot;Alice&quot;));            // &amp;String auto-derefs to &amp;str
+
+// Struct fields: use String (owns the data)
+struct User {
+    name: String,  // not &amp;str (would need lifetime)
+}
+</code></pre>
+<hr>
+<h2 id="16-common-pitfalls-for-python-developers">16. Common Pitfalls for Python Developers</h2>
+<p>Official docs: <a href="https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html">The Rust Book: Understanding Ownership</a>, <a href="https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html">The Rust Book: References and Borrowing</a>, <a href="https://doc.rust-lang.org/book/ch09-00-error-handling.html">The Rust Book: Error Handling</a>, <a href="https://doc.rust-lang.org/book/ch08-02-strings.html">The Rust Book: Strings</a></p>
+<h3 id="1-fighting-the-borrow-checker">1. Fighting the Borrow Checker</h3>
+<p>The most common frustration. You'll try to do something that feels natural in Python and the compiler will reject it.</p>
+<pre><code class="language-rust">// This won't compile:
+let mut v = vec![1, 2, 3];
+let first = &amp;v[0];     // immutable borrow
+v.push(4);              // mutable borrow -- ERROR: can't borrow mutably
+println!(&quot;{first}&quot;);    // immutable borrow still in use
+
+// Fix: restructure so borrows don't overlap
+let mut v = vec![1, 2, 3];
+let first = v[0];       // COPY the value (i32 is Copy)
+v.push(4);
+println!(&quot;{first}&quot;);
+</code></pre>
+<h3 id="2-expecting-everything-to-be-a-reference">2. Expecting Everything to Be a Reference</h3>
+<pre><code class="language-python"># Python: everything is a reference, sharing is free
+users = [user1, user2]  # both user1 and list share the same objects
+</code></pre>
+<pre><code class="language-rust">// Rust: you must choose ownership
+let users = vec![user1, user2];  // user1 and user2 are MOVED into vec
+// user1 is now invalid!
+
+// If you need shared access, clone or use references
+let users = vec![user1.clone(), user2.clone()];  // explicit
+</code></pre>
+<h3 id="3-string-confusion">3. String Confusion</h3>
+<pre><code class="language-rust">// This is &amp;str (a borrowed string slice)
+let s = &quot;hello&quot;;
+
+// This is String (an owned, heap-allocated string)
+let s = String::from(&quot;hello&quot;);
+
+// You'll see lots of .to_string(), .as_str(), &amp;, format!()
+// until it becomes natural
+</code></pre>
+<h3 id="4-no-exceptions-means-lots-of-and-match">4. No Exceptions Means Lots of <code>?</code> and <code>match</code></h3>
+<pre><code class="language-rust">// Every fallible operation returns Result -- you must handle it
+let file = File::open(&quot;data.txt&quot;)?;
+let content = read_to_string(&amp;file)?;
+let parsed: Config = serde_json::from_str(&amp;content)?;
+</code></pre>
+<h3 id="5-forgetting-mut">5. Forgetting <code>mut</code></h3>
+<pre><code class="language-rust">let v = vec![1, 2, 3];
+// v.push(4);  // ERROR: v is not mutable
+
+let mut v = vec![1, 2, 3];
+v.push(4);     // fine
+</code></pre>
+<h3 id="6-confusing-iter-into_iter-iter_mut">6. Confusing <code>iter()</code>, <code>into_iter()</code>, <code>iter_mut()</code></h3>
+<pre><code class="language-rust">let v = vec![1, 2, 3];
+
+v.iter()        // yields &amp;i32 (borrows, v still usable)
+v.iter_mut()    // yields &amp;mut i32 (mutable borrows)
+v.into_iter()   // yields i32 (consumes v -- v is gone)
+
+// for x in &amp;v     == v.iter()
+// for x in &amp;mut v == v.iter_mut()
+// for x in v      == v.into_iter()
+</code></pre>
+<h3 id="7-trying-to-store-references-in-structs">7. Trying to Store References in Structs</h3>
+<pre><code class="language-rust">// Instinct from Python: &quot;I'll just store a reference&quot;
+struct Cache {
+    data: &amp;Vec&lt;u8&gt;,  // ERROR: missing lifetime
+}
+
+// Fix 1: Own the data
+struct Cache {
+    data: Vec&lt;u8&gt;,
+}
+
+// Fix 2: Use lifetime (only when borrowing is truly needed)
+struct Cache&lt;'a&gt; {
+    data: &amp;'a Vec&lt;u8&gt;,
+}
+</code></pre>
+<p><strong>Rule of thumb:</strong> When in doubt, own the data. Use <code>String</code> not <code>&amp;str</code>, <code>Vec&amp;lt;T&amp;gt;</code> not <code>&amp;[T]</code> in structs.</p>
+<h3 id="8-the-turbofish">8. The Turbofish <code>::&lt;&gt;</code></h3>
+<pre><code class="language-rust">// Sometimes Rust can't infer types -- you need the turbofish
+let numbers: Vec&lt;i32&gt; = &quot;1 2 3&quot;.split(' ')
+    .map(|s| s.parse::&lt;i32&gt;().unwrap())  // ::&lt;i32&gt; is the turbofish
+    .collect();
+
+// Or annotate the variable type instead
+let numbers: Vec&lt;i32&gt; = &quot;1 2 3&quot;.split(' ')
+    .map(|s| s.parse().unwrap())
+    .collect();
+</code></pre>
+<hr>
+<h2 id="quick-reference-cheat-sheet">Quick Reference Cheat Sheet</h2>
+<p>Official docs: <a href="https://doc.rust-lang.org/book/">The Rust Book</a>, <a href="https://doc.rust-lang.org/std/">Standard Library</a>, <a href="https://doc.rust-lang.org/reference/">Rust Reference</a></p>
+<table>
+<thead>
+<tr>
+<th>Python</th>
+<th>Rust</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>class Foo</code></td>
+<td><code>struct Foo</code> + <code>impl Foo</code></td>
+</tr>
+<tr>
+<td><code>self.method()</code></td>
+<td><code>self.method()</code> (receiver is <code>&amp;self</code> / <code>&amp;mut self</code>)</td>
+</tr>
+<tr>
+<td><code>try/except</code></td>
+<td><code>Result&lt;T, E&gt;</code> + <code>?</code> operator</td>
+</tr>
+<tr>
+<td><code>with open() as f</code></td>
+<td><code>let f = File::open()?;</code> (no context managers, use RAII)</td>
+</tr>
+<tr>
+<td><code>None</code></td>
+<td><code>Option::None</code></td>
+</tr>
+<tr>
+<td><code>isinstance(x, Foo)</code></td>
+<td><code>match</code> / <code>if let</code> / <code>x.downcast_ref::&amp;lt;Foo&amp;gt;()</code></td>
+</tr>
+<tr>
+<td><code>list</code></td>
+<td><code>Vec&amp;lt;T&amp;gt;</code></td>
+</tr>
+<tr>
+<td><code>dict</code></td>
+<td><code>HashMap&lt;K, V&gt;</code></td>
+</tr>
+<tr>
+<td><code>set</code></td>
+<td><code>HashSet&amp;lt;T&amp;gt;</code></td>
+</tr>
+<tr>
+<td><code>tuple</code></td>
+<td><code>(T1, T2, T3)</code> (heterogeneous, fixed-size)</td>
+</tr>
+<tr>
+<td><code>f"Hello {name}"</code></td>
+<td><code>format!("Hello {name}")</code></td>
+</tr>
+<tr>
+<td><code>print()</code></td>
+<td><code>println!()</code></td>
+</tr>
+<tr>
+<td><code>lambda x: x + 1</code></td>
+<td><code>\|x\| x + 1</code></td>
+</tr>
+<tr>
+<td><code>map(f, list)</code></td>
+<td><code>iter.map(f)</code></td>
+</tr>
+<tr>
+<td><code>filter(f, list)</code></td>
+<td><code>iter.filter(f)</code></td>
+</tr>
+<tr>
+<td><code>sum(list)</code></td>
+<td><code>iter.sum()</code></td>
+</tr>
+<tr>
+<td><code>[x*2 for x in lst]</code></td>
+<td><code>lst.iter().map(\|x\| x*2).collect()</code></td>
+</tr>
+<tr>
+<td><code>threading.Thread</code></td>
+<td><code>std::thread::spawn</code></td>
+</tr>
+<tr>
+<td><code>threading.Lock</code></td>
+<td><code>std::sync::Mutex</code></td>
+</tr>
+<tr>
+<td><code>asyncio.gather</code></td>
+<td><code>tokio::join!</code></td>
+</tr>
+<tr>
+<td><code>pip install</code></td>
+<td><code>cargo add</code></td>
+</tr>
+<tr>
+<td><code>pytest</code></td>
+<td><code>cargo test</code> (built-in)</td>
+</tr>
+<tr>
+<td><code>black</code></td>
+<td><code>cargo fmt</code></td>
+</tr>
+<tr>
+<td><code>ruff</code> / <code>pylint</code></td>
+<td><code>cargo clippy</code></td>
+</tr>
+<tr>
+<td><code>copy.deepcopy(x)</code></td>
+<td><code>x.clone()</code></td>
+</tr>
+<tr>
+<td><code>type()</code></td>
+<td>Compile-time types; runtime via <code>TypeId</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="essential-crates-the-standard-library-everyone-uses">Essential Crates (The "Standard Library" Everyone Uses)</h2>
+<p>Official docs: <a href="https://doc.rust-lang.org/cargo/">The Cargo Book</a>, <a href="https://doc.rust-lang.org/book/">The Rust Book</a></p>
+<p>These are not literally part of the standard library. They are the crates you will see so often that they function like default infrastructure across much of the ecosystem. Knowing them early makes real-world Rust code much less intimidating.</p>
+<table>
+<thead>
+<tr>
+<th>Crate</th>
+<th>Purpose</th>
+<th>Python Equivalent</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>serde</code> + <code>serde_json</code></td>
+<td>Serialization/deserialization</td>
+<td><code>json</code> / <code>dataclasses</code></td>
+</tr>
+<tr>
+<td><code>tokio</code></td>
+<td>Async runtime</td>
+<td><code>asyncio</code></td>
+</tr>
+<tr>
+<td><code>reqwest</code></td>
+<td>HTTP client</td>
+<td><code>requests</code> / <code>aiohttp</code></td>
+</tr>
+<tr>
+<td><code>clap</code></td>
+<td>CLI argument parsing</td>
+<td><code>argparse</code> / <code>click</code></td>
+</tr>
+<tr>
+<td><code>anyhow</code></td>
+<td>Easy error handling (apps)</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td><code>thiserror</code></td>
+<td>Custom error types (libs)</td>
+<td>Custom exception classes</td>
+</tr>
+<tr>
+<td><code>tracing</code></td>
+<td>Structured logging</td>
+<td><code>logging</code></td>
+</tr>
+<tr>
+<td><code>rayon</code></td>
+<td>Data parallelism</td>
+<td><code>multiprocessing.Pool</code></td>
+</tr>
+<tr>
+<td><code>regex</code></td>
+<td>Regular expressions</td>
+<td><code>re</code></td>
+</tr>
+<tr>
+<td><code>chrono</code></td>
+<td>Date/time</td>
+<td><code>datetime</code></td>
+</tr>
+<tr>
+<td><code>rand</code></td>
+<td>Random numbers</td>
+<td><code>random</code></td>
+</tr>
+<tr>
+<td><code>itertools</code></td>
+<td>Extra iterator methods</td>
+<td><code>itertools</code></td>
+</tr>
+<tr>
+<td><code>sqlx</code></td>
+<td>Async SQL</td>
+<td><code>asyncpg</code> / <code>SQLAlchemy</code></td>
+</tr>
+<tr>
+<td><code>axum</code> / <code>actix-web</code></td>
+<td>Web frameworks</td>
+<td><code>FastAPI</code> / <code>Flask</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="17-rust-in-practice-anatomy-of-a-real-scraper">17. Rust In Practice — Anatomy of a Real Scraper</h2>
+<p>This section walks through the design choices in a production Rust application (csearch-rscraper, a congressional data scraper) and maps each pattern back to the Rust concepts covered earlier. The scraper parses tens of thousands of XML and JSON files from Congress.gov, writes them to PostgreSQL, and manages change detection via SHA-256 hashing — all using async Rust with Tokio.</p>
+<h3 id="171-project-structure-and-module-system">17.1 Project Structure and Module System</h3>
+<p>The scraper's <code>src/</code> directory:</p>
+<pre><code class="language-text">src/
+  main.rs              # Entry point, mod declarations, orchestration
+  config.rs            # Environment-based configuration (like pydantic.BaseSettings)
+  models.rs            # All data structs: DB params, parsed intermediaries, serde models
+  db.rs                # All SQL operations (sqlx, async PostgreSQL)
+  hashes.rs            # SHA-256 file change detection with bincode persistence
+  stats.rs             # Simple run counters (like a @dataclass)
+  util.rs              # Pure helper functions (date parsing, string conversion)
+  python.rs            # Spawning Python subprocesses via Tokio
+  redis_cache.rs       # Redis cache invalidation after DB writes
+  bills.rs             # Bill pipeline orchestrator (discovery, parallel parse, status logic)
+  bills_parse_xml.rs   # XML bill parsing (two schema versions)
+  bills_parse_json.rs  # JSON bill parsing (legacy format)
+  bills_write.rs       # Bill DB write strategies (incremental vs seed)
+  votes.rs             # Vote pipeline (discovery, parse, write)
+</code></pre>
+<p>In Python, you'd just create files and import them. In Rust, every file must be explicitly declared in <code>main.rs</code>:</p>
+<pre><code class="language-rust">mod bills;
+mod bills_parse_json;
+mod bills_parse_xml;
+mod bills_write;
+mod config;
+mod db;
+mod hashes;
+mod models;
+mod python;
+mod redis_cache;
+mod stats;
+mod util;
+mod votes;
+</code></pre>
+<p>Without these <code>mod</code> declarations, the compiler doesn't know the files exist. This is the key difference from Python's auto-discovery: Rust modules are opt-in, not opt-out. The upside is that you always know exactly what's in your crate by reading the root file.</p>
+<p>The scraper uses <code>pub(crate)</code> visibility on internal functions like <code>parse_bill_xml</code> and <code>insert_parsed_bill_in_tx</code>. This means "visible anywhere inside this crate, but not to external consumers." Python has no real equivalent — <code>_underscore</code> is just a convention. Rust enforces it at compile time.</p>
+<h3 id="172-cargotoml-dependency-management">17.2 Cargo.toml — Dependency Management</h3>
+<pre><code class="language-toml">[package]
+name = &quot;csearch-rscraper&quot;
+version = &quot;0.1.0&quot;
+edition = &quot;2024&quot;
+
+[dependencies]
+anyhow = &quot;1&quot;
+bincode = &quot;1&quot;
+chrono = { version = &quot;0.4&quot;, features = [&quot;serde&quot;] }
+dotenvy = &quot;0.15&quot;
+quick-xml = { version = &quot;0.37&quot;, features = [&quot;serialize&quot;] }
+redis = { version = &quot;0.27&quot;, features = [&quot;aio&quot;, &quot;tokio-comp&quot;] }
+serde = { version = &quot;1&quot;, features = [&quot;derive&quot;] }
+serde_json = &quot;1&quot;
+sha2 = &quot;0.10&quot;
+sqlx = { version = &quot;0.8&quot;, features = [&quot;runtime-tokio-rustls&quot;, &quot;postgres&quot;, &quot;chrono&quot;] }
+tokio = { version = &quot;1&quot;, features = [&quot;full&quot;] }
+tracing = &quot;0.1&quot;
+tracing-subscriber = { version = &quot;0.3&quot;, features = [&quot;env-filter&quot;, &quot;json&quot;] }
+
+[dev-dependencies]
+tempfile = &quot;3&quot;
+</code></pre>
+<p>Key patterns a Python developer should notice:</p>
+<ul>
+<li><strong>Feature flags</strong> (<code>features = ["derive"]</code>). Rust crates use compile-time feature flags to enable optional functionality. <code>serde</code> without <code>derive</code> gives you the traits but not the <code>#[derive(Serialize, Deserialize)]</code> macros. <code>sqlx</code> without <code>postgres</code> doesn't include the PostgreSQL driver. This is like Python extras (<code>pip install sqlalchemy[postgresql]</code>), but enforced at compile time and with finer granularity.</li>
+<li><strong><code>[dev-dependencies]</code></strong> are only compiled for tests. <code>tempfile</code> creates temporary directories for test fixtures. In Python, you'd put test dependencies in a <code>[project.optional-dependencies]</code> group or a separate <code>requirements-dev.txt</code>.</li>
+<li><strong>No version pinning to exact versions</strong>. <code>anyhow = "1"</code> means "any 1.x.y". <code>Cargo.lock</code> (committed to the repo) pins exact versions, like <code>pip freeze</code>. The <code>Cargo.toml</code> specifies compatibility ranges; the lock file ensures reproducibility.</li>
+<li><strong>Edition = "2024"</strong>. Rust editions are backwards-compatible language version milestones (like Python 3.10 vs 3.12). They let the language evolve without breaking old code. Each crate declares which edition it uses.</li>
+</ul>
+<h3 id="173-the-async-runtime-tokio">17.3 The Async Runtime: Tokio</h3>
+<p>The scraper's <code>main.rs</code> starts with:</p>
+<pre><code class="language-rust">#[tokio::main]
+async fn main() -&gt; ExitCode {
+    let _ = dotenvy::dotenv();
+    init_tracing();
+    match run().await {
+        Ok(()) =&gt; ExitCode::SUCCESS,
+        Err(err) =&gt; {
+            error!(error = %err, &quot;scraper run failed&quot;);
+            ExitCode::FAILURE
+        }
+    }
+}
+</code></pre>
+<p>In Python, you'd write <code>asyncio.run(main())</code>. Rust doesn't ship an async runtime — you bring your own. <code>#[tokio::main]</code> is a macro that creates a multi-threaded Tokio runtime and runs your async main inside it.</p>
+<p>The <code>ExitCode</code> return type is Rust's way of setting the process exit code. Python uses <code>sys.exit(1)</code>. Rust makes it a return value, which is more composable and harder to forget.</p>
+<p>The <code>run()</code> function returns <code>anyhow::Result&lt;()&gt;</code> — either success (no value) or an error with a full context chain. Every <code>?</code> in the function body propagates errors upward. This is the Rust equivalent of letting exceptions bubble up in Python, but it's explicit at every call site.</p>
+<h3 id="174-configuration-structs-over-dicts">17.4 Configuration: Structs Over Dicts</h3>
+<p>Python developers typically use <code>os.getenv()</code> or <code>pydantic.BaseSettings</code>. The scraper uses a <code>Config</code> struct:</p>
+<pre><code class="language-rust">#[derive(Debug, Clone)]
+pub struct Config {
+    pub congress_dir: PathBuf,
+    pub postgres_uri: String,
+    pub redis_url: String,
+    pub db_user: String,
+    pub db_password: String,
+    pub db_name: String,
+    pub db_write_concurrency: u32,
+    pub bill_write_mode: BillWriteMode,
+    pub db_port: u16,
+    pub run_votes: bool,
+    pub run_bills: bool,
+    pub target_congress: i32,
+    pub log_level: String,
+}
+</code></pre>
+<p>Every field has an explicit type. <code>u16</code> for port numbers (0–65535), <code>u32</code> for concurrency limits, <code>PathBuf</code> for filesystem paths, <code>bool</code> for feature flags. Python's <code>os.getenv()</code> returns <code>str | None</code> and you cast manually. Rust forces you to parse and validate at load time.</p>
+<p>The <code>Config::load()</code> method demonstrates several Rust patterns:</p>
+<pre><code class="language-rust">let db_port: u16 = env::var(&quot;DB_PORT&quot;)
+    .ok()                              // Result -&gt; Option (discard error)
+    .and_then(|v| v.parse().ok())      // parse string to u16, discard error
+    .unwrap_or(5432);                  // default if missing or unparseable
+</code></pre>
+<p>This is the Rust equivalent of <code>int(os.getenv("DB_PORT", "5432"))</code>, but it handles three failure modes (missing var, empty string, non-numeric string) without any exceptions.</p>
+<p>The <code>BillWriteMode</code> enum is a good example of Rust enums as configuration:</p>
+<pre><code class="language-rust">#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BillWriteMode {
+    Incremental,
+    Seed,
+}
+</code></pre>
+<p>In Python, you'd use a string (<code>"incremental"</code> or <code>"seed"</code>) and hope nobody typos it. In Rust, the compiler ensures you only ever have one of two valid values. The <code>match</code> in <code>process_bills</code> is exhaustive — if you add a third variant, every <code>match</code> that doesn't handle it becomes a compile error.</p>
+<h3 id="175-serde-the-serialization-framework">17.5 Serde: The Serialization Framework</h3>
+<p>The <code>models.rs</code> file is the heart of the scraper's type system. It demonstrates serde's power for parsing heterogeneous data formats.</p>
+<h4 id="derive-based-deserialization">Derive-based deserialization</h4>
+<pre><code class="language-rust">#[derive(Debug, Deserialize, Default, Clone)]
+pub struct BillXmlNew {
+    #[serde(rename = &quot;number&quot;, default)]
+    pub number: String,
+    #[serde(rename = &quot;billType&quot;, default)]
+    pub bill_type: String,
+    #[serde(rename = &quot;introducedDate&quot;, default)]
+    pub introduced_at: String,
+    // ...
+}
+</code></pre>
+<p>This is like a Pydantic model with <code>Field(alias="number")</code>, but it works for JSON, XML, YAML, TOML, bincode, and any other format serde supports — all from the same struct definition. The <code>#[serde(default)]</code> annotation means "use <code>Default::default()</code> if the field is missing," which for <code>String</code> is <code>""</code>.</p>
+<h4 id="handling-schema-evolution">Handling schema evolution</h4>
+<p>Congress.gov changed their XML schema over the years. The scraper handles this with two struct definitions (<code>BillXmlNew</code> and <code>BillXmlLegacy</code>) and a runtime fallback:</p>
+<pre><code class="language-rust">let root_new: BillXmlRootNew = from_str(&amp;data)?;
+if !root_new.bill.number.is_empty() {
+    // New format — use it
+    return build_parsed_bill(/* ... */);
+}
+// Fall back to legacy format
+let root_legacy: BillXmlRootLegacy = from_str(&amp;data)?;
+</code></pre>
+<p>In Python, you'd probably use a single dict and check for key existence. In Rust, having two typed structs means the compiler verifies you handle both schemas correctly. The cost is more code; the benefit is that a schema change in the XML won't silently produce wrong data.</p>
+<h4 id="custom-deserializer-for-null-or-default">Custom deserializer for null-or-default</h4>
+<pre><code class="language-rust">fn null_or_default&lt;'de, D, T&gt;(deserializer: D) -&gt; Result&lt;T, D::Error&gt;
+where
+    D: Deserializer&lt;'de&gt;,
+    T: Deserialize&lt;'de&gt; + Default,
+{
+    let value = Option::&lt;T&gt;::deserialize(deserializer)?;
+    Ok(value.unwrap_or_default())
+}
+</code></pre>
+<p>This handles JSON fields that can be either a value or <code>null</code>, converting <code>null</code> to the type's default. The lifetime <code>'de</code> is the deserializer's lifetime — it tells the compiler how long the borrowed input data lives. You'd never think about this in Python because the GC handles it.</p>
+<h4 id="heterogeneous-json-with-serde_jsonvalue">Heterogeneous JSON with <code>serde_json::Value</code></h4>
+<p>The vote JSON has a <code>votes</code> field where values are arrays containing mixed types (objects and strings):</p>
+<pre><code class="language-rust">pub votes: std::collections::HashMap&lt;String, Vec&lt;Value&gt;&gt;,
+</code></pre>
+<p><code>Value</code> is serde's "untyped JSON" type — like <code>Any</code> in Python or <code>any</code> in TypeScript. The scraper parses the array elements manually:</p>
+<pre><code class="language-rust">for item in items {
+    match item {
+        serde_json::Value::Null | serde_json::Value::String(_) =&gt; continue,
+        value =&gt; members.push(serde_json::from_value(value)?),
+    }
+}
+</code></pre>
+<p>This pattern — parse the container with types, then handle heterogeneous elements with pattern matching — is idiomatic Rust for messy real-world data.</p>
+<h3 id="176-error-handling-in-practice">17.6 Error Handling in Practice</h3>
+<p>The scraper uses <code>anyhow</code> throughout, which is the right choice for application code (as opposed to library code where you'd use <code>thiserror</code>).</p>
+<h4 id="context-chains">Context chains</h4>
+<p>Every fallible operation gets a <code>.context()</code> or <code>.with_context()</code> call:</p>
+<pre><code class="language-rust">let pool = PgPoolOptions::new()
+    .max_connections(cfg.db_write_concurrency)
+    .connect(&amp;cfg.postgres_dsn())
+    .await
+    .context(&quot;connect to postgres&quot;)?;
+</code></pre>
+<p>Without <code>.context()</code>, a connection failure would produce a raw TCP error. With it, you get: <code>"connect to postgres: connection refused"</code>. This is like Python's <code>raise RuntimeError("connect to postgres") from e</code>, but it's a one-liner.</p>
+<h4 id="non-fatal-errors-with-warn">Non-fatal errors with <code>warn!</code></h4>
+<p>The scraper distinguishes fatal errors (propagated with <code>?</code>) from non-fatal ones (logged with <code>warn!</code> and skipped):</p>
+<pre><code class="language-rust">if let Err(err) = run_congress_task(cfg, &amp;[&quot;votes&quot;, &amp;format!(&quot;--congress={congress}&quot;)]).await {
+    warn!(congress, error = %err, &quot;vote sync skipped&quot;);
+}
+</code></pre>
+<p>If the Python sync subprocess fails, the scraper continues with whatever data is already on disk. This is a deliberate resilience choice — in Python you'd wrap it in <code>try/except</code> and log the exception.</p>
+<h4 id="validation-before-database-writes">Validation before database writes</h4>
+<pre><code class="language-rust">if bill.billnumber == 0 || bill.billtype.is_empty() {
+    return Err(anyhow!(
+        &quot;skipping bill with empty number/type (congress={}, id={})&quot;,
+        bill.congress,
+        bill.billid.clone().unwrap_or_default()
+    ));
+}
+</code></pre>
+<p>The scraper validates data before starting a transaction, not inside the SQL. This prevents wasted database round-trips and makes error messages more specific. In Python, you might rely on database constraints to catch bad data. In Rust, the pattern is to validate early and fail with a clear message.</p>
+<h3 id="177-async-concurrency-patterns">17.7 Async Concurrency Patterns</h3>
+<p>The scraper's two-phase pipeline is the most instructive part for Python developers learning async Rust.</p>
+<h4 id="phase-1-cpu-bound-parsing-with-spawn_blocking">Phase 1: CPU-bound parsing with <code>spawn_blocking</code></h4>
+<pre><code class="language-rust">tokio::task::spawn_blocking(move || parse_vote_job(job, &amp;known_hashes)).await?
+</code></pre>
+<p><code>parse_vote_job</code> is synchronous — it reads files and parses JSON/XML. Running it directly in an async task would block the Tokio worker thread. <code>spawn_blocking</code> moves it to a dedicated thread pool, returning a future that resolves when the work is done.</p>
+<p>This is exactly like Python's <code>await loop.run_in_executor(None, parse_vote_job, ...)</code>. The difference is that Rust makes the distinction between "async I/O work" and "blocking CPU work" explicit in the type system. In Python, you can accidentally block the event loop and only notice when throughput drops.</p>
+<h4 id="phase-2-io-bound-database-writes-with-semaphore-gated-tasks">Phase 2: I/O-bound database writes with semaphore-gated tasks</h4>
+<pre><code class="language-rust">let write_sem = Arc::new(Semaphore::new(cfg.db_write_concurrency as usize));
+let mut write_tasks = JoinSet::new();
+
+for changed_vote in collected.changed_votes {
+    let pool = pool.clone();
+    let write_sem = write_sem.clone();
+    write_tasks.spawn(async move {
+        let _permit = write_sem.acquire_owned().await?;
+        insert_parsed_vote(&amp;pool, &amp;changed_vote.parsed_vote).await?;
+        Ok::&lt;_, anyhow::Error&gt;(changed_vote)
+    });
+}
+</code></pre>
+<p>This pattern has several Rust-specific details:</p>
+<ul>
+<li><strong><code>Arc::new(Semaphore::new(...))</code></strong>: The semaphore is wrapped in <code>Arc</code> (atomic reference counting) because each spawned task needs its own reference. In Python, you'd just pass the semaphore — the GC handles sharing. In Rust, you must be explicit about shared ownership.</li>
+<li><strong><code>pool.clone()</code></strong>: <code>PgPool</code> is internally <code>Arc</code>-wrapped, so cloning is cheap (just bumps a reference count). This is a common pattern — types that are meant to be shared across tasks implement cheap <code>Clone</code>.</li>
+<li><strong><code>async move { ... }</code></strong>: The <code>move</code> keyword transfers ownership of <code>pool</code>, <code>write_sem</code>, and <code>changed_vote</code> into the async block. Without <code>move</code>, the closure would try to borrow these variables, but the borrows might not live long enough (the spawned task could outlive the loop iteration).</li>
+<li><strong><code>_permit</code></strong>: The underscore prefix means "I need this variable to exist (holding the semaphore permit) but I never read it." When <code>_permit</code> is dropped at the end of the async block, the semaphore permit is released. This is RAII — no <code>try/finally</code> needed.</li>
+</ul>
+<h4 id="joinset-collecting-results-from-concurrent-tasks">JoinSet: Collecting results from concurrent tasks</h4>
+<pre><code class="language-rust">while let Some(result) = write_tasks.join_next().await {
+    match result {
+        Ok(Ok(changed_vote)) =&gt; { /* success */ }
+        Ok(Err(err)) =&gt; { /* DB write failed */ }
+        Err(err) =&gt; { /* task panicked */ }
+    }
+}
+</code></pre>
+<p><code>JoinSet</code> is like <code>asyncio.TaskGroup</code> in Python 3.11+, but you drain results one at a time instead of waiting for all tasks to finish. The double-<code>Result</code> pattern (<code>Ok(Ok(...))</code> vs <code>Ok(Err(...))</code> vs <code>Err(...)</code>) handles two failure levels: the task infrastructure (did the task panic?) and the application logic (did the DB write fail?).</p>
+<p>In Python, <code>asyncio.gather(return_exceptions=True)</code> flattens these into one list. Rust's nested pattern matching makes each failure mode explicit.</p>
+<h3 id="178-ownership-in-action-the-hash-store">17.8 Ownership in Action: The Hash Store</h3>
+<p><code>FileHashStore</code> in <code>hashes.rs</code> is a clean example of Rust ownership patterns solving a real problem.</p>
+<pre><code class="language-rust">pub struct FileHashStore {
+    path: PathBuf,
+    hashes: HashMap&lt;String, String&gt;,
+}
+</code></pre>
+<p>The store owns its data. When you call <code>hashes.mark_processed(&amp;path, hash)</code>, the <code>hash: String</code> parameter is moved into the HashMap — the caller gives up ownership. This is different from Python where the dict and the caller both hold references to the same string object.</p>
+<p>The <code>snapshot()</code> method creates a clone for sharing across async tasks:</p>
+<pre><code class="language-rust">pub fn snapshot(&amp;self) -&gt; HashMap&lt;String, String&gt; {
+    self.hashes.clone()
+}
+</code></pre>
+<p>This clone is wrapped in <code>Arc</code> before being shared:</p>
+<pre><code class="language-rust">let known_hashes = Arc::new(hashes.snapshot());
+</code></pre>
+<p>Each spawned task gets <code>Arc::clone(&amp;known_hashes)</code> — a cheap reference count bump, not a deep copy. The tasks can read the HashMap concurrently without locks because the <code>Arc</code> contents are immutable. This is the Rust pattern for "read-only shared state across tasks."</p>
+<p>In Python, you'd just pass the dict to each coroutine and trust that nobody mutates it. In Rust, the type system enforces it: <code>Arc&lt;HashMap&lt;...&gt;&gt;</code> gives you <code>&amp;HashMap</code> (immutable reference) — you literally cannot call <code>.insert()</code> on it.</p>
+<h3 id="179-database-patterns-with-sqlx">17.9 Database Patterns with sqlx</h3>
+<h4 id="transactions-as-raii">Transactions as RAII</h4>
+<pre><code class="language-rust">let mut tx = pool.begin().await?;
+db::insert_vote(&amp;mut tx, &amp;parsed_vote.vote).await?;
+db::replace_vote_members(&amp;mut tx, &amp;parsed_vote.vote.voteid, &amp;parsed_vote.members).await?;
+tx.commit().await?;
+</code></pre>
+<p>If any <code>?</code> triggers an early return (error propagation), <code>tx</code> is dropped without <code>.commit()</code>. sqlx automatically rolls back the transaction when the <code>Transaction</code> object is dropped. This is Rust's RAII pattern — no <code>try/finally</code> or context manager needed.</p>
+<p>In Python with <code>asyncpg</code>:</p>
+<pre><code class="language-python">async with pool.acquire() as conn:
+    async with conn.transaction():
+        await insert_vote(conn, vote)
+        await replace_vote_members(conn, vote.voteid, members)
+</code></pre>
+<p>Both approaches auto-rollback on failure, but Rust's version is implicit through drop semantics rather than explicit through context managers.</p>
+<h4 id="batch-operations-with-unnest">Batch operations with UNNEST</h4>
+<p>The scraper avoids N+1 query patterns by using PostgreSQL's <code>UNNEST</code> with parallel arrays:</p>
+<pre><code class="language-rust">let bioguide_ids: Vec&lt;String&gt; = members.iter().map(|m| m.bioguide_id.clone()).collect();
+let positions: Vec&lt;String&gt; = members.iter().map(|m| m.position.clone()).collect();
+
+sqlx::query(r#&quot;
+    INSERT INTO vote_members (voteid, bioguide_id, ..., position)
+    SELECT $1, * FROM UNNEST($2::text[], ..., $6::text[])
+&quot;#)
+.bind(voteid)
+.bind(&amp;bioguide_ids)
+.bind(&amp;positions)
+.execute(&amp;mut **tx)
+.await?;
+</code></pre>
+<p>The <code>.iter().map(...).collect()</code> chain transforms a slice of structs into parallel <code>Vec</code>s — one per column. This is the Rust iterator equivalent of Python's:</p>
+<pre><code class="language-python">bioguide_ids = [m.bioguide_id for m in members]
+positions = [m.position for m in members]
+</code></pre>
+<p>The <code>&amp;mut **tx</code> double-dereference is a sqlx quirk: <code>tx</code> is <code>&amp;mut Transaction</code>, and <code>Transaction</code> wraps an inner connection. The <code>**</code> unwraps both layers to get the connection that <code>.execute()</code> expects.</p>
+<h4 id="cte-chains-for-atomic-multi-step-operations">CTE chains for atomic multi-step operations</h4>
+<p>The <code>replace_bill_actions</code> function does five operations in a single SQL round-trip using a CTE (Common Table Expression) chain:</p>
+<pre><code class="language-sql">WITH clear_latest AS (UPDATE bills SET latest_action_id = NULL WHERE ...),
+     deleted AS (DELETE FROM bill_actions WHERE ...),
+     inserted AS (INSERT INTO bill_actions ... FROM UNNEST(...) RETURNING id, ...),
+     best AS (SELECT id FROM inserted WHERE acted_at = $9 ORDER BY ... LIMIT 1)
+UPDATE bills SET latest_action_id = best.id, latest_action_date = $9 FROM best WHERE ...
+</code></pre>
+<p>This replaces what would be 4+ separate queries (clear FK, delete old rows, insert new rows, update FK) with one network round-trip. The Rust code binds 10 parameters to this single query. This is a performance pattern that works in any language, but the scraper's consistent use of it shows how Rust codebases tend to optimize for throughput from the start.</p>
+<h3 id="1710-function-pointers-and-strategy-pattern">17.10 Function Pointers and Strategy Pattern</h3>
+<p>The bill pipeline uses function pointers to choose between XML and JSON parsers at runtime:</p>
+<pre><code class="language-rust">type BillParser = fn(&amp;Path) -&gt; Result&lt;ParsedBill&gt;;
+
+struct BillJob {
+    path: PathBuf,
+    parse: BillParser,
+    display: String,
+}
+</code></pre>
+<p>During file discovery, each job gets the appropriate parser:</p>
+<pre><code class="language-rust">if file_exists(&amp;xml_path) {
+    jobs.push(BillJob { path: xml_path, parse: parse_bill_xml, display: name });
+} else if file_exists(&amp;json_path) {
+    jobs.push(BillJob { path: json_path, parse: parse_bill_json, display: name });
+}
+</code></pre>
+<p>Later, the parser is called via the function pointer:</p>
+<pre><code class="language-rust">let parsed_bill = (job.parse)(&amp;job.path)?;
+</code></pre>
+<p>In Python, you'd store a function reference the same way (<code>parser = parse_bill_xml</code>), but without any type checking. In Rust, <code>fn(&amp;Path) -&gt; Result&amp;lt;ParsedBill&amp;gt;</code> guarantees that both parsers have exactly the same signature. If you change one parser's return type, the other must change too — the compiler enforces it.</p>
+<p>This is the Strategy pattern without any trait objects or dynamic dispatch overhead. Function pointers are zero-cost — they're just addresses.</p>
+<h3 id="1711-subprocess-management-with-tokio">17.11 Subprocess Management with Tokio</h3>
+<p>The <code>python.rs</code> module spawns a Python subprocess and streams its output:</p>
+<pre><code class="language-rust">let mut child = Command::new(&quot;python3&quot;)
+    .arg(&amp;run_py)
+    .args(args)
+    .current_dir(&amp;congress_dir)
+    .env(&quot;PYTHONPATH&quot;, python_path)
+    .stdout(std::process::Stdio::piped())
+    .stderr(std::process::Stdio::piped())
+    .spawn()?;
+
+let stdout = child.stdout.take().context(&quot;missing python stdout&quot;)?;
+let stderr = child.stderr.take().context(&quot;missing python stderr&quot;)?;
+
+let stdout_task = tokio::spawn(stream_output(&quot;stdout&quot;, stdout));
+let stderr_task = tokio::spawn(stream_output(&quot;stderr&quot;, stderr));
+
+let status = child.wait().await?;
+stdout_task.await??;
+stderr_task.await??;
+</code></pre>
+<p>Key Rust patterns:</p>
+<ul>
+<li><strong><code>.take()</code></strong> extracts the stdout/stderr handles from the child, replacing them with <code>None</code>. This transfers ownership — the child no longer owns the handles, so the spawned tasks can consume them. In Python, you'd just pass <code>child.stdout</code> to another coroutine without thinking about ownership.</li>
+<li><strong>Two concurrent tasks for stdout/stderr</strong>. Reading them sequentially could deadlock if one stream's buffer fills up. <code>tokio::spawn</code> runs both concurrently. In Python, you'd use <code>asyncio.create_task()</code> for the same reason.</li>
+<li><strong><code>stdout_task.await??</code></strong> — the double <code>?</code>. The first <code>?</code> unwraps the <code>JoinHandle</code> (did the task panic?). The second <code>?</code> unwraps the <code>Result</code> from <code>stream_output</code> (did I/O fail?). This two-level error handling is a recurring Rust pattern for spawned tasks.</li>
+<li><strong><code>&amp;'static str</code> for the stream label</strong>. The <code>stream_output</code> function takes <code>source: &amp;'static str</code> because <code>tokio::spawn</code> requires <code>'static</code> — the task might outlive the current function. String literals like <code>"stdout"</code> are <code>'static</code> because they're baked into the binary.</li>
+</ul>
+<h3 id="1712-testing-patterns">17.12 Testing Patterns</h3>
+<p>The scraper's tests demonstrate several Rust-specific testing patterns.</p>
+<h4 id="tests-live-next-to-the-code">Tests live next to the code</h4>
+<pre><code class="language-rust">#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn load_config_from_env() {
+        let _guard = env_lock().lock().unwrap();
+        let temp_dir = TempDir::new().unwrap();
+        unsafe {
+            env::set_var(&quot;CONGRESSDIR&quot;, temp_dir.path());
+            env::set_var(&quot;POSTGRESURI&quot;, &quot;localhost&quot;);
+        }
+        let cfg = Config::load().unwrap();
+        assert_eq!(cfg.congress_dir, temp_dir.path());
+    }
+}
+</code></pre>
+<ul>
+<li><strong><code>#[cfg(test)]</code></strong> means this module is completely stripped from the production binary. It only exists when running <code>cargo test</code>.</li>
+<li><strong><code>use super::*</code></strong> imports everything from the parent module, including private items. This lets tests access internal functions without making them public.</li>
+<li><strong><code>unsafe { env::set_var(...) }</code></strong> — modifying environment variables is <code>unsafe</code> in Rust because env vars are process-global mutable state. Rust forces you to acknowledge this explicitly. In Python, <code>os.environ["KEY"] = value</code> is just as unsafe, but the language doesn't make you think about it.</li>
+<li><strong>Mutex for test isolation</strong> — since env vars are global, tests that modify them must not run in parallel. The <code>env_lock()</code> function returns a global mutex that serializes these tests. In Python, you'd use <code>unittest.mock.patch.dict(os.environ, ...)</code> or <code>monkeypatch</code>.</li>
+<li><strong><code>TempDir</code></strong> from the <code>tempfile</code> crate creates a temporary directory that's automatically deleted when the <code>TempDir</code> value is dropped (RAII again). Like Python's <code>tempfile.TemporaryDirectory()</code> context manager, but without the <code>with</code> block.</li>
+</ul>
+<h4 id="testing-with-real-file-io">Testing with real file I/O</h4>
+<pre><code class="language-rust">#[test]
+fn parse_vote_skips_legacy_string_markers() {
+    let dir = tempdir().unwrap();
+    let path = dir.path().join(&quot;data.json&quot;);
+    let payload = r#&quot;{ &quot;vote_id&quot;: &quot;s47-110.2008&quot;, &quot;votes&quot;: { &quot;Yea&quot;: [&quot;VP&quot;, {...}] } }&quot;#;
+    fs::write(&amp;path, payload).unwrap();
+
+    let parsed = parse_vote(&amp;path).unwrap();
+    assert_eq!(parsed.members.len(), 1);
+    assert_eq!(parsed.members[0].position, &quot;yea&quot;);
+}
+</code></pre>
+<p>The tests write real files to temp directories and parse them. This tests the full parsing pipeline including file I/O, serde deserialization, and data normalization. No mocking needed — the functions take <code>&amp;Path</code> parameters, so you just point them at temp files.</p>
+<h3 id="1713-patterns-worth-studying">17.13 Patterns Worth Studying</h3>
+<p>These patterns from the scraper are worth internalizing for any Rust project:</p>
+<ul>
+<li><strong><code>Option</code> chains for fallback values</strong>: <code>.ok().and_then(|v| v.parse().ok()).unwrap_or(default)</code> replaces Python's <code>int(os.getenv("KEY", "default"))</code> with explicit handling of every failure mode.</li>
+<li><strong><code>Arc&amp;lt;HashMap&amp;gt;</code> for read-only shared state</strong>: Clone the data once, wrap in <code>Arc</code>, share across tasks. No locks needed because the data is immutable.</li>
+<li><strong><code>Semaphore</code> for concurrency limiting</strong>: Controls how many tasks run simultaneously without manual counting or queuing.</li>
+<li><strong><code>spawn_blocking</code> for CPU work in async context</strong>: Keeps the async executor responsive by offloading heavy computation to a dedicated thread pool.</li>
+<li><strong>RAII everywhere</strong>: Transactions roll back on drop. Semaphore permits release on drop. Temp directories clean up on drop. Mutex guards release on drop. No <code>try/finally</code> needed.</li>
+<li><strong>Function pointers for strategy selection</strong>: <code>type Parser = fn(&amp;Path) -&gt; Result&amp;lt;T&amp;gt;</code> gives you runtime polymorphism without trait objects or dynamic dispatch overhead.</li>
+<li><strong>Structured enums for outcomes</strong>: <code>enum VoteParseOutcome { Changed(ChangedVote), Skipped, Missing }</code> makes every possible result explicit and forces callers to handle all cases.</li>
+<li><strong><code>.context()</code> on every fallible operation</strong>: Builds error chains that read like stack traces but with human-written messages at each level.</li>
+<li><strong>Parallel arrays + UNNEST for batch SQL</strong>: Transforms <code>Vec&amp;lt;Struct&amp;gt;</code> into parallel <code>Vec&amp;lt;Column&amp;gt;</code> for single-round-trip batch inserts.</li>
+<li><strong>Two-phase pipelines</strong>: Parse on blocking threads (CPU-bound), write on async tasks (I/O-bound), with semaphores gating each phase independently.</li>
+</ul>
+<h3 id="1714-what-a-python-developer-would-do-differently">17.14 What a Python Developer Would Do Differently</h3>
+<table>
+<thead>
+<tr>
+<th>Python approach</th>
+<th>Rust approach in this scraper</th>
+<th>Why the difference</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dict</code> for everything</td>
+<td>Typed structs for every data shape</td>
+<td>Compiler catches field typos and type mismatches</td>
+</tr>
+<tr>
+<td><code>try/except</code> with broad catches</td>
+<td><code>?</code> propagation with <code>.context()</code></td>
+<td>Every error site is visible; no silent swallowing</td>
+</tr>
+<tr>
+<td><code>asyncio.gather()</code></td>
+<td><code>JoinSet</code> + <code>join_next()</code></td>
+<td>Drain results incrementally instead of waiting for all</td>
+</tr>
+<tr>
+<td><code>json.loads()</code> returns <code>dict</code></td>
+<td><code>serde_json::from_str()</code> returns typed struct</td>
+<td>Deserialization validates structure at parse time</td>
+</tr>
+<tr>
+<td><code>threading.Semaphore</code></td>
+<td><code>tokio::sync::Semaphore</code> + <code>Arc</code></td>
+<td>Explicit shared ownership; no GIL to hide races</td>
+</tr>
+<tr>
+<td><code>subprocess.run()</code></td>
+<td><code>tokio::process::Command</code> + concurrent stream reading</td>
+<td>Non-blocking subprocess I/O on the async runtime</td>
+</tr>
+<tr>
+<td><code>os.getenv("KEY", "default")</code></td>
+<td><code>env::var().ok().and_then().unwrap_or()</code></td>
+<td>Each failure mode (missing, empty, unparseable) handled explicitly</td>
+</tr>
+<tr>
+<td><code>with conn.transaction():</code></td>
+<td><code>let tx = pool.begin(); ... tx.commit()</code></td>
+<td>RAII auto-rollback on drop instead of context manager</td>
+</tr>
+<tr>
+<td><code>pickle.dump(data, f)</code></td>
+<td><code>bincode::serialize()</code> + <code>fs::write()</code></td>
+<td>Compact binary format, cross-platform, no arbitrary code execution risk</td>
+</tr>
+<tr>
+<td>Global mutable state</td>
+<td><code>&amp;mut</code> references passed explicitly</td>
+<td>Compiler tracks who can mutate what and when</td>
+</tr>
+</tbody>
+</table>
+<p>The scraper is a good case study because it does things Python developers do every day — parse files, talk to databases, manage subprocesses, handle errors — but through Rust's ownership and type system. The patterns feel verbose at first, but they eliminate entire categories of runtime bugs that Python developers spend time debugging in production.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

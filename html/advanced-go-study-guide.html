@@ -1,0 +1,1312 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Advanced Go Study Guide.">
+<title>Advanced Go Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#00add8; --accent2:#00add8; --accent-weak:rgba(0,173,216,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#00add8; --accent2:#00add8; --accent-weak:rgba(0,173,216,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">A</span><span>Advanced Go Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-the-go-runtime-model" data-target="part-1-the-go-runtime-model">Part 1 — The Go Runtime Model</a></li><li class="toc-l3"><a href="#compiled-native-self-contained" data-target="compiled-native-self-contained">Compiled, Native, Self-Contained</a></li><li class="toc-l3"><a href="#the-runtime-lives-inside-your-binary" data-target="the-runtime-lives-inside-your-binary">The Runtime Lives Inside Your Binary</a></li><li class="toc-l3"><a href="#values-pointers-and-copies" data-target="values-pointers-and-copies">Values, Pointers, and Copies</a></li><li class="toc-l3"><a href="#the-performance-thesis" data-target="the-performance-thesis">The Performance Thesis</a></li><li class="toc-l2"><a href="#part-2-the-gmp-scheduler" data-target="part-2-the-gmp-scheduler">Part 2 — The GMP Scheduler</a></li><li class="toc-l3"><a href="#goroutines-are-not-os-threads" data-target="goroutines-are-not-os-threads">Goroutines Are Not OS Threads</a></li><li class="toc-l3"><a href="#g-m-and-p" data-target="g-m-and-p">G, M, and P</a></li><li class="toc-l3"><a href="#work-stealing-keeps-cores-busy" data-target="work-stealing-keeps-cores-busy">Work-Stealing Keeps Cores Busy</a></li><li class="toc-l3"><a href="#blocking-syscalls-and-the-netpoller" data-target="blocking-syscalls-and-the-netpoller">Blocking Syscalls and the Netpoller</a></li><li class="toc-l3"><a href="#preemption-no-goroutine-starves-the-others" data-target="preemption-no-goroutine-starves-the-others">Preemption: No Goroutine Starves the Others</a></li><li class="toc-l3"><a href="#gomaxprocs-and-the-container-trap" data-target="gomaxprocs-and-the-container-trap">GOMAXPROCS — and the Container Trap</a></li><li class="toc-l2"><a href="#part-3-escape-analysis-allocation" data-target="part-3-escape-analysis-allocation">Part 3 — Escape Analysis &amp; Allocation</a></li><li class="toc-l3"><a href="#stack-vs-heap" data-target="stack-vs-heap">Stack vs. Heap</a></li><li class="toc-l3"><a href="#what-escape-analysis-does" data-target="what-escape-analysis-does">What Escape Analysis Does</a></li><li class="toc-l3"><a href="#what-causes-things-to-escape" data-target="what-causes-things-to-escape">What Causes Things to Escape</a></li><li class="toc-l3"><a href="#interface-boxing-the-hidden-allocator" data-target="interface-boxing-the-hidden-allocator">Interface Boxing: The Hidden Allocator</a></li><li class="toc-l3"><a href="#the-allocator" data-target="the-allocator">The Allocator</a></li><li class="toc-l2"><a href="#part-4-the-garbage-collector" data-target="part-4-the-garbage-collector">Part 4 — The Garbage Collector</a></li><li class="toc-l3"><a href="#the-design-concurrent-low-latency-mark-and-sweep" data-target="the-design-concurrent-low-latency-mark-and-sweep">The Design: Concurrent, Low-Latency Mark-and-Sweep</a></li><li class="toc-l3"><a href="#how-it-works-just-enough" data-target="how-it-works-just-enough">How It Works (Just Enough)</a></li><li class="toc-l3"><a href="#the-two-knobs-gogc-and-gomemlimit" data-target="the-two-knobs-gogc-and-gomemlimit">The Two Knobs: GOGC and GOMEMLIMIT</a></li><li class="toc-l3"><a href="#observing-the-gc" data-target="observing-the-gc">Observing the GC</a></li><li class="toc-l2"><a href="#part-5-data-structures-memory-layout" data-target="part-5-data-structures-memory-layout">Part 5 — Data Structures &amp; Memory Layout</a></li><li class="toc-l3"><a href="#slices-header-backing-array-and-append" data-target="slices-header-backing-array-and-append">Slices: Header, Backing Array, and append</a></li><li class="toc-l3"><a href="#maps" data-target="maps">Maps</a></li><li class="toc-l3"><a href="#struct-layout-alignment-and-padding" data-target="struct-layout-alignment-and-padding">Struct Layout: Alignment and Padding</a></li><li class="toc-l3"><a href="#strings-and-byte" data-target="strings-and-byte">Strings and []byte</a></li><li class="toc-l3"><a href="#mechanical-sympathy-cache-locality" data-target="mechanical-sympathy-cache-locality">Mechanical Sympathy: Cache Locality</a></li><li class="toc-l3"><a href="#design-for-the-zero-value" data-target="design-for-the-zero-value">Design for the Zero Value</a></li><li class="toc-l2"><a href="#part-6-concurrency-for-performance" data-target="part-6-concurrency-for-performance">Part 6 — Concurrency for Performance</a></li><li class="toc-l3"><a href="#goroutines-are-cheap-not-free" data-target="goroutines-are-cheap-not-free">Goroutines Are Cheap, Not Free</a></li><li class="toc-l3"><a href="#channels-vs-mutexes-vs-atomics" data-target="channels-vs-mutexes-vs-atomics">Channels vs. Mutexes vs. Atomics</a></li><li class="toc-l3"><a href="#contention-is-the-scaling-killer" data-target="contention-is-the-scaling-killer">Contention Is the Scaling Killer</a></li><li class="toc-l3"><a href="#syncpool-reuse-to-cut-gc-pressure" data-target="syncpool-reuse-to-cut-gc-pressure">sync.Pool: Reuse to Cut GC Pressure</a></li><li class="toc-l3"><a href="#bounded-concurrency-and-errgroup" data-target="bounded-concurrency-and-errgroup">Bounded Concurrency and errgroup</a></li><li class="toc-l3"><a href="#goroutine-leaks-the-go-memory-leak" data-target="goroutine-leaks-the-go-memory-leak">Goroutine Leaks: The Go Memory Leak</a></li><li class="toc-l3"><a href="#always-test-with-the-race-detector" data-target="always-test-with-the-race-detector">Always Test With the Race Detector</a></li><li class="toc-l2"><a href="#part-7-the-compiler-pgo" data-target="part-7-the-compiler-pgo">Part 7 — The Compiler &amp; PGO</a></li><li class="toc-l3"><a href="#the-optimizations-that-matter" data-target="the-optimizations-that-matter">The Optimizations That Matter</a></li><li class="toc-l3"><a href="#pgo-a-free-214-from-production-profiles" data-target="pgo-a-free-214-from-production-profiles">PGO: A Free 2–14% From Production Profiles</a></li><li class="toc-l3"><a href="#build-flags-worth-knowing" data-target="build-flags-worth-knowing">Build Flags Worth Knowing</a></li><li class="toc-l3"><a href="#cgo-is-not-a-performance-tool" data-target="cgo-is-not-a-performance-tool">cgo Is Not a Performance Tool</a></li><li class="toc-l2"><a href="#part-8-profiling-measurement" data-target="part-8-profiling-measurement">Part 8 — Profiling &amp; Measurement</a></li><li class="toc-l3"><a href="#pprof-the-five-profiles" data-target="pprof-the-five-profiles">pprof: The Five Profiles</a></li><li class="toc-l3"><a href="#benchmarks-testingb-done-right" data-target="benchmarks-testingb-done-right">Benchmarks: testing.B Done Right</a></li><li class="toc-l3"><a href="#benchstat-how-to-honestly-claim-x-faster" data-target="benchstat-how-to-honestly-claim-x-faster">benchstat: How to Honestly Claim "X% Faster"</a></li><li class="toc-l3"><a href="#the-execution-tracer" data-target="the-execution-tracer">The Execution Tracer</a></li><li class="toc-l3"><a href="#the-workflow" data-target="the-workflow">The Workflow</a></li><li class="toc-l2"><a href="#part-9-performance-levers" data-target="part-9-performance-levers">Part 9 — Performance Levers</a></li><li class="toc-l3"><a href="#lever-1-algorithm-and-data-structure" data-target="lever-1-algorithm-and-data-structure">Lever 1: Algorithm and Data Structure</a></li><li class="toc-l3"><a href="#lever-2-reduce-allocations-the-1-go-specific-lever" data-target="lever-2-reduce-allocations-the-1-go-specific-lever">Lever 2: Reduce Allocations (the #1 Go-Specific Lever)</a></li><li class="toc-l3"><a href="#lever-3-reuse-with-syncpool" data-target="lever-3-reuse-with-syncpool">Lever 3: Reuse With sync.Pool</a></li><li class="toc-l3"><a href="#lever-4-right-size-concurrency" data-target="lever-4-right-size-concurrency">Lever 4: Right-Size Concurrency</a></li><li class="toc-l3"><a href="#lever-5-tune-the-runtime-for-the-deployment" data-target="lever-5-tune-the-runtime-for-the-deployment">Lever 5: Tune the Runtime for the Deployment</a></li><li class="toc-l3"><a href="#lever-6-turn-on-pgo" data-target="lever-6-turn-on-pgo">Lever 6: Turn On PGO</a></li><li class="toc-l3"><a href="#lever-7-avoid-reflection-in-hot-paths" data-target="lever-7-avoid-reflection-in-hot-paths">Lever 7: Avoid Reflection in Hot Paths</a></li><li class="toc-l3"><a href="#lever-8-buffer-your-io" data-target="lever-8-buffer-your-io">Lever 8: Buffer Your I/O</a></li><li class="toc-l3"><a href="#lever-9-reduce-copying-and-cache-friendly-layout" data-target="lever-9-reduce-copying-and-cache-friendly-layout">Lever 9: Reduce Copying and Cache-Friendly Layout</a></li><li class="toc-l3"><a href="#lever-10-the-compiler-and-the-last-resort" data-target="lever-10-the-compiler-and-the-last-resort">Lever 10: The Compiler and the Last Resort</a></li><li class="toc-l3"><a href="#the-anti-lever-dont-reach-for-cgo" data-target="the-anti-lever-dont-reach-for-cgo">The Anti-Lever: Don't Reach for cgo</a></li><li class="toc-l2"><a href="#part-10-high-performance-recipes" data-target="part-10-high-performance-recipes">Part 10 — High-Performance Recipes</a></li><li class="toc-l3"><a href="#recipe-1-preallocate-slices" data-target="recipe-1-preallocate-slices">Recipe 1: Preallocate Slices</a></li><li class="toc-l3"><a href="#recipe-2-build-strings-with-stringsbuilder" data-target="recipe-2-build-strings-with-stringsbuilder">Recipe 2: Build Strings With strings.Builder</a></li><li class="toc-l3"><a href="#recipe-3-pool-per-request-buffers" data-target="recipe-3-pool-per-request-buffers">Recipe 3: Pool Per-Request Buffers</a></li><li class="toc-l3"><a href="#recipe-4-bounded-parallel-fan-out-with-errgroup" data-target="recipe-4-bounded-parallel-fan-out-with-errgroup">Recipe 4: Bounded Parallel Fan-Out with errgroup</a></li><li class="toc-l3"><a href="#recipe-5-atomic-counter-instead-of-a-mutex" data-target="recipe-5-atomic-counter-instead-of-a-mutex">Recipe 5: Atomic Counter Instead of a Mutex</a></li><li class="toc-l3"><a href="#recipe-6-hunt-and-kill-an-allocation" data-target="recipe-6-hunt-and-kill-an-allocation">Recipe 6: Hunt and Kill an Allocation</a></li><li class="toc-l3"><a href="#recipe-7-faster-json" data-target="recipe-7-faster-json">Recipe 7: Faster JSON</a></li><li class="toc-l3"><a href="#recipe-8-buffer-your-io" data-target="recipe-8-buffer-your-io">Recipe 8: Buffer Your I/O</a></li><li class="toc-l3"><a href="#recipe-9-tune-the-runtime-in-a-container" data-target="recipe-9-tune-the-runtime-in-a-container">Recipe 9: Tune the Runtime in a Container</a></li><li class="toc-l3"><a href="#recipe-10-enable-pgo" data-target="recipe-10-enable-pgo">Recipe 10: Enable PGO</a></li><li class="toc-l3"><a href="#recipe-11-shard-a-contended-map" data-target="recipe-11-shard-a-contended-map">Recipe 11: Shard a Contended Map</a></li><li class="toc-l3"><a href="#the-decision-tree" data-target="the-decision-tree">The Decision Tree</a></li></ul></nav></aside>
+  <main><h1 id="advanced-go-study-guide">Advanced Go Study Guide</h1>
+<p>A depth-first guide to the Go runtime and high-performance Go for engineers who already write Go and want to understand what happens <em>beneath</em> their code — the scheduler, the garbage collector, escape analysis, memory layout — and how to make Go programs fast on purpose. It assumes you're fluent in the language (goroutines, channels, interfaces, slices, error handling); for the on-ramp from another language, the <a href="golang-for-python-devs.html">Golang for Python Developers guide</a> covers the fundamentals this one builds on.</p>
+<p>This is the third in a trilogy with the <a href="advanced-python-study-guide.html">Advanced Python</a> and <a href="advanced-nodejs-study-guide.html">Advanced Node.js</a> guides, and the comparison sharpens the whole thing into one thesis:</p>
+<blockquote>
+<p><strong>In Python you fight the interpreter; in Node you fight the event loop and feed the JIT; in Go you fight the allocator and the garbage collector.</strong></p>
+</blockquote>
+<p>Go is compiled ahead-of-time to native machine code — there is no interpreter to escape and no JIT to warm up. Your hot loop is <em>already</em> machine code from the first instruction. That changes the entire performance story: the levers are not "move this into C" or "keep the event loop unblocked," but <strong>reduce heap allocations, manage GC pressure, lay out memory for the cache, and control concurrency</strong>. Every chapter here is, ultimately, about one of those four. The closing recipe chapter is the payoff: profiled, production-grade patterns for fast Go.</p>
+<p>Primary references: the <a href="https://go.dev/ref/mem">Go Memory Model</a> and <a href="https://pkg.go.dev/runtime">runtime docs</a>, the <a href="https://go.dev/doc/diagnostics">official diagnostics guide</a>, Dave Cheney's <a href="https://dave.cheney.net/high-performance-go-workshop/dotgo-paris.html">performance writing</a>, the <a href="https://pkg.go.dev/runtime/pprof"><code>pprof</code></a> tooling, and the runtime source itself (<code>src/runtime/</code> in the Go tree — unusually readable). Where Go services live in production, the <a href="distributed-systems-study-guide.html">Distributed Systems</a>, <a href="observability-study-guide.html">Observability</a>, and <a href="kubernetes-study-guide.html">Kubernetes</a> guides are companions.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1--the-go-runtime-model">Part 1 — The Go Runtime Model</a></li>
+<li><a href="#part-2--the-gmp-scheduler">Part 2 — The GMP Scheduler</a></li>
+<li><a href="#part-3--escape-analysis--allocation">Part 3 — Escape Analysis &amp; Allocation</a></li>
+<li><a href="#part-4--the-garbage-collector">Part 4 — The Garbage Collector</a></li>
+<li><a href="#part-5--data-structures--memory-layout">Part 5 — Data Structures &amp; Memory Layout</a></li>
+<li><a href="#part-6--concurrency-for-performance">Part 6 — Concurrency for Performance</a></li>
+<li><a href="#part-7--the-compiler--pgo">Part 7 — The Compiler &amp; PGO</a></li>
+<li><a href="#part-8--profiling--measurement">Part 8 — Profiling &amp; Measurement</a></li>
+<li><a href="#part-9--performance-levers">Part 9 — Performance Levers</a></li>
+<li><a href="#part-10--high-performance-recipes">Part 10 — High-Performance Recipes</a></li>
+</ol>
+<hr>
+<h2 id="part-1-the-go-runtime-model">Part 1 — The Go Runtime Model</h2>
+<p>Before any optimization, get the model right — and the most important fact is what Go <em>isn't</em>. It isn't interpreted like CPython, and it isn't JIT-compiled like V8. Understanding that reframes everything you'll do to make it fast.</p>
+<h3 id="compiled-native-self-contained">Compiled, Native, Self-Contained</h3>
+<p>The Go toolchain compiles your source <strong>ahead of time to native machine code</strong> for the target architecture. There is no bytecode, no interpreter, no JIT warmup. <code>go build</code> produces a <strong>statically linked binary</strong> (by default) that contains your code <em>and</em> the Go runtime, with no external dependencies — you can <code>scp</code> it to a bare machine and run it. This is why Go dominates cloud infrastructure (Docker, Kubernetes, etcd, Prometheus, Terraform are all Go): a single small binary, instant startup, native speed.</p>
+<p>The consequence for performance work: <strong>your code starts at native speed.</strong> The Python guide's biggest lever — "escape the interpreter into NumPy/C" — doesn't exist here because there's no interpreter to escape. The Node guide's "feed the JIT, don't deoptimize" doesn't apply because there's no JIT. What's left, and what this guide is about, is the <strong>runtime</strong> that ships inside every binary.</p>
+<h3 id="the-runtime-lives-inside-your-binary">The Runtime Lives Inside Your Binary</h3>
+<p>Go binaries are "fat" (a few MB minimum) because they embed the Go runtime — a sophisticated piece of systems software that provides:</p>
+<ul>
+<li>the <strong>goroutine scheduler</strong> (Part 2),</li>
+<li>the <strong>garbage collector</strong> (Part 4),</li>
+<li>the <strong>memory allocator</strong> (a tcmalloc-derived allocator with per-P caches),</li>
+<li><strong>goroutine stack management</strong> (growable stacks),</li>
+<li>the <strong>netpoller</strong> (async network I/O), channels, maps, and the <code>runtime</code> package.</li>
+</ul>
+<p>You don't invoke this runtime; it's always there, scheduling your goroutines and collecting your garbage underneath every line. Performance tuning in Go is largely about <em>cooperating with this runtime</em> — allocating less so the GC runs less, structuring concurrency so the scheduler isn't fighting you.</p>
+<h3 id="values-pointers-and-copies">Values, Pointers, and Copies</h3>
+<p>Go has <strong>value semantics by default</strong>: assigning a struct, passing it to a function, or putting it in a slice <strong>copies it</strong>. This is unlike Python and JavaScript, where everything is a reference to a heap object. It's a double-edged performance characteristic:</p>
+<pre><code class="language-go">type Point struct{ X, Y, Z float64 }   // 24 bytes
+
+func translate(p Point) Point {         // p is a COPY of the caller's Point
+    p.X += 1
+    return p                            // returns another copy
+}
+</code></pre>
+<ul>
+<li><strong>Upside:</strong> small values live on the stack and in contiguous slices with no pointer indirection and no GC involvement — excellent cache behavior, zero allocation. A <code>[]Point</code> is 24 bytes × N in one contiguous block, not N pointers to N heap objects (the Python/Node default).</li>
+<li><strong>Downside:</strong> copying <em>large</em> structs repeatedly is wasteful, and that's when you reach for pointers (<code>*Point</code>) — but pointers can push values onto the heap (Part 3). The tension between "copy a value (stack, cache-friendly)" and "pass a pointer (no copy, but maybe heap)" is a recurring Go performance decision, and the answer is usually "measure, and prefer values until they're big."</li>
+</ul>
+<h3 id="the-performance-thesis">The Performance Thesis</h3>
+<p>Because Go is already native code, performance work concentrates in four areas, and the whole guide maps to them:</p>
+<ol>
+<li><strong>Allocations</strong> — every heap allocation costs the allocator's time <em>and</em> future GC work. Reducing heap allocations (Part 3) is the single highest-return Go optimization.</li>
+<li><strong>GC pressure</strong> — fewer/smaller live heap objects mean less GC work and lower latency (Part 4).</li>
+<li><strong>Memory layout</strong> — contiguous, cache-friendly, properly-aligned data (Part 5) makes the CPU fast; pointer-chasing makes it stall.</li>
+<li><strong>Concurrency</strong> — goroutines are cheap but not free; contention and unbounded concurrency are the scaling killers (Part 6).</li>
+</ol>
+<p>Notice what's <em>not</em> on the list: "make the language faster." The language is already fast. You make <em>programs</em> faster by allocating less and concurring better.</p>
+<p>If you remember one thing from Part 1: <strong>Go compiles to native code with a runtime baked in, so you don't optimize by escaping an interpreter — you optimize by reducing allocations, easing GC pressure, laying out memory well, and controlling concurrency.</strong> Those four are the entire game.</p>
+<hr>
+<h2 id="part-2-the-gmp-scheduler">Part 2 — The GMP Scheduler</h2>
+<p>Goroutines are Go's signature feature, and the scheduler that runs them is a marvel of systems engineering. Understanding it explains why you can spawn a million goroutines, why a blocking syscall doesn't freeze your program, and how to tune concurrency for throughput.</p>
+<h3 id="goroutines-are-not-os-threads">Goroutines Are Not OS Threads</h3>
+<p>A goroutine is a <strong>lightweight, user-space thread</strong> managed by the Go runtime, not the OS. The differences are what make Go's concurrency model work:</p>
+<ul>
+<li><strong>Tiny, growable stacks.</strong> A goroutine starts with a ~<strong>2 KB</strong> stack (versus ~1–8 MB for an OS thread). The runtime grows and shrinks it on demand by copying. This is why a million goroutines fit in a couple of GB while a million OS threads would exhaust the machine.</li>
+<li><strong>Cheap to create and switch.</strong> Creating a goroutine is a function call's worth of work, not a syscall. Switching between goroutines happens in user space without a full kernel context switch.</li>
+<li><strong>Multiplexed onto OS threads.</strong> Many goroutines run on few OS threads (M:N scheduling), managed by the runtime.</li>
+</ul>
+<h3 id="g-m-and-p">G, M, and P</h3>
+<p>The scheduler is built on three entities — memorize these, because every scheduler behavior follows from their interaction:</p>
+<ul>
+<li><strong>G — goroutine.</strong> A unit of work: the function, its stack, its state (running, runnable, waiting).</li>
+<li><strong>M — machine.</strong> An OS thread. The thing the kernel actually schedules onto a CPU. An M executes Go code only while holding a P.</li>
+<li><strong>P — processor.</strong> A <em>logical</em> processor: a scheduling context that owns a <strong>local run queue</strong> of runnable goroutines. The number of Ps is <strong><code>GOMAXPROCS</code></strong>, and it caps how many goroutines run Go code <em>simultaneously</em>.</li>
+</ul>
+<p>The model: <strong>to run Go code, an M must hold a P.</strong> A P has a queue of Gs; the M grabs a G from its P's queue and runs it. There are <code>GOMAXPROCS</code> Ps, so at most <code>GOMAXPROCS</code> goroutines execute Go code in parallel — but there can be <em>many</em> more Ms (threads blocked in syscalls don't hold a P).</p>
+<pre><code class="language-text">   P0 [G G G G]──M0──CPU      Ps  = GOMAXPROCS (logical processors, each a run queue)
+   P1 [G G]    ──M1──CPU      Ms  = OS threads (only run Go code while holding a P)
+   P2 [G G G]  ──M2──CPU      Gs  = goroutines (cheap, ~2KB stacks)
+                              global run queue: [G G]  (overflow / unparked Gs)
+</code></pre>
+<h3 id="work-stealing-keeps-cores-busy">Work-Stealing Keeps Cores Busy</h3>
+<p>Each P has its own local run queue (lock-free for the owner), plus there's a shared global run queue. When a P's local queue empties, its M doesn't go idle — it <strong>steals</strong> half the goroutines from another P's queue (or pulls from the global queue, or polls the netpoller). This <strong>work-stealing</strong> keeps all <code>GOMAXPROCS</code> cores busy without a central bottleneck, and it's why Go scales well across cores with no tuning for most workloads.</p>
+<h3 id="blocking-syscalls-and-the-netpoller">Blocking Syscalls and the Netpoller</h3>
+<p>Two scenarios that show the scheduler's cleverness, and that matter for performance:</p>
+<ul>
+<li><strong>Blocking syscall</strong> (e.g., a blocking file read): the G's M blocks in the kernel — but the runtime <strong>detaches the P from that M and hands it to another M</strong>, so the other goroutines on that P keep running. The blocked M parks until the syscall returns. So one goroutine doing a blocking syscall doesn't stall the others sharing its P. (This is why Go doesn't need the "never block the event loop" discipline that dominates the <a href="advanced-nodejs-study-guide.html">Node</a> and <a href="python-vs-nodejs-async-study-guide.html">async</a> guides — blocking a goroutine is fine; the scheduler routes around it.)</li>
+<li><strong>Network I/O</strong>: handled by the <strong>netpoller</strong>, which uses the OS's async mechanism (epoll/kqueue/IOCP — the same primitives under libuv). A goroutine doing a network read <em>parks</em> (yielding its P to others) and is made runnable again when the netpoller reports the socket is ready. So you write simple <strong>blocking-style</strong> code (<code>conn.Read(buf)</code>) and get <strong>async I/O efficiency</strong> for free — Go's killer ergonomic. Hundreds of thousands of idle connections cost almost nothing.</li>
+</ul>
+<h3 id="preemption-no-goroutine-starves-the-others">Preemption: No Goroutine Starves the Others</h3>
+<p>Originally Go's scheduler was <em>cooperative</em> — a goroutine yielded only at function calls, channel ops, and allocations, so a tight loop with none of those (<code>for {}</code>) could hog a P forever. Since <strong>Go 1.14</strong>, the scheduler uses <strong>asynchronous preemption</strong>: it sends a signal to long-running goroutines (every ~10 ms) to force a yield. So a CPU-bound goroutine no longer starves its peers, and you don't need to sprinkle <code>runtime.Gosched()</code> calls. (The garbage collector relies on this too, to stop goroutines for its brief safepoints.)</p>
+<h3 id="gomaxprocs-and-the-container-trap">GOMAXPROCS — and the Container Trap</h3>
+<p><code>GOMAXPROCS</code> (the number of Ps) defaults to the number of CPUs the runtime sees. Historically this was a <strong>major production footgun in containers</strong>: a Go process in a container limited to 2 CPUs (via cgroup quota) on a 64-core host would still set <code>GOMAXPROCS=64</code>, creating wild scheduler contention and GC over-parallelism. The classic fix was the <code>automaxprocs</code> library (Uber) to read the cgroup limit.</p>
+<p><strong>As of Go 1.25, the runtime is cgroup-aware</strong> and sets <code>GOMAXPROCS</code> from the container's CPU quota automatically — a significant fix if you run Go in Kubernetes (<a href="kubernetes-study-guide.html">Kubernetes guide</a>). On older Go versions, <em>still use <code>automaxprocs</code></em> or set <code>GOMAXPROCS</code> explicitly to your CPU limit. Setting it too high in a constrained container wastes effort on scheduling and inflates GC parallelism; getting it right is one of the cheapest production wins available.</p>
+<p>If you remember one thing from Part 2: <strong>the GMP scheduler multiplexes cheap goroutines onto <code>GOMAXPROCS</code> OS threads with work-stealing, routes around blocking syscalls, and turns blocking-style network code into async I/O via the netpoller — so you write simple sequential-looking goroutines and the runtime makes them efficient, provided <code>GOMAXPROCS</code> matches your real CPU budget.</strong></p>
+<hr>
+<h2 id="part-3-escape-analysis-allocation">Part 3 — Escape Analysis &amp; Allocation</h2>
+<p>Here is the single most important performance concept in Go, and the one that most separates engineers who <em>guess</em> from those who <em>know</em>: <strong>whether a value lives on the stack or the heap, and why.</strong> Reducing heap allocations is the highest-return optimization in the language, because every heap allocation costs allocator time now and garbage-collector time later.</p>
+<h3 id="stack-vs-heap">Stack vs. Heap</h3>
+<ul>
+<li><strong>Stack allocation is nearly free.</strong> Each goroutine has its own stack (Part 2). Allocating on it is a pointer bump; freeing is automatic when the function returns (the stack just unwinds). No GC ever looks at stack memory. A function that allocates only on the stack generates <em>zero garbage</em>.</li>
+<li><strong>Heap allocation is expensive</strong> — twice. The allocator must find space (with locking/coordination, though Go's per-P caches make the fast path cheap), <em>and</em> every heap object becomes future work for the garbage collector, which must trace and eventually free it. Heap allocations are the raw material of GC pressure (Part 4).</li>
+</ul>
+<p>So the question "stack or heap?" is really "free, or expensive-twice?" And the answer is decided <strong>at compile time</strong> by <strong>escape analysis</strong>.</p>
+<h3 id="what-escape-analysis-does">What Escape Analysis Does</h3>
+<p>The compiler analyzes whether a value's lifetime is provably confined to the function that created it. If it is, the value stays on the <strong>stack</strong>. If the value might be referenced <em>after the function returns</em> — it "<strong>escapes</strong>" — the compiler must put it on the <strong>heap</strong> so it stays alive.</p>
+<p>You can see exactly what the compiler decided:</p>
+<pre><code class="language-go">go build -gcflags=&quot;-m&quot; ./...      // prints escape analysis decisions
+go build -gcflags=&quot;-m -m&quot; ./...   // even more detail (why something escaped)
+</code></pre>
+<p>Typical output: <code>./main.go:12:9: &amp;x escapes to heap</code> or <code>./main.go:8:13: moved to heap: buf</code>. Reading this output is the core skill of Go performance work — it tells you, line by line, where your garbage comes from.</p>
+<h3 id="what-causes-things-to-escape">What Causes Things to Escape</h3>
+<p>The recurring culprits, each a place to look when reducing allocations:</p>
+<pre><code class="language-go">// 1. Returning a pointer to a local — the value must outlive the function, so it escapes.
+func newUser() *User {
+    u := User{Name: &quot;x&quot;}   // escapes to heap (a caller holds the pointer)
+    return &amp;u
+}
+
+// 2. Storing in something that outlives the function (a heap slice, a global, a field).
+func add(list *[]*Item, it Item) {
+    *list = append(*list, &amp;it)   // &amp;it escapes — it's kept in the slice
+}
+
+// 3. Interface boxing — putting a concrete value into an interface often allocates.
+func log(v any) { ... }
+log(42)                          // 42 may be boxed onto the heap to fit `any`
+
+// 4. Closures that capture variables and escape (e.g., passed to `go` or returned).
+func counter() func() int {
+    n := 0                       // n escapes — the returned closure references it
+    return func() int { n++; return n }
+}
+
+// 5. Values whose size isn't known at compile time, or that are too large for the stack.
+</code></pre>
+<p>The subtle, important point: <strong>a pointer does not <em>always</em> mean heap.</strong> Escape analysis is smart — a pointer to a local that's only <em>used within</em> the function (and inlined callees) can stay on the stack. So "use values not pointers to avoid allocation" is a heuristic, not a law; the compiler's <code>-m</code> output is the truth. Sometimes passing a pointer <em>prevents</em> a copy without escaping; sometimes it forces a heap allocation. Measure.</p>
+<h3 id="interface-boxing-the-hidden-allocator">Interface Boxing: The Hidden Allocator</h3>
+<p>Worth its own callout because it surprises people. When you store a concrete value in an interface (including <code>any</code>/<code>interface{}</code>), Go may need to <strong>box</strong> it — allocate a heap copy so the interface can hold a pointer to it. This is why <code>fmt.Sprintf</code>, <code>log</code> calls, and <code>[]any</code> are quietly allocation-heavy:</p>
+<pre><code class="language-go">// Each of these may allocate to box the int/float into the interface:
+fmt.Sprintf(&quot;%d&quot;, n)        // n is boxed into an `any` for the variadic args
+var x any = 3.14            // 3.14 boxed onto the heap
+</code></pre>
+<p>In hot paths, this is a real cost. Avoiding <code>any</code>, using generics (Part 7) instead of <code>interface{}</code> where possible, and keeping formatting out of inner loops all reduce it. (Small integers in the range [0, 255] are cached, like Python's small-int cache, so boxing them doesn't allocate — but don't rely on it.)</p>
+<h3 id="the-allocator">The Allocator</h3>
+<p>When a value does go to the heap, Go's allocator (derived from tcmalloc) makes the common case fast: each <strong>P</strong> (Part 2) has a local cache (<code>mcache</code>) of size-classed memory, so small allocations are usually lock-free and quick. This is why Go can allocate reasonably fast — but "fast to allocate" still means "the GC must later trace and free it." The allocation you don't make is always cheaper than the one you make quickly.</p>
+<p>If you remember one thing from Part 3: <strong>stack allocation is free and generates no garbage; heap allocation costs you twice (allocator now, GC later). Escape analysis decides which you get, <code>-gcflags="-m"</code> shows you its decisions, and reducing heap escapes — fewer returned pointers, less interface boxing, preallocated buffers — is the single highest-return optimization in Go.</strong></p>
+<h2 id="part-4-the-garbage-collector">Part 4 — The Garbage Collector</h2>
+<p>Part 3 created garbage; this part is about what collects it, and how to make that cheap. Go's GC is a deliberate engineering trade — it optimizes for <strong>low latency</strong> above all, and understanding its design tells you exactly which knobs to turn (few) and which habits actually help (allocate less).</p>
+<h3 id="the-design-concurrent-low-latency-mark-and-sweep">The Design: Concurrent, Low-Latency Mark-and-Sweep</h3>
+<p>Go's garbage collector is a <strong>concurrent, tri-color, mark-and-sweep</strong> collector that is <strong>non-generational</strong> and <strong>non-compacting</strong>. Each property is a deliberate choice:</p>
+<ul>
+<li><strong>Concurrent</strong> — the GC runs <em>alongside</em> your program (the "mutator"), on separate goroutines, rather than stopping the world to do its work. The stop-the-world (STW) pauses are tiny — typically <strong>sub-millisecond, often microseconds</strong> — bookending the concurrent marking phase.</li>
+<li><strong>Low-latency-first</strong> — Go explicitly trades some throughput and some extra CPU/memory for <em>short pauses</em>. This is the right call for the servers Go targets (you'd rather pay 1% more CPU than have a 50 ms pause spike your p99). It's a different philosophy from throughput-tuned collectors.</li>
+<li><strong>Non-compacting</strong> — objects never move. Upside: no cost to relocate objects and rewrite pointers, and pointers stay stable. Downside: possible fragmentation (mitigated by the size-classed allocator).</li>
+<li><strong>Non-generational</strong> — no separate young/old heaps (unlike the JVM, V8, or CPython's cycle collector). Go bet on a simpler design plus low pause times. (An experimental redesign, <em>Green Tea GC</em>, is available behind <code>GOEXPERIMENT=greenteagc</code> in recent Go for better cache locality and scalability — worth watching, not yet default.)</li>
+</ul>
+<h3 id="how-it-works-just-enough">How It Works (Just Enough)</h3>
+<p>The <strong>tri-color</strong> abstraction: every object is white (unvisited), grey (reachable, not yet scanned), or black (reachable and scanned). The GC starts from the <strong>roots</strong> (goroutine stacks, globals), colors them grey, then repeatedly scans grey objects — coloring them black and their referents grey — until no grey remains. Whatever is still <strong>white is unreachable</strong> and gets swept (freed).</p>
+<p>Because this happens <em>concurrently with your running program</em>, the program might change a pointer mid-collection in a way that could hide a still-reachable object. A <strong>write barrier</strong> prevents that: during a GC cycle, pointer writes are intercepted and recorded so nothing live is missed. The write barrier adds a small cost to pointer writes <em>while a GC is in progress</em> — another reason fewer pointers and less heap churn help.</p>
+<p>The cost of a GC cycle is driven by two things, and they map directly to your two levers:</p>
+<ol>
+<li><strong>How much live memory must be scanned</strong> — proportional to the <em>reachable</em> heap. Keep less alive → cheaper cycles.</li>
+<li><strong>How often the GC runs</strong> — driven by your <em>allocation rate</em>. Allocate less → run less often.</li>
+</ol>
+<p>Both reduce to "allocate less and retain less" — i.e., Part 3 plus good data design (Part 5). <strong>You tune the GC mostly by not making garbage.</strong></p>
+<h3 id="the-two-knobs-gogc-and-gomemlimit">The Two Knobs: GOGC and GOMEMLIMIT</h3>
+<p>You rarely need more than these, and most apps need only the second.</p>
+<p><strong><code>GOGC</code></strong> controls collection <em>frequency</em> by setting a growth target. The default <code>GOGC=100</code> means: trigger the next GC when the heap has grown <strong>100% (doubled)</strong> relative to the live set after the previous collection. It's a direct memory-for-CPU trade:</p>
+<ul>
+<li><strong>Raise it</strong> (<code>GOGC=200</code>, <code>400</code>) → GC runs <em>less often</em> → <strong>more memory used, less CPU spent on GC, higher throughput.</strong> Good when you have RAM to spare and want max throughput.</li>
+<li><strong>Lower it</strong> (<code>GOGC=50</code>) → GC runs <em>more often</em> → less memory, more CPU. Rarely useful.</li>
+<li><code>GOGC=off</code> disables GC entirely — only for short-lived batch jobs that exit before exhausting memory.</li>
+</ul>
+<p><strong><code>GOMEMLIMIT</code></strong> (Go 1.19+) sets a <strong>soft memory limit</strong>. As the heap approaches it, the GC runs progressively more aggressively to stay under it — trading CPU to respect the ceiling. This is the <strong>single most important runtime setting for containerized Go</strong>, and it fixed a long-standing pain:</p>
+<pre><code class="language-bash"># In a container limited to 512 MiB, leave headroom for non-heap memory:
+GOMEMLIMIT=450MiB ./myserver
+</code></pre>
+<p>Without it, a Go service under a Kubernetes memory limit could allocate past the cgroup limit between GC cycles and get <strong>OOM-killed</strong> even though it could have collected in time. <code>GOMEMLIMIT</code> tells the runtime "spend whatever CPU you must to stay under this." The recommended container setup is <strong><code>GOMEMLIMIT</code> ≈ your memory limit minus headroom, with <code>GOGC</code> left at 100</strong> — <code>GOGC</code> paces steady-state collection, <code>GOMEMLIMIT</code> enforces the ceiling. (It's <em>soft</em>: if your genuine live set exceeds the limit, you'll still OOM — the limit can't shrink data that's actually reachable.)</p>
+<h3 id="observing-the-gc">Observing the GC</h3>
+<pre><code class="language-bash"># Print a line per GC cycle: pause times, heap sizes, GC CPU %.
+GODEBUG=gctrace=1 ./myserver
+# gc 142 @8.3s 0%: 0.018+1.2+0.024 ms clock, ... 12-&gt;13-&gt;7 MB, 14 MB goal, 8 P
+#                  ^STW + concurrent + STW pauses    ^heap before-&gt;after-&gt;live
+</code></pre>
+<p><code>runtime.ReadMemStats</code> exposes the same numbers programmatically; export them to your metrics (<a href="observability-study-guide.html">Observability guide</a>) and watch GC CPU fraction and pause times. If GC CPU is high, you're allocating too much (go to Part 3); if pauses are the problem, that's rare with Go's GC and usually means an enormous live heap.</p>
+<p>If you remember one thing from Part 4: <strong>Go's GC is concurrent and low-latency by design, and its cost scales with how much you allocate and how much you keep alive — so the real "GC tuning" is allocating less (Part 3), with two knobs worth knowing: <code>GOMEMLIMIT</code> (set it in containers, always) and <code>GOGC</code> (raise it to trade memory for throughput).</strong></p>
+<hr>
+<h2 id="part-5-data-structures-memory-layout">Part 5 — Data Structures &amp; Memory Layout</h2>
+<p>Go gives you direct control over memory layout — value types, contiguous slices, struct packing — and using it well is how you get cache-friendly, low-allocation programs. This is the part where "mechanical sympathy" (writing code that works <em>with</em> the hardware) pays off, and where your choices determine how much work Parts 3 and 4 have to do.</p>
+<h3 id="slices-header-backing-array-and-append">Slices: Header, Backing Array, and <code>append</code></h3>
+<p>A slice is a 3-word <strong>header</strong> — <code>{pointer, length, capacity}</code> (24 bytes on 64-bit) — pointing at a shared <strong>backing array</strong>. The header is a value (copied on assignment), but copies share the same backing array. The performance-critical behavior is <code>append</code>:</p>
+<pre><code class="language-go">// Without preallocation: O(n) reallocations as the backing array grows.
+var s []int
+for i := 0; i &lt; 10000; i++ {
+    s = append(s, i)          // periodically: allocate a bigger array, COPY everything over
+}
+
+// With preallocation: ONE allocation, zero copies, zero intermediate garbage.
+s := make([]int, 0, 10000)    // len 0, cap 10000
+for i := 0; i &lt; 10000; i++ {
+    s = append(s, i)          // never reallocates — cap is sufficient
+}
+</code></pre>
+<p>When <code>append</code> exceeds capacity, Go allocates a new backing array (growing by ~2× for small slices, tapering to ~1.25× for large ones) and copies the elements — each growth is an allocation <em>and</em> a copy <em>and</em> garbage. <strong>Preallocating with <code>make([]T, 0, n)</code> when you know the size is the most common and highest-value slice optimization.</strong> Two more slice facts worth holding:</p>
+<ul>
+<li><strong>Subslices alias the parent's backing array.</strong> <code>b := a[1:3]</code> shares memory with <code>a</code>; appending to <code>b</code> can overwrite <code>a</code>'s elements (the classic "append aliasing" bug). Use <code>slices.Clone</code> or a 3-index slice (<code>a[1:3:3]</code>) to force a copy when you need independence.</li>
+<li><strong><code>[]T</code> vs <code>[]*T</code> is a layout decision with big consequences.</strong> A <code>[]Point</code> stores the structs <strong>inline and contiguous</strong> — one allocation, cache-friendly iteration, nothing for the GC to scan (no pointers). A <code>[]*Point</code> is N pointers to N separately-heap-allocated objects — N allocations, pointer-chasing on every access (cache misses), and N objects for the GC to trace. <strong>For small structs, prefer value slices.</strong> This one choice often dominates the performance of data-heavy Go.</li>
+</ul>
+<h3 id="maps">Maps</h3>
+<p>Go maps are hash tables with a few performance-relevant quirks:</p>
+<ul>
+<li><strong>Preallocate</strong> with a size hint — <code>make(map[K]V, n)</code> — to avoid incremental rehashing/growth as you insert.</li>
+<li><strong>Map values are not addressable.</strong> You can't take <code>&amp;m[k]</code>, and you can't mutate a field in place (<code>m[k].field = x</code> won't compile for a struct value). You must copy out, modify, and reassign — <em>or</em> store <code>*V</code> (a pointer), which adds an allocation and indirection. Choose based on access pattern.</li>
+<li><strong>Pointers in keys/values cost the GC.</strong> A <code>map[int]int</code> contains no pointers, so the GC can skip scanning its contents entirely; a <code>map[string]*Thing</code> makes the GC trace every entry. Pointer-free maps are markedly cheaper for GC.</li>
+<li><strong>Go 1.24 replaced the map implementation with Swiss Tables</strong>, giving faster lookups and lower memory — a free speedup when you upgrade, no code change.</li>
+</ul>
+<h3 id="struct-layout-alignment-and-padding">Struct Layout: Alignment and Padding</h3>
+<p>Struct fields are <strong>aligned</strong> to their size, and the compiler inserts <strong>padding</strong> to satisfy alignment — so field <em>order</em> changes struct <em>size</em>:</p>
+<pre><code class="language-go">type Bad struct {
+    active bool      // offset 0  (1 byte) + 7 bytes padding
+    id     int64     // offset 8  (8 bytes)
+    ok     bool      // offset 16 (1 byte) + 7 bytes padding
+}                    // total: 24 bytes
+
+type Good struct {
+    id     int64     // offset 0  (8 bytes)
+    active bool      // offset 8  (1 byte)
+    ok     bool      // offset 9  (1 byte) + 6 bytes padding
+}                    // total: 16 bytes — 33% smaller, same fields
+</code></pre>
+<p>Order fields <strong>largest-to-smallest</strong> to minimize padding. At scale (millions of structs, or hot slices), this directly cuts memory and improves cache density. The <code>fieldalignment</code> analyzer (<code>go vet</code>-style, from <code>golang.org/x/tools</code>) finds and even fixes these automatically — run it on hot types.</p>
+<h3 id="strings-and-byte">Strings and <code>[]byte</code></h3>
+<p>A <code>string</code> is an immutable <code>{pointer, length}</code> (16 bytes); a <code>[]byte</code> is mutable. Because they differ in mutability, <strong>converting between them copies</strong> (allocates):</p>
+<pre><code class="language-go">s := string(b)     // copies b's bytes into a new immutable string (allocation)
+b := []byte(s)     // copies s's bytes into a new mutable slice (allocation)
+</code></pre>
+<p>In hot paths this is a hidden allocation, repeated per call. Two mitigations:</p>
+<ul>
+<li><strong>Build strings with <code>strings.Builder</code>, never <code>+=</code> in a loop.</strong> String concatenation with <code>+=</code> is O(n²) — each <code>+=</code> allocates a new string and copies everything so far (strings are immutable). <code>strings.Builder</code> grows one buffer:</li>
+</ul>
+<pre><code class="language-go">// O(n²) — allocates and copies on every iteration:
+out := &quot;&quot;
+for _, w := range words { out += w + &quot; &quot; }
+
+// O(n) — one growing buffer, minimal allocation:
+var b strings.Builder
+b.Grow(estimatedSize)               // optional: preallocate, like make() for slices
+for _, w := range words { b.WriteString(w); b.WriteByte(' ') }
+out := b.String()
+</code></pre>
+<ul>
+<li>For genuine hot paths, the <code>unsafe.String</code>/<code>unsafe.Slice</code> helpers (Go 1.20+) can convert <em>without</em> copying when you can guarantee the bytes won't be mutated — powerful and dangerous; reach for it only with a benchmark proving it matters.</li>
+</ul>
+<h3 id="mechanical-sympathy-cache-locality">Mechanical Sympathy: Cache Locality</h3>
+<p>The CPU is fast; memory is slow; the cache bridges them — and <em>contiguous, pointer-free data is cache-friendly while pointer-chasing stalls the CPU.</em> This is why value slices beat pointer slices, why arrays beat linked lists in practice, and why a <code>map[K]*T</code> of scattered heap objects is slow to iterate. Two advanced points:</p>
+<ul>
+<li><strong>Struct-of-arrays (SoA) vs array-of-structs (AoS):</strong> if you process <em>one field across many items</em>, storing each field in its own slice (<code>xs []float64; ys []float64</code>) packs the data you touch contiguously and can be dramatically faster (and vectorizable) than a <code>[]struct{X, Y float64}</code> where you stride past the unused field.</li>
+<li><strong>False sharing:</strong> two goroutines updating <em>adjacent</em> fields that land on the same 64-byte cache line cause the line to ping-pong between cores, killing scaling. For hot per-CPU counters, pad structures to a cache line (<code>_ [64]byte</code>).</li>
+</ul>
+<h3 id="design-for-the-zero-value">Design for the Zero Value</h3>
+<p>A Go idiom with a performance payoff: types usable at their <strong>zero value</strong> (<code>sync.Mutex</code>, <code>bytes.Buffer</code>, <code>strings.Builder</code>) need no constructor and no allocation to initialize. <code>var b bytes.Buffer</code> is ready to use — no <code>new</code>, no heap. Designing your own types this way avoids constructor allocations and makes them cheaper to embed as struct fields.</p>
+<p>If you remember one thing from Part 5: <strong>layout is performance — preallocate slices, prefer value slices (<code>[]T</code>) over pointer slices (<code>[]*T</code>) for small structs, order struct fields largest-to-smallest to cut padding, build strings with <code>strings.Builder</code>, and keep the data you touch together contiguous and pointer-free for the cache.</strong></p>
+<hr>
+<h2 id="part-6-concurrency-for-performance">Part 6 — Concurrency for Performance</h2>
+<p>Go's concurrency is famously easy to <em>write</em> and easy to make <em>slow</em>. Goroutines are cheap but not free; channels are elegant but not the fastest tool for every job; and the two ways concurrency hurts performance — <strong>contention</strong> and <strong>unbounded spawning</strong> — are exactly the ones beginners fall into. This part is about concurrent Go that actually scales.</p>
+<h3 id="goroutines-are-cheap-not-free">Goroutines Are Cheap, Not Free</h3>
+<p>A goroutine costs ~2 KB of stack plus scheduler bookkeeping. You can have a million — but "spawn a goroutine per item" without bound is a classic mistake: a million simultaneous goroutines means a million stacks (gigabytes), scheduler pressure, and, worse, a million simultaneous demands on whatever they call (a database with a 100-connection pool, an API with a rate limit). <strong>Bound your concurrency</strong> (below).</p>
+<h3 id="channels-vs-mutexes-vs-atomics">Channels vs. Mutexes vs. Atomics</h3>
+<p>A pivotal performance insight that contradicts the "always use channels" folklore: <strong>channels are for orchestrating ownership and lifecycle; they are not the fastest primitive for high-frequency shared state.</strong> A channel operation involves the scheduler and internal locks — far more than an atomic increment. Choose by job, fastest first:</p>
+<ul>
+<li><strong><code>sync/atomic</code></strong> (typed atomics like <code>atomic.Int64</code>, <code>atomic.Pointer[T]</code> since Go 1.19) — lock-free, the fastest option for counters, flags, and single-word state. A hot request counter should be an <code>atomic.Int64</code>, never a mutex-guarded int and never a channel.</li>
+<li><strong><code>sync.Mutex</code></strong> — very fast <em>uncontended</em>; the danger is <em>contention</em> (below). The default for guarding a small critical section.</li>
+<li><strong><code>sync.RWMutex</code></strong> — allows many concurrent readers; only wins when reads vastly outnumber writes <em>and</em> the critical section is non-trivial (it has more overhead than a plain <code>Mutex</code>, so for short sections a <code>Mutex</code> is often faster even when read-heavy — measure).</li>
+<li><strong>Channels</strong> — for passing work and ownership between goroutines, pipelines, and signaling — not for a shared counter in a tight loop.</li>
+</ul>
+<pre><code class="language-go">// Hot counter: atomic beats mutex beats channel by a wide margin.
+var hits atomic.Int64
+hits.Add(1)                  // lock-free, ~a single instruction
+n := hits.Load()
+</code></pre>
+<p>Dave Cheney's rule of thumb is the right mental model: <em>"channels orchestrate; mutexes synchronize."</em> Reach for the channel when the problem is "who owns this work next," and the mutex/atomic when it's "protect this shared value."</p>
+<h3 id="contention-is-the-scaling-killer">Contention Is the Scaling Killer</h3>
+<p>A single mutex on a hot path <strong>serializes every goroutine that touches it</strong> — adding cores then makes things <em>worse</em> (more goroutines fighting for the same lock), the concurrency version of Amdahl's law. When profiling shows lock contention (the mutex profile, Part 8), the fixes:</p>
+<ul>
+<li><strong>Shard/stripe the lock</strong> — replace one mutex over a big map with N mutexes each guarding a shard, keyed by <code>hash(key) % N</code>. Contention drops by ~N×.</li>
+<li><strong>Per-goroutine/per-P local state, merged at the end</strong> — accumulate locally (no sharing), combine once. This is how you sum across workers without a shared hot counter.</li>
+<li><strong>Atomics</strong> instead of a mutex for single-word state.</li>
+<li><strong><code>sync.Map</code></strong> for the specific pattern it's built for (read-mostly, or disjoint key sets per goroutine) — but a plain <code>map</code> + <code>RWMutex</code> is often as good or better; <code>sync.Map</code> is not a general "concurrent map," and benchmarks should decide.</li>
+</ul>
+<h3 id="syncpool-reuse-to-cut-gc-pressure"><code>sync.Pool</code>: Reuse to Cut GC Pressure</h3>
+<p>The bridge between concurrency and Parts 3–4: <code>sync.Pool</code> lets goroutines <strong>reuse temporary objects</strong> instead of allocating fresh ones each time, slashing allocation rate and GC work. The canonical use is per-request buffers in a server:</p>
+<pre><code class="language-go">var bufPool = sync.Pool{
+    New: func() any { return new(bytes.Buffer) },
+}
+
+func handle(w http.ResponseWriter, r *http.Request) {
+    buf := bufPool.Get().(*bytes.Buffer)   // reuse an existing buffer if available
+    buf.Reset()
+    defer bufPool.Put(buf)                  // return it for the next request
+    // ... use buf to build the response without allocating a new buffer each time ...
+}
+</code></pre>
+<p>The GC may drain the pool on each cycle (so it's for <em>transient, reconstructible</em> objects, not a cache), but for high-throughput handlers it can cut allocations dramatically — a top GC-pressure remedy. Always <code>Reset()</code> pooled objects on get/put so you don't leak stale data between uses.</p>
+<h3 id="bounded-concurrency-and-errgroup">Bounded Concurrency and <code>errgroup</code></h3>
+<p>The Go answer to the "fan out without overwhelming downstream" problem from the <a href="python-vs-nodejs-async-study-guide.html">async comparison guide</a>. Don't launch unbounded goroutines; cap them. The idiomatic tool is <strong><code>golang.org/x/sync/errgroup</code></strong> — the closest thing Go has to structured concurrency: it runs a group of goroutines, <strong>propagates the first error, cancels the rest via context, and waits for all</strong> before returning:</p>
+<pre><code class="language-go">import &quot;golang.org/x/sync/errgroup&quot;
+
+func fetchAll(ctx context.Context, urls []string) ([]Result, error) {
+    g, ctx := errgroup.WithContext(ctx)
+    g.SetLimit(20)                          // at most 20 goroutines in flight — bounded
+    results := make([]Result, len(urls))
+    for i, url := range urls {
+        i, url := i, url                    // (pre-1.22 capture; unneeded on Go 1.22+)
+        g.Go(func() error {
+            r, err := fetch(ctx, url)       // ctx is cancelled if any sibling fails
+            if err != nil { return err }
+            results[i] = r                  // distinct index per goroutine — no shared write
+            return nil
+        })
+    }
+    if err := g.Wait(); err != nil { return nil, err }   // first error; others cancelled
+    return results, nil
+}
+</code></pre>
+<p><code>g.SetLimit(n)</code> is the bounded-concurrency knob; <code>errgroup.WithContext</code> gives you fail-fast cancellation. This is the production pattern for parallel I/O in Go — note each goroutine writes a <em>distinct</em> slice index, so there's no shared mutation and no lock needed.</p>
+<h3 id="goroutine-leaks-the-go-memory-leak">Goroutine Leaks: The Go Memory Leak</h3>
+<p>The characteristic Go resource leak: a goroutine <strong>blocked forever</strong> — waiting on a channel no one will send to, or stuck in a <code>select</code> with no cancellation path — never returns, so its stack and everything it captured is never freed. Spawn these in a loop and you leak memory and goroutines until OOM. Prevention is a discipline:</p>
+<ul>
+<li><strong>Every goroutine needs a guaranteed exit</strong> — via <code>context</code> cancellation, a closed channel, or a timeout. Never <code>&lt;-ch</code> in a long-lived goroutine without also selecting on <code>ctx.Done()</code>.</li>
+<li><strong>Propagate <code>context.Context</code></strong> as the first argument through your call tree; respect <code>ctx.Done()</code>; use <code>context.WithTimeout</code>/<code>WithCancel</code> to bound work.</li>
+<li><strong>Test for leaks</strong> with <code>go.uber.org/goleak</code> in your test suite — it fails tests that leave goroutines running.</li>
+</ul>
+<pre><code class="language-go">// LEAK: if no one ever sends, this goroutine blocks forever.
+go func() { v := &lt;-ch; use(v) }()
+
+// SAFE: always has an exit path.
+go func() {
+    select {
+    case v := &lt;-ch: use(v)
+    case &lt;-ctx.Done(): return            // cancellation frees the goroutine
+    }
+}()
+</code></pre>
+<h3 id="always-test-with-the-race-detector">Always Test With the Race Detector</h3>
+<p>Concurrency correctness underpins concurrency performance — a data race can corrupt the very state you're optimizing. Go ships a <strong>race detector</strong> that instruments memory accesses and reports races at runtime:</p>
+<pre><code class="language-bash">go test -race ./...      # run your whole suite under the race detector — do this in CI
+go run -race ./...
+</code></pre>
+<p>It carries ~10× slowdown (so it's for tests/CI, not production), but it catches the "shared without synchronization" bugs that are otherwise nearly impossible to find. <strong>Running tests with <code>-race</code> is non-negotiable for concurrent Go.</strong></p>
+<p>If you remember one thing from Part 6: <strong>goroutines are cheap but bound them (<code>errgroup</code> with <code>SetLimit</code>); use atomics/mutexes for shared state and channels for orchestration; kill contention by sharding or going lock-free; cut GC pressure with <code>sync.Pool</code>; guarantee every goroutine an exit via <code>context</code> to avoid leaks; and always run tests with <code>-race</code>.</strong></p>
+<h2 id="part-7-the-compiler-pgo">Part 7 — The Compiler &amp; PGO</h2>
+<p>The Go compiler prioritizes <em>fast compilation</em> over the aggressive optimization of a GCC or LLVM — but it does enough that knowing its passes helps you write code it can optimize, and one modern feature (PGO) gives a free speedup with zero code changes.</p>
+<h3 id="the-optimizations-that-matter">The Optimizations That Matter</h3>
+<ul>
+<li><strong>Inlining</strong> — the compiler copies small function bodies into their callers, eliminating call overhead and, crucially, <em>enabling further optimization</em> (an inlined function's allocations can now be stack-allocated, its bounds checks eliminated, etc.). There's an <strong>inlining budget</strong> (a cost threshold); functions that are too large, or historically those with certain constructs, don't inline. See decisions with <code>-gcflags="-m"</code> (<code>can inline f</code>, <code>inlining call to f</code>). The practical implication: <strong>keep hot, tiny helper functions simple so they inline.</strong> Inlining is the gateway optimization — a function that doesn't inline blocks the optimizations that would follow.</li>
+<li><strong>Bounds-check elimination (BCE)</strong> — Go inserts a bounds check on every slice/array index for memory safety, then removes the ones it can prove are safe. Idiomatic <code>for i, v := range s</code> has no per-element check; manual indexing sometimes keeps redundant checks. Rarely worth hand-tuning, but in a proven hot loop you can restructure to help the compiler prove safety (a leading <code>_ = s[n-1]</code> can hoist one check out of a loop).</li>
+<li><strong>Devirtualization</strong> — interface method calls are <em>indirect</em> (dispatched through a method table), which costs more than a direct call and blocks inlining. When the compiler can prove the concrete type at a call site, it converts the interface call to a direct (inlinable) call. PGO makes this much more effective on hot paths.</li>
+<li><strong>Escape analysis</strong> (Part 3), <strong>dead-code elimination</strong>, and <strong>constant folding</strong> round out the set; the linker drops unused functions, which is why Go binaries stay relatively small despite static linking.</li>
+</ul>
+<h3 id="pgo-a-free-214-from-production-profiles">PGO: A Free 2–14% From Production Profiles</h3>
+<p><strong>Profile-Guided Optimization</strong> (GA since Go 1.21) is the highest-leverage compiler feature and uniquely modern. You feed the compiler a <strong>real CPU profile</strong> from production, and it optimizes the actually-hot paths — more aggressive inlining of hot functions, better devirtualization where the profile shows the common concrete type. The workflow is delightfully simple:</p>
+<pre><code class="language-bash"># 1. Collect a CPU profile from a representative production workload (Part 8):
+curl -o cpu.pprof &quot;http://prod-host:6060/debug/pprof/profile?seconds=30&quot;
+
+# 2. Commit it as default.pgo in the main package directory:
+mv cpu.pprof ./cmd/myserver/default.pgo
+
+# 3. Build. The compiler auto-detects default.pgo and optimizes hot paths.
+go build ./cmd/myserver
+</code></pre>
+<p>No code changes, no flags — the presence of <code>default.pgo</code> is enough. Typical gains are <strong>2–14%</strong> across the whole program, concentrated in hot code. Re-collect the profile periodically (as your workload shifts) and commit the updated <code>default.pgo</code>. <strong>For any CPU-bound Go service, PGO is close to free money</strong> — set it up once in CI and keep the profile fresh.</p>
+<h3 id="build-flags-worth-knowing">Build Flags Worth Knowing</h3>
+<pre><code class="language-bash">go build -gcflags=&quot;-m&quot; ./...          # escape analysis + inlining decisions (your daily tool)
+go build -ldflags=&quot;-s -w&quot; ./...       # strip symbol table + DWARF → smaller binary
+GOAMD64=v3 go build ./...             # target AVX2-era x86 (v1..v4) if you control the CPU
+CGO_ENABLED=0 go build ./...          # force pure-Go static binary (no libc dependency)
+</code></pre>
+<h3 id="cgo-is-not-a-performance-tool">cgo Is Not a Performance Tool</h3>
+<p>A crucial myth to dispel: <strong>calling C via cgo is usually <em>slower</em>, not faster, for compute.</strong> A cgo call is not an ordinary function call — it switches off the goroutine stack, pins the goroutine to its OS thread (interfering with the scheduler), and crosses a boundary the GC and inliner can't see through, costing on the order of <strong>tens of nanoseconds per call</strong> plus lost optimizations. The maxim is <em>"cgo is not Go."</em> Reach for cgo only to reuse an existing C library you can't reimplement — never expecting a speedup — and if you must, <strong>batch</strong> work into few large calls rather than many small ones to amortize the crossing. For pure computation, idiomatic Go (or Go assembly for the truly hot kernel) beats a cgo binding.</p>
+<p>If you remember one thing from Part 7: <strong>write inlining-friendly hot paths, lean on <code>-gcflags="-m"</code> to see what the compiler did, turn on PGO for a free 2–14% on CPU-bound services, and never reach for cgo expecting speed — its call overhead usually makes things slower.</strong></p>
+<hr>
+<h2 id="part-8-profiling-measurement">Part 8 — Profiling &amp; Measurement</h2>
+<p>Go has the best built-in profiling of any mainstream language, and the cardinal rule holds: <strong>measure first.</strong> Guessing where Go spends time or memory is a great way to optimize the wrong thing. This part is the toolkit for finding the real bottleneck before you touch Part 9.</p>
+<h3 id="pprof-the-five-profiles"><code>pprof</code>: The Five Profiles</h3>
+<p><code>pprof</code> is Go's profiler, built into the runtime. There are five profile types, each answering a different question:</p>
+<table>
+<thead>
+<tr>
+<th>Profile</th>
+<th>Answers</th>
+<th>How to enable</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CPU</strong></td>
+<td>where is CPU time spent?</td>
+<td><code>-cpuprofile</code>, <code>net/http/pprof</code>, <code>runtime/pprof</code></td>
+</tr>
+<tr>
+<td><strong>Heap</strong></td>
+<td>where are allocations / in-use memory?</td>
+<td><code>-memprofile</code>, always available</td>
+</tr>
+<tr>
+<td><strong>Goroutine</strong></td>
+<td>what are all goroutines doing? (leaks, blocks)</td>
+<td>always available</td>
+</tr>
+<tr>
+<td><strong>Block</strong></td>
+<td>where do goroutines block? (channels, mutexes)</td>
+<td><code>runtime.SetBlockProfileRate</code></td>
+</tr>
+<tr>
+<td><strong>Mutex</strong></td>
+<td>where is lock contention?</td>
+<td><code>runtime.SetMutexProfileFraction</code></td>
+</tr>
+</tbody>
+</table>
+<p>For a <strong>live service</strong>, expose them with a single import and a debug port:</p>
+<pre><code class="language-go">import _ &quot;net/http/pprof&quot;            // registers /debug/pprof/* handlers
+go func() { http.ListenAndServe(&quot;localhost:6060&quot;, nil) }()   // debug port
+
+// Then, against the running process:
+//   go tool pprof http://localhost:6060/debug/pprof/profile?seconds=30   (CPU)
+//   go tool pprof http://localhost:6060/debug/pprof/heap                 (memory)
+//   go tool pprof http://localhost:6060/debug/pprof/goroutine            (goroutines)
+</code></pre>
+<p>In the interactive <code>pprof</code> shell, the commands you'll use constantly: <strong><code>top</code></strong> (hottest functions), <strong><code>list &amp;lt;func&amp;gt;</code></strong> (annotated source with per-line cost), <strong><code>web</code></strong> (a call graph), and especially <strong><code>-http=:8080</code></strong> which opens a <strong>flame graph</strong> in the browser — the single best view for "where does the time/memory actually go." For heap profiles, distinguish <code>alloc_space</code> (total allocated over time — what drives GC) from <code>inuse_space</code> (currently live — what drives memory footprint); you usually optimize <code>alloc_space</code> to reduce GC pressure.</p>
+<h3 id="benchmarks-testingb-done-right">Benchmarks: <code>testing.B</code> Done Right</h3>
+<p>Go's benchmark harness is part of <code>testing</code>. The modern form uses <strong><code>b.Loop()</code></strong> (Go 1.24+), which is better than the old <code>for i := 0; i &lt; b.N; i++</code> — it manages the timer correctly, runs setup once, and prevents the compiler from optimizing away the code under test:</p>
+<pre><code class="language-go">func BenchmarkParse(b *testing.B) {
+    data := loadTestData()        // setup — not timed
+    b.ReportAllocs()              // report allocs/op and bytes/op alongside ns/op
+    for b.Loop() {                // Go 1.24+: the right benchmark loop
+        _ = Parse(data)
+    }
+}
+</code></pre>
+<pre><code class="language-bash">go test -bench=. -benchmem ./...
+# BenchmarkParse-8   1000000   1053 ns/op   248 B/op   3 allocs/op
+#                    ^iters     ^time/op    ^bytes/op   ^allocations/op
+</code></pre>
+<p><strong>Watch <code>allocs/op</code> and <code>B/op</code> as closely as <code>ns/op</code></strong> — in Go, allocation count is often the truest predictor of performance, because it drives GC pressure (Parts 3–4). Driving <code>allocs/op</code> to zero on a hot path is a concrete, satisfying optimization target.</p>
+<h3 id="benchstat-how-to-honestly-claim-x-faster"><code>benchstat</code>: How to Honestly Claim "X% Faster"</h3>
+<p>A single benchmark run is noise. Run each benchmark multiple times and compare statistically with <strong><code>benchstat</code></strong> (<code>golang.org/x/perf/cmd/benchstat</code>):</p>
+<pre><code class="language-bash">go test -bench=. -benchmem -count=10 &gt; old.txt   # before your change
+# ... make the change ...
+go test -bench=. -benchmem -count=10 &gt; new.txt   # after
+benchstat old.txt new.txt                         # statistical comparison + p-values
+</code></pre>
+<p><code>benchstat</code> reports the mean, variance, and whether the difference is statistically significant. <strong>This is how you justify a performance change</strong> — not "it looked faster once," but "−38% on ns/op, −100% on allocs/op, p&lt;0.05 over 10 runs."</p>
+<h3 id="the-execution-tracer">The Execution Tracer</h3>
+<p>When the question is "why isn't my <em>concurrency</em> scaling?" — not which function is hot, but why cores sit idle — reach for the <strong>execution tracer</strong>, which visualizes scheduling, GC, syscalls, and goroutine blocking over time:</p>
+<pre><code class="language-bash">go test -trace=trace.out -bench=BenchmarkX
+go tool trace trace.out      # opens a timeline: P utilization, GC, goroutine states
+</code></pre>
+<p>It reveals serialization (goroutines waiting on each other), GC interference, scheduler latency, and under-utilized Ps — the concurrency problems that CPU profiles don't show clearly.</p>
+<h3 id="the-workflow">The Workflow</h3>
+<p>The loop that ties it together: <strong>benchmark</strong> the hot path with <code>-benchmem</code> → if <code>allocs/op</code> is high, run a <strong>heap profile</strong> to find the allocation sites → use <strong><code>-gcflags="-m"</code></strong> (Part 3) to see <em>why</em> they escape → fix → <strong><code>benchstat</code></strong> to confirm the win is real. For a live latency problem: <strong>CPU profile</strong> the running service via <code>net/http/pprof</code>, read the <strong>flame graph</strong>, and if cores are idle, switch to the <strong>execution tracer</strong>.</p>
+<p>If you remember one thing from Part 8: <strong><code>pprof</code> (CPU/heap/goroutine/block/mutex, viewed as flame graphs) finds the bottleneck, <code>go test -bench -benchmem</code> with <code>b.Loop()</code> measures it with allocation counts, <code>benchstat</code> proves the change is real, and the execution tracer explains why concurrency isn't scaling — always measure before optimizing.</strong></p>
+<hr>
+<h2 id="part-9-performance-levers">Part 9 — Performance Levers</h2>
+<p>The levers, ordered by effort-to-impact — highest-return first. Notice how they cluster around the Part 1 thesis: most are about <strong>allocating less</strong> and <strong>concurring better</strong>, because Go is already native code.</p>
+<h3 id="lever-1-algorithm-and-data-structure">Lever 1: Algorithm and Data Structure</h3>
+<p>The universal first lever, the same in every language: an O(n log n) beats an O(n²) by margins no micro-optimization can touch, and the right structure (a <code>map</code> for lookups, not a linear scan; a <code>set</code> via <code>map[T]struct{}</code>) beats a clever slow one. Profile to confirm the hot spot, then ask "is this the right algorithm?" before anything below.</p>
+<h3 id="lever-2-reduce-allocations-the-1-go-specific-lever">Lever 2: Reduce Allocations (the #1 Go-Specific Lever)</h3>
+<p>This is where Go performance lives (Part 3). In effort order:</p>
+<ul>
+<li><strong>Preallocate</strong> slices (<code>make([]T, 0, n)</code>) and maps (<code>make(map[K]V, n)</code>) when you know the size.</li>
+<li><strong>Avoid interface boxing</strong> in hot paths — fewer <code>any</code>/<code>interface{}</code>, prefer generics (below).</li>
+<li><strong><code>strings.Builder</code></strong> for string building; never <code>+=</code> in a loop.</li>
+<li><strong>Pass buffers in</strong> rather than returning freshly-allocated ones (<code>func read(buf []byte)</code> over <code>func read() []byte</code>).</li>
+<li><strong>Prefer value slices <code>[]T</code></strong> over <code>[]*T</code> for small structs (Part 5).</li>
+<li>Verify every change with <code>-gcflags="-m"</code> and <code>-benchmem</code>. The target is fewer <code>allocs/op</code>.</li>
+</ul>
+<h3 id="lever-3-reuse-with-syncpool">Lever 3: Reuse With <code>sync.Pool</code></h3>
+<p>For unavoidable transient allocations on a hot path (per-request buffers, scratch space), <strong><code>sync.Pool</code></strong> (Part 6) recycles objects across calls, cutting allocation rate and GC work — often the biggest single GC-pressure win in a busy server.</p>
+<h3 id="lever-4-right-size-concurrency">Lever 4: Right-Size Concurrency</h3>
+<ul>
+<li><strong>Bound it</strong> with <code>errgroup.SetLimit</code> or a semaphore — never unbounded goroutines (Part 6).</li>
+<li><strong>Kill contention</strong> — shard hot mutexes, or use atomics for single-word state.</li>
+<li><strong>Don't overuse channels</strong> in hot inner loops; atomics/mutexes are faster for shared state.</li>
+<li>Use the <strong>block</strong> and <strong>mutex</strong> profiles (Part 8) to find contention.</li>
+</ul>
+<h3 id="lever-5-tune-the-runtime-for-the-deployment">Lever 5: Tune the Runtime for the Deployment</h3>
+<p>Free wins from environment variables, no code change:</p>
+<ul>
+<li><strong><code>GOMEMLIMIT</code></strong> — set it in every container to avoid OOM kills (Part 4). The highest-value runtime setting.</li>
+<li><strong><code>GOMAXPROCS</code></strong> — match your real CPU budget; Go 1.25+ does this from cgroups automatically, older versions need <code>automaxprocs</code> (Part 2).</li>
+<li><strong><code>GOGC</code></strong> — raise it (e.g., 200–400) to trade memory for throughput when you have RAM to spare (Part 4).</li>
+</ul>
+<h3 id="lever-6-turn-on-pgo">Lever 6: Turn On PGO</h3>
+<p>A free 2–14% on CPU-bound services for the cost of committing a <code>default.pgo</code> profile and rebuilding (Part 7). Set it up in CI.</p>
+<h3 id="lever-7-avoid-reflection-in-hot-paths">Lever 7: Avoid Reflection in Hot Paths</h3>
+<p>Reflection (<code>reflect</code>) is powerful and slow, and <code>encoding/json</code> uses it heavily — JSON marshaling is a frequent Go hot spot. Options when JSON is your bottleneck: a faster drop-in (<code>jsoniter</code>, or <code>bytedance/sonic</code> which uses JIT/assembly), code generation (<code>easyjson</code>, <code>ffjson</code>), or hand-written marshaling for the hottest types. More broadly, prefer <strong>generics</strong> (Go 1.18+) over <code>interface{}</code>+reflection where you control the code — generics are monomorphized at compile time, so they avoid both boxing and reflection.</p>
+<h3 id="lever-8-buffer-your-io">Lever 8: Buffer Your I/O</h3>
+<p>Unbuffered small reads/writes each become a syscall. Wrap raw I/O in <code>bufio.Reader</code>/<code>bufio.Writer</code> (or <code>bytes.Buffer</code>) to batch them — often a dramatic win for line-by-line file or network processing. Pair with <code>io.Copy</code> (which uses an internal buffer) for streaming.</p>
+<h3 id="lever-9-reduce-copying-and-cache-friendly-layout">Lever 9: Reduce Copying and Cache-Friendly Layout</h3>
+<ul>
+<li>Pass <strong>pointers for genuinely large structs</strong> to avoid copies (but check <code>-gcflags="-m"</code> that it doesn't force a heap escape).</li>
+<li>Avoid repeated <strong><code>string</code>↔<code>[]byte</code></strong> conversions (Part 5); reuse buffers.</li>
+<li>Lay out data <strong>contiguously and pointer-free</strong> for the cache; consider struct-of-arrays for field-at-a-time processing; pack struct fields largest-to-smallest (Part 5).</li>
+</ul>
+<h3 id="lever-10-the-compiler-and-the-last-resort">Lever 10: The Compiler and the Last Resort</h3>
+<p>Microarchitecture targeting (<code>GOAMD64=v3</code>), keeping hot functions inlinable (Part 7), and — only for the hottest proven kernel, and only with a benchmark — <code>unsafe</code> or hand-written Go <strong>assembly</strong> (which is how the standard library implements crypto and hashing). These are sharp tools for the final few percent, not starting points.</p>
+<h3 id="the-anti-lever-dont-reach-for-cgo">The Anti-Lever: Don't Reach for cgo</h3>
+<p>Worth restating as a lever <em>not</em> to pull: <strong>cgo makes compute slower</strong>, not faster, because of per-call overhead (Part 7). If you're tempted to "drop into C for speed," that instinct (correct in Python) is backwards in Go.</p>
+<p>If you remember one thing from Part 9: <strong>the Go levers, in order, are algorithm → reduce allocations → <code>sync.Pool</code> → right-size concurrency → tune the runtime (<code>GOMEMLIMIT</code>!) → PGO → avoid reflection → buffer I/O → reduce copying → compiler/asm — and almost all of them reduce to "allocate less and concur better," because the language is already fast.</strong></p>
+<h2 id="part-10-high-performance-recipes">Part 10 — High-Performance Recipes</h2>
+<p>The payoff. Each recipe is a complete, worked pattern — with the before/after and the numbers that matter (in Go, that's <code>ns/op</code> <em>and</em> <code>allocs/op</code>). They're ordered from "you'll use this every day" to "you'll use this when the stakes are high."</p>
+<h3 id="recipe-1-preallocate-slices">Recipe 1: Preallocate Slices</h3>
+<p>The most common Go allocation win:</p>
+<pre><code class="language-go">// BEFORE — repeated reallocation + copying as the slice grows:
+func ids(users []User) []int {
+    var out []int
+    for _, u := range users { out = append(out, u.ID) }   // ~log2(n) reallocs, lots of garbage
+    return out
+}
+//  BenchmarkBefore   ... 5200 ns/op   16312 B/op   12 allocs/op
+
+// AFTER — one allocation, zero copies:
+func ids(users []User) []int {
+    out := make([]int, 0, len(users))                      // exact capacity up front
+    for _, u := range users { out = append(out, u.ID) }
+    return out
+}
+//  BenchmarkAfter    ... 1100 ns/op    8192 B/op    1 alloc/op   (≈5× faster, 12→1 allocs)
+</code></pre>
+<h3 id="recipe-2-build-strings-with-stringsbuilder">Recipe 2: Build Strings With <code>strings.Builder</code></h3>
+<pre><code class="language-go">// BEFORE — O(n²): each += allocates a new string and copies everything so far.
+func join(parts []string) string {
+    s := &quot;&quot;
+    for _, p := range parts { s += p + &quot;,&quot; }
+    return s
+}
+
+// AFTER — O(n): one growing buffer.
+func join(parts []string) string {
+    var b strings.Builder
+    b.Grow(len(parts) * 8)                 // optional size hint, like make() for slices
+    for _, p := range parts { b.WriteString(p); b.WriteByte(',') }
+    return b.String()
+}
+// For 10k parts: from thousands of allocations to a handful.
+</code></pre>
+<h3 id="recipe-3-pool-per-request-buffers">Recipe 3: Pool Per-Request Buffers</h3>
+<p>The top GC-pressure remedy for busy servers:</p>
+<pre><code class="language-go">var bufPool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
+
+func render(w http.ResponseWriter, data any) {
+    buf := bufPool.Get().(*bytes.Buffer)
+    defer func() { buf.Reset(); bufPool.Put(buf) }()   // reset + return for reuse
+    json.NewEncoder(buf).Encode(data)                   // build into the reused buffer
+    w.Write(buf.Bytes())
+}
+// Under load this turns &quot;one buffer allocation per request&quot; into &quot;almost none&quot; —
+// directly cutting GC frequency (Parts 3-4).
+</code></pre>
+<h3 id="recipe-4-bounded-parallel-fan-out-with-errgroup">Recipe 4: Bounded Parallel Fan-Out with <code>errgroup</code></h3>
+<p>The production pattern for parallel I/O — concurrency, error propagation, and cancellation, bounded:</p>
+<pre><code class="language-go">import &quot;golang.org/x/sync/errgroup&quot;
+
+func fetchAll(ctx context.Context, urls []string) ([]*Resp, error) {
+    g, ctx := errgroup.WithContext(ctx)
+    g.SetLimit(20)                                  // at most 20 in flight — protects downstream
+    out := make([]*Resp, len(urls))
+    for i, u := range urls {
+        i, u := i, u
+        g.Go(func() error {
+            r, err := fetch(ctx, u)                 // ctx cancels if any sibling errors
+            if err != nil { return err }
+            out[i] = r                               // distinct index → no shared write, no lock
+            return nil
+        })
+    }
+    if err := g.Wait(); err != nil { return nil, err }
+    return out, nil
+}
+</code></pre>
+<h3 id="recipe-5-atomic-counter-instead-of-a-mutex">Recipe 5: Atomic Counter Instead of a Mutex</h3>
+<p>For a hot single-word counter (metrics, IDs), atomics crush a mutex:</p>
+<pre><code class="language-go">// BEFORE — mutex per increment; contended under load.
+type Counter struct { mu sync.Mutex; n int64 }
+func (c *Counter) Inc() { c.mu.Lock(); c.n++; c.mu.Unlock() }
+
+// AFTER — lock-free; a single atomic instruction.
+type Counter struct { n atomic.Int64 }
+func (c *Counter) Inc() { c.n.Add(1) }
+func (c *Counter) Value() int64 { return c.n.Load() }
+// Several times faster uncontended, and it actually scales under contention.
+</code></pre>
+<h3 id="recipe-6-hunt-and-kill-an-allocation">Recipe 6: Hunt and Kill an Allocation</h3>
+<p>The core Go optimization loop, end to end:</p>
+<pre><code class="language-go">// 1. Benchmark shows allocs/op &gt; 0 on a hot function. Find out why:
+//      go build -gcflags=&quot;-m&quot; ./...
+//    Output: &quot;./parse.go:14:9: buf escapes to heap&quot;
+//
+// 2. The escape: returning a freshly-allocated buffer each call.
+func parse(data []byte) []byte {
+    buf := make([]byte, 0, 256)            // escapes — returned to caller
+    // ... fill buf ...
+    return buf
+}
+//
+// 3. The fix: let the caller own and reuse the buffer (pass it in).
+func parse(dst, data []byte) []byte {      // caller reuses dst across calls (or pools it)
+    dst = dst[:0]
+    // ... append into dst ...
+    return dst
+}
+// 4. Re-benchmark with -benchmem and confirm with benchstat. allocs/op → 0.
+</code></pre>
+<h3 id="recipe-7-faster-json">Recipe 7: Faster JSON</h3>
+<p><code>encoding/json</code> is reflection-based and often a hot spot. Options, in order of effort:</p>
+<pre><code class="language-go">// Easiest: reuse encoders/decoders and stream, don't re-parse into intermediate maps.
+dec := json.NewDecoder(r)       // streams; avoids buffering the whole payload as a string
+
+// Bigger win when JSON is the bottleneck: a drop-in faster library.
+import jsoniter &quot;github.com/json-iterator/go&quot;
+var json = jsoniter.ConfigCompatibleWithStandardLibrary   // same API, faster
+// (or bytedance/sonic for JIT/asm-accelerated; or easyjson for codegen — no reflection)
+
+// Best of all when you control the types: generics over interface{}+reflection.
+</code></pre>
+<h3 id="recipe-8-buffer-your-io">Recipe 8: Buffer Your I/O</h3>
+<pre><code class="language-go">// BEFORE — one syscall per write; brutal for line-by-line output.
+for _, line := range lines { conn.Write([]byte(line + &quot;\n&quot;)) }
+
+// AFTER — batched into far fewer syscalls.
+w := bufio.NewWriter(conn)
+for _, line := range lines { w.WriteString(line); w.WriteByte('\n') }
+w.Flush()                       // don't forget to flush!
+</code></pre>
+<h3 id="recipe-9-tune-the-runtime-in-a-container">Recipe 9: Tune the Runtime in a Container</h3>
+<p>The two settings every containerized Go service should set (and a Go-version note):</p>
+<pre><code class="language-dockerfile"># In a pod/container with a 1Gi memory limit and a 2-CPU quota:
+ENV GOMEMLIMIT=900MiB          # soft limit with headroom — prevents OOM kills (Part 4)
+# GOMAXPROCS: automatic from the cgroup quota on Go 1.25+.
+# On older Go, either set it explicitly or import go.uber.org/automaxprocs:
+ENV GOMAXPROCS=2
+</code></pre>
+<p><code>GOMEMLIMIT</code> alone eliminates a whole class of mysterious Kubernetes OOM-kills, where a Go process allocated past its memory limit between GC cycles. See the <a href="kubernetes-study-guide.html">Kubernetes guide</a> for setting the limits these mirror.</p>
+<h3 id="recipe-10-enable-pgo">Recipe 10: Enable PGO</h3>
+<pre><code class="language-bash"># 1. Profile a representative production workload for 30s (needs net/http/pprof):
+curl -o ./cmd/server/default.pgo &quot;http://prod:6060/debug/pprof/profile?seconds=30&quot;
+# 2. Commit default.pgo next to main; the compiler picks it up automatically:
+go build ./cmd/server          # auto-detects default.pgo → 2-14% faster, no code change
+# 3. Refresh the profile periodically as the workload evolves.
+</code></pre>
+<h3 id="recipe-11-shard-a-contended-map">Recipe 11: Shard a Contended Map</h3>
+<p>When the mutex profile shows one map's lock is the bottleneck:</p>
+<pre><code class="language-go">// A striped map: N independent shards, each with its own lock → ~N× less contention.
+type ShardedMap[V any] struct {
+    shards [256]struct {
+        mu sync.RWMutex
+        m  map[string]V
+    }
+}
+func (s *ShardedMap[V]) shard(key string) *struct{ mu sync.RWMutex; m map[string]V } {
+    return &amp;s.shards[fnv32(key)%256]                 // hash key → shard
+}
+func (s *ShardedMap[V]) Get(key string) (V, bool) {
+    sh := s.shard(key); sh.mu.RLock(); defer sh.mu.RUnlock()
+    v, ok := sh.m[key]; return v, ok
+}
+// Reads/writes to different keys now rarely touch the same lock.
+</code></pre>
+<h3 id="the-decision-tree">The Decision Tree</h3>
+<p>When a Go program is too slow, work through this:</p>
+<pre><code class="language-text">1. Profile it (Part 8): CPU flame graph + -benchmem (watch allocs/op!)
+   │
+2. Wrong algorithm / data structure? (O(n²), linear scan instead of a map)
+   │ yes → fix it, re-measure
+   │ no ↓
+3. High allocs/op? (this is the usual Go culprit)
+   │ yes → -gcflags=&quot;-m&quot; to find escapes → preallocate, strings.Builder,
+   │        pass buffers in, sync.Pool, avoid interface boxing → re-measure
+   │ no ↓
+4. High GC CPU / pauses? (gctrace)
+   │ yes → reduce allocations (step 3) and live heap; set GOMEMLIMIT; maybe raise GOGC
+   │ no ↓
+5. Not scaling across cores? (execution tracer shows idle Ps)
+   │ yes → lock contention (mutex profile) → shard/atomics; or unbounded/blocked
+   │        goroutines → errgroup.SetLimit, fix leaks; check GOMAXPROCS
+   │ no ↓
+6. CPU-bound hot function? (CPU profile)
+   │ yes → enable PGO; avoid reflection (JSON); keep it inlinable; buffer I/O
+   │ no ↓
+7. Still hot, last resort?
+   │ → GOAMD64=v3, unsafe/assembly for the proven kernel (NOT cgo — it's slower)
+   │ no ↓
+8. Accept it, or move the work (cache it, precompute, push to a faster store).
+</code></pre>
+<p>If you remember one thing from Part 10: <strong>profile first (and watch <code>allocs/op</code>), then pick the cheapest lever — preallocation, <code>strings.Builder</code>, <code>sync.Pool</code>, bounded <code>errgroup</code>, atomics, and <code>GOMEMLIMIT</code> cover the overwhelming majority of real Go performance wins, and almost all of them come back to allocating less.</strong></p>
+<hr>
+<p>That's the guide. From here the highest-leverage next step is the loop that ties it all together: take a hot path you own, run <code>go test -bench -benchmem</code>, look at <code>allocs/op</code>, run <code>go build -gcflags="-m"</code> to see why those allocations happen, kill the biggest one, and confirm with <code>benchstat</code>. Do that a few times and the Go performance model becomes instinct — and you'll find that the thesis from Part 1 holds almost every time: the language was already fast, and your job was to stop making garbage. Pair this with the <a href="advanced-python-study-guide.html">Advanced Python</a> and <a href="advanced-nodejs-study-guide.html">Advanced Node.js</a> guides and you'll carry the same discipline — measure, find the bottleneck class, apply the matching lever — across all three runtimes, even though what you're fighting (the interpreter, the event loop, the allocator) is different in each.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

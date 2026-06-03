@@ -1,0 +1,1422 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: ESP32 Study Guide.">
+<title>ESP32 Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#40d7df; --accent2:#3c8dd9; --accent-weak:rgba(64,215,223,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#40d7df; --accent2:#3c8dd9; --accent-weak:rgba(64,215,223,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">E</span><span>ESP32 Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-the-microcontroller-mindset" data-target="part-1-the-microcontroller-mindset">Part 1 — The Microcontroller Mindset</a></li><li class="toc-l3"><a href="#microcontroller-vs-microprocessor-vs-the-pi" data-target="microcontroller-vs-microprocessor-vs-the-pi">Microcontroller vs. Microprocessor (vs. the Pi)</a></li><li class="toc-l3"><a href="#bare-metal-and-the-esp32s-twist" data-target="bare-metal-and-the-esp32s-twist">"Bare Metal," and the ESP32's Twist</a></li><li class="toc-l3"><a href="#the-development-loop" data-target="the-development-loop">The Development Loop</a></li><li class="toc-l2"><a href="#part-2-the-chip-the-boards" data-target="part-2-the-chip-the-boards">Part 2 — The Chip &amp; the Boards</a></li><li class="toc-l3"><a href="#whats-inside-an-esp32" data-target="whats-inside-an-esp32">What's Inside an ESP32</a></li><li class="toc-l3"><a href="#the-variant-family-which-one-do-i-want" data-target="the-variant-family-which-one-do-i-want">The Variant Family (Which One Do I Want?)</a></li><li class="toc-l3"><a href="#esp32-vs-esp8266-the-predecessor-and-why-you-want-the-esp32" data-target="esp32-vs-esp8266-the-predecessor-and-why-you-want-the-esp32">ESP32 vs. ESP8266 — The Predecessor, and Why You Want the ESP32</a></li><li class="toc-l3"><a href="#the-practical-advantages-of-choosing-the-esp32" data-target="the-practical-advantages-of-choosing-the-esp32">The Practical Advantages of Choosing the ESP32</a></li><li class="toc-l3"><a href="#boards-vs-modules-vs-chips" data-target="boards-vs-modules-vs-chips">Boards vs. Modules vs. Chips</a></li><li class="toc-l3"><a href="#the-gpio-pin-caveats-read-before-you-wire" data-target="the-gpio-pin-caveats-read-before-you-wire">The GPIO Pin Caveats (Read Before You Wire)</a></li><li class="toc-l2"><a href="#part-3-the-toolchain" data-target="part-3-the-toolchain">Part 3 — The Toolchain</a></li><li class="toc-l3"><a href="#the-three-ecosystems" data-target="the-three-ecosystems">The Three Ecosystems</a></li><li class="toc-l3"><a href="#how-to-choose" data-target="how-to-choose">How to Choose</a></li><li class="toc-l3"><a href="#platformio-the-tooling-layer" data-target="platformio-the-tooling-layer">PlatformIO: The Tooling Layer</a></li><li class="toc-l2"><a href="#part-4-gpio-the-digital-world" data-target="part-4-gpio-the-digital-world">Part 4 — GPIO &amp; the Digital World</a></li><li class="toc-l3"><a href="#digital-output-driving-a-pin" data-target="digital-output-driving-a-pin">Digital Output: Driving a Pin</a></li><li class="toc-l3"><a href="#digital-input-reading-a-pin-and-the-pull-resistor-trap" data-target="digital-input-reading-a-pin-and-the-pull-resistor-trap">Digital Input: Reading a Pin, and the Pull-Resistor Trap</a></li><li class="toc-l3"><a href="#debouncing-the-physical-world-is-messy" data-target="debouncing-the-physical-world-is-messy">Debouncing: The Physical World Is Messy</a></li><li class="toc-l3"><a href="#interrupts-dont-poll-when-you-can-be-told" data-target="interrupts-dont-poll-when-you-can-be-told">Interrupts: Don't Poll When You Can Be Told</a></li><li class="toc-l3"><a href="#a-note-on-persistent-storage" data-target="a-note-on-persistent-storage">A Note on Persistent Storage</a></li><li class="toc-l2"><a href="#part-5-analog-pwm-buses-adc-i2c-spi-uart" data-target="part-5-analog-pwm-buses-adc-i2c-spi-uart">Part 5 — Analog, PWM &amp; Buses (ADC, I2C, SPI, UART)</a></li><li class="toc-l3"><a href="#adc-reading-analog-voltages" data-target="adc-reading-analog-voltages">ADC: Reading Analog Voltages</a></li><li class="toc-l3"><a href="#pwm-faking-analog-output" data-target="pwm-faking-analog-output">PWM: Faking Analog Output</a></li><li class="toc-l3"><a href="#the-three-buses-how-sensors-actually-connect" data-target="the-three-buses-how-sensors-actually-connect">The Three Buses: How Sensors Actually Connect</a></li><li class="toc-l2"><a href="#part-6-freertos-tasks-dual-core" data-target="part-6-freertos-tasks-dual-core">Part 6 — FreeRTOS, Tasks &amp; Dual-Core</a></li><li class="toc-l3"><a href="#delay-is-a-lie-the-cardinal-beginner-trap" data-target="delay-is-a-lie-the-cardinal-beginner-trap">delay() Is a Lie (The Cardinal Beginner Trap)</a></li><li class="toc-l3"><a href="#freertos-tasks-real-concurrency" data-target="freertos-tasks-real-concurrency">FreeRTOS Tasks: Real Concurrency</a></li><li class="toc-l3"><a href="#talking-between-tasks-safely" data-target="talking-between-tasks-safely">Talking Between Tasks Safely</a></li><li class="toc-l3"><a href="#two-cores-and-who-uses-them" data-target="two-cores-and-who-uses-them">Two Cores, and Who Uses Them</a></li><li class="toc-l2"><a href="#part-7-wi-fi-bluetooth-networking" data-target="part-7-wi-fi-bluetooth-networking">Part 7 — Wi-Fi, Bluetooth &amp; Networking</a></li><li class="toc-l3"><a href="#connecting-to-wi-fi-station-mode" data-target="connecting-to-wi-fi-station-mode">Connecting to Wi-Fi (Station Mode)</a></li><li class="toc-l3"><a href="#access-point-mode-the-provisioning-problem" data-target="access-point-mode-the-provisioning-problem">Access Point Mode &amp; the Provisioning Problem</a></li><li class="toc-l3"><a href="#talking-to-the-world-http-mqtt-websockets" data-target="talking-to-the-world-http-mqtt-websockets">Talking to the World: HTTP, MQTT, WebSockets</a></li><li class="toc-l3"><a href="#bluetooth-ble" data-target="bluetooth-ble">Bluetooth &amp; BLE</a></li><li class="toc-l3"><a href="#security-you-cannot-skip" data-target="security-you-cannot-skip">Security You Cannot Skip</a></li><li class="toc-l2"><a href="#part-8-power-management-deep-sleep" data-target="part-8-power-management-deep-sleep">Part 8 — Power Management &amp; Deep Sleep</a></li><li class="toc-l3"><a href="#the-power-problem" data-target="the-power-problem">The Power Problem</a></li><li class="toc-l3"><a href="#deep-sleep-the-workhorse-pattern" data-target="deep-sleep-the-workhorse-pattern">Deep Sleep: The Workhorse Pattern</a></li><li class="toc-l3"><a href="#wringing-out-the-last-microamps" data-target="wringing-out-the-last-microamps">Wringing Out the Last Microamps</a></li><li class="toc-l3"><a href="#the-battery-math" data-target="the-battery-math">The Battery Math</a></li><li class="toc-l2"><a href="#part-9-sample-projects" data-target="part-9-sample-projects">Part 9 — Sample Projects</a></li><li class="toc-l3"><a href="#project-1-blink-hello-hardware" data-target="project-1-blink-hello-hardware">Project 1 — Blink (Hello, Hardware)</a></li><li class="toc-l3"><a href="#project-2-button-controlled-led-with-debounce-interrupt" data-target="project-2-button-controlled-led-with-debounce-interrupt">Project 2 — Button-Controlled LED with Debounce &amp; Interrupt</a></li><li class="toc-l3"><a href="#project-3-wi-fi-weather-station-sensor-mqtt" data-target="project-3-wi-fi-weather-station-sensor-mqtt">Project 3 — Wi-Fi Weather Station (Sensor → MQTT)</a></li><li class="toc-l3"><a href="#project-4-battery-powered-sensor-deep-sleep" data-target="project-4-battery-powered-sensor-deep-sleep">Project 4 — Battery-Powered Sensor (Deep Sleep)</a></li><li class="toc-l3"><a href="#project-5-web-controlled-device-esp32-as-server" data-target="project-5-web-controlled-device-esp32-as-server">Project 5 — Web-Controlled Device (ESP32 as Server)</a></li><li class="toc-l3"><a href="#where-to-go-from-these" data-target="where-to-go-from-these">Where to Go From These</a></li><li class="toc-l2"><a href="#part-10-production-going-further" data-target="part-10-production-going-further">Part 10 — Production &amp; Going Further</a></li><li class="toc-l3"><a href="#debugging-beyond-printf" data-target="debugging-beyond-printf">Debugging Beyond printf</a></li><li class="toc-l3"><a href="#over-the-air-updates-ota" data-target="over-the-air-updates-ota">Over-the-Air Updates (OTA)</a></li><li class="toc-l3"><a href="#security-hardening-for-production" data-target="security-hardening-for-production">Security Hardening for Production</a></li><li class="toc-l3"><a href="#manufacturing-cost-realities" data-target="manufacturing-cost-realities">Manufacturing &amp; Cost Realities</a></li><li class="toc-l3"><a href="#where-the-esp32-fits-honestly" data-target="where-the-esp32-fits-honestly">Where the ESP32 Fits, Honestly</a></li><li class="toc-l3"><a href="#going-further" data-target="going-further">Going Further</a></li></ul></nav></aside>
+  <main><h1 id="esp32-study-guide">ESP32 Study Guide</h1>
+<p>A depth-first guide to the ESP32 — the Wi-Fi/Bluetooth microcontroller that dominates hobbyist and commercial IoT — for engineers who can write software but have never programmed a microcontroller, or have used an Arduino and want to understand what's actually happening underneath. It assumes you can read C and a little Python and are comfortable on a command line, but <strong>not</strong> that you know what a GPIO register is, why <code>delay()</code> is a sin, or how a chip with 520 KB of RAM runs a TCP/IP stack.</p>
+<p>The throughline is a mental-model shift that this guide returns to constantly: <strong>a microcontroller is not a small Linux computer.</strong> If your reference point is the Raspberry Pi (the subject of an upcoming companion guide and the <a href="linux-fundamentals-study-guide.html">Linux Fundamentals guide</a>), almost everything is different — there is usually no operating system in the Linux sense, no filesystem you <code>cd</code> around, no processes, no <code>apt</code>. Your code <em>is</em> the firmware; it boots directly onto the metal, owns the whole chip, and never exits. Internalize that one difference and the rest of the ESP32 — its peripherals, its FreeRTOS tasks, its deep-sleep power model — falls into place. Get it wrong and you'll spend days confused about why there's no shell.</p>
+<p>The back third of this guide is <strong>worked sample projects</strong>, because microcontrollers are learned by building. Each project is complete and buildable, escalating from "blink an LED" to a battery-powered sensor that sleeps for years to a Wi-Fi device you control from your phone.</p>
+<p>Primary references: the <a href="https://docs.espressif.com/projects/esp-idf/en/latest/">ESP-IDF Programming Guide</a> (Espressif's official C framework — the authoritative source), the <a href="https://docs.espressif.com/projects/arduino-esp32/en/latest/">Arduino-ESP32 docs</a>, the <a href="https://docs.micropython.org/en/latest/esp32/quickref.html">MicroPython ESP32 docs</a>, and Random Nerd Tutorials (<a href="https://randomnerdtutorials.com/">randomnerdtutorials.com</a>) for project-oriented walkthroughs. Adjacent guides in this repo: <a href="linux-fundamentals-study-guide.html">Linux Fundamentals</a> (the contrast), <a href="networking-fundamentals.html">Networking Fundamentals</a> (TCP/IP, Wi-Fi), <a href="crypto-fundamentals.html">Cryptography Fundamentals</a> (TLS, secure boot), <a href="websockets-study-guide.html">MQTT/WebSockets</a> (real-time messaging), and the <a href="python-concurrency.html">Advanced C-adjacent concurrency</a> ideas that reappear as FreeRTOS tasks.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1--the-microcontroller-mindset">Part 1 — The Microcontroller Mindset</a></li>
+<li><a href="#part-2--the-chip--the-boards">Part 2 — The Chip &amp; the Boards</a></li>
+<li><a href="#part-3--the-toolchain">Part 3 — The Toolchain</a></li>
+<li><a href="#part-4--gpio--the-digital-world">Part 4 — GPIO &amp; the Digital World</a></li>
+<li><a href="#part-5--analog-pwm--buses-adc-i2c-spi-uart">Part 5 — Analog, PWM &amp; Buses (ADC, I2C, SPI, UART)</a></li>
+<li><a href="#part-6--freertos-tasks--dual-core">Part 6 — FreeRTOS, Tasks &amp; Dual-Core</a></li>
+<li><a href="#part-7--wi-fi-bluetooth--networking">Part 7 — Wi-Fi, Bluetooth &amp; Networking</a></li>
+<li><a href="#part-8--power-management--deep-sleep">Part 8 — Power Management &amp; Deep Sleep</a></li>
+<li><a href="#part-9--sample-projects">Part 9 — Sample Projects</a></li>
+<li><a href="#part-10--production--going-further">Part 10 — Production &amp; Going Further</a></li>
+</ol>
+<hr>
+<h2 id="part-1-the-microcontroller-mindset">Part 1 — The Microcontroller Mindset</h2>
+<p>Before any wiring, get the model right — because the ESP32 violates almost every assumption you carry from application or even systems programming, and naming those violations up front prevents most beginner confusion.</p>
+<h3 id="microcontroller-vs-microprocessor-vs-the-pi">Microcontroller vs. Microprocessor (vs. the Pi)</h3>
+<p>The single most clarifying distinction in embedded:</p>
+<ul>
+<li>A <strong>microprocessor</strong> (the chip in your laptop, or the Raspberry Pi's Broadcom SoC) is a CPU that needs <em>external</em> RAM, <em>external</em> storage, and an operating system to be useful. The Pi boots Linux off an SD card, runs processes, has a filesystem and a shell. It's a <em>small computer</em>.</li>
+<li>A <strong>microcontroller</strong> (MCU) — the ESP32 — is a <em>complete computer on one chip</em>: CPU, RAM, flash storage, and a pile of hardware peripherals (Wi-Fi radio, ADCs, timers, bus controllers) all integrated. It typically runs <strong>one program, directly, forever</strong>, with no OS in the Linux sense. It's not a small computer; it's a <em>programmable circuit</em>.</li>
+</ul>
+<p>The practical consequences, each of which trips up newcomers from the software world:</p>
+<ul>
+<li><strong>No operating system, no shell, no filesystem to browse.</strong> Your compiled code is the firmware; it's flashed to the chip and runs on boot. There's no <code>ssh</code> in, no <code>ls</code>, no package manager. (There <em>are</em> small flash filesystems for storing data — Part 4 — but you don't live in them.)</li>
+<li><strong>Your program never returns.</strong> There's no "exit." Embedded programs are an infinite loop (Arduino's <code>loop()</code>) or a set of never-ending tasks (FreeRTOS, Part 6). When <code>main</code> would return, there's nowhere to return <em>to</em>.</li>
+<li><strong>You own everything.</strong> No OS is scheduling around you, virtualizing memory, or protecting other processes — there are no other processes. A tight loop doesn't "hog the CPU" from anything; it <em>is</em> the CPU's job. (Except: the ESP32 secretly runs FreeRTOS and a second core handling Wi-Fi — Part 6 — which is the one place the "you own everything" model leaks.)</li>
+<li><strong>Resources are tiny and fixed.</strong> A typical ESP32 has <strong>520 KB of SRAM</strong> and <strong>4 MB of flash</strong> — versus the Pi's gigabytes. There is no swap, no virtual memory, no "just add RAM." Run out and the chip crashes (a reboot, not an <code>OOMKilled</code> event). Memory discipline isn't an optimization; it's survival.</li>
+<li><strong>Time is real and physical.</strong> Your code directly toggles voltages on physical pins, reads real sensors, and must meet real timing. A 10ms delay is 10ms of the world, not a scheduler hint.</li>
+</ul>
+<h3 id="bare-metal-and-the-esp32s-twist">"Bare Metal," and the ESP32's Twist</h3>
+<p>Classic microcontroller programming is <strong>bare metal</strong>: your code is the only thing running, talking directly to hardware registers. The ESP32 <em>can</em> be used that way, but in practice it almost always runs <strong>FreeRTOS</strong>, a tiny real-time operating system baked into the framework. This is the ESP32's defining twist versus simpler MCUs (like an 8-bit Arduino Uno): it's a <strong>dual-core, FreeRTOS-based, Wi-Fi-connected</strong> MCU, which makes it vastly more capable but means "you own everything" is really "you own everything except the bits keeping the radio alive on the other core." We'll make peace with that in Part 6; for now, just know FreeRTOS is there even when you don't call it directly.</p>
+<h3 id="the-development-loop">The Development Loop</h3>
+<p>Because there's no OS to run your code <em>on the chip</em>, the workflow is <strong>cross-compilation + flashing</strong>, and it's worth seeing the whole cycle once:</p>
+<pre><code class="language-text">[ Your computer ]                          [ The ESP32 ]
+  write C/Python  ─compile─►  firmware.bin
+                                  │
+                                  └──flash over USB──►  written to flash memory
+                                                              │
+                                                         chip reboots
+                                                              │
+                                                         runs your firmware
+  serial monitor  ◄────────USB serial (115200 baud)──────────┘  (printf debugging)
+</code></pre>
+<p>You write code on your "big" computer, <strong>cross-compile</strong> it for the ESP32's architecture (Xtensa or RISC-V — Part 2), <strong>flash</strong> the resulting binary over USB to the chip's flash memory, the chip reboots and runs it, and you watch <code>printf</code>-style output stream back over the same USB cable as a <strong>serial monitor</strong>. That serial console is your primary debugging tool — embedded's equivalent of <code>console.log</code>, and for a long time the <em>only</em> window into what the chip is doing. (Real JTAG debugging exists — Part 10 — but serial <code>printf</code> is where everyone lives day to day.)</p>
+<p>If you remember one thing from Part 1: <strong>the ESP32 is a complete computer on a chip that runs one program forever with no OS, no shell, and tiny fixed memory — you cross-compile on your big machine, flash the binary over USB, and debug by reading serial output. It is a programmable circuit, not a small Linux box, and every other difference flows from that.</strong></p>
+<hr>
+<h2 id="part-2-the-chip-the-boards">Part 2 — The Chip &amp; the Boards</h2>
+<p>"ESP32" names a <em>family</em>, not one chip, and buying or coding for the wrong variant is a classic first stumble. This part is the map: what's inside, how the variants differ, and what board to actually buy.</p>
+<h3 id="whats-inside-an-esp32">What's Inside an ESP32</h3>
+<p>The original ESP32 (2016, still ubiquitous) integrates, on one die:</p>
+<ul>
+<li><strong>CPU:</strong> dual-core <strong>Xtensa LX6</strong>, up to 240 MHz. Two cores is unusual for an MCU and central to its design (Part 6).</li>
+<li><strong>RAM:</strong> <strong>520 KB SRAM</strong> (on-chip, shared between your code and the system). Some boards add external <strong>PSRAM</strong> (2–8 MB) for memory-hungry work like camera framebuffers.</li>
+<li><strong>Flash:</strong> typically <strong>4 MB</strong> external flash (on the module) storing your firmware and a filesystem.</li>
+<li><strong>Wireless:</strong> <strong>Wi-Fi</strong> (802.11 b/g/n, 2.4 GHz) and <strong>Bluetooth</strong> (Classic + BLE) — the headline feature, integrated radios with antennas on the module.</li>
+<li><strong>Peripherals:</strong> ~34 GPIO pins, multiple <strong>ADC</strong> channels, two <strong>DAC</strong> channels, <strong>I2C/SPI/UART</strong> controllers, <strong>PWM</strong> (LEDC), hardware timers, a <strong>touch</strong> sensor, a <strong>Hall</strong> sensor, and a low-power <strong>ULP</strong> coprocessor.</li>
+</ul>
+<p>That last list — the peripherals — is where most of your real work happens (Parts 4–5). The CPU is almost incidental; the value of an MCU is the hardware blocks wired to its pins.</p>
+<h3 id="the-variant-family-which-one-do-i-want">The Variant Family (Which One Do I Want?)</h3>
+<p>Espressif has released many variants; you'll meet a handful. The key split is <strong>architecture</strong> (the older Xtensa vs. the newer open RISC-V) and <strong>feature tier</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Variant</th>
+<th>Cores / Arch</th>
+<th>Wireless</th>
+<th>Niche</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ESP32</strong> (original)</td>
+<td>2× Xtensa LX6</td>
+<td>Wi-Fi + BT Classic + BLE</td>
+<td>The default workhorse; most tutorials target it</td>
+</tr>
+<tr>
+<td><strong>ESP32-S2</strong></td>
+<td>1× Xtensa LX7</td>
+<td>Wi-Fi only (no BT)</td>
+<td>Native USB; cheap; no Bluetooth</td>
+</tr>
+<tr>
+<td><strong>ESP32-S3</strong></td>
+<td>2× Xtensa LX7</td>
+<td>Wi-Fi + BLE</td>
+<td><strong>AI/ML acceleration</strong>, native USB, more RAM — the modern high-end pick</td>
+</tr>
+<tr>
+<td><strong>ESP32-C3</strong></td>
+<td>1× <strong>RISC-V</strong></td>
+<td>Wi-Fi + BLE</td>
+<td>Cheap, low-power, open RISC-V core — the modern <em>budget</em> pick</td>
+</tr>
+<tr>
+<td><strong>ESP32-C6</strong></td>
+<td>1× RISC-V</td>
+<td>Wi-Fi 6 + BLE + <strong>802.15.4</strong></td>
+<td>Thread/Zigbee + <strong>Matter</strong>; the future-facing IoT pick</td>
+</tr>
+<tr>
+<td><strong>ESP32-H2</strong></td>
+<td>1× RISC-V</td>
+<td>BLE + 802.15.4 (no Wi-Fi)</td>
+<td>Thread/Zigbee/Matter only</td>
+</tr>
+</tbody>
+</table>
+<p>Practical guidance for 2026: <strong>start with a plain ESP32 or an ESP32-S3</strong> (best documentation and tutorial coverage; the S3 if you want USB and more headroom), reach for a <strong>C3</strong> when cost and power matter, and look at the <strong>C6</strong> if you're targeting <strong>Matter</strong> (the cross-vendor smart-home standard built on Thread). Don't agonize — the programming model is nearly identical across them; the framework abstracts most differences.</p>
+<h3 id="esp32-vs-esp8266-the-predecessor-and-why-you-want-the-esp32">ESP32 vs. ESP8266 — The Predecessor, and Why You Want the ESP32</h3>
+<p>Before the ESP32 there was the <strong>ESP8266</strong> (2014), the chip that made Espressif famous — a sub-$2 Wi-Fi microcontroller that, at the time, was revolutionary. It's still widely sold (you'll see it as the <strong>NodeMCU</strong> and <strong>Wemos/LOLIN D1 Mini</strong> boards), still cheap, and still fine for the simplest jobs, so it's worth knowing exactly how it differs — because almost everyone arriving at the ESP32 has heard of, or owns, an ESP8266, and the question "do I really need the ESP32?" comes up immediately.</p>
+<p>The ESP32 is the ESP8266's successor, and it's an upgrade on nearly every axis:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>ESP8266</strong></th>
+<th><strong>ESP32</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CPU</strong></td>
+<td>1× Xtensa, 80 MHz (160 OC)</td>
+<td><strong>2× Xtensa, 240 MHz</strong></td>
+</tr>
+<tr>
+<td><strong>RAM</strong></td>
+<td>~80 KB usable</td>
+<td><strong>520 KB</strong></td>
+</tr>
+<tr>
+<td><strong>GPIO</strong></td>
+<td>~11 usable, <strong>quirky</strong></td>
+<td>~34</td>
+</tr>
+<tr>
+<td><strong>ADC</strong></td>
+<td><strong>1 channel, 0–1.0V</strong>, 10-bit</td>
+<td>multiple channels, 0–3.3V, 12-bit</td>
+</tr>
+<tr>
+<td><strong>Wireless</strong></td>
+<td>Wi-Fi only</td>
+<td><strong>Wi-Fi + Bluetooth Classic + BLE</strong></td>
+</tr>
+<tr>
+<td><strong>Touch / DAC / Hall / CAN</strong></td>
+<td>none</td>
+<td>touch ×10, DAC ×2, Hall, CAN</td>
+</tr>
+<tr>
+<td><strong>Hardware crypto / Secure Boot / Flash Encryption</strong></td>
+<td>no</td>
+<td><strong>yes</strong></td>
+</tr>
+<tr>
+<td><strong>Deep-sleep current</strong></td>
+<td>~20 µA</td>
+<td>~10 µA (and far more capable wake sources)</td>
+</tr>
+<tr>
+<td><strong>Price</strong></td>
+<td>~$1–3</td>
+<td>~$2–6</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-practical-advantages-of-choosing-the-esp32">The Practical Advantages of Choosing the ESP32</h3>
+<p>Read past the spec table — here is what those differences <em>buy you</em> in real projects, which is what actually matters:</p>
+<ul>
+<li><strong>Bluetooth/BLE at all.</strong> The ESP8266 has none. If you want a device a phone talks to directly, a BLE beacon, or anything Bluetooth, the ESP8266 simply can't — this alone decides many projects.</li>
+<li><strong>Enough RAM and CPU to do real work.</strong> The ESP8266's ~80 KB is <em>tight</em> — TLS, a JSON parser, and a Wi-Fi stack together can exhaust it, and "out of memory" crashes are a constant ESP8266 frustration. The ESP32's 520 KB and dual 240 MHz cores run TLS, larger libraries, a web server, and your logic comfortably. The headroom is the difference between fighting the chip and forgetting about it.</li>
+<li><strong>Two cores, so Wi-Fi doesn't fight your code.</strong> On the ESP8266 the single core is shared between your program and the Wi-Fi stack, so heavy code can starve the radio (and vice versa) — you must yield to it carefully. The ESP32 runs the radio on Core 0 and your code on Core 1 (Part 6), so the two don't compete; concurrency is dramatically easier.</li>
+<li><strong>Sane GPIO and analog.</strong> The ESP8266's pins are notoriously quirky (several have boot-time constraints, some behave oddly, the count is low) and its single ADC reads only <strong>0–1.0V at 10-bit</strong> — awkward for most sensors. The ESP32 has ~34 pins, multiple 12-bit 0–3.3V ADC channels, plus DAC, touch, and Hall peripherals the 8266 lacks entirely.</li>
+<li><strong>Production-grade security.</strong> The ESP32's hardware crypto acceleration, <strong>Secure Boot</strong>, and <strong>Flash Encryption</strong> (Parts 7, 10) make it a defensible product; the ESP8266 has none of this, which rules it out for anything where firmware theft or tampering matters.</li>
+<li><strong>A real future.</strong> New Espressif investment, the variant family (S3 for ML, C6 for Matter — above), and the bulk of current tutorials and libraries all target the ESP32 line. The ESP8266 is in maintenance, not development.</li>
+</ul>
+<p><strong>When the ESP8266 still makes sense:</strong> a single-purpose Wi-Fi gadget where every cent counts and you need none of the above — a simple sensor that posts one reading, a smart plug, a hobby blinker. It's a fine <em>appliance</em> chip. But the price gap is now small (often a dollar or two), and the ESP32 removes so many ceilings that <strong>for almost any new project — and certainly for learning — the ESP32 is the right default.</strong> The extra capability you don't use today is capability you won't have to migrate to tomorrow. Treat the ESP8266 as the chip you reach for only when you've deliberately decided you need <em>less</em>.</p>
+<h3 id="boards-vs-modules-vs-chips">Boards vs. Modules vs. Chips</h3>
+<p>Three things people conflate:</p>
+<ul>
+<li>The <strong>chip</strong> (e.g., <code>ESP32-D0WD</code>) is the bare silicon — you won't handle this directly.</li>
+<li>The <strong>module</strong> (e.g., <code>ESP32-WROOM-32</code>, <code>ESP32-WROVER</code> with PSRAM) is the chip + flash + antenna + RF shielding on a small PCB, FCC-certified. This is what product designers solder onto their own boards.</li>
+<li>The <strong>development board</strong> (e.g., <strong>DevKitC</strong>, <strong>NodeMCU-32S</strong>, or boards from SparkFun/Adafruit/Seeed) is a module on a breakout PCB with a USB port, a USB-to-serial chip, a voltage regulator, and pin headers. <strong>This is what you buy to learn</strong> — plug it into USB and go.</li>
+</ul>
+<p>Two buying notes that save real pain: get a board with a <strong>USB-C</strong> connector and a modern USB-serial chip (CP2102 or CH340 — you may need a driver), and beware that <strong>pin numbering is by GPIO number, not physical position</strong> — the silkscreen labels (<code>GPIO4</code>, <code>D2</code>, etc.) are what your code references, and they're scattered around the board, not sequential.</p>
+<h3 id="the-gpio-pin-caveats-read-before-you-wire">The GPIO Pin Caveats (Read Before You Wire)</h3>
+<p>Not all pins are equal — and this catches everyone:</p>
+<ul>
+<li><strong>Input-only pins:</strong> GPIO 34–39 can <em>only</em> read, never drive output (no internal pull-ups either).</li>
+<li><strong>Strapping pins</strong> (GPIO 0, 2, 5, 12, 15) are read at boot to decide boot mode; pulling them the wrong way at power-on prevents booting. Avoid them for inputs that might be driven at reset.</li>
+<li><strong>Flash pins</strong> (GPIO 6–11) are wired to the on-board flash chip — <strong>using them bricks the running firmware.</strong> Treat them as off-limits.</li>
+<li><strong>ADC2 conflicts with Wi-Fi:</strong> the ADC2 pins can't do analog reads while Wi-Fi is active. Use ADC1 pins (GPIO 32–39) for analog if you also need Wi-Fi.</li>
+</ul>
+<p>Keep a pinout diagram for your specific board open while wiring; "why doesn't this pin work?" is, nine times out of ten, one of the above.</p>
+<p>If you remember one thing from Part 2: <strong>"ESP32" is a family — pick a plain ESP32 or S3 to learn on, a C3 for cost/power, a C6 for Matter — and buy a <em>dev board</em> (module + USB + regulator). Prefer it over the older ESP8266 for nearly everything (Bluetooth, ~6× the RAM, two cores, real ADC, hardware security). Then respect the pin caveats: 34–39 are input-only, 6–11 are off-limits (flash), and the strapping pins must be left alone at boot.</strong></p>
+<hr>
+<h2 id="part-3-the-toolchain">Part 3 — The Toolchain</h2>
+<p>There are several ways to program an ESP32, and the choice shapes your whole experience. This part lays them out honestly so you pick the right one for your goal rather than the first one a tutorial happened to use.</p>
+<h3 id="the-three-ecosystems">The Three Ecosystems</h3>
+<p><strong>1. Arduino (the C++ framework).</strong> The <code>Arduino-ESP32</code> core brings the familiar <code>setup()</code> / <code>loop()</code> model and the vast Arduino library ecosystem to the chip. It's the <strong>easiest on-ramp</strong> — <code>digitalWrite(2, HIGH)</code> just works, and there's a library for nearly every sensor. The cost is abstraction: you're insulated from how the chip actually works, performance is "good enough" rather than optimal, and you'll eventually hit its ceiling. <strong>Best for: learning, prototyping, and most hobby projects.</strong></p>
+<pre><code class="language-cpp">// Arduino: the canonical structure. setup() runs once; loop() runs forever.
+void setup() {
+  Serial.begin(115200);
+  pinMode(2, OUTPUT);
+}
+void loop() {
+  digitalWrite(2, HIGH);
+  delay(500);                 // (Part 6 explains why delay() is a beginner trap)
+  digitalWrite(2, LOW);
+  delay(500);
+}
+</code></pre>
+<p><strong>2. ESP-IDF (Espressif's official C framework).</strong> The "real" SDK — a CMake-based C framework exposing the full chip: FreeRTOS directly, fine-grained peripheral control, power management, secure boot, OTA. It's what commercial products ship on. Steeper learning curve, more boilerplate, but <strong>no ceiling</strong>. <strong>Best for: production firmware, anything performance- or power-critical, and understanding the chip deeply.</strong></p>
+<pre><code class="language-c">// ESP-IDF: app_main is your entry point; you typically spawn FreeRTOS tasks from it.
+#include &quot;freertos/FreeRTOS.h&quot;
+#include &quot;freertos/task.h&quot;
+#include &quot;driver/gpio.h&quot;
+
+void app_main(void) {
+    gpio_set_direction(GPIO_NUM_2, GPIO_MODE_OUTPUT);
+    while (1) {
+        gpio_set_level(GPIO_NUM_2, 1);
+        vTaskDelay(pdMS_TO_TICKS(500));   // FreeRTOS delay — yields the CPU (Part 6)
+        gpio_set_level(GPIO_NUM_2, 0);
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+</code></pre>
+<p><strong>3. MicroPython (and CircuitPython).</strong> A full Python interpreter that runs <em>on the chip</em>. You get a <strong>REPL over serial</strong> — type Python live and watch the hardware respond — and a dramatically faster edit/test loop (no compile/flash cycle; just send the file). The trade-offs: it's slower than compiled C, uses more RAM, and isn't suited to hard real-time or power-critical work. But for learning, glue logic, and rapid prototyping it's delightful. <strong>Best for: fast iteration, scripting, and Python-native developers.</strong></p>
+<pre><code class="language-python"># MicroPython: this runs ON the ESP32, interactively or from main.py
+from machine import Pin
+import time
+
+led = Pin(2, Pin.OUT)
+while True:
+    led.value(1)
+    time.sleep(0.5)
+    led.value(0)
+    time.sleep(0.5)
+</code></pre>
+<h3 id="how-to-choose">How to Choose</h3>
+<table>
+<thead>
+<tr>
+<th>If you want…</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>The gentlest start, the most tutorials, the most libraries</td>
+<td><strong>Arduino</strong></td>
+</tr>
+<tr>
+<td>To ship a product, squeeze power/performance, or learn the chip fully</td>
+<td><strong>ESP-IDF</strong></td>
+</tr>
+<tr>
+<td>The fastest iteration and a live REPL, and you love Python</td>
+<td><strong>MicroPython</strong></td>
+</tr>
+</tbody>
+</table>
+<p>A common and healthy path: <strong>learn on Arduino or MicroPython, graduate to ESP-IDF</strong> when you hit a wall (you need precise power control, a feature only IDF exposes, or you're going to production). They're not mutually exclusive across projects — pick per project.</p>
+<h3 id="platformio-the-tooling-layer">PlatformIO: The Tooling Layer</h3>
+<p>Whichever framework you choose (except MicroPython), <strong><a href="https://platformio.org/">PlatformIO</a></strong> is the recommended way to manage it — a VS Code extension and CLI that handles toolchain installation, library dependencies, board configs, building, and flashing, all from a single <code>platformio.ini</code> file. It's a vastly better experience than the old Arduino IDE: real autocomplete, version-pinned dependencies, multi-environment builds, and CI-friendliness (it pairs naturally with the <a href="github-actions-study-guide.html">GitHub Actions guide</a> for automated firmware builds).</p>
+<pre><code class="language-ini">; platformio.ini — declarative project config; `pio run -t upload` builds and flashes
+[env:esp32dev]
+platform = espressif32
+board = esp32dev
+framework = arduino          ; or &quot;espidf&quot;
+monitor_speed = 115200
+lib_deps =                   ; dependencies, version-pinned, auto-installed
+    adafruit/DHT sensor library@^1.4.4
+    bblanchon/ArduinoJson@^7.0.0
+</code></pre>
+<p>The flashing itself is done by <strong><code>esptool.py</code></strong> (Espressif's flash utility) under the hood — worth knowing the name, because when a flash fails you'll see it in the logs, and you can call it directly to read/erase flash or dump the chip.</p>
+<p>If you remember one thing from Part 3: <strong>three ecosystems — Arduino (easiest, learn here), ESP-IDF (production, full power), MicroPython (live REPL, fastest iteration) — and PlatformIO is the tooling layer that makes Arduino/IDF pleasant. Start easy, graduate to IDF when you hit a wall, and let the framework abstract the chip until you need to look under it.</strong></p>
+<h2 id="part-4-gpio-the-digital-world">Part 4 — GPIO &amp; the Digital World</h2>
+<p>GPIO — General Purpose Input/Output — is the bedrock. Every LED, button, relay, and many sensors come down to reading or driving a voltage on a pin. This is where software meets the physical world, and the concepts here recur in every project.</p>
+<h3 id="digital-output-driving-a-pin">Digital Output: Driving a Pin</h3>
+<p>A pin configured as output is driven to one of two voltages: <strong>HIGH</strong> (3.3V on the ESP32 — <em>not</em> 5V, a critical fact below) or <strong>LOW</strong> (0V). That's the entire vocabulary of digital output, and it's enough to control an enormous amount:</p>
+<pre><code class="language-cpp">pinMode(2, OUTPUT);
+digitalWrite(2, HIGH);   // pin 2 → 3.3V  (LED on, relay closed, etc.)
+digitalWrite(2, LOW);    // pin 2 → 0V
+</code></pre>
+<p>The chip can source/sink only a small current per pin (~12–40 mA, with a total budget across all pins). That's enough for an LED (with a resistor) but <strong>not</strong> for a motor, a relay coil, or a strip of LEDs — those need a transistor, a driver IC, or a relay module to switch the real load while the pin just controls the switch. Trying to drive a big load directly from a pin is a fast way to kill the chip.</p>
+<h3 id="digital-input-reading-a-pin-and-the-pull-resistor-trap">Digital Input: Reading a Pin, and the Pull-Resistor Trap</h3>
+<p>A pin configured as input reads HIGH or LOW based on the voltage applied. The trap that catches every beginner: <strong>a disconnected input pin doesn't read LOW — it reads garbage.</strong> It "floats," picking up electrical noise and flipping randomly. A button connects the pin to either 3.3V or GND <em>when pressed</em>, but what voltage does the pin see when the button is <em>not</em> pressed? Nothing — unless you provide a <strong>pull resistor</strong>:</p>
+<ul>
+<li>A <strong>pull-up</strong> resistor weakly ties the pin to 3.3V, so it reads HIGH when idle; the button connects it to GND, reading LOW when pressed.</li>
+<li>A <strong>pull-down</strong> does the opposite.</li>
+</ul>
+<p>The ESP32 has <em>internal</em> pull-ups/downs you enable in software — use them and you need no external resistor:</p>
+<pre><code class="language-cpp">pinMode(4, INPUT_PULLUP);          // idle = HIGH; button to GND makes it LOW when pressed
+void loop() {
+  if (digitalRead(4) == LOW) {     // LOW = pressed (because of the pull-up)
+    // ...
+  }
+}
+</code></pre>
+<p>(Recall from Part 2: input-only pins 34–39 have <em>no</em> internal pull resistors, so a button on those needs an external one. Another reason to keep the pinout handy.)</p>
+<h3 id="debouncing-the-physical-world-is-messy">Debouncing: The Physical World Is Messy</h3>
+<p>Press a button and the metal contacts physically <em>bounce</em> for a few milliseconds, making/breaking contact several times. To the fast ESP32, one human press looks like 5–20 rapid presses. <strong>Debouncing</strong> filters this — the simplest approach is to ignore further changes for a short window after a transition:</p>
+<pre><code class="language-cpp">unsigned long lastPress = 0;
+void loop() {
+  if (digitalRead(4) == LOW &amp;&amp; millis() - lastPress &gt; 50) {   // 50ms debounce window
+    lastPress = millis();
+    handlePress();                                            // fires once per real press
+  }
+}
+</code></pre>
+<p>Debouncing is a microcosm of the whole embedded mindset: the physical world is noisy and analog, and your clean digital logic has to defend against it. Real sensors, real signals, real timing — all need this kind of defensive handling.</p>
+<h3 id="interrupts-dont-poll-when-you-can-be-told">Interrupts: Don't Poll When You Can Be Told</h3>
+<p>The loop above <em>polls</em> — it checks the pin millions of times a second, wasting CPU and possibly missing a fast event between checks. The better pattern for time-critical or rare events is an <strong>interrupt</strong>: register a function (an ISR — Interrupt Service Routine) that the hardware calls <em>the instant</em> a pin changes, regardless of what the main code is doing:</p>
+<pre><code class="language-cpp">volatile bool pressed = false;                       // 'volatile': changed outside normal flow
+
+void IRAM_ATTR onButtonPress() {                     // IRAM_ATTR: keep the ISR in fast RAM
+  pressed = true;                                    // do the MINIMUM here — just flag it
+}
+
+void setup() {
+  pinMode(4, INPUT_PULLUP);
+  attachInterrupt(4, onButtonPress, FALLING);        // fire on HIGH→LOW transition
+}
+void loop() {
+  if (pressed) { pressed = false; handlePress(); }   // do the real work back in loop()
+}
+</code></pre>
+<p>Two rules every ISR must follow, and both bite hard if ignored: <strong>keep it tiny and fast</strong> (an ISR blocks everything else while it runs — set a flag, don't do real work), and <strong>mark shared variables <code>volatile</code></strong> so the compiler doesn't optimize away reads of a value it thinks "can't change." The pattern — ISR sets a flag, main loop does the work — is the safe, standard shape.</p>
+<h3 id="a-note-on-persistent-storage">A Note on Persistent Storage</h3>
+<p>There's no filesystem you browse, but you <em>can</em> persist data across reboots. Two mechanisms:</p>
+<ul>
+<li><strong>NVS (Non-Volatile Storage)</strong> / the Arduino <code>Preferences</code> library — a small key-value store in flash for settings (Wi-Fi credentials, a counter, calibration values). The right tool for "remember this small thing."</li>
+<li><strong>SPIFFS / LittleFS</strong> — actual small filesystems in flash for files (a config JSON, a web page to serve, logged data). LittleFS is preferred (more robust to power loss).</li>
+</ul>
+<p>A caveat from the hardware: <strong>flash has limited write endurance</strong> (~10,000–100,000 erase cycles per sector). Don't write a counter to flash every second — you'll wear it out in weeks. Buffer in RAM and persist occasionally, or use the RTC memory that survives deep sleep (Part 8).</p>
+<p>If you remember one thing from Part 4: <strong>digital I/O is just HIGH (3.3V) / LOW (0V), but the physical world demands defenses — pull resistors so inputs don't float, debouncing so one press isn't five, interrupts (tiny, <code>volatile</code>, flag-only) instead of polling for fast events — and the chip drives only milliamps, so real loads need a transistor or relay.</strong></p>
+<hr>
+<h2 id="part-5-analog-pwm-buses-adc-i2c-spi-uart">Part 5 — Analog, PWM &amp; Buses (ADC, I2C, SPI, UART)</h2>
+<p>Digital is two values; the real world is continuous, and most interesting peripherals speak a protocol rather than a single voltage. This part covers reading analog signals, <em>faking</em> analog output with PWM, and the three serial buses that connect the vast majority of sensors and displays.</p>
+<h3 id="adc-reading-analog-voltages">ADC: Reading Analog Voltages</h3>
+<p>An <strong>ADC (Analog-to-Digital Converter)</strong> turns a continuous voltage into a number. A potentiometer, a light sensor (LDR), a temperature sensor, a battery-voltage divider — all produce a voltage you read with the ADC. The ESP32's ADC is <strong>12-bit</strong>, so it maps 0–3.3V to an integer 0–4095:</p>
+<pre><code class="language-cpp">int raw = analogRead(34);                  // 0..4095 for 0..3.3V (GPIO34 is ADC1)
+float voltage = raw * 3.3 / 4095.0;        // convert back to volts
+</code></pre>
+<p>Two honest caveats: the ESP32's ADC is <strong>noisy and non-linear</strong> (don't trust it for precision measurement without calibration and averaging), and — from Part 2 — <strong>ADC2 doesn't work while Wi-Fi is on</strong>, so use ADC1 pins (32–39) in any networked project. For analog <em>output</em>, the ESP32 has two true <strong>DAC</strong> channels (GPIO 25/26), but you'll more often use PWM (below).</p>
+<h3 id="pwm-faking-analog-output">PWM: Faking Analog Output</h3>
+<p>The chip can't output an arbitrary voltage on most pins, but it can switch a pin HIGH/LOW <em>very fast</em> and vary the <strong>duty cycle</strong> — the fraction of time it's HIGH. Average that over time and you get an effective analog level: 25% duty ≈ 25% brightness on an LED, or a specific position on a servo, or a motor speed. This is <strong>PWM (Pulse-Width Modulation)</strong>, and on the ESP32 it's provided by the <strong>LEDC</strong> peripheral:</p>
+<pre><code class="language-cpp">// Arduino-ESP32 v3: configure a PWM channel and write a duty cycle.
+ledcAttach(5, 5000, 8);        // pin 5, 5 kHz frequency, 8-bit resolution (0..255)
+ledcWrite(5, 128);             // 50% duty → LED at half brightness / motor at half speed
+</code></pre>
+<p>PWM is how you dim LEDs, drive servos, control motor speed, and generate tones — anywhere you need a <em>proportional</em> output from a digital pin. Frequency and resolution are a tradeoff (higher resolution caps the max frequency); the defaults above suit LEDs and motors.</p>
+<h3 id="the-three-buses-how-sensors-actually-connect">The Three Buses: How Sensors Actually Connect</h3>
+<p>Most sensors and modules don't give you a raw voltage — they're little digital devices that speak a <strong>bus protocol</strong>. Three dominate, and knowing when each applies saves enormous confusion:</p>
+<p><strong>I2C — the workhorse for sensors.</strong> Two wires (<code>SDA</code> data, <code>SCL</code> clock) shared by <em>many</em> devices, each with a unique address. Slow-ish but wire-efficient — perfect for sensors (temperature, pressure, accelerometers) and small OLED displays. You can hang a dozen sensors off the same two pins.</p>
+<pre><code class="language-cpp">#include &lt;Wire.h&gt;
+void setup() {
+  Wire.begin(21, 22);              // SDA=GPIO21, SCL=GPIO22 (ESP32 defaults)
+  Wire.beginTransmission(0x76);    // talk to the device at address 0x76 (e.g., BME280)
+  Wire.write(0xD0);                // ask for its chip-ID register
+  Wire.endTransmission();
+  Wire.requestFrom(0x76, 1);       // read 1 byte back
+  byte id = Wire.read();
+}
+</code></pre>
+<p><strong>SPI — when you need speed.</strong> Four wires (<code>MOSI</code>, <code>MISO</code>, <code>SCK</code>, plus a chip-select per device), much faster than I2C. Used for displays, SD cards, and high-data-rate sensors. More pins, more speed.</p>
+<p><strong>UART — point-to-point serial.</strong> Two wires (<code>TX</code>/<code>RX</code>), the same protocol as your USB serial console. Used for GPS modules, some sensors, and talking to other microcontrollers or a computer. The ESP32 has three UARTs; UART0 is the one tied to USB for your debug console.</p>
+<table>
+<thead>
+<tr>
+<th>Bus</th>
+<th>Wires</th>
+<th>Speed</th>
+<th>Devices</th>
+<th>Typical use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>I2C</strong></td>
+<td>2 (SDA, SCL)</td>
+<td>~100k–400k Hz</td>
+<td>many (addressed)</td>
+<td>sensors, small OLEDs — the default</td>
+</tr>
+<tr>
+<td><strong>SPI</strong></td>
+<td>4 (+CS each)</td>
+<td>tens of MHz</td>
+<td>several (per CS)</td>
+<td>displays, SD cards, fast sensors</td>
+</tr>
+<tr>
+<td><strong>UART</strong></td>
+<td>2 (TX, RX)</td>
+<td>configurable</td>
+<td>1 (point-to-point)</td>
+<td>GPS, modules, MCU-to-MCU</td>
+</tr>
+</tbody>
+</table>
+<p>The good news: you rarely speak these protocols by hand. A sensor comes with a <strong>library</strong> (<code>Adafruit_BME280</code>, <code>TinyGPS++</code>, an OLED driver) that wraps the bus details, so your code is <code>bme.readTemperature()</code>, not raw register pokes. Knowing <em>which bus</em> a part uses tells you how to wire it and which library to grab.</p>
+<p>If you remember one thing from Part 5: <strong>the ADC reads voltages (0–4095 for 0–3.3V, noisy, ADC1 only with Wi-Fi), PWM fakes analog output by varying duty cycle (LEDs, servos, motors), and most sensors connect over one of three buses — I2C (two shared wires, the sensor default), SPI (fast, more wires), or UART (point-to-point) — almost always behind a library so you call <code>readTemperature()</code>, not the bus directly.</strong></p>
+<hr>
+<h2 id="part-6-freertos-tasks-dual-core">Part 6 — FreeRTOS, Tasks &amp; Dual-Core</h2>
+<p>Here's where the ESP32 stops being a simple Arduino and becomes a real concurrent system. Underneath even the friendly <code>setup()</code>/<code>loop()</code> model runs <strong>FreeRTOS</strong>, a real-time operating system, on <strong>two CPU cores</strong>. Understanding it is what lets you do more than one thing at once — and it explains the most common beginner bug, the frozen device.</p>
+<h3 id="delay-is-a-lie-the-cardinal-beginner-trap"><code>delay()</code> Is a Lie (The Cardinal Beginner Trap)</h3>
+<p>Start with the bug, because it teaches the whole lesson. The Part 1 blink used <code>delay(500)</code>. It works for blinking, but consider:</p>
+<pre><code class="language-cpp">void loop() {
+  digitalWrite(2, HIGH);
+  delay(1000);                 // ← for this entire second, NOTHING else can happen
+  digitalWrite(2, LOW);
+  delay(1000);                 // ← can't read a button, handle Wi-Fi, update a display
+}
+</code></pre>
+<p><code>delay()</code> <strong>blocks</strong> — for those two seconds, your device is frozen to everything else. A button press is missed; an incoming network packet waits. This is the embedded version of "never block the event loop" from the <a href="python-concurrency.html">Python Concurrency</a> and Node guides — the <em>exact same lesson</em>, on bare metal. Two ways out: the cooperative <code>millis()</code> pattern, or real concurrency with FreeRTOS tasks.</p>
+<p><strong>The <code>millis()</code> pattern</strong> (non-blocking, single loop): instead of <em>waiting</em>, check whether enough time has <em>passed</em>, and do other work in between:</p>
+<pre><code class="language-cpp">unsigned long lastBlink = 0;
+bool ledOn = false;
+void loop() {
+  if (millis() - lastBlink &gt;= 1000) {    // has a second elapsed? (don't wait — check)
+    lastBlink = millis();
+    ledOn = !ledOn;
+    digitalWrite(2, ledOn);
+  }
+  checkButton();                          // these run continuously, never blocked
+  handleNetwork();
+}
+</code></pre>
+<p>This is the bread-and-butter pattern for doing several things "at once" in one loop. But it gets unwieldy with many timed activities — which is what tasks are for.</p>
+<h3 id="freertos-tasks-real-concurrency">FreeRTOS Tasks: Real Concurrency</h3>
+<p>FreeRTOS lets you split your program into independent <strong>tasks</strong>, each its own infinite loop with its own stack, scheduled preemptively by the RTOS. (<code>loop()</code> is itself just a task FreeRTOS created for you.) Now "blink the LED <em>and</em> read the sensor <em>and</em> serve Wi-Fi" becomes three tasks that genuinely run concurrently:</p>
+<pre><code class="language-cpp">void blinkTask(void *param) {
+  pinMode(2, OUTPUT);
+  while (1) {                                  // each task is its own infinite loop
+    digitalWrite(2, HIGH);
+    vTaskDelay(pdMS_TO_TICKS(500));            // ← yields the CPU to other tasks (NOT delay!)
+    digitalWrite(2, LOW);
+    vTaskDelay(pdMS_TO_TICKS(500));
+  }
+}
+void sensorTask(void *param) {
+  while (1) {
+    readAndPublishSensor();
+    vTaskDelay(pdMS_TO_TICKS(60000));          // every 60s; sleeps without blocking others
+  }
+}
+
+void setup() {
+  // xTaskCreate(function, name, stack_bytes, param, priority, handle)
+  xTaskCreate(blinkTask,  &quot;blink&quot;,  2048, NULL, 1, NULL);
+  xTaskCreate(sensorTask, &quot;sensor&quot;, 4096, NULL, 1, NULL);
+}
+void loop() {}                                 // can be left empty — tasks do the work
+</code></pre>
+<p>The crucial distinction: <strong><code>vTaskDelay()</code> yields</strong> — while one task "sleeps," the scheduler runs others — whereas <strong><code>delay()</code> blocks</strong> (well, in Arduino-ESP32 <code>delay()</code> actually calls <code>vTaskDelay</code> so it yields too, but the <em>mental model</em> you want is "vTaskDelay = cooperative sleep"). Tasks have <strong>priorities</strong> (higher preempts lower) and each gets a fixed <strong>stack</strong> you size at creation — too small and the task overflows and crashes (a common bug; size generously, ~2–4KB, and watch for stack-overflow resets).</p>
+<h3 id="talking-between-tasks-safely">Talking Between Tasks Safely</h3>
+<p>Tasks share memory, so — exactly as in the <a href="python-concurrency.html">Python Concurrency guide</a>'s threading section — <strong>shared mutable state is a hazard</strong> and needs synchronization. FreeRTOS gives you the primitives:</p>
+<ul>
+<li><strong>Queues</strong> — the <em>preferred</em> way to pass data between tasks (e.g., a sensor task pushes readings, a network task consumes them). Thread-safe by construction; prefer them over shared variables.</li>
+<li><strong>Mutexes / semaphores</strong> — guard a shared resource (a bus, a global) so two tasks don't corrupt it.</li>
+</ul>
+<pre><code class="language-cpp">QueueHandle_t readingQueue;
+void setup() {
+  readingQueue = xQueueCreate(10, sizeof(float));   // holds up to 10 floats
+}
+void sensorTask(void *p) {
+  while (1) {
+    float t = readTemp();
+    xQueueSend(readingQueue, &amp;t, 0);                // producer
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
+}
+void networkTask(void *p) {
+  float t;
+  while (1) {
+    if (xQueueReceive(readingQueue, &amp;t, portMAX_DELAY))   // consumer; blocks until data
+      publish(t);
+  }
+}
+</code></pre>
+<p>This is the producer/consumer pattern from the concurrency guide, on a microcontroller. The ideas transfer directly — only the API names change.</p>
+<h3 id="two-cores-and-who-uses-them">Two Cores, and Who Uses Them</h3>
+<p>The ESP32 has <strong>two cores</strong>: <strong>Core 0</strong> ("PRO_CPU") and <strong>Core 1</strong> ("APP_CPU"). By default, the <strong>Wi-Fi/Bluetooth stack runs on Core 0</strong> and your Arduino <code>loop()</code> runs on <strong>Core 1</strong>. This is the one place Part 1's "you own everything" breaks: the radio genuinely needs CPU time, and if your code hogs the core the network stack lives on, Wi-Fi stutters or drops. You can <strong>pin a task to a specific core</strong> with <code>xTaskCreatePinnedToCore(...)</code> — useful to keep a timing-critical task off the Wi-Fi core, or to deliberately parallelize heavy computation across both. For most projects the defaults are fine; reach for pinning when Wi-Fi and a busy task are fighting.</p>
+<p>If you remember one thing from Part 6: <strong>the ESP32 secretly runs FreeRTOS on two cores — <code>delay()</code> blocking everything is the cardinal beginner bug, fixed with the non-blocking <code>millis()</code> pattern or real FreeRTOS tasks (use <code>vTaskDelay</code> to yield, size stacks generously, pass data via queues not shared variables), and Core 0 runs the Wi-Fi stack, so don't starve it.</strong></p>
+<hr>
+<h2 id="part-7-wi-fi-bluetooth-networking">Part 7 — Wi-Fi, Bluetooth &amp; Networking</h2>
+<p>The radios are the ESP32's reason to exist — a $5 chip that puts a sensor on your Wi-Fi or talks BLE to your phone. This part covers connecting, the two roles Wi-Fi can play, the messaging protocols that make IoT work, and the security you must not skip.</p>
+<h3 id="connecting-to-wi-fi-station-mode">Connecting to Wi-Fi (Station Mode)</h3>
+<p>The common case: the ESP32 joins your existing network as a <strong>station</strong> (a client, like your laptop):</p>
+<pre><code class="language-cpp">#include &lt;WiFi.h&gt;
+void setup() {
+  Serial.begin(115200);
+  WiFi.begin(&quot;MySSID&quot;, &quot;password&quot;);
+  while (WiFi.status() != WL_CONNECTED) {    // connecting takes a few seconds
+    delay(500); Serial.print(&quot;.&quot;);
+  }
+  Serial.println(WiFi.localIP());            // now it has a DHCP-assigned IP
+}
+</code></pre>
+<p>Once connected it has an IP and the full TCP/IP stack (the <a href="networking-fundamentals.html">Networking Fundamentals guide</a> applies — DHCP, DNS, TCP all work). Two realities to design for: connecting takes <strong>seconds</strong> (and costs power — Part 8), and Wi-Fi <strong>drops</strong> (handle reconnection; don't assume a connection stays up forever — the failure-handling instincts from the <a href="distributed-systems-study-guide.html">Distributed Systems guide</a> apply even here).</p>
+<h3 id="access-point-mode-the-provisioning-problem">Access Point Mode &amp; the Provisioning Problem</h3>
+<p>The ESP32 can also <em>be</em> a Wi-Fi network — <strong>Access Point (AP) mode</strong> — that your phone connects to directly. This solves a real chicken-and-egg problem: <strong>how do you tell a headless device your Wi-Fi password?</strong> It has no keyboard. The standard answer, <strong>captive-portal provisioning</strong>: the device boots as an AP, you connect your phone to it, a web page pops up where you enter your home Wi-Fi credentials, the device saves them to NVS (Part 4) and reboots into station mode. Libraries like <strong>WiFiManager</strong> do this in a few lines, and it's how most commercial smart devices are set up.</p>
+<h3 id="talking-to-the-world-http-mqtt-websockets">Talking to the World: HTTP, MQTT, WebSockets</h3>
+<p>Once networked, the ESP32 can be a client or a server. The protocol you choose matters:</p>
+<ul>
+<li><strong>HTTP</strong> — the ESP32 as a client <code>POST</code>ing readings to an API, or as a tiny <em>server</em> hosting a control page. Simple, universal, but heavyweight for frequent small messages (a full request/response per reading).</li>
+<li><strong>MQTT — the IoT default, and the one to learn.</strong> A lightweight <strong>publish/subscribe</strong> protocol designed for exactly this: many small, intermittent messages from constrained devices. The device <em>publishes</em> readings to a <strong>topic</strong> on a <strong>broker</strong> (Mosquitto, HiveMQ, or a cloud IoT service); other clients <em>subscribe</em>. It's efficient, handles intermittent connectivity gracefully, and decouples devices from consumers — the same pub/sub and broker concepts as the <a href="distributed-systems-study-guide.html">Distributed Systems guide</a>'s messaging chapter, sized for microcontrollers.</li>
+</ul>
+<pre><code class="language-cpp">#include &lt;PubSubClient.h&gt;           // MQTT client
+// ... connect Wi-Fi, then:
+client.setServer(&quot;broker.local&quot;, 1883);
+client.connect(&quot;esp32-sensor-01&quot;);
+client.publish(&quot;home/livingroom/temp&quot;, &quot;21.5&quot;);      // publish a reading
+client.subscribe(&quot;home/livingroom/setpoint&quot;);         // listen for commands
+</code></pre>
+<ul>
+<li><strong>WebSockets</strong> — when you need a persistent, low-latency, bidirectional channel (a live dashboard, a remote-control UI). The <a href="websockets-study-guide.html">WebSockets guide</a> covers the protocol; on the ESP32 you'd use it to push live data to a browser without polling.</li>
+</ul>
+<p>The decision in one line: <strong>MQTT for device telemetry and commands</strong> (the IoT norm), <strong>HTTP for occasional posts or a simple config page</strong>, <strong>WebSockets for live bidirectional UIs</strong>.</p>
+<h3 id="bluetooth-ble">Bluetooth &amp; BLE</h3>
+<p>The ESP32 also speaks <strong>Bluetooth Low Energy (BLE)</strong> — ideal for short-range, low-power, phone-to-device interaction where there's no Wi-Fi: a fitness sensor, a configuration app, a beacon. BLE's model is <strong>GATT</strong> (services and characteristics — structured values a phone reads/writes/subscribes to). It's more complex than Wi-Fi but uses far less power and needs no network infrastructure. (Note: the C3/C6/H2 variants do BLE; the original ESP32 also does classic Bluetooth; the S2 has no Bluetooth at all — Part 2.) Reach for BLE when the consumer is a nearby phone and power or the absence of Wi-Fi rules out the network.</p>
+<h3 id="security-you-cannot-skip">Security You Cannot Skip</h3>
+<p>A networked device is an attack surface, and IoT's security reputation is poor for good reason. The non-negotiables, all building on the <a href="crypto-fundamentals.html">Cryptography</a> and <a href="auth-study-guide.html">Auth</a> guides:</p>
+<ul>
+<li><strong>Use TLS.</strong> The ESP32 has hardware crypto acceleration and can do <code>https://</code> and <code>mqtts://</code>. Plain HTTP/MQTT sends your data — and any credentials — in the clear over the air. Validate the server's certificate (ship the CA cert in firmware).</li>
+<li><strong>Never hardcode secrets in firmware you distribute.</strong> Firmware can be read off the flash. Use per-device credentials, provisioned at setup, stored in NVS.</li>
+<li><strong>Enable Secure Boot and Flash Encryption</strong> for production (Part 10) — they stop an attacker who has physical access from reading your firmware or running modified code.</li>
+<li><strong>Authenticate commands.</strong> If your device acts on incoming MQTT messages, make sure they're from an authorized source — an unauthenticated "unlock the door" topic is a real vulnerability.</li>
+</ul>
+<p>If you remember one thing from Part 7: <strong>the ESP32 joins Wi-Fi as a station (handle the multi-second connect and inevitable drops) or hosts an AP for credential provisioning; MQTT pub/sub is the IoT messaging default (HTTP for occasional posts, WebSockets for live UIs, BLE for nearby phones); and TLS plus per-device secrets are not optional — a networked device is an attack surface.</strong></p>
+<hr>
+<h2 id="part-8-power-management-deep-sleep">Part 8 — Power Management &amp; Deep Sleep</h2>
+<p>This is the part that makes battery-powered IoT actually possible, and it's where the microcontroller most dramatically beats the Pi: an ESP32 can run for <em>years</em> on a battery by being asleep ~99.9% of the time. If your device plugs into the wall, you can skim this; if it runs on a battery or solar, this part <em>is</em> the project.</p>
+<h3 id="the-power-problem">The Power Problem</h3>
+<p>A running ESP32 with Wi-Fi active draws <strong>~150–260 mA</strong> — that flattens a small battery in a day. But most sensor jobs are bursty: wake up, read a sensor, send the reading, then <em>do nothing for 10 minutes</em>. The entire game of low-power design is <strong>minimizing the time spent awake</strong> and making the idle time draw as close to zero as possible. The chip provides power modes spanning six orders of magnitude of current:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Current (approx.)</th>
+<th>What's on</th>
+<th>Wake source</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Active</strong> (Wi-Fi)</td>
+<td>150–260 mA</td>
+<td>everything + radio</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Modem-sleep</strong></td>
+<td>~20–40 mA</td>
+<td>CPU on, radio off between beacons</td>
+<td>automatic</td>
+</tr>
+<tr>
+<td><strong>Light-sleep</strong></td>
+<td>~0.8 mA</td>
+<td>CPU paused, RAM retained, fast wake</td>
+<td>timer, GPIO, etc.</td>
+</tr>
+<tr>
+<td><strong>Deep-sleep</strong></td>
+<td><strong>~10 µA</strong></td>
+<td>almost everything off; RTC + RAM survive</td>
+<td>timer, GPIO, touch, ULP</td>
+</tr>
+<tr>
+<td><strong>Hibernation</strong></td>
+<td>~5 µA</td>
+<td>only RTC timer</td>
+<td>timer</td>
+</tr>
+</tbody>
+</table>
+<p>The leap that matters is <strong>Active → Deep-sleep: ~200 mA down to ~10 µA, a 20,000× reduction.</strong> That's the difference between a day and a decade on the same battery.</p>
+<h3 id="deep-sleep-the-workhorse-pattern">Deep Sleep: The Workhorse Pattern</h3>
+<p>Deep sleep is the key technique, and it requires a mental adjustment: <strong>waking from deep sleep is essentially a reboot.</strong> The CPU restarts, your code runs from the top — RAM is wiped, variables reset. So the pattern isn't "loop with a long sleep"; it's <strong>"do one job, then sleep, and on wake do the job again from scratch":</strong></p>
+<pre><code class="language-cpp">RTC_DATA_ATTR int bootCount = 0;        // RTC_DATA_ATTR: survives deep sleep (RTC memory)
+
+void setup() {
+  Serial.begin(115200);
+  bootCount++;                          // persisted across sleeps via RTC memory
+  Serial.printf(&quot;Wake #%d\n&quot;, bootCount);
+
+  float temp = readSensor();            // 1. do the one job: read
+  connectWiFiAndPublish(temp);          // 2. send it (the expensive, awake part)
+
+  esp_sleep_enable_timer_wakeup(600ULL * 1000000ULL);  // 3. arm a 600-second (10 min) timer
+  esp_deep_sleep_start();               // 4. sleep at ~10µA — code below never runs
+}
+void loop() {}                          // never reached — setup() sleeps before returning
+</code></pre>
+<p><code>RTC_DATA_ATTR</code> is how you keep a little state across the "reboot" — the RTC memory (~8KB) survives deep sleep when SRAM doesn't, so counters, calibration, and "what state was I in" go there. Wake sources are flexible: a <strong>timer</strong> (every N minutes), a <strong>GPIO</strong> (a door sensor or button — wake only when something happens), the <strong>touch</strong> peripheral, or the <strong>ULP coprocessor</strong> (below).</p>
+<h3 id="wringing-out-the-last-microamps">Wringing Out the Last Microamps</h3>
+<p>Getting from "works" to "lasts years" is a series of refinements, and they're where real battery projects live:</p>
+<ul>
+<li><strong>Minimize awake time.</strong> Wi-Fi connection is the power hog (seconds at ~200mA). Connect fast: store a <strong>static IP</strong> and the AP's channel/BSSID in RTC memory to skip DHCP and scanning, which can cut wake time from ~5s to &lt;1s — often the single biggest win.</li>
+<li><strong>Batch before you transmit.</strong> If you can tolerate latency, take readings into RTC memory across several wakes and transmit a batch once — amortizing the expensive Wi-Fi connection over many readings.</li>
+<li><strong>The ULP coprocessor</strong> can run a tiny program while the main CPUs are in deep sleep — e.g., poll a sensor and only wake the big cores when a threshold is crossed. This is how you monitor continuously at microamp power.</li>
+<li><strong>Mind the board, not just the chip.</strong> A dev board's USB-serial chip, power LED, and voltage regulator can draw <em>more</em> in sleep than the ESP32 itself. For real battery products you design a custom board (or pick a low-power one like an Adafruit Feather) — the ~10µA figure is the <em>chip</em>, not a typical dev board with its always-on LED burning 5mA.</li>
+</ul>
+<h3 id="the-battery-math">The Battery Math</h3>
+<p>The payoff calculation, worth doing for any battery project: with a 2000 mAh battery, a device that wakes for 3 seconds every 10 minutes — drawing ~150mA awake and ~10µA asleep — averages roughly <em>0.085 mA</em>, which is <strong>on the order of two years</strong> on that battery. The same device using <code>delay()</code> instead of deep sleep (staying awake at ~150mA) lasts about <strong>half a day</strong>. That ~1000× difference is entirely the sleep strategy — which is why this part exists and why deep sleep is the defining skill of battery IoT.</p>
+<p>If you remember one thing from Part 8: <strong>battery life is almost entirely about minimizing awake time — deep sleep drops draw from ~200mA to ~10µA (a 20,000× cut), waking is effectively a reboot (persist state in <code>RTC_DATA_ATTR</code> memory), and the biggest practical win is connecting to Wi-Fi fast (static IP + cached channel) because the radio is the power hog. Done right, the same battery lasts years instead of a day.</strong></p>
+<h2 id="part-9-sample-projects">Part 9 — Sample Projects</h2>
+<p>Microcontrollers are learned by building, so here are five complete, escalating projects. Each one introduces a new capability and reinforces the concepts from the parts above; together they cover the techniques behind most real ESP32 work. They're written in Arduino-ESP32 for approachability (Part 3) — port to ESP-IDF or MicroPython as you grow.</p>
+<h3 id="project-1-blink-hello-hardware">Project 1 — Blink (Hello, Hardware)</h3>
+<p>The "hello world" of embedded — and not a throwaway: it proves your toolchain, board, and flashing all work, which is the real hurdle on day one. Wire an LED (with a ~330Ω resistor, anode to GPIO, cathode to GND) or use the onboard LED.</p>
+<pre><code class="language-cpp">#define LED 2                          // most dev boards: onboard LED on GPIO2
+void setup() { pinMode(LED, OUTPUT); }
+void loop() {
+  digitalWrite(LED, HIGH); delay(500);
+  digitalWrite(LED, LOW);  delay(500);
+}
+</code></pre>
+<p><strong>What it teaches:</strong> the edit → compile → flash → observe loop (Part 1), <code>setup</code>/<code>loop</code> (Part 3), digital output (Part 4). <strong>Level up:</strong> rewrite it with the <code>millis()</code> non-blocking pattern (Part 6) so the LED blinks <em>while</em> you also read a button — the first real lesson that <code>delay()</code> doesn't scale.</p>
+<h3 id="project-2-button-controlled-led-with-debounce-interrupt">Project 2 — Button-Controlled LED with Debounce &amp; Interrupt</h3>
+<p>Input meets output. A button toggles an LED on each <em>press</em> (not while held) — which forces you to confront floating pins, bounce, and edge-detection.</p>
+<pre><code class="language-cpp">#define BTN 4
+#define LED 2
+volatile bool toggleReq = false;
+unsigned long lastISR = 0;
+
+void IRAM_ATTR onPress() {
+  if (millis() - lastISR &gt; 50) {       // debounce inside the ISR (Part 4)
+    toggleReq = true;
+    lastISR = millis();
+  }
+}
+void setup() {
+  pinMode(LED, OUTPUT);
+  pinMode(BTN, INPUT_PULLUP);          // pull-up: idle HIGH, pressed LOW (Part 4)
+  attachInterrupt(BTN, onPress, FALLING);
+}
+void loop() {
+  if (toggleReq) {
+    toggleReq = false;
+    digitalWrite(LED, !digitalRead(LED));   // toggle
+  }
+}
+</code></pre>
+<p><strong>What it teaches:</strong> digital input with pull-ups, debouncing, and the interrupt → flag → handle-in-loop pattern (all Part 4). <strong>Level up:</strong> add PWM (Part 5) so the button cycles through brightness levels instead of just on/off.</p>
+<h3 id="project-3-wi-fi-weather-station-sensor-mqtt">Project 3 — Wi-Fi Weather Station (Sensor → MQTT)</h3>
+<p>The quintessential IoT project and the one that ties the most together: read a real sensor over a bus, connect to Wi-Fi, and publish readings over MQTT for a dashboard or home-automation system to consume. Uses a <strong>BME280</strong> (temperature/humidity/pressure) over I2C.</p>
+<pre><code class="language-cpp">#include &lt;WiFi.h&gt;
+#include &lt;PubSubClient.h&gt;
+#include &lt;Adafruit_BME280.h&gt;           // library hides the I2C register details (Part 5)
+
+Adafruit_BME280 bme;                    // I2C sensor at 0x76
+WiFiClient net;
+PubSubClient mqtt(net);
+
+void connectWiFi() {
+  WiFi.begin(&quot;MySSID&quot;, &quot;password&quot;);
+  while (WiFi.status() != WL_CONNECTED) delay(300);
+}
+void connectMQTT() {
+  mqtt.setServer(&quot;192.168.1.10&quot;, 1883);
+  while (!mqtt.connected()) mqtt.connect(&quot;esp32-weather-01&quot;);
+}
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin(21, 22);                   // I2C pins (Part 5)
+  bme.begin(0x76);
+  connectWiFi();
+  connectMQTT();
+}
+void loop() {
+  if (!mqtt.connected()) connectMQTT(); // Wi-Fi/MQTT drop — reconnect (Part 7)
+  mqtt.loop();
+
+  char buf[16];
+  dtostrf(bme.readTemperature(), 4, 1, buf);
+  mqtt.publish(&quot;home/weather/temp&quot;, buf);
+  dtostrf(bme.readHumidity(), 4, 1, buf);
+  mqtt.publish(&quot;home/weather/humidity&quot;, buf);
+
+  delay(30000);                         // every 30s (see Project 4 for the battery version)
+}
+</code></pre>
+<p><strong>What it teaches:</strong> I2C sensors via a library (Part 5), Wi-Fi station mode and reconnection (Part 7), and MQTT pub/sub (Part 7) — the backbone of nearly all telemetry IoT. Run <strong>Mosquitto</strong> as the broker and you can watch readings with <code>mosquitto_sub -t 'home/weather/#'</code>, or feed them straight into <strong>Home Assistant</strong>. <strong>Level up:</strong> add a small OLED (I2C, same two wires) to show the readings locally.</p>
+<h3 id="project-4-battery-powered-sensor-deep-sleep">Project 4 — Battery-Powered Sensor (Deep Sleep)</h3>
+<p>Project 3 plugged into the wall and stayed awake — fine for a demo, fatal for a battery. This is the <em>same</em> job re-architected for years of battery life: wake, read, publish, sleep. It's Project 3 turned inside out by Part 8's deep-sleep pattern, and the contrast is the whole lesson.</p>
+<pre><code class="language-cpp">#include &lt;WiFi.h&gt;
+#include &lt;PubSubClient.h&gt;
+#include &lt;Adafruit_BME280.h&gt;
+
+RTC_DATA_ATTR int bootCount = 0;        // survives deep sleep (Part 8)
+#define SLEEP_SECONDS 600               // wake every 10 minutes
+
+Adafruit_BME280 bme;
+WiFiClient net;
+PubSubClient mqtt(net);
+
+void setup() {
+  bootCount++;
+  Wire.begin(21, 22);
+  bme.begin(0x76);
+  float temp = bme.readTemperature();   // 1. read FIRST (cheap, do it before the radio)
+  float hum  = bme.readHumidity();
+
+  // 2. connect fast — static IP skips DHCP, the biggest awake-time win (Part 8)
+  WiFi.config(IPAddress(192,168,1,50), IPAddress(192,168,1,1), IPAddress(255,255,255,0));
+  WiFi.begin(&quot;MySSID&quot;, &quot;password&quot;);
+  unsigned long start = millis();
+  while (WiFi.status() != WL_CONNECTED &amp;&amp; millis() - start &lt; 8000) delay(50);
+
+  if (WiFi.status() == WL_CONNECTED) {  // 3. publish (only if connected — don't hang awake)
+    mqtt.setServer(&quot;192.168.1.10&quot;, 1883);
+    if (mqtt.connect(&quot;esp32-batt-01&quot;)) {
+      char buf[16];
+      dtostrf(temp, 4, 1, buf); mqtt.publish(&quot;home/garden/temp&quot;, buf);
+      dtostrf(hum, 4, 1, buf);  mqtt.publish(&quot;home/garden/humidity&quot;, buf);
+      mqtt.loop(); delay(100);          // let the publish flush before sleeping
+    }
+  }
+
+  esp_sleep_enable_timer_wakeup((uint64_t)SLEEP_SECONDS * 1000000ULL);   // 4. arm timer
+  esp_deep_sleep_start();               // 5. ~10µA until the timer fires; setup() restarts on wake
+}
+void loop() {}                          // never reached
+</code></pre>
+<p><strong>What it teaches:</strong> the deep-sleep architecture (Part 8) — wake-is-a-reboot, <code>RTC_DATA_ATTR</code> for persisted state, static IP for fast connect, and the discipline of doing the cheap work before powering the radio and bounding the awake time so a failed connect doesn't drain the battery. <strong>This single restructuring is the difference between a half-day and ~two years on a battery.</strong> <strong>Level up:</strong> wake on a GPIO (a reed switch on a door/window) instead of a timer, so it reports only when something <em>happens</em> — near-zero average power.</p>
+<h3 id="project-5-web-controlled-device-esp32-as-server">Project 5 — Web-Controlled Device (ESP32 as Server)</h3>
+<p>Flip the direction: instead of the ESP32 pushing data out, it <em>hosts</em> a web interface you open from any phone on the network to control it — an LED, a relay, a motor. This is how a huge amount of "smart home" DIY works, and it introduces the ESP32 as an HTTP server with a live channel.</p>
+<pre><code class="language-cpp">#include &lt;WiFi.h&gt;
+#include &lt;WebServer.h&gt;
+#define RELAY 2
+
+WebServer server(80);
+
+void handleRoot() {
+  bool on = digitalRead(RELAY);
+  server.send(200, &quot;text/html&quot;,
+    &quot;&lt;h1&gt;Device Control&lt;/h1&gt;&quot;
+    &quot;&lt;p&gt;State: &quot; + String(on ? &quot;ON&quot; : &quot;OFF&quot;) + &quot;&lt;/p&gt;&quot;
+    &quot;&lt;a href='/toggle'&gt;&lt;button&gt;Toggle&lt;/button&gt;&lt;/a&gt;&quot;);
+}
+void handleToggle() {
+  digitalWrite(RELAY, !digitalRead(RELAY));
+  server.sendHeader(&quot;Location&quot;, &quot;/&quot;);        // redirect back to the page
+  server.send(303);
+}
+
+void setup() {
+  pinMode(RELAY, OUTPUT);
+  WiFi.begin(&quot;MySSID&quot;, &quot;password&quot;);
+  while (WiFi.status() != WL_CONNECTED) delay(300);
+  Serial.println(WiFi.localIP());             // open this IP in a browser
+
+  server.on(&quot;/&quot;, handleRoot);
+  server.on(&quot;/toggle&quot;, handleToggle);
+  server.begin();
+}
+void loop() {
+  server.handleClient();                      // non-blocking; serve requests as they arrive
+}
+</code></pre>
+<p><strong>What it teaches:</strong> the ESP32 as an HTTP <em>server</em> (Part 7), serving HTML and handling routes, the inverse of Projects 3–4. Open the printed IP on your phone and you have a control panel. <strong>Level up:</strong> replace HTTP polling with <strong>WebSockets</strong> (the <a href="websockets-study-guide.html">WebSockets guide</a>) for a live-updating UI, add the captive-portal <strong>WiFiManager</strong> (Part 7) so credentials aren't hardcoded, and put it behind <strong>TLS</strong> (Part 7) before exposing anything that matters.</p>
+<h3 id="where-to-go-from-these">Where to Go From These</h3>
+<p>These five — output, input, telemetry-out, battery/sleep, control-in — are the primitives almost every ESP32 project recombines. Natural next builds that mix them: a <strong>plant monitor</strong> (Project 4 + a soil-moisture ADC read, Part 5), a <strong>BLE beacon or fitness sensor</strong> (Part 7's BLE instead of Wi-Fi), an <strong>e-paper dashboard</strong> (Project 3's data onto an SPI e-ink display), a <strong>camera</strong> project on an <strong>ESP32-CAM</strong> board (the S3's ML acceleration shines here), or a <strong>Matter</strong> smart-home device on a <strong>C6</strong> (Part 2) that pairs with Apple/Google/Amazon ecosystems natively.</p>
+<p>If you remember one thing from Part 9: <strong>build these in order — each adds one capability (digital out → digital in → sensor+Wi-Fi+MQTT → deep-sleep battery → web server) and together they're the vocabulary of real ESP32 work. The jump from Project 3 to Project 4 (the same sensor, re-architected for deep sleep) is the most important lesson: the <em>same job</em> becomes a multi-year battery device purely through power discipline.</strong></p>
+<hr>
+<h2 id="part-10-production-going-further">Part 10 — Production &amp; Going Further</h2>
+<p>The gap between "it works on my desk" and "I shipped a thousand of these" is real, and it's where embedded gets serious. This closing part covers what changes when an ESP32 project becomes a product, plus the debugging and learning paths to take you there.</p>
+<h3 id="debugging-beyond-printf">Debugging Beyond <code>printf</code></h3>
+<p>Serial <code>printf</code> (Part 1) carries you a long way, but production debugging needs more:</p>
+<ul>
+<li><strong>Read the crash, don't guess.</strong> When the ESP32 panics it prints a <strong>backtrace</strong> of hex addresses and reboots. Feed that through <code>addr2line</code> (or PlatformIO's monitor filter / <code>idf.py monitor</code>) to turn the addresses into file/line numbers — this turns "it just reboots" into "null deref at sensor.cpp:42."</li>
+<li><strong>Know the reset reasons.</strong> <code>esp_reset_reason()</code> tells you <em>why</em> the chip rebooted — a panic, a <strong>brownout</strong> (voltage dipped — often an underpowered USB port or a Wi-Fi current spike a weak supply can't deliver, a top real-world gotcha), a <strong>watchdog</strong> timeout (a task hogged the CPU and the watchdog killed it — Part 6), or a clean deep-sleep wake.</li>
+<li><strong>Watch the heap.</strong> <code>ESP.getFreeHeap()</code> over time catches the slow memory leak that crashes the device after three days of uptime — the same leak-hunting discipline as the <a href="advanced-nodejs-study-guide.html">Advanced Node.js guide</a>, with far less margin.</li>
+<li><strong>Real JTAG debugging</strong> (breakpoints, single-stepping, variable inspection) exists via the built-in JTAG on S3/C3 over USB, with GDB and the IDF — worth setting up once you outgrow <code>printf</code>.</li>
+</ul>
+<h3 id="over-the-air-updates-ota">Over-the-Air Updates (OTA)</h3>
+<p>A device on a shelf (or a thousand in the field) can't be reflashed over USB. <strong>OTA updates</strong> let firmware update itself over Wi-Fi — the ESP32 has dual app partitions, downloads the new firmware to the inactive one, verifies it, and reboots into it (with rollback if the new image fails to boot). This is <strong>non-negotiable for any real product</strong>: it's how you ship bug fixes and — critically — <strong>security patches</strong> (Part 7). Design for OTA from day one; retrofitting it is painful. The deployment thinking parallels the <a href="distributed-systems-study-guide.html">Distributed Systems guide</a>'s staged-rollout discussion — roll new firmware to a few devices, watch for boot failures, then ramp.</p>
+<h3 id="security-hardening-for-production">Security Hardening for Production</h3>
+<p>Beyond Part 7's TLS-and-secrets baseline, shipping a product adds two hardware features:</p>
+<ul>
+<li><strong>Secure Boot</strong> — the chip cryptographically verifies the firmware signature at boot, so it won't run firmware you didn't sign. Stops an attacker from flashing malicious code.</li>
+<li><strong>Flash Encryption</strong> — the firmware and data in flash are encrypted with a key fused into the chip, so an attacker who desolders the flash and reads it gets ciphertext. Stops firmware/IP theft and secret extraction.</li>
+</ul>
+<p>Together they're what separate a hobby gadget from a defensible product. They're irreversible (one-time fuses) and easy to brick yourself with — read the docs carefully and test on a sacrificial board first.</p>
+<h3 id="manufacturing-cost-realities">Manufacturing &amp; Cost Realities</h3>
+<p>Two things that surprise software people scaling to hardware: <strong>per-device provisioning</strong> (each unit needs unique credentials/certs flashed at the factory — you don't ship a thousand devices with the same key, per Part 7), and the move <strong>from dev board to custom PCB</strong> (the $10 DevKitC is for prototyping; a product uses the bare WROOM/WROVER <em>module</em>, ~$2–4, on your own board with only the components you need — which is also how you finally hit Part 8's true low-power numbers by dropping the always-on dev-board LED and USB chip).</p>
+<h3 id="where-the-esp32-fits-honestly">Where the ESP32 Fits, Honestly</h3>
+<p>A closing perspective, since the guide opened by contrast with the Pi. Choose the <strong>ESP32</strong> when you need <strong>cheap, low-power, real-time, single-purpose</strong> hardware control with wireless — a sensor, a controller, a connected gadget; it's $2–10, sleeps for years, boots instantly, and talks directly to pins. Choose a <strong>Raspberry Pi</strong> (or other Linux SBC) when you need an <strong>operating system, heavy computation, a real filesystem, a display/GUI, cameras with vision processing, or to run existing Linux software</strong> — it's a computer. The two are complements, not competitors, and many real systems use both: ESP32 nodes as the cheap sleeping sensors at the edges, a Pi (or a cloud backend) as the always-on hub that collects from them over MQTT. Knowing which is which — the very first lesson of Part 1 — is the most valuable thing this guide can leave you with.</p>
+<h3 id="going-further">Going Further</h3>
+<ul>
+<li><strong>Graduate to ESP-IDF</strong> (Part 3) for the full chip — power, security, performance.</li>
+<li><strong>Explore the variants</strong> (Part 2): S3 for camera/ML, C6 for Matter, C3 for cost.</li>
+<li><strong>Build the "level up" extensions</strong> in Part 9 — they're where the real learning compounds.</li>
+<li><strong>Read the <a href="https://docs.espressif.com/projects/esp-idf/en/latest/">ESP-IDF docs</a></strong> cover to cover for any peripheral you use seriously; they're excellent.</li>
+<li><strong>Pair it with the rest of the repo:</strong> <a href="networking-fundamentals.html">Networking</a> for the TCP/IP your device speaks, <a href="crypto-fundamentals.html">Cryptography</a> and <a href="auth-study-guide.html">Auth</a> for securing it, <a href="websockets-study-guide.html">WebSockets</a> for live UIs, <a href="distributed-systems-study-guide.html">Distributed Systems</a> for the fleet behind it, and the upcoming Raspberry Pi guide for its always-on counterpart.</li>
+</ul>
+<p>If you remember one thing from Part 10: <strong>shipping a product means OTA updates (for security patches — design them in from day one), Secure Boot + Flash Encryption, per-device provisioning, and moving from dev board to a custom PCB with the bare module — and the ESP32's place is cheap, low-power, real-time wireless hardware control, complementing rather than competing with a Linux SBC like the Pi.</strong></p>
+<hr>
+<p>That's the guide. From here the highest-leverage next step is the one that's true of all hardware: <strong>buy a $6 board and build Project 1 tonight.</strong> The toolchain hurdle is the real barrier, and it falls the moment your first LED blinks; everything after that is recombination. Then build Projects 2 through 5 in order — by the battery-sensor project you'll understand why a microcontroller is a fundamentally different machine than the computer you wrote this on, and why that difference is exactly what makes a sensor that lives for years on a coin cell possible. The chip is cheap, the radios are free, and the physical world is waiting to be measured and controlled — which is the particular joy of embedded that no amount of cloud software replicates.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

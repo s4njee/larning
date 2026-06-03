@@ -1,0 +1,2005 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive, depth-first study guide to Nginx: architecture, configuration contexts, server blocks, location matching, reverse proxy and load balancing, TLS, caching, performance, security, and production operations.">
+<title>Nginx Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#3fb950; --accent2:#56d364; --accent-weak:rgba(63,185,80,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#1a7f37; --accent2:#1f883d; --accent-weak:rgba(26,127,55,.10);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+
+.decision-verdict.nginx{color:var(--good)}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">N</span><span>Nginx Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-foundations-mental-model" data-target="part-1-foundations-mental-model">Part 1 — Foundations &amp; Mental Model</a></li><li class="toc-l3"><a href="#11-what-nginx-is" data-target="11-what-nginx-is">1.1 What Nginx Is</a></li><li class="toc-l3"><a href="#12-the-architecture" data-target="12-the-architecture">1.2 The Architecture</a></li><li class="toc-l3"><a href="#13-where-nginx-fits-in-2026" data-target="13-where-nginx-fits-in-2026">1.3 Where Nginx Fits in 2026</a></li><li class="toc-l3"><a href="#14-the-mental-model-contexts-directives-variables" data-target="14-the-mental-model-contexts-directives-variables">1.4 The Mental Model — Contexts, Directives, Variables</a></li><li class="toc-l3"><a href="#15-nginx-vs-caddy-the-mental-model-shift" data-target="15-nginx-vs-caddy-the-mental-model-shift">1.5 Nginx vs. Caddy — The Mental Model Shift</a></li><li class="toc-l2"><a href="#part-2-installation" data-target="part-2-installation">Part 2 — Installation</a></li><li class="toc-l3"><a href="#21-package-managers" data-target="21-package-managers">2.1 Package Managers</a></li><li class="toc-l3"><a href="#22-stable-vs-mainline" data-target="22-stable-vs-mainline">2.2 Stable vs. Mainline</a></li><li class="toc-l3"><a href="#23-docker" data-target="23-docker">2.3 Docker</a></li><li class="toc-l3"><a href="#24-modules-and-building-from-source" data-target="24-modules-and-building-from-source">2.4 Modules and Building from Source</a></li><li class="toc-l3"><a href="#25-first-run-and-the-cli" data-target="25-first-run-and-the-cli">2.5 First Run and the CLI</a></li><li class="toc-l2"><a href="#part-3-configuration-structure" data-target="part-3-configuration-structure">Part 3 — Configuration Structure</a></li><li class="toc-l3"><a href="#31-the-file-layout" data-target="31-the-file-layout">3.1 The File Layout</a></li><li class="toc-l3"><a href="#32-contexts" data-target="32-contexts">3.2 Contexts</a></li><li class="toc-l3"><a href="#33-directive-inheritance" data-target="33-directive-inheritance">3.3 Directive Inheritance</a></li><li class="toc-l3"><a href="#34-include-and-snippets" data-target="34-include-and-snippets">3.4 include and snippets</a></li><li class="toc-l3"><a href="#35-testing-and-reloading" data-target="35-testing-and-reloading">3.5 Testing and Reloading</a></li><li class="toc-l2"><a href="#part-4-server-blocks-virtual-hosts" data-target="part-4-server-blocks-virtual-hosts">Part 4 — Server Blocks &amp; Virtual Hosts</a></li><li class="toc-l3"><a href="#41-the-server-block" data-target="41-the-server-block">4.1 The server Block</a></li><li class="toc-l3"><a href="#42-listen" data-target="42-listen">4.2 listen</a></li><li class="toc-l3"><a href="#43-server_name-and-matching" data-target="43-server_name-and-matching">4.3 server_name and Matching</a></li><li class="toc-l3"><a href="#44-the-default_server-and-the-catch-all" data-target="44-the-default_server-and-the-catch-all">4.4 The default_server and the Catch-All</a></li><li class="toc-l2"><a href="#part-5-location-matching" data-target="part-5-location-matching">Part 5 — Location Matching</a></li><li class="toc-l3"><a href="#51-the-location-modifiers" data-target="51-the-location-modifiers">5.1 The location Modifiers</a></li><li class="toc-l3"><a href="#52-the-matching-algorithm-memorize-this" data-target="52-the-matching-algorithm-memorize-this">5.2 The Matching Algorithm (Memorize This)</a></li><li class="toc-l3"><a href="#53-root-vs-alias" data-target="53-root-vs-alias">5.3 root vs. alias</a></li><li class="toc-l3"><a href="#54-try_files" data-target="54-try_files">5.4 try_files</a></li><li class="toc-l2"><a href="#part-6-serving-static-content" data-target="part-6-serving-static-content">Part 6 — Serving Static Content</a></li><li class="toc-l3"><a href="#61-the-basics" data-target="61-the-basics">6.1 The Basics</a></li><li class="toc-l3"><a href="#62-sendfile-tcp_nopush-tcp_nodelay" data-target="62-sendfile-tcp_nopush-tcp_nodelay">6.2 sendfile, tcp_nopush, tcp_nodelay</a></li><li class="toc-l3"><a href="#63-compression-gzip-and-brotli" data-target="63-compression-gzip-and-brotli">6.3 Compression (gzip and Brotli)</a></li><li class="toc-l3"><a href="#64-cache-control-for-static-assets" data-target="64-cache-control-for-static-assets">6.4 Cache-Control for Static Assets</a></li><li class="toc-l2"><a href="#part-7-reverse-proxy-load-balancing" data-target="part-7-reverse-proxy-load-balancing">Part 7 — Reverse Proxy &amp; Load Balancing</a></li><li class="toc-l3"><a href="#71-basic-reverse-proxy" data-target="71-basic-reverse-proxy">7.1 Basic Reverse Proxy</a></li><li class="toc-l3"><a href="#72-the-proxy_pass-trailing-slash-gotcha" data-target="72-the-proxy_pass-trailing-slash-gotcha">7.2 The proxy_pass Trailing-Slash Gotcha</a></li><li class="toc-l3"><a href="#73-upstreams-and-load-balancing" data-target="73-upstreams-and-load-balancing">7.3 Upstreams and Load Balancing</a></li><li class="toc-l3"><a href="#74-health-checks" data-target="74-health-checks">7.4 Health Checks</a></li><li class="toc-l3"><a href="#75-websockets" data-target="75-websockets">7.5 WebSockets</a></li><li class="toc-l3"><a href="#76-buffering-timeouts-and-streaming" data-target="76-buffering-timeouts-and-streaming">7.6 Buffering, Timeouts, and Streaming</a></li><li class="toc-l2"><a href="#part-8-tls-https" data-target="part-8-tls-https">Part 8 — TLS &amp; HTTPS</a></li><li class="toc-l3"><a href="#81-a-basic-https-server" data-target="81-a-basic-https-server">8.1 A Basic HTTPS Server</a></li><li class="toc-l3"><a href="#82-the-httphttps-redirect" data-target="82-the-httphttps-redirect">8.2 The HTTP→HTTPS Redirect</a></li><li class="toc-l3"><a href="#83-certbot-automating-lets-encrypt" data-target="83-certbot-automating-lets-encrypt">8.3 certbot — Automating Let's Encrypt</a></li><li class="toc-l3"><a href="#84-hardening-hsts-ocsp-stapling-ciphers" data-target="84-hardening-hsts-ocsp-stapling-ciphers">8.4 Hardening: HSTS, OCSP Stapling, Ciphers</a></li><li class="toc-l3"><a href="#85-http2-and-http3-quic" data-target="85-http2-and-http3-quic">8.5 HTTP/2 and HTTP/3 (QUIC)</a></li><li class="toc-l2"><a href="#part-9-performance-caching" data-target="part-9-performance-caching">Part 9 — Performance &amp; Caching</a></li><li class="toc-l3"><a href="#91-worker-and-connection-tuning" data-target="91-worker-and-connection-tuning">9.1 Worker and Connection Tuning</a></li><li class="toc-l3"><a href="#92-keep-alive" data-target="92-keep-alive">9.2 Keep-Alive</a></li><li class="toc-l3"><a href="#93-open_file_cache" data-target="93-open_file_cache">9.3 open_file_cache</a></li><li class="toc-l3"><a href="#94-proxy-caching" data-target="94-proxy-caching">9.4 Proxy Caching</a></li><li class="toc-l3"><a href="#95-rate-limiting" data-target="95-rate-limiting">9.5 Rate Limiting</a></li><li class="toc-l2"><a href="#part-10-security-access-control" data-target="part-10-security-access-control">Part 10 — Security &amp; Access Control</a></li><li class="toc-l3"><a href="#101-ip-allowdeny" data-target="101-ip-allowdeny">10.1 IP Allow/Deny</a></li><li class="toc-l3"><a href="#102-basic-authentication" data-target="102-basic-authentication">10.2 Basic Authentication</a></li><li class="toc-l3"><a href="#103-security-headers" data-target="103-security-headers">10.3 Security Headers</a></li><li class="toc-l3"><a href="#104-request-limits-and-waf" data-target="104-request-limits-and-waf">10.4 Request Limits and WAF</a></li><li class="toc-l2"><a href="#part-11-rewrites-redirects-the-rewrite-engine" data-target="part-11-rewrites-redirects-the-rewrite-engine">Part 11 — Rewrites, Redirects &amp; the Rewrite Engine</a></li><li class="toc-l3"><a href="#111-return-vs-rewrite" data-target="111-return-vs-rewrite">11.1 return vs. rewrite</a></li><li class="toc-l3"><a href="#112-if-is-evil" data-target="112-if-is-evil">11.2 "If Is Evil"</a></li><li class="toc-l3"><a href="#113-map-the-right-tool-for-conditionals" data-target="113-map-the-right-tool-for-conditionals">11.3 map — The Right Tool for Conditionals</a></li><li class="toc-l2"><a href="#part-12-logging-observability" data-target="part-12-logging-observability">Part 12 — Logging &amp; Observability</a></li><li class="toc-l3"><a href="#121-access-logs-and-log_format" data-target="121-access-logs-and-log_format">12.1 Access Logs and log_format</a></li><li class="toc-l3"><a href="#122-conditional-and-disabled-logging" data-target="122-conditional-and-disabled-logging">12.2 Conditional and Disabled Logging</a></li><li class="toc-l3"><a href="#123-error-logs" data-target="123-error-logs">12.3 Error Logs</a></li><li class="toc-l3"><a href="#124-stub_status-and-prometheus" data-target="124-stub_status-and-prometheus">12.4 stub_status and Prometheus</a></li><li class="toc-l2"><a href="#part-13-production-operations" data-target="part-13-production-operations">Part 13 — Production Operations</a></li><li class="toc-l3"><a href="#131-systemd" data-target="131-systemd">13.1 systemd</a></li><li class="toc-l3"><a href="#132-graceful-reload-vs-binary-upgrade" data-target="132-graceful-reload-vs-binary-upgrade">13.2 Graceful Reload vs. Binary Upgrade</a></li><li class="toc-l3"><a href="#133-log-rotation" data-target="133-log-rotation">13.3 Log Rotation</a></li><li class="toc-l3"><a href="#134-file-descriptors-and-limits" data-target="134-file-descriptors-and-limits">13.4 File Descriptors and Limits</a></li><li class="toc-l3"><a href="#135-common-pitfalls" data-target="135-common-pitfalls">13.5 Common Pitfalls</a></li><li class="toc-l2"><a href="#part-14-comparison-to-alternatives" data-target="part-14-comparison-to-alternatives">Part 14 — Comparison to Alternatives</a></li><li class="toc-l3"><a href="#141-caddy" data-target="141-caddy">14.1 Caddy</a></li><li class="toc-l3"><a href="#142-apache-httpd" data-target="142-apache-httpd">14.2 Apache (httpd)</a></li><li class="toc-l3"><a href="#143-haproxy" data-target="143-haproxy">14.3 HAProxy</a></li><li class="toc-l3"><a href="#144-envoy-traefik" data-target="144-envoy-traefik">14.4 Envoy / Traefik</a></li><li class="toc-l3"><a href="#145-when-not-to-use-nginx" data-target="145-when-not-to-use-nginx">14.5 When NOT to Use Nginx</a></li><li class="toc-l2"><a href="#part-15-recipes-end-to-end-walkthrough" data-target="part-15-recipes-end-to-end-walkthrough">Part 15 — Recipes &amp; End-to-End Walkthrough</a></li><li class="toc-l3"><a href="#recipe-1-multi-site-reverse-proxy-with-tls" data-target="recipe-1-multi-site-reverse-proxy-with-tls">Recipe 1: Multi-Site Reverse Proxy with TLS</a></li><li class="toc-l3"><a href="#recipe-2-spa-api-backend" data-target="recipe-2-spa-api-backend">Recipe 2: SPA + API Backend</a></li><li class="toc-l3"><a href="#recipe-3-load-balanced-upstreams" data-target="recipe-3-load-balanced-upstreams">Recipe 3: Load-Balanced Upstreams</a></li><li class="toc-l3"><a href="#recipe-4-caching-proxy-for-a-slow-backend" data-target="recipe-4-caching-proxy-for-a-slow-backend">Recipe 4: Caching Proxy for a Slow Backend</a></li><li class="toc-l3"><a href="#recipe-5-rate-limited-api-with-brute-force-protection" data-target="recipe-5-rate-limited-api-with-brute-force-protection">Recipe 5: Rate-Limited API with Brute-Force Protection</a></li><li class="toc-l3"><a href="#end-to-end-walkthrough-from-fresh-server-to-production" data-target="end-to-end-walkthrough-from-fresh-server-to-production">End-to-End Walkthrough: From Fresh Server to Production</a></li></ul></nav></aside>
+  <main><h1 id="nginx-study-guide">Nginx Study Guide</h1>
+<p>A depth-first guide to Nginx for engineers who run web services in production. Assumes you understand HTTP, DNS, and TLS at a conceptual level. Each part builds on the previous. Parts 1–13 are the fundamentals and operations; Part 14 is the honest comparison to alternatives; Part 15 is applied recipes and an end-to-end walkthrough.</p>
+<blockquote>
+<p><em>Nginx is a small set of orthogonal primitives — contexts, directives, locations, variables — composed into almost any web-serving job. Master the primitives and the config language stops being a pile of snippets you copy from Stack Overflow.</em></p>
+</blockquote>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li><a href="#part-1--foundations--mental-model">Part 1 — Foundations &amp; Mental Model</a></li>
+<li><a href="#part-2--installation">Part 2 — Installation</a></li>
+<li><a href="#part-3--configuration-structure">Part 3 — Configuration Structure</a></li>
+<li><a href="#part-4--server-blocks--virtual-hosts">Part 4 — Server Blocks &amp; Virtual Hosts</a></li>
+<li><a href="#part-5--location-matching">Part 5 — Location Matching</a></li>
+<li><a href="#part-6--serving-static-content">Part 6 — Serving Static Content</a></li>
+<li><a href="#part-7--reverse-proxy--load-balancing">Part 7 — Reverse Proxy &amp; Load Balancing</a></li>
+<li><a href="#part-8--tls--https">Part 8 — TLS &amp; HTTPS</a></li>
+<li><a href="#part-9--performance--caching">Part 9 — Performance &amp; Caching</a></li>
+<li><a href="#part-10--security--access-control">Part 10 — Security &amp; Access Control</a></li>
+<li><a href="#part-11--rewrites-redirects--the-rewrite-engine">Part 11 — Rewrites, Redirects &amp; the Rewrite Engine</a></li>
+<li><a href="#part-12--logging--observability">Part 12 — Logging &amp; Observability</a></li>
+<li><a href="#part-13--production-operations">Part 13 — Production Operations</a></li>
+<li><a href="#part-14--comparison-to-alternatives">Part 14 — Comparison to Alternatives</a></li>
+<li><a href="#part-15--recipes--end-to-end-walkthrough">Part 15 — Recipes &amp; End-to-End Walkthrough</a></li>
+</ul>
+<hr>
+<h2 id="part-1-foundations-mental-model">Part 1 — Foundations &amp; Mental Model</h2>
+<h3 id="11-what-nginx-is">1.1 What Nginx Is</h3>
+<p>Nginx (pronounced "engine-x") is an open-source web server, reverse proxy, load balancer, and HTTP cache, created by Igor Sysoev and first released in 2004. It was written to solve the <strong>C10k problem</strong> — handling ten thousand concurrent connections on a single machine — which the process-per-connection servers of the era (notably Apache's prefork model) could not do efficiently.</p>
+<p>Today Nginx is one of the most widely deployed web servers on the internet. It serves static files, terminates TLS, reverse-proxies application servers, balances load across upstreams, and caches responses — often all at once, in one process tree, from one config file.</p>
+<p>There are two editions: open-source <strong>Nginx</strong> (what this guide covers) and <strong>Nginx Plus</strong>, a commercial product with extras like active health checks via config, richer load-balancing, a live dashboard, and JWT auth. Almost everything you need is in the open-source build.</p>
+<p>References: <a href="https://nginx.org/en/">nginx.org</a>, <a href="https://nginx.org/en/docs/beginners_guide.html">Beginner's guide</a>, <a href="http://www.kegel.com/c10k.html">The C10k problem</a>.</p>
+<h3 id="12-the-architecture">1.2 The Architecture</h3>
+<p>Nginx's defining design choice is its <strong>event-driven, asynchronous, non-blocking</strong> architecture. Instead of one thread or process per connection, each Nginx worker handles thousands of connections in a single thread using an event loop (<code>epoll</code> on Linux, <code>kqueue</code> on BSD/macOS).</p>
+<p>The process model:</p>
+<pre><code class="language-text">┌──────────────────────────────────────────────┐
+│  master process (runs as root)                │
+│   - reads &amp; validates config                  │
+│   - binds privileged ports (80/443)           │
+│   - manages worker lifecycle, signals         │
+│   - performs binary upgrades                   │
+└───────────────┬──────────────────────────────┘
+                │ forks
+   ┌────────────┼────────────┬───────────────┐
+   ▼            ▼            ▼               ▼
+┌────────┐ ┌────────┐ ┌────────┐      ┌──────────────┐
+│worker 0│ │worker 1│ │worker N│      │cache manager │
+│event   │ │event   │ │event   │      │cache loader  │
+│loop    │ │loop    │ │loop    │      └──────────────┘
+└────────┘ └────────┘ └────────┘
+ (one per CPU core, run as unprivileged user)
+</code></pre>
+<ul>
+<li><strong>Master process</strong> runs as root, reads config, binds to ports 80/443, and forks workers. It does not handle requests itself.</li>
+<li><strong>Worker processes</strong> do all the actual request handling. Each is single-threaded and runs an event loop. The recommended count is one per CPU core (<code>worker_processes auto</code>).</li>
+<li><strong>Cache manager / loader</strong> are helper processes for the proxy/FastCGI cache.</li>
+</ul>
+<p>Because a worker never blocks on a slow client or slow disk (it registers a callback and moves on), a handful of workers can saturate modern hardware. This is why Nginx's memory footprint per connection is tiny compared to thread-per-connection servers.</p>
+<p>References: <a href="https://aosabook.org/en/v2/nginx.html">Nginx architecture (aosabook)</a>, <a href="https://www.nginx.com/blog/inside-nginx-how-we-designed-for-performance-scale/">Inside NGINX (official)</a>.</p>
+<h3 id="13-where-nginx-fits-in-2026">1.3 Where Nginx Fits in 2026</h3>
+<p>Nginx's sweet spots:</p>
+<ul>
+<li><strong>Static file serving</strong> — extremely fast, low overhead, <code>sendfile</code>-based zero-copy.</li>
+<li><strong>Reverse proxy / API gateway</strong> — the default front door for application servers (Gunicorn, uWSGI, PM2/Node, PHP-FPM, Java app servers).</li>
+<li><strong>Load balancing</strong> — L7 (and L4 via the <code>stream</code> module) with several algorithms.</li>
+<li><strong>TLS termination</strong> — offload TLS from app servers; centralize certificate handling.</li>
+<li><strong>HTTP caching</strong> — <code>proxy_cache</code> turns Nginx into a capable caching layer in front of slower backends.</li>
+<li><strong>Edge of almost any stack</strong> — battle-tested at the highest traffic tiers on earth.</li>
+</ul>
+<p>Where Nginx is <strong>not</strong> the easiest choice:</p>
+<ul>
+<li><strong>Automatic HTTPS</strong> — Nginx needs certbot (or another ACME client) plus a renewal timer. Caddy and Traefik do this with zero config.</li>
+<li><strong>Dynamic, container-native reconfiguration</strong> — Nginx reloads from files; Traefik auto-discovers Docker/Kubernetes services natively.</li>
+<li><strong>Service mesh data plane</strong> — that's Envoy's domain.</li>
+<li><strong>Per-request config changes without a reload</strong> — open-source Nginx has no config API (Nginx Plus has a limited one).</li>
+</ul>
+<h3 id="14-the-mental-model-contexts-directives-variables">1.4 The Mental Model — Contexts, Directives, Variables</h3>
+<p>Three concepts explain almost all of Nginx:</p>
+<ol>
+<li>
+<p><strong>Contexts</strong> are nested configuration scopes: <code>main</code> (the file itself) → <code>events</code> → <code>http</code> → <code>server</code> → <code>location</code>. There is also a sibling <code>stream</code> context for L4 TCP/UDP proxying. Directives are only valid in certain contexts, and many <strong>inherit</strong> downward into nested contexts.</p>
+</li>
+<li>
+<p><strong>Directives</strong> are the configuration statements — either <em>simple</em> (<code>worker_processes auto;</code>, end with <code>;</code>) or <em>block</em> (<code>server { ... }</code>). A directive set in <code>http</code> is inherited by every <code>server</code> and <code>location</code> inside it, unless overridden.</p>
+</li>
+<li>
+<p><strong>Variables</strong> (<code>$host</code>, <code>$remote_addr</code>, <code>$uri</code>, …) are evaluated per request and are the glue for logging, proxying, and conditional logic. Nginx variables are lazily evaluated and read-only except for ones you create with <code>set</code>.</p>
+</li>
+</ol>
+<p>If you internalize "directives inherit down the context tree, and the most specific context wins," most of Nginx's surprising behavior becomes predictable.</p>
+<h3 id="15-nginx-vs-caddy-the-mental-model-shift">1.5 Nginx vs. Caddy — The Mental Model Shift</h3>
+<p>If you're coming from (or comparing against) Caddy, the key differences:</p>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th>Nginx</th>
+<th>Caddy</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Config format</td>
+<td>Custom DSL: contexts, <code>server</code>/<code>location</code> blocks</td>
+<td>Caddyfile (or JSON)</td>
+</tr>
+<tr>
+<td>TLS certificates</td>
+<td>Manual: certbot + renewal timer</td>
+<td>Automatic by default</td>
+</tr>
+<tr>
+<td>HTTP→HTTPS redirect</td>
+<td>You write the redirect server block</td>
+<td>Automatic</td>
+</tr>
+<tr>
+<td>Reload</td>
+<td><code>nginx -s reload</code> (graceful)</td>
+<td><code>caddy reload</code> / admin API</td>
+</tr>
+<tr>
+<td>Routing</td>
+<td><code>location</code> blocks with a specific matching precedence</td>
+<td>Matchers with a fixed directive order</td>
+</tr>
+<tr>
+<td>Worker model</td>
+<td>Multi-process event loop (C)</td>
+<td>Goroutines (Go)</td>
+</tr>
+<tr>
+<td>Runtime reconfig</td>
+<td>None in OSS (file reload only)</td>
+<td>JSON admin API</td>
+</tr>
+<tr>
+<td>Extend</td>
+<td>Compile-in C modules (or dynamic modules)</td>
+<td>Compile-in Go modules via xcaddy</td>
+</tr>
+</tbody>
+</table>
+<p>The biggest day-to-day difference is TLS: Nginx assumes you bring your own certificate management; Caddy assumes HTTPS should be automatic. The biggest <em>gotcha</em> difference is routing precedence — Nginx's location matching order (Part 5) trips up almost everyone at least once.</p>
+<div class="addon decision" id="decision-helper">
+  <div class="addon-head">
+    <span class="addon-kicker">Interactive</span>
+    <h3>Should you use Nginx?</h3>
+    <p class="addon-sub">Toggle what's true for your situation. Grounded in Parts 1.3 and 14.5.</p>
+  </div>
+  <div class="decision-grid">
+    <label class="dchip"><input type="checkbox" data-w="nginx" value="2"> I need high-performance static serving and reverse proxying on real servers</label>
+    <label class="dchip"><input type="checkbox" data-w="nginx" value="2"> I must sustain very high traffic / 100k+ concurrent connections</label>
+    <label class="dchip"><input type="checkbox" data-w="nginx" value="1"> I want HTTP caching in front of a slow backend</label>
+    <label class="dchip"><input type="checkbox" data-w="nginx" value="1"> My team already knows Nginx / I have existing configs</label>
+    <label class="dchip"><input type="checkbox" data-w="nginx" value="1"> I need fine-grained location routing and rewrites</label>
+    <label class="dchip"><input type="checkbox" data-w="caddy" value="2"> I want HTTPS fully automatic with zero config</label>
+    <label class="dchip"><input type="checkbox" data-w="traefik" value="2"> Docker/Kubernetes label auto-discovery is a core requirement</label>
+    <label class="dchip"><input type="checkbox" data-w="haproxy" value="2"> I need a dedicated extreme-scale L4 load balancer</label>
+    <label class="dchip"><input type="checkbox" data-w="envoy" value="2"> I'm building a service mesh data plane</label>
+    <label class="dchip"><input type="checkbox" data-w="caddy" value="1"> I want the shortest possible config and a single binary</label>
+  </div>
+  <div class="decision-out" id="decision-out" role="status" aria-live="polite">
+    <span class="decision-verdict">Select options above for a recommendation.</span>
+  </div>
+</div>
+<div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>What problem was Nginx originally built to solve?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">TLS termination</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">The C10k problem (10k concurrent connections)</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">PHP execution</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">DNS resolution</span></button></li></ul><div class="quiz-explain" hidden>Nginx&#x27;s event-driven model was a response to the C10k problem, which process-per-connection servers like Apache prefork could not handle efficiently.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>In Nginx&#x27;s process model, which process handles actual requests?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">The master process</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">The worker processes</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">The cache manager</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">systemd</span></button></li></ul><div class="quiz-explain" hidden>The master (root) reads config and binds ports but does not serve requests. Workers — one per core — run the event loops that handle all traffic.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q3</span>What is the single most important rule for predicting Nginx behavior?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Directives run top to bottom</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Directives inherit down the context tree unless overridden</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Regex always wins</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">The last directive wins</span></button></li></ul><div class="quiz-explain" hidden>Contexts nest (main→events→http→server→location) and directives inherit downward; the most specific context that sets a directive wins.</div></div></div>
+<hr>
+<h2 id="part-2-installation">Part 2 — Installation</h2>
+<h3 id="21-package-managers">2.1 Package Managers</h3>
+<p>The distro packages are often old. For current stable/mainline, use the official Nginx repository.</p>
+<p><strong>Debian/Ubuntu (official repo):</strong></p>
+<pre><code class="language-bash">sudo apt install -y curl gnupg2 ca-certificates lsb-release debian-archive-keyring
+curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor \
+  | sudo tee /usr/share/keyrings/nginx-archive-keyring.gpg &gt;/dev/null
+echo &quot;deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] \
+http://nginx.org/packages/mainline/ubuntu $(lsb_release -cs) nginx&quot; \
+  | sudo tee /etc/apt/sources.list.d/nginx.list
+sudo apt update &amp;&amp; sudo apt install nginx
+</code></pre>
+<p><strong>RHEL/Fedora/CentOS:</strong></p>
+<pre><code class="language-bash">sudo dnf install nginx
+</code></pre>
+<p><strong>macOS (Homebrew) — for local development:</strong></p>
+<pre><code class="language-bash">brew install nginx
+</code></pre>
+<p><strong>Alpine (common in containers):</strong></p>
+<pre><code class="language-bash">apk add nginx
+</code></pre>
+<p>After install, Nginx is typically managed by systemd as the <code>nginx</code> service, with config under <code>/etc/nginx/</code>.</p>
+<p>References: <a href="https://nginx.org/en/linux_packages.html">Install nginx (official)</a>.</p>
+<h3 id="22-stable-vs-mainline">2.2 Stable vs. Mainline</h3>
+<p>Nginx ships two branches:</p>
+<table>
+<thead>
+<tr>
+<th>Branch</th>
+<th>Use it when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Mainline</strong></td>
+<td>You want the newest features and fixes (HTTP/3, etc.). Despite the name, it is stable enough for production and is what the Nginx team recommends for most users.</td>
+</tr>
+<tr>
+<td><strong>Stable</strong></td>
+<td>You want only critical bug fixes backported, no new features. Conservative environments.</td>
+</tr>
+</tbody>
+</table>
+<p>For new deployments in 2026, mainline is the usual pick — HTTP/3 support, for instance, lives there first.</p>
+<h3 id="23-docker">2.3 Docker</h3>
+<pre><code class="language-yaml"># docker-compose.yml
+services:
+  nginx:
+    image: nginx:1.27                       # pin a version, avoid :latest drift
+    restart: unless-stopped
+    ports:
+      - &quot;80:80&quot;
+      - &quot;443:443&quot;
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./conf.d:/etc/nginx/conf.d:ro       # per-site server blocks
+      - ./certs:/etc/nginx/certs:ro         # certificates (if not using certbot)
+      - ./html:/usr/share/nginx/html:ro     # static content
+</code></pre>
+<p>The official <code>nginx</code> image is minimal and well maintained. For Alpine-based smaller images use the <code>nginx:1.27-alpine</code> tags. To reload config in a running container: <code>docker exec &lt;container&gt; nginx -s reload</code>.</p>
+<p>References: <a href="https://hub.docker.com/_/nginx">nginx Docker image</a>.</p>
+<h3 id="24-modules-and-building-from-source">2.4 Modules and Building from Source</h3>
+<p>Nginx modules are compiled in. Two kinds:</p>
+<ul>
+<li><strong>Static modules</strong> — compiled into the binary at build time (<code>./configure --with-...</code>).</li>
+<li><strong>Dynamic modules</strong> — compiled separately as <code>.so</code> files and loaded with <code>load_module</code> (since Nginx 1.9.11).</li>
+</ul>
+<p>Check what your binary was built with:</p>
+<pre><code class="language-bash">nginx -V          # prints version + the full ./configure argument list
+</code></pre>
+<p>Build from source when you need a module the package doesn't ship (e.g. Brotli, ModSecurity, or a third-party module):</p>
+<pre><code class="language-bash"># Download and unpack the matching nginx source, then:
+./configure \
+  --prefix=/etc/nginx \
+  --with-http_ssl_module \
+  --with-http_v2_module \
+  --with-http_v3_module \
+  --with-http_realip_module \
+  --with-http_stub_status_module \
+  --add-module=../ngx_brotli          # third-party module
+make &amp;&amp; sudo make install
+</code></pre>
+<p>Common bundled-but-optional modules you'll want: <code>http_ssl_module</code>, <code>http_v2_module</code>, <code>http_v3_module</code>, <code>http_realip_module</code>, <code>http_stub_status_module</code>, <code>http_gzip_static_module</code>, <code>stream</code> (L4 proxy).</p>
+<p>References: <a href="https://nginx.org/en/docs/configure.html">Building nginx from sources</a>, <a href="https://nginx.org/en/docs/ngx_core_module.html#load_module">Dynamic modules</a>.</p>
+<h3 id="25-first-run-and-the-cli">2.5 First Run and the CLI</h3>
+<pre><code class="language-bash">nginx                         # start (foreground depends on daemon directive)
+nginx -t                      # TEST config syntax — run this before every reload
+nginx -T                      # test AND dump the full effective config
+nginx -s reload               # graceful reload (re-read config, no dropped conns)
+nginx -s reopen               # reopen log files (after logrotate)
+nginx -s quit                 # graceful shutdown (finish in-flight requests)
+nginx -s stop                 # fast shutdown
+nginx -V                      # version + build/configure flags
+</code></pre>
+<p>In production, let systemd manage the process (<code>systemctl reload nginx</code>), but <code>nginx -t</code> is the command you will run more than any other — always validate before reloading.</p>
+<p>References: <a href="https://nginx.org/en/docs/control.html">Controlling nginx</a>, <a href="https://nginx.org/en/docs/switches.html">Command-line parameters</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>Which command should you run before every config reload?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">nginx -s reload</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">nginx -t</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">nginx -V</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">nginx -s reopen</span></button></li></ul><div class="quiz-explain" hidden>nginx -t validates syntax and that referenced files exist. A failed reload is aborted safely, but you should always test first.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>How are Nginx modules added to a build?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Loaded from a plugin directory at runtime</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Compiled in statically, or built as loadable dynamic modules</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Installed via npm</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Downloaded by the master process</span></button></li></ul><div class="quiz-explain" hidden>Modules are compiled in (static) or built as .so files loaded with load_module (dynamic, since 1.9.11). `nginx -V` shows what your binary has.</div></div></div>
+<hr>
+<h2 id="part-3-configuration-structure">Part 3 — Configuration Structure</h2>
+<h3 id="31-the-file-layout">3.1 The File Layout</h3>
+<p>A typical Debian/Ubuntu Nginx install:</p>
+<pre><code class="language-text">/etc/nginx/
+├── nginx.conf                 # main config — the entry point
+├── conf.d/                    # *.conf files auto-included into http {}
+│   └── default.conf
+├── sites-available/           # (Debian convention) server blocks you've written
+├── sites-enabled/             # symlinks to sites-available that are active
+├── snippets/                  # reusable fragments to include
+├── mime.types                 # MIME type map
+└── modules-enabled/           # dynamic module load directives
+</code></pre>
+<p>The <code>sites-available</code> / <code>sites-enabled</code> split is a <strong>Debian convention</strong>, not an Nginx feature — it works only because <code>nginx.conf</code> contains <code>include /etc/nginx/sites-enabled/*;</code>. The official Nginx packages use <code>conf.d/*.conf</code> instead. Either is fine; just know which your distro uses.</p>
+<p>References: <a href="https://nginx.org/en/docs/beginners_guide.html#conf_structure">Configuration file structure</a>.</p>
+<h3 id="32-contexts">3.2 Contexts</h3>
+<p>Configuration is organized into nested <strong>contexts</strong>:</p>
+<pre><code class="language-nginx"># main context (the file itself)
+user www-data;
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile      on;
+    keepalive_timeout 65;
+
+    server {
+        listen 80;
+        server_name example.com;
+
+        location / {
+            root /var/www/html;
+        }
+    }
+}
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Context</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>main</code></td>
+<td>Global: user, worker process count, error log, pid file</td>
+</tr>
+<tr>
+<td><code>events</code></td>
+<td>Connection processing: <code>worker_connections</code>, <code>use epoll</code></td>
+</tr>
+<tr>
+<td><code>http</code></td>
+<td>All HTTP/HTTPS config; contains <code>server</code> blocks</td>
+</tr>
+<tr>
+<td><code>server</code></td>
+<td>A virtual host: which addresses/names it answers</td>
+</tr>
+<tr>
+<td><code>location</code></td>
+<td>Request-path-specific config inside a <code>server</code></td>
+</tr>
+<tr>
+<td><code>upstream</code></td>
+<td>A named pool of backend servers (inside <code>http</code>)</td>
+</tr>
+<tr>
+<td><code>stream</code></td>
+<td>L4 (TCP/UDP) proxying — a sibling of <code>http</code>, not inside it</td>
+</tr>
+</tbody>
+</table>
+<p>References: <a href="https://nginx.org/en/docs/ngx_core_module.html">Core functionality</a>.</p>
+<h3 id="33-directive-inheritance">3.3 Directive Inheritance</h3>
+<p>Directives set in an outer context are inherited by inner contexts — <strong>but only if the inner context does not set a directive of the same kind.</strong> This is the single most important rule for predicting Nginx behavior.</p>
+<pre><code class="language-nginx">http {
+    gzip on;                      # applies to all servers/locations below...
+
+    server {
+        # gzip is on here (inherited)
+
+        location /images/ {
+            gzip off;             # ...unless overridden here
+        }
+    }
+}
+</code></pre>
+<p>Two important subtleties:</p>
+<ul>
+<li><strong><code>add_header</code> does NOT merge — it replaces.</strong> If a <code>location</code> block has any <code>add_header</code>, it <em>drops every inherited <code>add_header</code></em> from the enclosing <code>server</code>/<code>http</code>. This is a notorious source of "my security headers disappeared on one route" bugs. Re-declare all headers in the inner block, or use the <code>always</code> parameter and a careful structure.</li>
+<li><strong>Array-style directives</strong> (like <code>proxy_set_header</code>) follow the same "set at one level replaces the inherited set" rule.</li>
+</ul>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_headers_module.html#add_header">add_header inheritance</a>.</p>
+<h3 id="34-include-and-snippets">3.4 include and snippets</h3>
+<p><code>include</code> splices another file (or glob) into the current context. Use it to keep configs modular:</p>
+<pre><code class="language-nginx">http {
+    include /etc/nginx/conf.d/*.conf;        # one file per site
+    include /etc/nginx/snippets/gzip.conf;   # reusable fragment
+}
+</code></pre>
+<p>A common pattern — a reusable proxy-headers snippet:</p>
+<pre><code class="language-nginx"># /etc/nginx/snippets/proxy.conf
+proxy_set_header Host              $host;
+proxy_set_header X-Real-IP         $remote_addr;
+proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto $scheme;
+proxy_http_version 1.1;
+</code></pre>
+<pre><code class="language-nginx">location / {
+    include snippets/proxy.conf;
+    proxy_pass http://localhost:8080;
+}
+</code></pre>
+<p>References: <a href="https://nginx.org/en/docs/ngx_core_module.html#include">include directive</a>.</p>
+<h3 id="35-testing-and-reloading">3.5 Testing and Reloading</h3>
+<p>The reload model is the heart of safe Nginx operations:</p>
+<pre><code class="language-bash">nginx -t                  # validate syntax + check files exist
+nginx -s reload           # OR: systemctl reload nginx
+</code></pre>
+<p>On reload, the master process re-reads the config, starts <strong>new</strong> workers with the new config, and gracefully shuts down the <strong>old</strong> workers once their in-flight requests finish. Existing connections are not dropped. If the new config fails to parse, the reload is aborted and the old workers keep running — so a bad reload cannot take you down, <em>provided you ran <code>nginx -t</code> first</em> and it passed.</p>
+<p>Always wire <code>nginx -t</code> into CI and into any deploy script before the reload.</p>
+<p>References: <a href="https://nginx.org/en/docs/control.html">Controlling nginx</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>Why might security headers &#x27;disappear&#x27; on one route?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Nginx caches them</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">A location&#x27;s own add_header replaces ALL inherited add_headers</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">gzip strips them</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">They expire</span></button></li></ul><div class="quiz-explain" hidden>add_header does not merge. Any add_header in an inner block drops every inherited add_header — re-declare them in that block.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>What happens on `nginx -s reload` if the new config fails to parse?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Nginx crashes</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">All connections drop</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">The reload is aborted and old workers keep running</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Nginx falls back to defaults</span></button></li></ul><div class="quiz-explain" hidden>A bad reload cannot take you down: the master refuses it and the existing workers continue serving — which is why nginx -t first is the habit.</div></div></div>
+<hr>
+<h2 id="part-4-server-blocks-virtual-hosts">Part 4 — Server Blocks &amp; Virtual Hosts</h2>
+<h3 id="41-the-server-block">4.1 The server Block</h3>
+<p>A <code>server</code> block defines a virtual host — the combination of an address/port (<code>listen</code>) and one or more names (<code>server_name</code>) that it answers for:</p>
+<pre><code class="language-nginx">server {
+    listen 80;
+    server_name example.com www.example.com;
+
+    root /var/www/example;
+    index index.html;
+}
+</code></pre>
+<p>You can run many <code>server</code> blocks on the same port; Nginx picks the right one per request using <code>listen</code> and <code>server_name</code>.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/server_names.html">Server names</a>.</p>
+<h3 id="42-listen">4.2 listen</h3>
+<p>The <code>listen</code> directive controls address, port, and per-listener options:</p>
+<pre><code class="language-nginx">listen 80;                          # IPv4, port 80, all interfaces
+listen 443 ssl;                     # TLS
+listen 443 ssl default_server;      # the fallback server for this port
+listen [::]:80;                     # IPv6
+listen 127.0.0.1:8080;              # specific interface + port
+listen 443 quic reuseport;          # HTTP/3 (QUIC) — see Part 8
+</code></pre>
+<p>Modern Nginx (1.25.1+) enables HTTP/2 with a separate <code>http2 on;</code> directive rather than <code>listen ... http2</code>:</p>
+<pre><code class="language-nginx">server {
+    listen 443 ssl;
+    http2 on;
+    # ...
+}
+</code></pre>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_core_module.html#listen">listen directive</a>.</p>
+<h3 id="43-server_name-and-matching">4.3 server_name and Matching</h3>
+<p><code>server_name</code> can be exact, wildcard, or regex:</p>
+<pre><code class="language-nginx">server_name example.com;            # exact
+server_name *.example.com;          # leading wildcard
+server_name example.*;              # trailing wildcard
+server_name ~^www\d+\.example\.com$; # regex (note the leading ~)
+server_name &quot;&quot;;                     # matches requests with no Host header
+</code></pre>
+<p>When multiple servers could match a request's <code>Host</code> header, Nginx picks in this order:</p>
+<ol>
+<li>Exact name.</li>
+<li>Longest leading wildcard (<code>*.example.com</code>).</li>
+<li>Longest trailing wildcard (<code>example.*</code>).</li>
+<li>First matching regex (in config order).</li>
+<li>The <code>default_server</code> for that <code>listen</code> port (or the first server block if none is marked).</li>
+</ol>
+<p>References: <a href="https://nginx.org/en/docs/http/request_processing.html">How nginx processes a request</a>.</p>
+<h3 id="44-the-default_server-and-the-catch-all">4.4 The default_server and the Catch-All</h3>
+<p>If a request's <code>Host</code> matches no <code>server_name</code>, Nginx uses the <code>default_server</code> for that port. Without an explicit one, the <strong>first</strong> server block on the port becomes default — which is rarely what you want. Define an explicit catch-all to reject unknown hosts (a defense against Host-header abuse and noisy bots):</p>
+<pre><code class="language-nginx">server {
+    listen 80 default_server;
+    server_name _;                  # &quot;_&quot; is just an invalid name, never matches a real Host
+    return 444;                     # 444 = close connection with no response
+}
+</code></pre>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_core_module.html#listen">default_server</a>, <a href="https://nginx.org/en/docs/http/server_names.html#miscellaneous_names">server_name "_"</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>Which `server_name` matches a request whose Host matches no other server?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">server_name *;</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">the default_server for that listen port</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">server_name regex;</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Nginx returns 500</span></button></li></ul><div class="quiz-explain" hidden>Unmatched Host falls to the default_server for the port — or the first server block if none is marked. Define an explicit catch-all to control this.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>In modern Nginx (1.25.1+), how do you enable HTTP/2?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">listen 443 ssl http2;</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">http2 on;</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">enable_http2;</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">protocol h2;</span></button></li></ul><div class="quiz-explain" hidden>The separate `http2 on;` directive replaced the old `listen ... http2` parameter.</div></div></div>
+<hr>
+<h2 id="part-5-location-matching">Part 5 — Location Matching</h2>
+<p>This is the part that trips up everyone. Get it right and most of Nginx clicks into place.</p>
+<h3 id="51-the-location-modifiers">5.1 The location Modifiers</h3>
+<pre><code class="language-nginx">location = /exact { }        # exact match only
+location ^~ /prefix/ { }     # prefix match; if it wins, skip regex checks
+location ~ \.php$ { }        # case-sensitive regex
+location ~* \.(jpg|png)$ { } # case-insensitive regex
+location /prefix/ { }        # plain prefix match
+location @named { }          # named location (internal, for try_files/error_page)
+</code></pre>
+<h3 id="52-the-matching-algorithm-memorize-this">5.2 The Matching Algorithm (Memorize This)</h3>
+<p>For each request URI, Nginx selects exactly one location using this precise order:</p>
+<ol>
+<li><strong>Exact match (<code>=</code>)</strong> — if a <code>location = /uri</code> matches exactly, it wins immediately. Search stops.</li>
+<li><strong>Prefix matches</strong> — Nginx scans all plain-prefix and <code>^~</code> locations and remembers the <strong>longest</strong> matching prefix.</li>
+<li>If that longest prefix uses the <strong><code>^~</code></strong> modifier, Nginx uses it and <strong>skips regex entirely</strong>.</li>
+<li>Otherwise, Nginx checks <strong>regex</strong> locations (<code>~</code>, <code>~*</code>) <strong>in the order they appear in the file</strong>, and the <strong>first</strong> one that matches wins.</li>
+<li>If no regex matches, Nginx falls back to the longest prefix it remembered in step 2.</li>
+</ol>
+<p>So the mental shortcut: <strong><code>=</code> beats <code>^~</code> beats regex beats plain prefix</strong> — but regex only gets a turn if the longest prefix match wasn't <code>^~</code>, and among regexes, <strong>file order</strong> decides.</p>
+<pre><code class="language-nginx">server {
+    location = / { }                 # only the bare &quot;/&quot; request
+    location ^~ /static/ { }         # /static/* — never falls through to regex
+    location ~* \.(jpg|css|js)$ { }  # asset extensions (first regex to match wins)
+    location / { }                   # everything else (longest-prefix fallback)
+}
+</code></pre>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_core_module.html#location">location directive</a>.</p>
+<h3 id="53-root-vs-alias">5.3 root vs. alias</h3>
+<p>This is the second classic gotcha. Both set where files are found, but they combine with the location path differently:</p>
+<ul>
+<li><strong><code>root</code></strong> — the location path is <strong>appended</strong> to the root.</li>
+<li><strong><code>alias</code></strong> — the location path is <strong>replaced</strong> by the alias.</li>
+</ul>
+<pre><code class="language-nginx"># root: request /images/cat.png  -&gt;  /var/www/data/images/cat.png
+location /images/ {
+    root /var/www/data;
+}
+
+# alias: request /images/cat.png  -&gt;  /var/www/data/cat.png
+location /images/ {
+    alias /var/www/data/;          # the matched &quot;/images/&quot; is dropped
+}
+</code></pre>
+<p>Rules of thumb: prefer <code>root</code> when the URL path mirrors the directory layout. Use <code>alias</code> when it doesn't. With <code>alias</code>, <strong>keep the trailing slashes consistent</strong> on both the location and the alias path — mismatched slashes are a frequent source of 404s. Avoid <code>alias</code> inside regex locations unless you use captures.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_core_module.html#alias">alias</a>, <a href="https://nginx.org/en/docs/http/ngx_http_core_module.html#root">root</a>.</p>
+<h3 id="54-try_files">5.4 try_files</h3>
+<p><code>try_files</code> checks for files/directories in order and uses the first that exists, with a final fallback:</p>
+<pre><code class="language-nginx"># Serve the file if it exists, else the directory, else 404
+location / {
+    try_files $uri $uri/ =404;
+}
+
+# SPA fallback: serve index.html for any unmatched route
+location / {
+    try_files $uri $uri/ /index.html;
+}
+
+# Proxy fallback via a named location
+location / {
+    try_files $uri @backend;
+}
+location @backend {
+    proxy_pass http://localhost:3000;
+}
+</code></pre>
+<p><code>try_files</code> is the idiomatic way to do "static if present, otherwise app" routing. The final argument is special: a code (<code>=404</code>), a named location (<code>@name</code>), or a URI to internally redirect to.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_core_module.html#try_files">try_files</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>Which location modifier wins immediately and stops the search?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">^~ prefix</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">= exact match</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">~ regex</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">plain prefix</span></button></li></ul><div class="quiz-explain" hidden>An exact `=` match wins instantly. Otherwise: longest prefix is remembered; if it&#x27;s ^~ it&#x27;s used (skipping regex); else regexes are tried in file order; else the prefix.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>For `location /images/ { alias /data/; }`, where does /images/cat.png resolve?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">/data/images/cat.png</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">/data/cat.png</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">/images/data/cat.png</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">404 always</span></button></li></ul><div class="quiz-explain" hidden>alias REPLACES the matched location path, so /images/ is dropped → /data/cat.png. (root would APPEND, giving /data/images/cat.png.)</div></div></div>
+<hr>
+<h2 id="part-6-serving-static-content">Part 6 — Serving Static Content</h2>
+<h3 id="61-the-basics">6.1 The Basics</h3>
+<pre><code class="language-nginx">server {
+    listen 80;
+    server_name static.example.com;
+
+    root  /var/www/html;
+    index index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+</code></pre>
+<p><code>root</code> sets the document root; <code>index</code> lists the files to try for a directory request; <code>try_files</code> handles the lookup and the 404.</p>
+<p>References: <a href="https://docs.nginx.com/nginx/admin-guide/web-server/serving-static-content/">Serving static content</a>.</p>
+<h3 id="62-sendfile-tcp_nopush-tcp_nodelay">6.2 sendfile, tcp_nopush, tcp_nodelay</h3>
+<p>The classic static-serving performance trio, usually set in <code>http</code>:</p>
+<pre><code class="language-nginx">http {
+    sendfile     on;     # zero-copy: kernel sends file straight to socket
+    tcp_nopush   on;     # send headers + file start in one packet (with sendfile)
+    tcp_nodelay  on;     # don't delay small packets on keep-alive connections
+}
+</code></pre>
+<p><code>sendfile on</code> lets the kernel copy file data to the socket without bouncing through user space. <code>tcp_nopush</code> (only effective with sendfile) fills packets fully before sending. <code>tcp_nodelay</code> disables Nagle's algorithm for low-latency small writes. The combination is correct for almost all workloads.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_core_module.html#sendfile">sendfile</a>.</p>
+<h3 id="63-compression-gzip-and-brotli">6.3 Compression (gzip and Brotli)</h3>
+<pre><code class="language-nginx">http {
+    gzip              on;
+    gzip_comp_level   5;          # 1-9; 5 is a good speed/ratio balance
+    gzip_min_length   256;        # don't bother compressing tiny responses
+    gzip_vary         on;         # add &quot;Vary: Accept-Encoding&quot;
+    gzip_proxied      any;
+    gzip_types        text/plain text/css application/json
+                      application/javascript text/xml application/xml
+                      image/svg+xml;
+}
+</code></pre>
+<p><code>gzip</code> never compresses <code>text/html</code>'s type out of the list because <code>text/html</code> is always compressed by default — list the <em>other</em> types you want. With the <code>ngx_brotli</code> module you can add Brotli, which compresses text better than gzip:</p>
+<pre><code class="language-nginx">brotli            on;
+brotli_comp_level 5;
+brotli_types      text/css application/javascript application/json image/svg+xml;
+</code></pre>
+<p>Serve both and let the client's <code>Accept-Encoding</code> decide. For pre-compressed assets from a build pipeline, <code>gzip_static on;</code> serves a <code>file.gz</code> if it exists instead of compressing on the fly.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_gzip_module.html">ngx_http_gzip_module</a>.</p>
+<h3 id="64-cache-control-for-static-assets">6.4 Cache-Control for Static Assets</h3>
+<p>Use <code>expires</code> (and <code>Cache-Control</code>) to let browsers and CDNs cache aggressively:</p>
+<pre><code class="language-nginx"># Hashed build assets — cache forever
+location ~* \.(?:css|js|woff2|png|jpg|svg)$ {
+    expires 1y;
+    add_header Cache-Control &quot;public, immutable&quot;;
+    access_log off;
+}
+
+# HTML — never cache (it references the hashed assets)
+location = /index.html {
+    expires -1;
+    add_header Cache-Control &quot;no-cache, no-store, must-revalidate&quot;;
+}
+</code></pre>
+<p><code>expires 1y</code> sets both the <code>Expires</code> and <code>Cache-Control: max-age</code> headers. <code>immutable</code> tells the browser never to revalidate hashed assets. As always, remember the <code>add_header</code> replacement gotcha (Part 3.3) when adding headers in nested locations.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_headers_module.html#expires">expires</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>What does `sendfile on` do?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Compresses responses</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Zero-copy: the kernel sends file data straight to the socket</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Enables caching</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Sends email alerts</span></button></li></ul><div class="quiz-explain" hidden>sendfile avoids copying file data through user space. Paired with tcp_nopush it fills packets efficiently for static serving.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>How should hashed build assets vs index.html be cached?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Both immutable forever</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Both no-cache</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Assets: expires 1y immutable; index.html: no-cache</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Assets: no-cache; index.html: 1y</span></button></li></ul><div class="quiz-explain" hidden>Hashed filenames change per build → cache forever. index.html references them by hash → must never be cached.</div></div></div>
+<hr>
+<h2 id="part-7-reverse-proxy-load-balancing">Part 7 — Reverse Proxy &amp; Load Balancing</h2>
+<h3 id="71-basic-reverse-proxy">7.1 Basic Reverse Proxy</h3>
+<pre><code class="language-nginx">server {
+    listen 80;
+    server_name app.example.com;
+
+    location / {
+        proxy_pass http://localhost:8080;
+
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+</code></pre>
+<p>Unlike some servers, Nginx does <strong>not</strong> forward useful proxy headers automatically — you must set them. The four above are the standard set: <code>Host</code> preserves the original hostname, <code>X-Real-IP</code> and <code>X-Forwarded-For</code> carry the client IP, and <code>X-Forwarded-Proto</code> tells the backend whether the original request was HTTPS.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_proxy_module.html">ngx_http_proxy_module</a>.</p>
+<h3 id="72-the-proxy_pass-trailing-slash-gotcha">7.2 The proxy_pass Trailing-Slash Gotcha</h3>
+<p>Whether <code>proxy_pass</code> rewrites the path depends on whether it includes a URI part:</p>
+<pre><code class="language-nginx"># NO trailing slash / URI: the full original URI is passed through
+location /api/ {
+    proxy_pass http://backend;        # /api/users -&gt; backend /api/users
+}
+
+# WITH trailing slash / URI: the matched location prefix is REPLACED
+location /api/ {
+    proxy_pass http://backend/;       # /api/users -&gt; backend /users
+}
+</code></pre>
+<p>If <code>proxy_pass</code> has <em>any</em> URI component (even just <code>/</code>), Nginx replaces the part of the request URI matched by the location with that component. If it has only a host (and optional port), the original URI is passed unchanged. This single rule explains most "my proxy is hitting the wrong path" confusion.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_pass">proxy_pass</a>.</p>
+<h3 id="73-upstreams-and-load-balancing">7.3 Upstreams and Load Balancing</h3>
+<p>Define a pool with <code>upstream</code>, then proxy to it by name:</p>
+<pre><code class="language-nginx">upstream backend {
+    # load balancing method (default: round-robin)
+    least_conn;
+
+    server 10.0.0.1:8080 weight=3;        # gets 3x the traffic
+    server 10.0.0.2:8080;
+    server 10.0.0.3:8080 backup;          # only used if others are down
+    server 10.0.0.4:8080 down;            # administratively disabled
+
+    keepalive 32;                          # keep idle conns to upstreams
+}
+
+server {
+    location / {
+        proxy_pass http://backend;
+        proxy_http_version 1.1;            # required for upstream keepalive
+        proxy_set_header Connection &quot;&quot;;    # required for upstream keepalive
+    }
+}
+</code></pre>
+<p>Load-balancing methods:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>round-robin (default)</td>
+<td>Cycle through servers, weighted</td>
+</tr>
+<tr>
+<td><code>least_conn</code></td>
+<td>Send to the server with fewest active connections</td>
+</tr>
+<tr>
+<td><code>ip_hash</code></td>
+<td>Sticky by client IP (same client → same server)</td>
+</tr>
+<tr>
+<td><code>hash $key consistent</code></td>
+<td>Sticky by an arbitrary key with consistent hashing</td>
+</tr>
+<tr>
+<td><code>random two least_conn</code></td>
+<td>Pick two at random, choose the less busy (power-of-two-choices)</td>
+</tr>
+</tbody>
+</table>
+<p>The <code>keepalive</code> directive plus <code>proxy_http_version 1.1</code> and <code>proxy_set_header Connection ""</code> is essential for performance — without it, Nginx opens a fresh TCP connection to the backend for every request.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_upstream_module.html">ngx_http_upstream_module</a>.</p>
+<h3 id="74-health-checks">7.4 Health Checks</h3>
+<p>Open-source Nginx has <strong>passive</strong> health checks built into the upstream module: <code>max_fails</code> and <code>fail_timeout</code> mark a server unavailable after repeated failures on real traffic.</p>
+<pre><code class="language-nginx">upstream backend {
+    server 10.0.0.1:8080 max_fails=3 fail_timeout=30s;
+    server 10.0.0.2:8080 max_fails=3 fail_timeout=30s;
+}
+</code></pre>
+<p>After 3 failed attempts within 30s, the server is considered down for 30s, then retried. <strong>Active</strong> health checks (Nginx probing a <code>/health</code> endpoint on a timer, configured via <code>health_check</code>) are an <strong>Nginx Plus</strong> feature. On open-source Nginx, pair passive checks with an external checker or rely on the backend's own readiness.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_upstream_module.html#server">Health checks (passive)</a>.</p>
+<h3 id="75-websockets">7.5 WebSockets</h3>
+<p>WebSocket proxying requires forwarding the <code>Upgrade</code>/<code>Connection</code> headers and HTTP/1.1:</p>
+<pre><code class="language-nginx">location /ws/ {
+    proxy_pass http://backend;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade    $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+    proxy_read_timeout 3600s;             # long-lived connections
+}
+</code></pre>
+<p><code>$connection_upgrade</code> is best derived with a <code>map</code> so non-WebSocket requests get <code>Connection: close</code>:</p>
+<pre><code class="language-nginx">http {
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        ''      close;
+    }
+}
+</code></pre>
+<p>References: <a href="https://nginx.org/en/docs/http/websocket.html">WebSocket proxying</a>.</p>
+<h3 id="76-buffering-timeouts-and-streaming">7.6 Buffering, Timeouts, and Streaming</h3>
+<pre><code class="language-nginx">location / {
+    proxy_pass http://backend;
+
+    proxy_connect_timeout 5s;     # time to establish a connection
+    proxy_send_timeout    60s;    # time between successive write ops
+    proxy_read_timeout    60s;    # time between successive read ops
+
+    proxy_buffering       on;     # buffer the response from the backend
+    proxy_buffers         8 16k;  # buffer count and size
+
+    # For Server-Sent Events / streaming, disable buffering:
+    # proxy_buffering off;
+}
+</code></pre>
+<p><code>proxy_buffering on</code> (the default) lets Nginx read the backend's response quickly and feed slow clients at their own pace — good for throughput. For SSE or any streamed response, set <code>proxy_buffering off</code> so events reach the client immediately.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_buffering">proxy_buffering</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>Does Nginx forward proxy headers like X-Forwarded-For automatically?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Yes, always</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">No — you must set them with proxy_set_header</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Only over HTTPS</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Only with Nginx Plus</span></button></li></ul><div class="quiz-explain" hidden>Nginx forwards nothing extra by default. Set Host, X-Real-IP, X-Forwarded-For, and X-Forwarded-Proto explicitly.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>`location /api/ { proxy_pass http://backend/; }` — where does /api/users go?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">backend /api/users</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">backend /users</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">backend /</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">404</span></button></li></ul><div class="quiz-explain" hidden>Because proxy_pass has a URI part (the trailing /), the matched /api/ prefix is replaced → /users. Without the slash, the full /api/users is passed.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q3</span>What&#x27;s required for upstream keep-alive to actually work?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Nothing, it&#x27;s automatic</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">keepalive in the upstream + proxy_http_version 1.1 + Connection &quot;&quot;</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">ip_hash</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">proxy_buffering off</span></button></li></ul><div class="quiz-explain" hidden>Without all three, Nginx opens a fresh TCP connection to the backend per request — a silent throughput loss.</div></div></div>
+<hr>
+<h2 id="part-8-tls-https">Part 8 — TLS &amp; HTTPS</h2>
+<h3 id="81-a-basic-https-server">8.1 A Basic HTTPS Server</h3>
+<pre><code class="language-nginx">server {
+    listen 443 ssl;
+    http2  on;
+    server_name example.com;
+
+    ssl_certificate     /etc/nginx/certs/example.com/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/example.com/privkey.pem;
+
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;        # let modern clients pick (TLS1.3)
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    location / {
+        proxy_pass http://localhost:8080;
+    }
+}
+</code></pre>
+<p><code>ssl_certificate</code> must be the <strong>fullchain</strong> (leaf + intermediates), or clients without the intermediate cached will fail — the classic "works in my browser, breaks in curl" bug.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/configuring_https_servers.html">Configuring HTTPS servers</a>.</p>
+<h3 id="82-the-httphttps-redirect">8.2 The HTTP→HTTPS Redirect</h3>
+<p>Unlike Caddy, Nginx does not redirect automatically. You write a dedicated port-80 server:</p>
+<pre><code class="language-nginx">server {
+    listen 80;
+    server_name example.com www.example.com;
+    return 301 https://$host$request_uri;
+}
+</code></pre>
+<p><code>return 301</code> is the cheapest correct way — avoid <code>rewrite</code> for this (Part 11).</p>
+<h3 id="83-certbot-automating-lets-encrypt">8.3 certbot — Automating Let's Encrypt</h3>
+<p>Open-source Nginx has no built-in ACME. Use certbot with the nginx plugin:</p>
+<pre><code class="language-bash">sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d example.com -d www.example.com
+</code></pre>
+<p>The plugin edits your server blocks to add the certificate directives and the redirect, then installs a systemd timer (<code>certbot.timer</code>) that renews automatically. Verify renewal with:</p>
+<pre><code class="language-bash">sudo certbot renew --dry-run
+</code></pre>
+<p>This is the piece Caddy and Traefik give you for free; on Nginx it's one extra package plus the timer.</p>
+<p>References: <a href="https://eff-certbot.readthedocs.io/en/stable/using.html#nginx">certbot + nginx</a>.</p>
+<h3 id="84-hardening-hsts-ocsp-stapling-ciphers">8.4 Hardening: HSTS, OCSP Stapling, Ciphers</h3>
+<pre><code class="language-nginx"># Strong, modern TLS (see Mozilla's SSL Config Generator for current values)
+ssl_protocols             TLSv1.2 TLSv1.3;
+ssl_ciphers               ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:...;
+ssl_prefer_server_ciphers off;
+
+# OCSP stapling — faster handshakes, fewer client CA round-trips
+ssl_stapling        on;
+ssl_stapling_verify on;
+ssl_trusted_certificate /etc/nginx/certs/example.com/chain.pem;
+resolver 1.1.1.1 8.8.8.8 valid=300s;
+
+# HSTS — force HTTPS for a year (be sure you mean it before adding preload)
+add_header Strict-Transport-Security &quot;max-age=31536000; includeSubDomains&quot; always;
+</code></pre>
+<p>The <code>always</code> parameter on <code>add_header</code> ensures the header is sent even on error responses (4xx/5xx). Generate current cipher lists with the <a href="https://ssl-config.mozilla.org/">Mozilla SSL Configuration Generator</a> rather than hand-rolling them.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_ssl_module.html#ssl_stapling">ssl_stapling</a>, <a href="https://ssl-config.mozilla.org/">Mozilla SSL Config</a>.</p>
+<h3 id="85-http2-and-http3-quic">8.5 HTTP/2 and HTTP/3 (QUIC)</h3>
+<p>HTTP/2 is a one-line addition on a TLS listener (modern syntax):</p>
+<pre><code class="language-nginx">server {
+    listen 443 ssl;
+    http2  on;
+}
+</code></pre>
+<p>HTTP/3 (QUIC over UDP) is available in mainline Nginx built with <code>--with-http_v3_module</code>:</p>
+<pre><code class="language-nginx">server {
+    listen 443 ssl;                       # TCP for HTTP/1.1 + HTTP/2
+    listen 443 quic reuseport;            # UDP for HTTP/3
+    http2 on;
+    http3 on;
+
+    ssl_certificate     /etc/nginx/certs/example.com/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/example.com/privkey.pem;
+
+    # Tell clients HTTP/3 is available
+    add_header Alt-Svc 'h3=&quot;:443&quot;; ma=86400' always;
+}
+</code></pre>
+<p>Ensure your firewall allows <strong>UDP</strong> on 443 for QUIC. <code>reuseport</code> should appear on only one server block per address to avoid conflicts.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_v3_module.html">HTTP/3 in nginx</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>Why must ssl_certificate point to the fullchain?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">It&#x27;s faster</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Clients without the intermediate cached will fail otherwise</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">It enables HTTP/2</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">To support OCSP</span></button></li></ul><div class="quiz-explain" hidden>The leaf alone causes the classic &#x27;works in my browser, breaks in curl&#x27; bug. Serve leaf + intermediates (fullchain).</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>On open-source Nginx, how do you get automatic Let&#x27;s Encrypt certificates?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Built-in ACME</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">certbot (with the nginx plugin) + its renewal timer</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">ssl_auto on;</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">It&#x27;s not possible</span></button></li></ul><div class="quiz-explain" hidden>Nginx has no built-in ACME. certbot --nginx provisions and configures certs and installs a systemd timer for renewal.</div></div></div>
+<hr>
+<h2 id="part-9-performance-caching">Part 9 — Performance &amp; Caching</h2>
+<h3 id="91-worker-and-connection-tuning">9.1 Worker and Connection Tuning</h3>
+<pre><code class="language-nginx"># main context
+worker_processes      auto;            # one per CPU core
+worker_rlimit_nofile  65535;           # raise the FD ceiling for the master
+
+events {
+    worker_connections 8192;           # max connections PER worker
+    multi_accept       on;
+    use                epoll;          # Linux event method (auto-selected)
+}
+</code></pre>
+<p>Theoretical max simultaneous connections ≈ <code>worker_processes × worker_connections</code>. Remember each proxied request uses <em>two</em> connections (client + upstream), and <code>worker_connections</code> must not exceed the OS file-descriptor limit (<code>worker_rlimit_nofile</code>).</p>
+<p>References: <a href="https://www.nginx.com/blog/tuning-nginx/">Tuning nginx</a>.</p>
+<h3 id="92-keep-alive">9.2 Keep-Alive</h3>
+<pre><code class="language-nginx">http {
+    keepalive_timeout  65;        # how long to hold idle client connections
+    keepalive_requests 1000;      # max requests per kept-alive connection
+}
+</code></pre>
+<p>And for upstreams (Part 7.3), the <code>keepalive</code> directive in the <code>upstream</code> block plus <code>proxy_http_version 1.1</code> + <code>proxy_set_header Connection ""</code>.</p>
+<h3 id="93-open_file_cache">9.3 open_file_cache</h3>
+<p>Cache file descriptors and metadata for frequently served static files:</p>
+<pre><code class="language-nginx">open_file_cache          max=10000 inactive=60s;
+open_file_cache_valid    60s;
+open_file_cache_min_uses 2;
+open_file_cache_errors   on;
+</code></pre>
+<p>This avoids repeated <code>open()</code>/<code>stat()</code> syscalls on hot static content. Big win for high-RPS static serving; irrelevant for pure reverse proxying.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_core_module.html#open_file_cache">open_file_cache</a>.</p>
+<h3 id="94-proxy-caching">9.4 Proxy Caching</h3>
+<p>Turn Nginx into a caching layer in front of a slow backend:</p>
+<pre><code class="language-nginx">http {
+    # Define a cache zone: 10MB of keys in memory, content on disk, 1GB max
+    proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=app_cache:10m
+                     max_size=1g inactive=60m use_temp_path=off;
+
+    server {
+        location / {
+            proxy_cache            app_cache;
+            proxy_cache_valid      200 302 10m;     # cache OK/redirects 10 min
+            proxy_cache_valid      404 1m;
+            proxy_cache_key        $scheme$host$request_uri;
+            proxy_cache_use_stale  error timeout updating http_500 http_502 http_503;
+            proxy_cache_lock       on;              # collapse concurrent misses
+            add_header X-Cache-Status $upstream_cache_status;   # HIT/MISS/EXPIRED
+
+            proxy_pass http://backend;
+        }
+    }
+}
+</code></pre>
+<p>The <code>keys_zone</code> lives in shared memory; cached bodies live on disk. <code>proxy_cache_use_stale</code> lets Nginx serve stale content when the backend is down — a powerful resilience feature. The <code>X-Cache-Status</code> header is invaluable for debugging cache behavior. <code>proxy_cache_lock on</code> prevents a cache-miss stampede by letting one request populate the cache while others wait.</p>
+<p>References: <a href="https://docs.nginx.com/nginx/admin-guide/content-cache/content-caching/">Content caching</a>, <a href="https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_cache_path">proxy_cache_path</a>.</p>
+<h3 id="95-rate-limiting">9.5 Rate Limiting</h3>
+<p>Nginx rate limiting uses the leaky-bucket algorithm. Define a shared zone, then apply it:</p>
+<pre><code class="language-nginx">http {
+    # 10 requests/second per client IP; 10MB zone (~160k IPs)
+    limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+
+    # Limit concurrent connections per IP
+    limit_conn_zone $binary_remote_addr zone=conns:10m;
+
+    server {
+        location /api/ {
+            limit_req  zone=api burst=20 nodelay;   # allow short bursts
+            limit_conn conns 10;
+            limit_req_status 429;
+            proxy_pass http://backend;
+        }
+    }
+}
+</code></pre>
+<p><code>burst=20</code> permits short spikes; <code>nodelay</code> serves the burst immediately rather than queuing it. Use <code>$binary_remote_addr</code> (not <code>$remote_addr</code>) — it's the compact form that fits far more entries in the zone. For login endpoints, a tighter rate (e.g. <code>5r/m</code>) blunts credential-stuffing.</p>
+<p>References: <a href="https://www.nginx.com/blog/rate-limiting-nginx/">Rate limiting</a>, <a href="https://nginx.org/en/docs/http/ngx_http_limit_req_module.html">limit_req_zone</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>Which header reveals whether a response came from the proxy cache?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">X-Cache-Status ($upstream_cache_status)</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">X-Powered-By</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Via</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Cache-Control</span></button></li></ul><div class="quiz-explain" hidden>Adding `add_header X-Cache-Status $upstream_cache_status;` surfaces HIT/MISS/EXPIRED/STALE — invaluable for debugging cache behavior.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>Why use $binary_remote_addr (not $remote_addr) as a rate-limit key?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">It&#x27;s more secure</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">It&#x27;s the compact form that fits far more entries in the zone</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">It includes the port</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">It&#x27;s required for IPv6</span></button></li></ul><div class="quiz-explain" hidden>The binary form is much smaller, so a fixed-size shared zone tracks many more client IPs.</div></div></div>
+<hr>
+<h2 id="part-10-security-access-control">Part 10 — Security &amp; Access Control</h2>
+<h3 id="101-ip-allowdeny">10.1 IP Allow/Deny</h3>
+<pre><code class="language-nginx">location /admin/ {
+    allow 10.0.0.0/8;
+    allow 192.168.0.0/16;
+    deny  all;                    # everyone else gets 403
+    proxy_pass http://localhost:5000;
+}
+</code></pre>
+<p>Rules are evaluated top to bottom; the first match wins. If Nginx is behind a load balancer, <code>$remote_addr</code> is the LB's IP — use the <code>realip</code> module (<code>set_real_ip_from</code> + <code>real_ip_header X-Forwarded-For</code>) so <code>allow</code>/<code>deny</code> see the true client IP.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_access_module.html">ngx_http_access_module</a>, <a href="https://nginx.org/en/docs/http/ngx_http_realip_module.html">realip module</a>.</p>
+<h3 id="102-basic-authentication">10.2 Basic Authentication</h3>
+<pre><code class="language-nginx">location /private/ {
+    auth_basic           &quot;Restricted&quot;;
+    auth_basic_user_file /etc/nginx/.htpasswd;
+}
+</code></pre>
+<p>Create the password file with <code>htpasswd</code> (Apache utils) or <code>openssl</code>:</p>
+<pre><code class="language-bash">htpasswd -c /etc/nginx/.htpasswd alice      # -c creates; omit it to add users
+</code></pre>
+<p>Basic auth sends credentials base64-encoded on every request — only safe over HTTPS. Combine <code>auth_basic</code> with <code>allow</code>/<code>deny</code> via the <code>satisfy</code> directive (<code>satisfy any</code> = pass either check; <code>satisfy all</code> = require both).</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_auth_basic_module.html">auth_basic</a>.</p>
+<h3 id="103-security-headers">10.3 Security Headers</h3>
+<pre><code class="language-nginx"># Apply at server level; re-declare in any location that adds its own headers
+add_header X-Content-Type-Options    nosniff               always;
+add_header X-Frame-Options           SAMEORIGIN            always;
+add_header Referrer-Policy           strict-origin-when-cross-origin always;
+add_header Content-Security-Policy    &quot;default-src 'self'&quot; always;
+add_header Strict-Transport-Security &quot;max-age=31536000; includeSubDomains&quot; always;
+</code></pre>
+<p>Remember Part 3.3: a <code>location</code> with its own <code>add_header</code> discards all of these. The <code>always</code> flag makes headers apply to error responses too. Also hide the version banner:</p>
+<pre><code class="language-nginx">http {
+    server_tokens off;            # &quot;Server: nginx&quot; instead of &quot;nginx/1.27.1&quot;
+}
+</code></pre>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_headers_module.html">Security headers</a>, <a href="https://nginx.org/en/docs/http/ngx_http_core_module.html#server_tokens">server_tokens</a>.</p>
+<h3 id="104-request-limits-and-waf">10.4 Request Limits and WAF</h3>
+<pre><code class="language-nginx">client_max_body_size      10m;        # reject huge uploads (413)
+large_client_header_buffers 4 16k;    # bound header size
+client_body_timeout       10s;
+client_header_timeout     10s;
+</code></pre>
+<p>For a Web Application Firewall, the standard option is <strong>ModSecurity</strong> with the OWASP Core Rule Set, compiled as a dynamic module (<code>ngx_http_modsecurity_module</code>). For most teams, a cloud WAF (Cloudflare, AWS WAF) in front of Nginx is less operational burden than self-hosting ModSecurity.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_core_module.html#client_max_body_size">client_max_body_size</a>, <a href="https://github.com/owasp-modsecurity/ModSecurity-nginx">ModSecurity-nginx</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>Behind a load balancer, why might allow/deny see the wrong IP?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">A bug in Nginx</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">$remote_addr is the LB&#x27;s IP unless you use the realip module</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">deny is evaluated last</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">TLS hides the IP</span></button></li></ul><div class="quiz-explain" hidden>Use set_real_ip_from + real_ip_header X-Forwarded-For so Nginx resolves the true client IP for access control and logs.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>What does the `always` parameter on add_header do?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Caches the header</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Sends the header even on 4xx/5xx error responses</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Makes it case-insensitive</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Forces HTTPS</span></button></li></ul><div class="quiz-explain" hidden>Without always, some headers are omitted on error responses. always ensures things like HSTS are sent regardless of status.</div></div></div>
+<hr>
+<h2 id="part-11-rewrites-redirects-the-rewrite-engine">Part 11 — Rewrites, Redirects &amp; the Rewrite Engine</h2>
+<h3 id="111-return-vs-rewrite">11.1 return vs. rewrite</h3>
+<p>For redirects, prefer <code>return</code> — it's explicit and cheap:</p>
+<pre><code class="language-nginx">return 301 https://example.com$request_uri;   # permanent redirect
+return 302 /maintenance.html;                  # temporary redirect
+return 444;                                     # close connection, no response
+return 200 &quot;pong&quot;;                              # static response (with default_type)
+</code></pre>
+<p>Use <code>rewrite</code> only when you genuinely need to transform the URI with a regex:</p>
+<pre><code class="language-nginx"># Rewrite /old/123 -&gt; /new/123 and stop processing rewrites
+rewrite ^/old/(.*)$ /new/$1 last;
+
+# Rewrite and issue an external 301
+rewrite ^/legacy/(.*)$ /modern/$1 permanent;
+</code></pre>
+<p><code>rewrite</code> flags:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>last</code></td>
+<td>Stop current rewrites, re-evaluate location with the new URI</td>
+</tr>
+<tr>
+<td><code>break</code></td>
+<td>Stop rewrites, keep processing in the current location</td>
+</tr>
+<tr>
+<td><code>redirect</code></td>
+<td>Return a 302 to the client</td>
+</tr>
+<tr>
+<td><code>permanent</code></td>
+<td>Return a 301 to the client</td>
+</tr>
+</tbody>
+</table>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_rewrite_module.html#rewrite">rewrite</a>, <a href="https://nginx.org/en/docs/http/ngx_http_rewrite_module.html#return">return</a>.</p>
+<h3 id="112-if-is-evil">11.2 "If Is Evil"</h3>
+<p>Inside a <code>location</code>, the <code>if</code> directive has surprising and sometimes broken behavior — it can silently do the wrong thing with most directives. The official guidance ("If is Evil") is: inside <code>location</code>, <strong>only <code>return</code> and <code>rewrite</code> are 100% safe inside <code>if</code>.</strong> For anything else, use alternatives:</p>
+<pre><code class="language-nginx"># DON'T: if with add_header / proxy_pass etc. inside a location is unreliable
+# DO: use map to compute a variable instead
+
+map $request_method $is_post {
+    POST    1;
+    default 0;
+}
+
+# DO: use try_files, or separate location blocks, instead of if
+</code></pre>
+<p>References: <a href="https://www.nginx.com/resources/wiki/start/topics/depth/ifisevil/">"If is Evil"</a>.</p>
+<h3 id="113-map-the-right-tool-for-conditionals">11.3 map — The Right Tool for Conditionals</h3>
+<p><code>map</code> builds a variable from another variable. It's evaluated lazily and is the clean replacement for most <code>if</code> usage:</p>
+<pre><code class="language-nginx">http {
+    # Choose a backend by Host
+    map $host $backend_pool {
+        api.example.com  api_servers;
+        default          web_servers;
+    }
+
+    # Block specific user agents
+    map $http_user_agent $is_bad_bot {
+        default            0;
+        ~*(badbot|scraper) 1;
+    }
+
+    server {
+        if ($is_bad_bot) { return 403; }   # the one safe use of if
+        location / { proxy_pass http://$backend_pool; }
+    }
+}
+</code></pre>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_map_module.html">map module</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>For a plain HTTP→HTTPS redirect, what&#x27;s the preferred directive?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">rewrite</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">return 301</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">if</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">proxy_pass</span></button></li></ul><div class="quiz-explain" hidden>`return 301 https://$host$request_uri;` is explicit and cheap. Reserve rewrite for genuine regex URI transformations.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>Inside a location, which directives are fully safe inside `if`?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">All of them</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Only return and rewrite</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">add_header and proxy_pass</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">None</span></button></li></ul><div class="quiz-explain" hidden>&#x27;If is Evil&#x27;: inside location, only return and rewrite behave reliably in if. Use map or separate locations for everything else.</div></div></div>
+<hr>
+<h2 id="part-12-logging-observability">Part 12 — Logging &amp; Observability</h2>
+<h3 id="121-access-logs-and-log_format">12.1 Access Logs and log_format</h3>
+<pre><code class="language-nginx">http {
+    log_format main '$remote_addr - $remote_user [$time_local] '
+                    '&quot;$request&quot; $status $body_bytes_sent '
+                    '&quot;$http_referer&quot; &quot;$http_user_agent&quot; '
+                    'rt=$request_time uct=$upstream_connect_time '
+                    'urt=$upstream_response_time';
+
+    # JSON access logs — easy to ship to Loki / Elasticsearch
+    log_format json escape=json '{'
+        '&quot;time&quot;:&quot;$time_iso8601&quot;,'
+        '&quot;remote_addr&quot;:&quot;$remote_addr&quot;,'
+        '&quot;method&quot;:&quot;$request_method&quot;,'
+        '&quot;uri&quot;:&quot;$request_uri&quot;,'
+        '&quot;status&quot;:$status,'
+        '&quot;bytes&quot;:$body_bytes_sent,'
+        '&quot;rt&quot;:$request_time,'
+        '&quot;urt&quot;:&quot;$upstream_response_time&quot;,'
+        '&quot;ua&quot;:&quot;$http_user_agent&quot;'
+    '}';
+
+    access_log /var/log/nginx/access.log json;
+}
+</code></pre>
+<p><code>$request_time</code> is total time Nginx spent on the request; <code>$upstream_response_time</code> is how long the backend took — comparing them isolates whether latency is in Nginx or the backend. <code>escape=json</code> makes values safe for JSON.</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_log_module.html#log_format">log_format</a>.</p>
+<h3 id="122-conditional-and-disabled-logging">12.2 Conditional and Disabled Logging</h3>
+<pre><code class="language-nginx"># Don't log health checks
+location = /healthz {
+    access_log off;
+    return 200 &quot;ok&quot;;
+}
+
+# Only log non-2xx/3xx responses
+map $status $loggable {
+    ~^[23] 0;
+    default 1;
+}
+access_log /var/log/nginx/errors.log main if=$loggable;
+</code></pre>
+<p><code>access_log off</code> on noisy endpoints keeps logs signal-rich.</p>
+<h3 id="123-error-logs">12.3 Error Logs</h3>
+<pre><code class="language-nginx">error_log /var/log/nginx/error.log warn;
+</code></pre>
+<p>Levels, least to most verbose: <code>emerg</code>, <code>alert</code>, <code>crit</code>, <code>error</code>, <code>warn</code>, <code>notice</code>, <code>info</code>, <code>debug</code>. Use <code>warn</code> in production; <code>debug</code> (requires a debug build or <code>--with-debug</code>) for deep troubleshooting only.</p>
+<h3 id="124-stub_status-and-prometheus">12.4 stub_status and Prometheus</h3>
+<p>The <code>stub_status</code> module exposes basic connection metrics:</p>
+<pre><code class="language-nginx">location = /nginx_status {
+    stub_status;
+    allow 127.0.0.1;
+    deny  all;
+}
+</code></pre>
+<p>It reports active connections, accepts/handled/requests counters, and reading/writing/waiting states. For Prometheus, run the <a href="https://github.com/nginxinc/nginx-prometheus-exporter">nginx-prometheus-exporter</a>, which scrapes <code>stub_status</code> and exposes proper metrics for Grafana. (Nginx Plus exposes far richer per-upstream metrics natively.)</p>
+<p>References: <a href="https://nginx.org/en/docs/http/ngx_http_stub_status_module.html">stub_status</a>, <a href="https://github.com/nginxinc/nginx-prometheus-exporter">nginx-prometheus-exporter</a>.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>How do you isolate whether latency is in Nginx or the backend?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Count requests</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Compare $request_time to $upstream_response_time</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Read error_log</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Use ip_hash</span></button></li></ul><div class="quiz-explain" hidden>$request_time is total Nginx time; $upstream_response_time is backend time. The gap tells you where the latency lives.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>What exposes basic Nginx connection metrics for Prometheus scraping?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">access_log</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">the stub_status module (+ nginx-prometheus-exporter)</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">error_log debug</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">the map module</span></button></li></ul><div class="quiz-explain" hidden>stub_status reports connection/accept/request counters; the exporter turns it into Prometheus metrics for Grafana.</div></div></div>
+<hr>
+<h2 id="part-13-production-operations">Part 13 — Production Operations</h2>
+<h3 id="131-systemd">13.1 systemd</h3>
+<p>The packaged install ships a unit file. Manage Nginx through it:</p>
+<pre><code class="language-bash">sudo systemctl enable --now nginx     # start at boot + now
+sudo systemctl reload nginx           # graceful reload (sends HUP)
+sudo systemctl status nginx
+sudo journalctl -u nginx -f
+</code></pre>
+<p>The unit's <code>ExecReload</code> runs <code>nginx -s reload</code>. Always <code>nginx -t</code> first — in a deploy script:</p>
+<pre><code class="language-bash">nginx -t &amp;&amp; systemctl reload nginx
+</code></pre>
+<p>References: <a href="https://www.nginx.com/resources/wiki/start/topics/examples/systemd/">Running nginx as a service</a>.</p>
+<h3 id="132-graceful-reload-vs-binary-upgrade">13.2 Graceful Reload vs. Binary Upgrade</h3>
+<p>Two distinct zero-downtime operations:</p>
+<ul>
+<li><strong>Reload (config change):</strong> <code>nginx -s reload</code> (or HUP signal). Master re-reads config, spawns new workers, drains old ones. Connections are never dropped; a bad config aborts the reload.</li>
+<li><strong>Binary upgrade (new Nginx version) with no downtime:</strong> signal the running master to fork a new master from the new binary, run both in parallel, then retire the old one:</li>
+</ul>
+<pre><code class="language-bash"># 1. Replace the binary, then tell the old master to start a new master:
+sudo kill -USR2 $(cat /run/nginx.pid)
+# 2. Gracefully shut down the OLD workers (old master keeps the .oldbin pid):
+sudo kill -WINCH $(cat /run/nginx.pid.oldbin)
+# 3. If all good, quit the old master:
+sudo kill -QUIT $(cat /run/nginx.pid.oldbin)
+# (Or roll back: HUP the old master, TERM/QUIT the new one.)
+</code></pre>
+<p>The signal table worth knowing: <code>HUP</code> reload config, <code>USR2</code> upgrade binary, <code>WINCH</code> graceful worker shutdown, <code>QUIT</code> graceful stop, <code>TERM</code> fast stop, <code>USR1</code> reopen logs.</p>
+<p>References: <a href="https://nginx.org/en/docs/control.html#upgrade">Upgrading Executable on the Fly</a>.</p>
+<h3 id="133-log-rotation">13.3 Log Rotation</h3>
+<p>Nginx holds log files open, so after <code>logrotate</code> moves them you must tell Nginx to reopen:</p>
+<pre><code class="language-bash">nginx -s reopen        # or: kill -USR1 &lt;master-pid&gt;
+</code></pre>
+<p>The packaged <code>logrotate</code> config does this for you via a <code>postrotate</code> hook. If you roll your own rotation, don't forget the reopen, or Nginx keeps writing to the rotated (deleted) inode.</p>
+<h3 id="134-file-descriptors-and-limits">13.4 File Descriptors and Limits</h3>
+<p>High-traffic Nginx needs many file descriptors (one+ per connection):</p>
+<pre><code class="language-nginx">worker_rlimit_nofile 65535;     # nginx.conf
+</code></pre>
+<pre><code class="language-ini"># /etc/systemd/system/nginx.service.d/override.conf
+[Service]
+LimitNOFILE=65535
+</code></pre>
+<p>Set both the Nginx directive and the systemd <code>LimitNOFILE</code> — the OS limit caps what Nginx can request.</p>
+<h3 id="135-common-pitfalls">13.5 Common Pitfalls</h3>
+<ul>
+<li><strong>Forgetting <code>nginx -t</code> before reload</strong> — a typo can block the reload (safe) or, worse, you reload a stale file you didn't mean to.</li>
+<li><strong>The <code>add_header</code> replacement trap</strong> (Part 3.3) — security headers silently vanish in nested locations.</li>
+<li><strong><code>proxy_pass</code> trailing slash</strong> (Part 7.2) — wrong path forwarded to the backend.</li>
+<li><strong><code>root</code> vs <code>alias</code></strong> (Part 5.3) — 404s from path duplication.</li>
+<li><strong>Missing intermediate cert</strong> — use the fullchain (Part 8.1).</li>
+<li><strong>No upstream keepalive</strong> — silent throughput loss from a new TCP handshake per request.</li>
+<li><strong><code>$remote_addr</code> behind a proxy</strong> — without <code>realip</code>, allow/deny and logs see the LB, not the client.</li>
+<li><strong>Catch-all not defined</strong> — an unintended server block becomes the default.</li>
+</ul><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>Which signal performs a graceful config reload?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">USR2</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">HUP (nginx -s reload)</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">TERM</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">USR1</span></button></li></ul><div class="quiz-explain" hidden>HUP reloads config. USR2 upgrades the binary, WINCH gracefully stops workers, QUIT graceful stop, USR1 reopens logs.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>After logrotate moves the log files, what must you do?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Restart Nginx</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">nginx -s reopen (or USR1) so Nginx writes to the new files</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Nothing</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Run nginx -t</span></button></li></ul><div class="quiz-explain" hidden>Nginx holds log files open; without a reopen it keeps writing to the rotated (deleted) inode.</div></div></div>
+<hr>
+<h2 id="part-14-comparison-to-alternatives">Part 14 — Comparison to Alternatives</h2>
+<h3 id="141-caddy">14.1 Caddy</h3>
+<p><strong>Where Caddy wins:</strong> automatic HTTPS with zero config, dramatically shorter configs, a JSON admin API for dynamic reconfiguration, HTTP/3 on by default, and a single dependency-free binary.</p>
+<p><strong>Where Nginx wins:</strong> raw performance at extreme scale (the C event loop has lower per-connection overhead than Go's goroutines at 100k+ concurrent), a vastly larger third-party module and knowledge ecosystem (15+ years of Stack Overflow), the <code>stream</code> module for mature L4 proxying, and organizational familiarity.</p>
+<p>The honest summary: for a small-to-moderate reverse proxy where HTTPS automation is the pain point, Caddy is less work. For an existing Nginx shop, extreme scale, or deep module needs, Nginx remains the workhorse. (See the companion Caddy study guide for the mirror image of this comparison.)</p>
+<pre><code class="language-nginx"># Nginx: explicit, ~20 lines incl. TLS + redirect (+ certbot for the cert)
+server {
+    listen 80;
+    server_name example.com;
+    return 301 https://$host$request_uri;
+}
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name example.com;
+    ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+    location / {
+        proxy_pass http://localhost:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+</code></pre>
+<h3 id="142-apache-httpd">14.2 Apache (httpd)</h3>
+<p><strong>Where Nginx wins:</strong> event-driven concurrency (Apache's prefork/worker models use more memory per connection), faster static serving and reverse proxying, simpler high-performance config.</p>
+<p><strong>Where Apache wins:</strong> <code>.htaccess</code> per-directory config (essential for shared hosting), the mature <code>mod_rewrite</code>, and <code>mod_php</code> for the simplest PHP integration (though PHP-FPM behind Nginx is the modern norm).</p>
+<p>For new projects, Nginx is the more common front-end choice; Apache persists in shared hosting and legacy PHP stacks.</p>
+<h3 id="143-haproxy">14.3 HAProxy</h3>
+<p><strong>Where Nginx wins:</strong> it also serves static files and terminates/serves HTTP content (HAProxy is a pure proxy/LB), plus HTTP caching.</p>
+<p><strong>Where HAProxy wins:</strong> it is the gold standard for L4/L7 load balancing — richer balancing algorithms, superior connection-level health checking, detailed stats, and extreme-scale reliability. When you need a <em>dedicated</em> load balancer, HAProxy is purpose-built; Nginx is a web server that also balances load.</p>
+<h3 id="144-envoy-traefik">14.4 Envoy / Traefik</h3>
+<p><strong>Envoy</strong> is the service-mesh data plane (Istio, Consul Connect): gRPC-native, xDS dynamic config from a control plane, deep observability — at the cost of notoriously complex YAML. <strong>Traefik</strong> is container-native: it auto-discovers Docker/Kubernetes services from labels/annotations with no file reloads, and does automatic HTTPS like Caddy.</p>
+<p>Choose Envoy for service meshes, Traefik for label-driven container environments, and Nginx for everything from static sites to high-traffic reverse proxying on VMs and bare metal.</p>
+<h3 id="145-when-not-to-use-nginx">14.5 When NOT to Use Nginx</h3>
+<ul>
+<li><strong>You want HTTPS handled for you with zero config</strong> → Caddy or Traefik.</li>
+<li><strong>You need container label auto-discovery as a core feature</strong> → Traefik.</li>
+<li><strong>You need a service-mesh data plane</strong> → Envoy.</li>
+<li><strong>You need a dedicated, extreme-scale L4 load balancer</strong> → HAProxy.</li>
+<li><strong>You only serve PHP on shared hosting with per-directory overrides</strong> → Apache may be simpler.</li>
+</ul>
+<p>For the broad middle — reverse proxy, static serving, TLS termination, caching, load balancing on real servers — Nginx is still the default for good reasons.</p><div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>At roughly what scale does Nginx&#x27;s perf edge over Caddy actually matter?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">100 req/s</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">1k connections</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">100k+ concurrent connections</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">It always matters</span></button></li></ul><div class="quiz-explain" hidden>The C event loop&#x27;s lower per-connection overhead shows up at extreme scale. Below that, the difference is rarely noticeable.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>Which tool is purpose-built as a dedicated extreme-scale L4/L7 load balancer?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Apache</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">HAProxy</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Caddy</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Traefik</span></button></li></ul><div class="quiz-explain" hidden>HAProxy is the gold standard for dedicated load balancing. Nginx is a web server that also balances load.</div></div></div>
+<hr>
+<h2 id="part-15-recipes-end-to-end-walkthrough">Part 15 — Recipes &amp; End-to-End Walkthrough</h2>
+<h3 id="recipe-1-multi-site-reverse-proxy-with-tls">Recipe 1: Multi-Site Reverse Proxy with TLS</h3>
+<pre><code class="language-nginx"># /etc/nginx/conf.d/sites.conf
+map $http_upgrade $connection_upgrade { default upgrade; '' close; }
+
+server {                                   # HTTP -&gt; HTTPS for all hosts
+    listen 80 default_server;
+    server_name _;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name app.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/app.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/app.example.com/privkey.pem;
+
+    add_header Strict-Transport-Security &quot;max-age=31536000; includeSubDomains&quot; always;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade           $http_upgrade;
+        proxy_set_header Connection        $connection_upgrade;
+    }
+}
+</code></pre>
+<h3 id="recipe-2-spa-api-backend">Recipe 2: SPA + API Backend</h3>
+<pre><code class="language-nginx">server {
+    listen 443 ssl;
+    http2 on;
+    server_name example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/example.com/privkey.pem;
+
+    root /var/www/app/dist;
+
+    # API to the backend
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Hashed assets — cache forever
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control &quot;public, immutable&quot;;
+    }
+
+    # SPA fallback — everything else serves index.html
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+</code></pre>
+<h3 id="recipe-3-load-balanced-upstreams">Recipe 3: Load-Balanced Upstreams</h3>
+<pre><code class="language-nginx">upstream api_pool {
+    least_conn;
+    server 10.0.0.11:8000 max_fails=3 fail_timeout=30s;
+    server 10.0.0.12:8000 max_fails=3 fail_timeout=30s;
+    server 10.0.0.13:8000 backup;
+    keepalive 32;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name api.example.com;
+    ssl_certificate     /etc/letsencrypt/live/api.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
+
+    location / {
+        proxy_pass http://api_pool;
+        proxy_http_version 1.1;
+        proxy_set_header Connection &quot;&quot;;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_next_upstream error timeout http_502 http_503;
+    }
+}
+</code></pre>
+<h3 id="recipe-4-caching-proxy-for-a-slow-backend">Recipe 4: Caching Proxy for a Slow Backend</h3>
+<pre><code class="language-nginx">proxy_cache_path /var/cache/nginx levels=1:2 keys_zone=slow:20m
+                 max_size=2g inactive=1h use_temp_path=off;
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name cdn.example.com;
+    ssl_certificate     /etc/letsencrypt/live/cdn.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/cdn.example.com/privkey.pem;
+
+    location / {
+        proxy_cache           slow;
+        proxy_cache_valid     200 10m;
+        proxy_cache_use_stale error timeout updating http_500 http_502 http_503;
+        proxy_cache_lock      on;
+        add_header            X-Cache-Status $upstream_cache_status always;
+        proxy_pass            http://origin.internal:8080;
+    }
+}
+</code></pre>
+<h3 id="recipe-5-rate-limited-api-with-brute-force-protection">Recipe 5: Rate-Limited API with Brute-Force Protection</h3>
+<pre><code class="language-nginx">limit_req_zone  $binary_remote_addr zone=api:10m   rate=10r/s;
+limit_req_zone  $binary_remote_addr zone=login:10m rate=5r/m;
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name api.example.com;
+    ssl_certificate     /etc/letsencrypt/live/api.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.example.com/privkey.pem;
+
+    location /api/ {
+        limit_req zone=api burst=20 nodelay;
+        limit_req_status 429;
+        proxy_pass http://127.0.0.1:8000;
+    }
+
+    location = /api/login {
+        limit_req zone=login burst=3 nodelay;       # tight: blunt credential stuffing
+        limit_req_status 429;
+        proxy_pass http://127.0.0.1:8000;
+    }
+}
+</code></pre>
+<h3 id="end-to-end-walkthrough-from-fresh-server-to-production">End-to-End Walkthrough: From Fresh Server to Production</h3>
+<p>A real scenario — a frontend SPA, an API backend, and a WebSocket service — from a bare Ubuntu box to a hardened Nginx deployment.</p>
+<p><strong>Step 1: Install Nginx (official mainline repo).</strong></p>
+<pre><code class="language-bash">sudo apt install -y curl gnupg2 ca-certificates lsb-release
+curl https://nginx.org/keys/nginx_signing.key | gpg --dearmor \
+  | sudo tee /usr/share/keyrings/nginx-archive-keyring.gpg &gt;/dev/null
+echo &quot;deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] \
+http://nginx.org/packages/mainline/ubuntu $(lsb_release -cs) nginx&quot; \
+  | sudo tee /etc/apt/sources.list.d/nginx.list
+sudo apt update &amp;&amp; sudo apt install nginx
+sudo systemctl enable --now nginx
+</code></pre>
+<p><strong>Step 2: DNS.</strong> Point the hostnames at the server's public IP:</p>
+<pre><code class="language-text">app.example.com  → 203.0.113.10
+api.example.com  → 203.0.113.10
+ws.example.com   → 203.0.113.10
+</code></pre>
+<p><strong>Step 3: Write the config.</strong> A clean structure — global tuning in <code>nginx.conf</code>, sites in <code>conf.d</code>:</p>
+<pre><code class="language-nginx"># /etc/nginx/conf.d/00-global.conf
+map $http_upgrade $connection_upgrade { default upgrade; '' close; }
+
+server {                                   # global HTTP -&gt; HTTPS
+    listen 80 default_server;
+    server_name _;
+    return 301 https://$host$request_uri;
+}
+</code></pre>
+<pre><code class="language-nginx"># /etc/nginx/conf.d/app.conf
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name app.example.com;
+    # (certs added by certbot in step 4)
+
+    root /var/www/app/dist;
+    add_header Strict-Transport-Security &quot;max-age=31536000; includeSubDomains&quot; always;
+    add_header X-Content-Type-Options nosniff always;
+
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control &quot;public, immutable&quot;;
+        # re-declare security headers here (add_header replacement trap):
+        add_header Strict-Transport-Security &quot;max-age=31536000; includeSubDomains&quot; always;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+</code></pre>
+<pre><code class="language-nginx"># /etc/nginx/conf.d/api.conf
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name api.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+</code></pre>
+<pre><code class="language-nginx"># /etc/nginx/conf.d/ws.conf
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ws.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:4000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        proxy_set_header Host       $host;
+        proxy_read_timeout 3600s;
+    }
+}
+</code></pre>
+<p><strong>Step 4: Get TLS certificates.</strong></p>
+<pre><code class="language-bash">sudo apt install certbot python3-certbot-nginx
+sudo certbot --nginx -d app.example.com -d api.example.com -d ws.example.com
+sudo certbot renew --dry-run
+</code></pre>
+<p>Certbot inserts the <code>ssl_certificate</code>/<code>ssl_certificate_key</code> directives and installs the auto-renew timer.</p>
+<p><strong>Step 5: Validate and reload.</strong></p>
+<pre><code class="language-bash">sudo nginx -t &amp;&amp; sudo systemctl reload nginx
+</code></pre>
+<p><strong>Step 6: Verify.</strong></p>
+<pre><code class="language-bash">curl -I https://app.example.com           # HTTP/2 200 + HSTS header
+curl -I http://app.example.com            # 301 -&gt; https
+curl -I https://api.example.com/health    # backend reachable
+openssl s_client -connect app.example.com:443 -servername app.example.com \
+  &lt;/dev/null 2&gt;/dev/null | openssl x509 -noout -dates -issuer
+</code></pre>
+<p><strong>Step 7: Observe.</strong> Add JSON logging and a status endpoint, scrape with the Prometheus exporter, and you have request rates, latency split (Nginx vs upstream), and connection stats feeding Grafana.</p>
+<p><strong>What this gives you:</strong> TLS termination with auto-renewal, HTTP→HTTPS redirects, HTTP/2, a cached/secured static SPA, a proxied API, and a WebSocket service — the standard production front door, all in a handful of small, version-controlled config files validated by <code>nginx -t</code> before every reload.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={nginx:0,caddy:0,traefik:0,haproxy:0,envoy:0};
+      box.querySelectorAll('input:checked').forEach(function(c){ w[c.dataset.w]+=parseInt(c.value,10); });
+      var total=w.nginx+w.caddy+w.traefik+w.haproxy+w.envoy;
+      if(total===0){ out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>'; return; }
+      var verdict,cls,reasons;
+      var alt=Math.max(w.caddy,w.traefik,w.haproxy,w.envoy);
+      if(w.envoy>=2 && w.envoy>=w.nginx){
+        verdict='Consider Envoy'; cls='alt';
+        reasons='A service-mesh data plane is Envoy\'s purpose (Istio, Consul Connect). Nginx can proxy, but a mesh wants Envoy\'s xDS control-plane model.';
+      } else if(w.haproxy>=2 && w.haproxy>=w.nginx){
+        verdict='Consider HAProxy'; cls='alt';
+        reasons='For a dedicated, extreme-scale L4/L7 load balancer, HAProxy is purpose-built. Nginx is a web server that also balances load.';
+      } else if(w.traefik>=2 && w.traefik>=w.nginx){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Container label auto-discovery is Traefik\'s native strength (and it does automatic HTTPS). Nginx reloads from files.';
+      } else if(w.caddy>w.nginx){
+        verdict='Caddy may fit better'; cls='alt';
+        reasons='If zero-config HTTPS and the shortest possible config are your priorities, Caddy delivers those out of the box. See the companion Caddy guide.';
+      } else if(alt>0 && w.nginx-alt<=1){
+        verdict='Nginx works — with caveats'; cls='maybe';
+        reasons='Nginx covers your core needs, but weigh the constraints you checked; a specialist (Caddy, Traefik, HAProxy, or Envoy) may be worth pairing in for that specific concern.';
+      } else {
+        verdict='Nginx is a strong fit'; cls='nginx';
+        reasons='High-performance proxying/static serving, caching, and fine-grained routing on real servers are exactly Nginx\'s wheelhouse. Pair it with certbot for automatic TLS.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span><p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

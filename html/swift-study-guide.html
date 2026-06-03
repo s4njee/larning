@@ -1,0 +1,2679 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Swift.">
+<title>Swift - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#f05138; --accent2:#f05138; --accent-weak:rgba(240,81,56,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#f05138; --accent2:#f05138; --accent-weak:rgba(240,81,56,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">Swi</span><span>Swift</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-the-type-system" data-target="part-1-the-type-system">Part 1 — The Type System</a></li><li class="toc-l3"><a href="#value-types-vs-reference-types" data-target="value-types-vs-reference-types">Value Types vs. Reference Types</a></li><li class="toc-l3"><a href="#mutability" data-target="mutability">Mutability</a></li><li class="toc-l3"><a href="#structs" data-target="structs">Structs</a></li><li class="toc-l3"><a href="#classes" data-target="classes">Classes</a></li><li class="toc-l3"><a href="#type-casting" data-target="type-casting">Type Casting</a></li><li class="toc-l3"><a href="#type-aliases-and-nested-types" data-target="type-aliases-and-nested-types">Type Aliases and Nested Types</a></li><li class="toc-l2"><a href="#part-2-memory-management-arc" data-target="part-2-memory-management-arc">Part 2 — Memory Management: ARC</a></li><li class="toc-l3"><a href="#how-arc-works" data-target="how-arc-works">How ARC Works</a></li><li class="toc-l3"><a href="#retain-cycles" data-target="retain-cycles">Retain Cycles</a></li><li class="toc-l3"><a href="#breaking-cycles-weak-and-unowned" data-target="breaking-cycles-weak-and-unowned">Breaking Cycles: weak and unowned</a></li><li class="toc-l3"><a href="#closures-and-retain-cycles" data-target="closures-and-retain-cycles">Closures and Retain Cycles</a></li><li class="toc-l3"><a href="#detecting-leaks" data-target="detecting-leaks">Detecting Leaks</a></li><li class="toc-l2"><a href="#part-3-optionals" data-target="part-3-optionals">Part 3 — Optionals</a></li><li class="toc-l3"><a href="#unwrapping-patterns" data-target="unwrapping-patterns">Unwrapping Patterns</a></li><li class="toc-l3"><a href="#implicitly-unwrapped-optionals" data-target="implicitly-unwrapped-optionals">Implicitly Unwrapped Optionals</a></li><li class="toc-l3"><a href="#optional-chaining-with-assignment" data-target="optional-chaining-with-assignment">Optional Chaining with Assignment</a></li><li class="toc-l2"><a href="#part-4-closures" data-target="part-4-closures">Part 4 — Closures</a></li><li class="toc-l3"><a href="#syntax" data-target="syntax">Syntax</a></li><li class="toc-l3"><a href="#capture-semantics" data-target="capture-semantics">Capture Semantics</a></li><li class="toc-l3"><a href="#escaping-vs-non-escaping" data-target="escaping-vs-non-escaping">Escaping vs. Non-Escaping</a></li><li class="toc-l3"><a href="#sendable-closures" data-target="sendable-closures">@Sendable Closures</a></li><li class="toc-l3"><a href="#higher-order-functions" data-target="higher-order-functions">Higher-Order Functions</a></li><li class="toc-l3"><a href="#keypath-expressions" data-target="keypath-expressions">KeyPath Expressions</a></li><li class="toc-l2"><a href="#part-5-enums-and-pattern-matching" data-target="part-5-enums-and-pattern-matching">Part 5 — Enums and Pattern Matching</a></li><li class="toc-l3"><a href="#basics" data-target="basics">Basics</a></li><li class="toc-l3"><a href="#associated-values" data-target="associated-values">Associated Values</a></li><li class="toc-l3"><a href="#raw-values" data-target="raw-values">Raw Values</a></li><li class="toc-l3"><a href="#pattern-matching" data-target="pattern-matching">Pattern Matching</a></li><li class="toc-l3"><a href="#recursive-enums" data-target="recursive-enums">Recursive Enums</a></li><li class="toc-l3"><a href="#caseiterable" data-target="caseiterable">CaseIterable</a></li><li class="toc-l3"><a href="#enum-without-cases-the-namespace-pattern" data-target="enum-without-cases-the-namespace-pattern">Enum Without Cases — The Namespace Pattern</a></li><li class="toc-l2"><a href="#part-6-protocols" data-target="part-6-protocols">Part 6 — Protocols</a></li><li class="toc-l3"><a href="#definition-and-conformance" data-target="definition-and-conformance">Definition and Conformance</a></li><li class="toc-l3"><a href="#protocol-extensions-default-implementations" data-target="protocol-extensions-default-implementations">Protocol Extensions — Default Implementations</a></li><li class="toc-l3"><a href="#protocol-composition" data-target="protocol-composition">Protocol Composition</a></li><li class="toc-l3"><a href="#associated-types" data-target="associated-types">Associated Types</a></li><li class="toc-l3"><a href="#some-vs-any-opaque-and-existential-types" data-target="some-vs-any-opaque-and-existential-types">some vs. any — Opaque and Existential Types</a></li><li class="toc-l3"><a href="#common-standard-library-protocols" data-target="common-standard-library-protocols">Common Standard Library Protocols</a></li><li class="toc-l2"><a href="#part-7-generics" data-target="part-7-generics">Part 7 — Generics</a></li><li class="toc-l3"><a href="#generic-functions" data-target="generic-functions">Generic Functions</a></li><li class="toc-l3"><a href="#generic-types" data-target="generic-types">Generic Types</a></li><li class="toc-l3"><a href="#constraints" data-target="constraints">Constraints</a></li><li class="toc-l3"><a href="#constrained-extensions" data-target="constrained-extensions">Constrained Extensions</a></li><li class="toc-l3"><a href="#phantom-types" data-target="phantom-types">Phantom Types</a></li><li class="toc-l2"><a href="#part-8-collections" data-target="part-8-collections">Part 8 — Collections</a></li><li class="toc-l3"><a href="#array" data-target="array">Array</a></li><li class="toc-l3"><a href="#dictionary" data-target="dictionary">Dictionary</a></li><li class="toc-l3"><a href="#set" data-target="set">Set</a></li><li class="toc-l3"><a href="#copy-on-write" data-target="copy-on-write">Copy-on-Write</a></li><li class="toc-l3"><a href="#sequence-and-collection-protocols" data-target="sequence-and-collection-protocols">Sequence and Collection Protocols</a></li><li class="toc-l2"><a href="#part-9-strings-and-unicode" data-target="part-9-strings-and-unicode">Part 9 — Strings and Unicode</a></li><li class="toc-l3"><a href="#string-is-not-an-array" data-target="string-is-not-an-array">String is Not an Array</a></li><li class="toc-l3"><a href="#string-views" data-target="string-views">String Views</a></li><li class="toc-l3"><a href="#substring" data-target="substring">Substring</a></li><li class="toc-l3"><a href="#string-interpolation" data-target="string-interpolation">String Interpolation</a></li><li class="toc-l3"><a href="#common-string-operations" data-target="common-string-operations">Common String Operations</a></li><li class="toc-l2"><a href="#part-10-error-handling" data-target="part-10-error-handling">Part 10 — Error Handling</a></li><li class="toc-l3"><a href="#throwing-functions" data-target="throwing-functions">Throwing Functions</a></li><li class="toc-l3"><a href="#typed-throws-swift-6" data-target="typed-throws-swift-6">Typed Throws (Swift 6+)</a></li><li class="toc-l3"><a href="#do-catch" data-target="do-catch">do-catch</a></li><li class="toc-l3"><a href="#try-and-try" data-target="try-and-try">try? and try!</a></li><li class="toc-l3"><a href="#result-type" data-target="result-type">Result Type</a></li><li class="toc-l3"><a href="#rethrows" data-target="rethrows">rethrows</a></li><li class="toc-l2"><a href="#part-11-concurrency" data-target="part-11-concurrency">Part 11 — Concurrency</a></li><li class="toc-l3"><a href="#asyncawait" data-target="asyncawait">async/await</a></li><li class="toc-l3"><a href="#structured-concurrency" data-target="structured-concurrency">Structured Concurrency</a></li><li class="toc-l3"><a href="#task" data-target="task">Task</a></li><li class="toc-l3"><a href="#task-cancellation" data-target="task-cancellation">Task Cancellation</a></li><li class="toc-l3"><a href="#actors" data-target="actors">Actors</a></li><li class="toc-l3"><a href="#mainactor" data-target="mainactor">@MainActor</a></li><li class="toc-l3"><a href="#sendable" data-target="sendable">Sendable</a></li><li class="toc-l3"><a href="#asyncsequence-and-asyncstream" data-target="asyncsequence-and-asyncstream">AsyncSequence and AsyncStream</a></li><li class="toc-l2"><a href="#part-12-macros" data-target="part-12-macros">Part 12 — Macros</a></li><li class="toc-l3"><a href="#freestanding-macros" data-target="freestanding-macros">Freestanding Macros</a></li><li class="toc-l3"><a href="#attached-macros" data-target="attached-macros">Attached Macros</a></li><li class="toc-l3"><a href="#macro-roles" data-target="macro-roles">Macro Roles</a></li><li class="toc-l3"><a href="#writing-a-macro" data-target="writing-a-macro">Writing a Macro</a></li><li class="toc-l2"><a href="#part-13-result-builders" data-target="part-13-result-builders">Part 13 — Result Builders</a></li><li class="toc-l3"><a href="#how-swiftuis-viewbuilder-works" data-target="how-swiftuis-viewbuilder-works">How SwiftUI's ViewBuilder Works</a></li><li class="toc-l3"><a href="#building-your-own" data-target="building-your-own">Building Your Own</a></li><li class="toc-l3"><a href="#builder-methods-reference" data-target="builder-methods-reference">Builder Methods Reference</a></li><li class="toc-l2"><a href="#part-14-property-wrappers" data-target="part-14-property-wrappers">Part 14 — Property Wrappers</a></li><li class="toc-l3"><a href="#anatomy" data-target="anatomy">Anatomy</a></li><li class="toc-l3"><a href="#projected-value" data-target="projected-value">Projected Value ($)</a></li><li class="toc-l3"><a href="#common-property-wrappers" data-target="common-property-wrappers">Common Property Wrappers</a></li><li class="toc-l2"><a href="#part-15-ownership-and-noncopyable-types" data-target="part-15-ownership-and-noncopyable-types">Part 15 — Ownership and Noncopyable Types</a></li><li class="toc-l3"><a href="#noncopyable-types-copyable" data-target="noncopyable-types-copyable">Noncopyable Types (~Copyable)</a></li><li class="toc-l3"><a href="#borrowing-and-consuming" data-target="borrowing-and-consuming">Borrowing and Consuming</a></li><li class="toc-l3"><a href="#when-to-use" data-target="when-to-use">When to Use</a></li><li class="toc-l2"><a href="#part-16-swift-6x-the-language-in-2026" data-target="part-16-swift-6x-the-language-in-2026">Part 16 — Swift 6.x: The Language in 2026</a></li><li class="toc-l3"><a href="#swift-version-timeline" data-target="swift-version-timeline">Swift Version Timeline</a></li><li class="toc-l3"><a href="#strict-concurrency-swift-60" data-target="strict-concurrency-swift-60">Strict Concurrency (Swift 6.0)</a></li><li class="toc-l3"><a href="#approachable-concurrency-swift-62" data-target="approachable-concurrency-swift-62">Approachable Concurrency (Swift 6.2)</a></li><li class="toc-l3"><a href="#inlinearray-swift-62" data-target="inlinearray-swift-62">InlineArray (Swift 6.2)</a></li><li class="toc-l3"><a href="#span-swift-62" data-target="span-swift-62">Span (Swift 6.2)</a></li><li class="toc-l3"><a href="#c-attribute-swift-63" data-target="c-attribute-swift-63">@c Attribute (Swift 6.3)</a></li><li class="toc-l3"><a href="#embedded-swift" data-target="embedded-swift">Embedded Swift</a></li><li class="toc-l3"><a href="#swift-on-non-apple-platforms" data-target="swift-on-non-apple-platforms">Swift on Non-Apple Platforms</a></li><li class="toc-l2"><a href="#quick-reference" data-target="quick-reference">Quick Reference</a></li><li class="toc-l3"><a href="#type-decision-tree" data-target="type-decision-tree">Type Decision Tree</a></li><li class="toc-l3"><a href="#memory-management-cheat-sheet" data-target="memory-management-cheat-sheet">Memory Management Cheat Sheet</a></li><li class="toc-l3"><a href="#concurrency-cheat-sheet" data-target="concurrency-cheat-sheet">Concurrency Cheat Sheet</a></li></ul></nav></aside>
+  <main><h1 id="swift">Swift</h1>
+<p>A depth-first guide to the Swift programming language in 2026 — not a tour, but a treatment of how the language actually works under the hood and how to use it idiomatically. Covers the type system, memory management (ARC), protocols and generics, collections and strings, error handling, closures and functional patterns, concurrency (actors, async/await, Sendable), macros, result builders, ownership and noncopyable types, and the Swift 6.x language evolution. The iOS Development guide is the companion for building apps with SwiftUI; this guide is about Swift itself.</p>
+<p>Assumes programming experience. No prior Swift knowledge required.</p>
+<p>Primary references: <a href="https://docs.swift.org/swift-book/">The Swift Programming Language</a>, the <a href="https://github.com/swiftlang/swift-evolution/tree/main/proposals">Swift Evolution proposals</a>, the <a href="https://github.com/swiftlang/swift">Swift source code</a>, and the <a href="https://www.swift.org/blog/">Swift blog</a>.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1--the-type-system">Part 1 — The Type System</a></li>
+<li><a href="#part-2--memory-management-arc">Part 2 — Memory Management: ARC</a></li>
+<li><a href="#part-3--optionals">Part 3 — Optionals</a></li>
+<li><a href="#part-4--closures">Part 4 — Closures</a></li>
+<li><a href="#part-5--enums-and-pattern-matching">Part 5 — Enums and Pattern Matching</a></li>
+<li><a href="#part-6--protocols">Part 6 — Protocols</a></li>
+<li><a href="#part-7--generics">Part 7 — Generics</a></li>
+<li><a href="#part-8--collections">Part 8 — Collections</a></li>
+<li><a href="#part-9--strings-and-unicode">Part 9 — Strings and Unicode</a></li>
+<li><a href="#part-10--error-handling">Part 10 — Error Handling</a></li>
+<li><a href="#part-11--concurrency">Part 11 — Concurrency</a></li>
+<li><a href="#part-12--macros">Part 12 — Macros</a></li>
+<li><a href="#part-13--result-builders">Part 13 — Result Builders</a></li>
+<li><a href="#part-14--property-wrappers">Part 14 — Property Wrappers</a></li>
+<li><a href="#part-15--ownership-and-noncopyable-types">Part 15 — Ownership and Noncopyable Types</a></li>
+<li><a href="#part-16--swift-6x-the-language-in-2026">Part 16 — Swift 6.x: The Language in 2026</a></li>
+</ol>
+<hr>
+<h2 id="part-1-the-type-system">Part 1 — The Type System</h2>
+<h3 id="value-types-vs-reference-types">Value Types vs. Reference Types</h3>
+<p>This is the most important distinction in Swift. It affects correctness, performance, thread safety, and architecture.</p>
+<p><strong>Value types</strong> (structs, enums, tuples) are <strong>copied</strong> on assignment. Each variable owns an independent copy:</p>
+<pre><code class="language-swift">struct Point {
+    var x: Double
+    var y: Double
+}
+
+var a = Point(x: 1, y: 2)
+var b = a        // b is an independent copy
+b.x = 99        // a.x is still 1
+</code></pre>
+<p><strong>Reference types</strong> (classes) are <strong>shared</strong>. Variables hold a pointer to the same heap-allocated object:</p>
+<pre><code class="language-swift">class Account {
+    var balance: Double
+    init(balance: Double) { self.balance = balance }
+}
+
+let a = Account(balance: 100)
+let b = a        // b points to the same object
+b.balance = 0    // a.balance is also 0 — same object
+</code></pre>
+<p><strong>Where they live:</strong>
+- Value types live on the <strong>stack</strong> (unless captured by a closure or boxed into a protocol existential, in which case the compiler may promote them to the heap).
+- Reference types always live on the <strong>heap</strong>, and variables hold a pointer.</p>
+<p><strong>The rule:</strong> prefer structs. Use classes only when you need identity (the object itself matters, not just its value), when you need inheritance, or when you need reference semantics for shared mutable state (and if you need that in concurrent code, use an actor instead).</p>
+<h3 id="mutability">Mutability</h3>
+<p>Swift separates mutability at the binding level (<code>let</code> vs <code>var</code>) and at the type level (mutating methods):</p>
+<pre><code class="language-swift">let immutable = Point(x: 1, y: 2)
+// immutable.x = 5    // compile error — let binding
+
+var mutable = Point(x: 1, y: 2)
+mutable.x = 5    // fine — var binding
+
+// for classes, let means the reference can't change — the object can
+let account = Account(balance: 100)
+account.balance = 200    // fine — the object is mutable
+// account = Account(balance: 0)    // error — can't reassign the reference
+</code></pre>
+<p>Structs that modify their own properties must mark methods as <code>mutating</code>:</p>
+<pre><code class="language-swift">struct Counter {
+    var count = 0
+
+    mutating func increment() {
+        count += 1
+    }
+}
+
+var counter = Counter()
+counter.increment()    // fine
+
+let fixedCounter = Counter()
+// fixedCounter.increment()    // error — can't call mutating method on let
+</code></pre>
+<h3 id="structs">Structs</h3>
+<pre><code class="language-swift">struct User {
+    let id: UUID             // immutable after init
+    var name: String
+    var email: String
+
+    // memberwise initializer is auto-generated:
+    // User(id:name:email:)
+
+    // custom init
+    init(name: String, email: String) {
+        self.id = UUID()
+        self.name = name
+        self.email = email
+    }
+
+    // computed property
+    var displayName: String {
+        name.isEmpty ? email : name
+    }
+
+    // static property
+    static let anonymous = User(name: &quot;Anonymous&quot;, email: &quot;&quot;)
+}
+</code></pre>
+<p>Key struct behaviors:
+- Auto-generated <strong>memberwise initializer</strong> (lost if you write a custom <code>init</code> — put custom inits in an extension to keep both).
+- No inheritance (use protocols for shared behavior).
+- Conforms to <code>Sendable</code> automatically if all stored properties are <code>Sendable</code>.
+- Copy-on-write is NOT automatic for custom structs — only for standard library types like <code>Array</code>, <code>String</code>, <code>Dictionary</code>. Your struct is copied on every assignment (though the compiler optimizes away many copies in practice).</p>
+<h3 id="classes">Classes</h3>
+<pre><code class="language-swift">class Vehicle {
+    let vin: String
+    var mileage: Double
+
+    init(vin: String, mileage: Double = 0) {
+        self.vin = vin
+        self.mileage = mileage
+    }
+
+    deinit {
+        print(&quot;Vehicle \(vin) deallocated&quot;)    // called when ref count hits 0
+    }
+
+    func drive(miles: Double) {
+        mileage += miles
+    }
+}
+
+class ElectricVehicle: Vehicle {
+    var batteryLevel: Double
+
+    init(vin: String, batteryLevel: Double) {
+        self.batteryLevel = batteryLevel
+        super.init(vin: vin)    // must call super after initializing own properties
+    }
+
+    override func drive(miles: Double) {
+        super.drive(miles: miles)
+        batteryLevel -= miles * 0.3
+    }
+}
+</code></pre>
+<p>Key class behaviors:
+- <strong>Reference counting</strong> (ARC) manages lifetime — see Part 2.
+- <strong>Inheritance</strong> — single class inheritance, unlimited protocol conformance.
+- <code>deinit</code> runs when the object is deallocated.
+- <code>final</code> prevents subclassing and enables static dispatch (faster method calls).</p>
+<h3 id="type-casting">Type Casting</h3>
+<pre><code class="language-swift">let vehicle: Vehicle = ElectricVehicle(vin: &quot;123&quot;, batteryLevel: 100)
+
+// conditional cast
+if let ev = vehicle as? ElectricVehicle {
+    print(&quot;Battery: \(ev.batteryLevel)&quot;)
+}
+
+// forced cast (crashes if wrong type — avoid)
+let ev = vehicle as! ElectricVehicle
+
+// type check
+if vehicle is ElectricVehicle {
+    print(&quot;It's electric&quot;)
+}
+</code></pre>
+<h3 id="type-aliases-and-nested-types">Type Aliases and Nested Types</h3>
+<pre><code class="language-swift">typealias Completion&lt;T&gt; = (Result&lt;T, Error&gt;) -&gt; Void
+typealias UserID = String
+
+struct APIClient {
+    // nested types — scope types inside their parent
+    enum Endpoint {
+        case users
+        case posts(userId: UserID)
+
+        var path: String {
+            switch self {
+            case .users: return &quot;/users&quot;
+            case .posts(let id): return &quot;/users/\(id)/posts&quot;
+            }
+        }
+    }
+}
+
+// used as APIClient.Endpoint.users
+</code></pre>
+<hr>
+<h2 id="part-2-memory-management-arc">Part 2 — Memory Management: ARC</h2>
+<p>Swift uses <strong>Automatic Reference Counting (ARC)</strong> — not garbage collection. The compiler inserts <code>retain</code> and <code>release</code> calls at compile time; the runtime tracks reference counts and deallocates objects when the count reaches zero. It's deterministic: deallocation happens immediately, with no GC pauses.</p>
+<h3 id="how-arc-works">How ARC Works</h3>
+<p>Every class instance has a reference count stored in its header on the heap:</p>
+<pre><code class="language-swift">class Dog {
+    let name: String
+    init(name: String) { self.name = name }
+    deinit { print(&quot;\(name) deallocated&quot;) }
+}
+
+var a: Dog? = Dog(name: &quot;Rex&quot;)    // ref count = 1
+var b = a                         // ref count = 2
+a = nil                           // ref count = 1
+b = nil                           // ref count = 0 → deinit → &quot;Rex deallocated&quot;
+</code></pre>
+<p>This works perfectly for trees and acyclic object graphs. The problem is <strong>retain cycles</strong>.</p>
+<h3 id="retain-cycles">Retain Cycles</h3>
+<p>A retain cycle occurs when two objects hold strong references to each other. Their reference counts never reach zero, and they leak:</p>
+<pre><code class="language-swift">class Person {
+    let name: String
+    var pet: Dog?
+    init(name: String) { self.name = name }
+    deinit { print(&quot;\(name) deallocated&quot;) }
+}
+
+class Dog {
+    let name: String
+    var owner: Person?    // STRONG reference — creates cycle
+    init(name: String) { self.name = name }
+    deinit { print(&quot;\(name) deallocated&quot;) }
+}
+
+var alice: Person? = Person(name: &quot;Alice&quot;)
+var rex: Dog? = Dog(name: &quot;Rex&quot;)
+
+alice?.pet = rex       // Person → Dog (strong)
+rex?.owner = alice     // Dog → Person (strong) — CYCLE
+
+alice = nil    // Person ref count: 1 (Dog still holds it)
+rex = nil      // Dog ref count: 1 (Person still holds it)
+// neither deinit runs — both leaked
+</code></pre>
+<h3 id="breaking-cycles-weak-and-unowned">Breaking Cycles: weak and unowned</h3>
+<p><strong><code>weak</code></strong> — the safe choice. Automatically set to <code>nil</code> when the referenced object is deallocated. Always optional:</p>
+<pre><code class="language-swift">class Dog {
+    let name: String
+    weak var owner: Person?    // weak — does NOT increment ref count
+    init(name: String) { self.name = name }
+}
+
+// Now when alice = nil, Person's ref count reaches 0
+// Person deallocates, Dog.owner becomes nil
+// Then rex = nil, Dog deallocates
+</code></pre>
+<p><strong><code>unowned</code></strong> — for when the referenced object is guaranteed to outlive the holder. Non-optional. <strong>Crashes if accessed after the object is deallocated:</strong></p>
+<pre><code class="language-swift">class CreditCard {
+    let number: String
+    unowned let holder: Person    // holder always outlives the card
+
+    init(number: String, holder: Person) {
+        self.number = number
+        self.holder = holder
+    }
+}
+</code></pre>
+<p><strong>Decision:</strong> default to <code>weak</code>. Use <code>unowned</code> only when you can prove the lifetime relationship makes dangling access impossible.</p>
+<h3 id="closures-and-retain-cycles">Closures and Retain Cycles</h3>
+<p>Closures capture references to objects they use. If an object holds a closure that captures <code>self</code>, you get a cycle:</p>
+<pre><code class="language-swift">class ViewModel {
+    var name = &quot;Alice&quot;
+    var onUpdate: (() -&gt; Void)?
+
+    func setup() {
+        // BAD — closure captures self strongly, self holds closure
+        onUpdate = {
+            print(self.name)    // retains self
+        }
+    }
+
+    // GOOD — capture list breaks the cycle
+    func setupCorrectly() {
+        onUpdate = { [weak self] in
+            guard let self else { return }
+            print(self.name)
+        }
+    }
+}
+</code></pre>
+<p><strong>Capture lists</strong> — <code>[weak self]</code>, <code>[unowned self]</code>, or capture specific values:</p>
+<pre><code class="language-swift">let id = user.id
+onUpdate = { [id] in    // captures the VALUE of id, not a reference to user
+    print(id)
+}
+</code></pre>
+<h3 id="detecting-leaks">Detecting Leaks</h3>
+<ul>
+<li><strong>Xcode Memory Graph Debugger:</strong> Debug → Debug Memory Graph. Shows all live objects and their references. Look for cycles.</li>
+<li><strong>Instruments → Leaks:</strong> Profile your app and the Leaks instrument flags objects that are unreachable but not deallocated.</li>
+<li><strong>Instruments → Allocations:</strong> Track allocation patterns and identify objects that grow without bound.</li>
+<li><strong><code>deinit</code> logging:</strong> Temporary <code>print</code> statements in <code>deinit</code> to verify objects are being released.</li>
+</ul>
+<hr>
+<h2 id="part-3-optionals">Part 3 — Optionals</h2>
+<p>Optionals are implemented as an enum with two cases:</p>
+<pre><code class="language-swift">enum Optional&lt;Wrapped&gt; {
+    case none          // nil
+    case some(Wrapped) // has a value
+}
+</code></pre>
+<p><code>String?</code> is syntactic sugar for <code>Optional&amp;lt;String&amp;gt;</code>.</p>
+<h3 id="unwrapping-patterns">Unwrapping Patterns</h3>
+<pre><code class="language-swift">let name: String? = fetchName()
+
+// 1. if let — bind if non-nil
+if let name {    // Swift 5.7+ shorthand (same as: if let name = name)
+    print(name)  // name is String here
+}
+
+// 2. guard let — early return if nil
+func greet(_ name: String?) {
+    guard let name else {
+        print(&quot;No name&quot;)
+        return
+    }
+    // name is String for the rest of the function
+    print(&quot;Hello, \(name)&quot;)
+}
+
+// 3. nil-coalescing — provide a default
+let displayName = name ?? &quot;Anonymous&quot;    // String, not String?
+
+// 4. optional chaining — propagate nil
+let count = name?.count           // Int? — nil if name is nil
+let upper = name?.uppercased()    // String?
+
+// chained multiple levels deep
+let firstChar = user?.address?.city?.first    // Character?
+
+// 5. map and flatMap — transform without unwrapping
+let greeting = name.map { &quot;Hello, \($0)&quot; }    // String?
+let parsed = optionalString.flatMap { Int($0) }    // Int? (avoids Int??)
+
+// 6. switch
+switch name {
+case .some(let value):
+    print(value)
+case .none:
+    print(&quot;nil&quot;)
+}
+
+// 7. force unwrap — AVOID in production
+let unsafeName = name!    // crashes at runtime if nil
+</code></pre>
+<h3 id="implicitly-unwrapped-optionals">Implicitly Unwrapped Optionals</h3>
+<p><code>String!</code> — an optional that's automatically force-unwrapped on access. Used only for values that are guaranteed to be set before use but can't be set during init:</p>
+<pre><code class="language-swift">// only real use case: Interface Builder outlets (UIKit legacy)
+@IBOutlet weak var label: UILabel!
+
+// and some Apple framework delegation patterns
+// NEVER use in your own APIs
+</code></pre>
+<h3 id="optional-chaining-with-assignment">Optional Chaining with Assignment</h3>
+<pre><code class="language-swift">struct Settings {
+    var theme: Theme?
+}
+
+var settings: Settings? = Settings()
+settings?.theme = .dark    // sets if settings is non-nil, no-op if nil
+</code></pre>
+<hr>
+<h2 id="part-4-closures">Part 4 — Closures</h2>
+<p>Closures are self-contained blocks of functionality. They can capture and store references to variables and constants from the surrounding context.</p>
+<h3 id="syntax">Syntax</h3>
+<pre><code class="language-swift">// full syntax
+let add: (Int, Int) -&gt; Int = { (a: Int, b: Int) -&gt; Int in
+    return a + b
+}
+
+// type inference removes parameter types and return type
+let add: (Int, Int) -&gt; Int = { a, b in
+    return a + b
+}
+
+// implicit return for single-expression closures
+let add: (Int, Int) -&gt; Int = { a, b in a + b }
+
+// shorthand argument names
+let add: (Int, Int) -&gt; Int = { $0 + $1 }
+
+// trailing closure syntax — when the last parameter is a closure
+let sorted = names.sorted { $0 &lt; $1 }
+
+// multiple trailing closures
+Button {
+    save()
+} label: {
+    Label(&quot;Save&quot;, systemImage: &quot;square.and.arrow.down&quot;)
+}
+</code></pre>
+<h3 id="capture-semantics">Capture Semantics</h3>
+<p>Closures capture variables <strong>by reference</strong> (for reference types) and <strong>by value</strong> (for value types, but they capture the variable itself, not a snapshot):</p>
+<pre><code class="language-swift">var counter = 0
+let increment = { counter += 1 }    // captures the variable 'counter'
+increment()
+increment()
+print(counter)    // 2 — the closure mutated the original variable
+
+// capture list — capture a snapshot of the value
+var x = 10
+let snapshot = { [x] in print(x) }
+x = 99
+snapshot()    // prints 10 — captured the value at creation time
+</code></pre>
+<h3 id="escaping-vs-non-escaping">Escaping vs. Non-Escaping</h3>
+<p>By default, closure parameters are <strong>non-escaping</strong> — they can't outlive the function call. If you need to store the closure (for callbacks, async work), mark it <code>@escaping</code>:</p>
+<pre><code class="language-swift">// non-escaping (default) — closure runs before the function returns
+func apply(_ transform: (Int) -&gt; Int, to value: Int) -&gt; Int {
+    transform(value)
+}
+
+// escaping — closure is stored or called after the function returns
+class Downloader {
+    var completionHandlers: [() -&gt; Void] = []
+
+    func download(completion: @escaping () -&gt; Void) {
+        completionHandlers.append(completion)    // stored — must be @escaping
+    }
+}
+</code></pre>
+<p><strong>Why it matters:</strong> non-escaping closures don't need to worry about retain cycles (they can't outlive <code>self</code>). Escaping closures can create retain cycles — use <code>[weak self]</code>.</p>
+<h3 id="sendable-closures">@Sendable Closures</h3>
+<p>In Swift 6, closures that cross concurrency boundaries must be <code>@Sendable</code> — they can't capture mutable state:</p>
+<pre><code class="language-swift">func onBackground(_ work: @Sendable @escaping () -&gt; Void) {
+    Task.detached { work() }
+}
+
+var count = 0
+onBackground {
+    // count += 1    // ERROR in Swift 6: capturing mutable var in @Sendable closure
+}
+</code></pre>
+<h3 id="higher-order-functions">Higher-Order Functions</h3>
+<p>Swift's standard library provides functional-style operations on sequences:</p>
+<pre><code class="language-swift">let numbers = [1, 2, 3, 4, 5]
+
+// map — transform each element
+let doubled = numbers.map { $0 * 2 }             // [2, 4, 6, 8, 10]
+
+// filter — keep elements matching a predicate
+let evens = numbers.filter { $0.isMultiple(of: 2) }  // [2, 4]
+
+// reduce — combine all elements into a single value
+let sum = numbers.reduce(0, +)                    // 15
+
+// compactMap — map + remove nils
+let parsed = [&quot;1&quot;, &quot;two&quot;, &quot;3&quot;].compactMap { Int($0) }  // [1, 3]
+
+// flatMap — map + flatten nested arrays
+let nested = [[1, 2], [3, 4]]
+let flat = nested.flatMap { $0 }                  // [1, 2, 3, 4]
+
+// chaining
+let result = users
+    .filter { $0.isActive }
+    .sorted { $0.name &lt; $1.name }
+    .map { $0.email }
+
+// lazy — defer computation until needed (avoids intermediate arrays)
+let firstActive = users.lazy
+    .filter { $0.isActive }
+    .map { $0.name }
+    .first    // only processes elements until it finds the first match
+</code></pre>
+<h3 id="keypath-expressions">KeyPath Expressions</h3>
+<p>KeyPaths are type-safe references to properties. They can replace simple closures:</p>
+<pre><code class="language-swift">struct User {
+    let name: String
+    let age: Int
+}
+
+let users = [User(name: &quot;Alice&quot;, age: 30), User(name: &quot;Bob&quot;, age: 25)]
+
+// closure syntax
+let names = users.map { $0.name }
+
+// keypath syntax (equivalent)
+let names = users.map(\.name)
+
+// sorting with keypath
+let sorted = users.sorted(by: \.age)
+
+// writable keypaths
+struct Settings {
+    var volume: Int = 50
+}
+var s = Settings()
+let path = \Settings.volume
+s[keyPath: path] = 75    // sets volume to 75
+</code></pre>
+<hr>
+<h2 id="part-5-enums-and-pattern-matching">Part 5 — Enums and Pattern Matching</h2>
+<p>Swift enums are algebraic data types — each case can carry different associated values. This makes them the right tool for modeling state machines, errors, API responses, and any type with a fixed set of variants.</p>
+<h3 id="basics">Basics</h3>
+<pre><code class="language-swift">enum Direction {
+    case north, south, east, west
+}
+
+let heading: Direction = .north    // type inferred from context
+</code></pre>
+<h3 id="associated-values">Associated Values</h3>
+<p>Each case can carry different data:</p>
+<pre><code class="language-swift">enum Media {
+    case image(url: URL, width: Int, height: Int)
+    case video(url: URL, duration: TimeInterval)
+    case text(String)
+    case audio(url: URL, sampleRate: Int)
+}
+
+let content: Media = .image(url: imageURL, width: 1920, height: 1080)
+</code></pre>
+<h3 id="raw-values">Raw Values</h3>
+<p>For simple mappings to primitive types:</p>
+<pre><code class="language-swift">enum HTTPMethod: String {
+    case get = &quot;GET&quot;
+    case post = &quot;POST&quot;
+    case put = &quot;PUT&quot;
+    case delete = &quot;DELETE&quot;
+}
+
+let method = HTTPMethod.get
+print(method.rawValue)    // &quot;GET&quot;
+
+// init from raw value (returns optional)
+let parsed = HTTPMethod(rawValue: &quot;POST&quot;)    // .post
+
+// integer raw values auto-increment
+enum Priority: Int {
+    case low = 1
+    case medium     // 2
+    case high       // 3
+}
+</code></pre>
+<h3 id="pattern-matching">Pattern Matching</h3>
+<p><code>switch</code> must be exhaustive — every possible case must be handled:</p>
+<pre><code class="language-swift">func describe(_ media: Media) -&gt; String {
+    switch media {
+    case .image(_, let w, let h):
+        return &quot;\(w)×\(h) image&quot;
+    case .video(_, let duration) where duration &gt; 3600:
+        return &quot;long video (\(Int(duration / 60)) min)&quot;
+    case .video(_, let duration):
+        return &quot;\(Int(duration))s video&quot;
+    case .text(let content) where content.isEmpty:
+        return &quot;empty text&quot;
+    case .text:
+        return &quot;text&quot;
+    case .audio:
+        return &quot;audio&quot;
+    }
+}
+</code></pre>
+<p>Pattern matching works in <code>if case</code>, <code>guard case</code>, and <code>for case</code>:</p>
+<pre><code class="language-swift">// if case — match a single pattern
+if case .image(let url, _, _) = content {
+    loadImage(from: url)
+}
+
+// guard case — early return if no match
+guard case .video(let url, _) = content else {
+    return
+}
+playVideo(url)
+
+// for case — filter and extract from a collection
+let items: [Media] = [...]
+for case .image(let url, _, _) in items {
+    prefetchImage(url)    // only processes .image cases
+}
+</code></pre>
+<h3 id="recursive-enums">Recursive Enums</h3>
+<p>Use <code>indirect</code> for enums that reference themselves:</p>
+<pre><code class="language-swift">indirect enum ArithExpr {
+    case number(Double)
+    case add(ArithExpr, ArithExpr)
+    case multiply(ArithExpr, ArithExpr)
+}
+
+func evaluate(_ expr: ArithExpr) -&gt; Double {
+    switch expr {
+    case .number(let value):
+        return value
+    case .add(let lhs, let rhs):
+        return evaluate(lhs) + evaluate(rhs)
+    case .multiply(let lhs, let rhs):
+        return evaluate(lhs) * evaluate(rhs)
+    }
+}
+
+let expr = ArithExpr.add(.number(2), .multiply(.number(3), .number(4)))
+print(evaluate(expr))    // 14.0
+</code></pre>
+<h3 id="caseiterable">CaseIterable</h3>
+<p>Auto-generate a collection of all cases:</p>
+<pre><code class="language-swift">enum Theme: String, CaseIterable {
+    case light, dark, system
+}
+
+for theme in Theme.allCases {
+    print(theme.rawValue)
+}
+</code></pre>
+<h3 id="enum-without-cases-the-namespace-pattern">Enum Without Cases — The Namespace Pattern</h3>
+<p>An enum with no cases cannot be instantiated. Use it as a namespace:</p>
+<pre><code class="language-swift">enum API {
+    static let baseURL = URL(string: &quot;https://api.example.com&quot;)!
+    static let timeout: TimeInterval = 30
+}
+
+// API() — compile error, can't instantiate
+</code></pre>
+<hr>
+<h2 id="part-6-protocols">Part 6 — Protocols</h2>
+<p>Protocols define a contract — a set of requirements — that conforming types must satisfy. Unlike class inheritance, any type (struct, enum, class, actor) can conform to any number of protocols.</p>
+<h3 id="definition-and-conformance">Definition and Conformance</h3>
+<pre><code class="language-swift">protocol Describable {
+    var summary: String { get }
+    func describe() -&gt; String
+}
+
+// property requirements specify get-only or get+set
+protocol Configurable {
+    var isEnabled: Bool { get set }    // must be read-write
+    var name: String { get }          // must be at least readable
+}
+
+struct User: Describable {
+    let name: String
+
+    var summary: String { name }
+
+    func describe() -&gt; String {
+        &quot;User: \(name)&quot;
+    }
+}
+</code></pre>
+<h3 id="protocol-extensions-default-implementations">Protocol Extensions — Default Implementations</h3>
+<p>Protocol extensions provide default behavior. Conforming types can override them:</p>
+<pre><code class="language-swift">extension Describable {
+    func describe() -&gt; String {
+        &quot;Description: \(summary)&quot;    // default implementation
+    }
+}
+
+// User can choose to use the default or provide its own
+</code></pre>
+<p><strong>Static vs. dynamic dispatch:</strong> methods declared in the protocol itself use <strong>dynamic dispatch</strong> (the correct implementation is called even through a protocol type). Methods declared only in the extension (not in the protocol) use <strong>static dispatch</strong> (the extension's implementation is always called, regardless of the concrete type):</p>
+<pre><code class="language-swift">protocol Animal {
+    func sound() -&gt; String           // protocol requirement — dynamic dispatch
+}
+
+extension Animal {
+    func sound() -&gt; String { &quot;...&quot; } // default for sound()
+    func description() -&gt; String {   // NOT in protocol — static dispatch
+        &quot;An animal that says \(sound())&quot;
+    }
+}
+
+struct Dog: Animal {
+    func sound() -&gt; String { &quot;Woof&quot; }
+    func description() -&gt; String { &quot;A dog&quot; }
+}
+
+let dog = Dog()
+dog.sound()         // &quot;Woof&quot; — Dog's implementation
+dog.description()   // &quot;A dog&quot; — Dog's implementation
+
+let animal: any Animal = Dog()
+animal.sound()       // &quot;Woof&quot; — dynamic dispatch finds Dog's implementation
+animal.description() // &quot;An animal that says Woof&quot; — STATIC dispatch uses extension
+</code></pre>
+<p>This is a common source of bugs. <strong>Rule:</strong> if you want polymorphic behavior, declare the method in the protocol, not just the extension.</p>
+<h3 id="protocol-composition">Protocol Composition</h3>
+<p>Combine multiple protocols as a single requirement:</p>
+<pre><code class="language-swift">func save(_ item: any Codable &amp; Identifiable) { /* ... */ }
+
+// or with a typealias
+typealias Persistable = Codable &amp; Identifiable &amp; Hashable
+</code></pre>
+<h3 id="associated-types">Associated Types</h3>
+<p>Protocols with associated types are generic protocols — the conforming type fills in the placeholder:</p>
+<pre><code class="language-swift">protocol Repository {
+    associatedtype Item: Identifiable
+
+    func fetchAll() async throws -&gt; [Item]
+    func fetch(id: Item.ID) async throws -&gt; Item
+    func save(_ item: Item) async throws
+}
+
+struct UserRepository: Repository {
+    typealias Item = User    // compiler infers this from the method signatures
+
+    func fetchAll() async throws -&gt; [User] { /* ... */ }
+    func fetch(id: String) async throws -&gt; User { /* ... */ }
+    func save(_ user: User) async throws { /* ... */ }
+}
+</code></pre>
+<h3 id="some-vs-any-opaque-and-existential-types"><code>some</code> vs. <code>any</code> — Opaque and Existential Types</h3>
+<p>These are two different ways to use a protocol as a type:</p>
+<p><strong><code>some Protocol</code></strong> — opaque type. The compiler knows the concrete type; the caller doesn't. Static dispatch, no heap allocation overhead:</p>
+<pre><code class="language-swift">func makeAnimal() -&gt; some Animal {
+    Dog()    // compiler knows this returns Dog
+}
+// caller sees 'some Animal' — can't know it's Dog
+// but the compiler uses static dispatch (fast)
+</code></pre>
+<p><strong><code>any Protocol</code></strong> — existential type. Runtime polymorphism. Can hold any conforming type. Dynamic dispatch, potential heap allocation:</p>
+<pre><code class="language-swift">func processAnimals(_ animals: [any Animal]) {
+    for animal in animals {
+        print(animal.sound())    // dynamic dispatch
+    }
+}
+
+let mixed: [any Animal] = [Dog(), Cat(), Fish()]    // heterogeneous
+</code></pre>
+<p><strong>Rule of thumb:</strong> use <code>some</code> by default (generics). Use <code>any</code> when you need a heterogeneous collection or runtime flexibility.</p>
+<h3 id="common-standard-library-protocols">Common Standard Library Protocols</h3>
+<table>
+<thead>
+<tr>
+<th>Protocol</th>
+<th>What it provides</th>
+<th>Typical use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Equatable</code></td>
+<td><code>==</code> operator</td>
+<td>Comparing values</td>
+</tr>
+<tr>
+<td><code>Hashable</code></td>
+<td>Hash value</td>
+<td>Dictionary keys, Set members</td>
+</tr>
+<tr>
+<td><code>Comparable</code></td>
+<td><code>&lt;</code>, <code>&gt;</code> operators</td>
+<td>Sorting</td>
+</tr>
+<tr>
+<td><code>Codable</code></td>
+<td>JSON/Plist encoding/decoding</td>
+<td>Serialization</td>
+</tr>
+<tr>
+<td><code>Identifiable</code></td>
+<td><code>id</code> property</td>
+<td>SwiftUI lists, diffing</td>
+</tr>
+<tr>
+<td><code>CustomStringConvertible</code></td>
+<td><code>description</code> property</td>
+<td>String interpolation</td>
+</tr>
+<tr>
+<td><code>Sendable</code></td>
+<td>Safe to pass across concurrency boundaries</td>
+<td>Actors, async/await</td>
+</tr>
+<tr>
+<td><code>Error</code></td>
+<td>Can be thrown</td>
+<td>Error handling</td>
+</tr>
+<tr>
+<td><code>Sequence</code> / <code>Collection</code></td>
+<td>Iteration / indexed access</td>
+<td>Custom collections</td>
+</tr>
+</tbody>
+</table>
+<p>Most of these can be auto-synthesized by the compiler:</p>
+<pre><code class="language-swift">struct User: Identifiable, Codable, Hashable {
+    let id: UUID
+    var name: String
+    var email: String
+    // Codable, Hashable, Equatable are auto-synthesized
+}
+</code></pre>
+<hr>
+<h2 id="part-7-generics">Part 7 — Generics</h2>
+<p>Generics let you write flexible, reusable code that works with any type, subject to constraints.</p>
+<h3 id="generic-functions">Generic Functions</h3>
+<pre><code class="language-swift">func swapped&lt;T&gt;(_ a: T, _ b: T) -&gt; (T, T) {
+    (b, a)
+}
+
+let result = swapped(1, 2)    // (2, 1)
+let names = swapped(&quot;Alice&quot;, &quot;Bob&quot;)    // (&quot;Bob&quot;, &quot;Alice&quot;)
+</code></pre>
+<h3 id="generic-types">Generic Types</h3>
+<pre><code class="language-swift">struct Stack&lt;Element&gt; {
+    private var items: [Element] = []
+
+    var isEmpty: Bool { items.isEmpty }
+    var count: Int { items.count }
+
+    mutating func push(_ item: Element) {
+        items.append(item)
+    }
+
+    mutating func pop() -&gt; Element? {
+        items.popLast()
+    }
+
+    func peek() -&gt; Element? {
+        items.last
+    }
+}
+
+var intStack = Stack&lt;Int&gt;()
+intStack.push(1)
+intStack.push(2)
+print(intStack.pop())    // Optional(2)
+</code></pre>
+<h3 id="constraints">Constraints</h3>
+<pre><code class="language-swift">// single constraint
+func largest&lt;T: Comparable&gt;(_ a: T, _ b: T) -&gt; T {
+    a &gt; b ? a : b
+}
+
+// multiple constraints
+func findDuplicate&lt;T: Hashable &amp; Comparable&gt;(in array: [T]) -&gt; T? {
+    var seen = Set&lt;T&gt;()
+    for item in array {
+        if seen.contains(item) { return item }
+        seen.insert(item)
+    }
+    return nil
+}
+
+// where clause for complex constraints
+func merge&lt;S1: Sequence, S2: Sequence&gt;(
+    _ a: S1, _ b: S2
+) -&gt; [S1.Element] where S1.Element == S2.Element, S1.Element: Hashable {
+    Array(Set(Array(a) + Array(b)))
+}
+</code></pre>
+<h3 id="constrained-extensions">Constrained Extensions</h3>
+<p>Add functionality to a generic type only when its type parameters meet certain constraints:</p>
+<pre><code class="language-swift">extension Stack where Element: Equatable {
+    func contains(_ item: Element) -&gt; Bool {
+        items.contains(item)
+    }
+}
+
+extension Stack where Element: Numeric {
+    func sum() -&gt; Element {
+        items.reduce(0, +)
+    }
+}
+
+extension Array where Element: StringProtocol {
+    func joinedWithComma() -&gt; String {
+        joined(separator: &quot;, &quot;)
+    }
+}
+</code></pre>
+<h3 id="phantom-types">Phantom Types</h3>
+<p>Use generic parameters that appear in the type signature but not in stored properties — for compile-time enforcement of constraints:</p>
+<pre><code class="language-swift">struct Identifier&lt;Entity&gt;: Hashable {
+    let rawValue: String
+}
+
+struct User {
+    let id: Identifier&lt;User&gt;
+    let name: String
+}
+
+struct Post {
+    let id: Identifier&lt;Post&gt;
+    let title: String
+}
+
+func fetchUser(id: Identifier&lt;User&gt;) async throws -&gt; User { /* ... */ }
+
+let userId = Identifier&lt;User&gt;(rawValue: &quot;123&quot;)
+let postId = Identifier&lt;Post&gt;(rawValue: &quot;456&quot;)
+
+// fetchUser(id: postId)    // compile error — wrong phantom type
+</code></pre>
+<hr>
+<h2 id="part-8-collections">Part 8 — Collections</h2>
+<h3 id="array">Array</h3>
+<pre><code class="language-swift">var numbers = [1, 2, 3, 4, 5]
+
+// access
+numbers[0]           // 1
+numbers.first        // Optional(1)
+numbers.last         // Optional(5)
+
+// mutating
+numbers.append(6)
+numbers.insert(0, at: 0)
+numbers.remove(at: 3)
+numbers.removeAll { $0.isMultiple(of: 2) }
+
+// transforming
+let doubled = numbers.map { $0 * 2 }
+let evens = numbers.filter { $0 % 2 == 0 }
+let sum = numbers.reduce(0, +)
+
+// slicing — returns ArraySlice, not Array
+let firstThree = numbers.prefix(3)         // ArraySlice&lt;Int&gt;
+let tail = numbers.dropFirst()
+
+// checking
+numbers.contains(3)           // true
+numbers.allSatisfy { $0 &gt; 0 } // true
+numbers.isEmpty                // false
+
+// sorting
+numbers.sort()                     // in-place
+let sorted = numbers.sorted()     // returns new array
+let custom = users.sorted { $0.name &lt; $1.name }
+let byKey = users.sorted(using: KeyPathComparator(\.age))
+</code></pre>
+<h3 id="dictionary">Dictionary</h3>
+<pre><code class="language-swift">var scores: [String: Int] = [
+    &quot;Alice&quot;: 95,
+    &quot;Bob&quot;: 87,
+]
+
+// access — always returns optional
+scores[&quot;Alice&quot;]        // Optional(95)
+scores[&quot;Charlie&quot;]      // nil
+
+// default value
+scores[&quot;Charlie&quot;, default: 0]    // 0 — does NOT insert
+
+// mutation
+scores[&quot;Charlie&quot;] = 72           // insert
+scores[&quot;Alice&quot;] = nil            // remove
+scores.removeValue(forKey: &quot;Bob&quot;)
+
+// merge
+scores.merge([&quot;Dave&quot;: 91, &quot;Alice&quot;: 100]) { _, new in new }
+
+// iteration (order is NOT guaranteed)
+for (name, score) in scores {
+    print(&quot;\(name): \(score)&quot;)
+}
+
+// transform
+let passing = scores.filter { $0.value &gt;= 90 }
+let names = scores.map { $0.key }
+let grouped = users.reduce(into: [:]) { dict, user in
+    dict[user.department, default: []].append(user)
+}
+</code></pre>
+<h3 id="set">Set</h3>
+<pre><code class="language-swift">var tags: Set&lt;String&gt; = [&quot;swift&quot;, &quot;ios&quot;, &quot;xcode&quot;]
+
+tags.insert(&quot;swiftui&quot;)
+tags.remove(&quot;xcode&quot;)
+tags.contains(&quot;swift&quot;)    // true
+
+// set operations
+let a: Set = [1, 2, 3, 4]
+let b: Set = [3, 4, 5, 6]
+
+a.union(b)            // {1, 2, 3, 4, 5, 6}
+a.intersection(b)     // {3, 4}
+a.subtracting(b)      // {1, 2}
+a.symmetricDifference(b)  // {1, 2, 5, 6}
+a.isSubset(of: b)     // false
+</code></pre>
+<h3 id="copy-on-write">Copy-on-Write</h3>
+<p><code>Array</code>, <code>Dictionary</code>, <code>Set</code>, and <code>String</code> use <strong>copy-on-write</strong> internally. When you assign to a new variable, the underlying storage is shared — the actual copy only happens when one of the copies is mutated:</p>
+<pre><code class="language-swift">var a = [1, 2, 3]
+var b = a            // no copy yet — shared storage
+
+b.append(4)          // NOW the storage is copied for b
+// a and b are independent: a = [1,2,3], b = [1,2,3,4]
+</code></pre>
+<p>This gives you value semantics (safe, no shared mutable state) with reference-type performance (copies are deferred until needed). Custom structs do NOT get this automatically — you must implement it manually using <code>isKnownUniquelyReferenced</code>.</p>
+<h3 id="sequence-and-collection-protocols">Sequence and Collection Protocols</h3>
+<p>To create a custom collection, conform to <code>Sequence</code> (for iteration) or <code>Collection</code> (for indexed access):</p>
+<pre><code class="language-swift">// minimal Sequence conformance
+struct Countdown: Sequence {
+    let start: Int
+
+    func makeIterator() -&gt; CountdownIterator {
+        CountdownIterator(current: start)
+    }
+}
+
+struct CountdownIterator: IteratorProtocol {
+    var current: Int
+
+    mutating func next() -&gt; Int? {
+        guard current &gt; 0 else { return nil }
+        defer { current -= 1 }
+        return current
+    }
+}
+
+for n in Countdown(start: 5) {
+    print(n)    // 5, 4, 3, 2, 1
+}
+</code></pre>
+<hr>
+<h2 id="part-9-strings-and-unicode">Part 9 — Strings and Unicode</h2>
+<p>Swift strings are correct-by-default for Unicode — but this means they behave differently from strings in most other languages.</p>
+<h3 id="string-is-not-an-array">String is Not an Array</h3>
+<p>You cannot index a Swift String with integers:</p>
+<pre><code class="language-swift">let text = &quot;Hello&quot;
+// text[0]    // compile error — no integer subscript
+text[text.startIndex]                     // &quot;H&quot;
+text[text.index(text.startIndex, offsetBy: 1)]    // &quot;e&quot;
+</code></pre>
+<p><strong>Why:</strong> Swift strings are composed of <strong>extended grapheme clusters</strong> — the character as a human perceives it. A single "character" can be multiple Unicode scalars:</p>
+<pre><code class="language-swift">let flag = &quot;🇺🇸&quot;
+flag.count              // 1 — one grapheme cluster
+flag.unicodeScalars.count    // 2 — U+1F1FA U+1F1F8
+
+let accent = &quot;é&quot;
+accent.count            // 1
+accent.unicodeScalars.count  // could be 1 (U+00E9) or 2 (e + combining accent)
+
+let family = &quot;👨‍👩‍👧‍👦&quot;
+family.count            // 1 — one grapheme cluster
+family.unicodeScalars.count  // 7 — four emoji joined by ZWJ characters
+</code></pre>
+<p>Because grapheme clusters have variable width, <code>String.count</code> is O(n) — it must walk the entire string to count characters. This is why integer subscripting isn't provided: <code>text[5]</code> would also be O(n), which would be misleadingly expensive.</p>
+<h3 id="string-views">String Views</h3>
+<p>Access the underlying representation via views:</p>
+<pre><code class="language-swift">let text = &quot;Hello, 世界!&quot;
+
+text.count                        // 9 characters (grapheme clusters)
+text.utf8.count                   // 15 bytes
+text.utf16.count                  // 11 code units
+text.unicodeScalars.count         // 9 scalar values
+
+// iterate over specific views
+for scalar in text.unicodeScalars {
+    print(scalar, scalar.value)
+}
+
+for byte in text.utf8 {
+    print(byte)
+}
+</code></pre>
+<h3 id="substring">Substring</h3>
+<p>Slicing a string produces a <code>Substring</code>, which shares storage with the original string (zero-copy):</p>
+<pre><code class="language-swift">let greeting = &quot;Hello, World!&quot;
+let hello = greeting.prefix(5)    // Substring — shares memory with greeting
+
+// convert to String when you want an independent copy
+let independent = String(hello)
+
+// Substring is useful for parsing — no copies until you need to store the result
+func firstName(of fullName: String) -&gt; String {
+    let first = fullName.prefix(while: { $0 != &quot; &quot; })    // Substring
+    return String(first)    // copy only when returning
+}
+</code></pre>
+<h3 id="string-interpolation">String Interpolation</h3>
+<pre><code class="language-swift">let name = &quot;Alice&quot;
+let age = 30
+let message = &quot;Name: \(name), Age: \(age)&quot;
+
+// custom formatting
+let price = 19.99
+let formatted = &quot;Price: \(price, format: .currency(code: &quot;USD&quot;))&quot;
+
+// multiline strings
+let json = &quot;&quot;&quot;
+    {
+        &quot;name&quot;: &quot;\(name)&quot;,
+        &quot;age&quot;: \(age)
+    }
+    &quot;&quot;&quot;
+</code></pre>
+<h3 id="common-string-operations">Common String Operations</h3>
+<pre><code class="language-swift">let text = &quot;  Hello, Swift!  &quot;
+
+// trimming
+text.trimmingCharacters(in: .whitespaces)    // &quot;Hello, Swift!&quot;
+
+// case
+text.lowercased()
+text.uppercased()
+
+// searching
+text.contains(&quot;Swift&quot;)           // true
+text.hasPrefix(&quot;  Hello&quot;)        // true
+text.hasSuffix(&quot;!  &quot;)            // true
+text.range(of: &quot;Swift&quot;)          // Range&lt;String.Index&gt;?
+
+// splitting
+&quot;a,b,c&quot;.split(separator: &quot;,&quot;)   // [&quot;a&quot;, &quot;b&quot;, &quot;c&quot;] — [Substring]
+
+// replacing
+text.replacing(&quot;Swift&quot;, with: &quot;World&quot;)    // &quot;  Hello, World!  &quot;
+
+// regex (Swift 5.7+)
+let digits = text.matches(of: /\d+/)
+if let match = text.firstMatch(of: /Hello, (\w+)!/) {
+    print(match.1)    // &quot;Swift&quot;
+}
+</code></pre>
+<hr>
+<h2 id="part-10-error-handling">Part 10 — Error Handling</h2>
+<h3 id="throwing-functions">Throwing Functions</h3>
+<pre><code class="language-swift">enum ValidationError: Error, LocalizedError {
+    case empty
+    case tooShort(minimum: Int)
+    case invalidFormat(reason: String)
+
+    var errorDescription: String? {
+        switch self {
+        case .empty: return &quot;Value cannot be empty&quot;
+        case .tooShort(let min): return &quot;Must be at least \(min) characters&quot;
+        case .invalidFormat(let reason): return &quot;Invalid format: \(reason)&quot;
+        }
+    }
+}
+
+func validateEmail(_ email: String) throws {
+    guard !email.isEmpty else { throw ValidationError.empty }
+    guard email.count &gt;= 5 else { throw ValidationError.tooShort(minimum: 5) }
+    guard email.contains(&quot;@&quot;) else {
+        throw ValidationError.invalidFormat(reason: &quot;missing @&quot;)
+    }
+}
+</code></pre>
+<h3 id="typed-throws-swift-6">Typed Throws (Swift 6+)</h3>
+<p>Declare the exact error type a function can throw:</p>
+<pre><code class="language-swift">func validatePassword(_ password: String) throws(ValidationError) {
+    guard !password.isEmpty else { throw .empty }
+    guard password.count &gt;= 8 else { throw .tooShort(minimum: 8) }
+}
+
+// caller gets typed error without casting
+do {
+    try validatePassword(input)
+} catch .empty {
+    showError(&quot;Password required&quot;)
+} catch .tooShort(let min) {
+    showError(&quot;Need at least \(min) characters&quot;)
+} catch .invalidFormat(let reason) {
+    showError(reason)
+}
+// no catch-all needed — compiler knows all cases are handled
+</code></pre>
+<h3 id="do-catch">do-catch</h3>
+<pre><code class="language-swift">do {
+    try validateEmail(input)
+    try validatePassword(input)
+    createAccount()
+} catch let error as ValidationError {
+    showValidationError(error)
+} catch {
+    // generic catch — 'error' is any Error
+    showGenericError(error)
+}
+</code></pre>
+<h3 id="try-and-try">try? and try!</h3>
+<pre><code class="language-swift">// try? — convert to optional (nil on error)
+let isValid = try? validateEmail(input)    // Void? — nil if it threw
+
+let user = try? loadUser()    // User? — nil if any error occurred
+
+// try! — force (crashes on error — avoid in production)
+let config = try! loadConfig()    // crashes if loadConfig throws
+</code></pre>
+<h3 id="result-type">Result Type</h3>
+<p>For when you need to store, pass, or transform errors as values:</p>
+<pre><code class="language-swift">func fetchUser(id: String) -&gt; Result&lt;User, NetworkError&gt; {
+    // ...
+}
+
+// using Result
+switch fetchUser(id: &quot;123&quot;) {
+case .success(let user):
+    display(user)
+case .failure(let error):
+    handleError(error)
+}
+
+// Result interop with throwing
+let result = Result { try riskyOperation() }
+let value = try result.get()    // throws if failure
+
+// transform
+let name = result.map { $0.name }    // Result&lt;String, Error&gt;
+</code></pre>
+<h3 id="rethrows">rethrows</h3>
+<p>A function that only throws if its closure parameter throws:</p>
+<pre><code class="language-swift">func perform&lt;T&gt;(_ body: () throws -&gt; T) rethrows -&gt; T {
+    try body()
+}
+
+// non-throwing closure — perform doesn't throw
+let x = perform { 42 }
+
+// throwing closure — perform throws
+let y = try perform { try riskyOperation() }
+</code></pre>
+<hr>
+<h2 id="part-11-concurrency">Part 11 — Concurrency</h2>
+<p>Swift's concurrency model is built on three pillars: <strong>async/await</strong> (structured asynchronous code), <strong>actors</strong> (thread-safe shared state), and <strong>Sendable</strong> (compile-time data-race prevention). Swift 6 enforces strict concurrency checking — data races are caught at compile time.</p>
+<h3 id="asyncawait">async/await</h3>
+<pre><code class="language-swift">// async function — can suspend
+func fetchUser(id: String) async throws -&gt; User {
+    let url = URL(string: &quot;https://api.example.com/users/\(id)&quot;)!
+    let (data, _) = try await URLSession.shared.data(from: url)
+    return try JSONDecoder().decode(User.self, from: data)
+}
+
+// calling async functions
+func loadProfile() async {
+    do {
+        let user = try await fetchUser(id: &quot;123&quot;)
+        print(user.name)
+    } catch {
+        print(&quot;Failed: \(error)&quot;)
+    }
+}
+
+// bridging from synchronous to async
+func startLoading() {
+    Task {
+        await loadProfile()
+    }
+}
+</code></pre>
+<h3 id="structured-concurrency">Structured Concurrency</h3>
+<p><strong>async let</strong> — run a fixed number of tasks in parallel:</p>
+<pre><code class="language-swift">func loadDashboard() async throws -&gt; Dashboard {
+    async let user = fetchUser()
+    async let posts = fetchPosts()
+    async let notifications = fetchNotifications()
+
+    return try await Dashboard(
+        user: user,
+        posts: posts,
+        notifications: notifications
+    )
+    // all three run concurrently; we await all three at the end
+}
+</code></pre>
+<p><strong>TaskGroup</strong> — run a dynamic number of tasks:</p>
+<pre><code class="language-swift">func fetchAllUsers(ids: [String]) async throws -&gt; [User] {
+    try await withThrowingTaskGroup(of: User.self) { group in
+        for id in ids {
+            group.addTask {
+                try await fetchUser(id: id)
+            }
+        }
+
+        var users: [User] = []
+        for try await user in group {
+            users.append(user)
+        }
+        return users
+    }
+}
+</code></pre>
+<h3 id="task">Task</h3>
+<p>An unstructured task that runs independently:</p>
+<pre><code class="language-swift">// inherits actor context
+Task {
+    await doSomething()
+}
+
+// explicitly off the current actor
+Task.detached {
+    await doSomethingInBackground()
+}
+
+// with priority
+Task(priority: .background) {
+    await lowPriorityWork()
+}
+</code></pre>
+<h3 id="task-cancellation">Task Cancellation</h3>
+<p>Cancellation is cooperative — your code must check for it:</p>
+<pre><code class="language-swift">func processItems(_ items: [Item]) async throws {
+    for item in items {
+        try Task.checkCancellation()    // throws CancellationError
+        await process(item)
+    }
+}
+
+// or check without throwing
+func processItems(_ items: [Item]) async {
+    for item in items {
+        guard !Task.isCancelled else { return }
+        await process(item)
+    }
+}
+</code></pre>
+<h3 id="actors">Actors</h3>
+<p>An actor is a reference type that serializes access to its mutable state:</p>
+<pre><code class="language-swift">actor BankAccount {
+    let id: String
+    private(set) var balance: Double
+
+    init(id: String, balance: Double) {
+        self.id = id
+        self.balance = balance
+    }
+
+    func deposit(_ amount: Double) {
+        balance += amount
+    }
+
+    func withdraw(_ amount: Double) throws {
+        guard balance &gt;= amount else {
+            throw BankError.insufficientFunds
+        }
+        balance -= amount
+    }
+}
+
+// accessing actor properties requires await
+let account = BankAccount(id: &quot;1&quot;, balance: 1000)
+let balance = await account.balance         // read requires await
+try await account.withdraw(500)              // method call requires await
+
+// non-isolated properties can be accessed synchronously
+let id = account.id    // 'let' properties are safe — no await needed
+</code></pre>
+<h3 id="mainactor">@MainActor</h3>
+<p>Guarantees code runs on the main thread (UI thread):</p>
+<pre><code class="language-swift">@MainActor
+class ViewModel {
+    var items: [Item] = []
+    var isLoading = false
+
+    func load() async {
+        isLoading = true
+        defer { isLoading = false }
+        items = try? await fetchItems() ?? []
+    }
+}
+
+// individual functions or properties
+@MainActor
+func updateUI() {
+    // guaranteed main thread
+}
+</code></pre>
+<h3 id="sendable">Sendable</h3>
+<p><code>Sendable</code> marks types that can safely cross concurrency boundaries. The compiler enforces this in Swift 6:</p>
+<pre><code class="language-swift">// value types with Sendable properties are implicitly Sendable
+struct Point: Sendable {    // implicitly Sendable (all properties are Sendable)
+    var x: Double
+    var y: Double
+}
+
+// classes must be final with immutable properties
+final class Config: Sendable {
+    let apiKey: String
+    let baseURL: URL
+    init(apiKey: String, baseURL: URL) {
+        self.apiKey = apiKey
+        self.baseURL = baseURL
+    }
+}
+
+// actors are implicitly Sendable
+
+// @unchecked Sendable — you guarantee thread safety manually
+final class AtomicCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _value = 0
+
+    var value: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return _value
+    }
+
+    func increment() {
+        lock.lock()
+        defer { lock.unlock() }
+        _value += 1
+    }
+}
+</code></pre>
+<h3 id="asyncsequence-and-asyncstream">AsyncSequence and AsyncStream</h3>
+<pre><code class="language-swift">// consuming an async sequence
+func processLines(from url: URL) async throws {
+    for try await line in url.lines {
+        print(line)
+    }
+}
+
+// creating a custom async stream
+func temperatureUpdates() -&gt; AsyncStream&lt;Double&gt; {
+    AsyncStream { continuation in
+        let monitor = TemperatureMonitor()
+        monitor.onUpdate = { temp in
+            continuation.yield(temp)
+        }
+        monitor.onComplete = {
+            continuation.finish()
+        }
+
+        continuation.onTermination = { _ in
+            monitor.stop()
+        }
+
+        monitor.start()
+    }
+}
+
+// consuming
+for await temp in temperatureUpdates() {
+    print(&quot;Temperature: \(temp)&quot;)
+}
+</code></pre>
+<hr>
+<h2 id="part-12-macros">Part 12 — Macros</h2>
+<p>Swift macros (introduced in Swift 5.9) are compile-time code generation. The macro runs during compilation and produces Swift code that replaces or augments the macro invocation. You can inspect the expanded code in Xcode (right-click → Expand Macro).</p>
+<h3 id="freestanding-macros">Freestanding Macros</h3>
+<p>Appear standalone using <code>#</code> syntax:</p>
+<pre><code class="language-swift">// expression macro — produces a value
+let (result, code) = #stringify(2 + 3)
+// expands to: (2 + 3, &quot;2 + 3&quot;) — both the value and the source code
+
+// declaration macro — produces new declarations
+#warning(&quot;This is incomplete&quot;)    // compiler warning
+</code></pre>
+<h3 id="attached-macros">Attached Macros</h3>
+<p>Attached to declarations using <code>@</code> syntax. They add or modify code on the declaration:</p>
+<pre><code class="language-swift">// @Observable — the most common macro you'll use
+@Observable    // attached(member, memberAttribute, conformance)
+class UserSettings {
+    var theme: Theme = .system
+    var fontSize: Int = 16
+    var notifications: Bool = true
+}
+
+// expands to (simplified):
+// - Adds ObservationTracking conformance
+// - Wraps each stored property with observation access tracking
+// - Generates _$observationRegistrar and access/withMutation methods
+</code></pre>
+<h3 id="macro-roles">Macro Roles</h3>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>What it does</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@freestanding(expression)</code></td>
+<td>Produces a value</td>
+<td><code>#stringify</code>, <code>#Predicate</code></td>
+</tr>
+<tr>
+<td><code>@freestanding(declaration)</code></td>
+<td>Creates new declarations</td>
+<td><code>#warning</code></td>
+</tr>
+<tr>
+<td><code>@attached(peer)</code></td>
+<td>Adds sibling declarations</td>
+<td>async overloads</td>
+</tr>
+<tr>
+<td><code>@attached(member)</code></td>
+<td>Adds members to a type</td>
+<td><code>@Observable</code> adding registrar</td>
+</tr>
+<tr>
+<td><code>@attached(memberAttribute)</code></td>
+<td>Adds attributes to members</td>
+<td><code>@Observable</code> adding tracking</td>
+</tr>
+<tr>
+<td><code>@attached(accessor)</code></td>
+<td>Adds get/set accessors</td>
+<td>property wrappers via macros</td>
+</tr>
+<tr>
+<td><code>@attached(conformance)</code></td>
+<td>Adds protocol conformance</td>
+<td><code>@Observable</code> adding Observable</td>
+</tr>
+<tr>
+<td><code>@attached(extension)</code></td>
+<td>Adds extension methods/conformances</td>
+<td>auto-conformance macros</td>
+</tr>
+</tbody>
+</table>
+<h3 id="writing-a-macro">Writing a Macro</h3>
+<p>Macros are implemented as Swift packages using the <code>SwiftSyntax</code> library:</p>
+<pre><code class="language-swift">// 1. declare the macro (in your library)
+@freestanding(expression)
+public macro stringify&lt;T&gt;(_ value: T) -&gt; (T, String) =
+    #externalMacro(module: &quot;MyMacroPlugin&quot;, type: &quot;StringifyMacro&quot;)
+
+// 2. implement the macro (in a compiler plugin target)
+import SwiftSyntax
+import SwiftSyntaxMacros
+
+public struct StringifyMacro: ExpressionMacro {
+    public static func expansion(
+        of node: some FreestandingMacroExpansionSyntax,
+        in context: some MacroExpansionContext
+    ) throws -&gt; ExprSyntax {
+        guard let argument = node.arguments.first?.expression else {
+            throw MacroError.missingArgument
+        }
+        return &quot;(\(argument), \(literal: argument.description))&quot;
+    }
+}
+
+// 3. test the macro
+import MacroTesting
+
+@Test func testStringify() {
+    assertMacroExpansion(
+        #&quot;#stringify(2 + 3)&quot;#,
+        expandedSource: #&quot;(2 + 3, &quot;2 + 3&quot;)&quot;#,
+        macros: [&quot;stringify&quot;: StringifyMacro.self]
+    )
+}
+</code></pre>
+<p><strong>Key points:</strong>
+- Macros are <strong>additive</strong> — they can only add code, never remove or modify existing code.
+- They run at <strong>compile time</strong> — no runtime overhead.
+- Always use <strong>Expand Macro</strong> in Xcode to inspect what a macro generates.
+- Macros you'll encounter most: <code>@Observable</code>, <code>@Model</code> (SwiftData), <code>#Preview</code>, <code>#Predicate</code>, <code>@Entry</code>.</p>
+<hr>
+<h2 id="part-13-result-builders">Part 13 — Result Builders</h2>
+<p>Result builders power SwiftUI's declarative syntax. They're a general-purpose feature for building DSLs (domain-specific languages) in Swift.</p>
+<h3 id="how-swiftuis-viewbuilder-works">How SwiftUI's ViewBuilder Works</h3>
+<p>When you write:</p>
+<pre><code class="language-swift">VStack {
+    Text(&quot;Hello&quot;)
+    Text(&quot;World&quot;)
+}
+</code></pre>
+<p>The <code>VStack</code> initializer takes a <code>@ViewBuilder</code> closure. The <code>@ViewBuilder</code> result builder transforms the closure body: each statement becomes a component, and the builder combines them into a single view (a <code>TupleView&lt;(Text, Text)&gt;</code>).</p>
+<h3 id="building-your-own">Building Your Own</h3>
+<pre><code class="language-swift">@resultBuilder
+struct HTMLBuilder {
+    // combine multiple statements into one result
+    static func buildBlock(_ components: String...) -&gt; String {
+        components.joined(separator: &quot;\n&quot;)
+    }
+
+    // enable if statements (without else)
+    static func buildOptional(_ component: String?) -&gt; String {
+        component ?? &quot;&quot;
+    }
+
+    // enable if-else — first branch
+    static func buildEither(first component: String) -&gt; String {
+        component
+    }
+
+    // enable if-else — second branch
+    static func buildEither(second component: String) -&gt; String {
+        component
+    }
+
+    // enable for-in loops
+    static func buildArray(_ components: [String]) -&gt; String {
+        components.joined(separator: &quot;\n&quot;)
+    }
+}
+</code></pre>
+<pre><code class="language-swift">func html(@HTMLBuilder content: () -&gt; String) -&gt; String {
+    &quot;&lt;html&gt;\n\(content())\n&lt;/html&gt;&quot;
+}
+
+func div(@HTMLBuilder content: () -&gt; String) -&gt; String {
+    &quot;&lt;div&gt;\(content())&lt;/div&gt;&quot;
+}
+
+func p(_ text: String) -&gt; String { &quot;&lt;p&gt;\(text)&lt;/p&gt;&quot; }
+func h1(_ text: String) -&gt; String { &quot;&lt;h1&gt;\(text)&lt;/h1&gt;&quot; }
+
+// usage — reads like a DSL
+let page = html {
+    h1(&quot;Welcome&quot;)
+    div {
+        p(&quot;Hello, World!&quot;)
+        if showSubtitle {
+            p(&quot;Subtitle&quot;)
+        }
+        for item in items {
+            p(item.title)
+        }
+    }
+}
+</code></pre>
+<h3 id="builder-methods-reference">Builder Methods Reference</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Enables</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>buildBlock</code></td>
+<td>Multiple statements</td>
+<td><code>Text("A"); Text("B")</code></td>
+</tr>
+<tr>
+<td><code>buildOptional</code></td>
+<td><code>if</code> without <code>else</code></td>
+<td><code>if condition { ... }</code></td>
+</tr>
+<tr>
+<td><code>buildEither(first/second)</code></td>
+<td><code>if-else</code></td>
+<td><code>if x { A } else { B }</code></td>
+</tr>
+<tr>
+<td><code>buildArray</code></td>
+<td><code>for-in</code> loops</td>
+<td><code>for item in list { ... }</code></td>
+</tr>
+<tr>
+<td><code>buildExpression</code></td>
+<td>Transform individual expressions</td>
+<td>Type coercion</td>
+</tr>
+<tr>
+<td><code>buildLimitedAvailability</code></td>
+<td><code>#available</code> checks</td>
+<td><code>if #available(iOS 17, *) { ... }</code></td>
+</tr>
+<tr>
+<td><code>buildFinalResult</code></td>
+<td>Transform the final output</td>
+<td>Post-processing</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="part-14-property-wrappers">Part 14 — Property Wrappers</h2>
+<p>Property wrappers encapsulate reusable getter/setter/storage logic behind an <code>@Attribute</code> syntax.</p>
+<h3 id="anatomy">Anatomy</h3>
+<pre><code class="language-swift">@propertyWrapper
+struct Clamped&lt;Value: Comparable&gt; {
+    var wrappedValue: Value {
+        didSet {
+            wrappedValue = min(max(wrappedValue, range.lowerBound), range.upperBound)
+        }
+    }
+
+    let range: ClosedRange&lt;Value&gt;
+
+    init(wrappedValue: Value, _ range: ClosedRange&lt;Value&gt;) {
+        self.range = range
+        self.wrappedValue = min(max(wrappedValue, range.lowerBound), range.upperBound)
+    }
+}
+
+struct AudioSettings {
+    @Clamped(0...100) var volume: Int = 50
+    @Clamped(20...20000) var frequency: Int = 440
+}
+
+var audio = AudioSettings()
+audio.volume = 150     // clamped to 100
+audio.frequency = 10   // clamped to 20
+</code></pre>
+<h3 id="projected-value">Projected Value ($)</h3>
+<p>Property wrappers can expose additional functionality via the projected value (<code>$</code>):</p>
+<pre><code class="language-swift">@propertyWrapper
+struct Validated&lt;Value&gt; {
+    var wrappedValue: Value
+    var projectedValue: Bool    // accessed via $property
+
+    init(wrappedValue: Value, validator: @escaping (Value) -&gt; Bool) {
+        self.wrappedValue = wrappedValue
+        self.projectedValue = validator(wrappedValue)
+        self.validator = validator
+    }
+
+    private let validator: (Value) -&gt; Bool
+
+    mutating func validate() {
+        projectedValue = validator(wrappedValue)
+    }
+}
+
+// SwiftUI uses this pattern extensively:
+// @State var name = &quot;&quot;
+// $name → Binding&lt;String&gt; (the projected value)
+</code></pre>
+<h3 id="common-property-wrappers">Common Property Wrappers</h3>
+<table>
+<thead>
+<tr>
+<th>Wrapper</th>
+<th>Source</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>@State</code></td>
+<td>SwiftUI</td>
+<td>View-local state</td>
+</tr>
+<tr>
+<td><code>@Binding</code></td>
+<td>SwiftUI</td>
+<td>Read-write access to parent's state</td>
+</tr>
+<tr>
+<td><code>@Environment</code></td>
+<td>SwiftUI</td>
+<td>Injected values from view tree</td>
+</tr>
+<tr>
+<td><code>@AppStorage</code></td>
+<td>SwiftUI</td>
+<td>UserDefaults-backed state</td>
+</tr>
+<tr>
+<td><code>@Published</code></td>
+<td>Combine</td>
+<td>Observable property (legacy, replaced by <code>@Observable</code>)</td>
+</tr>
+<tr>
+<td><code>@Observable</code></td>
+<td>Observation</td>
+<td>Type-level observation (it's a macro, not a property wrapper)</td>
+</tr>
+<tr>
+<td><code>@Model</code></td>
+<td>SwiftData</td>
+<td>Persistable model</td>
+</tr>
+<tr>
+<td><code>@Query</code></td>
+<td>SwiftData</td>
+<td>Auto-updating fetch</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="part-15-ownership-and-noncopyable-types">Part 15 — Ownership and Noncopyable Types</h2>
+<p>Swift 5.9+ introduced ownership annotations and noncopyable types — bringing Rust-style move semantics to Swift for scenarios where copies are dangerous or expensive.</p>
+<h3 id="noncopyable-types-copyable">Noncopyable Types (~Copyable)</h3>
+<p>By default, every type in Swift conforms to an implicit <code>Copyable</code> protocol. Suppress it with <code>~Copyable</code> to create a type that can only be moved:</p>
+<pre><code class="language-swift">struct FileHandle: ~Copyable {
+    private let fd: Int32
+
+    init(path: String) throws {
+        fd = open(path, O_RDONLY)
+        guard fd &gt;= 0 else { throw IOError.openFailed }
+    }
+
+    deinit {
+        close(fd)    // guaranteed cleanup — exactly once
+    }
+
+    consuming func takeOwnership() -&gt; Int32 {
+        let result = fd
+        discard self    // prevent deinit from closing fd
+        return result
+    }
+}
+
+var handle = try FileHandle(path: &quot;/tmp/data&quot;)
+let handle2 = handle    // MOVE — handle is now consumed
+// handle.read()       // compile error — handle has been consumed
+</code></pre>
+<p><strong>Why it matters:</strong>
+- <strong>Resource safety:</strong> a file handle, database connection, or hardware lock should never be duplicated.
+- <strong>Guaranteed cleanup:</strong> <code>deinit</code> runs exactly once, when the unique owner goes out of scope.
+- <strong>Compile-time enforcement:</strong> the compiler ensures no accidental copies or use-after-move.</p>
+<h3 id="borrowing-and-consuming">Borrowing and Consuming</h3>
+<p>Explicit ownership annotations for function parameters:</p>
+<pre><code class="language-swift">struct LargeBuffer: ~Copyable {
+    var data: [UInt8]
+
+    // borrowing — temporary read-only access, caller keeps ownership
+    borrowing func checksum() -&gt; UInt32 {
+        var hash: UInt32 = 0
+        for byte in data { hash = hash &amp;+ UInt32(byte) }
+        return hash
+    }
+
+    // consuming — takes ownership, caller can no longer use the value
+    consuming func encrypt(key: [UInt8]) -&gt; LargeBuffer {
+        // transforms and returns a new buffer
+        // self is consumed — caller's copy is gone
+        var encrypted = data
+        // ... encryption logic ...
+        return LargeBuffer(data: encrypted)
+    }
+
+    // mutating — exclusive mutable access (existing concept)
+    mutating func append(_ bytes: [UInt8]) {
+        data.append(contentsOf: bytes)
+    }
+}
+</code></pre>
+<p>These annotations also work on regular (<code>Copyable</code>) types as <strong>performance hints</strong> — they tell the compiler it can avoid retain/release overhead:</p>
+<pre><code class="language-swift">// on regular types, these are optimization hints
+func process(borrowing buffer: [UInt8]) {
+    // buffer is borrowed — no copy, no retain
+}
+
+func consume(consuming buffer: [UInt8]) {
+    // buffer is moved — no retain on entry, no release on exit
+    // but caller can no longer use their copy
+}
+</code></pre>
+<h3 id="when-to-use">When to Use</h3>
+<ul>
+<li><strong>Noncopyable types:</strong> file handles, locks, unique hardware resources, "move-only" tokens.</li>
+<li><strong>Borrowing/consuming on regular types:</strong> hot-path performance optimization in libraries. Most application code doesn't need these annotations — the compiler already optimizes well.</li>
+</ul>
+<hr>
+<h2 id="part-16-swift-6x-the-language-in-2026">Part 16 — Swift 6.x: The Language in 2026</h2>
+<h3 id="swift-version-timeline">Swift Version Timeline</h3>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Release</th>
+<th>Headline Feature</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Swift 5.9</strong></td>
+<td>Sep 2023</td>
+<td>Macros, noncopyable types</td>
+</tr>
+<tr>
+<td><strong>Swift 5.10</strong></td>
+<td>Mar 2024</td>
+<td>Complete concurrency checking (opt-in)</td>
+</tr>
+<tr>
+<td><strong>Swift 6.0</strong></td>
+<td>Sep 2024</td>
+<td>Strict concurrency (data-race safety at compile time)</td>
+</tr>
+<tr>
+<td><strong>Swift 6.1</strong></td>
+<td>Mar 2025</td>
+<td>Nonisolated refinements, TaskGroup inference, SwiftPM traits</td>
+</tr>
+<tr>
+<td><strong>Swift 6.2</strong></td>
+<td>Sep 2025</td>
+<td>Approachable concurrency, InlineArray, Span</td>
+</tr>
+<tr>
+<td><strong>Swift 6.3</strong></td>
+<td>Mar 2026</td>
+<td><code>@c</code> interop attribute, Android SDK, embedded improvements</td>
+</tr>
+</tbody>
+</table>
+<h3 id="strict-concurrency-swift-60">Strict Concurrency (Swift 6.0)</h3>
+<p>The headline feature of Swift 6. The compiler guarantees your code is free of data races at compile time. New projects have it enabled by default. Existing projects migrate with build settings:</p>
+<pre><code class="language-text">// in Package.swift
+.target(name: &quot;MyTarget&quot;, swiftSettings: [
+    .swiftLanguageMode(.v6)
+])
+
+// or incrementally
+.swiftSetting(.enableExperimentalFeature(&quot;StrictConcurrency&quot;))
+</code></pre>
+<h3 id="approachable-concurrency-swift-62">Approachable Concurrency (Swift 6.2)</h3>
+<p>Responding to community feedback that strict concurrency was too aggressive, Swift 6.2 introduced pragmatic defaults:</p>
+<ul>
+<li><strong>Default main-actor isolation:</strong> new projects default to <code>@MainActor</code> for app-level code, making single-threaded apps simple.</li>
+<li><strong><code>@concurrent</code> attribute:</strong> opt into concurrent execution explicitly.</li>
+<li><strong>Caller-context async:</strong> async functions can inherit the caller's isolation, reducing unnecessary actor hops.</li>
+</ul>
+<pre><code class="language-swift">// Swift 6.2: this function runs in the caller's context by default
+func fetchData() async throws -&gt; Data {
+    // runs on MainActor if called from MainActor
+    // runs on an actor if called from an actor
+    // no surprise thread switches
+}
+
+// opt into concurrent execution
+@concurrent
+func processInBackground() async {
+    // explicitly runs off the main actor
+}
+</code></pre>
+<h3 id="inlinearray-swift-62">InlineArray (Swift 6.2)</h3>
+<p>Fixed-size arrays with inline storage (no heap allocation):</p>
+<pre><code class="language-swift">let rgb: InlineArray&lt;3, UInt8&gt; = [255, 128, 0]
+
+// useful for performance-critical code where the size is known at compile time
+// and you want to avoid heap allocation
+</code></pre>
+<h3 id="span-swift-62">Span (Swift 6.2)</h3>
+<p>A safe view into contiguous memory, replacing many uses of <code>UnsafeBufferPointer</code>:</p>
+<pre><code class="language-swift">func process(_ data: Span&lt;UInt8&gt;) {
+    for byte in data {
+        // safe, bounds-checked access
+    }
+}
+</code></pre>
+<h3 id="c-attribute-swift-63">@c Attribute (Swift 6.3)</h3>
+<p>Expose Swift functions to C code without manual header management:</p>
+<pre><code class="language-swift">@c func handleCallback(value: Int32) -&gt; Int32 {
+    return value * 2
+}
+// generates a C-callable function — no bridging header needed
+</code></pre>
+<h3 id="embedded-swift">Embedded Swift</h3>
+<p>A subset of Swift for resource-constrained environments (microcontrollers, firmware, kernels). No runtime, no reflection, no existentials — but full type safety, generics, and value types:</p>
+<pre><code class="language-swift">// embedded Swift — no heap allocation, no runtime
+@_extern(c, &quot;led_on&quot;)
+func ledOn()
+
+@_extern(c, &quot;delay_ms&quot;)
+func delay(ms: UInt32)
+
+@main
+struct Blinker {
+    static func main() {
+        while true {
+            ledOn()
+            delay(ms: 500)
+            ledOff()
+            delay(ms: 500)
+        }
+    }
+}
+</code></pre>
+<h3 id="swift-on-non-apple-platforms">Swift on Non-Apple Platforms</h3>
+<p>Swift is officially supported on:</p>
+<table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>Status in 2026</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>macOS, iOS, watchOS, tvOS, visionOS</strong></td>
+<td>First-class</td>
+</tr>
+<tr>
+<td><strong>Linux</strong></td>
+<td>First-class (server-side Swift, Vapor framework)</td>
+</tr>
+<tr>
+<td><strong>Windows</strong></td>
+<td>Supported (community-driven, improving rapidly)</td>
+</tr>
+<tr>
+<td><strong>Android</strong></td>
+<td>Official SDK as of Swift 6.3</td>
+</tr>
+<tr>
+<td><strong>WebAssembly</strong></td>
+<td>Community-supported (SwiftWasm)</td>
+</tr>
+<tr>
+<td><strong>Embedded</strong></td>
+<td>Experimental → practical</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="quick-reference">Quick Reference</h2>
+<h3 id="type-decision-tree">Type Decision Tree</h3>
+<pre><code class="language-text">Need identity or inheritance?
+  Yes → class (or actor for concurrent access)
+  No → struct
+
+Need to cross concurrency boundaries?
+  Yes → must be Sendable (struct with Sendable fields, or actor)
+  No → any type works
+
+Need a fixed set of variants?
+  Yes → enum (with associated values if needed)
+  No → struct or class
+
+Need to prevent copies?
+  Yes → ~Copyable struct
+  No → regular struct
+</code></pre>
+<h3 id="memory-management-cheat-sheet">Memory Management Cheat Sheet</h3>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Default reference</td>
+<td><code>strong</code> (implicit)</td>
+</tr>
+<tr>
+<td>Delegate or parent reference</td>
+<td><code>weak</code></td>
+</tr>
+<tr>
+<td>Reference guaranteed to outlive holder</td>
+<td><code>unowned</code></td>
+</tr>
+<tr>
+<td>Closure capturing <code>self</code> (escaping)</td>
+<td><code>[weak self]</code></td>
+</tr>
+<tr>
+<td>Closure capturing <code>self</code> (non-escaping)</td>
+<td>No annotation needed</td>
+</tr>
+</tbody>
+</table>
+<h3 id="concurrency-cheat-sheet">Concurrency Cheat Sheet</h3>
+<table>
+<thead>
+<tr>
+<th>Need</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Run async code</td>
+<td><code>async/await</code></td>
+</tr>
+<tr>
+<td>Fixed parallelism</td>
+<td><code>async let</code></td>
+</tr>
+<tr>
+<td>Dynamic parallelism</td>
+<td><code>TaskGroup</code></td>
+</tr>
+<tr>
+<td>Thread-safe shared state</td>
+<td><code>actor</code></td>
+</tr>
+<tr>
+<td>UI thread guarantee</td>
+<td><code>@MainActor</code></td>
+</tr>
+<tr>
+<td>Cross-boundary safety</td>
+<td><code>Sendable</code></td>
+</tr>
+<tr>
+<td>Callback → async bridge</td>
+<td><code>withCheckedContinuation</code></td>
+</tr>
+<tr>
+<td>Async iteration</td>
+<td><code>AsyncSequence</code> / <code>AsyncStream</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p>That's the guide. Swift in 2026 is a language with two faces: a high-level, safe, expressive language for app development (protocols, generics, closures, result builders, macros — all the abstraction power you want), and an increasingly capable systems language (ownership, noncopyable types, inline arrays, embedded Swift, C interop) that's expanding beyond the Apple ecosystem. The type system enforces more invariants at compile time than almost any mainstream language — optionals for null safety, Sendable for thread safety, exhaustive switches for enum coverage, typed throws for error handling — and the 6.x evolution is steadily closing the remaining gaps.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

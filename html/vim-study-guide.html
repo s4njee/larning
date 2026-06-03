@@ -1,0 +1,1800 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Vim Study Guide.">
+<title>Vim Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#68a4e5; --accent2:#6369e0; --accent-weak:rgba(104,164,229,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#68a4e5; --accent2:#6369e0; --accent-weak:rgba(104,164,229,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">V</span><span>Vim Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-why-modal-editing" data-target="part-1-why-modal-editing">Part 1 — Why Modal Editing</a></li><li class="toc-l3"><a href="#the-problem-modal-editing-solves" data-target="the-problem-modal-editing-solves">The Problem Modal Editing Solves</a></li><li class="toc-l3"><a href="#vim-is-a-language-not-a-list-of-shortcuts" data-target="vim-is-a-language-not-a-list-of-shortcuts">Vim Is a Language, Not a List of Shortcuts</a></li><li class="toc-l3"><a href="#the-modes-and-the-map-between-them" data-target="the-modes-and-the-map-between-them">The Modes, and the Map Between Them</a></li><li class="toc-l3"><a href="#why-its-actually-faster" data-target="why-its-actually-faster">Why It's Actually Faster</a></li><li class="toc-l3"><a href="#surviving-your-first-session" data-target="surviving-your-first-session">Surviving Your First Session</a></li><li class="toc-l2"><a href="#part-2-the-modes-in-depth" data-target="part-2-the-modes-in-depth">Part 2 — The Modes in Depth</a></li><li class="toc-l3"><a href="#normal-mode-home-base" data-target="normal-mode-home-base">Normal Mode: Home Base</a></li><li class="toc-l3"><a href="#insert-mode-get-in-type-get-out" data-target="insert-mode-get-in-type-get-out">Insert Mode: Get In, Type, Get Out</a></li><li class="toc-l3"><a href="#visual-mode-select-then-operate" data-target="visual-mode-select-then-operate">Visual Mode: Select, Then Operate</a></li><li class="toc-l3"><a href="#command-line-mode-the-ex-heritage" data-target="command-line-mode-the-ex-heritage">Command-Line Mode: The Ex Heritage</a></li><li class="toc-l3"><a href="#replace-and-the-invisible-operator-pending-mode" data-target="replace-and-the-invisible-operator-pending-mode">Replace and the Invisible Operator-Pending Mode</a></li><li class="toc-l2"><a href="#part-3-the-grammar-of-editing" data-target="part-3-the-grammar-of-editing">Part 3 — The Grammar of Editing</a></li><li class="toc-l3"><a href="#the-sentence-operator-motion" data-target="the-sentence-operator-motion">The Sentence: Operator + Motion</a></li><li class="toc-l3"><a href="#the-verbs-operators" data-target="the-verbs-operators">The Verbs (Operators)</a></li><li class="toc-l3"><a href="#the-nouns-motions-vs-text-objects" data-target="the-nouns-motions-vs-text-objects">The Nouns: Motions vs. Text Objects</a></li><li class="toc-l3"><a href="#counts-multiply" data-target="counts-multiply">Counts Multiply</a></li><li class="toc-l3"><a href="#doubling-an-operator-goes-linewise" data-target="doubling-an-operator-goes-linewise">Doubling an Operator Goes Linewise</a></li><li class="toc-l3"><a href="#reading-compositions-fluently" data-target="reading-compositions-fluently">Reading Compositions Fluently</a></li><li class="toc-l2"><a href="#part-4-motions" data-target="part-4-motions">Part 4 — Motions</a></li><li class="toc-l3"><a href="#character-and-word-motions" data-target="character-and-word-motions">Character and Word Motions</a></li><li class="toc-l3"><a href="#line-internal-motions" data-target="line-internal-motions">Line-Internal Motions</a></li><li class="toc-l3"><a href="#find-and-till-the-fastest-way-across-a-line" data-target="find-and-till-the-fastest-way-across-a-line">Find and Till: The Fastest Way Across a Line</a></li><li class="toc-l3"><a href="#moving-around-the-screen-and-file" data-target="moving-around-the-screen-and-file">Moving Around the Screen and File</a></li><li class="toc-l3"><a href="#structural-motions" data-target="structural-motions">Structural Motions</a></li><li class="toc-l3"><a href="#search-as-a-motion" data-target="search-as-a-motion">Search as a Motion</a></li><li class="toc-l3"><a href="#marks-and-jumps-teleporting-back" data-target="marks-and-jumps-teleporting-back">Marks and Jumps: Teleporting Back</a></li><li class="toc-l3"><a href="#inclusive-vs-exclusive-and-the-cw-surprise" data-target="inclusive-vs-exclusive-and-the-cw-surprise">Inclusive vs. Exclusive (and the cw Surprise)</a></li><li class="toc-l2"><a href="#part-5-text-objects" data-target="part-5-text-objects">Part 5 — Text Objects</a></li><li class="toc-l3"><a href="#inner-vs-around" data-target="inner-vs-around">Inner vs. Around</a></li><li class="toc-l3"><a href="#the-catalog" data-target="the-catalog">The Catalog</a></li><li class="toc-l3"><a href="#why-this-is-the-speed-lever" data-target="why-this-is-the-speed-lever">Why This Is the Speed Lever</a></li><li class="toc-l3"><a href="#text-objects-repeat-search-lightweight-refactoring" data-target="text-objects-repeat-search-lightweight-refactoring">Text Objects + Repeat + Search = Lightweight Refactoring</a></li><li class="toc-l3"><a href="#beyond-the-built-ins" data-target="beyond-the-built-ins">Beyond the Built-ins</a></li><li class="toc-l2"><a href="#part-6-changing-text-registers" data-target="part-6-changing-text-registers">Part 6 — Changing Text &amp; Registers</a></li><li class="toc-l3"><a href="#the-everyday-edit-verbs" data-target="the-everyday-edit-verbs">The Everyday Edit Verbs</a></li><li class="toc-l3"><a href="#put-paste-and-the-swap-tricks" data-target="put-paste-and-the-swap-tricks">Put (Paste) and the Swap Tricks</a></li><li class="toc-l3"><a href="#numbers-increment-and-decrement" data-target="numbers-increment-and-decrement">Numbers: Increment and Decrement</a></li><li class="toc-l3"><a href="#the-dot-command-repeat-anything" data-target="the-dot-command-repeat-anything">The Dot Command: Repeat Anything</a></li><li class="toc-l3"><a href="#registers-where-copied-text-lives" data-target="registers-where-copied-text-lives">Registers: Where Copied Text Lives</a></li><li class="toc-l3"><a href="#undo-redo-and-time-travel" data-target="undo-redo-and-time-travel">Undo, Redo, and Time Travel</a></li><li class="toc-l2"><a href="#part-7-search-substitute" data-target="part-7-search-substitute">Part 7 — Search &amp; Substitute</a></li><li class="toc-l3"><a href="#search-properly" data-target="search-properly">Search, Properly</a></li><li class="toc-l3"><a href="#regex-and-very-magic-mode" data-target="regex-and-very-magic-mode">Regex and "Very Magic" Mode</a></li><li class="toc-l3"><a href="#substitute-search-and-replace-with-ranges" data-target="substitute-search-and-replace-with-ranges">Substitute: Search-and-Replace with Ranges</a></li><li class="toc-l3"><a href="#the-global-command-vims-power-tool" data-target="the-global-command-vims-power-tool">The Global Command: Vim's Power Tool</a></li><li class="toc-l3"><a href="#the-cgn-trick-multi-cursor-the-vim-way" data-target="the-cgn-trick-multi-cursor-the-vim-way">The cgn Trick: Multi-Cursor, the Vim Way</a></li><li class="toc-l2"><a href="#part-8-macros" data-target="part-8-macros">Part 8 — Macros</a></li><li class="toc-l3"><a href="#record-replay-repeat" data-target="record-replay-repeat">Record, Replay, Repeat</a></li><li class="toc-l3"><a href="#the-macro-mindset-make-each-step-robust" data-target="the-macro-mindset-make-each-step-robust">The Macro Mindset: Make Each Step Robust</a></li><li class="toc-l3"><a href="#counts-recursion-and-fixing-a-macro" data-target="counts-recursion-and-fixing-a-macro">Counts, Recursion, and Fixing a Macro</a></li><li class="toc-l3"><a href="#macro-or-g-choosing" data-target="macro-or-g-choosing">Macro or :g? Choosing</a></li><li class="toc-l2"><a href="#part-9-files-windows-ex-power" data-target="part-9-files-windows-ex-power">Part 9 — Files Windows &amp; Ex Power</a></li><li class="toc-l3"><a href="#buffers-windows-tabs-the-model-people-get-wrong" data-target="buffers-windows-tabs-the-model-people-get-wrong">Buffers, Windows, Tabs — The Model People Get Wrong</a></li><li class="toc-l3"><a href="#working-with-buffers" data-target="working-with-buffers">Working with Buffers</a></li><li class="toc-l3"><a href="#windows-splits" data-target="windows-splits">Windows (Splits)</a></li><li class="toc-l3"><a href="#tabs" data-target="tabs">Tabs</a></li><li class="toc-l3"><a href="#ex-ranges-and-line-addressing" data-target="ex-ranges-and-line-addressing">Ex Ranges and Line Addressing</a></li><li class="toc-l3"><a href="#commands-that-move-and-transform-lines" data-target="commands-that-move-and-transform-lines">Commands That Move and Transform Lines</a></li><li class="toc-l3"><a href="#editing-across-many-files-at-once" data-target="editing-across-many-files-at-once">Editing Across Many Files at Once</a></li><li class="toc-l3"><a href="#finding-files-and-grepping" data-target="finding-files-and-grepping">Finding Files and Grepping</a></li><li class="toc-l2"><a href="#part-10-configuration-speed-recipes" data-target="part-10-configuration-speed-recipes">Part 10 — Configuration &amp; Speed Recipes</a></li><li class="toc-l3"><a href="#a-sane-starting-config" data-target="a-sane-starting-config">A Sane Starting Config</a></li><li class="toc-l3"><a href="#vim-or-neovim" data-target="vim-or-neovim">Vim or Neovim?</a></li><li class="toc-l3"><a href="#plugins-worth-knowing-and-restraint" data-target="plugins-worth-knowing-and-restraint">Plugins Worth Knowing (and Restraint)</a></li><li class="toc-l3"><a href="#vim-everywhere" data-target="vim-everywhere">Vim Everywhere</a></li><li class="toc-l3"><a href="#the-speed-cookbook" data-target="the-speed-cookbook">The Speed Cookbook</a></li><li class="toc-l3"><a href="#when-not-to-go-all-in" data-target="when-not-to-go-all-in">When Not to Go All-In</a></li><li class="toc-l3"><a href="#how-to-actually-learn-it" data-target="how-to-actually-learn-it">How to Actually Learn It</a></li></ul></nav></aside>
+  <main><h1 id="vim-study-guide">Vim Study Guide</h1>
+<p>A practical, depth-first guide to Vim for engineers who want to edit text at the speed of thought. It assumes you've used a normal editor (VS Code, an IDE, Notepad) but have never gotten past the "how do I even quit this thing" stage of Vim — or that you've used it for years by muscle memory without ever learning the <em>system</em> underneath. The approach is deliberately not a command list. Vim's commands number in the thousands, and memorizing them flat is hopeless and pointless. Instead this guide teaches Vim as what it actually is: <strong>a small language for editing, where a handful of verbs and nouns compose into a near-infinite vocabulary of edits you never explicitly learned.</strong> Get the grammar and the rest falls out.</p>
+<p>The throughline is the question in the title: <em>why is this faster than a traditional editor?</em> The answer has three parts, and every chapter reinforces them — your hands never leave the home row, you express editing <strong>intent</strong> ("change inside the quotes") instead of <strong>mechanism</strong> (mouse-select the text, delete, retype), and repetitive edits collapse into a single keystroke through repeat, registers, and macros. Once those click, going back to click-and-drag feels like typing with mittens on.</p>
+<p>The single best first step is not this guide — it's running <strong><code>vimtutor</code></strong> from your terminal (30 minutes, ships with Vim). Then come back here for the depth. Other references worth keeping open: Vim's own peerless built-in docs via <code>:help</code> (mirrored at <a href="https://vimhelp.org/">vimhelp.org</a>), Drew Neil's <a href="https://pragprog.com/titles/dnvim2/practical-vim-second-edition/"><em>Practical Vim</em></a> (the best book on the subject), and the <a href="https://neovim.io/doc/">Neovim docs</a> if you go the modern-fork route. This guide covers Vim, with Neovim differences flagged where they matter; ~95% applies identically to both. Where Vim shows up in your daily tools — the default Git commit editor, <code>git mergetool</code> — the <a href="git-study-guide.html">Git guide</a> is a useful companion.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1--why-modal-editing">Part 1 — Why Modal Editing</a></li>
+<li><a href="#part-2--the-modes-in-depth">Part 2 — The Modes in Depth</a></li>
+<li><a href="#part-3--the-grammar-of-editing">Part 3 — The Grammar of Editing</a></li>
+<li><a href="#part-4--motions">Part 4 — Motions</a></li>
+<li><a href="#part-5--text-objects">Part 5 — Text Objects</a></li>
+<li><a href="#part-6--changing-text--registers">Part 6 — Changing Text &amp; Registers</a></li>
+<li><a href="#part-7--search--substitute">Part 7 — Search &amp; Substitute</a></li>
+<li><a href="#part-8--macros">Part 8 — Macros</a></li>
+<li><a href="#part-9--files-windows--ex-power">Part 9 — Files Windows &amp; Ex Power</a></li>
+<li><a href="#part-10--configuration--speed-recipes">Part 10 — Configuration &amp; Speed Recipes</a></li>
+</ol>
+<p>A note on notation: keystrokes are shown in <code>code font</code>. <code>&amp;lt;Esc&amp;gt;</code>, <code>&amp;lt;CR&amp;gt;</code> (Enter/Return), and <code>&amp;lt;C-a&amp;gt;</code> (Control-a) follow Vim's own help convention. In before/after examples, <code>█</code> marks the cursor position. "Type <code>ciw</code>" means press those three keys in Normal mode, in sequence — not all at once.</p>
+<hr>
+<h2 id="part-1-why-modal-editing">Part 1 — Why Modal Editing</h2>
+<p>Before any keystroke, get the model right. Almost everything that frustrates beginners — "it beeped at me," "my text got replaced," "I'm trapped" — comes from one root misunderstanding: treating Vim like a normal editor that has weird shortcuts, instead of a fundamentally different machine that happens to also edit text.</p>
+<h3 id="the-problem-modal-editing-solves">The Problem Modal Editing Solves</h3>
+<p>In a traditional editor, every key on the keyboard has one job: <strong>insert that character.</strong> Press <code>d</code> and you get a "d" in your document. So every <em>command</em> — copy, delete a word, jump to the end of the line — has to be expressed some other way: a modifier chord (<code>Ctrl</code>, <code>Alt</code>, <code>Cmd</code>), a menu, or the mouse. Two consequences follow, and both cost you speed:</p>
+<ol>
+<li><strong>Your hands leave the home row constantly</strong> — reaching for arrow keys, <code>Home</code>/<code>End</code>, <code>Page Up</code>, or the mouse. Every reach is a few hundred milliseconds and a break in flow.</li>
+<li><strong>Editing is mechanical, not intentional.</strong> To change the text inside a pair of quotes you <em>aim the mouse, click before the first character, drag carefully to the last, release, delete, then type.</em> That's five physical operations to express one idea.</li>
+</ol>
+<p>Here's the insight Vim is built on: <strong>when you're working with existing code, you spend far more time navigating and restructuring it than typing brand-new characters.</strong> So Vim inverts the default. Most of the time the keyboard is a <em>command surface</em> — every key manipulates text — and when you actually want to insert characters, you switch into a mode for that. The cost is that you must always know which mode you're in. The payoff is everything else in this guide.</p>
+<h3 id="vim-is-a-language-not-a-list-of-shortcuts">Vim Is a Language, Not a List of Shortcuts</h3>
+<p>This is the most important idea in the guide, so it gets said plainly: <strong>Vim commands compose like words in a sentence.</strong> There are <strong>verbs</strong> (operators: delete, change, yank) and <strong>nouns</strong> (motions and text objects: a word, the inside of parentheses, to the end of the line). You combine them:</p>
+<ul>
+<li><code>d</code> (delete) + <code>w</code> (a word) → <code>dw</code> — "delete word"</li>
+<li><code>c</code> (change) + <code>i(</code> (inside parentheses) → <code>ci(</code> — "change inside parens"</li>
+<li><code>y</code> (yank) + <code>$</code> (to end of line) → <code>y$</code> — "copy to end of line"</li>
+</ul>
+<p>You learn perhaps <strong>thirty primitives</strong> and get <strong>thousands of combinations</strong> — most of which you never explicitly studied. The first time you need to "delete inside a quoted string," you <em>derive</em> <code>di"</code> from <code>d</code> + <code>i"</code> without anyone teaching you that specific command, because the grammar is consistent. A traditional editor gives you a flat, unrelated list — <code>Ctrl+Shift+K</code> deletes a line, and there's no logic connecting it to anything else, so you memorize each one in isolation and forget the rare ones. Vim's combinatorial grammar is <em>why</em> it scales to thousands of edits without thousands of memorizations. <strong>Spend your learning effort on the grammar (Part 3), and the rest composes itself.</strong></p>
+<h3 id="the-modes-and-the-map-between-them">The Modes, and the Map Between Them</h3>
+<p>Vim has a handful of modes. You'll live in the first two; the rest are specialized.</p>
+<ul>
+<li><strong>Normal mode</strong> — the home base, and the mode Vim starts in. Every key is a command: move, delete, change, paste, search. Counterintuitively, <em>this</em> is where you spend most of your time, with your fingers resting and ready. New users flee it; experts return to it after every small edit.</li>
+<li><strong>Insert mode</strong> — what a traditional editor is always in. Keys insert characters. You enter it deliberately, do a focused burst of typing, and leave immediately.</li>
+<li><strong>Visual mode</strong> — select a region (by character, line, or block), <em>then</em> act on it. The "I want to see exactly what I'm affecting" mode.</li>
+<li><strong>Command-line mode</strong> — entered with <code>:</code> (Ex commands like <code>:w</code>, <code>:s</code>), <code>/</code> or <code>?</code> (search). For file operations, search-and-replace, and bulk edits across ranges.</li>
+<li><strong>Replace mode</strong> — typing overwrites existing characters instead of inserting. Niche.</li>
+<li><strong>Operator-pending mode</strong> — a brief, almost invisible mode you're in <em>between</em> pressing an operator and its motion (the moment after <code>d</code>, waiting for the <code>w</code>). You don't think of it as a mode, but it's the conceptual engine behind the whole grammar.</li>
+</ul>
+<pre><code class="language-text">                 i a o I A O s c ...
+        ┌────────────────────────────────►┌──────────────┐
+        │                                  │  INSERT mode  │
+        │              &lt;Esc&gt;               │ (type text)   │
+        │   ◄──────────────────────────────└──────────────┘
+ ┌──────┴───────┐  v V &lt;C-v&gt;   ┌──────────────┐
+ │  NORMAL mode │ ───────────► │  VISUAL mode  │
+ │ (commands —  │  ◄────────── │ (select then  │
+ │  home base)  │    &lt;Esc&gt;     │   operate)    │
+ └──────┬───────┘              └──────────────┘
+        │  :  /  ?      ┌────────────────────┐
+        │ ────────────► │  COMMAND-LINE mode │
+        │  ◄─────────── │ (:w :s /search ... )│
+        │   &lt;CR&gt;/&lt;Esc&gt;  └────────────────────┘
+        ▼
+   (everything returns to Normal — when in doubt, press &lt;Esc&gt;)
+</code></pre>
+<p>The golden rule for survival: <strong>when you're lost, press <code>&amp;lt;Esc&amp;gt;</code> (or <code>&lt;C-[&gt;</code>) until you're back in Normal mode</strong>, then think. Everything radiates from Normal.</p>
+<h3 id="why-its-actually-faster">Why It's Actually Faster</h3>
+<p>Four compounding reasons, each developed later in the guide:</p>
+<ol>
+<li><strong>Zero travel.</strong> Commands are letter keys, so your hands never leave the home row — no arrow keys, no <code>Home</code>/<code>End</code>, no mouse. Navigation that costs a hand-reach elsewhere costs a finger-twitch here.</li>
+<li><strong>Intent over mechanism.</strong> "Change what's inside these quotes" is a single thought and a single command, <code>ci"</code>. You don't tell Vim <em>how</em> to select the text; you tell it <em>what you mean</em>. The editor does the aiming.</li>
+<li><strong>Effortless repetition.</strong> The <code>.</code> command repeats your last change; counts like <code>3dd</code> multiply a command; registers store snippets; macros record and replay whole sequences. Repetitive edits that are a tedious slog in a traditional editor collapse to one or two keystrokes (Parts 6–8).</li>
+<li><strong>It's everywhere.</strong> Vim is on every server you'll SSH into, it's the default editor for Git, and every serious IDE and editor has a high-quality Vim mode (Part 10). Learn it once; the skill follows you to every environment for the rest of your career.</li>
+</ol>
+<h3 id="surviving-your-first-session">Surviving Your First Session</h3>
+<p>Enough to not feel trapped, so you can practice the rest:</p>
+<table>
+<thead>
+<tr>
+<th>You want to…</th>
+<th>Press</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Start typing text</td>
+<td><code>i</code> (insert before cursor)</td>
+</tr>
+<tr>
+<td>Stop typing, return to commands</td>
+<td><code>&amp;lt;Esc&amp;gt;</code></td>
+</tr>
+<tr>
+<td>Undo / redo</td>
+<td><code>u</code> / <code>&amp;lt;C-r&amp;gt;</code></td>
+</tr>
+<tr>
+<td>Save</td>
+<td><code>:w&amp;lt;CR&amp;gt;</code></td>
+</tr>
+<tr>
+<td>Save and quit</td>
+<td><code>:wq&amp;lt;CR&amp;gt;</code> or <code>ZZ</code></td>
+</tr>
+<tr>
+<td>Quit, discarding changes</td>
+<td><code>:q!&amp;lt;CR&amp;gt;</code></td>
+</tr>
+<tr>
+<td>Open the built-in tutorial</td>
+<td>run <code>vimtutor</code> in your shell</td>
+</tr>
+</tbody>
+</table>
+<p>Set your expectations honestly: for the <strong>first few days you will be slower</strong> than your old editor — that's the tax, and it's real. Within a week you're functional; within a month you're faster than you were before; and from there the advantage compounds for years because the skill never stops deepening. The people who quit do so in the first three days. Don't.</p>
+<p>If you remember one thing from Part 1: <strong>Vim is a language for editing, not a set of shortcuts.</strong> Learn the grammar and you stop memorizing commands — you start <em>speaking</em> edits.</p>
+<hr>
+<h2 id="part-2-the-modes-in-depth">Part 2 — The Modes in Depth</h2>
+<p>Part 1 mapped the modes; this part lives in each one. The recurring theme: <strong>you enter the specialized modes deliberately and return to Normal quickly.</strong> Time spent in Normal mode is time spent ready to act.</p>
+<h3 id="normal-mode-home-base">Normal Mode: Home Base</h3>
+<p>Normal mode is where Vim starts and where you should return after every edit. Here, the alphabet is a command set. You don't need it all at once, but notice the <em>shape</em> — single keys do a lot:</p>
+<ul>
+<li>Move: <code>h j k l</code> (left, down, up, right), <code>w</code>/<code>b</code> (word forward/back), <code>0</code>/<code>$</code> (line start/end), <code>gg</code>/<code>G</code> (file top/bottom). Full treatment in Part 4.</li>
+<li>Edit: <code>x</code> (delete char), <code>d</code>/<code>c</code>/<code>y</code> (delete/change/yank — operators, Part 3), <code>p</code> (paste), <code>r</code> (replace one char), <code>u</code> (undo).</li>
+<li>Enter other modes: <code>i a o</code> (insert), <code>v V &amp;lt;C-v&amp;gt;</code> (visual), <code>:</code> <code>/</code> (command-line), <code>R</code> (replace).</li>
+</ul>
+<p>The mindset shift that separates beginners from the fluent: <strong>the resting state of your hands is Normal mode, not Insert mode.</strong> A fluent user makes an edit, hits <code>&amp;lt;Esc&amp;gt;</code>, and sits in Normal mode reading and navigating — dipping into Insert only for the actual keystrokes of new text. Beginners do the opposite: they live in Insert mode and treat Vim like Notepad with extra steps, forfeiting the entire benefit.</p>
+<h3 id="insert-mode-get-in-type-get-out">Insert Mode: Get In, Type, Get Out</h3>
+<p>Insert mode is ordinary typing. The art is in <em>how you enter it</em>, because choosing the right entry command saves a navigation step. There are eight common doors, and picking the right one is a real speed habit:</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Enters insert…</th>
+<th>Use when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>i</code></td>
+<td>before the cursor</td>
+<td>the default "insert here"</td>
+</tr>
+<tr>
+<td><code>a</code></td>
+<td>after the cursor (append)</td>
+<td>adding to the right of the current char</td>
+</tr>
+<tr>
+<td><code>I</code></td>
+<td>at first non-blank of line</td>
+<td>prepend to a line of code</td>
+</tr>
+<tr>
+<td><code>A</code></td>
+<td>at end of line</td>
+<td>the most-used one — append to a line</td>
+</tr>
+<tr>
+<td><code>o</code></td>
+<td>on a new line below</td>
+<td>adding a new line of code</td>
+</tr>
+<tr>
+<td><code>O</code></td>
+<td>on a new line above</td>
+<td>inserting a line above</td>
+</tr>
+<tr>
+<td><code>gi</code></td>
+<td>where you last left insert mode</td>
+<td>resume editing where you were</td>
+</tr>
+<tr>
+<td><code>s</code> / <code>S</code></td>
+<td>deleting char / whole line first</td>
+<td>replace-and-retype (these are <code>cl</code> / <code>cc</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>The difference between <code>i</code> and <code>A</code>, or <code>o</code> versus pressing <code>&amp;lt;Esc&amp;gt;</code>-then-arrow-down-then-typing, is the difference between one keystroke and four. <strong>Leaving</strong> insert mode is <code>&amp;lt;Esc&amp;gt;</code> — or <code>&lt;C-[&gt;</code>, which many remap to a home-row key (<code>jk</code>, Caps Lock) because reaching for the far-away <code>&amp;lt;Esc&amp;gt;</code> is the one ergonomic wart in the design. While in insert mode you also get a few power keys without leaving: <code>&amp;lt;C-w&amp;gt;</code> deletes the previous word, <code>&amp;lt;C-u&amp;gt;</code> deletes to the start of the line, <code>&amp;lt;C-r&amp;gt;{reg}</code> inserts a register (Part 6), and <code>&amp;lt;C-n&amp;gt;</code>/<code>&amp;lt;C-p&amp;gt;</code> autocomplete words from the file (Part 10).</p>
+<p>The discipline: <strong>don't navigate in insert mode</strong> with arrow keys. Hit <code>&amp;lt;Esc&amp;gt;</code>, move with a real motion, re-enter. It feels pedantic for a day and becomes invisible after that.</p>
+<h3 id="visual-mode-select-then-operate">Visual Mode: Select, Then Operate</h3>
+<p>Visual mode reverses Vim's usual order. Normally you say verb-then-noun (<code>d</code> then <code>w</code>); in Visual you select the noun first (watching it highlight), then press the verb. It exists for the cases where you can't easily express the target as a motion, or you just want to <em>see</em> the selection before acting. Three flavors:</p>
+<ul>
+<li><strong><code>v</code> — charwise:</strong> select character by character. <code>vee</code> selects two words; press <code>d</code> to delete the selection or <code>c</code> to change it.</li>
+<li><strong><code>V</code> — linewise:</strong> select whole lines. <code>Vjj</code> selects three lines; <code>&gt;</code> indents them, <code>d</code> deletes them.</li>
+<li><strong><code>&amp;lt;C-v&amp;gt;</code> — blockwise:</strong> select a rectangular column block. This is the one with no equivalent in most editors and a genuine superpower — covered with examples in Part 10 (insert text on 50 lines at once, edit a column of a table).</li>
+</ul>
+<p>Inside Visual mode: <code>o</code> jumps the cursor to the <em>other</em> end of the selection (extend the side you got wrong without restarting), <code>gv</code> reselects your last visual selection, and any operator (<code>d c y &gt; &lt; u U ~ =</code>) acts on the highlighted region. A subtle but huge one: after selecting lines with <code>V</code>, pressing <code>:</code> pre-fills the command line with the range <code>:'&lt;,'&gt;</code> so your next Ex command applies exactly to the selection (Part 7).</p>
+<p>When <em>should</em> you use Visual mode versus a plain operator+motion? Use an operator when you can name the target (<code>ci(</code>, <code>d}</code>) — it's faster and <strong>repeatable with <code>.</code></strong>. Reach for Visual when the boundary is irregular, when you want to confirm visually, or for blockwise edits. Over-reliance on Visual mode for things that have a clean text object is a common intermediate plateau.</p>
+<h3 id="command-line-mode-the-ex-heritage">Command-Line Mode: The Ex Heritage</h3>
+<p>Pressing <code>:</code> drops to the command line, where Vim's older line-editor ancestor (<code>ex</code>) lives. This is where file operations and bulk transformations happen: <code>:w</code> (write), <code>:q</code> (quit), <code>:e file</code> (edit a file), <code>:s</code> (substitute), <code>:g</code> (global). These commands take <strong>ranges</strong> — <code>:10,20d</code> deletes lines 10–20, <code>:%s/…/…/g</code> substitutes across the whole file — which makes them devastatingly efficient for sweeping edits (Parts 7 and 9). <code>/</code> and <code>?</code> are technically command-line mode too, for forward and backward search. A quality-of-life trick: <code>q:</code> opens the <strong>command-line window</strong>, a normal buffer of your command history you can edit and re-run with <code>&amp;lt;CR&amp;gt;</code> — Vim editing its own command line.</p>
+<h3 id="replace-and-the-invisible-operator-pending-mode">Replace and the Invisible Operator-Pending Mode</h3>
+<p>Two to round out the set:</p>
+<ul>
+<li><strong>Replace mode (<code>R</code>)</strong> overtypes: each character you type replaces the one under the cursor, like the old <code>Insert</code> key. Niche — handy for fixed-width tables or ASCII art. <code>r{char}</code> replaces just a single character without entering a mode at all.</li>
+<li><strong>Operator-pending mode</strong> is the one you never named but use constantly. The instant you press an operator like <code>d</code>, Vim enters operator-pending mode and <em>waits</em> for a motion or text object to tell it the extent. Press <code>w</code> and it completes as <code>dw</code>. This tiny waiting state is the hinge of the entire grammar — it's why <code>d</code> + any noun works, including text objects (<code>diw</code>), counts (<code>d3w</code>), and even searches (<code>d/foo&amp;lt;CR&amp;gt;</code> deletes up to the next "foo"). Understanding that operators open a "now name the target" prompt is understanding Vim.</li>
+</ul>
+<p>(Neovim and modern Vim also have a <strong>Terminal mode</strong> for the built-in <code>:terminal</code>, and there's a rarely-used <strong>Select mode</strong> that mimics traditional select-and-replace for snippet plugins. Neither is worth dwelling on now.)</p>
+<p>If you remember one thing from Part 2: <strong>enter the specialized modes on purpose and leave them fast.</strong> Your home is Normal mode; Insert is a quick errand, not a place to live.</p>
+<hr>
+<h2 id="part-3-the-grammar-of-editing">Part 3 — The Grammar of Editing</h2>
+<p>This is the heart of the guide. Parts 4–8 are vocabulary; this part is the grammar that makes the vocabulary explode into fluency. If Part 1 convinced you Vim is a language, this is the sentence structure.</p>
+<h3 id="the-sentence-operator-motion">The Sentence: Operator + Motion</h3>
+<p>Most Vim edits follow one pattern:</p>
+<pre><code class="language-text">[count] operator [count] motion-or-text-object
+</code></pre>
+<p>An <strong>operator</strong> (verb) says <em>what to do</em>; a <strong>motion or text object</strong> (noun) says <em>to what</em>. The operator acts on exactly the text the motion would cover. So:</p>
+<ul>
+<li><code>d</code> + <code>w</code> = <code>dw</code> — delete from cursor to the start of the next word.</li>
+<li><code>c</code> + <code>$</code> = <code>c$</code> — change from cursor to end of line (delete it and enter insert mode).</li>
+<li><code>y</code> + <code>}</code> = <code>y}</code> — yank from cursor to the next blank line.</li>
+<li><code>&gt;</code> + <code>G</code> = <code>&gt;G</code> — indent from this line to the end of the file.</li>
+</ul>
+<p>This is composition, and it's <em>predictable</em>: any operator pairs with any motion. You don't memorize <code>dw</code>, <code>cw</code>, <code>yw</code>, <code>d$</code>, <code>c$</code>, <code>y$</code> as six separate commands — you learn three operators and a handful of motions and get all the combinations free. That's the leverage.</p>
+<h3 id="the-verbs-operators">The Verbs (Operators)</h3>
+<p>The operators you'll use constantly:</p>
+<table>
+<thead>
+<tr>
+<th>Operator</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>d</code></td>
+<td><strong>delete</strong> (and copy into a register)</td>
+</tr>
+<tr>
+<td><code>c</code></td>
+<td><strong>change</strong> — delete, then enter Insert mode</td>
+</tr>
+<tr>
+<td><code>y</code></td>
+<td><strong>yank</strong> (copy)</td>
+</tr>
+<tr>
+<td><code>&gt;</code> / <code>&lt;</code></td>
+<td><strong>indent</strong> right / left</td>
+</tr>
+<tr>
+<td><code>=</code></td>
+<td><strong>auto-indent</strong> (reformat indentation)</td>
+</tr>
+<tr>
+<td><code>gu</code> / <code>gU</code> / <code>g~</code></td>
+<td>lowercase / uppercase / toggle case</td>
+</tr>
+<tr>
+<td><code>gq</code> / <code>gw</code></td>
+<td><strong>format</strong> (re-wrap) lines to text width</td>
+</tr>
+<tr>
+<td><code>!</code></td>
+<td><strong>filter</strong> through an external shell command</td>
+</tr>
+</tbody>
+</table>
+<p><code>p</code>/<code>P</code> (put/paste), <code>x</code> (delete char), <code>r</code> (replace char), and <code>~</code> (toggle case) aren't operators in the formal sense — they don't take a motion — but they're core editing verbs you'll lean on (Part 6).</p>
+<h3 id="the-nouns-motions-vs-text-objects">The Nouns: Motions vs. Text Objects</h3>
+<p>There are two kinds of noun, and the distinction matters:</p>
+<ul>
+<li><strong>Motions</strong> describe <em>movement</em> — they cover the text <em>between</em> where the cursor is and where the motion lands. <code>w</code>, <code>$</code>, <code>}</code>, <code>G</code>, <code>/foo&amp;lt;CR&amp;gt;</code>. They're directional and depend on cursor position. (Part 4.)</li>
+<li><strong>Text objects</strong> describe <em>structure</em> — a complete syntactic unit regardless of where in it the cursor sits: a word (<code>iw</code>), the inside of quotes (<code>i"</code>), a parenthesized group (<code>a(</code>), an HTML tag's contents (<code>it</code>). They come in <strong>inner</strong> (<code>i</code>) and <strong>around</strong> (<code>a</code>) variants. (Part 5.)</li>
+</ul>
+<p>The practical difference: a motion like <code>dw</code> deletes <em>from the cursor</em> forward, so the result depends on where you started. A text object like <code>diw</code> deletes <em>the whole word</em> the cursor is anywhere inside — position-independent. Text objects are what make Vim feel like it reads your mind, and they're the single biggest "faster than a traditional editor" lever, which is why they get their own chapter.</p>
+<h3 id="counts-multiply">Counts Multiply</h3>
+<p>A <strong>count</strong> before a command repeats the motion or operator. It can go before the operator, before the motion, or both (the two multiply):</p>
+<ul>
+<li><code>3w</code> — move forward 3 words.</li>
+<li><code>2dd</code> — delete 2 lines.</li>
+<li><code>d3w</code> — delete 3 words.</li>
+<li><code>3d2w</code> — delete 6 words (3 × 2).</li>
+<li><code>5j</code> — down 5 lines; <code>10G</code> or <code>:10</code> — go to line 10.</li>
+</ul>
+<p>Counts turn "do this a few times" into a single command, no repetition needed.</p>
+<h3 id="doubling-an-operator-goes-linewise">Doubling an Operator Goes Linewise</h3>
+<p>A useful special case: <strong>type an operator twice and it acts on the whole current line.</strong> This is how you operate on lines without a motion:</p>
+<ul>
+<li><code>dd</code> — delete the current line.</li>
+<li><code>cc</code> — change the current line (clear it, keep indent, enter Insert).</li>
+<li><code>yy</code> — yank the current line.</li>
+<li><code>&gt;&gt;</code> — indent the current line.</li>
+<li><code>guu</code> / <code>gUU</code> — lower/uppercase the line.</li>
+</ul>
+<p>With a count: <code>3dd</code> deletes three lines, <code>2yy</code> yanks two. (<code>d</code> doubled is <code>dd</code>; the second <code>d</code> stands in for "the line" as the motion.)</p>
+<h3 id="reading-compositions-fluently">Reading Compositions Fluently</h3>
+<p>Put it together and you can read any of these at a glance — and, more importantly, <em>write the one you need</em> by composing parts you already know:</p>
+<pre><code class="language-text">ci(    change inside parentheses        — rewrite a function's arguments
+da&quot;    delete a double-quoted string    — including the quotes
+yi{    yank inside braces               — copy a block's body
+&gt;ap    indent a paragraph
+gUiw   uppercase the current word
+d2j    delete this line and the 2 below (3 lines, linewise)
+c/end  change everything up to the next &quot;end&quot;
+=i{    reindent the contents of a block
+gqip   re-wrap the current paragraph to text width
+!ip sort   filter the paragraph through the `sort` shell command
+</code></pre>
+<p>None of these needed to be memorized individually. Each is just <em>verb + noun</em>. When you hit a new editing situation, the question is never "what's the command for this?" — it's "what's the verb, what's the noun?" and you assemble it.</p>
+<p>If you remember one thing from Part 3: <strong>edits are sentences — <code>operator + motion/text-object</code>, optionally multiplied by a count.</strong> Learn the verbs and nouns separately, and every combination is yours without ever studying it.</p>
+<h2 id="part-4-motions">Part 4 — Motions</h2>
+<p>Motions move the cursor — and because any operator can take a motion (Part 3), <strong>every motion you learn doubles as a way to delete, change, or yank.</strong> Learn <code>}</code> to jump a paragraph and you've also learned <code>d}</code>, <code>c}</code>, <code>y}</code> for free. This part is about getting anywhere — in a line, a screen, or a file — without arrow keys or the mouse. The skill to build is <strong>precision targeting</strong>: reach your destination in as few keystrokes as possible, ideally one motion rather than a burst of repeated ones.</p>
+<h3 id="character-and-word-motions">Character and Word Motions</h3>
+<p><code>h j k l</code> move left/down/up/right. They're on the home row so your fingers never move, but <strong>mashing <code>l</code> ten times to cross a line is a beginner tell</strong> — there's almost always a one-keystroke motion that gets you there. Use <code>hjkl</code> for tiny adjustments only.</p>
+<p>Word motions are the workhorses of intra-line movement:</p>
+<table>
+<thead>
+<tr>
+<th>Motion</th>
+<th>Moves to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>w</code> / <code>W</code></td>
+<td>start of next word / WORD</td>
+</tr>
+<tr>
+<td><code>e</code> / <code>E</code></td>
+<td>end of next word / WORD</td>
+</tr>
+<tr>
+<td><code>b</code> / <code>B</code></td>
+<td>start of previous word / WORD</td>
+</tr>
+<tr>
+<td><code>ge</code> / <code>gE</code></td>
+<td>end of previous word / WORD</td>
+</tr>
+</tbody>
+</table>
+<p>The lowercase/uppercase distinction is <strong>word vs. WORD</strong>, and it's worth internalizing: a <strong>word</strong> is a run of letters/digits/underscores <em>or</em> a run of punctuation; a <strong>WORD</strong> is anything between whitespace. On the text <code>foo.bar_baz()</code>:</p>
+<pre><code class="language-text">foo.bar_baz()
+│  ││      ││
+w stops at: foo → . → bar_baz → ()      (punctuation breaks words)
+W stops at: foo.bar_baz()                (one WORD — only whitespace breaks it)
+</code></pre>
+<p>So <code>dw</code> on <code>foo.bar</code> deletes just <code>foo</code>, while <code>dW</code> on <code>foo.bar baz</code> deletes <code>foo.bar</code>. Reach for WORD motions when you want to skip over punctuation-heavy tokens like file paths or <code>snake.case.chains</code> in one jump.</p>
+<h3 id="line-internal-motions">Line-Internal Motions</h3>
+<table>
+<thead>
+<tr>
+<th>Motion</th>
+<th>Moves to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>first column (very start of line)</td>
+</tr>
+<tr>
+<td><code>^</code></td>
+<td>first non-blank character</td>
+</tr>
+<tr>
+<td><code>$</code></td>
+<td>end of line</td>
+</tr>
+<tr>
+<td><code>g_</code></td>
+<td>last non-blank character</td>
+</tr>
+<tr>
+<td><code>{n}\|</code></td>
+<td>column <code>n</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>^</code> and <code>$</code> are the ones you'll wear out — start and end of the meaningful content. <code>d^</code>, <code>d$</code> (or its alias <code>D</code>), <code>c$</code> (alias <code>C</code>) follow directly.</p>
+<h3 id="find-and-till-the-fastest-way-across-a-line">Find and Till: The Fastest Way Across a Line</h3>
+<p>This family is the secret to one-keystroke intra-line jumps, and beginners chronically underuse it:</p>
+<table>
+<thead>
+<tr>
+<th>Motion</th>
+<th>Moves to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>f{char}</code></td>
+<td>next <code>{char}</code> (cursor lands <strong>on</strong> it)</td>
+</tr>
+<tr>
+<td><code>F{char}</code></td>
+<td>previous <code>{char}</code></td>
+</tr>
+<tr>
+<td><code>t{char}</code></td>
+<td>just <strong>before</strong> the next <code>{char}</code> (till)</td>
+</tr>
+<tr>
+<td><code>T{char}</code></td>
+<td>just after the previous <code>{char}</code></td>
+</tr>
+<tr>
+<td><code>;</code></td>
+<td>repeat the last <code>f</code>/<code>t</code>/<code>F</code>/<code>T</code></td>
+</tr>
+<tr>
+<td><code>,</code></td>
+<td>repeat it in the opposite direction</td>
+</tr>
+</tbody>
+</table>
+<p>To jump to the next comma, press <code>f,</code>. Need the one after? <code>;</code>. Combined with operators this is razor-sharp: on <code>hello(world, again)</code> with the cursor at the start, <code>df,</code> deletes up to <strong>and including</strong> the comma (<code>f</code> is <em>inclusive</em>), leaving <code>again)</code>; <code>dt,</code> deletes up to but <strong>not</strong> including it. That inclusive/exclusive difference (next section) is exactly the <code>f</code> vs <code>t</code> choice.</p>
+<h3 id="moving-around-the-screen-and-file">Moving Around the Screen and File</h3>
+<table>
+<thead>
+<tr>
+<th>Motion</th>
+<th>Moves to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gg</code> / <code>G</code></td>
+<td>first / last line of file</td>
+</tr>
+<tr>
+<td><code>{n}G</code> or <code>:{n}&amp;lt;CR&amp;gt;</code></td>
+<td>line <code>n</code></td>
+</tr>
+<tr>
+<td><code>H</code> / <code>M</code> / <code>L</code></td>
+<td><strong>H</strong>igh / <strong>M</strong>iddle / <strong>L</strong>ow line of the visible screen</td>
+</tr>
+<tr>
+<td><code>&amp;lt;C-d&amp;gt;</code> / <code>&amp;lt;C-u&amp;gt;</code></td>
+<td>down / up half a screen</td>
+</tr>
+<tr>
+<td><code>&amp;lt;C-f&amp;gt;</code> / <code>&amp;lt;C-b&amp;gt;</code></td>
+<td>forward / back a full screen</td>
+</tr>
+<tr>
+<td><code>zz</code> / <code>zt</code> / <code>zb</code></td>
+<td>scroll so the cursor line is centered / top / bottom</td>
+</tr>
+</tbody>
+</table>
+<p><code>zz</code> deserves a callout: after jumping somewhere, <code>zz</code> recenters the view around your cursor so you can see context — a constant companion to search and <code>G</code>.</p>
+<h3 id="structural-motions">Structural Motions</h3>
+<p>These jump by code/prose structure:</p>
+<table>
+<thead>
+<tr>
+<th>Motion</th>
+<th>Moves to</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>}</code> / <code>{</code></td>
+<td>next / previous blank line (paragraph)</td>
+</tr>
+<tr>
+<td><code>)</code> / <code>(</code></td>
+<td>next / previous sentence</td>
+</tr>
+<tr>
+<td><code>%</code></td>
+<td>the matching bracket of the pair under/after the cursor — <code>()</code>, <code>[]</code>, <code>{}</code></td>
+</tr>
+<tr>
+<td><code>[{</code> / <code>]}</code></td>
+<td>the unmatched enclosing <code>{</code> / <code>}</code></td>
+</tr>
+<tr>
+<td><code>[(</code> / <code>])</code></td>
+<td>the unmatched enclosing <code>(</code> / <code>)</code></td>
+</tr>
+<tr>
+<td><code>[[</code> / <code>]]</code></td>
+<td>previous / next section or function (language-dependent)</td>
+</tr>
+</tbody>
+</table>
+<p><code>%</code> is indispensable for code: park on a <code>{</code> and <code>%</code> leaps to its closing <code>}</code> (and back). <code>d%</code> from an opening bracket deletes the whole bracketed span.</p>
+<h3 id="search-as-a-motion">Search as a Motion</h3>
+<p>Search isn't just navigation — it's a motion, so it composes with operators:</p>
+<ul>
+<li><code>/pattern&amp;lt;CR&amp;gt;</code> jumps to the next match; <code>?pattern&amp;lt;CR&amp;gt;</code> searches backward.</li>
+<li><code>n</code> / <code>N</code> repeat the search forward / backward.</li>
+<li><code>*</code> / <code>#</code> search for the <strong>exact word under the cursor</strong>, forward / backward (a fantastic "find other uses of this variable" key); <code>g*</code> / <code>g#</code> do the same but match partial words too.</li>
+<li>As a motion: <code>d/foo&amp;lt;CR&amp;gt;</code> deletes everything from the cursor up to the next "foo"; <code>c/end&amp;lt;CR&amp;gt;</code> changes up to "end". You can even add an offset: <code>/foo/e</code> lands on the <em>end</em> of the match.</li>
+</ul>
+<p>Search is often the <em>fastest</em> long-range motion: rather than count lines, <code>/uniqueword&amp;lt;CR&amp;gt;</code> teleports you straight there.</p>
+<h3 id="marks-and-jumps-teleporting-back">Marks and Jumps: Teleporting Back</h3>
+<p>Vim remembers where you've been:</p>
+<ul>
+<li><strong>Marks:</strong> <code>m{a-z}</code> drops a named mark at the cursor. <code>`a</code> jumps to that exact spot; <code>'a</code> jumps to the start of that line. So <code>ma</code>, wander off, <code>`a</code> to snap back. Uppercase marks (<code>mA</code>) work <em>across files</em>.</li>
+<li><strong>Automatic marks:</strong> <code>`.</code> jumps to your last edit, <code>`^</code> to where you last left insert mode, and <code></code> `` (two backticks) jumps back to where you were <em>before</em> the last jump — toggle between two spots by pressing it repeatedly.</li>
+<li><strong>The jump list:</strong> <code>&amp;lt;C-o&amp;gt;</code> goes <strong>back</strong> to your previous location (across searches, <code>G</code>, file switches), <code>&amp;lt;C-i&amp;gt;</code> goes <strong>forward</strong> again — like a browser's back/forward buttons for your cursor.</li>
+<li><strong>The change list:</strong> <code>g;</code> / <code>g,</code> cycle through the places you recently changed.</li>
+</ul>
+<p>For navigating a real codebase, <code>*</code> to find a symbol, <code>&amp;lt;C-o&amp;gt;</code> to retrace, and marks for "I'll be right back" are how you move without ever touching a scrollbar.</p>
+<h3 id="inclusive-vs-exclusive-and-the-cw-surprise">Inclusive vs. Exclusive (and the <code>cw</code> Surprise)</h3>
+<p>A detail that explains otherwise-baffling results. Motions are either <strong>inclusive</strong> (the operator includes the character the motion lands on) or <strong>exclusive</strong> (it doesn't):</p>
+<ul>
+<li><strong>Inclusive:</strong> <code>f</code> <code>t</code> <code>e</code> <code>$</code> <code>%</code> — e.g. <code>df.</code> includes the period.</li>
+<li><strong>Exclusive:</strong> <code>w</code> <code>b</code> <code>0</code> <code>/</code> — e.g. <code>dw</code> stops <em>before</em> the next word's first character.</li>
+</ul>
+<p>The famous wrinkle: <strong><code>cw</code> behaves like <code>ce</code>.</strong> Logically <code>dw</code> deletes the word <em>and</em> the trailing space (it's a movement to the next word). But when <em>changing</em>, you almost never want to delete the space too, so Vim special-cases <code>cw</code> to act like <code>ce</code> — change to the end of the word, leaving the space. Don't fight it; it's the behavior you actually want. (For the position-independent "change the whole word from anywhere," prefer the text object <code>ciw</code> — next part.)</p>
+<p>If you remember one thing from Part 4: <strong>prefer one precise motion over many repeated ones</strong> — <code>f</code>, <code>/</code>, <code>}</code>, <code>%</code>, and <code>{n}G</code> get you there in a keystroke, and each one instantly becomes a delete/change/yank when you put an operator in front of it.</p>
+<hr>
+<h2 id="part-5-text-objects">Part 5 — Text Objects</h2>
+<p>If motions are how you <em>move</em>, text objects are how you <em>grab structure</em> — and they are the single feature that makes experienced Vim users look like they're cheating. A text object selects a complete syntactic unit — a word, a quoted string, a parenthesized group, an HTML tag's contents — <strong>no matter where inside it the cursor sits.</strong> That position-independence is the whole point, and it's what a traditional editor's mouse-select can never match for speed.</p>
+<h3 id="inner-vs-around">Inner vs. Around</h3>
+<p>Every text object comes in two forms:</p>
+<ul>
+<li><strong><code>i</code> — inner:</strong> the content <em>only</em>. <code>i"</code> is the text between the quotes, not the quotes.</li>
+<li><strong><code>a</code> — around (a.k.a. "a"):</strong> the content <em>plus</em> its delimiters (and, for words and paragraphs, the trailing whitespace). <code>a"</code> includes the quotes.</li>
+</ul>
+<p>Mnemonic: <strong><code>i</code>nner</strong> = inside, <strong><code>a</code>round</strong> = all of it. You combine these with any operator: <code>ci"</code> (change inside quotes), <code>da(</code> (delete the parens and everything in them), <code>yi{</code> (yank a block's body), <code>vi"</code> (visually select inside quotes).</p>
+<h3 id="the-catalog">The Catalog</h3>
+<table>
+<thead>
+<tr>
+<th>Text object</th>
+<th>Selects</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>iw</code> / <code>aw</code></td>
+<td>a word / a word + surrounding whitespace</td>
+</tr>
+<tr>
+<td><code>iW</code> / <code>aW</code></td>
+<td>a WORD / a WORD + whitespace</td>
+</tr>
+<tr>
+<td><code>i"</code> <code>i'</code> <code>i`</code></td>
+<td>inside the quotes (and <code>a"</code> etc. to include them)</td>
+</tr>
+<tr>
+<td><code>i(</code> <code>i)</code> <code>ib</code></td>
+<td>inside parentheses (<code>ab</code> = "a block" = <code>a(</code>)</td>
+</tr>
+<tr>
+<td><code>i{</code> <code>i}</code> <code>iB</code></td>
+<td>inside braces (<code>aB</code> = <code>a{</code>)</td>
+</tr>
+<tr>
+<td><code>i[</code> <code>i]</code></td>
+<td>inside square brackets</td>
+</tr>
+<tr>
+<td><code>i&lt;</code> <code>i&gt;</code></td>
+<td>inside angle brackets</td>
+</tr>
+<tr>
+<td><code>it</code> / <code>at</code></td>
+<td>inside an HTML/XML tag / the whole tag element</td>
+</tr>
+<tr>
+<td><code>ip</code> / <code>ap</code></td>
+<td>a paragraph / paragraph + trailing blank line</td>
+</tr>
+<tr>
+<td><code>is</code> / <code>as</code></td>
+<td>a sentence</td>
+</tr>
+</tbody>
+</table>
+<p><code>ib</code>/<code>ab</code> (brackets/block) and <code>iB</code>/<code>aB</code> (Braces) are the same as <code>i(</code>/<code>a(</code> and <code>i{</code>/<code>a{</code> — shorter to type once they're in your fingers.</p>
+<h3 id="why-this-is-the-speed-lever">Why This Is the Speed Lever</h3>
+<p>Here's the comparison that sells it. Say you have <code>const name = "old value";</code> and want to replace the string. In a traditional editor: aim the mouse, click just after the opening quote, drag to just before the closing quote (don't overshoot!), release, delete, type. In Vim, with the cursor <strong>anywhere on that line</strong>:</p>
+<pre><code class="language-text">const name = &quot;old valu█e&quot;;
+Type:  ci&quot;
+const name = &quot;█&quot;;          (string contents gone, now in Insert mode — just type)
+</code></pre>
+<p><code>ci"</code> is three keys, position-independent, and it doesn't matter how long the string is or where your cursor landed — Vim finds the quotes and operates between them. A few more that turn multi-step mouse operations into reflexes:</p>
+<pre><code class="language-text">Rewrite a function's arguments:
+    foo(a, b█, c)        →  ci(  →  foo(█)              type new args
+
+Delete an entire HTML element's contents, keep the tags:
+    &lt;p&gt;hello █world&lt;/p&gt;  →  cit  →  &lt;p&gt;█&lt;/p&gt;            type new content
+
+Delete the whole element including tags:
+    &lt;p&gt;hello █world&lt;/p&gt;  →  dat  →  █
+
+Copy a whole block body to paste elsewhere:
+    if (x) {             →  yi{  (cursor anywhere in the braces)
+        do█Thing();
+    }
+
+Delete a paragraph and the blank line after it:
+    ...some par█agraph... →  dap
+
+Uppercase a word from anywhere in it:
+    let my█Var = 1;      →  gUiw  →  let MYVAR... (well, gUiW for the whole token)
+</code></pre>
+<p>The mental motion is always the same: identify the <strong>structure</strong> you want (a string, a block, a tag, a paragraph), pick <strong>inner or around</strong>, and put a <strong>verb</strong> in front. You're describing <em>what</em> you mean and letting Vim do the selecting.</p>
+<h3 id="text-objects-repeat-search-lightweight-refactoring">Text Objects + Repeat + Search = Lightweight Refactoring</h3>
+<p>Text objects shine when combined with the <code>.</code> repeat (Part 6) and search (Part 7). To change every call <code>format(x)</code> to <code>render(x)</code>: search <code>/format(&amp;lt;CR&amp;gt;</code>, then <code>cwrender&amp;lt;Esc&amp;gt;</code> (or <code>ciwrender&amp;lt;Esc&amp;gt;</code>), then <code>n</code> to the next match and <code>.</code> to repeat the change — <code>n . n . n .</code> walks through the file applying the same edit. No find-and-replace dialog, full control over which ones you touch.</p>
+<h3 id="beyond-the-built-ins">Beyond the Built-ins</h3>
+<p>Two extensions worth knowing now (full plugin treatment in Part 10), because they <em>are</em> text-object thinking:</p>
+<ul>
+<li><strong>vim-surround</strong> adds operations on the <em>delimiters</em> themselves: <code>cs"'</code> changes surrounding <code>"</code> to <code>'</code>, <code>ds(</code> deletes surrounding parentheses, and <code>ysiw"</code> wraps the current word in quotes. It treats "the surroundings" as something you can change, delete, and add — a natural extension of <code>i</code>/<code>a</code>.</li>
+<li><strong>Treesitter text objects</strong> (Neovim) add <em>semantic</em> objects that understand your language's syntax tree: <code>if</code>/<code>af</code> for inner/around a <strong>function</strong>, <code>ic</code>/<code>ac</code> for a <strong>class</strong>, <code>ia</code>/<code>aa</code> for an <strong>argument</strong>. <code>cif</code> changes a whole function body; <code>daa</code> deletes an argument <em>and</em> its trailing comma. This is text objects graduating from "matching brackets" to "actual code structure."</li>
+</ul>
+<p>If you remember one thing from Part 5: <strong>stop selecting text and start naming structure.</strong> <code>ci"</code>, <code>dap</code>, <code>cit</code>, <code>yi{</code> — describe the unit and the operation, and Vim finds the boundaries for you. This is the habit that makes editing feel telepathic.</p>
+<hr>
+<h2 id="part-6-changing-text-registers">Part 6 — Changing Text &amp; Registers</h2>
+<p>Parts 4–5 gave you nouns. This part is the verbs in daily practice — deleting, changing, copying, pasting — plus the two features that multiply them: <strong>the <code>.</code> command</strong> (repeat anything) and <strong>registers</strong> (where copied and deleted text actually goes). Master these and routine editing stops feeling like work.</p>
+<h3 id="the-everyday-edit-verbs">The Everyday Edit Verbs</h3>
+<p>Beyond the operators of Part 3, a set of single-key shortcuts handles the most common edits. Many are just an operator+motion fused into one key — knowing the expansion helps them stick:</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Equivalent</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>x</code> / <code>X</code></td>
+<td><code>dl</code> / <code>dh</code></td>
+<td>delete char under / before cursor</td>
+</tr>
+<tr>
+<td><code>D</code></td>
+<td><code>d$</code></td>
+<td>delete to end of line</td>
+</tr>
+<tr>
+<td><code>C</code></td>
+<td><code>c$</code></td>
+<td>change to end of line</td>
+</tr>
+<tr>
+<td><code>s</code></td>
+<td><code>cl</code></td>
+<td>delete char, enter Insert ("substitute")</td>
+</tr>
+<tr>
+<td><code>S</code></td>
+<td><code>cc</code></td>
+<td>clear line, enter Insert</td>
+</tr>
+<tr>
+<td><code>Y</code></td>
+<td><code>yy</code>*</td>
+<td>yank line (*Neovim defaults <code>Y</code> to <code>y$</code>)</td>
+</tr>
+<tr>
+<td><code>r{char}</code></td>
+<td>—</td>
+<td>replace one character, no mode change</td>
+</tr>
+<tr>
+<td><code>~</code></td>
+<td>—</td>
+<td>toggle case of the character, move right</td>
+</tr>
+<tr>
+<td><code>J</code> / <code>gJ</code></td>
+<td>—</td>
+<td>join next line up (with / without a space)</td>
+</tr>
+</tbody>
+</table>
+<p><code>J</code> is a small delight: it pulls the following line onto the current one with a single space, fixing up whitespace — <code>3J</code> joins three lines. <code>gJ</code> joins without adding the space.</p>
+<h3 id="put-paste-and-the-swap-tricks">Put (Paste) and the Swap Tricks</h3>
+<p><code>p</code> puts the last delete/yank <strong>after</strong> the cursor; <code>P</code> puts it <strong>before</strong>. The behavior depends on how the text was captured:</p>
+<ul>
+<li><strong>Charwise</strong> (<code>yw</code>, <code>x</code>): inserted inline at the cursor.</li>
+<li><strong>Linewise</strong> (<code>yy</code>, <code>dd</code>): inserted on a <strong>new line</strong> below (<code>p</code>) or above (<code>P</code>) — it never jams a line into the middle of another.</li>
+</ul>
+<p>This linewise behavior powers two classic micro-edits:</p>
+<pre><code class="language-text">Swap two characters (cursor on first):   xp      teh → the
+Swap two lines (cursor on first):        ddp
+Duplicate the current line:              yyp
+</code></pre>
+<p><code>{count}p</code> pastes multiple copies (<code>3p</code> pastes three times).</p>
+<h3 id="numbers-increment-and-decrement">Numbers: Increment and Decrement</h3>
+<p><code>&amp;lt;C-a&amp;gt;</code> increments the number under or after the cursor; <code>&amp;lt;C-x&amp;gt;</code> decrements it. <code>10&amp;lt;C-a&amp;gt;</code> adds ten. Vim finds the next number on the line if the cursor isn't on one, and understands hex/binary too. The showstopper is the <strong>visual-block version</strong>: select a column and <code>g&amp;lt;C-a&amp;gt;</code> turns it into an <em>ascending sequence</em> — covered as a recipe in Part 10, it's how you number a list 1, 2, 3… in one command.</p>
+<h3 id="the-dot-command-repeat-anything">The Dot Command: Repeat Anything</h3>
+<p><code>.</code> repeats your <strong>last change</strong> — the most powerful single key in Vim, and the one that quietly does the most work. A "change" is any text modification: <code>dd</code>, <code>ciwfoo&amp;lt;Esc&amp;gt;</code>, <code>x</code>, <code>A;&amp;lt;Esc&amp;gt;</code>. After making one, <code>.</code> does it again at the new cursor position.</p>
+<p>The <strong>dot-repeat workflow</strong> is a habit worth building deliberately: <em>make a small, self-contained change, move to the next spot, press <code>.</code></em>. For example, to add a semicolon to the end of several lines:</p>
+<pre><code class="language-text">A;&lt;Esc&gt;     append a semicolon to this line, leave Insert
+j           down to the next line
+.           repeat &quot;append a semicolon&quot;  (one keystroke!)
+j .  j .    keep going
+</code></pre>
+<p>Because <code>.</code> re-runs the <em>entire</em> change including the typed text, pairing it with a repeatable motion (<code>n</code> for searches, <code>;</code> for <code>f</code>/<code>t</code>, <code>j</code> for lines) lets you apply an edit across many locations while eyeballing each one. It's "find and replace" with a human in the loop, and it's faster to <em>start</em> than opening a replace dialog. (Well-written plugins like vim-surround even make <em>their</em> operations dot-repeatable.)</p>
+<h3 id="registers-where-copied-text-lives">Registers: Where Copied Text Lives</h3>
+<p>Every delete and yank goes into a <strong>register</strong> — a named clipboard. Vim has many, and understanding a few saves you from the #1 paste frustration.</p>
+<ul>
+<li><strong>The unnamed register <code>""</code></strong> holds the most recent delete or yank. Plain <code>p</code> pastes from it.</li>
+<li><strong>The yank register <code>"0</code></strong> holds <em>only the last yank</em> — crucially, <strong>deletes don't touch it.</strong> This solves the classic trap below.</li>
+<li><strong>The numbered ring <code>"1</code>–<code>"9</code></strong> holds recent <em>deletes</em>: <code>"1</code> is the newest, shifting down as you delete more. You can replay a series of deletes with <code>"1p</code> then <code>.</code> <code>.</code> (each <code>.</code> advances to the next numbered register — a neat trick).</li>
+<li><strong>Named registers <code>"a</code>–<code>"z</code></strong> are yours to assign explicitly. Prefix any yank/delete/paste with <code>"{letter}</code>: <code>"ayy</code> yanks the line into register <code>a</code>; <code>"ap</code> pastes it back. Use the <strong>uppercase</strong> name to <strong>append</strong>: <code>"Ayy</code> adds another line to register <code>a</code> — great for collecting scattered lines into one place.</li>
+<li><strong>The black hole <code>"_</code></strong> discards: <code>"_dd</code> deletes a line <em>without</em> overwriting the unnamed register.</li>
+<li><strong>The system clipboard <code>"+</code></strong> bridges to the OS: <code>"+y</code> copies to the system clipboard, <code>"+p</code> pastes from it. (On X11, <code>"*</code> is the primary selection.) Set <code>clipboard=unnamedplus</code> to make plain <code>y</code>/<code>p</code> use the OS clipboard by default.</li>
+<li><strong>Read-only registers:</strong> <code>"%</code> (current filename), <code>".</code> (last inserted text), <code>":</code> (last command), <code>"/</code> (last search). And the <strong>expression register <code>"=</code></strong> inserts computed values: in Insert mode, <code>&amp;lt;C-r&amp;gt;=2*21&amp;lt;CR&amp;gt;</code> types <code>42</code>.</li>
+</ul>
+<p><code>:registers</code> (or <code>:reg</code>) shows them all. To paste a register while in Insert mode without leaving it, <code>&amp;lt;C-r&amp;gt;{reg}</code> — e.g. <code>&amp;lt;C-r&amp;gt;0</code> inserts your last yank mid-type.</p>
+<p><strong>The trap everyone hits, and the fix.</strong> You yank a word (<code>yiw</code>), then delete some junk (<code>diw</code>), then paste (<code>p</code>) — and Vim pastes the <em>junk</em>, because the delete overwrote the unnamed register. Three fixes: (1) paste from the yank register, <code>"0p</code>, which the delete didn't touch; (2) delete into the black hole, <code>"_diw</code>, so your yank survives; or (3) in Visual mode, select and <code>p</code> over the target — though note that itself swaps text into the unnamed register.</p>
+<h3 id="undo-redo-and-time-travel">Undo, Redo, and Time Travel</h3>
+<ul>
+<li><code>u</code> undoes; <code>&amp;lt;C-r&amp;gt;</code> redoes. <code>U</code> undoes <em>all</em> recent changes on one line (and is itself undoable).</li>
+<li>Vim's undo is a <strong>tree</strong>, not a line — if you undo and then make a new change, the old branch isn't lost. <code>g-</code> and <code>g+</code> move backward and forward through <em>every</em> state in time order, and <code>:earlier 10m</code> / <code>:later 5m</code> jump by elapsed time (also <code>:earlier 50</code> by change count). You can recover work you thought a redo had buried.</li>
+<li>Enable <strong>persistent undo</strong> (<code>set undofile</code>) and the undo history survives closing and reopening the file — undo across sessions.</li>
+</ul>
+<p>If you remember one thing from Part 6: <strong><code>.</code> is your repeat button and <code>"0</code>/<code>"_</code> keep your clipboard from betraying you.</strong> Make changes small and repeatable so <code>.</code> can do the rest, and reach for the yank or black-hole register the moment a delete would clobber something you wanted to paste.</p>
+<h2 id="part-7-search-substitute">Part 7 — Search &amp; Substitute</h2>
+<p>Motions move you to one place; this part is about acting on <strong>many</strong> places at once. Search finds, <code>:substitute</code> rewrites, and the <code>:global</code> command — Vim's most powerful and least-known feature — runs any command on every line that matches a pattern. Together they turn "edit all the X's to Y" from a chore into a one-liner, and they're where Vim decisively out-paces a point-and-click editor.</p>
+<h3 id="search-properly">Search, Properly</h3>
+<p><code>/pattern&amp;lt;CR&amp;gt;</code> searches forward, <code>?pattern&amp;lt;CR&amp;gt;</code> backward, <code>n</code>/<code>N</code> repeat forward/back, and <code>*</code>/<code>#</code> jump to the exact word under the cursor (Part 4). A few things that make search far more pleasant:</p>
+<ul>
+<li><strong><code>incsearch</code></strong> (set it — default in Neovim) jumps to matches <em>as you type</em> the pattern.</li>
+<li><strong><code>hlsearch</code></strong> highlights all matches; <code>:noh&amp;lt;CR&amp;gt;</code> clears the highlight when you're done.</li>
+<li><strong><code>ignorecase</code> + <code>smartcase</code></strong> together is the magic combination: searches are case-insensitive <em>unless</em> you type a capital letter, in which case they become case-sensitive. <code>/error</code> matches anything; <code>/Error</code> matches only the capitalized form.</li>
+</ul>
+<h3 id="regex-and-very-magic-mode">Regex and "Very Magic" Mode</h3>
+<p>Vim's default regex dialect requires backslashes before many metacharacters (<code>\(</code>, <code>\+</code>, <code>\|</code>), which is noisy. Prefix a pattern with <strong><code>\v</code></strong> ("very magic") and the syntax becomes conventional, like most other regex engines:</p>
+<pre><code class="language-text">Default:   /\(foo\|bar\)\+
+Very magic: /\v(foo|bar)+
+</code></pre>
+<p>Use <code>\v</code> whenever a pattern has groups or alternation. Other handy atoms: <code>\c</code>/<code>\C</code> force case-insensitive/sensitive for one search; <code>\&lt;</code> and <code>\&gt;</code> match word boundaries; and <code>\zs</code>/<code>\ze</code> set where the <em>match</em> starts/ends independent of what you required around it (so <code>/foo\zsbar</code> finds "bar" but only when preceded by "foo", leaving the cursor on "bar").</p>
+<h3 id="substitute-search-and-replace-with-ranges">Substitute: Search-and-Replace with Ranges</h3>
+<p>The <code>:substitute</code> command (<code>:s</code>) is find-and-replace, and its power is in the <strong>range</strong> prefix and the <strong>flags</strong> suffix:</p>
+<pre><code class="language-text">:[range]s/pattern/replacement/[flags]
+</code></pre>
+<p>The range says <em>which lines</em>, and this is the part worth memorizing cold:</p>
+<table>
+<thead>
+<tr>
+<th>Range</th>
+<th>Means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>(none)</td>
+<td>current line only</td>
+</tr>
+<tr>
+<td><code>%</code></td>
+<td>the whole file</td>
+</tr>
+<tr>
+<td><code>10,20</code></td>
+<td>lines 10–20</td>
+</tr>
+<tr>
+<td><code>.,+5</code></td>
+<td>current line and the next 5</td>
+</tr>
+<tr>
+<td><code>'&lt;,'&gt;</code></td>
+<td>the visual selection (auto-filled after you select with <code>V</code>)</td>
+</tr>
+<tr>
+<td><code>/start/,/end/</code></td>
+<td>from the next "start" line to the next "end" line</td>
+</tr>
+</tbody>
+</table>
+<p>The flags change behavior: <strong><code>g</code></strong> replaces <em>all</em> occurrences on each line (not just the first), <strong><code>c</code></strong> asks for <strong>confirmation</strong> on each (<code>y</code>/<code>n</code>/<code>a</code>/<code>q</code>), and <strong><code>i</code></strong> forces case-insensitive. So the canonical "replace everywhere, asking me each time":</p>
+<pre><code class="language-text">:%s/oldName/newName/gc
+</code></pre>
+<p>In the replacement you can reference capture groups (<code>\1</code>, <code>\2</code> — use <code>\v</code> in the pattern to write <code>(...)</code> cleanly), the whole match (<code>&amp;</code>), and case switches (<code>\u</code> uppercases the next char, <code>\U</code> until <code>\E</code>). Swap two comma-separated fields:</p>
+<pre><code class="language-text">:%s/\v(\w+), (\w+)/\2 \1/        Doe, Jane  →  Jane Doe
+</code></pre>
+<p>The <code>\=</code> form lets the replacement be an <em>expression</em> — e.g. <code>:%s/\d\+/\=submatch(0)+1/</code> increments every number in the file. And two repeat shortcuts: <code>&amp;</code> re-runs the last <code>:s</code> on the current line, and pressing <code>g&amp;</code> re-runs it across the whole file with the same flags.</p>
+<p>A small but constant time-saver: an <strong>empty pattern reuses your last search.</strong> Search for something with <code>/</code>, eyeball the matches, then <code>:%s//replacement/g</code> substitutes that same pattern without retyping it.</p>
+<h3 id="the-global-command-vims-power-tool">The Global Command: Vim's Power Tool</h3>
+<p><code>:global</code> (<code>:g</code>) is the feature that, once learned, you reach for weekly. It runs an Ex command on <strong>every line matching a pattern</strong>:</p>
+<pre><code class="language-text">:[range]g/pattern/command
+</code></pre>
+<p>The defaults are devastating in the good way:</p>
+<pre><code class="language-text">:g/TODO/d              delete every line containing &quot;TODO&quot;
+:g/^\s*$/d             delete every blank line
+:g/error/t$            copy every line containing &quot;error&quot; to the end of the file
+:g/^/m0                reverse the file (move every line to the top, in turn)
+</code></pre>
+<p><code>:v</code> (or <code>:g!</code>) is the inverse — run the command on every line that <strong>doesn't</strong> match:</p>
+<pre><code class="language-text">:v/keep/d              delete every line that does NOT contain &quot;keep&quot;
+</code></pre>
+<p>The real power comes from combining <code>:g</code> with <strong><code>:normal</code></strong>, which runs <em>Normal-mode keystrokes</em> on each matched line. This is "do this edit on every line like X" in one command:</p>
+<pre><code class="language-text">:g/console/normal A  // debug          append a comment to every line with &quot;console&quot;
+:g/^function/normal O/** doc */         add a doc line above every function
+:g/;$/normal $x                          remove the trailing semicolon from lines ending in ;
+</code></pre>
+<p><code>:g/pattern/normal {keys}</code> is, in effect, a one-shot macro applied to every matching line at once — frequently simpler than recording an actual macro (Part 8).</p>
+<h3 id="the-cgn-trick-multi-cursor-the-vim-way">The <code>cgn</code> Trick: Multi-Cursor, the Vim Way</h3>
+<p>A standout workflow that fuses search, change, and <code>.</code>-repeat. <code>gn</code> is a special motion that selects the <strong>next match of the last search</strong>, so <code>cgn</code> changes it. The pattern:</p>
+<pre><code class="language-text">*           search for the word under the cursor
+cgn         change this match — type the replacement, &lt;Esc&gt;
+n           (optional) skip a match you want to keep
+.           repeat: jump to next match AND change it, in one keystroke
+</code></pre>
+<p>Now <code>.</code> <code>.</code> <code>.</code> walks through the file replacing each occurrence, and because you can press <code>n</code> to <em>skip</em> any match, you get find-and-replace with per-instance control — Vim's idiomatic answer to multiple cursors, and it's dot-repeatable so it costs one keystroke per edit.</p>
+<p>If you remember one thing from Part 7: <strong><code>:%s</code> for blanket replacements, <code>:g/pat/normal …</code> for "run this edit on every matching line," and <code>*</code>-then-<code>cgn</code>-then-<code>.</code> for replace-with-review.</strong> These three collapse the bulk-editing tasks that take minutes of clicking into seconds.</p>
+<hr>
+<h2 id="part-8-macros">Part 8 — Macros</h2>
+<p>A macro records a sequence of keystrokes and replays it on demand. Where <code>.</code> repeats your last <em>change</em>, a macro repeats an entire <em>workflow</em> — move, edit, move, edit — making it the tool for transforming a list of similar lines, reshaping data, or any repetitive multi-step edit. If you've ever done the same five edits on twenty lines by hand, a macro does the remaining nineteen for free.</p>
+<h3 id="record-replay-repeat">Record, Replay, Repeat</h3>
+<p>The interface is three keys:</p>
+<ul>
+<li><strong><code>q{register}</code></strong> starts recording into a named register (e.g. <code>qa</code> records into <code>a</code>). Vim shows <code>recording @a</code>.</li>
+<li>Perform your edits normally — every keystroke is captured.</li>
+<li><strong><code>q</code></strong> again stops recording.</li>
+<li><strong><code>@{register}</code></strong> plays it back (<code>@a</code>). <strong><code>@@</code></strong> repeats the <em>last</em> macro played.</li>
+<li><strong><code>{count}@{register}</code></strong> plays it many times: <code>20@a</code> runs macro <code>a</code> twenty times.</li>
+</ul>
+<p>Because a macro is just keystrokes stored in a register, <code>"ap</code> <em>pastes</em> it as text and <code>:reg a</code> shows it — which is how you edit a macro that's almost right (next section).</p>
+<h3 id="the-macro-mindset-make-each-step-robust">The Macro Mindset: Make Each Step Robust</h3>
+<p>The difference between a macro that works and one that corrupts your file is <strong>discipline about position and repeatability</strong>. Two rules:</p>
+<ol>
+<li><strong>Start from a predictable position and end ready for the next iteration.</strong> Begin each macro by normalizing the cursor (<code>0</code> to go to column zero, or <code>^</code>), and end by moving to the start of the <em>next</em> item (<code>j</code> for the next line). Then <code>{count}@a</code> flows cleanly down the file.</li>
+<li><strong>Use structural motions, not counted ones.</strong> Inside a macro, prefer <code>f,</code>, <code>ci"</code>, <code>$</code>, <code>/pattern&amp;lt;CR&amp;gt;</code> over "right three times" — so the macro adapts to lines of different lengths instead of breaking on the first one that doesn't match your assumptions.</li>
+</ol>
+<p>Here's a complete example. You have a list of names to turn into a SQL <code>VALUES</code> list:</p>
+<pre><code class="language-text">Start:                    After  qa  ...edits...  q  on line 1, then 5@a:
+alice                     ('alice'),
+bob                       ('bob'),
+carol                     ('carol'),
+dave                      ('dave'),
+</code></pre>
+<p>Record it (<code>qa</code>), then on the first line type: <code>I('&amp;lt;Esc&amp;gt;</code> (prepend <code>('</code>), <code>A'),&amp;lt;Esc&amp;gt;</code> (append <code>'),</code>), <code>j</code> (next line), <code>q</code> (stop). One iteration done and cursor is on line 2. Now <code>3@a</code> finishes the rest. Read the recorded macro as a sentence: <em>go to line start, insert <code>('</code>, go to line end, append <code>'),</code>, move down.</em> Each step is position-independent, so it works regardless of name length.</p>
+<h3 id="counts-recursion-and-fixing-a-macro">Counts, Recursion, and Fixing a Macro</h3>
+<ul>
+<li><strong>Run to the end of the file</strong> by giving a big count — <code>99@a</code> — and letting it stop when it runs out of lines (a macro errors and halts when a motion fails, e.g. <code>j</code> on the last line, which conveniently ends the run).</li>
+<li><strong>Recursive macros</strong> call themselves: record the edits, and as the last step play the same register (<code>@a</code>) <em>before</em> you stop recording. Now <code>@a</code> runs until it fails on its own — no count needed. (Clear the register first with <code>qaq</code> so the recursion starts clean.)</li>
+<li><strong>Edit a misbehaving macro</strong> by pasting it into the buffer (<code>"ap</code>), fixing the keystrokes as plain text, then yanking it back into the register (<code>0"ay$</code>). A macro is just text, so you debug it like text.</li>
+</ul>
+<h3 id="macro-or-g-choosing">Macro or <code>:g</code>? Choosing</h3>
+<p>Both apply an edit repeatedly, and they overlap:</p>
+<ul>
+<li>Reach for <strong><code>:g/pattern/normal {keys}</code></strong> (Part 7) when the edit applies to lines <em>matching a pattern</em> and each edit is self-contained — it's a one-liner with no recording.</li>
+<li>Reach for a <strong>macro</strong> when the transformation spans multiple lines per iteration, needs to navigate unpredictably, or you want to <em>watch</em> it run a few times with <code>@a</code> before committing with <code>{count}@a</code>.</li>
+</ul>
+<p>If you remember one thing from Part 8: <strong>a macro is a recorded sentence of edits — make each one start from a known spot, use structural motions, and end on the next item</strong>, then let <code>{count}@a</code> apply it across the whole file while you do something else.</p>
+<hr>
+<h2 id="part-9-files-windows-ex-power">Part 9 — Files Windows &amp; Ex Power</h2>
+<p>So far, one file. Real work means many — jumping between source and test, grepping across a project, applying an edit to every file at once. This part covers Vim's models for holding multiple files (<strong>buffers</strong>, <strong>windows</strong>, <strong>tabs</strong> — routinely confused) and the Ex-command machinery (ranges, <code>:normal</code>, <code>:argdo</code>) that operates across them. Getting the buffer/window/tab model right removes most of the friction newcomers feel with multi-file editing.</p>
+<h3 id="buffers-windows-tabs-the-model-people-get-wrong">Buffers, Windows, Tabs — The Model People Get Wrong</h3>
+<p>The mental model, stated once and clearly:</p>
+<ul>
+<li>A <strong>buffer</strong> is a file loaded into memory. Open ten files and you have ten buffers, whether or not you can see them. <em>Buffers are your open files.</em></li>
+<li>A <strong>window</strong> is a viewport onto a buffer. Splitting the screen gives you multiple windows, possibly showing different buffers (or the same one in two places). <em>Windows are panes.</em></li>
+<li>A <strong>tab</strong> (tabpage) is a <em>layout of windows</em>. Crucially — and contrary to every other editor — <strong>a Vim tab is not "an open file."</strong> It's a saved arrangement of splits. You might keep all your files as buffers and use <em>one</em> tab, or use tabs to hold different <em>window layouts</em> for different tasks.</li>
+</ul>
+<p>The big unlock: you don't need a visible window or tab per file. You keep many <strong>buffers</strong> open and <em>switch</em> which one the current window shows.</p>
+<h3 id="working-with-buffers">Working with Buffers</h3>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>:e {file}</code></td>
+<td>open a file (into a buffer)</td>
+</tr>
+<tr>
+<td><code>:ls</code> or <code>:buffers</code></td>
+<td>list open buffers</td>
+</tr>
+<tr>
+<td><code>:b {n}</code> / <code>:b {name}</code></td>
+<td>switch to buffer by number or name-fragment</td>
+</tr>
+<tr>
+<td><code>:bn</code> / <code>:bp</code></td>
+<td>next / previous buffer</td>
+</tr>
+<tr>
+<td><code>:bd</code></td>
+<td>delete (close) a buffer</td>
+</tr>
+<tr>
+<td><code>&lt;C-^&gt;</code></td>
+<td>toggle between the current and <strong>alternate</strong> (last) buffer</td>
+</tr>
+</tbody>
+</table>
+<p><code>&lt;C-^&gt;</code> is the unsung hero — instant toggle between the two files you're bouncing between (source ↔ test). For switching among many, <code>:b str&amp;lt;Tab&amp;gt;</code> completes on a fragment of the filename, so <code>:b mod&amp;lt;CR&amp;gt;</code> jumps to <code>models.py</code>. Set <strong><code>hidden</code></strong> (default in Neovim) so you can switch away from a modified buffer without saving — without it, Vim nags you to save first.</p>
+<h3 id="windows-splits">Windows (Splits)</h3>
+<p>Split the screen to see two places at once. Window commands hang off the <code>&amp;lt;C-w&amp;gt;</code> prefix:</p>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>:sp</code> / <code>&amp;lt;C-w&amp;gt;s</code></td>
+<td>split horizontally (same buffer)</td>
+</tr>
+<tr>
+<td><code>:vs</code> / <code>&amp;lt;C-w&amp;gt;v</code></td>
+<td>split vertically</td>
+</tr>
+<tr>
+<td><code>&amp;lt;C-w&amp;gt;h/j/k/l</code></td>
+<td>move focus left/down/up/right</td>
+</tr>
+<tr>
+<td><code>&amp;lt;C-w&amp;gt;w</code></td>
+<td>cycle to the next window</td>
+</tr>
+<tr>
+<td><code>&amp;lt;C-w&amp;gt;q</code> / <code>&amp;lt;C-w&amp;gt;c</code></td>
+<td>close the window</td>
+</tr>
+<tr>
+<td><code>&amp;lt;C-w&amp;gt;=</code></td>
+<td>equalize all window sizes</td>
+</tr>
+<tr>
+<td><code>&amp;lt;C-w&amp;gt;_</code> / <code>&amp;lt;C-w&amp;gt;\|</code></td>
+<td>maximize height / width</td>
+</tr>
+<tr>
+<td><code>&amp;lt;C-w&amp;gt;o</code></td>
+<td>close all windows <em>except</em> the current one</td>
+</tr>
+</tbody>
+</table>
+<p><code>:vs {file}</code> opens another file in a vertical split. Most users remap the focus moves to plain <code>&lt;C-h/j/k/l&gt;</code> (Part 10) since hopping between splits is constant.</p>
+<h3 id="tabs">Tabs</h3>
+<p>Use tabs for <em>task layouts</em>, not files: <code>:tabnew</code> (or <code>:tabe {file}</code>) opens a tab, <code>gt</code>/<code>gT</code> cycle forward/back, <code>{n}gt</code> jumps to tab <code>n</code>, and <code>:tabclose</code> closes one. If you're coming from VS Code and instinctively want "a tab per file," resist it — use buffers for that and you'll be working with the grain of the tool.</p>
+<h3 id="ex-ranges-and-line-addressing">Ex Ranges and Line Addressing</h3>
+<p>Part 7 used ranges with <code>:s</code> and <code>:g</code>; they apply to <em>most</em> Ex commands and compose from these address atoms:</p>
+<table>
+<thead>
+<tr>
+<th>Address</th>
+<th>Line</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>.</code></td>
+<td>current line</td>
+</tr>
+<tr>
+<td><code>$</code></td>
+<td>last line</td>
+</tr>
+<tr>
+<td><code>{n}</code></td>
+<td>line <code>n</code></td>
+</tr>
+<tr>
+<td><code>'a</code></td>
+<td>the line with mark <code>a</code></td>
+</tr>
+<tr>
+<td><code>'&lt;</code> / <code>'&gt;</code></td>
+<td>start / end of the last visual selection</td>
+</tr>
+<tr>
+<td><code>/pat/</code> / <code>?pat?</code></td>
+<td>next / previous line matching <code>pat</code></td>
+</tr>
+<tr>
+<td><code>+{n}</code> / <code>-{n}</code></td>
+<td>relative to the line before it</td>
+</tr>
+</tbody>
+</table>
+<p>Combine an address pair with a command: <code>:1,$</code> is the whole file (same as <code>:%</code>), <code>:.,+10&gt;</code> indents the next eleven lines, <code>:'a,'bd</code> deletes from mark <code>a</code> to mark <code>b</code>.</p>
+<h3 id="commands-that-move-and-transform-lines">Commands That Move and Transform Lines</h3>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>:{range}m {addr}</code></td>
+<td><strong>move</strong> lines to after <code>{addr}</code> (<code>:m0</code> = to top, <code>:m$</code> = to bottom)</td>
+</tr>
+<tr>
+<td><code>:{range}t {addr}</code> or <code>:co</code></td>
+<td><strong>copy</strong> lines to after <code>{addr}</code> (<code>:t.</code> duplicates the line)</td>
+</tr>
+<tr>
+<td><code>:{range}normal {keys}</code></td>
+<td>run Normal-mode keystrokes on each line in range</td>
+</tr>
+<tr>
+<td><code>:r {file}</code></td>
+<td>read a file's contents in below the cursor</td>
+</tr>
+<tr>
+<td><code>:r !{cmd}</code></td>
+<td>read the <strong>output of a shell command</strong> into the buffer</td>
+</tr>
+<tr>
+<td><code>:{range}!{cmd}</code></td>
+<td>filter the range <em>through</em> a shell command</td>
+</tr>
+<tr>
+<td><code>:{range}w {file}</code></td>
+<td>write just those lines to a file</td>
+</tr>
+</tbody>
+</table>
+<p>That filter line is a sleeper feature: <code>:%!sort</code> pipes the whole file through <code>sort</code> and replaces it with the result; <code>:'&lt;,'&gt;!python -m json.tool</code> pretty-prints the selected JSON; <code>:.!date</code> inserts today's date. Any Unix tool becomes a Vim command. (The operator form <code>!ip sort</code> from Part 3 does the same on a text object.)</p>
+<h3 id="editing-across-many-files-at-once">Editing Across Many Files at Once</h3>
+<p>To apply one change to a whole set of files, load them into the <strong>argument list</strong> and use <code>:argdo</code>:</p>
+<pre><code class="language-text">:args src/**/*.js              populate the arglist (** recurses)
+:argdo %s/oldAPI/newAPI/ge | update     run the substitute in every file, then save
+</code></pre>
+<p>The <code>e</code> flag ignores "pattern not found" errors so one fileless-of-matches doesn't halt the run; <code>| update</code> writes each changed file. <code>:bufdo</code> does the same across all open buffers, <code>:windo</code> across visible windows, and <code>:tabdo</code> across tabs. This is project-wide refactoring without leaving the editor — and combined with <code>:g</code> and <code>:normal</code>, almost any bulk transformation is expressible.</p>
+<h3 id="finding-files-and-grepping">Finding Files and Grepping</h3>
+<ul>
+<li><strong><code>:find {file}</code></strong> opens a file by name searched along your <code>path</code> option; with <code>set path+=**</code> it fuzzy-finds anywhere under the project (<code>:find Model&amp;lt;Tab&amp;gt;</code>).</li>
+<li><strong><code>:grep {pattern}</code></strong> searches file <em>contents</em> across the project into the <strong>quickfix list</strong>; configure <code>grepprg</code> to use <code>ripgrep</code> (<code>set grepprg=rg\ --vimgrep</code>). Then <code>:copen</code> shows results, <code>&amp;lt;CR&amp;gt;</code> jumps to one, and <code>:cnext</code>/<code>:cprev</code> walk them.</li>
+<li>The built-in file explorer is <strong><code>:Explore</code></strong> (<code>:Ex</code>), a navigable directory listing.</li>
+<li>In practice most people add a fuzzy finder — <strong>fzf</strong> or Neovim's <strong>Telescope</strong> (Part 10) — for instant "open any file / search any text" with a few keystrokes.</li>
+</ul>
+<p>If you remember one thing from Part 9: <strong>buffers are your files, windows are panes, tabs are layouts</strong> — keep many buffers and switch with <code>&lt;C-^&gt;</code> and <code>:b</code>, and use <code>:argdo</code>/<code>:bufdo</code> with <code>:s</code>, <code>:g</code>, and <code>:normal</code> to edit across all of them at once.</p>
+<h2 id="part-10-configuration-speed-recipes">Part 10 — Configuration &amp; Speed Recipes</h2>
+<p>You now have the language. This part makes Vim <em>yours</em> — a sane config, the ecosystem worth knowing, and the fact that the skill follows you into every other editor — and then pays off the title with a cookbook of edits that are dramatically faster than their click-and-drag equivalents. It closes with an honest account of when <em>not</em> to go all-in, and the fastest path to actually learning this.</p>
+<h3 id="a-sane-starting-config">A Sane Starting Config</h3>
+<p>Vim reads <code>~/.vimrc</code>; Neovim reads <code>~/.config/nvim/init.lua</code> (or <code>init.vim</code> for Vimscript). Out of the box, Vim is deliberately minimal. A handful of options make it pleasant without changing its nature:</p>
+<pre><code class="language-vim">&quot; ~/.vimrc — a sane starting point
+set nocompatible            &quot; behave like Vim, not vi (already default in Neovim)
+syntax on                   &quot; syntax highlighting
+filetype plugin indent on   &quot; filetype-aware plugins and indentation
+
+set number relativenumber   &quot; absolute number on the cursor line, relative elsewhere
+set hidden                  &quot; switch away from a modified buffer without saving
+set incsearch hlsearch      &quot; jump to matches as you type; highlight them
+set ignorecase smartcase    &quot; case-insensitive search unless the query has a capital
+set expandtab shiftwidth=4 softtabstop=4   &quot; indent with 4 spaces
+set undofile                &quot; persistent undo, survives closing the file
+set scrolloff=5             &quot; keep 5 lines of context above/below the cursor
+set clipboard=unnamedplus   &quot; let y/p use the system clipboard
+
+let mapleader = &quot; &quot;         &quot; use the spacebar as &lt;leader&gt;
+
+inoremap jk &lt;Esc&gt;           &quot; leave insert mode without reaching for Esc
+nnoremap &lt;leader&gt;w :w&lt;CR&gt;   &quot; &lt;space&gt;w to save
+nnoremap &lt;leader&gt;&lt;space&gt; :nohlsearch&lt;CR&gt;   &quot; clear search highlight
+nnoremap &lt;C-h&gt; &lt;C-w&gt;h       &quot; move between splits with Ctrl+h/j/k/l
+nnoremap &lt;C-j&gt; &lt;C-w&gt;j
+nnoremap &lt;C-k&gt; &lt;C-w&gt;k
+nnoremap &lt;C-l&gt; &lt;C-w&gt;l
+</code></pre>
+<p>Two notes that matter. <strong><code>relativenumber</code></strong> isn't cosmetic — it shows the <em>exact count</em> to any visible line, so when you see <code>7</code> beside a line you want, you press <code>7j</code> to get there. It turns counted motions from guesswork into reading-a-number. And always use the <strong><code>noremap</code></strong> family (<code>nnoremap</code>, <code>inoremap</code>, <code>vnoremap</code>) for mappings: the <code>nore</code> means "non-recursive," so your mapping won't break if one of the keys it uses is itself remapped. The <code>&amp;lt;leader&amp;gt;</code> key is a personal namespace — a prefix (here the spacebar) for your own commands that won't collide with built-ins.</p>
+<h3 id="vim-or-neovim">Vim or Neovim?</h3>
+<p><strong>Neovim</strong> is a modern fork of Vim, and for a newcomer in 2026 it's usually the better default. What it adds: configuration in <strong>Lua</strong> (a real programming language, not Vimscript), a <strong>built-in Language Server Protocol client</strong> (so go-to-definition, rename, and diagnostics work like an IDE), <strong>Treesitter</strong> (syntax-aware highlighting and the semantic text objects from Part 5), first-class async, and saner defaults so your config starts smaller. Starter distributions — <strong>kickstart.nvim</strong> (a single well-commented file), <strong>LazyVim</strong>, <strong>NvChad</strong> — give you an IDE-grade setup in minutes.</p>
+<p><strong>Vim</strong> remains everywhere by default: it (or its tiny cousin <code>vi</code>) is preinstalled on essentially every server and container you'll SSH into, where Neovim may not be. The practical stance: learn the <em>language</em> in this guide — it's identical in both — use Neovim as your daily driver if you want the IDE features, and rest easy that your skills work unchanged when you land on a bare server with only <code>vim</code>.</p>
+<h3 id="plugins-worth-knowing-and-restraint">Plugins Worth Knowing (and Restraint)</h3>
+<p>You can be extremely productive with <strong>zero plugins</strong> — everything in Parts 1–9 is built in. Add plugins deliberately, for capabilities you actually miss, not to "rice" your setup. A plugin manager (<strong>vim-plug</strong> for Vim, <strong>lazy.nvim</strong> for Neovim) handles installation. The high-leverage few:</p>
+<table>
+<thead>
+<tr>
+<th>Plugin</th>
+<th>Gives you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>vim-surround</strong></td>
+<td>operate on delimiters: <code>ysiw"</code> wrap a word in quotes, <code>cs"'</code>, <code>ds(</code> (Part 5)</td>
+</tr>
+<tr>
+<td><strong>vim-commentary</strong></td>
+<td><code>gcc</code> to toggle a comment line, <code>gc{motion}</code> for a range (<code>gcip</code>)</td>
+</tr>
+<tr>
+<td><strong>vim-repeat</strong></td>
+<td>makes plugin commands (like surround) <code>.</code>-repeatable</td>
+</tr>
+<tr>
+<td><strong>fzf</strong> / <strong>Telescope</strong></td>
+<td>fuzzy "open any file / search any text" in a few keystrokes</td>
+</tr>
+<tr>
+<td><strong>nvim-treesitter</strong></td>
+<td>accurate highlighting + semantic text objects (<code>if</code>, <code>ac</code>, <code>ia</code>)</td>
+</tr>
+<tr>
+<td><strong>LSP</strong> (built-in / nvim-lspconfig) + completion</td>
+<td>IDE features: go-to-def, rename, diagnostics, autocomplete</td>
+</tr>
+<tr>
+<td><strong>vim-fugitive</strong></td>
+<td>Git from inside Vim (<code>:Git blame</code>, staging, diffs) — pairs with the <a href="git-study-guide.html">Git guide</a></td>
+</tr>
+<tr>
+<td><strong>which-key</strong></td>
+<td>a popup that shows what your <code>&amp;lt;leader&amp;gt;</code> keys do — great while learning</td>
+</tr>
+</tbody>
+</table>
+<h3 id="vim-everywhere">Vim Everywhere</h3>
+<p>The deepest reason to invest: <strong>the skill is portable to almost every tool you already use.</strong> Vim keybindings exist as first-class modes far beyond Vim itself:</p>
+<ul>
+<li><strong>VS Code</strong> — the <em>VSCodeVim</em> extension (modal editing with VS Code's IDE features underneath).</li>
+<li><strong>JetBrains IDEs</strong> (IntelliJ, PyCharm, …) — <em>IdeaVim</em>.</li>
+<li><strong>Your shell</strong> — <code>set -o vi</code> in Bash (readline) or <code>bindkey -v</code> in Zsh gives you modal command-line editing; press <code>&amp;lt;Esc&amp;gt;</code> and navigate your command with <code>b</code>, <code>e</code>, <code>ciw</code>.</li>
+<li><strong>Browsers</strong> — <em>Vimium</em> / <em>Tridactyl</em> for keyboard-driven browsing.</li>
+<li><strong>Pagers and more</strong> — <code>less</code>, <code>man</code>, and many REPLs use vi-style navigation, and Git already drops you into Vim for commit messages and interactive rebases.</li>
+</ul>
+<p>Learn the grammar once; speak it in your editor, your terminal, your IDE, and your browser.</p>
+<h3 id="the-speed-cookbook">The Speed Cookbook</h3>
+<p>The payoff. Each of these is a task that's slow and fiddly in a point-and-click editor and a reflex in Vim. Cursor position is <code>█</code>.</p>
+<p><strong>Rewrite what's inside a delimiter</strong> — the everyday win:</p>
+<pre><code class="language-text">foo(a, b█, c)     →  ci(  →  foo(█)        type new arguments
+color: &quot;re█d&quot;;    →  ci&quot;  →  color: &quot;█&quot;;   type new value
+&lt;h1&gt;Titl█e&lt;/h1&gt;   →  cit  →  &lt;h1&gt;█&lt;/h1&gt;     type new heading
+</code></pre>
+<p><strong>Rename a symbol with per-instance review</strong> (Vim's multi-cursor):</p>
+<pre><code class="language-text">*           on the symbol, search for it
+cgn newName &lt;Esc&gt;      change this occurrence
+n           skip one you want to keep (optional)
+.           change the next occurrence — repeat . across the file
+</code></pre>
+<p><strong>Append/transform every matching line</strong> with <code>:g</code> + <code>:normal</code>:</p>
+<pre><code class="language-text">:g/console\.log/normal A   // TODO remove     comment every debug log
+:g/^import/normal $a;                          add a semicolon to every import
+:g/^\s*$/d                                     delete all blank lines
+:v/ERROR/d                                     keep only lines containing ERROR
+</code></pre>
+<p><strong>Filter through any shell tool</strong> — Vim borrows the entire Unix toolbox:</p>
+<pre><code class="language-text">:%!sort -u                  sort the file and remove duplicate lines
+:'&lt;,'&gt;!python -m json.tool  pretty-print the selected JSON
+:%!column -t                align columns into a table
+:.!date                     replace the current line with today's date
+</code></pre>
+<p><strong>Edit a column on many lines at once</strong> with visual block (<code>&amp;lt;C-v&amp;gt;</code>):</p>
+<pre><code class="language-text">Prepend &quot;- &quot; to a list:        &lt;C-v&gt; select down the first column, I- &lt;Esc&gt;
+Append &quot;;&quot; to many lines:       &lt;C-v&gt; select down, $, A; &lt;Esc&gt;
+Delete a vertical slice:        &lt;C-v&gt; select the block, d
+</code></pre>
+<p><strong>Generate a numbered sequence</strong> — select a column of zeros, then:</p>
+<pre><code class="language-text">0  0  0  0     →   &lt;C-v&gt; select the column   →   g&lt;C-a&gt;   →   1  2  3  4
+</code></pre>
+<p><strong>Reformat and reindent</strong>:</p>
+<pre><code class="language-text">gg=G        re-indent the entire file
+=i{         re-indent the contents of the current block
+gqip        re-wrap the current paragraph to text width
+guu / gUU   lower / upper-case the whole line
+</code></pre>
+<p><strong>Wrap, comment, and surround</strong> (with the small plugins above):</p>
+<pre><code class="language-text">ysiw&quot;       surround the word in double quotes      (vim-surround)
+yss)        surround the whole line in parentheses
+cs&quot;'        change surrounding &quot; to '
+gcc         toggle a comment on this line           (vim-commentary)
+gcap        comment out the whole paragraph
+</code></pre>
+<p><strong>Swap and move</strong>:</p>
+<pre><code class="language-text">ddp         swap this line with the one below
+xp          swap two characters
+:m+1        move this line down one     (:m-2 moves it up one)
+:%s/\v(\w+),(\w+)/\2,\1/   swap two comma-separated columns file-wide
+</code></pre>
+<p>The thread through all of these: you name the <strong>structure</strong> and the <strong>operation</strong>, and Vim does the mechanical selecting and repeating. That's the entire speed story in one sentence.</p>
+<h3 id="when-not-to-go-all-in">When <em>Not</em> to Go All-In</h3>
+<p>An honest accounting, in the spirit of the rest of this repo:</p>
+<ul>
+<li><strong>The learning curve is real.</strong> You will be slower for days. If you're on a tight deadline this week, learn Vim <em>next</em> week.</li>
+<li><strong>Heavily visual / mouse-native tasks</strong> — dragging UI in a design tool, some notebook workflows — aren't where modal editing shines. Use the right tool.</li>
+<li><strong>You don't have to choose.</strong> The highest-return move for most people isn't "abandon your IDE for terminal Vim" — it's enabling <strong>Vim mode inside</strong> VS Code or your JetBrains IDE, keeping the debugger, refactoring, and ecosystem while getting modal editing for the 90% of time you're moving and reshaping text. Best of both, none of the loss.</li>
+<li><strong>Don't rabbit-hole on config.</strong> It's easy to spend a month tweaking <code>init.lua</code> instead of editing text. Start from a good base (kickstart.nvim or the snippet above), then change things only when something annoys you in real work.</li>
+</ul>
+<p>On ergonomics, there's a genuine upside: modal editing replaces repetitive modifier-chording (the <code>Ctrl</code>/<code>Cmd</code>-everything that strains pinkies) with home-row letter commands, which many people find easier on the hands — provided you remap the far-away <code>&amp;lt;Esc&amp;gt;</code> to something reachable (<code>jk</code>, or Caps Lock).</p>
+<h3 id="how-to-actually-learn-it">How to Actually Learn It</h3>
+<p>A concrete path that works:</p>
+<ol>
+<li><strong>Day 1:</strong> run <code>vimtutor</code> end to end (30 minutes). It's interactive and covers the survival basics hands-on.</li>
+<li><strong>Week 1:</strong> use Vim (or Vim mode in your IDE) for <em>real</em> editing, accepting the slowdown. Force the habits: stay out of insert mode, navigate with <code>w</code>/<code>b</code>/<code>f</code>/<code>/</code> instead of arrows. Some people disable the arrow keys to break the reflex.</li>
+<li><strong>Weeks 2–3:</strong> learn the part that pays the most — <strong>text objects and operators</strong> (Parts 3 and 5). <code>ci"</code>, <code>dap</code>, <code>ciw</code>, <code>ct,</code>. This is where Vim starts to feel fast.</li>
+<li><strong>Week 4 and on:</strong> add one tool at a time — the <code>.</code> workflow, then <code>:s</code> and <code>:g</code>, then macros, then a couple of plugins. Dip into <code>:help {topic}</code> whenever you wonder "can Vim do X?" (it can, and the docs are excellent).</li>
+</ol>
+<p>The internalization order that mirrors this guide: <strong>modes → motions → operators + text objects → search &amp; substitute → <code>.</code> and registers → macros → config.</strong> Don't rush to macros and plugins; the operators-and-text-objects layer is 80% of the daily speed.</p>
+<p>If you remember one thing from Part 10: <strong>configure lightly, lean on Vim mode everywhere you already work, and spend your practice on text objects and the <code>.</code> command</strong> — that's where editing-at-the-speed-of-thought actually comes from.</p>
+<hr>
+<p>That's the guide. From here the highest-leverage next step isn't reading more — it's the two-week commitment: run <code>vimtutor</code> today, then do your real editing in Vim (or Vim mode) even though it's slower at first, and drill text objects until <code>ci"</code>, <code>dap</code>, and <code>cit</code> are reflexes. Past that hump, the grammar keeps compounding for the rest of your career, and every other editor starts to feel like typing with mittens on.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

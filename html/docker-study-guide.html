@@ -1,0 +1,2308 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Docker Deep Dive.">
+<title>Docker Deep Dive - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#2496ed; --accent2:#2496ed; --accent-weak:rgba(36,150,237,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#2496ed; --accent2:#2496ed; --accent-weak:rgba(36,150,237,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">D</span><span>Docker Deep Dive</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#1-what-containers-actually-are" data-target="1-what-containers-actually-are">1. What Containers Actually Are</a></li><li class="toc-l3"><a href="#namespaces-what-the-process-can-see" data-target="namespaces-what-the-process-can-see">Namespaces — What the Process Can See</a></li><li class="toc-l3"><a href="#cgroups-what-the-process-can-use" data-target="cgroups-what-the-process-can-use">Cgroups — What the Process Can Use</a></li><li class="toc-l3"><a href="#union-filesystem-how-images-become-filesystems" data-target="union-filesystem-how-images-become-filesystems">Union Filesystem — How Images Become Filesystems</a></li><li class="toc-l3"><a href="#why-this-matters-practically" data-target="why-this-matters-practically">Why This Matters Practically</a></li><li class="toc-l2"><a href="#2-images-layers" data-target="2-images-layers">2. Images &amp; Layers</a></li><li class="toc-l3"><a href="#what-an-image-actually-is" data-target="what-an-image-actually-is">What an Image Actually Is</a></li><li class="toc-l3"><a href="#layer-caching" data-target="layer-caching">Layer Caching</a></li><li class="toc-l3"><a href="#image-tags-and-digests" data-target="image-tags-and-digests">Image Tags and Digests</a></li><li class="toc-l3"><a href="#image-sizes" data-target="image-sizes">Image Sizes</a></li><li class="toc-l2"><a href="#3-dockerfile-in-depth" data-target="3-dockerfile-in-depth">3. Dockerfile in Depth</a></li><li class="toc-l3"><a href="#instruction-reference" data-target="instruction-reference">Instruction Reference</a></li><li class="toc-l3"><a href="#entrypoint-vs-cmd" data-target="entrypoint-vs-cmd">ENTRYPOINT vs CMD</a></li><li class="toc-l3"><a href="#instruction-ordering-for-cache-efficiency" data-target="instruction-ordering-for-cache-efficiency">Instruction Ordering for Cache Efficiency</a></li><li class="toc-l3"><a href="#dockerignore" data-target="dockerignore">.dockerignore</a></li><li class="toc-l3"><a href="#arg-vs-env" data-target="arg-vs-env">ARG vs ENV</a></li><li class="toc-l3"><a href="#copy-chown-and-copy-chmod" data-target="copy-chown-and-copy-chmod">COPY --chown and COPY --chmod</a></li><li class="toc-l2"><a href="#4-multi-stage-builds" data-target="4-multi-stage-builds">4. Multi-Stage Builds</a></li><li class="toc-l3"><a href="#the-pattern-build-in-one-stage-run-in-another" data-target="the-pattern-build-in-one-stage-run-in-another">The Pattern: Build in One Stage, Run in Another</a></li><li class="toc-l3"><a href="#go-the-extreme-case" data-target="go-the-extreme-case">Go — The Extreme Case</a></li><li class="toc-l3"><a href="#rust" data-target="rust">Rust</a></li><li class="toc-l3"><a href="#python" data-target="python">Python</a></li><li class="toc-l3"><a href="#copying-from-external-images" data-target="copying-from-external-images">Copying from External Images</a></li><li class="toc-l3"><a href="#targeting-specific-stages" data-target="targeting-specific-stages">Targeting Specific Stages</a></li><li class="toc-l2"><a href="#5-buildkit" data-target="5-buildkit">5. BuildKit</a></li><li class="toc-l3"><a href="#what-buildkit-improves-over-the-legacy-builder" data-target="what-buildkit-improves-over-the-legacy-builder">What BuildKit Improves Over the Legacy Builder</a></li><li class="toc-l3"><a href="#secret-mounting" data-target="secret-mounting">Secret Mounting</a></li><li class="toc-l3"><a href="#ssh-forwarding" data-target="ssh-forwarding">SSH Forwarding</a></li><li class="toc-l3"><a href="#cache-mounts" data-target="cache-mounts">Cache Mounts</a></li><li class="toc-l3"><a href="#external-build-cache" data-target="external-build-cache">External Build Cache</a></li><li class="toc-l3"><a href="#multi-platform-builds" data-target="multi-platform-builds">Multi-Platform Builds</a></li><li class="toc-l2"><a href="#6-volumes-bind-mounts-tmpfs" data-target="6-volumes-bind-mounts-tmpfs">6. Volumes, Bind Mounts &amp; tmpfs</a></li><li class="toc-l3"><a href="#comparison" data-target="comparison">Comparison</a></li><li class="toc-l3"><a href="#volumes" data-target="volumes">Volumes</a></li><li class="toc-l3"><a href="#bind-mounts" data-target="bind-mounts">Bind Mounts</a></li><li class="toc-l3"><a href="#tmpfs-mounts" data-target="tmpfs-mounts">tmpfs Mounts</a></li><li class="toc-l3"><a href="#read-only-containers" data-target="read-only-containers">Read-Only Containers</a></li><li class="toc-l2"><a href="#7-networking" data-target="7-networking">7. Networking</a></li><li class="toc-l3"><a href="#network-drivers" data-target="network-drivers">Network Drivers</a></li><li class="toc-l3"><a href="#user-defined-bridge-networks" data-target="user-defined-bridge-networks">User-Defined Bridge Networks</a></li><li class="toc-l3"><a href="#port-publishing" data-target="port-publishing">Port Publishing</a></li><li class="toc-l3"><a href="#dns-resolution-in-compose" data-target="dns-resolution-in-compose">DNS Resolution in Compose</a></li><li class="toc-l2"><a href="#8-docker-compose" data-target="8-docker-compose">8. Docker Compose</a></li><li class="toc-l3"><a href="#core-structure" data-target="core-structure">Core Structure</a></li><li class="toc-l3"><a href="#essential-commands" data-target="essential-commands">Essential Commands</a></li><li class="toc-l3"><a href="#environment-variables" data-target="environment-variables">Environment Variables</a></li><li class="toc-l3"><a href="#profiles" data-target="profiles">Profiles</a></li><li class="toc-l3"><a href="#compose-watch-file-sync-hot-reload" data-target="compose-watch-file-sync-hot-reload">Compose Watch (File Sync + Hot Reload)</a></li><li class="toc-l3"><a href="#override-files" data-target="override-files">Override Files</a></li><li class="toc-l2"><a href="#9-health-checks-restart-policies" data-target="9-health-checks-restart-policies">9. Health Checks &amp; Restart Policies</a></li><li class="toc-l3"><a href="#health-checks" data-target="health-checks">Health Checks</a></li><li class="toc-l3"><a href="#restart-policies" data-target="restart-policies">Restart Policies</a></li><li class="toc-l2"><a href="#10-resource-limits" data-target="10-resource-limits">10. Resource Limits</a></li><li class="toc-l3"><a href="#memory" data-target="memory">Memory</a></li><li class="toc-l3"><a href="#cpu" data-target="cpu">CPU</a></li><li class="toc-l3"><a href="#pids-limit" data-target="pids-limit">PIDs Limit</a></li><li class="toc-l3"><a href="#compose-resource-limits" data-target="compose-resource-limits">Compose Resource Limits</a></li><li class="toc-l3"><a href="#monitoring-resource-usage" data-target="monitoring-resource-usage">Monitoring Resource Usage</a></li><li class="toc-l2"><a href="#11-security" data-target="11-security">11. Security</a></li><li class="toc-l3"><a href="#run-as-non-root" data-target="run-as-non-root">Run as Non-Root</a></li><li class="toc-l3"><a href="#drop-capabilities" data-target="drop-capabilities">Drop Capabilities</a></li><li class="toc-l3"><a href="#read-only-root-filesystem" data-target="read-only-root-filesystem">Read-Only Root Filesystem</a></li><li class="toc-l3"><a href="#no-new-privileges" data-target="no-new-privileges">No New Privileges</a></li><li class="toc-l3"><a href="#seccomp-profiles" data-target="seccomp-profiles">Seccomp Profiles</a></li><li class="toc-l3"><a href="#image-scanning" data-target="image-scanning">Image Scanning</a></li><li class="toc-l3"><a href="#rootless-docker" data-target="rootless-docker">Rootless Docker</a></li><li class="toc-l3"><a href="#security-checklist" data-target="security-checklist">Security Checklist</a></li><li class="toc-l2"><a href="#12-the-runtime-stack-containerd-runc-oci" data-target="12-the-runtime-stack-containerd-runc-oci">12. The Runtime Stack: containerd, runc &amp; OCI</a></li><li class="toc-l3"><a href="#the-architecture" data-target="the-architecture">The Architecture</a></li><li class="toc-l3"><a href="#why-the-layers-exist" data-target="why-the-layers-exist">Why the Layers Exist</a></li><li class="toc-l3"><a href="#oci-standards" data-target="oci-standards">OCI Standards</a></li><li class="toc-l3"><a href="#alternative-runtimes" data-target="alternative-runtimes">Alternative Runtimes</a></li><li class="toc-l3"><a href="#podman-docker-without-a-daemon" data-target="podman-docker-without-a-daemon">Podman — Docker Without a Daemon</a></li><li class="toc-l2"><a href="#13-registries-image-distribution" data-target="13-registries-image-distribution">13. Registries &amp; Image Distribution</a></li><li class="toc-l3"><a href="#image-naming" data-target="image-naming">Image Naming</a></li><li class="toc-l3"><a href="#common-registries" data-target="common-registries">Common Registries</a></li><li class="toc-l3"><a href="#pushing-images" data-target="pushing-images">Pushing Images</a></li><li class="toc-l3"><a href="#image-manifests-and-multi-arch" data-target="image-manifests-and-multi-arch">Image Manifests and Multi-Arch</a></li><li class="toc-l3"><a href="#self-hosted-registry" data-target="self-hosted-registry">Self-Hosted Registry</a></li><li class="toc-l2"><a href="#14-logging-debugging-observability" data-target="14-logging-debugging-observability">14. Logging, Debugging &amp; Observability</a></li><li class="toc-l3"><a href="#logs" data-target="logs">Logs</a></li><li class="toc-l3"><a href="#logging-drivers" data-target="logging-drivers">Logging Drivers</a></li><li class="toc-l3"><a href="#debugging-running-containers" data-target="debugging-running-containers">Debugging Running Containers</a></li><li class="toc-l3"><a href="#debugging-images-no-running-container" data-target="debugging-images-no-running-container">Debugging Images (No Running Container)</a></li><li class="toc-l3"><a href="#debugging-build-failures" data-target="debugging-build-failures">Debugging Build Failures</a></li><li class="toc-l3"><a href="#copying-files-in-and-out" data-target="copying-files-in-and-out">Copying Files In and Out</a></li><li class="toc-l3"><a href="#events" data-target="events">Events</a></li><li class="toc-l2"><a href="#15-production-patterns" data-target="15-production-patterns">15. Production Patterns</a></li><li class="toc-l3"><a href="#signal-handling-and-graceful-shutdown" data-target="signal-handling-and-graceful-shutdown">Signal Handling and Graceful Shutdown</a></li><li class="toc-l3"><a href="#minimal-base-images" data-target="minimal-base-images">Minimal Base Images</a></li><li class="toc-l3"><a href="#one-process-per-container" data-target="one-process-per-container">One Process Per Container</a></li><li class="toc-l3"><a href="#labels-for-metadata" data-target="labels-for-metadata">Labels for Metadata</a></li><li class="toc-l3"><a href="#deterministic-builds" data-target="deterministic-builds">Deterministic Builds</a></li><li class="toc-l3"><a href="#docker-in-cicd" data-target="docker-in-cicd">Docker in CI/CD</a></li><li class="toc-l2"><a href="#16-common-mistakes" data-target="16-common-mistakes">16. Common Mistakes</a></li><li class="toc-l3"><a href="#1-using-latest-in-production" data-target="1-using-latest-in-production">1. Using latest in Production</a></li><li class="toc-l3"><a href="#2-running-as-root" data-target="2-running-as-root">2. Running as Root</a></li><li class="toc-l3"><a href="#3-not-setting-memory-limits" data-target="3-not-setting-memory-limits">3. Not Setting Memory Limits</a></li><li class="toc-l3"><a href="#4-fat-images" data-target="4-fat-images">4. Fat Images</a></li><li class="toc-l3"><a href="#5-secrets-in-images" data-target="5-secrets-in-images">5. Secrets in Images</a></li><li class="toc-l3"><a href="#6-ignoring-dockerignore" data-target="6-ignoring-dockerignore">6. Ignoring .dockerignore</a></li><li class="toc-l3"><a href="#7-misunderstanding-layer-caching-order" data-target="7-misunderstanding-layer-caching-order">7. Misunderstanding Layer Caching Order</a></li><li class="toc-l3"><a href="#8-not-setting-log-rotation" data-target="8-not-setting-log-rotation">8. Not Setting Log Rotation</a></li><li class="toc-l3"><a href="#9-using-docker-compose-up-without-build" data-target="9-using-docker-compose-up-without-build">9. Using docker compose up Without --build</a></li><li class="toc-l3"><a href="#10-conflating-stop-and-kill" data-target="10-conflating-stop-and-kill">10. Conflating Stop and Kill</a></li><li class="toc-l2"><a href="#quick-reference-docker-commands" data-target="quick-reference-docker-commands">Quick Reference: Docker Commands</a></li><li class="toc-l3"><a href="#lifecycle" data-target="lifecycle">Lifecycle</a></li><li class="toc-l3"><a href="#images" data-target="images">Images</a></li><li class="toc-l3"><a href="#inspection" data-target="inspection">Inspection</a></li><li class="toc-l3"><a href="#cleanup" data-target="cleanup">Cleanup</a></li></ul></nav></aside>
+  <main><h1 id="docker-deep-dive">Docker Deep Dive</h1>
+<p>A practical guide to Docker focused on what each component does, when to use it, and how it works under the hood. Assumes basic familiarity (you've run <code>docker run</code> and written a Dockerfile). Skips the "what is a container" preamble and goes straight to the machinery.</p>
+<p>For Docker/Kubernetes networking specifically, see <a href="docker-kubernetes-networking-study-guide.html">Docker &amp; Kubernetes Networking</a>.</p>
+<p>Primary references: <a href="https://docs.docker.com/">Docker Documentation</a>, <a href="https://docs.docker.com/reference/dockerfile/">Dockerfile Reference</a>, <a href="https://github.com/opencontainers/image-spec">OCI Image Spec</a>, <a href="https://github.com/opencontainers/runtime-spec">OCI Runtime Spec</a></p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#1-what-containers-actually-are">What Containers Actually Are</a></li>
+<li><a href="#2-images--layers">Images &amp; Layers</a></li>
+<li><a href="#3-dockerfile-in-depth">Dockerfile in Depth</a></li>
+<li><a href="#4-multi-stage-builds">Multi-Stage Builds</a></li>
+<li><a href="#5-buildkit">BuildKit</a></li>
+<li><a href="#6-volumes-bind-mounts--tmpfs">Volumes, Bind Mounts &amp; tmpfs</a></li>
+<li><a href="#7-networking">Networking</a></li>
+<li><a href="#8-docker-compose">Docker Compose</a></li>
+<li><a href="#9-health-checks--restart-policies">Health Checks &amp; Restart Policies</a></li>
+<li><a href="#10-resource-limits">Resource Limits</a></li>
+<li><a href="#11-security">Security</a></li>
+<li><a href="#12-the-runtime-stack-containerd-runc--oci">The Runtime Stack: containerd, runc &amp; OCI</a></li>
+<li><a href="#13-registries--image-distribution">Registries &amp; Image Distribution</a></li>
+<li><a href="#14-logging-debugging--observability">Logging, Debugging &amp; Observability</a></li>
+<li><a href="#15-production-patterns">Production Patterns</a></li>
+<li><a href="#16-common-mistakes">Common Mistakes</a></li>
+</ol>
+<hr>
+<h2 id="1-what-containers-actually-are">1. What Containers Actually Are</h2>
+<p>Reference: <a href="https://man7.org/linux/man-pages/man7/cgroups.7.html">cgroups(7)</a>, <a href="https://man7.org/linux/man-pages/man7/namespaces.7.html">namespaces(7)</a>, <a href="https://docs.docker.com/get-started/docker-overview/#the-underlying-technology">Understanding the Docker Internals</a></p>
+<p>A container is not a VM. It's a regular Linux process (or group of processes) with three isolation mechanisms applied to it:</p>
+<h3 id="namespaces-what-the-process-can-see">Namespaces — What the Process Can See</h3>
+<p>Each namespace type isolates a specific resource so the container sees its own private version:</p>
+<table>
+<thead>
+<tr>
+<th>Namespace</th>
+<th>Isolates</th>
+<th>Practical effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pid</code></td>
+<td>Process IDs</td>
+<td>Container's PID 1 is its entrypoint; it can't see host processes</td>
+</tr>
+<tr>
+<td><code>net</code></td>
+<td>Network stack</td>
+<td>Container gets its own interfaces, routing table, iptables, ports</td>
+</tr>
+<tr>
+<td><code>mnt</code></td>
+<td>Mount points</td>
+<td>Container sees its own filesystem (the image + volumes)</td>
+</tr>
+<tr>
+<td><code>uts</code></td>
+<td>Hostname</td>
+<td>Container has its own hostname</td>
+</tr>
+<tr>
+<td><code>ipc</code></td>
+<td>IPC (shared memory, semaphores)</td>
+<td>Containers can't read each other's shared memory</td>
+</tr>
+<tr>
+<td><code>user</code></td>
+<td>User/group IDs</td>
+<td>UID 0 inside can map to UID 100000 on the host (rootless)</td>
+</tr>
+<tr>
+<td><code>cgroup</code></td>
+<td>Cgroup view</td>
+<td>Container sees only its own resource limits</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-bash"># see the namespaces of a running container
+ls -la /proc/$(docker inspect --format '{{.State.Pid}}' mycontainer)/ns/
+</code></pre>
+<h3 id="cgroups-what-the-process-can-use">Cgroups — What the Process Can Use</h3>
+<p>Control groups limit and account for CPU, memory, I/O, and PIDs:</p>
+<pre><code class="language-bash"># Docker creates a cgroup per container — you can inspect it:
+cat /sys/fs/cgroup/docker/&lt;container-id&gt;/memory.max
+cat /sys/fs/cgroup/docker/&lt;container-id&gt;/cpu.max
+</code></pre>
+<p>When a container hits its memory limit, the kernel OOM-kills it. When it hits its CPU limit, it gets throttled. This is how <code>docker run --memory 512m --cpus 1.5</code> works under the hood.</p>
+<h3 id="union-filesystem-how-images-become-filesystems">Union Filesystem — How Images Become Filesystems</h3>
+<p>The image provides read-only layers. The container gets a thin writable layer on top. Writes use copy-on-write — the first write to a file copies it from the read-only layer into the writable layer.</p>
+<pre><code class="language-text">┌──────────────────────┐
+│   Container Layer    │  ← writable, ephemeral
+├──────────────────────┤
+│   Image Layer 3      │  ← read-only (e.g., COPY app .)
+├──────────────────────┤
+│   Image Layer 2      │  ← read-only (e.g., RUN npm install)
+├──────────────────────┤
+│   Image Layer 1      │  ← read-only (e.g., FROM node:22)
+└──────────────────────┘
+</code></pre>
+<p>The default storage driver on modern Docker is <code>overlay2</code>. Each layer is a directory, and OverlayFS merges them into a single unified view.</p>
+<h3 id="why-this-matters-practically">Why This Matters Practically</h3>
+<ul>
+<li><strong>Containers share the host kernel.</strong> A kernel vulnerability affects all containers. This is the fundamental security difference from VMs.</li>
+<li><strong>Startup is fast</strong> because there's no OS to boot — you're just creating namespaces and cgroups around a process.</li>
+<li><strong>Density is high</strong> because containers don't duplicate the kernel or a full OS.</li>
+<li><strong>Isolation is weaker than VMs</strong> — the shared kernel is a larger attack surface.</li>
+</ul>
+<hr>
+<h2 id="2-images-layers">2. Images &amp; Layers</h2>
+<p>Reference: <a href="https://docs.docker.com/reference/build-checks/">Docker Image Specification</a>, <a href="https://github.com/opencontainers/image-spec/blob/main/spec.md">OCI Image Spec</a></p>
+<h3 id="what-an-image-actually-is">What an Image Actually Is</h3>
+<p>An image is an ordered collection of filesystem layers plus metadata (environment variables, entrypoint, exposed ports, labels). Each layer is a tar archive of filesystem changes.</p>
+<pre><code class="language-bash"># inspect the layers in an image
+docker image inspect python:3.12-slim --format '{{json .RootFS.Layers}}' | jq .
+
+# see history — which Dockerfile instruction created each layer
+docker history python:3.12-slim
+</code></pre>
+<h3 id="layer-caching">Layer Caching</h3>
+<p>Each Dockerfile instruction that modifies the filesystem creates a new layer. Docker caches layers and reuses them if the instruction and all parent layers haven't changed.</p>
+<p>The cache check depends on the instruction type:
+- <strong><code>COPY</code> / <code>ADD</code></strong>: checksums of the files being copied. Changed file → cache miss.
+- <strong><code>RUN</code></strong>: the exact command string. Same string with same parent layer → cache hit, even if the command would produce different output today (<code>apt update</code> returns different packages next month, but Docker doesn't know that).</p>
+<p>This is why instruction order in a Dockerfile matters enormously — see <a href="#3-dockerfile-in-depth">Section 3</a>.</p>
+<h3 id="image-tags-and-digests">Image Tags and Digests</h3>
+<pre><code class="language-bash"># tags are mutable pointers — python:3.12 points to different images over time
+docker pull python:3.12
+
+# digests are immutable content hashes
+docker pull python@sha256:abc123...
+
+# always pin digests in production for reproducible builds
+</code></pre>
+<h3 id="image-sizes">Image Sizes</h3>
+<pre><code class="language-bash"># see actual sizes (shared layers are counted once)
+docker system df
+docker image ls
+
+# see layer-by-layer breakdown
+docker history --no-trunc myimage
+</code></pre>
+<p>Every layer adds to the image size, even if a later layer deletes files:</p>
+<pre><code class="language-dockerfile"># bad — file.tar.gz still exists in Layer 1, deleted in Layer 2
+RUN curl -o file.tar.gz https://example.com/file.tar.gz
+RUN tar xzf file.tar.gz &amp;&amp; rm file.tar.gz
+
+# good — download, extract, and clean up in one layer
+RUN curl -o file.tar.gz https://example.com/file.tar.gz \
+    &amp;&amp; tar xzf file.tar.gz \
+    &amp;&amp; rm file.tar.gz
+</code></pre>
+<hr>
+<h2 id="3-dockerfile-in-depth">3. Dockerfile in Depth</h2>
+<p>Reference: <a href="https://docs.docker.com/reference/dockerfile/">Dockerfile Reference</a></p>
+<h3 id="instruction-reference">Instruction Reference</h3>
+<table>
+<thead>
+<tr>
+<th>Instruction</th>
+<th>What it does</th>
+<th>Creates a layer?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>FROM</code></td>
+<td>Sets the base image</td>
+<td>Yes (pulls base layers)</td>
+</tr>
+<tr>
+<td><code>RUN</code></td>
+<td>Executes a command during build</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>COPY</code></td>
+<td>Copies files from build context</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>ADD</code></td>
+<td>Like COPY but also extracts tars and fetches URLs</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>ENV</code></td>
+<td>Sets environment variables</td>
+<td>No (metadata only)</td>
+</tr>
+<tr>
+<td><code>ARG</code></td>
+<td>Build-time variable (not in final image)</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>WORKDIR</code></td>
+<td>Sets working directory</td>
+<td>No (creates dir if needed)</td>
+</tr>
+<tr>
+<td><code>EXPOSE</code></td>
+<td>Documents which ports the app uses</td>
+<td>No (documentation only)</td>
+</tr>
+<tr>
+<td><code>VOLUME</code></td>
+<td>Creates a mount point</td>
+<td>No (metadata)</td>
+</tr>
+<tr>
+<td><code>ENTRYPOINT</code></td>
+<td>The executable to run</td>
+<td>No (metadata)</td>
+</tr>
+<tr>
+<td><code>CMD</code></td>
+<td>Default arguments to ENTRYPOINT</td>
+<td>No (metadata)</td>
+</tr>
+<tr>
+<td><code>USER</code></td>
+<td>Sets the user for subsequent instructions</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>LABEL</code></td>
+<td>Adds metadata key-value pairs</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>HEALTHCHECK</code></td>
+<td>Container health check command</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>SHELL</code></td>
+<td>Override default shell for <code>RUN</code></td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>STOPSIGNAL</code></td>
+<td>Signal sent to stop the container</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<h3 id="entrypoint-vs-cmd"><code>ENTRYPOINT</code> vs <code>CMD</code></h3>
+<p>These two interact in a specific way that causes constant confusion:</p>
+<pre><code class="language-dockerfile"># ENTRYPOINT = the executable
+# CMD = default arguments to the executable
+ENTRYPOINT [&quot;python&quot;]
+CMD [&quot;app.py&quot;]
+# runs: python app.py
+# docker run myimage test.py → runs: python test.py (CMD overridden)
+</code></pre>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>docker run myimage</code></th>
+<th><code>docker run myimage other-arg</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Only CMD</td>
+<td>runs CMD</td>
+<td>runs <code>other-arg</code></td>
+</tr>
+<tr>
+<td>Only ENTRYPOINT</td>
+<td>runs ENTRYPOINT</td>
+<td>runs <code>ENTRYPOINT other-arg</code></td>
+</tr>
+<tr>
+<td>Both</td>
+<td>runs <code>ENTRYPOINT CMD</code></td>
+<td>runs <code>ENTRYPOINT other-arg</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Shell form vs exec form:</strong></p>
+<pre><code class="language-dockerfile"># exec form (preferred) — runs directly, PID 1, receives signals
+ENTRYPOINT [&quot;python&quot;, &quot;app.py&quot;]
+
+# shell form — runs via /bin/sh -c, shell is PID 1, app doesn't get signals
+ENTRYPOINT python app.py
+</code></pre>
+<p>Always use exec form for ENTRYPOINT so your application is PID 1 and receives <code>SIGTERM</code> for graceful shutdown.</p>
+<h3 id="instruction-ordering-for-cache-efficiency">Instruction Ordering for Cache Efficiency</h3>
+<p>Put instructions that change rarely at the top, and instructions that change frequently at the bottom:</p>
+<pre><code class="language-dockerfile">FROM node:22-slim
+
+WORKDIR /app
+
+# 1. system dependencies — changes rarely
+RUN apt-get update &amp;&amp; apt-get install -y --no-install-recommends \
+    curl \
+    &amp;&amp; rm -rf /var/lib/apt/lists/*
+
+# 2. dependency manifest — changes when you add/remove packages
+COPY package.json package-lock.json ./
+
+# 3. install dependencies — cached until package.json changes
+RUN npm ci
+
+# 4. application code — changes every commit
+COPY . .
+
+RUN npm run build
+
+USER node
+EXPOSE 3000
+CMD [&quot;node&quot;, &quot;dist/index.js&quot;]
+</code></pre>
+<p>If you put <code>COPY . .</code> before <code>npm ci</code>, every code change invalidates the dependency cache and forces a full reinstall.</p>
+<h3 id="dockerignore"><code>.dockerignore</code></h3>
+<p>Prevents files from being sent to the build context. Essential for speed and security:</p>
+<pre><code class="language-text"># .dockerignore
+.git
+node_modules
+dist
+.env
+*.md
+Dockerfile
+.dockerignore
+__pycache__
+.pytest_cache
+.venv
+</code></pre>
+<p>Without this, <code>docker build</code> ships your entire directory (including <code>node_modules</code>, <code>.git</code>, etc.) to the daemon, which is slow and can leak secrets.</p>
+<h3 id="arg-vs-env"><code>ARG</code> vs <code>ENV</code></h3>
+<pre><code class="language-dockerfile"># ARG — available only during build, not in the final image
+ARG NODE_VERSION=22
+FROM node:${NODE_VERSION}-slim
+
+ARG BUILD_ENV=production
+RUN echo &quot;Building for $BUILD_ENV&quot;
+
+# ENV — available during build AND at runtime
+ENV NODE_ENV=production
+</code></pre>
+<pre><code class="language-bash"># override ARG at build time
+docker build --build-arg BUILD_ENV=staging .
+</code></pre>
+<p><strong>Security note</strong>: <code>ARG</code> values are visible in <code>docker history</code>. Don't pass secrets through <code>ARG</code> — use BuildKit secrets instead (see <a href="#5-buildkit">Section 5</a>).</p>
+<h3 id="copy-chown-and-copy-chmod"><code>COPY --chown</code> and <code>COPY --chmod</code></h3>
+<pre><code class="language-dockerfile"># set ownership at copy time (avoids an extra RUN chown layer)
+COPY --chown=node:node . .
+
+# set permissions at copy time (BuildKit only)
+COPY --chmod=755 entrypoint.sh /usr/local/bin/
+</code></pre>
+<hr>
+<h2 id="4-multi-stage-builds">4. Multi-Stage Builds</h2>
+<p>Reference: <a href="https://docs.docker.com/build/building/multi-stage/">Multi-stage builds</a></p>
+<p>Multi-stage builds use multiple <code>FROM</code> instructions. Only the final stage ends up in the image. Previous stages exist only to produce artifacts.</p>
+<h3 id="the-pattern-build-in-one-stage-run-in-another">The Pattern: Build in One Stage, Run in Another</h3>
+<pre><code class="language-dockerfile"># --- Stage 1: Build ---
+FROM node:22 AS builder
+
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# --- Stage 2: Production ---
+FROM node:22-slim
+
+WORKDIR /app
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package.json ./
+
+USER node
+EXPOSE 3000
+CMD [&quot;node&quot;, &quot;dist/index.js&quot;]
+</code></pre>
+<p><strong>Result</strong>: the final image contains only the runtime (<code>node:22-slim</code>), the compiled output, and production dependencies. No TypeScript compiler, no dev dependencies, no source code. Images shrink from hundreds of MB to tens.</p>
+<h3 id="go-the-extreme-case">Go — The Extreme Case</h3>
+<p>Go compiles to a static binary. The final image can be <code>scratch</code> (literally empty):</p>
+<pre><code class="language-dockerfile">FROM golang:1.23 AS builder
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o /server ./cmd/server
+
+FROM scratch
+COPY --from=builder /server /server
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+EXPOSE 8080
+ENTRYPOINT [&quot;/server&quot;]
+</code></pre>
+<p>Final image: ~10-20MB. No shell, no package manager, no OS — just the binary and TLS certs.</p>
+<h3 id="rust">Rust</h3>
+<pre><code class="language-dockerfile">FROM rust:1.80 AS builder
+WORKDIR /app
+COPY Cargo.toml Cargo.lock ./
+# cache dependency compilation
+RUN mkdir src &amp;&amp; echo &quot;fn main() {}&quot; &gt; src/main.rs &amp;&amp; cargo build --release &amp;&amp; rm -rf src
+COPY src ./src
+RUN cargo build --release
+
+FROM debian:bookworm-slim
+RUN apt-get update &amp;&amp; apt-get install -y --no-install-recommends ca-certificates \
+    &amp;&amp; rm -rf /var/lib/apt/lists/*
+COPY --from=builder /app/target/release/myapp /usr/local/bin/
+USER nobody
+CMD [&quot;myapp&quot;]
+</code></pre>
+<h3 id="python">Python</h3>
+<pre><code class="language-dockerfile">FROM python:3.12-slim AS builder
+WORKDIR /app
+RUN pip install --no-cache-dir poetry
+COPY pyproject.toml poetry.lock ./
+RUN poetry export -f requirements.txt -o requirements.txt --without-hashes
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+
+FROM python:3.12-slim
+WORKDIR /app
+COPY --from=builder /install /usr/local
+COPY . .
+USER nobody
+CMD [&quot;python&quot;, &quot;-m&quot;, &quot;myapp&quot;]
+</code></pre>
+<h3 id="copying-from-external-images">Copying from External Images</h3>
+<p>You can copy from any image, not just previous stages:</p>
+<pre><code class="language-dockerfile"># grab a binary from another image
+COPY --from=busybox:latest /bin/wget /usr/local/bin/wget
+
+# grab a config from a custom image you maintain
+COPY --from=mycompany/configs:latest /etc/nginx/nginx.conf /etc/nginx/
+</code></pre>
+<h3 id="targeting-specific-stages">Targeting Specific Stages</h3>
+<pre><code class="language-bash"># build only the builder stage (useful for CI/testing)
+docker build --target builder -t myapp:test .
+
+# run tests in the builder stage:
+docker build --target builder -t myapp:test . &amp;&amp; docker run myapp:test npm test
+</code></pre>
+<hr>
+<h2 id="5-buildkit">5. BuildKit</h2>
+<p>Reference: <a href="https://docs.docker.com/build/buildkit/">BuildKit</a>, <a href="https://docs.docker.com/build/buildkit/dockerfile-frontend/">Dockerfile frontend syntax</a></p>
+<p>BuildKit is Docker's modern build engine (default since Docker Desktop 23.0 and Docker Engine 23.0). It replaces the legacy builder with parallel execution, better caching, and new Dockerfile features.</p>
+<pre><code class="language-bash"># ensure BuildKit is active (set in Docker daemon config or per-build)
+DOCKER_BUILDKIT=1 docker build .
+
+# or use the dedicated CLI
+docker buildx build .
+</code></pre>
+<h3 id="what-buildkit-improves-over-the-legacy-builder">What BuildKit Improves Over the Legacy Builder</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Legacy builder</th>
+<th>BuildKit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Build stages</td>
+<td>Sequential</td>
+<td>Parallel (independent stages build concurrently)</td>
+</tr>
+<tr>
+<td>Layer caching</td>
+<td>Local only</td>
+<td>Local, inline, registry, S3, GitHub Actions</td>
+</tr>
+<tr>
+<td>Secrets</td>
+<td>Must use ARG (visible in history)</td>
+<td><code>--mount=type=secret</code> (never in image)</td>
+</tr>
+<tr>
+<td>SSH forwarding</td>
+<td>Impossible</td>
+<td><code>--mount=type=ssh</code></td>
+</tr>
+<tr>
+<td>Build output</td>
+<td>Image only</td>
+<td>Image, local directory, tar archive</td>
+</tr>
+<tr>
+<td>Progress output</td>
+<td>Verbose</td>
+<td>Compact, parallelized</td>
+</tr>
+</tbody>
+</table>
+<h3 id="secret-mounting">Secret Mounting</h3>
+<p>Pass secrets without baking them into image layers:</p>
+<pre><code class="language-dockerfile"># syntax=docker/dockerfile:1
+FROM python:3.12-slim
+RUN --mount=type=secret,id=pip_conf,target=/etc/pip.conf \
+    pip install --no-cache-dir -r requirements.txt
+</code></pre>
+<pre><code class="language-bash">docker build --secret id=pip_conf,src=$HOME/.pip/pip.conf .
+</code></pre>
+<p>The secret is available during the <code>RUN</code> instruction but never written to any image layer.</p>
+<h3 id="ssh-forwarding">SSH Forwarding</h3>
+<p>Forward the host's SSH agent for private repo access during build:</p>
+<pre><code class="language-dockerfile"># syntax=docker/dockerfile:1
+FROM node:22
+RUN --mount=type=ssh git clone git@github.com:private/repo.git
+</code></pre>
+<pre><code class="language-bash">docker build --ssh default .
+</code></pre>
+<h3 id="cache-mounts">Cache Mounts</h3>
+<p>Persist caches across builds without including them in the image:</p>
+<pre><code class="language-dockerfile"># syntax=docker/dockerfile:1
+
+# Go module cache
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go build -o /server ./cmd/server
+
+# Apt cache
+RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt \
+    apt-get update &amp;&amp; apt-get install -y curl
+
+# pip cache
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install -r requirements.txt
+
+# npm cache
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
+</code></pre>
+<p>Cache mounts dramatically speed up rebuilds. The cache directory persists between builds but isn't included in the image layer.</p>
+<h3 id="external-build-cache">External Build Cache</h3>
+<p>Push cache to a registry so CI pipelines don't start cold:</p>
+<pre><code class="language-bash"># push cache alongside the image
+docker buildx build \
+  --cache-to type=registry,ref=myregistry/myapp:buildcache \
+  --cache-from type=registry,ref=myregistry/myapp:buildcache \
+  -t myapp:latest .
+</code></pre>
+<h3 id="multi-platform-builds">Multi-Platform Builds</h3>
+<p>Build images for different architectures from a single machine:</p>
+<pre><code class="language-bash"># create a builder with multi-platform support
+docker buildx create --name multiarch --use
+
+# build for multiple architectures and push
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t myregistry/myapp:latest \
+  --push .
+</code></pre>
+<p>This uses QEMU emulation (slow but works) or cross-compilation (fast, requires Dockerfile changes). For the Pi Zero 2 W specifically, you'd target <code>linux/arm64</code>.</p>
+<hr>
+<h2 id="6-volumes-bind-mounts-tmpfs">6. Volumes, Bind Mounts &amp; tmpfs</h2>
+<p>Reference: <a href="https://docs.docker.com/engine/storage/">Manage data in Docker</a></p>
+<p>Containers are ephemeral — when a container is removed, its writable layer is gone. Docker provides three mechanisms for persistent or shared data:</p>
+<h3 id="comparison">Comparison</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Volumes</th>
+<th>Bind mounts</th>
+<th>tmpfs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Where data lives</td>
+<td>Docker-managed area (<code>/var/lib/docker/volumes/</code>)</td>
+<td>Anywhere on host</td>
+<td>RAM only</td>
+</tr>
+<tr>
+<td>Survives container removal</td>
+<td>Yes</td>
+<td>Yes (it's host files)</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Shareable between containers</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td>Near-native (same filesystem)</td>
+<td>Native (direct host access)</td>
+<td>Very fast (no disk I/O)</td>
+</tr>
+<tr>
+<td>Managed by Docker CLI</td>
+<td>Yes (<code>docker volume</code> commands)</td>
+<td>No</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Use case</td>
+<td>Database data, persistent state</td>
+<td>Dev: live code reload. Source code, config</td>
+<td>Sensitive temp data (secrets, session files)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="volumes">Volumes</h3>
+<pre><code class="language-bash"># create a named volume
+docker volume create pgdata
+
+# use it
+docker run -d \
+  -v pgdata:/var/lib/postgresql/data \
+  postgres:16
+
+# inspect
+docker volume inspect pgdata
+
+# list all volumes
+docker volume ls
+
+# remove unused volumes
+docker volume prune
+</code></pre>
+<p>Volumes are the right choice for anything that needs to persist: database files, upload directories, application state.</p>
+<h3 id="bind-mounts">Bind Mounts</h3>
+<pre><code class="language-bash"># mount current directory into the container
+docker run -d \
+  -v $(pwd):/app \
+  -w /app \
+  node:22 npm run dev
+</code></pre>
+<p>Bind mounts map a host path directly into the container. The container sees real-time changes to the host filesystem. This makes them essential for development workflows where you want hot-reload.</p>
+<p><strong>Gotcha on macOS/Windows</strong>: bind mounts go through a virtualization layer (Docker Desktop runs Linux in a VM). File-watching-heavy workloads (like webpack with thousands of files) can be slow. Solutions:
+- Use volumes for <code>node_modules</code> (avoid syncing thousands of files)
+- Use Docker's synchronized file shares (Docker Desktop 4.27+)
+- Use <code>:delegated</code> or <code>:cached</code> flags (legacy, less impactful now)</p>
+<pre><code class="language-yaml"># compose pattern: bind mount for source, volume for node_modules
+services:
+  app:
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules  # volume, not synced from host
+
+volumes:
+  node_modules:
+</code></pre>
+<h3 id="tmpfs-mounts">tmpfs Mounts</h3>
+<pre><code class="language-bash">docker run -d \
+  --tmpfs /tmp:rw,noexec,nosuid,size=100m \
+  myapp
+</code></pre>
+<p>Data in tmpfs is stored in memory and never written to disk. Use for:
+- Temporary files that shouldn't survive a restart
+- Sensitive data you don't want on the container filesystem
+- Performance-sensitive temp storage</p>
+<h3 id="read-only-containers">Read-Only Containers</h3>
+<p>Run a container with a read-only root filesystem and only allow writes to specific locations:</p>
+<pre><code class="language-bash">docker run -d \
+  --read-only \
+  --tmpfs /tmp \
+  --tmpfs /var/run \
+  -v mydata:/data \
+  myapp
+</code></pre>
+<p>This is a strong security posture — even if an attacker gets code execution, they can't write to the filesystem except designated areas.</p>
+<hr>
+<h2 id="7-networking">7. Networking</h2>
+<p>Reference: <a href="https://docs.docker.com/engine/network/">Docker Networking Overview</a>, also see <a href="docker-kubernetes-networking-study-guide.html">Docker &amp; Kubernetes Networking</a> for full depth</p>
+<p>This section covers the practical essentials. The dedicated networking guide in this repo covers the underlying theory.</p>
+<h3 id="network-drivers">Network Drivers</h3>
+<table>
+<thead>
+<tr>
+<th>Driver</th>
+<th>Use case</th>
+<th>How it works</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>bridge</code> (default)</td>
+<td>Single-host container-to-container</td>
+<td>Creates a Linux bridge; containers get private IPs; NAT for outbound</td>
+</tr>
+<tr>
+<td><code>host</code></td>
+<td>Maximum network performance</td>
+<td>Container shares the host's network namespace directly — no isolation</td>
+</tr>
+<tr>
+<td><code>none</code></td>
+<td>Complete network isolation</td>
+<td>Container has only a loopback interface</td>
+</tr>
+<tr>
+<td><code>overlay</code></td>
+<td>Multi-host (Swarm/cluster)</td>
+<td>VXLAN tunnel between Docker hosts</td>
+</tr>
+<tr>
+<td><code>macvlan</code></td>
+<td>Container needs a "real" IP on the LAN</td>
+<td>Container gets its own MAC address on the physical network</td>
+</tr>
+</tbody>
+</table>
+<h3 id="user-defined-bridge-networks">User-Defined Bridge Networks</h3>
+<p>Always create your own bridge networks instead of using the default <code>bridge</code>:</p>
+<pre><code class="language-bash">docker network create mynet
+
+docker run -d --name api --network mynet myapi
+docker run -d --name db  --network mynet postgres:16
+</code></pre>
+<p>Why user-defined bridges are better than the default:
+- <strong>Automatic DNS</strong>: containers resolve each other by name (<code>db</code>, <code>api</code>). The default bridge requires <code>--link</code> (deprecated) or IP addresses.
+- <strong>Isolation</strong>: containers on different networks can't communicate.
+- <strong>Hot-connect</strong>: you can attach/detach running containers from networks.</p>
+<h3 id="port-publishing">Port Publishing</h3>
+<pre><code class="language-bash"># publish container port 3000 to host port 8080
+docker run -p 8080:3000 myapp
+
+# publish to a specific interface
+docker run -p 127.0.0.1:8080:3000 myapp
+
+# publish to a random host port
+docker run -p 3000 myapp
+docker port &lt;container&gt;  # see which port was assigned
+</code></pre>
+<h3 id="dns-resolution-in-compose">DNS Resolution in Compose</h3>
+<p>In a Compose network, services resolve by service name:</p>
+<pre><code class="language-yaml">services:
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://user:pass@db:5432/mydb  # &quot;db&quot; resolves to the db container
+  db:
+    image: postgres:16
+</code></pre>
+<p>Docker's embedded DNS server handles this. It returns the container's IP on the shared network.</p>
+<hr>
+<h2 id="8-docker-compose">8. Docker Compose</h2>
+<p>Reference: <a href="https://docs.docker.com/compose/">Docker Compose</a>, <a href="https://docs.docker.com/reference/compose-file/">Compose Specification</a></p>
+<p>Compose defines multi-container applications in a YAML file. It handles networking, volumes, dependencies, and environment configuration.</p>
+<h3 id="core-structure">Core Structure</h3>
+<pre><code class="language-yaml"># compose.yaml (or docker-compose.yml — both work, compose.yaml is canonical)
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development       # build a specific stage
+    ports:
+      - &quot;3000:3000&quot;
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://user:pass@db:5432/mydb
+    volumes:
+      - .:/app
+      - node_modules:/app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: mydb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - &quot;5432:5432&quot;
+    healthcheck:
+      test: [&quot;CMD-SHELL&quot;, &quot;pg_isready -U user&quot;]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - &quot;6379:6379&quot;
+
+volumes:
+  pgdata:
+  node_modules:
+</code></pre>
+<h3 id="essential-commands">Essential Commands</h3>
+<pre><code class="language-bash"># start all services (build if needed)
+docker compose up -d
+
+# rebuild images before starting
+docker compose up -d --build
+
+# stop and remove containers (volumes preserved)
+docker compose down
+
+# stop, remove containers AND volumes (destructive)
+docker compose down -v
+
+# view logs
+docker compose logs -f api
+docker compose logs --tail 50 db
+
+# run a one-off command
+docker compose exec api sh
+docker compose run --rm api npm test
+
+# scale a service
+docker compose up -d --scale worker=3
+
+# see running services
+docker compose ps
+</code></pre>
+<h3 id="environment-variables">Environment Variables</h3>
+<p>Priority order (highest to lowest):
+1. <code>docker compose run -e VAR=value</code>
+2. Shell environment (<code>export VAR=value</code> before <code>docker compose up</code>)
+3. <code>.env</code> file in the project root
+4. <code>env_file</code> directive in compose.yaml
+5. <code>environment</code> directive in compose.yaml
+6. Default in the Dockerfile (<code>ENV</code>)</p>
+<pre><code class="language-yaml">services:
+  api:
+    env_file:
+      - .env              # shared defaults
+      - .env.local         # local overrides (gitignored)
+    environment:
+      NODE_ENV: production # explicit — highest priority in compose
+</code></pre>
+<h3 id="profiles">Profiles</h3>
+<p>Run different subsets of services for different workflows:</p>
+<pre><code class="language-yaml">services:
+  api:
+    build: .
+    # no profile — always starts
+
+  db:
+    image: postgres:16
+    # no profile — always starts
+
+  debug-tools:
+    image: busybox
+    profiles: [debug]       # only starts with --profile debug
+
+  monitoring:
+    image: grafana/grafana
+    profiles: [monitoring]  # only starts with --profile monitoring
+</code></pre>
+<pre><code class="language-bash">docker compose up -d                        # api + db only
+docker compose --profile debug up -d        # api + db + debug-tools
+docker compose --profile monitoring up -d   # api + db + monitoring
+</code></pre>
+<h3 id="compose-watch-file-sync-hot-reload">Compose Watch (File Sync + Hot Reload)</h3>
+<pre><code class="language-yaml">services:
+  api:
+    build: .
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
+        - action: rebuild
+          path: package.json
+</code></pre>
+<pre><code class="language-bash">docker compose watch
+</code></pre>
+<p><code>sync</code> pushes file changes into the container without rebuilding. <code>rebuild</code> triggers a full rebuild when the specified file changes. This replaces bind mounts for development in many cases and avoids the macOS/Windows performance issues.</p>
+<h3 id="override-files">Override Files</h3>
+<pre><code class="language-bash"># compose.yaml          — base configuration
+# compose.override.yaml — dev defaults (auto-loaded)
+# compose.prod.yaml     — production overrides
+
+# dev (automatic override):
+docker compose up -d
+
+# production:
+docker compose -f compose.yaml -f compose.prod.yaml up -d
+</code></pre>
+<hr>
+<h2 id="9-health-checks-restart-policies">9. Health Checks &amp; Restart Policies</h2>
+<p>Reference: <a href="https://docs.docker.com/reference/dockerfile/#healthcheck">HEALTHCHECK</a>, <a href="https://docs.docker.com/engine/containers/start-containers-automatically/">Restart policies</a></p>
+<h3 id="health-checks">Health Checks</h3>
+<p>A health check tells Docker how to determine if a container is working, not just running:</p>
+<pre><code class="language-dockerfile">HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD curl -f http://localhost:3000/health || exit 1
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>What it means</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--interval</code></td>
+<td>Time between checks</td>
+<td>30s</td>
+</tr>
+<tr>
+<td><code>--timeout</code></td>
+<td>Max time for a single check</td>
+<td>30s</td>
+</tr>
+<tr>
+<td><code>--start-period</code></td>
+<td>Grace period after start (failures don't count)</td>
+<td>0s</td>
+</tr>
+<tr>
+<td><code>--retries</code></td>
+<td>Consecutive failures before <code>unhealthy</code></td>
+<td>3</td>
+</tr>
+<tr>
+<td><code>--start-interval</code></td>
+<td>Interval during start period (more frequent checks)</td>
+<td>5s</td>
+</tr>
+</tbody>
+</table>
+<p>Container states: <code>starting</code> → <code>healthy</code> / <code>unhealthy</code>. Docker doesn't automatically restart unhealthy containers, but Compose <code>depends_on</code> and orchestrators (Swarm, Kubernetes) use health status.</p>
+<pre><code class="language-bash"># check health status
+docker inspect --format '{{.State.Health.Status}}' mycontainer
+
+# see recent health check results
+docker inspect --format '{{json .State.Health}}' mycontainer | jq .
+</code></pre>
+<p><strong>Practical health checks by service type:</strong></p>
+<pre><code class="language-dockerfile"># HTTP service
+HEALTHCHECK CMD curl -f http://localhost:3000/health || exit 1
+
+# PostgreSQL
+HEALTHCHECK CMD pg_isready -U postgres || exit 1
+
+# Redis
+HEALTHCHECK CMD redis-cli ping || exit 1
+
+# worker/queue consumer (write a heartbeat file)
+HEALTHCHECK CMD test $(find /tmp/heartbeat -mmin -1 | wc -l) -gt 0 || exit 1
+</code></pre>
+<h3 id="restart-policies">Restart Policies</h3>
+<pre><code class="language-bash">docker run -d --restart unless-stopped myapp
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Policy</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>no</code></td>
+<td>Don't restart (default)</td>
+</tr>
+<tr>
+<td><code>on-failure[:max-retries]</code></td>
+<td>Restart only on non-zero exit code</td>
+</tr>
+<tr>
+<td><code>always</code></td>
+<td>Restart regardless of exit code, including on daemon startup</td>
+</tr>
+<tr>
+<td><code>unless-stopped</code></td>
+<td>Like <code>always</code>, but don't restart if the container was manually stopped</td>
+</tr>
+</tbody>
+</table>
+<p><code>unless-stopped</code> is the right default for most production services — it survives host reboots but respects manual <code>docker stop</code>.</p>
+<hr>
+<h2 id="10-resource-limits">10. Resource Limits</h2>
+<p>Reference: <a href="https://docs.docker.com/engine/containers/resource_constraints/">Runtime options with memory, CPUs</a></p>
+<h3 id="memory">Memory</h3>
+<pre><code class="language-bash"># hard limit — container is OOM-killed if it exceeds this
+docker run -d --memory 512m myapp
+
+# soft limit (reservation) — used for scheduling, not enforcement
+docker run -d --memory 512m --memory-reservation 256m myapp
+
+# disable swap (prevent the container from using swap space)
+docker run -d --memory 512m --memory-swap 512m myapp
+# --memory-swap = --memory means no swap allowed
+# --memory-swap = -1 means unlimited swap
+</code></pre>
+<p>When a container exceeds its memory limit:
+1. The kernel OOM-killer terminates the process
+2. Docker records the exit code as 137 (128 + SIGKILL=9)
+3. The restart policy determines what happens next</p>
+<h3 id="cpu">CPU</h3>
+<pre><code class="language-bash"># limit to 1.5 CPUs worth of processing time
+docker run -d --cpus 1.5 myapp
+
+# pin to specific CPU cores
+docker run -d --cpuset-cpus &quot;0,2&quot; myapp
+
+# relative weight (only matters when CPUs are contended)
+docker run -d --cpu-shares 512 myapp   # default is 1024
+</code></pre>
+<p><code>--cpus</code> is a hard limit. <code>--cpu-shares</code> is a relative weight that only applies when containers compete for CPU — if nothing else is running, a container with low shares still gets full CPU.</p>
+<h3 id="pids-limit">PIDs Limit</h3>
+<p>Prevent fork bombs:</p>
+<pre><code class="language-bash">docker run -d --pids-limit 100 myapp
+</code></pre>
+<h3 id="compose-resource-limits">Compose Resource Limits</h3>
+<pre><code class="language-yaml">services:
+  api:
+    deploy:
+      resources:
+        limits:
+          cpus: &quot;1.5&quot;
+          memory: 512M
+        reservations:
+          cpus: &quot;0.5&quot;
+          memory: 256M
+</code></pre>
+<h3 id="monitoring-resource-usage">Monitoring Resource Usage</h3>
+<pre><code class="language-bash"># live resource stats
+docker stats
+
+# single snapshot
+docker stats --no-stream
+
+# specific container
+docker stats mycontainer
+</code></pre>
+<p><code>docker stats</code> shows CPU %, memory usage/limit, network I/O, and block I/O per container.</p>
+<hr>
+<h2 id="11-security">11. Security</h2>
+<p>Reference: <a href="https://docs.docker.com/engine/security/">Docker Security</a>, <a href="https://github.com/docker/docker-bench-security">Docker Bench for Security</a></p>
+<h3 id="run-as-non-root">Run as Non-Root</h3>
+<p>The number one Docker security improvement. By default, processes in a container run as root:</p>
+<pre><code class="language-dockerfile"># create a non-root user and switch to it
+RUN groupadd -r appuser &amp;&amp; useradd -r -g appuser appuser
+USER appuser
+
+# for distroless or Alpine:
+USER nobody
+# or
+USER 65534
+</code></pre>
+<p>If the app is compromised, the attacker has root inside the container. With user namespaces disabled (the default), that maps to root on the host — container escape gives host root.</p>
+<h3 id="drop-capabilities">Drop Capabilities</h3>
+<p>Linux capabilities break root's powers into ~40 fine-grained permissions. Docker drops many by default but keeps some. Drop everything and add back only what's needed:</p>
+<pre><code class="language-bash">docker run -d \
+  --cap-drop ALL \
+  --cap-add NET_BIND_SERVICE \
+  myapp
+</code></pre>
+<p>Common capabilities:</p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Allows</th>
+<th>Most apps need it?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NET_BIND_SERVICE</code></td>
+<td>Bind ports &lt; 1024</td>
+<td>Only if binding to 80/443</td>
+</tr>
+<tr>
+<td><code>CHOWN</code></td>
+<td>Change file ownership</td>
+<td>Rarely</td>
+</tr>
+<tr>
+<td><code>SETUID</code> / <code>SETGID</code></td>
+<td>Change user/group</td>
+<td>Rarely</td>
+</tr>
+<tr>
+<td><code>SYS_PTRACE</code></td>
+<td>Debug processes</td>
+<td>Only for debugging</td>
+</tr>
+<tr>
+<td><code>NET_RAW</code></td>
+<td>Raw sockets (ping)</td>
+<td>Rarely</td>
+</tr>
+</tbody>
+</table>
+<h3 id="read-only-root-filesystem">Read-Only Root Filesystem</h3>
+<pre><code class="language-bash">docker run -d \
+  --read-only \
+  --tmpfs /tmp \
+  --tmpfs /var/run \
+  myapp
+</code></pre>
+<h3 id="no-new-privileges">No New Privileges</h3>
+<p>Prevent the container process from gaining additional privileges via setuid binaries or capabilities:</p>
+<pre><code class="language-bash">docker run -d --security-opt no-new-privileges myapp
+</code></pre>
+<h3 id="seccomp-profiles">Seccomp Profiles</h3>
+<p>Docker applies a default seccomp profile that blocks ~44 dangerous syscalls (like <code>reboot</code>, <code>mount</code>, <code>kexec_load</code>). You can make it stricter:</p>
+<pre><code class="language-bash"># use a custom profile
+docker run -d --security-opt seccomp=myprofile.json myapp
+
+# see the default profile
+docker info --format '{{.SecurityOptions}}'
+</code></pre>
+<h3 id="image-scanning">Image Scanning</h3>
+<p>Scan images for known vulnerabilities before deployment:</p>
+<pre><code class="language-bash"># Docker Scout (built into Docker Desktop)
+docker scout cves myimage:latest
+docker scout recommendations myimage:latest
+
+# Trivy (open source, widely used in CI)
+trivy image myimage:latest
+
+# Grype
+grype myimage:latest
+</code></pre>
+<h3 id="rootless-docker">Rootless Docker</h3>
+<p>Run the entire Docker daemon as a non-root user:</p>
+<pre><code class="language-bash"># install rootless Docker
+dockerd-rootless-setuptool.sh install
+
+# uses user namespaces — root in container maps to your UID on host
+</code></pre>
+<p>Reference: <a href="https://docs.docker.com/engine/security/rootless/">Rootless mode</a></p>
+<h3 id="security-checklist">Security Checklist</h3>
+<ol>
+<li>Use a minimal base image (<code>slim</code>, <code>alpine</code>, distroless)</li>
+<li>Run as non-root (<code>USER</code>)</li>
+<li>Drop all capabilities, add back selectively</li>
+<li>Read-only root filesystem</li>
+<li>No new privileges</li>
+<li>Pin image digests, not tags</li>
+<li>Scan images in CI</li>
+<li>Don't store secrets in images (use BuildKit secrets, runtime secrets management)</li>
+<li>Use <code>.dockerignore</code> to exclude sensitive files from build context</li>
+<li>Keep Docker and base images updated</li>
+</ol>
+<hr>
+<h2 id="12-the-runtime-stack-containerd-runc-oci">12. The Runtime Stack: containerd, runc &amp; OCI</h2>
+<p>Reference: <a href="https://docs.docker.com/get-started/docker-overview/#docker-architecture">Docker architecture</a>, <a href="https://containerd.io/">containerd</a>, <a href="https://github.com/opencontainers/runc">runc</a></p>
+<h3 id="the-architecture">The Architecture</h3>
+<p>When you run <code>docker run</code>, several components are involved:</p>
+<pre><code class="language-text">docker CLI
+    │
+    ▼
+Docker daemon (dockerd)     ← API server, build engine, orchestration
+    │
+    ▼
+containerd                  ← container lifecycle (create, start, stop, delete)
+    │
+    ▼
+containerd-shim             ← per-container process that parents the container
+    │
+    ▼
+runc                        ← sets up namespaces/cgroups, execs the container process, then exits
+    │
+    ▼
+your container process      ← PID 1 inside the container
+</code></pre>
+<h3 id="why-the-layers-exist">Why the Layers Exist</h3>
+<ul>
+<li><strong>Docker daemon</strong>: the user-facing API, builds images, manages networks/volumes, provides the CLI interface.</li>
+<li><strong>containerd</strong>: the industry-standard container runtime. Kubernetes uses it directly (without Docker). Manages image pulls, container lifecycle, storage.</li>
+<li><strong>runc</strong>: the low-level runtime that actually creates the container (sets up namespaces, cgroups, pivot_root). Runs briefly, sets up the isolation, starts the process, then exits.</li>
+<li><strong>containerd-shim</strong>: stays alive for the lifetime of the container. Keeps stdout/stderr open, reports exit status, allows the container to survive a containerd restart.</li>
+</ul>
+<h3 id="oci-standards">OCI Standards</h3>
+<p>The Open Container Initiative defines two specs:</p>
+<table>
+<thead>
+<tr>
+<th>Spec</th>
+<th>Defines</th>
+<th>Why it matters</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/opencontainers/image-spec">Image Spec</a></td>
+<td>Image format, manifest, layers, config</td>
+<td>Images built by Docker work in Podman, Kubernetes, etc.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/opencontainers/runtime-spec">Runtime Spec</a></td>
+<td>How to run a container (config.json → namespaces/cgroups)</td>
+<td>runc, crun, youki all implement this — containers are portable</td>
+</tr>
+</tbody>
+</table>
+<h3 id="alternative-runtimes">Alternative Runtimes</h3>
+<table>
+<thead>
+<tr>
+<th>Runtime</th>
+<th>Language</th>
+<th>Differentiator</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>runc</code></td>
+<td>Go</td>
+<td>Reference implementation, default everywhere</td>
+</tr>
+<tr>
+<td><code>crun</code></td>
+<td>C</td>
+<td>Faster startup, lower memory, used by Podman by default</td>
+</tr>
+<tr>
+<td><code>youki</code></td>
+<td>Rust</td>
+<td>Rust implementation of the OCI runtime spec</td>
+</tr>
+<tr>
+<td><code>gVisor (runsc)</code></td>
+<td>Go</td>
+<td>Application kernel — intercepts syscalls for stronger isolation</td>
+</tr>
+<tr>
+<td><code>Kata Containers</code></td>
+<td>Go</td>
+<td>Runs containers in lightweight VMs for VM-level isolation</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-bash"># use an alternative runtime
+docker run --runtime=runsc myapp    # gVisor
+docker run --runtime=kata myapp    # Kata Containers
+</code></pre>
+<h3 id="podman-docker-without-a-daemon">Podman — Docker Without a Daemon</h3>
+<p>Podman is a drop-in Docker CLI replacement that doesn't require a daemon:</p>
+<pre><code class="language-bash"># same CLI, no daemon
+podman run -d -p 8080:80 nginx
+podman build -t myimage .
+podman compose up -d
+</code></pre>
+<p>Key differences: daemonless (each container is a child process of the podman command), rootless by default, uses crun instead of runc, no Docker socket to protect.</p>
+<hr>
+<h2 id="13-registries-image-distribution">13. Registries &amp; Image Distribution</h2>
+<p>Reference: <a href="https://docs.docker.com/registry/">Docker Registry</a>, <a href="https://hub.docker.com/">Docker Hub</a></p>
+<h3 id="image-naming">Image Naming</h3>
+<pre><code class="language-text">registry.example.com/organization/repository:tag
+│                     │              │          │
+│                     │              │          └─ version identifier (default: latest)
+│                     │              └─ image name
+│                     └─ namespace / org
+└─ registry hostname (default: docker.io)
+</code></pre>
+<pre><code class="language-bash"># these are equivalent:
+docker pull nginx
+docker pull docker.io/library/nginx:latest
+
+# pull from a private registry:
+docker pull ghcr.io/myorg/myapp:v1.2.3
+docker pull 123456789.dkr.ecr.us-east-1.amazonaws.com/myapp:latest
+</code></pre>
+<h3 id="common-registries">Common Registries</h3>
+<table>
+<thead>
+<tr>
+<th>Registry</th>
+<th>URL</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Docker Hub</td>
+<td><code>docker.io</code></td>
+<td>Default, rate-limited for anonymous pulls (100/6h)</td>
+</tr>
+<tr>
+<td>GitHub Container Registry</td>
+<td><code>ghcr.io</code></td>
+<td>Free for public images, integrates with GitHub Actions</td>
+</tr>
+<tr>
+<td>AWS ECR</td>
+<td><code>&amp;lt;account&amp;gt;.dkr.ecr.&amp;lt;region&amp;gt;.amazonaws.com</code></td>
+<td>Per-account, IAM-integrated</td>
+</tr>
+<tr>
+<td>Google Artifact Registry</td>
+<td><code>&amp;lt;region&amp;gt;-docker.pkg.dev</code></td>
+<td>Replaced GCR</td>
+</tr>
+<tr>
+<td>Azure Container Registry</td>
+<td><code>&amp;lt;name&amp;gt;.azurecr.io</code></td>
+<td>AAD-integrated</td>
+</tr>
+<tr>
+<td>Self-hosted</td>
+<td>Any</td>
+<td>Run the <a href="https://hub.docker.com/_/registry">registry</a> image</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pushing-images">Pushing Images</h3>
+<pre><code class="language-bash"># tag for a registry
+docker tag myapp:latest ghcr.io/myorg/myapp:v1.0.0
+docker tag myapp:latest ghcr.io/myorg/myapp:latest
+
+# authenticate
+docker login ghcr.io
+
+# push
+docker push ghcr.io/myorg/myapp:v1.0.0
+docker push ghcr.io/myorg/myapp:latest
+</code></pre>
+<h3 id="image-manifests-and-multi-arch">Image Manifests and Multi-Arch</h3>
+<p>A tag can point to a <strong>manifest list</strong> — a list of image manifests for different platforms:</p>
+<pre><code class="language-bash"># inspect what platforms an image supports
+docker manifest inspect python:3.12-slim
+
+# create a multi-arch manifest
+docker manifest create myapp:latest \
+  myapp:latest-amd64 \
+  myapp:latest-arm64
+docker manifest push myapp:latest
+</code></pre>
+<p>When you <code>docker pull</code> on an ARM machine, Docker automatically selects the <code>linux/arm64</code> variant from the manifest list.</p>
+<h3 id="self-hosted-registry">Self-Hosted Registry</h3>
+<pre><code class="language-bash"># simplest possible private registry
+docker run -d -p 5000:5000 --name registry registry:2
+
+docker tag myapp:latest localhost:5000/myapp:latest
+docker push localhost:5000/myapp:latest
+docker pull localhost:5000/myapp:latest
+</code></pre>
+<p>For production, add TLS, authentication, and storage backend configuration. See the <a href="https://docs.docker.com/registry/deploying/">registry deployment guide</a>.</p>
+<hr>
+<h2 id="14-logging-debugging-observability">14. Logging, Debugging &amp; Observability</h2>
+<p>Reference: <a href="https://docs.docker.com/engine/logging/">View container logs</a>, <a href="https://docs.docker.com/engine/logging/configure/">Docker logging drivers</a></p>
+<h3 id="logs">Logs</h3>
+<p>Docker captures stdout and stderr from the container process:</p>
+<pre><code class="language-bash"># follow logs
+docker logs -f mycontainer
+
+# last 100 lines
+docker logs --tail 100 mycontainer
+
+# logs with timestamps
+docker logs -t mycontainer
+
+# logs since a time
+docker logs --since 2024-01-01T00:00:00 mycontainer
+docker logs --since 30m mycontainer
+</code></pre>
+<h3 id="logging-drivers">Logging Drivers</h3>
+<p>Docker can send logs to different backends:</p>
+<table>
+<thead>
+<tr>
+<th>Driver</th>
+<th>Destination</th>
+<th><code>docker logs</code> works?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>json-file</code> (default)</td>
+<td>JSON files on disk</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>local</code></td>
+<td>Optimized local format</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>syslog</code></td>
+<td>Syslog daemon</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>journald</code></td>
+<td>systemd journal</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td><code>fluentd</code></td>
+<td>Fluentd collector</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>awslogs</code></td>
+<td>CloudWatch Logs</td>
+<td>No</td>
+</tr>
+<tr>
+<td><code>gcplogs</code></td>
+<td>Google Cloud Logging</td>
+<td>No</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-bash">docker run -d \
+  --log-driver json-file \
+  --log-opt max-size=10m \
+  --log-opt max-file=3 \
+  myapp
+</code></pre>
+<p><strong>Always set <code>max-size</code> and <code>max-file</code></strong> on the json-file driver. Without limits, a noisy container can fill up the disk. Set this in the daemon config (<code>/etc/docker/daemon.json</code>) as a default:</p>
+<pre><code class="language-json">{
+  &quot;log-driver&quot;: &quot;json-file&quot;,
+  &quot;log-opts&quot;: {
+    &quot;max-size&quot;: &quot;10m&quot;,
+    &quot;max-file&quot;: &quot;5&quot;
+  }
+}
+</code></pre>
+<h3 id="debugging-running-containers">Debugging Running Containers</h3>
+<pre><code class="language-bash"># interactive shell
+docker exec -it mycontainer sh
+docker exec -it mycontainer bash
+
+# run a specific command
+docker exec mycontainer cat /etc/os-release
+docker exec mycontainer env
+docker exec mycontainer ps aux
+
+# inspect container metadata
+docker inspect mycontainer
+docker inspect --format '{{.State.Status}}' mycontainer
+docker inspect --format '{{.NetworkSettings.IPAddress}}' mycontainer
+
+# see processes
+docker top mycontainer
+
+# filesystem changes since the image
+docker diff mycontainer
+# A = added, C = changed, D = deleted
+</code></pre>
+<h3 id="debugging-images-no-running-container">Debugging Images (No Running Container)</h3>
+<pre><code class="language-bash"># start a throwaway container from the image
+docker run --rm -it myimage sh
+
+# override the entrypoint
+docker run --rm -it --entrypoint sh myimage
+
+# inspect the image without running it
+docker image inspect myimage
+docker history myimage
+</code></pre>
+<h3 id="debugging-build-failures">Debugging Build Failures</h3>
+<pre><code class="language-bash"># with BuildKit, use --progress=plain for full output
+docker build --progress=plain .
+
+# target a specific stage
+docker build --target builder .
+
+# run the failing stage interactively
+docker build --target builder -t debug .
+docker run --rm -it debug sh
+</code></pre>
+<h3 id="copying-files-in-and-out">Copying Files In and Out</h3>
+<pre><code class="language-bash"># copy from container to host
+docker cp mycontainer:/app/logs/error.log ./error.log
+
+# copy from host to container
+docker cp ./config.json mycontainer:/app/config.json
+</code></pre>
+<h3 id="events">Events</h3>
+<p>Watch Docker events in real time:</p>
+<pre><code class="language-bash">docker events
+docker events --filter container=mycontainer
+docker events --filter event=die
+</code></pre>
+<hr>
+<h2 id="15-production-patterns">15. Production Patterns</h2>
+<h3 id="signal-handling-and-graceful-shutdown">Signal Handling and Graceful Shutdown</h3>
+<p>PID 1 inside a container receives <code>SIGTERM</code> on <code>docker stop</code>. The process has 10 seconds (configurable with <code>--stop-timeout</code>) to shut down before <code>SIGKILL</code>.</p>
+<p><strong>Problem</strong>: if you use shell form in ENTRYPOINT/CMD, <code>/bin/sh</code> is PID 1 and your app doesn't get the signal:</p>
+<pre><code class="language-dockerfile"># bad — shell is PID 1, app won't receive SIGTERM
+CMD node server.js
+
+# good — node is PID 1, receives SIGTERM directly
+CMD [&quot;node&quot;, &quot;server.js&quot;]
+</code></pre>
+<p><strong>Problem</strong>: some applications don't handle SIGTERM. Use <code>tini</code> or <code>--init</code> as a lightweight init process:</p>
+<pre><code class="language-bash">docker run --init myapp
+</code></pre>
+<p>Or in the Dockerfile:</p>
+<pre><code class="language-dockerfile">RUN apt-get update &amp;&amp; apt-get install -y --no-install-recommends tini
+ENTRYPOINT [&quot;tini&quot;, &quot;--&quot;]
+CMD [&quot;node&quot;, &quot;server.js&quot;]
+</code></pre>
+<p><code>tini</code> forwards signals to the child process and reaps zombie processes (PID 1 is responsible for reaping zombies — most applications don't do this).</p>
+<h3 id="minimal-base-images">Minimal Base Images</h3>
+<table>
+<thead>
+<tr>
+<th>Image</th>
+<th>Size</th>
+<th>Shell?</th>
+<th>Package manager?</th>
+<th>When to use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ubuntu:24.04</code></td>
+<td>~78MB</td>
+<td>Yes</td>
+<td>apt</td>
+<td>Need full OS compatibility</td>
+</tr>
+<tr>
+<td><code>debian:bookworm-slim</code></td>
+<td>~75MB</td>
+<td>Yes</td>
+<td>apt</td>
+<td>Need apt but want smaller</td>
+</tr>
+<tr>
+<td><code>alpine:3.20</code></td>
+<td>~7MB</td>
+<td>Yes (ash)</td>
+<td>apk</td>
+<td>Minimal, but musl libc can cause compatibility issues</td>
+</tr>
+<tr>
+<td><code>distroless</code></td>
+<td>~2-20MB</td>
+<td>No</td>
+<td>No</td>
+<td>Maximum security — no shell to exploit</td>
+</tr>
+<tr>
+<td><code>scratch</code></td>
+<td>0MB</td>
+<td>No</td>
+<td>No</td>
+<td>Static binaries (Go, Rust)</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-dockerfile"># distroless for Node.js
+FROM node:22 AS builder
+WORKDIR /app
+COPY . .
+RUN npm ci &amp;&amp; npm run build
+
+FROM gcr.io/distroless/nodejs22-debian12
+WORKDIR /app
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+CMD [&quot;dist/index.js&quot;]
+</code></pre>
+<h3 id="one-process-per-container">One Process Per Container</h3>
+<p>Each container should run one process (one concern). Don't run nginx + your app + a log forwarder in one container.</p>
+<p>Benefits:
+- Independent scaling (scale workers without scaling the web server)
+- Independent health checks (a crashed worker doesn't make the web server look unhealthy)
+- Independent logging (each container's stdout is one log stream)
+- Independent resource limits
+- Simpler restart (restart just the thing that crashed)</p>
+<h3 id="labels-for-metadata">Labels for Metadata</h3>
+<pre><code class="language-dockerfile">LABEL org.opencontainers.image.source=&quot;https://github.com/myorg/myapp&quot;
+LABEL org.opencontainers.image.version=&quot;1.2.3&quot;
+LABEL org.opencontainers.image.description=&quot;My application&quot;
+LABEL org.opencontainers.image.created=&quot;2025-01-15T10:30:00Z&quot;
+</code></pre>
+<p>OCI-standard labels let tools (registries, scanners, orchestrators) understand your images.</p>
+<h3 id="deterministic-builds">Deterministic Builds</h3>
+<pre><code class="language-dockerfile"># pin the base image by digest
+FROM node:22-slim@sha256:abc123...
+
+# pin package versions
+RUN apt-get update &amp;&amp; apt-get install -y --no-install-recommends \
+    curl=7.88.1-10+deb12u5
+
+# use lock files for application dependencies
+COPY package-lock.json ./
+RUN npm ci  # ci uses the lockfile exactly, unlike npm install
+</code></pre>
+<h3 id="docker-in-cicd">Docker in CI/CD</h3>
+<pre><code class="language-yaml"># GitHub Actions example
+- name: Build and push
+  uses: docker/build-push-action@v5
+  with:
+    context: .
+    push: true
+    tags: ghcr.io/myorg/myapp:${{ github.sha }}
+    cache-from: type=gha
+    cache-to: type=gha,mode=max
+</code></pre>
+<p>The <code>type=gha</code> cache backend stores BuildKit cache in GitHub Actions' cache, so subsequent CI builds are fast.</p>
+<hr>
+<h2 id="16-common-mistakes">16. Common Mistakes</h2>
+<h3 id="1-using-latest-in-production">1. Using <code>latest</code> in Production</h3>
+<pre><code class="language-bash"># which version is this? depends on when you pulled
+docker pull myapp:latest
+</code></pre>
+<p><code>latest</code> is a mutable tag. Two machines that pull <code>latest</code> at different times get different images. Always use specific version tags or digests in production.</p>
+<h3 id="2-running-as-root">2. Running as Root</h3>
+<p>The default. Fix it:</p>
+<pre><code class="language-dockerfile">USER nobody
+</code></pre>
+<p>See <a href="#11-security">Section 11</a> for the full security rationale.</p>
+<h3 id="3-not-setting-memory-limits">3. Not Setting Memory Limits</h3>
+<p>Without limits, a memory leak in one container can OOM-kill the host and take down everything. Always set <code>--memory</code>.</p>
+<h3 id="4-fat-images">4. Fat Images</h3>
+<pre><code class="language-dockerfile"># bad — 900MB image with build tools, source code, test fixtures
+FROM node:22
+COPY . .
+RUN npm install
+CMD [&quot;node&quot;, &quot;index.js&quot;]
+
+# good — ~150MB image with only what's needed to run
+FROM node:22 AS builder
+COPY . .
+RUN npm ci &amp;&amp; npm run build
+
+FROM node:22-slim
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+CMD [&quot;node&quot;, &quot;dist/index.js&quot;]
+</code></pre>
+<h3 id="5-secrets-in-images">5. Secrets in Images</h3>
+<pre><code class="language-dockerfile"># bad — token is permanently in a layer, visible in docker history
+ARG NPM_TOKEN
+RUN echo &quot;//registry.npmjs.org/:_authToken=${NPM_TOKEN}&quot; &gt; .npmrc
+RUN npm ci
+RUN rm .npmrc  # still in the previous layer!
+
+# good — secret is never in any layer
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc npm ci
+</code></pre>
+<h3 id="6-ignoring-dockerignore">6. Ignoring .dockerignore</h3>
+<p>Without <code>.dockerignore</code>, <code>docker build</code> sends everything to the daemon — including <code>.git</code> (could be hundreds of MB), <code>node_modules</code>, <code>.env</code> files with credentials, and large test fixtures.</p>
+<h3 id="7-misunderstanding-layer-caching-order">7. Misunderstanding Layer Caching Order</h3>
+<pre><code class="language-dockerfile"># bad — every code change re-runs npm install
+COPY . .
+RUN npm ci
+
+# good — npm install only re-runs when package.json changes
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+</code></pre>
+<h3 id="8-not-setting-log-rotation">8. Not Setting Log Rotation</h3>
+<p>Default <code>json-file</code> driver has no size limit. A noisy container logging 1GB/hour will fill your disk.</p>
+<h3 id="9-using-docker-compose-up-without-build">9. Using <code>docker compose up</code> Without <code>--build</code></h3>
+<p>If you change your Dockerfile but don't pass <code>--build</code>, Compose reuses the old image. Confusing when your changes "don't take effect."</p>
+<h3 id="10-conflating-stop-and-kill">10. Conflating Stop and Kill</h3>
+<pre><code class="language-bash">docker stop mycontainer   # SIGTERM → 10s grace → SIGKILL
+docker kill mycontainer   # SIGKILL immediately — no graceful shutdown
+</code></pre>
+<p>Use <code>stop</code> unless you specifically need to force-kill a hung container.</p>
+<hr>
+<h2 id="quick-reference-docker-commands">Quick Reference: Docker Commands</h2>
+<h3 id="lifecycle">Lifecycle</h3>
+<pre><code class="language-bash">docker run -d --name app -p 8080:3000 myimage     # create + start
+docker start app                                    # start a stopped container
+docker stop app                                     # graceful stop (SIGTERM)
+docker restart app                                  # stop + start
+docker rm app                                       # remove stopped container
+docker rm -f app                                    # force-remove running container
+</code></pre>
+<h3 id="images">Images</h3>
+<pre><code class="language-bash">docker build -t myapp:v1 .                         # build
+docker tag myapp:v1 registry.example.com/myapp:v1   # tag
+docker push registry.example.com/myapp:v1           # push
+docker pull nginx:latest                             # pull
+docker image ls                                      # list
+docker image rm myapp:v1                             # remove
+docker image prune                                   # remove dangling images
+docker system prune -a                               # remove everything unused
+</code></pre>
+<h3 id="inspection">Inspection</h3>
+<pre><code class="language-bash">docker ps                              # running containers
+docker ps -a                           # all containers
+docker logs -f app                     # follow logs
+docker exec -it app sh                 # shell into container
+docker inspect app                     # full container metadata
+docker stats                           # live resource usage
+docker top app                         # processes in container
+docker diff app                        # filesystem changes
+docker port app                        # port mappings
+</code></pre>
+<h3 id="cleanup">Cleanup</h3>
+<pre><code class="language-bash">docker system df                       # disk usage
+docker system prune                    # remove stopped containers, unused networks, dangling images
+docker system prune -a --volumes       # aggressive: everything unused including volumes
+docker volume prune                    # remove unused volumes
+docker image prune -a                  # remove all unused images
+docker builder prune                   # remove BuildKit cache
+</code></pre></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>
