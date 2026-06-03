@@ -1,0 +1,1166 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Advanced Kubernetes Study Guide.">
+<title>Advanced Kubernetes Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#326ce5; --accent2:#326ce5; --accent-weak:rgba(50,108,229,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#326ce5; --accent2:#326ce5; --accent-weak:rgba(50,108,229,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">K8s</span><span>Advanced Kubernetes Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-the-control-plane-deeply" data-target="part-1-the-control-plane-deeply">Part 1 — The Control Plane, Deeply</a></li><li class="toc-l3"><a href="#etcd-is-the-cluster" data-target="etcd-is-the-cluster">etcd Is the Cluster</a></li><li class="toc-l3"><a href="#the-api-server-a-database-frontend" data-target="the-api-server-a-database-frontend">The API Server: A Database Frontend</a></li><li class="toc-l3"><a href="#controllers-and-the-reconciliation-loop" data-target="controllers-and-the-reconciliation-loop">Controllers and the Reconciliation Loop</a></li><li class="toc-l3"><a href="#how-the-scheduler-actually-decides" data-target="how-the-scheduler-actually-decides">How the Scheduler Actually Decides</a></li><li class="toc-l3"><a href="#leader-election-everywhere" data-target="leader-election-everywhere">Leader Election Everywhere</a></li><li class="toc-l2"><a href="#part-2-the-api-machinery-extension-model" data-target="part-2-the-api-machinery-extension-model">Part 2 — The API Machinery &amp; Extension Model</a></li><li class="toc-l3"><a href="#groups-versions-and-resources-gvr" data-target="groups-versions-and-resources-gvr">Groups, Versions, and Resources (GVR)</a></li><li class="toc-l3"><a href="#api-versioning-and-the-stability-contract" data-target="api-versioning-and-the-stability-contract">API Versioning and the Stability Contract</a></li><li class="toc-l3"><a href="#custom-resource-definitions-crds" data-target="custom-resource-definitions-crds">Custom Resource Definitions (CRDs)</a></li><li class="toc-l3"><a href="#admission-control-the-extensible-gate" data-target="admission-control-the-extensible-gate">Admission Control: The Extensible Gate</a></li><li class="toc-l3"><a href="#server-side-apply-and-field-ownership" data-target="server-side-apply-and-field-ownership">Server-Side Apply and Field Ownership</a></li><li class="toc-l2"><a href="#part-3-building-operators" data-target="part-3-building-operators">Part 3 — Building Operators</a></li><li class="toc-l3"><a href="#the-operator-pattern" data-target="the-operator-pattern">The Operator Pattern</a></li><li class="toc-l3"><a href="#the-framework-kubebuilder-controller-runtime" data-target="the-framework-kubebuilder-controller-runtime">The Framework: Kubebuilder / controller-runtime</a></li><li class="toc-l3"><a href="#the-rules-of-a-good-operator" data-target="the-rules-of-a-good-operator">The Rules of a Good Operator</a></li><li class="toc-l3"><a href="#testing-operators" data-target="testing-operators">Testing Operators</a></li><li class="toc-l2"><a href="#part-4-advanced-scheduling" data-target="part-4-advanced-scheduling">Part 4 — Advanced Scheduling</a></li><li class="toc-l3"><a href="#the-scheduling-framework" data-target="the-scheduling-framework">The Scheduling Framework</a></li><li class="toc-l3"><a href="#pod-topology-spread-constraints" data-target="pod-topology-spread-constraints">Pod Topology Spread Constraints</a></li><li class="toc-l3"><a href="#gpu-and-accelerator-scheduling" data-target="gpu-and-accelerator-scheduling">GPU and Accelerator Scheduling</a></li><li class="toc-l3"><a href="#descheduling-fixing-bad-placements-after-the-fact" data-target="descheduling-fixing-bad-placements-after-the-fact">Descheduling: Fixing Bad Placements After the Fact</a></li><li class="toc-l2"><a href="#part-5-advanced-workloads-scaling" data-target="part-5-advanced-workloads-scaling">Part 5 — Advanced Workloads &amp; Scaling</a></li><li class="toc-l3"><a href="#poddisruptionbudgets-pdbs" data-target="poddisruptionbudgets-pdbs">PodDisruptionBudgets (PDBs)</a></li><li class="toc-l3"><a href="#vertical-pod-autoscaler-vpa-and-right-sizing" data-target="vertical-pod-autoscaler-vpa-and-right-sizing">Vertical Pod Autoscaler (VPA) and Right-Sizing</a></li><li class="toc-l3"><a href="#keda-event-driven-scaling" data-target="keda-event-driven-scaling">KEDA: Event-Driven Scaling</a></li><li class="toc-l3"><a href="#rollout-strategies-beyond-rollingupdate" data-target="rollout-strategies-beyond-rollingupdate">Rollout Strategies Beyond RollingUpdate</a></li><li class="toc-l2"><a href="#part-6-multi-tenancy-resource-governance" data-target="part-6-multi-tenancy-resource-governance">Part 6 — Multi-Tenancy &amp; Resource Governance</a></li><li class="toc-l3"><a href="#namespace-level-isolation" data-target="namespace-level-isolation">Namespace-Level Isolation</a></li><li class="toc-l3"><a href="#policy-engines-kyverno-opagatekeeper-cel" data-target="policy-engines-kyverno-opagatekeeper-cel">Policy Engines: Kyverno, OPA/Gatekeeper, CEL</a></li><li class="toc-l3"><a href="#cost-management-and-chargeback" data-target="cost-management-and-chargeback">Cost Management and Chargeback</a></li><li class="toc-l2"><a href="#part-7-gitops-continuous-delivery" data-target="part-7-gitops-continuous-delivery">Part 7 — GitOps &amp; Continuous Delivery</a></li><li class="toc-l3"><a href="#the-model" data-target="the-model">The Model</a></li><li class="toc-l3"><a href="#argo-cd" data-target="argo-cd">Argo CD</a></li><li class="toc-l3"><a href="#flux" data-target="flux">Flux</a></li><li class="toc-l3"><a href="#the-repo-structure" data-target="the-repo-structure">The Repo Structure</a></li><li class="toc-l3"><a href="#image-automation" data-target="image-automation">Image Automation</a></li><li class="toc-l2"><a href="#part-8-multi-cluster-federation" data-target="part-8-multi-cluster-federation">Part 8 — Multi-Cluster &amp; Federation</a></li><li class="toc-l3"><a href="#why-multiple-clusters" data-target="why-multiple-clusters">Why Multiple Clusters</a></li><li class="toc-l3"><a href="#multi-cluster-tooling" data-target="multi-cluster-tooling">Multi-Cluster Tooling</a></li><li class="toc-l3"><a href="#the-hub-and-spoke-pattern" data-target="the-hub-and-spoke-pattern">The Hub-and-Spoke Pattern</a></li><li class="toc-l2"><a href="#part-9-supply-chain-security-production-operations" data-target="part-9-supply-chain-security-production-operations">Part 9 — Supply-Chain Security &amp; Production Operations</a></li><li class="toc-l3"><a href="#supply-chain-security" data-target="supply-chain-security">Supply-Chain Security</a></li><li class="toc-l3"><a href="#kubernetes-upgrade-strategy" data-target="kubernetes-upgrade-strategy">Kubernetes Upgrade Strategy</a></li><li class="toc-l3"><a href="#disaster-recovery" data-target="disaster-recovery">Disaster Recovery</a></li><li class="toc-l3"><a href="#production-observability-for-the-control-plane" data-target="production-observability-for-the-control-plane">Production Observability for the Control Plane</a></li><li class="toc-l2"><a href="#part-10-platform-engineering" data-target="part-10-platform-engineering">Part 10 — Platform Engineering</a></li><li class="toc-l3"><a href="#the-problem-platform-engineering-solves" data-target="the-problem-platform-engineering-solves">The Problem Platform Engineering Solves</a></li><li class="toc-l3"><a href="#the-golden-path" data-target="the-golden-path">The Golden Path</a></li><li class="toc-l3"><a href="#backstage-the-developer-portal" data-target="backstage-the-developer-portal">Backstage: The Developer Portal</a></li><li class="toc-l3"><a href="#the-platform-teams-stack" data-target="the-platform-teams-stack">The Platform Team's Stack</a></li><li class="toc-l3"><a href="#the-maturity-model" data-target="the-maturity-model">The Maturity Model</a></li></ul></nav></aside>
+  <main><h1 id="advanced-kubernetes-study-guide">Advanced Kubernetes Study Guide</h1>
+<p>A depth-first guide to running Kubernetes in production, extending it, and building platforms on it — for engineers who already operate clusters and want to go deeper. It assumes you're comfortable with the core API (Pods, Deployments, Services, ConfigMaps, Secrets, Ingress, RBAC, <code>kubectl</code>), have read the sibling <a href="KUBERNETES_STUDY_GUIDE.md">Kubernetes Mastery guide</a> (workloads, scheduling, storage, observability), the <a href="KUBERNETES_SECURITY_STUDY_GUIDE.md">Kubernetes Security guide</a> (RBAC, Pod Security, admission control), and the <a href="DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md">Docker &amp; Kubernetes Networking guide</a> (Services, NetworkPolicy, service mesh, Gateway API). This guide picks up where those leave off: the control plane's internals, the pattern of extending it with operators, advanced scheduling and multi-tenancy, GitOps as continuous delivery, multi-cluster and federation, supply-chain security, production-grade upgrade strategy, and the emerging "platform engineering" discipline that layers a developer experience on top of all of it.</p>
+<p>The throughline is one mental-model shift: <strong>Kubernetes is not a runtime to configure but a distributed database (etcd) and a reconciliation engine you program against.</strong> Every controller, every operator, and every platform abstraction is a loop that watches desired state in that database and drives the real world to match it. The deeper you understand the reconciliation model, the more productively you extend it — and the less painful it is when it breaks at 3 AM.</p>
+<p>This guide has natural companions throughout the repo: the <a href="../DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md">Distributed Systems guide</a> (consensus, etcd, replication — the underpinnings), the <a href="../OBSERVABILITY_STUDY_GUIDE.md">Observability guide</a> (SLOs, tracing, Prometheus), the <a href="../GITHUB_ACTIONS_STUDY_GUIDE.md">GitHub Actions guide</a> (CI that feeds CD), the <a href="../CADDY_STUDY_GUIDE.md">Caddy guide</a> (reverse-proxy concepts that map to Ingress/Gateway), the <a href="../DOCKER_STUDY_GUIDE.md">Docker guide</a> (images and layers), and the <a href="../ADVANCED_GO_STUDY_GUIDE.md">Advanced Go guide</a> (because operators and controllers are almost always Go).</p>
+<p>Primary references: the <a href="https://kubernetes.io/docs/">Kubernetes documentation</a> (especially the <a href="https://kubernetes.io/docs/concepts/">API concepts</a> and <a href="https://kubernetes.io/docs/tasks/">tasks</a> sections), the <a href="https://github.com/kubernetes/client-go">client-go</a> library (the official Go SDK for controllers), <a href="https://github.com/kubernetes-sigs/controller-runtime">controller-runtime</a> and <a href="https://book.kubebuilder.io/">Kubebuilder</a> (the framework and scaffolder for building operators), and Kelsey Hightower's <a href="https://github.com/kelseyhightower/kubernetes-the-hard-way">Kubernetes the Hard Way</a> for bootstrapping a cluster from scratch.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1--the-control-plane-deeply">Part 1 — The Control Plane, Deeply</a></li>
+<li><a href="#part-2--the-api-machinery--extension-model">Part 2 — The API Machinery &amp; Extension Model</a></li>
+<li><a href="#part-3--building-operators">Part 3 — Building Operators</a></li>
+<li><a href="#part-4--advanced-scheduling">Part 4 — Advanced Scheduling</a></li>
+<li><a href="#part-5--advanced-workloads--scaling">Part 5 — Advanced Workloads &amp; Scaling</a></li>
+<li><a href="#part-6--multi-tenancy--resource-governance">Part 6 — Multi-Tenancy &amp; Resource Governance</a></li>
+<li><a href="#part-7--gitops--continuous-delivery">Part 7 — GitOps &amp; Continuous Delivery</a></li>
+<li><a href="#part-8--multi-cluster--federation">Part 8 — Multi-Cluster &amp; Federation</a></li>
+<li><a href="#part-9--supply-chain-security--production-operations">Part 9 — Supply-Chain Security &amp; Production Operations</a></li>
+<li><a href="#part-10--platform-engineering">Part 10 — Platform Engineering</a></li>
+</ol>
+<hr>
+<h2 id="part-1-the-control-plane-deeply">Part 1 — The Control Plane, Deeply</h2>
+<p>The <a href="KUBERNETES_STUDY_GUIDE.md">Kubernetes Mastery guide</a> named the control-plane components; this part is about how they interact under the hood and why that matters when things go wrong. Your <a href="../DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md">Distributed Systems</a> foundation — consensus, the replicated log, leader election — applies directly: the control plane <em>is</em> a distributed system, and it fails like one.</p>
+<h3 id="etcd-is-the-cluster">etcd Is the Cluster</h3>
+<p>Everything the cluster "knows" — every Pod, every Service, every ConfigMap, every CRD — is a key in <strong>etcd</strong>, a strongly-consistent key-value store backed by Raft (covered in depth in the <a href="../DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md">Distributed Systems guide</a>, Part 4). The API server is etcd's <em>only</em> client; nothing else reads or writes etcd directly. Lose etcd and you lose the cluster's memory.</p>
+<p>Operational implications:</p>
+<ul>
+<li><strong>etcd performance is the control plane's ceiling.</strong> Disk latency is the critical metric — etcd fsync's the WAL on every write. SSDs (preferably NVMe, local not network-attached) are non-negotiable for production etcd; spinning disks or high-latency network volumes cause leader elections, API-server timeouts, and cascading failures.</li>
+<li><strong>etcd size limits matter.</strong> The default database size limit is <strong>2 GB</strong> (raisable to 8 GB). A cluster with tens of thousands of objects (large CRD-heavy platforms, or uncontrolled Event proliferation) can approach this. Monitor <code>etcd_mvcc_db_total_size_in_bytes</code>. If it grows unbounded, investigate: stale CRD instances, excessive Events, or resources that should have TTLs.</li>
+<li><strong>Compaction and defragmentation.</strong> etcd keeps old key versions (multi-version concurrency control, the same concept as Postgres's MVCC — see the <a href="../POSTGRES_STUDY_GUIDE.md">Postgres guide</a>). Periodic compaction discards old versions; defragmentation reclaims disk space. Managed services handle this; self-managed clusters must automate it or face growing disk usage and slow range queries.</li>
+<li><strong>Backup etcd, not just the manifests.</strong> <code>etcdctl snapshot save</code> produces a point-in-time backup of <em>all cluster state</em>. Restoring from it is how you recover from a catastrophic control-plane failure. Your disaster-recovery plan must include etcd snapshots, tested recovery, and a documented RTO.</li>
+</ul>
+<h3 id="the-api-server-a-database-frontend">The API Server: A Database Frontend</h3>
+<p><code>kube-apiserver</code> is a <strong>stateless REST/gRPC server</strong> that translates CRUD operations into etcd reads/writes, plus authentication, authorization (RBAC), admission control, and <strong>watch</strong> semantics. Key advanced details:</p>
+<ul>
+<li><strong>Watches are the nervous system.</strong> Almost every controller works by <em>watching</em> the API server for changes (<code>Watch</code> in the API, an <code>Informer</code> in client-go). A watch is a long-lived HTTP/2 stream that pushes events (<code>ADDED</code>, <code>MODIFIED</code>, <code>DELETED</code>) to the client. The API server keeps a <strong>watch cache</strong> (an in-memory copy of the latest state per resource type) so that watches don't hit etcd on every event. When you see API-server memory climb, the watch cache for a large resource type (Pods in a 5,000-node cluster) is often the driver.</li>
+<li><strong>API priority and fairness (APF)</strong> (GA since 1.29) is how the API server prevents one misbehaving controller from monopolizing it. Requests are classified into <strong>priority levels</strong> and <strong>flow schemas</strong>, each with a concurrency budget. If a runaway controller floods the API server with list calls, APF throttles <em>that flow</em> while letting other flows (kubectl, the scheduler) proceed. You'll see <code>429 Too Many Requests</code> when APF kicks in — an important signal to investigate the offending client, not to blindly raise limits.</li>
+<li><strong>Admission webhooks</strong> (covered in the Security guide's Phase 2) are where your policies live — mutating and validating webhooks that intercept every create/update. Their latency <em>adds to every API call that matches</em>, so a slow webhook is a global control-plane tax. Monitor webhook latency; set <code>failurePolicy: Fail</code> only when you can guarantee availability (or the webhook's unavailability blocks all matching operations, which can deadlock a cluster).</li>
+</ul>
+<h3 id="controllers-and-the-reconciliation-loop">Controllers and the Reconciliation Loop</h3>
+<p>Every built-in behavior — creating Pods from a Deployment, scheduling them, assigning IPs — is implemented by a <strong>controller</strong>: a loop that watches the API for the <em>desired state</em> (the spec), compares it to the <em>actual state</em>, and takes action to close the gap. The architecture is deliberately <strong>level-triggered, not edge-triggered</strong>: a controller doesn't say "Pod X was just deleted, react to that event." It says "the desired state says 3 replicas; the actual state has 2; I should create one." This means:</p>
+<ul>
+<li><strong>Idempotency is built in.</strong> A controller can miss an event (network hiccup, restart) and catch up on the next pass because it reads the <em>current</em> state, not a history of events. This is robustness by design.</li>
+<li><strong>Multiple controllers collaborate without coordination.</strong> The Deployment controller creates ReplicaSets; the ReplicaSet controller creates Pods; the scheduler assigns Pods to nodes; the kubelet runs them. None talk to each other — each watches a different resource and acts on its own. The <em>API server's data</em> (etcd) is their shared communication medium.</li>
+</ul>
+<p>This is the pattern you replicate when building your own operators (Part 3). Understanding that Kubernetes is a set of independent, idempotent reconcile loops over a shared database is the single deepest insight for advanced work.</p>
+<h3 id="how-the-scheduler-actually-decides">How the Scheduler Actually Decides</h3>
+<p>The scheduler watches for unscheduled Pods (Pods with no <code>.spec.nodeName</code>) and assigns them to nodes via a two-phase pipeline:</p>
+<ol>
+<li><strong>Filtering</strong> — eliminate nodes that can't run the Pod: insufficient resources, taints the Pod doesn't tolerate, node selectors/affinity that don't match, PV topology constraints, etc.</li>
+<li><strong>Scoring</strong> — rank the remaining candidates: spread vs. pack (balanced allocation), image locality (is the image already cached on a node?), inter-pod affinity/anti-affinity, etc.</li>
+</ol>
+<p>The scheduler is pluggable: <strong>scheduling profiles</strong> let you weight or disable individual scoring plugins, and <strong>scheduler extenders</strong> or the full <strong>Scheduling Framework</strong> (Part 4) let you add custom logic. The practical takeaway is that the scheduler works on a <strong>point-in-time snapshot</strong> — by the time it decides, conditions may have changed (a node filled up, another Pod got scheduled). This is why <strong>resource requests must be set accurately</strong> (they're what the scheduler sees, not actual usage) and why Pods sometimes get evicted shortly after scheduling (the request was wrong, or the node was overcommitted).</p>
+<h3 id="leader-election-everywhere">Leader Election Everywhere</h3>
+<p>The controller-manager, the scheduler, and many operators run multiple replicas for availability but only <strong>one active</strong> at a time — selected by <strong>Lease-based leader election</strong> (the exact pattern from the <a href="../DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md">Distributed Systems guide</a>, Part 6, implemented with the <code>Lease</code> API object in etcd). The non-leaders watch the Lease and take over if it expires. When debugging "why isn't the scheduler doing anything?" — check whether it's actually the leader (<code>kubectl get leases -n kube-system</code>).</p>
+<p>If you remember one thing from Part 1: <strong>Kubernetes is etcd (a consensus-replicated database) fronted by the API server, driven by independent reconciliation loops (controllers) that watch desired state and converge reality to match it — and the control plane's health depends on etcd latency, API-server fairness, and webhook performance.</strong></p>
+<hr>
+<h2 id="part-2-the-api-machinery-extension-model">Part 2 — The API Machinery &amp; Extension Model</h2>
+<p>The Kubernetes API is not a fixed set of endpoints — it's a framework for <em>adding new endpoints</em>. Understanding the machinery is what lets you extend Kubernetes with your own resources and controllers (Part 3), and it explains the structure behind every manifest you've ever written.</p>
+<h3 id="groups-versions-and-resources-gvr">Groups, Versions, and Resources (GVR)</h3>
+<p>Every API resource is identified by three coordinates:</p>
+<pre><code class="language-text">GROUP          VERSION   RESOURCE       example GVR
+apps           v1        deployments    apps/v1/deployments
+batch          v1        jobs           batch/v1/jobs
+(core)         v1        pods           core/v1/pods  (the &quot;&quot; group)
+networking.k8s.io  v1    networkpolicies
+stable.example.com v1   widgets        ← your custom resource
+</code></pre>
+<p>The <strong>group</strong> namespaces the API (like a Go package); the <strong>version</strong> tracks evolution (alpha → beta → stable); the <strong>resource</strong> names the object kind. Custom Resource Definitions (CRDs) register new GVRs in exactly the same framework — your <code>Widget</code> is first-class alongside <code>Deployment</code>.</p>
+<h3 id="api-versioning-and-the-stability-contract">API Versioning and the Stability Contract</h3>
+<p>Kubernetes takes API compatibility seriously — here's the contract:</p>
+<ul>
+<li><strong><code>v1</code> (GA/stable):</strong> will not change in backward-incompatible ways. Safe to depend on.</li>
+<li><strong><code>v1beta1</code> etc.:</strong> may change or be removed; the three-release deprecation policy applies.</li>
+<li><strong><code>v1alpha1</code>:</strong> experimental, may vanish at any time, no migration guarantee.</li>
+</ul>
+<p>A single resource can be served at <strong>multiple versions</strong> simultaneously (conversion webhooks translate between them). When you see a CRD with versions <code>v1</code> and <code>v1alpha2</code>, the <strong>storage version</strong> is what etcd persists; the others are computed on the fly. Managing this multi-version evolution — with conversion webhooks and proper deprecation — is one of the harder parts of maintaining a production CRD.</p>
+<h3 id="custom-resource-definitions-crds">Custom Resource Definitions (CRDs)</h3>
+<p>A CRD tells the API server "there is now a new resource type called Widget in group stable.example.com." After applying the CRD, you can <code>kubectl create</code>, <code>get</code>, <code>watch</code>, and <code>delete</code> Widgets — they live in etcd just like Pods. A CRD is, concretely, a YAML document that defines:</p>
+<ul>
+<li>The <strong>group, version, names</strong> (kind, plural, short names).</li>
+<li>The <strong>OpenAPI v3 schema</strong> that validates every Widget instance. This is your data model — strongly type it; a CRD without validation is a source of silent data corruption.</li>
+<li><strong>Subresources:</strong> <code>/status</code> (so users can read spec but only the controller writes status — a crucial separation) and <code>/scale</code> (so the autoscaler can interact with your resource).</li>
+<li><strong>Additional printer columns</strong> — what <code>kubectl get widgets</code> shows.</li>
+<li><strong>Categories</strong> (e.g., <code>all</code> so <code>kubectl get all</code> includes your resource).</li>
+</ul>
+<pre><code class="language-yaml">apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: widgets.stable.example.com
+spec:
+  group: stable.example.com
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required: [color, size]
+              properties:
+                color: { type: string, enum: [red, blue, green] }
+                size:  { type: integer, minimum: 1 }
+            status:
+              type: object
+              properties:
+                ready: { type: boolean }
+      subresources:
+        status: {}      # enables /status subresource
+      additionalPrinterColumns:
+        - name: Color
+          type: string
+          jsonPath: .spec.color
+  scope: Namespaced
+  names:
+    kind: Widget
+    plural: widgets
+    singular: widget
+    shortNames: [wg]
+    categories: [all]
+</code></pre>
+<p>After <code>kubectl apply -f widget-crd.yaml</code>, the cluster has a new first-class API — but it's <strong>just storage</strong>: create and get Widgets, and they sit inert. Making them <em>do something</em> is the job of an operator (Part 3).</p>
+<h3 id="admission-control-the-extensible-gate">Admission Control: The Extensible Gate</h3>
+<p>Every API mutation passes through a chain of <strong>admission controllers</strong> — built-in ones (resource quotas, Pod Security) and your webhooks:</p>
+<ol>
+<li><strong>Mutating admission webhooks</strong> — modify the object (inject sidecars, set defaults, add labels).</li>
+<li><strong>Schema validation</strong> — the CRD's OpenAPI schema (or built-in validation).</li>
+<li><strong>Validating admission webhooks</strong> — accept or reject without modifying.</li>
+</ol>
+<p>The order is important: mutating happens first, so validating webhooks see the <em>final</em> object. For policy enforcement (Part 6), validating admission policies — including the newer <strong>CEL-based ValidatingAdmissionPolicy</strong> (GA in 1.30, no webhook required) — are the modern tool.</p>
+<h3 id="server-side-apply-and-field-ownership">Server-Side Apply and Field Ownership</h3>
+<p><strong>Server-Side Apply (SSA)</strong> is the modern approach to declarative management, replacing <code>kubectl apply</code>'s client-side three-way merge with a <strong>server-side field-ownership model</strong>. Each field in an object is tagged with its <strong>manager</strong> (who last set it), and conflicts (two managers trying to set the same field) are explicit rather than silently merged. SSA matters for operators (Part 3) because it lets a controller and a human both manage <em>different fields</em> of the same object without clobbering each other — the controller owns <code>.status</code>, the user owns <code>.spec</code>, and SSA tracks the boundary.</p>
+<p>If you remember one thing from Part 2: <strong>the Kubernetes API is an extensible framework — CRDs add new resource types with full validation and subresources, admission webhooks enforce policy, and Server-Side Apply tracks field ownership — so "extending Kubernetes" is adding rows to its database and controllers that act on them, using the same machinery the built-ins use.</strong></p>
+<hr>
+<h2 id="part-3-building-operators">Part 3 — Building Operators</h2>
+<p>An operator is a <strong>custom controller that encodes domain knowledge</strong> — "how to run and operate a specific application" — into software that watches CRDs and drives the application's lifecycle automatically. The Prometheus Operator, the Cert-Manager, the Postgres Operator, the Kafka Operator — each replaces runbooks with reconciliation loops. This is the part where you go from <em>using</em> Kubernetes to <em>programming</em> it, and your <a href="../ADVANCED_GO_STUDY_GUIDE.md">Advanced Go</a> skills apply directly.</p>
+<h3 id="the-operator-pattern">The Operator Pattern</h3>
+<p>The simplest description: a CRD (the "what I want," Part 2) plus a controller (the "how to make it happen") plus operational knowledge (the "what to do when things go wrong"). Concretely:</p>
+<pre><code class="language-text">User creates:    PostgresCluster (a CR) with spec: { replicas: 3, version: &quot;16&quot; }
+                         │
+                         ▼
+Operator watches → sees desired state ≠ actual state
+                         │
+                         ▼
+Operator acts:   creates StatefulSet, Services, ConfigMaps, sets up replication,
+                 handles failover, backups, upgrades — all encoded in Go code
+                         │
+                         ▼
+Operator updates: PostgresCluster .status.ready = true, .status.replicas = 3
+</code></pre>
+<p>The user declares <em>intent</em> (<code>PostgresCluster</code>); the operator handles <em>mechanism</em> (the dozens of Kubernetes resources and the Postgres-specific operational steps to realize it). The key insight from Part 1 applies: <strong>the controller is level-triggered and idempotent</strong> — it converges toward the desired state on every pass, handles missed events by re-reading current state, and can be restarted at any time without losing progress.</p>
+<h3 id="the-framework-kubebuilder-controller-runtime">The Framework: Kubebuilder / controller-runtime</h3>
+<p>You <em>can</em> write a controller directly against <code>client-go</code>'s informers and work queues, but the standard approach is <strong>Kubebuilder</strong> (the scaffolder) with <strong>controller-runtime</strong> (the library):</p>
+<pre><code class="language-bash"># Scaffold a new operator project:
+kubebuilder init --domain example.com --repo github.com/you/widget-operator
+kubebuilder create api --group stable --version v1 --kind Widget
+</code></pre>
+<p>This generates:
+- The <strong>CRD types</strong> (<code>api/v1/widget_types.go</code>) — your Go structs that define the CRD schema.
+- The <strong>controller</strong> (<code>internal/controller/widget_controller.go</code>) — the reconciliation loop.
+- The <strong>manager</strong> (<code>cmd/main.go</code>) — wires up the controller, starts informers, handles leader election.
+- Kustomize manifests, RBAC, and webhook scaffolding.</p>
+<p>The core of your work is in the <strong>Reconcile function</strong>:</p>
+<pre><code class="language-go">func (r *WidgetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+    log := log.FromContext(ctx)
+
+    // 1. Fetch the desired state (the CR).
+    var widget stablev1.Widget
+    if err := r.Get(ctx, req.NamespacedName, &amp;widget); err != nil {
+        return ctrl.Result{}, client.IgnoreNotFound(err)   // deleted → nothing to do
+    }
+
+    // 2. Compare desired to actual. Create/update owned resources to close the gap.
+    dep := buildDeployment(&amp;widget)
+    if err := ctrl.SetControllerReference(&amp;widget, dep, r.Scheme); err != nil {
+        return ctrl.Result{}, err
+    }
+    // CreateOrUpdate: idempotent — create if missing, update if different.
+    _, err := ctrl.CreateOrUpdate(ctx, r.Client, dep, func() error {
+        dep.Spec.Replicas = widget.Spec.Replicas
+        dep.Spec.Template.Spec.Containers[0].Image = widget.Spec.Image
+        return nil
+    })
+    if err != nil { return ctrl.Result{}, err }
+
+    // 3. Update the CR's status to reflect reality.
+    widget.Status.Ready = true
+    if err := r.Status().Update(ctx, &amp;widget); err != nil {
+        return ctrl.Result{}, err
+    }
+
+    log.Info(&quot;reconciled&quot;, &quot;widget&quot;, req.NamespacedName)
+    return ctrl.Result{}, nil   // no error, no requeue — wait for the next event
+}
+</code></pre>
+<h3 id="the-rules-of-a-good-operator">The Rules of a Good Operator</h3>
+<p>Hard-won lessons from every production operator team:</p>
+<ul>
+<li><strong>Level-triggered, not edge-triggered.</strong> Don't track "what event just happened." Read current desired state, read current actual state, compute the diff, act. Any sequence of events leading to the same state should produce the same outcome.</li>
+<li><strong>Idempotent.</strong> Running reconcile twice on the same state should be a no-op. <code>CreateOrUpdate</code> and conditional checks achieve this. Never "create and hope" — check-then-act, or use SSA.</li>
+<li><strong>Own your resources</strong> with <code>SetControllerReference</code>. Owner references are how Kubernetes knows that deleting the <code>Widget</code> should cascade-delete the <code>Deployment</code>, <code>Service</code>, etc. it created. Without them, your child resources become orphans.</li>
+<li><strong>Status reflects reality, not intent.</strong> The spec is what the user wants; the status is what's true. Only the controller writes status; users write spec. The <code>/status</code> subresource (Part 2) enforces this split.</li>
+<li><strong>Requeue with backoff on transient failure.</strong> Return <code>ctrl.Result{RequeueAfter: time.Second * 30}</code> when an external dependency is temporarily unavailable, and use exponential backoff so you don't hammer it.</li>
+<li><strong>Don't do heavy work in the reconcile goroutine.</strong> The informer/work-queue model runs reconciles serially per key. Long-running operations (a database migration, a lengthy health check) should be tracked asynchronously — set a condition, requeue, and check on the next pass.</li>
+<li><strong>Observability from day one.</strong> Emit Prometheus metrics for reconcile duration, error rate, and queue depth; structured logs with the resource's name/namespace; and Kubernetes Events to tell the user what happened (<code>r.Recorder.Eventf(&amp;widget, "Normal", "Created", "Created deployment %s", dep.Name)</code>).</li>
+</ul>
+<h3 id="testing-operators">Testing Operators</h3>
+<ul>
+<li><strong>Unit tests</strong> with <code>envtest</code> — spins up a real API server + etcd in-process (no kubelet, no scheduler), lets you create CRs and verify your reconciler's behavior against a real API. Fast and precise.</li>
+<li><strong>Integration tests</strong> with a real cluster (kind, k3d) in CI — end-to-end lifecycle: create a CR, wait for the operator to converge, verify the child resources, delete the CR, verify cleanup.</li>
+<li><strong>Watch for flaky tests</strong> from eventual consistency — the API server and your controller are async; use polling/retries in tests, not <code>time.Sleep</code>.</li>
+</ul>
+<p>If you remember one thing from Part 3: <strong>an operator is a CRD + a level-triggered, idempotent reconciliation loop that watches desired state, drives actual state, and writes status — scaffold it with Kubebuilder, own your resources with owner references, and keep reconcile fast and idempotent.</strong></p>
+<hr>
+<h2 id="part-4-advanced-scheduling">Part 4 — Advanced Scheduling</h2>
+<p>The <a href="KUBERNETES_STUDY_GUIDE.md">Mastery guide</a> covered affinity, taints, and tolerations. This part goes deeper: the scheduling framework, custom schedulers, topology-aware placement, and the GPU/accelerator scheduling that's become critical in the ML/AI era.</p>
+<h3 id="the-scheduling-framework">The Scheduling Framework</h3>
+<p>Since 1.15, the scheduler is implemented as a <strong>framework</strong> with defined extension points — each step is a <em>plugin</em>:</p>
+<pre><code class="language-text">PreFilter → Filter → PostFilter → PreScore → Score → Reserve → Permit → PreBind → Bind → PostBind
+</code></pre>
+<p>Built-in plugins implement the standard behavior (node resources, affinity, taints, pod topology spread). You can <strong>write custom plugins</strong> in Go that hook into any of these extension points — for example, a scoring plugin that prefers nodes with a specific hardware accelerator, or a filter plugin that checks an external inventory system. This is a full alternative to the older (and now deprecated) scheduler extender webhook, which added HTTP round-trip latency per scheduling decision.</p>
+<h3 id="pod-topology-spread-constraints">Pod Topology Spread Constraints</h3>
+<p>Topology spread replaces the blunt instruments of pod anti-affinity with <strong>fine-grained control</strong> over how Pods distribute across failure domains:</p>
+<pre><code class="language-yaml">topologySpreadConstraints:
+  - maxSkew: 1                           # at most 1 more Pod in any zone than the minimum
+    topologyKey: topology.kubernetes.io/zone
+    whenUnsatisfiable: DoNotSchedule     # strict — don't schedule if it would violate
+    labelSelector:
+      matchLabels: { app: frontend }
+</code></pre>
+<p>This says "spread my frontend Pods as evenly as possible across availability zones." <code>maxSkew: 1</code> means no zone can have more than 1 extra Pod compared to the least-loaded zone. In a 3-zone cluster with 6 replicas, you get 2 per zone. If a zone goes down, the remaining 4 Pods are in 2 zones — and if the scheduler can't place a new Pod without violating <code>maxSkew</code>, <code>DoNotSchedule</code> blocks it (use <code>ScheduleAnyway</code> for best-effort spread).</p>
+<p>This is the modern replacement for pod anti-affinity for most use cases — it's more expressive, handles scale-down correctly, and understands multiple topology keys (zone <em>and</em> node simultaneously).</p>
+<h3 id="gpu-and-accelerator-scheduling">GPU and Accelerator Scheduling</h3>
+<p>The 2024–2026 wave of ML/AI workloads has made GPU scheduling a first-class concern. The basics:</p>
+<ul>
+<li><strong>Device plugins</strong> (the <code>kubelet</code> device-plugin API) expose hardware (GPUs, FPGAs, SR-IOV NICs) as <strong>extended resources</strong> (<code>nvidia.com/gpu</code>, <code>amd.com/gpu</code>). Request them in a container's <code>resources.limits</code>:</li>
+</ul>
+<pre><code class="language-yaml">resources:
+  limits:
+    nvidia.com/gpu: 1        # request one NVIDIA GPU — the device plugin handles assignment
+</code></pre>
+<ul>
+<li>GPUs are <strong>non-shareable by default</strong> — one GPU, one container. Fractional GPU sharing (MIG on A100/H100, time-slicing with NVIDIA's device plugin config, or virtual-GPU solutions) is available but adds complexity.</li>
+<li><strong>Topology-aware scheduling</strong> matters for multi-GPU workloads: two GPUs on the same PCIe switch or NVLink domain communicate orders of magnitude faster than two on different NUMA nodes. The <strong>Topology Manager</strong> (<code>kubelet</code> flag <code>--topology-manager-policy=best-effort|restricted|single-numa-node</code>) coordinates CPU, memory, and device allocation to respect NUMA boundaries — critical for distributed training jobs.</li>
+<li><strong>Dynamic Resource Allocation (DRA)</strong> (beta in 1.31+) is the next-generation device-plugin API, giving structured, claim-based allocation (like PVCs for devices) with richer semantics — vendor-specific attributes, sharing policies, and preparation steps. Watch this space; it's where GPU scheduling is heading.</li>
+</ul>
+<h3 id="descheduling-fixing-bad-placements-after-the-fact">Descheduling: Fixing Bad Placements After the Fact</h3>
+<p>The scheduler decides <em>once</em>, at Pod creation. But over time, the cluster's state drifts — nodes are added/removed, resource usage shifts, anti-affinity is violated by evictions. The <strong>Descheduler</strong> (a Kubernetes SIG project) periodically evaluates running Pods and evicts those that violate current policies (e.g., a Pod that ended up on a node with a taint it shouldn't tolerate, or Pods that are unevenly spread). It doesn't <em>re-schedule</em> — it evicts, and the scheduler places the replacement correctly. Run it as a CronJob or as a continuous controller; pair it with PodDisruptionBudgets (Part 5) so it doesn't evict too many Pods at once.</p>
+<p>If you remember one thing from Part 4: <strong>the scheduler is a plugin framework you can extend; topology spread constraints are the modern way to distribute Pods across failure domains; GPU scheduling requires device plugins and topology awareness; and the descheduler fixes drift that the one-time scheduling decision can't.</strong></p>
+<hr>
+<h2 id="part-5-advanced-workloads-scaling">Part 5 — Advanced Workloads &amp; Scaling</h2>
+<p>Beyond Deployments and StatefulSets — the workload patterns and scaling strategies that production platforms need.</p>
+<h3 id="poddisruptionbudgets-pdbs">PodDisruptionBudgets (PDBs)</h3>
+<p>A PDB declares how many Pods of a workload must remain available during <em>voluntary</em> disruptions — node drains, cluster upgrades, descheduler evictions:</p>
+<pre><code class="language-yaml">apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: frontend-pdb
+spec:
+  minAvailable: 2            # or maxUnavailable: 1 — either form
+  selector:
+    matchLabels: { app: frontend }
+</code></pre>
+<p>Without PDBs, a <code>kubectl drain</code> on a node can evict <em>all</em> your Pods at once — a guaranteed outage for any single-replica workload and a race against the scheduler for multi-replica ones. PDBs are <strong>the #1 most-forgotten production protection</strong>, and every workload with an availability requirement needs one.</p>
+<p>PDB gotchas: a PDB with <code>minAvailable &gt;= replicas</code> blocks <em>all</em> voluntary evictions — including node drains and cluster upgrades. This is a common misconfiguration that makes your cluster un-upgradeable. Always leave headroom: <code>minAvailable: replicas - 1</code> or <code>maxUnavailable: 1</code>.</p>
+<h3 id="vertical-pod-autoscaler-vpa-and-right-sizing">Vertical Pod Autoscaler (VPA) and Right-Sizing</h3>
+<p>The Horizontal Pod Autoscaler (HPA) scales <em>replicas</em> (the <a href="KUBERNETES_STUDY_GUIDE.md">Mastery guide</a> covers it); VPA scales <em>requests and limits</em> on existing Pods, right-sizing them based on observed usage:</p>
+<ul>
+<li><strong>Recommender mode</strong> (<code>updateMode: "Off"</code>) — just observes and suggests request/limit values (visible via <code>kubectl describe vpa</code>). This is how you <em>discover</em> the right sizing for workloads you've been guessing at.</li>
+<li><strong>Auto mode</strong> (<code>updateMode: "Auto"</code>) — evicts and recreates Pods with updated requests. (In-place resource resize, GA in 1.33, allows resizing without eviction for CPU/memory — a major improvement.)</li>
+</ul>
+<p>VPA and HPA <strong>should generally not target the same metric</strong> (e.g., both scaling on CPU) — they'll fight. The common pattern: HPA scales replicas on a custom metric (requests/sec, queue depth), VPA right-sizes the per-Pod resource requests.</p>
+<h3 id="keda-event-driven-scaling">KEDA: Event-Driven Scaling</h3>
+<p><strong>KEDA</strong> (Kubernetes Event-Driven Autoscaling) extends HPA with <strong>ScaledObjects</strong> that scale on external event sources — Kafka consumer lag, RabbitMQ queue depth, AWS SQS length, Prometheus queries, cron schedules, and 50+ scalers. It scales to <em>zero</em> when idle (HPA can't) and from zero when events arrive — critical for cost-effective serverless-style workloads on Kubernetes:</p>
+<pre><code class="language-yaml">apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata: { name: order-processor }
+spec:
+  scaleTargetRef: { name: order-processor }
+  minReplicaCount: 0                      # scale to zero when idle
+  maxReplicaCount: 50
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka:9092
+        consumerGroup: orders
+        topic: incoming-orders
+        lagThreshold: &quot;100&quot;               # scale up when lag &gt; 100 per partition
+</code></pre>
+<h3 id="rollout-strategies-beyond-rollingupdate">Rollout Strategies Beyond RollingUpdate</h3>
+<ul>
+<li><strong>Canary rollouts</strong> — route a percentage of traffic to the new version, observe error/latency, ramp up. Kubernetes Deployments don't natively support canary (it's all-or-nothing RollingUpdate); tools that add it: <strong>Argo Rollouts</strong> (a <code>Rollout</code> CRD with canary/blue-green steps, analysis, and automatic promotion/rollback) and <strong>Flagger</strong> (integrates with service meshes and ingress controllers for traffic splitting).</li>
+<li><strong>Blue-green</strong> — run old and new side by side, switch traffic atomically. Argo Rollouts supports this as a built-in strategy.</li>
+<li><strong>Analysis-driven promotion</strong> — Argo Rollouts' <code>AnalysisTemplate</code> runs Prometheus queries during a canary and <strong>auto-rolls-back</strong> if error rate exceeds a threshold. This is progressive delivery: automated, metric-gated rollouts that don't rely on a human watching a dashboard.</li>
+</ul>
+<p>If you remember one thing from Part 5: <strong>PodDisruptionBudgets are mandatory for production workloads; VPA right-sizes requests, KEDA scales on external events (including to zero), and Argo Rollouts adds canary/blue-green with metric-driven auto-rollback — the pieces that turn "deploy and hope" into progressive delivery.</strong></p>
+<hr>
+<h2 id="part-6-multi-tenancy-resource-governance">Part 6 — Multi-Tenancy &amp; Resource Governance</h2>
+<p>When a cluster serves multiple teams, the "any team can create anything" default becomes a liability. Multi-tenancy is about <em>isolation without separation</em> — sharing a cluster while preventing one tenant from starving, compromising, or debugging another.</p>
+<h3 id="namespace-level-isolation">Namespace-Level Isolation</h3>
+<p>The baseline multi-tenancy model is <strong>namespace-per-team/per-environment</strong>, with layers of enforcement:</p>
+<ul>
+<li><strong>RBAC</strong> scoped to namespace — each team's ServiceAccount and human identities get <code>Role</code>/<code>RoleBinding</code> only in their namespace (the <a href="KUBERNETES_SECURITY_STUDY_GUIDE.md">Security guide</a> covers this).</li>
+<li><strong>ResourceQuotas</strong> — hard caps on total CPU, memory, Pod count, PVC count, etc. per namespace. Without quotas, one team's <code>replicas: 1000</code> exhausts the cluster for everyone:</li>
+</ul>
+<pre><code class="language-yaml">apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: team-alpha-quota
+  namespace: team-alpha
+spec:
+  hard:
+    requests.cpu: &quot;40&quot;
+    requests.memory: 80Gi
+    limits.cpu: &quot;80&quot;
+    limits.memory: 160Gi
+    pods: &quot;200&quot;
+    persistentvolumeclaims: &quot;50&quot;
+</code></pre>
+<ul>
+<li><strong>LimitRanges</strong> — default and constrain per-Pod/container requests and limits within the namespace (e.g., "every container must request at least 100m CPU and at most 4 CPUs"). LimitRanges prevent the "forgot to set requests" Pod from being invisible to the scheduler and consuming unbounded resources.</li>
+<li><strong>NetworkPolicies</strong> — enforce east-west isolation between namespaces (the <a href="DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md">Networking guide</a>).</li>
+<li><strong>Pod Security Standards</strong> — enforce workload hardening per namespace (the Security guide).</li>
+</ul>
+<h3 id="policy-engines-kyverno-opagatekeeper-cel">Policy Engines: Kyverno, OPA/Gatekeeper, CEL</h3>
+<p>When admission webhooks get complex, a <strong>policy engine</strong> codifies rules declaratively:</p>
+<ul>
+<li><strong>Kyverno</strong> — Kubernetes-native policies as CRDs (YAML, no new language). Validate, mutate, generate resources, verify image signatures. Excellent UX for platform teams.</li>
+<li><strong>OPA Gatekeeper</strong> — policies in Rego (a purpose-built policy language). More powerful for complex logic; steeper learning curve.</li>
+<li><strong>CEL ValidatingAdmissionPolicy</strong> (built-in, GA 1.30) — no webhook needed; policies as CEL expressions in the API server. Fastest and simplest for straightforward validation rules; growing rapidly.</li>
+</ul>
+<p>The trend is toward <strong>CEL for simple policies</strong> (no external dependency) and <strong>Kyverno for the rest</strong> (Kubernetes-native, readable YAML, image-verification support).</p>
+<h3 id="cost-management-and-chargeback">Cost Management and Chargeback</h3>
+<p>Multi-tenant clusters need <strong>cost visibility</strong> — which team is consuming how much. <strong>Kubecost</strong> (or the CNCF OpenCost project) correlates resource usage to namespaces/labels/teams and produces cost breakdowns. The key insight for platform engineers: Kubernetes resource <em>requests</em> are the unit of cost (they're what's reserved), not <em>usage</em> (which may be lower) — right-sizing requests (Part 5's VPA) directly reduces cost.</p>
+<p>If you remember one thing from Part 6: <strong>multi-tenancy is layered enforcement — RBAC for authorization, ResourceQuotas for capacity, LimitRanges for per-Pod defaults, NetworkPolicies for network isolation, and a policy engine (Kyverno/CEL) for everything else — and without these layers, a shared cluster is a shared footgun.</strong></p>
+<hr>
+<h2 id="part-7-gitops-continuous-delivery">Part 7 — GitOps &amp; Continuous Delivery</h2>
+<p>GitOps is the idea that <strong>Git is the single source of truth for your cluster's desired state</strong>, and a controller running <em>in the cluster</em> continuously reconciles reality to match it. It applies Kubernetes's own reconciliation philosophy (Part 1) to the deployment pipeline itself. Two tools dominate: <strong>Argo CD</strong> and <strong>Flux</strong>.</p>
+<h3 id="the-model">The Model</h3>
+<pre><code class="language-text">Developer pushes → Git repo (manifests / Kustomize / Helm) → GitOps controller sees diff
+                                                                        │
+                                                                        ▼
+                                                              Cluster converges to match Git
+</code></pre>
+<p>The <strong>pull model</strong>: the cluster pulls its desired state from Git, not the other way around. No CI pipeline needs <code>kubectl apply</code> access to the cluster; no developer machine needs cluster credentials. Git becomes the audit log, the rollback mechanism, and the approval workflow.</p>
+<h3 id="argo-cd">Argo CD</h3>
+<p>The most popular GitOps engine. Core concepts:</p>
+<ul>
+<li><strong>Application</strong> — a CRD that maps a <strong>Git source</strong> (repo + path + revision) to a <strong>destination</strong> (cluster + namespace). Argo CD watches the source, computes the diff, and syncs.</li>
+<li><strong>Sync</strong> — apply the manifests from Git to the cluster. <strong>Auto-sync</strong> does this on every Git commit; manual sync requires a human click.</li>
+<li><strong>Drift detection</strong> — Argo CD continuously compares the live state to the Git state and shows you what differs (someone <code>kubectl edit</code>ed something that doesn't match Git). With auto-sync + <strong>self-heal</strong>, it reverts drift automatically — the cluster can't diverge from Git.</li>
+<li><strong>App of Apps / ApplicationSets</strong> — manage many Applications declaratively. An <code>ApplicationSet</code> generates Applications from a template (one per cluster, per team, per PR, per directory), so onboarding a new service is adding a directory to Git, not manually creating an Argo CD Application.</li>
+</ul>
+<h3 id="flux">Flux</h3>
+<p>The CNCF alternative, more Kubernetes-native (everything is CRDs, no UI by default):</p>
+<ul>
+<li><strong>GitRepository</strong> — points at a Git repo. Flux polls or receives webhooks.</li>
+<li><strong>Kustomization</strong> — reconciles a path of manifests (native Kustomize support). Flux applies it and reports health.</li>
+<li><strong>HelmRelease</strong> — manages Helm charts declaratively. Flux installs/upgrades/rolls-back Helm releases based on the CR spec.</li>
+</ul>
+<p>Flux is lighter, more modular (each component — source-controller, kustomize-controller, helm-controller — is separate), and more opinionated about the "everything is a CRD" model. Argo CD has a richer UI and stronger multi-tenancy/RBAC for the CD interface itself. Both are production-grade; the choice is often culture/preference.</p>
+<h3 id="the-repo-structure">The Repo Structure</h3>
+<p>A common, scalable layout:</p>
+<pre><code class="language-text">infra/                   # cluster-level infra (cert-manager, ingress, monitoring)
+  ├── base/
+  └── overlays/
+      ├── staging/
+      └── production/
+apps/
+  ├── service-a/
+  │   ├── base/          # Kustomize base (Deployment, Service, HPA)
+  │   └── overlays/
+  │       ├── staging/   # staging-specific patches (replicas, env, image tag)
+  │       └── production/
+  └── service-b/
+      └── ...
+</code></pre>
+<p><strong>Kustomize</strong> (built into <code>kubectl</code>) is the overlay engine — a <code>base/</code> defines the canonical manifests, and <code>overlays/staging/</code> patches just the fields that differ (image tag, replica count, config values). This is declarative, reviewable, and diff-friendly — the properties GitOps needs. Helm charts work too (via <code>HelmRelease</code> in Flux or an Application in Argo CD pointing to a Helm chart), but Kustomize's patch-based model is often simpler for per-environment customization.</p>
+<h3 id="image-automation">Image Automation</h3>
+<p>The final link in the chain: when CI builds a new container image, <em>something</em> must update the image tag in Git so the GitOps controller deploys it. Options:</p>
+<ul>
+<li><strong>CI writes to Git</strong> — the CI pipeline (GitHub Actions) updates the image tag in the manifest and commits. Simple, widely used.</li>
+<li><strong>Flux Image Automation</strong> — a set of controllers that <em>watch a container registry for new tags</em>, update the Git repo, and commit — fully automated, no CI-to-Git step needed.</li>
+<li><strong>Argo CD Image Updater</strong> — similar, Argo CD-native.</li>
+</ul>
+<p>If you remember one thing from Part 7: <strong>GitOps makes Git the single source of truth for cluster state, with an in-cluster controller (Argo CD or Flux) that continuously reconciles reality to match — giving you audit trails, drift detection, instant rollback (revert the commit), and no direct cluster access from CI.</strong></p>
+<hr>
+<h2 id="part-8-multi-cluster-federation">Part 8 — Multi-Cluster &amp; Federation</h2>
+<p>One cluster is a blast radius. Production platforms routinely run <em>multiple clusters</em> — per region, per environment (staging/prod), per team, or per compliance boundary. This part is about managing that complexity.</p>
+<h3 id="why-multiple-clusters">Why Multiple Clusters</h3>
+<ul>
+<li><strong>Blast radius isolation</strong> — a bad deploy, a runaway controller, or a control-plane failure affects one cluster, not your whole infrastructure.</li>
+<li><strong>Region/latency</strong> — serve users from nearby clusters (the <a href="../DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md">Distributed Systems guide</a>'s geography driver).</li>
+<li><strong>Compliance</strong> — data-sovereignty requirements may mandate separate clusters per jurisdiction.</li>
+<li><strong>Upgrade isolation</strong> — stage a Kubernetes version upgrade on one cluster before rolling it to others.</li>
+<li><strong>Scaling the control plane</strong> — a single cluster's API server and etcd have practical limits (~5,000 nodes, ~150,000 Pods). Multiple clusters distribute this.</li>
+</ul>
+<h3 id="multi-cluster-tooling">Multi-Cluster Tooling</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Cluster API (CAPI)</strong></td>
+<td>Declaratively manage the <em>lifecycle</em> of clusters themselves — provision, upgrade, scale, delete clusters as Kubernetes resources (CRDs). Think "Terraform for clusters, but Kubernetes-native."</td>
+</tr>
+<tr>
+<td><strong>Argo CD / Flux ApplicationSets</strong></td>
+<td>Deploy workloads across multiple clusters from one Git source — the GitOps layer (Part 7) scales naturally to multi-cluster by targeting different cluster destinations.</td>
+</tr>
+<tr>
+<td><strong>Submariner / Cilium ClusterMesh</strong></td>
+<td><strong>Cross-cluster networking</strong> — Service discovery and connectivity across clusters (Pod-to-Pod, Service-to-Service across clusters).</td>
+</tr>
+<tr>
+<td><strong>Liqo / Admiralty / Karmada</strong></td>
+<td><strong>Multi-cluster scheduling</strong> — present multiple clusters as one logical pool and schedule workloads across them.</td>
+</tr>
+<tr>
+<td><strong>Kubefed (deprecated)</strong></td>
+<td>The original federation project; largely superseded by the tools above.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-hub-and-spoke-pattern">The Hub-and-Spoke Pattern</h3>
+<p>The most common multi-cluster architecture: one <strong>management cluster</strong> (the hub) runs Argo CD/Flux, CAPI, and your platform control plane. It pushes workloads and config to multiple <strong>workload clusters</strong> (the spokes). Workload clusters have minimal platform tooling — they receive their desired state from the hub, keeping them simpler and more replaceable (you can drain and replace a spoke with confidence that its state is in Git). The management cluster is the one you never lose; back it up heavily (Part 1's etcd backup applies doubly here).</p>
+<p>If you remember one thing from Part 8: <strong>run multiple clusters for blast-radius isolation and regional presence, manage them declaratively with Cluster API and GitOps ApplicationSets, and use a hub-and-spoke model where one management cluster drives the rest.</strong></p>
+<hr>
+<h2 id="part-9-supply-chain-security-production-operations">Part 9 — Supply-Chain Security &amp; Production Operations</h2>
+<p>Two complementary topics: hardening what goes <em>into</em> your cluster (the software supply chain) and the operational discipline that keeps it running (upgrades, disaster recovery, incident response).</p>
+<h3 id="supply-chain-security">Supply-Chain Security</h3>
+<p>The software you deploy is only as trustworthy as the pipeline that built it and the base images it rests on. The 2020s wave of supply-chain attacks (SolarWinds, Codecov, xz) has made this a first-class production concern:</p>
+<ul>
+<li><strong>Sign and verify container images.</strong> <strong>Cosign</strong> (from the Sigstore project) signs images and stores signatures alongside them in the registry. <strong>Kyverno</strong> or a Gatekeeper policy can then <em>verify signatures at admission</em> — rejecting any unsigned or untrusted image before it runs. This is the container equivalent of code signing from the <a href="../ELECTRON_STUDY_GUIDE.md">Electron guide</a>, enforced at the cluster gate.</li>
+<li><strong>Generate and attach SBOMs (Software Bills of Materials).</strong> Tools like <code>syft</code> (Anchore) scan your images and produce an SBOM listing every dependency — which you sign and attach with Cosign. SBOMs are becoming a regulatory requirement and are the foundation for vulnerability response ("does this CVE affect any of our running images?").</li>
+<li><strong>SLSA (Supply-chain Levels for Software Artifacts).</strong> A framework of progressively stronger guarantees about build provenance and integrity. At its core: "can you prove <em>who</em> built this artifact, <em>from what source</em>, on <em>what build system</em>?" Achieving SLSA Level 2+ means your CI produces signed, verifiable <strong>provenance attestations</strong> that the cluster can validate at admission.</li>
+<li><strong>Scan images for vulnerabilities.</strong> Integrate <strong>Trivy</strong> or <strong>Grype</strong> into CI (scan before push) <em>and</em> runtime (continuous scanning of running images). Block deployments of images with critical CVEs via admission policies.</li>
+<li><strong>Restrict image sources.</strong> Admission policies that allow images <em>only</em> from your trusted registries (e.g., <code>*.your-registry.com/*</code>) prevent anyone from deploying random Docker Hub images into production.</li>
+</ul>
+<h3 id="kubernetes-upgrade-strategy">Kubernetes Upgrade Strategy</h3>
+<p>Kubernetes releases three minor versions per year, each supported for ~14 months. Falling behind means running on an unsupported, un-patched control plane — a security and stability risk. The upgrade discipline:</p>
+<ul>
+<li><strong>Upgrade one minor version at a time</strong> (e.g., 1.30 → 1.31 → 1.32, never 1.30 → 1.32). Skipping versions is unsupported and risks breaking changes.</li>
+<li><strong>Read the changelog and deprecation notices</strong> for each version. <code>kubectl</code> will warn about deprecated API versions; run <code>kubectl convert</code> or <code>pluto</code> to find manifests that reference removed APIs.</li>
+<li><strong>Upgrade the control plane first, then the nodes.</strong> The API server is backward-compatible with kubelets one minor version behind (the <strong>version skew policy</strong>).</li>
+<li><strong>Use a canary cluster.</strong> Upgrade staging first; run your full test suite; soak for a few days; then upgrade production.</li>
+<li><strong>Managed Kubernetes (EKS/GKE/AKS) handles control-plane upgrades</strong> but you still own node-pool upgrades and API-version migration. Don't confuse "managed" with "no upgrade work."</li>
+</ul>
+<h3 id="disaster-recovery">Disaster Recovery</h3>
+<ul>
+<li><strong>etcd backups</strong> (Part 1) — automated, tested restores, stored off-cluster. The <a href="../DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md">Distributed Systems guide</a>'s replication is your friend: etcd is already replicated across 3+ members, but a bad upgrade or a bug can corrupt all replicas simultaneously.</li>
+<li><strong>GitOps as DR</strong> (Part 7) — if your cluster state is in Git, a new cluster is a <code>git clone</code> + Argo CD sync away. The faster your GitOps is at provisioning, the faster your recovery.</li>
+<li><strong>Velero</strong> — backs up Kubernetes resources <em>and</em> persistent volumes to object storage. Useful for stateful workloads where etcd backup alone doesn't capture PV data.</li>
+<li><strong>Test your recovery regularly.</strong> A DR plan you haven't tested is a wish, not a plan.</li>
+</ul>
+<h3 id="production-observability-for-the-control-plane">Production Observability for the Control Plane</h3>
+<p>Beyond application-level observability (the <a href="../OBSERVABILITY_STUDY_GUIDE.md">Observability guide</a>), monitor the control plane itself:</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>What it tells you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>apiserver_request_duration_seconds</code> (p99)</td>
+<td>API-server latency; rising → etcd/webhook/load issues</td>
+</tr>
+<tr>
+<td><code>apiserver_current_inflight_requests</code></td>
+<td>saturation; APF should prevent this from spiking</td>
+</tr>
+<tr>
+<td><code>etcd_mvcc_db_total_size_in_bytes</code></td>
+<td>etcd growth; runaway → investigate CRD/Event bloat</td>
+</tr>
+<tr>
+<td><code>etcd_disk_wal_fsync_duration_seconds</code></td>
+<td>disk latency; &gt;10 ms → SSD or storage issue</td>
+</tr>
+<tr>
+<td><code>scheduler_scheduling_duration_seconds</code></td>
+<td>scheduling latency; rising → filter/score plugin slowness</td>
+</tr>
+<tr>
+<td><code>workqueue_depth</code> / <code>workqueue_retries_total</code></td>
+<td>controller health; high depth → controller can't keep up</td>
+</tr>
+</tbody>
+</table>
+<p>If you remember one thing from Part 9: <strong>sign and verify your images with Cosign + admission policy, upgrade one minor version at a time with a canary cluster, maintain tested etcd + Velero backups, and monitor the control plane's latency and etcd's disk — these are the habits that separate "it's running" from "it's production."</strong></p>
+<hr>
+<h2 id="part-10-platform-engineering">Part 10 — Platform Engineering</h2>
+<p>The closing chapter, and the one that ties the rest together as a discipline: <strong>platform engineering</strong> is building a self-service developer experience <em>on top of</em> Kubernetes, so application teams deploy safely and quickly without needing to be Kubernetes experts. It's the operational endgame of everything in this guide.</p>
+<h3 id="the-problem-platform-engineering-solves">The Problem Platform Engineering Solves</h3>
+<p>Kubernetes is powerful and complex. Asking every application developer to understand Deployments, Services, HPA, PDBs, NetworkPolicies, resource requests, probes, security contexts, Kustomize overlays, and GitOps — and to get them all right — doesn't scale. The result is either <strong>cognitive overload</strong> (slow, error-prone deploys) or <strong>unguarded freedom</strong> (no PDBs, no resource limits, no security context — a production incident in waiting).</p>
+<p>A <strong>platform</strong> sits between raw Kubernetes and the developer, providing <strong>golden paths</strong>: opinionated, guardrailed, self-service workflows that make the right thing easy and the wrong thing hard. You've already built most of the pieces in this guide — now you're composing them.</p>
+<h3 id="the-golden-path">The Golden Path</h3>
+<p>A golden path might look like: a developer creates a YAML with 10 fields (service name, image, port, team, environment); the platform turns it into a complete set of Kubernetes resources (Deployment with probes and security context, Service, HPA, PDB, NetworkPolicy, ResourceQuota, monitoring dashboards) — with sane defaults, enforced policies, and GitOps delivery. The developer doesn't need to know what a PDB is; the platform ensures one exists.</p>
+<p>Two implementation patterns:</p>
+<ul>
+<li><strong>Abstraction CRDs</strong> — a custom CRD (<code>ApplicationDeployment</code>) that an operator expands into the underlying resources. The developer writes the CRD; the operator generates the Deployment, Service, etc. This is the operator pattern (Part 3) applied to the platform itself.</li>
+<li><strong>Template/scaffold systems</strong> — Backstage (Spotify's open-source developer portal) with templates that scaffold a new service: create the Git repo, CI pipeline, Kustomize overlays, and Argo CD Application from a template. The developer fills in a form; the platform does the rest.</li>
+</ul>
+<h3 id="backstage-the-developer-portal">Backstage: The Developer Portal</h3>
+<p><strong>Backstage</strong> is the leading open-source <strong>Internal Developer Portal (IDP)</strong>. It provides:</p>
+<ul>
+<li>A <strong>service catalog</strong> — every service, its owner, its docs, its APIs, its deployment status, its on-call, in one place.</li>
+<li><strong>Software templates</strong> — "create a new microservice" scaffolds a repo with CI, Dockerfiles, manifests, and GitOps wiring. A new service goes from "I want it" to "it's deploying" in minutes.</li>
+<li><strong>Tech docs</strong> — docs-as-code rendered alongside the service catalog.</li>
+<li>A <strong>plugin ecosystem</strong> — Kubernetes, Argo CD, PagerDuty, Grafana, cost dashboards, and hundreds more.</li>
+</ul>
+<p>Backstage doesn't <em>replace</em> Kubernetes tooling — it <em>composes</em> it into a single developer-facing surface, hiding the complexity behind a portal while preserving full power for platform engineers.</p>
+<h3 id="the-platform-teams-stack">The Platform Team's Stack</h3>
+<p>Putting it all together — the layered stack a platform team builds:</p>
+<pre><code class="language-text">    Developer Experience
+    ┌──────────────────────────────────────────┐
+    │  Backstage (portal, templates, catalog)  │
+    │  Golden-path CRDs / abstraction layer    │
+    ├──────────────────────────────────────────┤
+    Delivery &amp; Policy
+    │  GitOps (Argo CD / Flux)                 │  ← Part 7
+    │  Policy engine (Kyverno / CEL)           │  ← Part 6
+    │  Image signing (Cosign)                  │  ← Part 9
+    │  Progressive delivery (Argo Rollouts)    │  ← Part 5
+    ├──────────────────────────────────────────┤
+    Infrastructure
+    │  Multi-cluster (CAPI, hub-spoke)         │  ← Part 8
+    │  Observability (Prometheus, OTel, Grafana)│  ← Observability guide
+    │  Networking (CNI, mesh, Gateway API)      │  ← Networking guide
+    │  Security (RBAC, PSS, NetworkPolicy)      │  ← Security guide
+    ├──────────────────────────────────────────┤
+    │  Kubernetes (the reconciliation engine)   │  ← Parts 1-4
+    │  etcd (the database)                      │
+    └──────────────────────────────────────────┘
+</code></pre>
+<p>Each layer builds on the ones below, and each is covered by a part of this guide or a sibling guide in this repo. The platform team's job is to operate the bottom layers and expose the top layer, making the middle invisible to application developers.</p>
+<h3 id="the-maturity-model">The Maturity Model</h3>
+<p>Platform engineering is a spectrum, not a destination:</p>
+<ol>
+<li><strong>Docs and conventions</strong> — written standards for manifests, naming, labels. Cost: low. Value: foundational.</li>
+<li><strong>Templates and scaffolding</strong> — Backstage templates, Kustomize bases, shared Helm charts. Developers start from a known-good baseline.</li>
+<li><strong>Guardrails via policy</strong> — Kyverno/CEL policies enforce the conventions automatically. Non-compliant manifests are rejected at admission.</li>
+<li><strong>Self-service abstractions</strong> — golden-path CRDs or a portal-driven workflow; developers deploy without writing Kubernetes YAML.</li>
+<li><strong>Full internal platform</strong> — automated provisioning, GitOps, progressive delivery, cost visibility, on-call integration — the Spotify/Shopify/Netflix-grade system.</li>
+</ol>
+<p>Most teams should aim for <strong>level 3</strong> (templates + guardrails) before investing in 4–5. The value per effort peaks at guardrails; abstraction layers are powerful but expensive to build and maintain. Don't build a platform you don't need yet — but know the path so you can grow into it.</p>
+<p>If you remember one thing from Part 10: <strong>platform engineering is the discipline of making Kubernetes invisible to application developers through golden paths, templates, policy guardrails, and self-service abstractions — it's the operational endgame, built from the operators, GitOps, policy engines, and multi-cluster strategies in the rest of this guide.</strong></p>
+<hr>
+<p>That's the guide. From here the highest-leverage next step depends on where you are: if you're operating clusters, set up <code>GOMEMLIMIT</code> on your Go services (Part 4 of the <a href="../ADVANCED_GO_STUDY_GUIDE.md">Advanced Go guide</a>), add PodDisruptionBudgets to every workload that doesn't have one, and get GitOps running with Argo CD or Flux — those three are the highest-return, lowest-cost production improvements. If you're building platforms, scaffold an operator with Kubebuilder and write your first reconcile loop — it will permanently change how you think about Kubernetes, because you'll see that you've been <em>using</em> a reconciliation engine and now you're <em>programming</em> one.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

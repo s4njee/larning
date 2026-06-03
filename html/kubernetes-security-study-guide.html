@@ -1,0 +1,1413 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Kubernetes Security Study Guide.">
+<title>Kubernetes Security Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#326ce5; --accent2:#326ce5; --accent-weak:rgba(50,108,229,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#326ce5; --accent2:#326ce5; --accent-weak:rgba(50,108,229,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">K8s</span><span>Kubernetes Security Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#phase-1-core-security-model" data-target="phase-1-core-security-model">Phase 1: Core Security Model</a></li><li class="toc-l3"><a href="#11-the-four-big-security-planes-in-kubernetes" data-target="11-the-four-big-security-planes-in-kubernetes">1.1 The Four Big Security Planes in Kubernetes</a></li><li class="toc-l3"><a href="#12-kubernetes-security-is-mostly-about-blast-radius" data-target="12-kubernetes-security-is-mostly-about-blast-radius">1.2 Kubernetes Security Is Mostly About Blast Radius</a></li><li class="toc-l3"><a href="#13-the-most-important-mindset-shift" data-target="13-the-most-important-mindset-shift">1.3 The Most Important Mindset Shift</a></li><li class="toc-l3"><a href="#14-foundation-docs-you-should-know-cold" data-target="14-foundation-docs-you-should-know-cold">1.4 Foundation Docs You Should Know Cold</a></li><li class="toc-l2"><a href="#phase-2-authentication-and-access-control" data-target="phase-2-authentication-and-access-control">Phase 2: Authentication and Access Control</a></li><li class="toc-l3"><a href="#21-how-kubernetes-secures-api-access" data-target="21-how-kubernetes-secures-api-access">2.1 How Kubernetes Secures API Access</a></li><li class="toc-l3"><a href="#22-authentication-methods-you-must-understand" data-target="22-authentication-methods-you-must-understand">2.2 Authentication Methods You Must Understand</a></li><li class="toc-l3"><a href="#23-oidc-the-main-production-pattern-for-human-access" data-target="23-oidc-the-main-production-pattern-for-human-access">2.3 OIDC: The Main Production Pattern for Human Access</a></li><li class="toc-l3"><a href="#24-certificates-important-but-usually-not-your-main-human-auth-strategy" data-target="24-certificates-important-but-usually-not-your-main-human-auth-strategy">2.4 Certificates: Important, but Usually Not Your Main Human Auth Strategy</a></li><li class="toc-l3"><a href="#25-cloud-provider-iam-and-managed-cluster-access" data-target="25-cloud-provider-iam-and-managed-cluster-access">2.5 Cloud Provider IAM and Managed Cluster Access</a></li><li class="toc-l3"><a href="#26-rbac-the-most-important-authorization-model-to-master" data-target="26-rbac-the-most-important-authorization-model-to-master">2.6 RBAC: The Most Important Authorization Model to Master</a></li><li class="toc-l3"><a href="#27-rbac-good-practices-you-need-to-internalize" data-target="27-rbac-good-practices-you-need-to-internalize">2.7 RBAC Good Practices You Need to Internalize</a></li><li class="toc-l3"><a href="#28-service-accounts-critical-and-frequently-misused" data-target="28-service-accounts-critical-and-frequently-misused">2.8 Service Accounts: Critical and Frequently Misused</a></li><li class="toc-l3"><a href="#29-kubeconfig-security-matters-more-than-many-teams-realize" data-target="29-kubeconfig-security-matters-more-than-many-teams-realize">2.9 kubeconfig Security Matters More Than Many Teams Realize</a></li><li class="toc-l3"><a href="#210-admission-control-is-where-security-policy-becomes-enforceable" data-target="210-admission-control-is-where-security-policy-becomes-enforceable">2.10 Admission Control Is Where Security Policy Becomes Enforceable</a></li><li class="toc-l2"><a href="#phase-3-network-and-multi-tenancy-security" data-target="phase-3-network-and-multi-tenancy-security">Phase 3: Network and Multi-Tenancy Security</a></li><li class="toc-l3"><a href="#31-network-policies-are-the-main-native-east-west-isolation-control" data-target="31-network-policies-are-the-main-native-east-west-isolation-control">3.1 Network Policies Are the Main Native East-West Isolation Control</a></li><li class="toc-l3"><a href="#32-what-to-learn-about-networkpolicy" data-target="32-what-to-learn-about-networkpolicy">3.2 What to Learn About NetworkPolicy</a></li><li class="toc-l3"><a href="#33-north-south-security-is-not-solved-by-networkpolicy-alone" data-target="33-north-south-security-is-not-solved-by-networkpolicy-alone">3.3 North-South Security Is Not Solved by NetworkPolicy Alone</a></li><li class="toc-l3"><a href="#34-multi-tenancy-changes-the-security-model" data-target="34-multi-tenancy-changes-the-security-model">3.4 Multi-Tenancy Changes the Security Model</a></li><li class="toc-l3"><a href="#35-common-network-security-mistakes" data-target="35-common-network-security-mistakes">3.5 Common Network Security Mistakes</a></li><li class="toc-l2"><a href="#phase-4-workload-and-container-security" data-target="phase-4-workload-and-container-security">Phase 4: Workload and Container Security</a></li><li class="toc-l3"><a href="#41-pod-security-standards-are-the-native-baseline" data-target="41-pod-security-standards-are-the-native-baseline">4.1 Pod Security Standards Are the Native Baseline</a></li><li class="toc-l3"><a href="#42-pod-security-admission-how-enforcement-actually-happens" data-target="42-pod-security-admission-how-enforcement-actually-happens">4.2 Pod Security Admission: How Enforcement Actually Happens</a></li><li class="toc-l3"><a href="#43-securitycontext-is-one-of-the-highest-leverage-manifest-skills" data-target="43-securitycontext-is-one-of-the-highest-leverage-manifest-skills">4.3 securityContext Is One of the Highest Leverage Manifest Skills</a></li><li class="toc-l3"><a href="#44-linux-kernel-hardening-features-matter" data-target="44-linux-kernel-hardening-features-matter">4.4 Linux Kernel Hardening Features Matter</a></li><li class="toc-l3"><a href="#45-privileged-containers-are-a-serious-exception-case" data-target="45-privileged-containers-are-a-serious-exception-case">4.5 Privileged Containers Are a Serious Exception Case</a></li><li class="toc-l3"><a href="#46-image-security-and-supply-chain-security-are-part-of-kubernetes-security" data-target="46-image-security-and-supply-chain-security-are-part-of-kubernetes-security">4.6 Image Security and Supply Chain Security Are Part of Kubernetes Security</a></li><li class="toc-l3"><a href="#47-node-and-runtime-security-still-matter" data-target="47-node-and-runtime-security-still-matter">4.7 Node and Runtime Security Still Matter</a></li><li class="toc-l3"><a href="#48-other-high-value-workload-security-topics" data-target="48-other-high-value-workload-security-topics">4.8 Other High-Value Workload Security Topics</a></li><li class="toc-l2"><a href="#phase-5-secrets-and-sensitive-data-protection" data-target="phase-5-secrets-and-sensitive-data-protection">Phase 5: Secrets and Sensitive Data Protection</a></li><li class="toc-l3"><a href="#51-kubernetes-secrets-are-not-magic-encryption" data-target="51-kubernetes-secrets-are-not-magic-encryption">5.1 Kubernetes Secrets Are Not Magic Encryption</a></li><li class="toc-l3"><a href="#52-native-secret-good-practices" data-target="52-native-secret-good-practices">5.2 Native Secret Good Practices</a></li><li class="toc-l3"><a href="#53-encrypt-secret-data-at-rest" data-target="53-encrypt-secret-data-at-rest">5.3 Encrypt Secret Data at Rest</a></li><li class="toc-l3"><a href="#54-secrets-in-git-the-sealed-secrets-question" data-target="54-secrets-in-git-the-sealed-secrets-question">5.4 Secrets in Git: The Sealed Secrets Question</a></li><li class="toc-l3"><a href="#55-important-alternatives-to-sealed-secrets" data-target="55-important-alternatives-to-sealed-secrets">5.5 Important Alternatives to Sealed Secrets</a></li><li class="toc-l3"><a href="#56-how-to-think-about-the-tradeoffs" data-target="56-how-to-think-about-the-tradeoffs">5.6 How to Think About the Tradeoffs</a></li><li class="toc-l3"><a href="#57-other-sensitive-data-concerns-people-forget" data-target="57-other-sensitive-data-concerns-people-forget">5.7 Other Sensitive Data Concerns People Forget</a></li><li class="toc-l2"><a href="#phase-6-audit-detection-and-response" data-target="phase-6-audit-detection-and-response">Phase 6: Audit, Detection, and Response</a></li><li class="toc-l3"><a href="#61-audit-logging-is-core-production-hygiene" data-target="61-audit-logging-is-core-production-hygiene">6.1 Audit Logging Is Core Production Hygiene</a></li><li class="toc-l3"><a href="#62-good-audit-questions" data-target="62-good-audit-questions">6.2 Good Audit Questions</a></li><li class="toc-l3"><a href="#63-logging-beyond-audit" data-target="63-logging-beyond-audit">6.3 Logging Beyond Audit</a></li><li class="toc-l3"><a href="#64-runtime-detection-is-the-missing-layer-in-many-clusters" data-target="64-runtime-detection-is-the-missing-layer-in-many-clusters">6.4 Runtime Detection Is the Missing Layer in Many Clusters</a></li><li class="toc-l3"><a href="#65-policy-and-drift-detection" data-target="65-policy-and-drift-detection">6.5 Policy and Drift Detection</a></li><li class="toc-l3"><a href="#66-incident-response-topics-to-study" data-target="66-incident-response-topics-to-study">6.6 Incident Response Topics to Study</a></li><li class="toc-l2"><a href="#phase-7-important-third-party-security-topics" data-target="phase-7-important-third-party-security-topics">Phase 7: Important Third-Party Security Topics</a></li><li class="toc-l3"><a href="#71-secrets-certificates-and-identity-ecosystem" data-target="71-secrets-certificates-and-identity-ecosystem">7.1 Secrets, Certificates, and Identity Ecosystem</a></li><li class="toc-l3"><a href="#72-policy-as-code" data-target="72-policy-as-code">7.2 Policy as Code</a></li><li class="toc-l3"><a href="#73-runtime-and-detection-tooling" data-target="73-runtime-and-detection-tooling">7.3 Runtime and Detection Tooling</a></li><li class="toc-l3"><a href="#74-software-supply-chain-and-signature-verification" data-target="74-software-supply-chain-and-signature-verification">7.4 Software Supply Chain and Signature Verification</a></li><li class="toc-l3"><a href="#75-how-to-prioritize-third-party-topics" data-target="75-how-to-prioritize-third-party-topics">7.5 How to Prioritize Third-Party Topics</a></li><li class="toc-l2"><a href="#phase-8-production-hardening-checklist" data-target="phase-8-production-hardening-checklist">Phase 8: Production Hardening Checklist</a></li><li class="toc-l3"><a href="#81-identity-and-access" data-target="81-identity-and-access">8.1 Identity and Access</a></li><li class="toc-l3"><a href="#82-workload-hardening" data-target="82-workload-hardening">8.2 Workload Hardening</a></li><li class="toc-l3"><a href="#83-network-and-tenancy" data-target="83-network-and-tenancy">8.3 Network and Tenancy</a></li><li class="toc-l3"><a href="#84-secrets-and-data" data-target="84-secrets-and-data">8.4 Secrets and Data</a></li><li class="toc-l3"><a href="#85-audit-and-monitoring" data-target="85-audit-and-monitoring">8.5 Audit and Monitoring</a></li><li class="toc-l3"><a href="#86-platform-and-operations" data-target="86-platform-and-operations">8.6 Platform and Operations</a></li><li class="toc-l2"><a href="#hands-on-labs" data-target="hands-on-labs">Hands-On Labs</a></li><li class="toc-l3"><a href="#lab-1-oidc-and-rbac-design-exercise" data-target="lab-1-oidc-and-rbac-design-exercise">Lab 1: OIDC and RBAC Design Exercise</a></li><li class="toc-l3"><a href="#lab-2-service-account-hardening" data-target="lab-2-service-account-hardening">Lab 2: Service Account Hardening</a></li><li class="toc-l3"><a href="#lab-3-networkpolicy-default-deny-rollout" data-target="lab-3-networkpolicy-default-deny-rollout">Lab 3: NetworkPolicy Default-Deny Rollout</a></li><li class="toc-l3"><a href="#lab-4-pod-security-admission-rollout" data-target="lab-4-pod-security-admission-rollout">Lab 4: Pod Security Admission Rollout</a></li><li class="toc-l3"><a href="#lab-5-secret-management-comparison" data-target="lab-5-secret-management-comparison">Lab 5: Secret Management Comparison</a></li><li class="toc-l3"><a href="#lab-6-audit-logging" data-target="lab-6-audit-logging">Lab 6: Audit Logging</a></li><li class="toc-l3"><a href="#lab-7-supply-chain-security" data-target="lab-7-supply-chain-security">Lab 7: Supply Chain Security</a></li><li class="toc-l2"><a href="#what-good-looks-like-in-production" data-target="what-good-looks-like-in-production">What Good Looks Like in Production</a></li><li class="toc-l2"><a href="#recommended-study-order" data-target="recommended-study-order">Recommended Study Order</a></li><li class="toc-l2"><a href="#primary-documentation-index" data-target="primary-documentation-index">Primary Documentation Index</a></li><li class="toc-l3"><a href="#upstream-kubernetes" data-target="upstream-kubernetes">Upstream Kubernetes</a></li><li class="toc-l3"><a href="#managed-kubernetes-identity-docs" data-target="managed-kubernetes-identity-docs">Managed Kubernetes Identity Docs</a></li><li class="toc-l3"><a href="#important-ecosystem-security-docs" data-target="important-ecosystem-security-docs">Important Ecosystem Security Docs</a></li></ul></nav></aside>
+  <main><h1 id="kubernetes-security-study-guide">Kubernetes Security Study Guide</h1>
+<p>A practical, production-focused guide to Kubernetes security. The goal is not to memorize every API flag or every compliance buzzword. The goal is to understand how Kubernetes security layers fit together, where the common failure modes are, and how to design a cluster that is defensible in production.</p>
+<p>As of April 9, 2026, the upstream Kubernetes documentation site lists <code>v1.35</code> as the current docs version. This guide assumes current, v1.35-era guidance and calls out places where managed clusters or older versions may behave differently.</p>
+<p>The main theme of Kubernetes security is this: there is no single control that makes a cluster secure. Real security comes from stacking identity, authorization, workload hardening, network isolation, secrets protection, auditability, and operational discipline so that one mistake does not become total cluster compromise.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#phase-1-core-security-model">Phase 1: Core Security Model</a></li>
+<li><a href="#phase-2-authentication-and-access-control">Phase 2: Authentication and Access Control</a></li>
+<li><a href="#phase-3-network-and-multi-tenancy-security">Phase 3: Network and Multi-Tenancy Security</a></li>
+<li><a href="#phase-4-workload-and-container-security">Phase 4: Workload and Container Security</a></li>
+<li><a href="#phase-5-secrets-and-sensitive-data-protection">Phase 5: Secrets and Sensitive Data Protection</a></li>
+<li><a href="#phase-6-audit-detection-and-response">Phase 6: Audit, Detection, and Response</a></li>
+<li><a href="#phase-7-important-third-party-security-topics">Phase 7: Important Third-Party Security Topics</a></li>
+<li><a href="#phase-8-production-hardening-checklist">Phase 8: Production Hardening Checklist</a></li>
+<li><a href="#hands-on-labs">Hands-On Labs</a></li>
+<li><a href="#what-good-looks-like-in-production">What Good Looks Like in Production</a></li>
+</ol>
+<hr>
+<h2 id="phase-1-core-security-model">Phase 1: Core Security Model</h2>
+<h3 id="11-the-four-big-security-planes-in-kubernetes">1.1 The Four Big Security Planes in Kubernetes</h3>
+<ul>
+<li><strong>Cluster access plane</strong>: Who can talk to the Kubernetes API, and how they authenticate.</li>
+<li>This is where OIDC, certificates, cloud-provider identity integrations, kubeconfig handling, and API endpoint exposure matter most; docs: <a href="https://kubernetes.io/docs/concepts/security/controlling-access/">Controlling Access to the Kubernetes API</a>, <a href="https://kubernetes.io/docs/reference/access-authn-authz/authentication/">Authenticating</a>.</li>
+<li><strong>Authorization and policy plane</strong>: What an authenticated identity is allowed to do.</li>
+<li>This is where RBAC, admission control, and policy engines determine whether a request should be allowed at all; docs: <a href="https://kubernetes.io/docs/reference/access-authn-authz/rbac/">Using RBAC Authorization</a>, <a href="https://kubernetes.io/docs/concepts/security/rbac-good-practices/">RBAC Good Practices</a>.</li>
+<li><strong>Workload isolation plane</strong>: What a Pod can do after it is running.</li>
+<li>This is where Pod Security Standards, <code>securityContext</code>, seccomp, AppArmor, SELinux, Linux capabilities, and privileged containers matter; docs: <a href="https://kubernetes.io/docs/concepts/security/pod-security-standards/">Pod Security Standards</a>, <a href="https://kubernetes.io/docs/concepts/security/linux-kernel-security-constraints/">Linux kernel security constraints for Pods and containers</a>, <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">Configure a Security Context for a Pod or Container</a>.</li>
+<li><strong>Data and observability plane</strong>: How secrets, audit trails, and evidence are handled.</li>
+<li>This is where Secrets, encryption at rest, external secret stores, audit policies, and log pipelines matter; docs: <a href="https://kubernetes.io/docs/concepts/configuration/secret/">Secrets</a>, <a href="https://kubernetes.io/docs/concepts/security/secrets-good-practices/">Good practices for Kubernetes Secrets</a>, <a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/">Auditing</a>.</li>
+</ul>
+<h3 id="12-kubernetes-security-is-mostly-about-blast-radius">1.2 Kubernetes Security Is Mostly About Blast Radius</h3>
+<ul>
+<li><strong>Assume a credential can leak</strong></li>
+<li>Design so a stolen developer kubeconfig, compromised Pod token, or leaked CI credential does not become full-cluster admin.</li>
+<li><strong>Assume a Pod can be exploited</strong></li>
+<li>Design so one vulnerable app container cannot trivially read every Secret, reach every Pod, or gain node-level access.</li>
+<li><strong>Assume a node can be partially compromised</strong></li>
+<li>Design so node compromise does not silently bypass your main control path or expose cleartext data unnecessarily.</li>
+<li><strong>Assume mistakes will happen</strong></li>
+<li>Use layered controls so a bad manifest, permissive RoleBinding, or forgotten namespace policy is caught somewhere else.</li>
+</ul>
+<h3 id="13-the-most-important-mindset-shift">1.3 The Most Important Mindset Shift</h3>
+<ul>
+<li><strong>Kubernetes defaults are often functional, not production-secure</strong></li>
+<li>Pods can usually talk freely unless you add network policies. Teams often over-grant RBAC. Secrets are just base64-encoded unless you add real encryption controls. Service accounts are easy to misuse. Production security is mostly about intentionally tightening defaults.</li>
+<li><strong>The API server is the choke point you want to preserve</strong></li>
+<li>Authentication, authorization, admission, and audit logging all happen at the API server. Anything that bypasses it is disproportionately risky; docs: <a href="https://kubernetes.io/docs/concepts/security/api-server-bypass-risks/">Kubernetes API Server Bypass Risks</a>.</li>
+</ul>
+<h3 id="14-foundation-docs-you-should-know-cold">1.4 Foundation Docs You Should Know Cold</h3>
+<ul>
+<li><a href="https://kubernetes.io/docs/concepts/security/security-checklist/">Security Checklist</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/security/application-security-checklist/">Application Security Checklist</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/security/overview/">Cloud Native Security</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/security/multi-tenancy/">Multi-tenancy</a></li>
+</ul>
+<hr>
+<h2 id="phase-2-authentication-and-access-control">Phase 2: Authentication and Access Control</h2>
+<h3 id="21-how-kubernetes-secures-api-access">2.1 How Kubernetes Secures API Access</h3>
+<p>Every request to the Kubernetes API goes through a chain:</p>
+<ol>
+<li><strong>Authentication</strong>: who are you?</li>
+<li><strong>Authorization</strong>: what are you allowed to do?</li>
+<li><strong>Admission</strong>: should this specific object or change be accepted?</li>
+<li><strong>Audit</strong>: what happened, and who did it?</li>
+</ol>
+<p>That sequence is the backbone of Kubernetes security; docs: <a href="https://kubernetes.io/docs/concepts/security/controlling-access/">Controlling Access to the Kubernetes API</a>.</p>
+<h3 id="22-authentication-methods-you-must-understand">2.2 Authentication Methods You Must Understand</h3>
+<ul>
+<li><strong>OIDC / external identity provider</strong></li>
+<li>Best default for human user access in production. Kubernetes upstream explicitly recommends using external authentication such as OIDC for production clusters with multiple human users; docs: <a href="https://kubernetes.io/docs/concepts/security/hardening-guide/authentication-mechanisms/">Hardening Guide - Authentication Mechanisms</a>, <a href="https://kubernetes.io/docs/reference/access-authn-authz/authentication/">Authenticating</a>.</li>
+<li><strong>X.509 client certificates</strong></li>
+<li>Important for system components and occasionally for tightly controlled admin access, but awkward for broad user auth because revocation and lifecycle management are harder; docs: <a href="https://kubernetes.io/docs/concepts/security/hardening-guide/authentication-mechanisms/">Hardening Guide - Authentication Mechanisms</a>, <a href="https://kubernetes.io/docs/setup/best-practices/certificates/">PKI certificates and requirements</a>, <a href="https://kubernetes.io/docs/tasks/tls/certificate-issue-client-csr/">Issue a Certificate for a Kubernetes API Client Using A CertificateSigningRequest</a>.</li>
+<li><strong>Service account tokens</strong></li>
+<li>Intended for workloads, not humans. Modern Kubernetes prefers short-lived projected tokens from the <code>TokenRequest</code> API, not legacy long-lived token Secrets; docs: <a href="https://kubernetes.io/docs/concepts/security/service-accounts/">Service Accounts</a>, <a href="https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/">Configure Service Accounts for Pods</a>, <a href="https://kubernetes.io/docs/concepts/security/hardening-guide/authentication-mechanisms/">Hardening Guide - Authentication Mechanisms</a>.</li>
+<li><strong>Webhook or authenticating proxy</strong></li>
+<li>Useful in specialized environments, but add infrastructure and trust complexity. These are not usually the first choice unless your platform already depends on them; docs: <a href="https://kubernetes.io/docs/reference/access-authn-authz/authentication/">Authenticating</a>, <a href="https://kubernetes.io/docs/concepts/security/hardening-guide/authentication-mechanisms/">Hardening Guide - Authentication Mechanisms</a>.</li>
+</ul>
+<h3 id="23-oidc-the-main-production-pattern-for-human-access">2.3 OIDC: The Main Production Pattern for Human Access</h3>
+<ul>
+<li><strong>What it is</strong></li>
+<li>Kubernetes trusts tokens issued by an external identity provider such as Okta, Microsoft Entra ID, Google, Dex, or another OIDC-capable IdP.</li>
+<li><strong>Why it matters</strong></li>
+<li>It centralizes identity lifecycle, supports MFA and corporate SSO, and avoids inventing a separate human-user credential system just for Kubernetes.</li>
+<li><strong>What to study</strong></li>
+<li>Token issuer configuration</li>
+<li>Audience and claim mapping</li>
+<li>Group-based authorization</li>
+<li>Short token lifetimes</li>
+<li>How <code>kubectl</code> gets credentials through exec plugins or managed provider tooling</li>
+<li><strong>Hardening points</strong></li>
+<li>Keep OIDC support components isolated if they run in-cluster.</li>
+<li>Prefer short-lived tokens.</li>
+<li>Be aware that some managed Kubernetes offerings constrain which OIDC flows or providers you can use; docs: <a href="https://kubernetes.io/docs/concepts/security/hardening-guide/authentication-mechanisms/">Hardening Guide - Authentication Mechanisms</a>.</li>
+</ul>
+<h3 id="24-certificates-important-but-usually-not-your-main-human-auth-strategy">2.4 Certificates: Important, but Usually Not Your Main Human Auth Strategy</h3>
+<ul>
+<li><strong>Where certificates shine</strong></li>
+<li>Control-plane internals</li>
+<li>Kubelet identity</li>
+<li>Bootstrap and rotation workflows</li>
+<li>Emergency or tightly controlled admin access</li>
+<li><strong>Where certificates are weak</strong></li>
+<li>Individual revocation is poor</li>
+<li>Group membership is effectively baked into the cert</li>
+<li>Private key handling is operationally brittle</li>
+<li>Distribution and tracking get painful as human user count grows</li>
+<li><strong>What to know</strong></li>
+<li>The CSR API</li>
+<li>Manual and kubeadm certificate workflows</li>
+<li>Certificate rotation implications</li>
+<li>Why certificate issuance rights are security-sensitive RBAC permissions; docs: <a href="https://kubernetes.io/docs/setup/best-practices/certificates/">PKI certificates and requirements</a>, <a href="https://kubernetes.io/docs/tasks/tls/certificate-issue-client-csr/">Issue a Certificate for a Kubernetes API Client Using A CertificateSigningRequest</a>, <a href="https://kubernetes.io/docs/concepts/security/rbac-good-practices/">RBAC Good Practices</a>.</li>
+</ul>
+<h3 id="25-cloud-provider-iam-and-managed-cluster-access">2.5 Cloud Provider IAM and Managed Cluster Access</h3>
+<p>This is one of the most practically important areas in production. In managed clusters, there are usually two related but separate identity problems:</p>
+<ol>
+<li><strong>How humans get cluster access</strong></li>
+<li><strong>How workloads in Pods get cloud API access</strong></li>
+</ol>
+<p>Do not blur those together.</p>
+<h4 id="aws-eks">AWS / EKS</h4>
+<ul>
+<li><strong>Human access to the cluster</strong></li>
+<li>EKS cluster access is increasingly centered around access entries and AWS IAM identities rather than legacy <code>aws-auth</code> management patterns; docs: <a href="https://docs.aws.amazon.com/eks/latest/userguide/setting-up-access-entries.html">Change authentication mode to use access entries</a>.</li>
+<li><strong>Workload access to AWS APIs</strong></li>
+<li>IAM Roles for Service Accounts (IRSA) lets Pods use projected service account OIDC tokens to assume IAM roles without static AWS keys in Secrets; docs: <a href="https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html">IAM roles for service accounts</a>.</li>
+<li><strong>Key study point</strong></li>
+<li>IRSA improves credential isolation, but AWS explicitly notes that containers are not a security boundary. Node compromise or privileged Pod placement still matters.</li>
+</ul>
+<h4 id="google-cloud-gke">Google Cloud / GKE</h4>
+<ul>
+<li><strong>Human access to the cluster</strong></li>
+<li>GKE supports external identity provider integration and related identity federation workflows for cluster auth; docs: <a href="https://cloud.google.com/kubernetes-engine/docs/how-to/oidc">Use external identity providers to authenticate to GKE</a>.</li>
+<li><strong>Workload access to Google Cloud APIs</strong></li>
+<li>Workload Identity Federation for GKE is the recommended path instead of shipping service account keys into Pods; docs: <a href="https://cloud.google.com/kubernetes-engine/docs/concepts/workload-identity">About Workload Identity Federation for GKE</a>, <a href="https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity">Authenticate to Google Cloud APIs from GKE workloads</a>.</li>
+<li><strong>Key study point</strong></li>
+<li>Understand the separation between Kubernetes ServiceAccounts and Google IAM service accounts, and study the limitations around <code>hostNetwork: true</code> and metadata access.</li>
+</ul>
+<h4 id="azure-aks">Azure / AKS</h4>
+<ul>
+<li><strong>Human access to the cluster</strong></li>
+<li>AKS commonly uses AKS-managed Microsoft Entra integration for authentication to the cluster; docs: <a href="https://learn.microsoft.com/en-us/azure/aks/enable-authentication-microsoft-entra-id">Enable AKS-managed Microsoft Entra integration</a>.</li>
+<li><strong>Workload access to Azure APIs</strong></li>
+<li>Microsoft Entra Workload ID federates Kubernetes service account tokens to Azure identities for Pods that need cloud access; docs: <a href="https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview">Microsoft Entra Workload ID on AKS</a>, <a href="https://learn.microsoft.com/en-us/azure/aks/use-oidc-issuer">Create an OIDC provider for AKS</a>.</li>
+<li><strong>Key study point</strong></li>
+<li>AKS identity design is often a combination of Microsoft Entra for users, Kubernetes RBAC for cluster authorization, and workload identity for Pods.</li>
+</ul>
+<h3 id="26-rbac-the-most-important-authorization-model-to-master">2.6 RBAC: The Most Important Authorization Model to Master</h3>
+<ul>
+<li><strong>RBAC decides what an authenticated identity can do</strong></li>
+<li>Learn <code>Role</code>, <code>ClusterRole</code>, <code>RoleBinding</code>, and <code>ClusterRoleBinding</code> thoroughly; docs: <a href="https://kubernetes.io/docs/reference/access-authn-authz/rbac/">Using RBAC Authorization</a>.</li>
+<li><strong>Least privilege is the whole game</strong></li>
+<li>Avoid broad verbs, broad resources, and cluster-wide grants unless you have a specific reason.</li>
+<li><strong>Namespace scoping is your friend</strong></li>
+<li>Many teams accidentally make every operator a cluster administrator because scoping work correctly takes more effort.</li>
+<li><strong>Groups beat per-user bindings</strong></li>
+<li>Map users to groups in your IdP, then bind groups to RBAC roles.</li>
+<li><strong>Separate human and workload permissions</strong></li>
+<li>A CI system, controller, developer, and support engineer should not all share the same role shape.</li>
+</ul>
+<h3 id="27-rbac-good-practices-you-need-to-internalize">2.7 RBAC Good Practices You Need to Internalize</h3>
+<p>Kubernetes upstream has an unusually useful RBAC good-practices page. Study it closely; docs: <a href="https://kubernetes.io/docs/concepts/security/rbac-good-practices/">Role Based Access Control Good Practices</a>.</p>
+<p>The high-value lessons are:</p>
+<ul>
+<li><strong>Avoid <code>system:masters</code></strong></li>
+<li>Upstream explicitly warns that membership in <code>system:masters</code> bypasses all RBAC checks and even authorization webhooks.</li>
+<li><strong>Avoid wildcard permissions</strong></li>
+<li><code>*</code> on resources or verbs is an easy way to create accidental future privilege.</li>
+<li><strong>Treat Secrets read access as highly privileged</strong></li>
+<li>If you can read Secrets in a namespace, you can often pivot into workload or cloud credentials.</li>
+<li><strong>Treat workload creation as privileged</strong></li>
+<li>If you can create Pods, you can often mount service account tokens, host paths, or other sensitive assets depending on cluster policy.</li>
+<li><strong>Treat certificate issuance, token request, bind, escalate, and impersonate as dangerous</strong></li>
+<li>These are classic RBAC escalation paths.</li>
+<li><strong>Review permissions periodically</strong></li>
+<li>RBAC debt accumulates silently.</li>
+</ul>
+<h3 id="28-service-accounts-critical-and-frequently-misused">2.8 Service Accounts: Critical and Frequently Misused</h3>
+<ul>
+<li><strong>Every workload identity should be intentional</strong></li>
+<li>Create purpose-specific ServiceAccounts instead of letting everything run as namespace default.</li>
+<li><strong>Disable token automount where not needed</strong></li>
+<li>Many workloads do not need to call the Kubernetes API at all; docs: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/">Configure Service Accounts for Pods</a>.</li>
+<li><strong>Prefer projected, short-lived tokens</strong></li>
+<li>Modern clusters use TokenRequest-backed projected tokens with bounded lifetimes, not legacy long-lived token Secrets; docs: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/">Configure Service Accounts for Pods</a>, <a href="https://kubernetes.io/docs/concepts/security/hardening-guide/authentication-mechanisms/">Hardening Guide - Authentication Mechanisms</a>.</li>
+<li><strong>Use workload identity federation when cloud APIs are needed</strong></li>
+<li>Do not store long-lived AWS, GCP, or Azure credentials in Kubernetes Secrets if the platform supports federation.</li>
+</ul>
+<h3 id="29-kubeconfig-security-matters-more-than-many-teams-realize">2.9 kubeconfig Security Matters More Than Many Teams Realize</h3>
+<ul>
+<li><strong>A kubeconfig is often a credential, not just a config file</strong></li>
+<li>It may contain client certificates, bearer tokens, or exec-based auth flows.</li>
+<li><strong>Treat kubeconfigs like secrets</strong></li>
+<li>Store them carefully, prefer short-lived auth, and avoid leaving admin kubeconfigs on laptops or CI agents.</li>
+<li><strong>Segment admin access</strong></li>
+<li>Break-glass admin credentials should be rare, heavily audited, and not your day-to-day workflow.</li>
+</ul>
+<h3 id="210-admission-control-is-where-security-policy-becomes-enforceable">2.10 Admission Control Is Where Security Policy Becomes Enforceable</h3>
+<ul>
+<li><strong>Admission is the last checkpoint before an object is persisted</strong></li>
+<li>Authentication tells Kubernetes who you are, RBAC tells it what verbs you may attempt, and admission decides whether this specific object shape is acceptable; docs: <a href="https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/">Admission Controllers</a>, <a href="https://kubernetes.io/docs/concepts/security/controlling-access/">Controlling Access to the Kubernetes API</a>.</li>
+<li><strong>Native admission already covers important security cases</strong></li>
+<li>Pod Security Admission is the most obvious example, but admission also matters for defaulting, validation, and cluster-wide policy enforcement.</li>
+<li><strong>ValidatingAdmissionPolicy is worth learning</strong></li>
+<li>It gives Kubernetes-native validation logic without always requiring an external webhook deployment; docs: <a href="https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/">Validating Admission Policy</a>.</li>
+<li><strong>Webhook-based admission is powerful and risky</strong></li>
+<li>If you depend on external admission webhooks for security, those webhooks become part of your control plane reliability and trust model.</li>
+</ul>
+<hr>
+<h2 id="phase-3-network-and-multi-tenancy-security">Phase 3: Network and Multi-Tenancy Security</h2>
+<h3 id="31-network-policies-are-the-main-native-east-west-isolation-control">3.1 Network Policies Are the Main Native East-West Isolation Control</h3>
+<ul>
+<li><strong>What they do</strong></li>
+<li>Restrict which Pods can talk to which other Pods or CIDRs for ingress and egress; docs: <a href="https://kubernetes.io/docs/concepts/services-networking/network-policies/">Network Policies</a>.</li>
+<li><strong>What many people miss</strong></li>
+<li>Policies are additive, and both the source egress side and destination ingress side must allow the flow.</li>
+<li><strong>The most important operational caveat</strong></li>
+<li>NetworkPolicy objects do nothing unless your CNI actually enforces them.</li>
+<li><strong>The most common production pattern</strong></li>
+<li>Start with default-deny, then add specific allow rules for DNS, app-to-app traffic, ingress controllers, and required external egress.</li>
+</ul>
+<h3 id="32-what-to-learn-about-networkpolicy">3.2 What to Learn About NetworkPolicy</h3>
+<ul>
+<li>Pod selectors and namespace selectors</li>
+<li>Ingress vs egress policies</li>
+<li>Default deny patterns</li>
+<li>DNS allowance</li>
+<li>Namespace label trust assumptions</li>
+<li>How your chosen CNI implements enforcement</li>
+</ul>
+<h3 id="33-north-south-security-is-not-solved-by-networkpolicy-alone">3.3 North-South Security Is Not Solved by NetworkPolicy Alone</h3>
+<ul>
+<li><strong>Ingress, Gateway, and load balancers are security boundaries too</strong></li>
+<li>You need TLS termination strategy, client IP handling, WAF strategy, and rate limiting thinking.</li>
+<li><strong>Separate public and private entry paths</strong></li>
+<li>Public internet traffic should not share the same route or policy assumptions as internal admin traffic.</li>
+<li><strong>Use mTLS where appropriate</strong></li>
+<li>Native Kubernetes does not give you mesh-style mutual TLS for service-to-service traffic by default.</li>
+</ul>
+<h3 id="34-multi-tenancy-changes-the-security-model">3.4 Multi-Tenancy Changes the Security Model</h3>
+<ul>
+<li><strong>By default, Pods can communicate broadly</strong></li>
+<li>Upstream multi-tenancy guidance recommends default deny network policies plus specific DNS allowances in stricter tenant isolation scenarios; docs: <a href="https://kubernetes.io/docs/concepts/security/multi-tenancy/">Multi-tenancy</a>.</li>
+<li><strong>Namespace isolation is useful, but not absolute</strong></li>
+<li>Namespaces are a control-plane partitioning tool, not a perfect hard boundary.</li>
+<li><strong>You need multiple isolation layers</strong></li>
+<li>RBAC</li>
+<li>network policy</li>
+<li>quotas and limits</li>
+<li>node isolation</li>
+<li>storage isolation</li>
+<li>workload hardening</li>
+<li><strong>Not every cluster should be multi-tenant</strong></li>
+<li>Sometimes the right answer is more clusters, not more policy complexity.</li>
+</ul>
+<h3 id="35-common-network-security-mistakes">3.5 Common Network Security Mistakes</h3>
+<ul>
+<li><strong>No default-deny policies</strong></li>
+<li><strong>Allowing unrestricted egress everywhere</strong></li>
+<li><strong>Using a CNI that supports NetworkPolicy but never testing enforcement</strong></li>
+<li><strong>Relying on namespace names instead of controlled namespace labels for policy</strong></li>
+<li><strong>Assuming internal traffic is safe because it is "inside the cluster"</strong></li>
+</ul>
+<hr>
+<h2 id="phase-4-workload-and-container-security">Phase 4: Workload and Container Security</h2>
+<h3 id="41-pod-security-standards-are-the-native-baseline">4.1 Pod Security Standards Are the Native Baseline</h3>
+<p>Kubernetes replaced PodSecurityPolicy with Pod Security Standards plus Pod Security Admission. You need to understand all three policy levels:</p>
+<ul>
+<li><strong>Privileged</strong></li>
+<li>Mostly unrestricted. Useful only for special trusted system workloads.</li>
+<li><strong>Baseline</strong></li>
+<li>Prevents many obviously dangerous settings while staying compatible with a broad set of applications.</li>
+<li><strong>Restricted</strong></li>
+<li>The strongest mainstream baseline and the best default target for ordinary apps; docs: <a href="https://kubernetes.io/docs/concepts/security/pod-security-standards/">Pod Security Standards</a>, <a href="https://kubernetes.io/docs/concepts/security/pod-security-admission/">Pod Security Admission</a>.</li>
+</ul>
+<h3 id="42-pod-security-admission-how-enforcement-actually-happens">4.2 Pod Security Admission: How Enforcement Actually Happens</h3>
+<ul>
+<li><strong>Namespace labels drive enforcement</strong></li>
+<li>Learn the <code>enforce</code>, <code>warn</code>, and <code>audit</code> modes and how teams phase them in safely; docs: <a href="https://kubernetes.io/docs/concepts/security/pod-security-admission/">Pod Security Admission</a>.</li>
+<li><strong>Production rollout pattern</strong></li>
+<li>Start with <code>warn</code> and <code>audit</code></li>
+<li>fix manifests</li>
+<li>then move critical namespaces to <code>enforce</code></li>
+<li><strong>Do not leave sensitive namespaces permanently in soft-only mode</strong></li>
+<li>That defeats the point of the control.</li>
+</ul>
+<h3 id="43-securitycontext-is-one-of-the-highest-leverage-manifest-skills">4.3 <code>securityContext</code> Is One of the Highest Leverage Manifest Skills</h3>
+<p>You should be comfortable reading and setting:</p>
+<ul>
+<li><code>runAsNonRoot</code></li>
+<li><code>runAsUser</code></li>
+<li><code>runAsGroup</code></li>
+<li><code>fsGroup</code></li>
+<li><code>allowPrivilegeEscalation: false</code></li>
+<li><code>readOnlyRootFilesystem: true</code></li>
+<li><code>capabilities.drop</code></li>
+<li><code>seccompProfile</code></li>
+</ul>
+<p>Study docs: <a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">Configure a Security Context for a Pod or Container</a>.</p>
+<h3 id="44-linux-kernel-hardening-features-matter">4.4 Linux Kernel Hardening Features Matter</h3>
+<ul>
+<li><strong>seccomp</strong></li>
+<li>Filters allowed syscalls to reduce kernel attack surface.</li>
+<li><strong>AppArmor</strong></li>
+<li>Policy-based mandatory access control for file and capability behaviors on supported hosts.</li>
+<li><strong>SELinux</strong></li>
+<li>Strong label-based mandatory access control, especially important in environments already standardized on SELinux.</li>
+<li><strong>Why this matters</strong></li>
+<li>Upstream explicitly notes that privileged containers override or ignore many of these protections; docs: <a href="https://kubernetes.io/docs/concepts/security/linux-kernel-security-constraints/">Linux kernel security constraints for Pods and containers</a>.</li>
+</ul>
+<h3 id="45-privileged-containers-are-a-serious-exception-case">4.5 Privileged Containers Are a Serious Exception Case</h3>
+<ul>
+<li><strong><code>privileged: true</code> should be rare</strong></li>
+<li>It effectively blows through many other hardening controls.</li>
+<li><strong>Capabilities are usually better than full privilege</strong></li>
+<li>Grant only what is actually required.</li>
+<li><strong>Keep privileged workloads isolated</strong></li>
+<li>Dedicated nodes, taints, and tighter RBAC/service account handling reduce blast radius; docs: <a href="https://kubernetes.io/docs/concepts/security/linux-kernel-security-constraints/">Linux kernel security constraints for Pods and containers</a>, <a href="https://kubernetes.io/docs/concepts/security/rbac-good-practices/">RBAC Good Practices</a>.</li>
+</ul>
+<h3 id="46-image-security-and-supply-chain-security-are-part-of-kubernetes-security">4.6 Image Security and Supply Chain Security Are Part of Kubernetes Security</h3>
+<ul>
+<li><strong>Use minimal, maintained base images</strong></li>
+<li><strong>Pin versions intentionally</strong></li>
+<li><strong>Scan images continuously</strong></li>
+<li><strong>Know where images are allowed to come from</strong></li>
+<li><strong>Prefer signed and verifiable artifacts where possible</strong></li>
+<li><strong>Treat CI/CD as part of cluster security</strong></li>
+<li>If your pipeline can push bad manifests or poisoned images, your cluster is only as safe as that pipeline.</li>
+</ul>
+<p>Upstream docs that help frame this area:</p>
+<ul>
+<li><a href="https://kubernetes.io/docs/concepts/security/application-security-checklist/">Application Security Checklist</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/containers/images/">Images</a></li>
+</ul>
+<h3 id="47-node-and-runtime-security-still-matter">4.7 Node and Runtime Security Still Matter</h3>
+<ul>
+<li><strong>Kubernetes is not a VM boundary</strong></li>
+<li>A container breakout lands you on the node, not in some abstract layer.</li>
+<li><strong>Harden the node OS</strong></li>
+<li>Patch aggressively, minimize packages, lock down SSH, protect kubelet, and understand runtime configuration.</li>
+<li><strong>Protect the kubelet and node credentials</strong></li>
+<li>Node-level compromise can turn into broader compromise quickly.</li>
+<li><strong>Understand bypass risk</strong></li>
+<li>Access paths that avoid the API server also avoid normal authorization, admission, and audit controls; docs: <a href="https://kubernetes.io/docs/concepts/security/api-server-bypass-risks/">Kubernetes API Server Bypass Risks</a>.</li>
+</ul>
+<h3 id="48-other-high-value-workload-security-topics">4.8 Other High-Value Workload Security Topics</h3>
+<ul>
+<li><strong>User namespaces</strong></li>
+<li>Worth understanding for stronger isolation patterns in environments that support them.</li>
+<li><strong>Sandboxed runtimes</strong></li>
+<li>Runtime isolation technologies such as gVisor or Kata can matter for stronger tenant separation.</li>
+<li><strong>HostPath, hostNetwork, hostPID, hostIPC</strong></li>
+<li>These are all high-risk settings that deserve scrutiny in policy and review.</li>
+<li><strong>Ephemeral containers for debugging</strong></li>
+<li>Powerful and useful, but easy to misuse if your operational model is sloppy.</li>
+</ul>
+<hr>
+<h2 id="phase-5-secrets-and-sensitive-data-protection">Phase 5: Secrets and Sensitive Data Protection</h2>
+<h3 id="51-kubernetes-secrets-are-not-magic-encryption">5.1 Kubernetes Secrets Are Not Magic Encryption</h3>
+<ul>
+<li><strong>A Secret object is an API object</strong></li>
+<li>It is not inherently secure just because the kind is named <code>Secret</code>.</li>
+<li><strong>Base64 is not encryption</strong></li>
+<li>Upstream explicitly warns about this; docs: <a href="https://kubernetes.io/docs/concepts/security/secrets-good-practices/">Good practices for Kubernetes Secrets</a>.</li>
+<li><strong>Anyone who can read the Secret gets the secret</strong></li>
+<li>That sounds obvious, but many clusters effectively grant this too widely via RBAC, controller permissions, or namespace over-sharing.</li>
+</ul>
+<h3 id="52-native-secret-good-practices">5.2 Native Secret Good Practices</h3>
+<ul>
+<li><strong>Restrict who can read or create Secrets</strong></li>
+<li>This is one of the most important RBAC boundaries in the cluster.</li>
+<li><strong>Avoid putting long-lived credentials in manifests</strong></li>
+<li>Never confuse YAML convenience with acceptable security.</li>
+<li><strong>Mount only where needed</strong></li>
+<li>If only one container in a Pod needs a secret, mount it only there.</li>
+<li><strong>Protect data after the app reads it</strong></li>
+<li>Avoid cleartext logging, debugging dumps, and accidental retransmission; docs: <a href="https://kubernetes.io/docs/concepts/security/secrets-good-practices/">Good practices for Kubernetes Secrets</a>, <a href="https://kubernetes.io/docs/concepts/configuration/secret/">Secrets</a>.</li>
+</ul>
+<h3 id="53-encrypt-secret-data-at-rest">5.3 Encrypt Secret Data at Rest</h3>
+<ul>
+<li><strong>Do this in production</strong></li>
+<li>Enable encryption at rest for Secrets in etcd. Otherwise a backup, disk snapshot, or etcd access path may expose raw secret values; docs: <a href="https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/">Encrypting Confidential Data at Rest</a>.</li>
+<li><strong>Know what is encrypted</strong></li>
+<li>Study which resources are covered and how key rotation works.</li>
+<li><strong>Know where your KMS keys live</strong></li>
+<li>In managed platforms, this often ties into cloud KMS services and provider-managed control planes.</li>
+</ul>
+<h3 id="54-secrets-in-git-the-sealed-secrets-question">5.4 Secrets in Git: The Sealed Secrets Question</h3>
+<p>This is a very common real-world topic.</p>
+<ul>
+<li><strong>Sealed Secrets</strong></li>
+<li>Encrypts a secret into a git-storable SealedSecret resource that can only be decrypted by the controller in the target cluster; docs: <a href="https://github.com/bitnami-labs/sealed-secrets">Sealed Secrets</a>.</li>
+<li><strong>Why teams like it</strong></li>
+<li>Simple GitOps story</li>
+<li>easy developer workflow</li>
+<li>no plain secret values in Git</li>
+<li><strong>What to think about</strong></li>
+<li>Key management</li>
+<li>rotation strategy</li>
+<li>cluster coupling</li>
+<li>disaster recovery if keys are lost</li>
+</ul>
+<h3 id="55-important-alternatives-to-sealed-secrets">5.5 Important Alternatives to Sealed Secrets</h3>
+<ul>
+<li><strong>External Secrets Operator</strong></li>
+<li>Syncs secrets from external backends like AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, Vault, and others into Kubernetes; docs: <a href="https://external-secrets.io/latest/">External Secrets Operator</a>.</li>
+<li><strong>Secrets Store CSI Driver</strong></li>
+<li>Mounts secrets from external secret stores into Pods, often avoiding persistence as standard Kubernetes Secret objects depending on your design; docs: <a href="https://secrets-store-csi-driver.sigs.k8s.io/">Secrets Store CSI Driver</a>.</li>
+<li><strong>Cloud-provider native secret stores</strong></li>
+<li>Often the most natural option if you are already standardized on a cloud KMS and secret manager ecosystem.</li>
+</ul>
+<h3 id="56-how-to-think-about-the-tradeoffs">5.6 How to Think About the Tradeoffs</h3>
+<p>Use this mental model:</p>
+<ul>
+<li><strong>Use native Kubernetes Secrets</strong></li>
+<li>For simple clusters, low-risk config, or when external secret dependencies would be overkill.</li>
+<li><strong>Use Sealed Secrets</strong></li>
+<li>When GitOps-first workflows matter and you want encrypted values committed to Git.</li>
+<li><strong>Use External Secrets Operator</strong></li>
+<li>When the source of truth should stay in an external secret manager and Kubernetes should consume, not own, the secret lifecycle.</li>
+<li><strong>Use Secrets Store CSI Driver</strong></li>
+<li>When runtime-mounted secret material is preferable to syncing secret values into the API.</li>
+</ul>
+<h3 id="57-other-sensitive-data-concerns-people-forget">5.7 Other Sensitive Data Concerns People Forget</h3>
+<ul>
+<li><strong>Backups</strong></li>
+<li>etcd backups and volume snapshots may contain secret data.</li>
+<li><strong>CI logs</strong></li>
+<li>Secret leakage often happens in pipelines, not just in Pods.</li>
+<li><strong>Crash dumps and debug output</strong></li>
+<li>Memory and stack traces can become a secret exposure path.</li>
+<li><strong>Developer tooling</strong></li>
+<li>Local <code>.env</code> files, shell history, and copied kubeconfigs routinely become the weakest link.</li>
+</ul>
+<hr>
+<h2 id="phase-6-audit-detection-and-response">Phase 6: Audit, Detection, and Response</h2>
+<h3 id="61-audit-logging-is-core-production-hygiene">6.1 Audit Logging Is Core Production Hygiene</h3>
+<ul>
+<li><strong>What it is</strong></li>
+<li>The API server emits audit events for requests as they move through execution stages, based on an audit policy; docs: <a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/">Auditing</a>.</li>
+<li><strong>What to learn</strong></li>
+<li>Audit stages</li>
+<li>policy rules</li>
+<li>log backend vs webhook backend</li>
+<li>retention and downstream SIEM ingestion</li>
+<li><strong>Why it matters</strong></li>
+<li>If you cannot answer "who changed this RoleBinding" or "who created this privileged Pod," your incident response is already in trouble.</li>
+</ul>
+<h3 id="62-good-audit-questions">6.2 Good Audit Questions</h3>
+<ul>
+<li>Who created or modified cluster-admin-like bindings?</li>
+<li>Who accessed or listed Secrets?</li>
+<li>Who created privileged Pods or workloads with host access?</li>
+<li>Who changed admission or policy resources?</li>
+<li>Which service accounts are making unexpected API calls?</li>
+</ul>
+<h3 id="63-logging-beyond-audit">6.3 Logging Beyond Audit</h3>
+<ul>
+<li><strong>Control plane logs</strong></li>
+<li>Required for operational investigation.</li>
+<li><strong>Node and kubelet logs</strong></li>
+<li>Important when runtime compromise or bypass risk is involved.</li>
+<li><strong>Application logs</strong></li>
+<li>Must not accidentally print credentials or tokens.</li>
+<li><strong>Security event logs</strong></li>
+<li>Runtime detections, policy violations, admission denials, and image scan failures should flow somewhere centralized.</li>
+</ul>
+<h3 id="64-runtime-detection-is-the-missing-layer-in-many-clusters">6.4 Runtime Detection Is the Missing Layer in Many Clusters</h3>
+<ul>
+<li><strong>Preventive controls are not enough</strong></li>
+<li>You also want to know when a Pod suddenly starts spawning shells, touching sensitive paths, or making suspicious syscalls.</li>
+<li><strong>This is where runtime tooling matters</strong></li>
+<li>Falco and similar tools are common here; docs: <a href="https://falco.org/docs/">Falco Documentation</a>.</li>
+</ul>
+<h3 id="65-policy-and-drift-detection">6.5 Policy and Drift Detection</h3>
+<ul>
+<li><strong>Policy violations should be visible</strong></li>
+<li>It is not enough to say "we use RBAC" or "we have Pod Security Admission." You want evidence when manifests drift or exceptions pile up.</li>
+<li><strong>Continuously scan</strong></li>
+<li>Images, manifests, clusters, and IaC all need scanning, not just one of them.</li>
+</ul>
+<h3 id="66-incident-response-topics-to-study">6.6 Incident Response Topics to Study</h3>
+<ul>
+<li>Credential revocation and rotation</li>
+<li>Break-glass access design</li>
+<li>What to do after a node compromise</li>
+<li>How to evict or quarantine suspicious workloads</li>
+<li>How to preserve logs and audit trails</li>
+<li>How to re-establish trust in image supply and CI pipelines</li>
+</ul>
+<hr>
+<h2 id="phase-7-important-third-party-security-topics">Phase 7: Important Third-Party Security Topics</h2>
+<p>Kubernetes gives you the primitives, not a complete production security platform. These ecosystem tools matter because they solve real gaps teams hit quickly.</p>
+<h3 id="71-secrets-certificates-and-identity-ecosystem">7.1 Secrets, Certificates, and Identity Ecosystem</h3>
+<table>
+<thead>
+<tr>
+<th>Topic</th>
+<th>Why it matters</th>
+<th>Docs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Sealed Secrets</code></td>
+<td>Encrypt secrets for GitOps workflows</td>
+<td><a href="https://github.com/bitnami-labs/sealed-secrets">Sealed Secrets</a></td>
+</tr>
+<tr>
+<td><code>External Secrets Operator</code></td>
+<td>Sync secret values from external secret managers</td>
+<td><a href="https://external-secrets.io/latest/">External Secrets Operator</a></td>
+</tr>
+<tr>
+<td><code>Secrets Store CSI Driver</code></td>
+<td>Mount secrets from external backends into Pods</td>
+<td><a href="https://secrets-store-csi-driver.sigs.k8s.io/">Secrets Store CSI Driver</a></td>
+</tr>
+<tr>
+<td><code>cert-manager</code></td>
+<td>Automate certificate issuance and rotation inside clusters</td>
+<td><a href="https://cert-manager.io/docs/">cert-manager docs</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="72-policy-as-code">7.2 Policy as Code</h3>
+<table>
+<thead>
+<tr>
+<th>Topic</th>
+<th>Why it matters</th>
+<th>Docs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Kyverno</code></td>
+<td>Kubernetes-native policy engine for validation, mutation, and generation</td>
+<td><a href="https://kyverno.io/docs/">Kyverno docs</a></td>
+</tr>
+<tr>
+<td><code>OPA Gatekeeper</code></td>
+<td>OPA/Rego-based admission policy and audit tooling</td>
+<td><a href="https://open-policy-agent.github.io/gatekeeper/website/docs/">Gatekeeper docs</a></td>
+</tr>
+</tbody>
+</table>
+<p>These tools matter because native Pod Security Admission is intentionally narrow. Real teams often need policy around image registries, label conventions, hostPath usage, resource requests, signing requirements, or exception management.</p>
+<h3 id="73-runtime-and-detection-tooling">7.3 Runtime and Detection Tooling</h3>
+<table>
+<thead>
+<tr>
+<th>Topic</th>
+<th>Why it matters</th>
+<th>Docs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Falco</code></td>
+<td>Runtime detection for suspicious container and node activity</td>
+<td><a href="https://falco.org/docs/">Falco docs</a></td>
+</tr>
+<tr>
+<td><code>Trivy</code></td>
+<td>Scan images, filesystem content, Kubernetes manifests, and IaC for vulnerabilities/misconfigurations</td>
+<td><a href="https://trivy.dev/latest/docs/">Trivy docs</a></td>
+</tr>
+</tbody>
+</table>
+<h3 id="74-software-supply-chain-and-signature-verification">7.4 Software Supply Chain and Signature Verification</h3>
+<table>
+<thead>
+<tr>
+<th>Topic</th>
+<th>Why it matters</th>
+<th>Docs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Sigstore Policy Controller</code></td>
+<td>Enforce image signature and attestation policies in-cluster</td>
+<td><a href="https://docs.sigstore.dev/policy-controller/overview/">Sigstore Policy Controller docs</a></td>
+</tr>
+</tbody>
+</table>
+<p>This area is important because "trusted registry" is not the same thing as "trusted artifact." Mature teams move toward signed images, provenance, and admission-time verification.</p>
+<h3 id="75-how-to-prioritize-third-party-topics">7.5 How to Prioritize Third-Party Topics</h3>
+<p>If you are learning for practical production work, this is a strong order:</p>
+<ol>
+<li><code>cert-manager</code></li>
+<li><code>External Secrets Operator</code> or <code>Secrets Store CSI Driver</code></li>
+<li><code>Kyverno</code> or <code>Gatekeeper</code></li>
+<li><code>Falco</code></li>
+<li><code>Trivy</code></li>
+<li><code>Sealed Secrets</code></li>
+<li><code>Sigstore Policy Controller</code></li>
+</ol>
+<p>That order is not universal, but it maps well to the controls most teams need first.</p>
+<hr>
+<h2 id="phase-8-production-hardening-checklist">Phase 8: Production Hardening Checklist</h2>
+<h3 id="81-identity-and-access">8.1 Identity and Access</h3>
+<ul>
+<li>Use OIDC or managed-cluster identity integration for human users.</li>
+<li>Require MFA through the upstream IdP where possible.</li>
+<li>Avoid shared admin accounts and avoid <code>system:masters</code>.</li>
+<li>Use groups, not one-off user bindings.</li>
+<li>Prefer namespace-scoped roles over cluster-wide access.</li>
+<li>Review all permissions that allow reading Secrets, creating Pods, issuing certificates, impersonating identities, or binding/escalating roles.</li>
+<li>Use dedicated ServiceAccounts for workloads.</li>
+<li>Disable service account token automount where workloads do not need API access.</li>
+<li>Prefer projected short-lived tokens and workload identity federation to static cloud credentials.</li>
+</ul>
+<h3 id="82-workload-hardening">8.2 Workload Hardening</h3>
+<ul>
+<li>Enforce Pod Security Admission for app namespaces.</li>
+<li>Run as non-root by default.</li>
+<li>Set <code>allowPrivilegeEscalation: false</code>.</li>
+<li>Drop Linux capabilities by default and add only what is required.</li>
+<li>Use a read-only root filesystem where practical.</li>
+<li>Use seccomp profiles and stronger kernel MAC features where your platform supports them.</li>
+<li>Treat <code>privileged</code>, <code>hostNetwork</code>, <code>hostPID</code>, <code>hostIPC</code>, and <code>hostPath</code> as exception-only settings.</li>
+</ul>
+<h3 id="83-network-and-tenancy">8.3 Network and Tenancy</h3>
+<ul>
+<li>Implement default-deny ingress and egress policies.</li>
+<li>Explicitly allow DNS and required service dependencies.</li>
+<li>Segment public, internal, and admin traffic paths.</li>
+<li>Be cautious about multi-tenancy assumptions.</li>
+<li>Use dedicated nodes or stronger isolation for sensitive workloads when required.</li>
+</ul>
+<h3 id="84-secrets-and-data">8.4 Secrets and Data</h3>
+<ul>
+<li>Enable encryption at rest for Secrets in etcd.</li>
+<li>Keep secret sources of truth outside Git unless using an intentional encrypted workflow.</li>
+<li>Limit who can read, create, and update Secrets.</li>
+<li>Avoid static cloud access keys in Secret objects if federation is available.</li>
+<li>Protect backups, snapshots, and exported manifests.</li>
+</ul>
+<h3 id="85-audit-and-monitoring">8.5 Audit and Monitoring</h3>
+<ul>
+<li>Enable audit logging with a reviewed policy.</li>
+<li>Forward audit logs and control plane logs to a durable system.</li>
+<li>Monitor for suspicious RBAC, Secret, and privileged workload events.</li>
+<li>Continuously scan images and manifests.</li>
+<li>Regularly review policy violations and cluster exceptions.</li>
+</ul>
+<h3 id="86-platform-and-operations">8.6 Platform and Operations</h3>
+<ul>
+<li>Patch Kubernetes, node OS, and runtimes consistently.</li>
+<li>Keep admission, CNI, and ingress components updated.</li>
+<li>Protect the kubelet and node credentials.</li>
+<li>Design break-glass access before an incident, not during one.</li>
+<li>Test restore and secret recovery workflows.</li>
+</ul>
+<hr>
+<h2 id="hands-on-labs">Hands-On Labs</h2>
+<h3 id="lab-1-oidc-and-rbac-design-exercise">Lab 1: OIDC and RBAC Design Exercise</h3>
+<ul>
+<li>Draw the identity path for human access into a cluster using OIDC.</li>
+<li>Map groups from an IdP to namespace-scoped RBAC roles.</li>
+<li>Identify which users truly need cluster-wide visibility.</li>
+<li>Create a break-glass cluster-admin path and describe how it would be audited.</li>
+</ul>
+<h3 id="lab-2-service-account-hardening">Lab 2: Service Account Hardening</h3>
+<ul>
+<li>Create two workloads in a namespace:</li>
+<li>one that needs no Kubernetes API access</li>
+<li>one that needs read-only access to ConfigMaps</li>
+<li>Disable automount for the first.</li>
+<li>Create a dedicated ServiceAccount and least-privilege Role/RoleBinding for the second.</li>
+<li>Explain why the default ServiceAccount is not a good long-term answer.</li>
+</ul>
+<h3 id="lab-3-networkpolicy-default-deny-rollout">Lab 3: NetworkPolicy Default-Deny Rollout</h3>
+<ul>
+<li>Apply default-deny ingress and egress in a test namespace.</li>
+<li>Add rules for DNS.</li>
+<li>Add rules for app-to-database traffic.</li>
+<li>Verify that unrelated Pods can no longer connect.</li>
+<li>Confirm your CNI is actually enforcing policy.</li>
+</ul>
+<h3 id="lab-4-pod-security-admission-rollout">Lab 4: Pod Security Admission Rollout</h3>
+<ul>
+<li>Label a namespace with <code>warn</code> and <code>audit</code> for the Restricted standard.</li>
+<li>Deploy a workload that violates Restricted.</li>
+<li>Fix the manifest by setting:</li>
+<li><code>runAsNonRoot</code></li>
+<li><code>allowPrivilegeEscalation: false</code></li>
+<li>capability drops</li>
+<li>a seccomp profile</li>
+<li>Move the namespace to <code>enforce</code>.</li>
+</ul>
+<h3 id="lab-5-secret-management-comparison">Lab 5: Secret Management Comparison</h3>
+<p>Pick one secret, such as a database password, and compare four ways of handling it:</p>
+<ol>
+<li>Native Kubernetes Secret</li>
+<li>Sealed Secrets</li>
+<li>External Secrets Operator</li>
+<li>Secrets Store CSI Driver</li>
+</ol>
+<p>For each, answer:</p>
+<ul>
+<li>Where is the source of truth?</li>
+<li>Does the secret live in Git?</li>
+<li>Does it persist in the Kubernetes API?</li>
+<li>How is rotation handled?</li>
+<li>What happens during disaster recovery?</li>
+</ul>
+<h3 id="lab-6-audit-logging">Lab 6: Audit Logging</h3>
+<ul>
+<li>Enable or inspect audit logging on a cluster.</li>
+<li>Create a low-risk audit policy focused on:</li>
+<li>Secret access</li>
+<li>RBAC changes</li>
+<li>privileged workload creation</li>
+<li>Generate sample events and confirm they are captured.</li>
+</ul>
+<h3 id="lab-7-supply-chain-security">Lab 7: Supply Chain Security</h3>
+<ul>
+<li>Scan a container image with Trivy.</li>
+<li>Identify high/critical vulnerabilities.</li>
+<li>Decide whether to block deployment or document a compensating control.</li>
+<li>If your environment supports it, design an admission policy that only allows approved registries or signed images.</li>
+</ul>
+<hr>
+<h2 id="what-good-looks-like-in-production">What Good Looks Like in Production</h2>
+<p>A healthy production Kubernetes security posture usually looks like this:</p>
+<ul>
+<li>Human users authenticate through OIDC or the managed-cluster identity integration, not shared static credentials.</li>
+<li>RBAC is group-based, least-privilege, and periodically reviewed.</li>
+<li>App namespaces are under Pod Security Admission enforcement.</li>
+<li>ServiceAccounts are specific to workloads, and most Pods do not get unnecessary API credentials.</li>
+<li>NetworkPolicy default-deny is normal, not exotic.</li>
+<li>Secrets are encrypted at rest and ideally sourced from an external secret manager or an intentional GitOps encryption workflow.</li>
+<li>Audit logs exist, are retained, and are actually reviewed.</li>
+<li>Image scanning and policy enforcement are part of CI/CD, not an afterthought.</li>
+<li>Privileged workloads are rare and isolated.</li>
+<li>The platform team understands how to rotate credentials, investigate suspicious activity, and recover trust after an incident.</li>
+</ul>
+<p>If you remember only one thing from this guide, remember this: the dangerous Kubernetes failures are usually not "a missing feature." They are combinations of small permissions, weak defaults, and invisible operational shortcuts that line up into a full compromise path.</p>
+<hr>
+<h2 id="recommended-study-order">Recommended Study Order</h2>
+<p>If you want the fastest path to practical competence, study in this order:</p>
+<ol>
+<li>Authentication models, ServiceAccounts, and RBAC</li>
+<li>Pod Security Standards, <code>securityContext</code>, and privileged-container risks</li>
+<li>NetworkPolicy and multi-tenancy basics</li>
+<li>Secrets handling and encryption at rest</li>
+<li>Audit logging and incident investigation</li>
+<li>Managed-cluster IAM integrations</li>
+<li>Third-party policy, runtime, and supply-chain tooling</li>
+</ol>
+<hr>
+<h2 id="primary-documentation-index">Primary Documentation Index</h2>
+<h3 id="upstream-kubernetes">Upstream Kubernetes</h3>
+<ul>
+<li><a href="https://kubernetes.io/docs/concepts/security/controlling-access/">Controlling Access to the Kubernetes API</a></li>
+<li><a href="https://kubernetes.io/docs/reference/access-authn-authz/authentication/">Authenticating</a></li>
+<li><a href="https://kubernetes.io/docs/reference/access-authn-authz/rbac/">Using RBAC Authorization</a></li>
+<li><a href="https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/">Admission Controllers</a></li>
+<li><a href="https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/">Validating Admission Policy</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/security/rbac-good-practices/">Role Based Access Control Good Practices</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/security/hardening-guide/authentication-mechanisms/">Hardening Guide - Authentication Mechanisms</a></li>
+<li><a href="https://kubernetes.io/docs/setup/best-practices/certificates/">PKI certificates and requirements</a></li>
+<li><a href="https://kubernetes.io/docs/tasks/tls/certificate-issue-client-csr/">Issue a Certificate for a Kubernetes API Client Using A CertificateSigningRequest</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/security/service-accounts/">Service Accounts</a></li>
+<li><a href="https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/">Configure Service Accounts for Pods</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/services-networking/network-policies/">Network Policies</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/security/pod-security-standards/">Pod Security Standards</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/security/pod-security-admission/">Pod Security Admission</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/security/linux-kernel-security-constraints/">Linux kernel security constraints for Pods and containers</a></li>
+<li><a href="https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">Configure a Security Context for a Pod or Container</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/configuration/secret/">Secrets</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/security/secrets-good-practices/">Good practices for Kubernetes Secrets</a></li>
+<li><a href="https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/">Encrypting Confidential Data at Rest</a></li>
+<li><a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/">Auditing</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/security/security-checklist/">Security Checklist</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/security/application-security-checklist/">Application Security Checklist</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/security/multi-tenancy/">Multi-tenancy</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/security/api-server-bypass-risks/">Kubernetes API Server Bypass Risks</a></li>
+</ul>
+<h3 id="managed-kubernetes-identity-docs">Managed Kubernetes Identity Docs</h3>
+<ul>
+<li><a href="https://docs.aws.amazon.com/eks/latest/userguide/setting-up-access-entries.html">EKS access entries</a></li>
+<li><a href="https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html">EKS IAM roles for service accounts</a></li>
+<li><a href="https://cloud.google.com/kubernetes-engine/docs/how-to/oidc">GKE external identity providers / OIDC</a></li>
+<li><a href="https://cloud.google.com/kubernetes-engine/docs/concepts/workload-identity">GKE Workload Identity Federation</a></li>
+<li><a href="https://learn.microsoft.com/en-us/azure/aks/enable-authentication-microsoft-entra-id">AKS Microsoft Entra integration</a></li>
+<li><a href="https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview">AKS Microsoft Entra Workload ID</a></li>
+<li><a href="https://learn.microsoft.com/en-us/azure/aks/use-oidc-issuer">AKS OIDC issuer</a></li>
+</ul>
+<h3 id="important-ecosystem-security-docs">Important Ecosystem Security Docs</h3>
+<ul>
+<li><a href="https://github.com/bitnami-labs/sealed-secrets">Sealed Secrets</a></li>
+<li><a href="https://external-secrets.io/latest/">External Secrets Operator</a></li>
+<li><a href="https://secrets-store-csi-driver.sigs.k8s.io/">Secrets Store CSI Driver</a></li>
+<li><a href="https://cert-manager.io/docs/">cert-manager</a></li>
+<li><a href="https://kyverno.io/docs/">Kyverno</a></li>
+<li><a href="https://open-policy-agent.github.io/gatekeeper/website/docs/">OPA Gatekeeper</a></li>
+<li><a href="https://falco.org/docs/">Falco</a></li>
+<li><a href="https://trivy.dev/latest/docs/">Trivy</a></li>
+<li><a href="https://docs.sigstore.dev/policy-controller/overview/">Sigstore Policy Controller</a></li>
+</ul></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

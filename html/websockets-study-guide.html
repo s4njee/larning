@@ -1,0 +1,2252 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: WebSockets Study Guide.">
+<title>WebSockets Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#e05390; --accent2:#da4f4f; --accent-weak:rgba(224,83,144,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#e05390; --accent2:#da4f4f; --accent-weak:rgba(224,83,144,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">W</span><span>WebSockets Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-foundations-the-protocol" data-target="part-1-foundations-the-protocol">Part 1 — Foundations &amp; the Protocol</a></li><li class="toc-l3"><a href="#11-the-problem-websockets-solve" data-target="11-the-problem-websockets-solve">1.1 The Problem WebSockets Solve</a></li><li class="toc-l3"><a href="#12-the-upgrade-handshake" data-target="12-the-upgrade-handshake">1.2 The Upgrade Handshake</a></li><li class="toc-l3"><a href="#13-frames" data-target="13-frames">1.3 Frames</a></li><li class="toc-l3"><a href="#14-opcodes-data-frames-and-control-frames" data-target="14-opcodes-data-frames-and-control-frames">1.4 Opcodes: Data Frames and Control Frames</a></li><li class="toc-l3"><a href="#15-the-close-handshake-and-close-codes" data-target="15-the-close-handshake-and-close-codes">1.5 The Close Handshake and Close Codes</a></li><li class="toc-l3"><a href="#16-ws-vs-wss-and-subprotocols" data-target="16-ws-vs-wss-and-subprotocols">1.6 ws:// vs wss://, and Subprotocols</a></li><li class="toc-l3"><a href="#17-the-connection-lifecycle" data-target="17-the-connection-lifecycle">1.7 The Connection Lifecycle</a></li><li class="toc-l2"><a href="#part-2-the-browser-client-api" data-target="part-2-the-browser-client-api">Part 2 — The Browser Client API</a></li><li class="toc-l3"><a href="#21-opening-a-connection" data-target="21-opening-a-connection">2.1 Opening a Connection</a></li><li class="toc-l3"><a href="#22-the-four-events" data-target="22-the-four-events">2.2 The Four Events</a></li><li class="toc-l3"><a href="#23-sending-and-receiving-data" data-target="23-sending-and-receiving-data">2.3 Sending and Receiving Data</a></li><li class="toc-l3"><a href="#24-readystate-and-closing" data-target="24-readystate-and-closing">2.4 readyState and Closing</a></li><li class="toc-l3"><a href="#25-backpressure-bufferedamount" data-target="25-backpressure-bufferedamount">2.5 Backpressure: bufferedAmount</a></li><li class="toc-l3"><a href="#26-reconnection-with-exponential-backoff" data-target="26-reconnection-with-exponential-backoff">2.6 Reconnection with Exponential Backoff</a></li><li class="toc-l2"><a href="#part-3-nodejs-servers-with-ws" data-target="part-3-nodejs-servers-with-ws">Part 3 — Node.js Servers with ws</a></li><li class="toc-l3"><a href="#31-a-minimal-server" data-target="31-a-minimal-server">3.1 A Minimal Server</a></li><li class="toc-l3"><a href="#32-broadcasting" data-target="32-broadcasting">3.2 Broadcasting</a></li><li class="toc-l3"><a href="#33-sharing-a-port-with-an-http-server" data-target="33-sharing-a-port-with-an-http-server">3.3 Sharing a Port with an HTTP Server</a></li><li class="toc-l3"><a href="#34-manual-upgrade-handling-for-auth-and-routing" data-target="34-manual-upgrade-handling-for-auth-and-routing">3.4 Manual Upgrade Handling (for Auth and Routing)</a></li><li class="toc-l3"><a href="#35-heartbeats-detecting-dead-connections" data-target="35-heartbeats-detecting-dead-connections">3.5 Heartbeats: Detecting Dead Connections</a></li><li class="toc-l3"><a href="#36-per-message-limits-and-compression" data-target="36-per-message-limits-and-compression">3.6 Per-Message Limits and Compression</a></li><li class="toc-l2"><a href="#part-4-socketio" data-target="part-4-socketio">Part 4 — Socket.IO</a></li><li class="toc-l3"><a href="#41-what-socketio-adds-over-raw-websockets" data-target="41-what-socketio-adds-over-raw-websockets">4.1 What Socket.IO Adds Over Raw WebSockets</a></li><li class="toc-l3"><a href="#42-server-and-client-basics" data-target="42-server-and-client-basics">4.2 Server and Client Basics</a></li><li class="toc-l3"><a href="#43-emitting-the-targeting-cheat-sheet" data-target="43-emitting-the-targeting-cheat-sheet">4.3 Emitting: The Targeting Cheat Sheet</a></li><li class="toc-l3"><a href="#44-rooms" data-target="44-rooms">4.4 Rooms</a></li><li class="toc-l3"><a href="#45-acknowledgements-request-response" data-target="45-acknowledgements-request-response">4.5 Acknowledgements (Request-Response)</a></li><li class="toc-l3"><a href="#46-when-to-use-socketio-vs-raw-ws" data-target="46-when-to-use-socketio-vs-raw-ws">4.6 When to Use Socket.IO vs. Raw ws</a></li><li class="toc-l2"><a href="#part-5-python-servers" data-target="part-5-python-servers">Part 5 — Python Servers</a></li><li class="toc-l3"><a href="#51-the-websockets-library" data-target="51-the-websockets-library">5.1 The websockets Library</a></li><li class="toc-l3"><a href="#52-fastapi-starlette" data-target="52-fastapi-starlette">5.2 FastAPI / Starlette</a></li><li class="toc-l3"><a href="#53-django-channels" data-target="53-django-channels">5.3 Django Channels</a></li><li class="toc-l3"><a href="#54-python-socketio" data-target="54-python-socketio">5.4 python-socketio</a></li><li class="toc-l3"><a href="#55-choosing-among-the-python-options" data-target="55-choosing-among-the-python-options">5.5 Choosing Among the Python Options</a></li><li class="toc-l2"><a href="#part-6-message-patterns-application-design" data-target="part-6-message-patterns-application-design">Part 6 — Message Patterns &amp; Application Design</a></li><li class="toc-l3"><a href="#61-design-a-message-envelope-first" data-target="61-design-a-message-envelope-first">6.1 Design a Message Envelope First</a></li><li class="toc-l3"><a href="#62-pubsub-and-channels" data-target="62-pubsub-and-channels">6.2 Pub/Sub and Channels</a></li><li class="toc-l3"><a href="#63-request-response-over-a-message-stream" data-target="63-request-response-over-a-message-stream">6.3 Request-Response over a Message Stream</a></li><li class="toc-l3"><a href="#64-presence" data-target="64-presence">6.4 Presence</a></li><li class="toc-l3"><a href="#65-framing-json-messagepack-or-protobuf" data-target="65-framing-json-messagepack-or-protobuf">6.5 Framing: JSON, MessagePack, or Protobuf</a></li><li class="toc-l2"><a href="#part-7-scaling-websockets" data-target="part-7-scaling-websockets">Part 7 — Scaling WebSockets</a></li><li class="toc-l3"><a href="#71-why-websockets-are-hard-to-scale" data-target="71-why-websockets-are-hard-to-scale">7.1 Why WebSockets Are Hard to Scale</a></li><li class="toc-l3"><a href="#72-the-redis-pubsub-backplane" data-target="72-the-redis-pubsub-backplane">7.2 The Redis Pub/Sub Backplane</a></li><li class="toc-l3"><a href="#73-sticky-sessions" data-target="73-sticky-sessions">7.3 Sticky Sessions</a></li><li class="toc-l3"><a href="#74-connection-limits-and-the-c10kc10m-problem" data-target="74-connection-limits-and-the-c10kc10m-problem">7.4 Connection Limits and the C10K/C10M Problem</a></li><li class="toc-l3"><a href="#75-a-note-on-edge-and-serverless" data-target="75-a-note-on-edge-and-serverless">7.5 A Note on Edge and Serverless</a></li><li class="toc-l2"><a href="#part-8-production-concerns" data-target="part-8-production-concerns">Part 8 — Production Concerns</a></li><li class="toc-l3"><a href="#81-authentication-the-header-problem" data-target="81-authentication-the-header-problem">8.1 Authentication: The Header Problem</a></li><li class="toc-l3"><a href="#82-origin-checking-and-cross-site-websocket-hijacking" data-target="82-origin-checking-and-cross-site-websocket-hijacking">8.2 Origin Checking and Cross-Site WebSocket Hijacking</a></li><li class="toc-l3"><a href="#83-authorization" data-target="83-authorization">8.3 Authorization</a></li><li class="toc-l3"><a href="#84-input-validation-and-rate-limiting" data-target="84-input-validation-and-rate-limiting">8.4 Input Validation and Rate Limiting</a></li><li class="toc-l3"><a href="#85-backpressure-on-the-server" data-target="85-backpressure-on-the-server">8.5 Backpressure on the Server</a></li><li class="toc-l3"><a href="#86-heartbeats-and-idle-timeouts" data-target="86-heartbeats-and-idle-timeouts">8.6 Heartbeats and Idle Timeouts</a></li><li class="toc-l3"><a href="#87-reverse-proxies-and-tls-termination" data-target="87-reverse-proxies-and-tls-termination">8.7 Reverse Proxies and TLS Termination</a></li><li class="toc-l2"><a href="#part-9-reliability-edge-cases" data-target="part-9-reliability-edge-cases">Part 9 — Reliability &amp; Edge Cases</a></li><li class="toc-l3"><a href="#91-what-websockets-guarantee-and-what-they-dont" data-target="91-what-websockets-guarantee-and-what-they-dont">9.1 What WebSockets Guarantee — and What They Don't</a></li><li class="toc-l3"><a href="#92-at-least-once-delivery-acks-resend-dedup" data-target="92-at-least-once-delivery-acks-resend-dedup">9.2 At-Least-Once Delivery: Acks, Resend, Dedup</a></li><li class="toc-l3"><a href="#93-state-recovery-after-reconnect" data-target="93-state-recovery-after-reconnect">9.3 State Recovery After Reconnect</a></li><li class="toc-l3"><a href="#94-the-thundering-herd" data-target="94-the-thundering-herd">9.4 The Thundering Herd</a></li><li class="toc-l3"><a href="#95-detecting-and-handling-dead-connections" data-target="95-detecting-and-handling-dead-connections">9.5 Detecting and Handling Dead Connections</a></li><li class="toc-l2"><a href="#part-10-alternatives-when-not-to-use-websockets" data-target="part-10-alternatives-when-not-to-use-websockets">Part 10 — Alternatives &amp; When Not to Use WebSockets</a></li><li class="toc-l3"><a href="#101-server-sent-events-sse" data-target="101-server-sent-events-sse">10.1 Server-Sent Events (SSE)</a></li><li class="toc-l3"><a href="#102-long-polling" data-target="102-long-polling">10.2 Long-Polling</a></li><li class="toc-l3"><a href="#103-webtransport" data-target="103-webtransport">10.3 WebTransport</a></li><li class="toc-l3"><a href="#104-grpc-streaming-and-webrtc-data-channels" data-target="104-grpc-streaming-and-webrtc-data-channels">10.4 gRPC Streaming and WebRTC Data Channels</a></li><li class="toc-l3"><a href="#105-decision-guide" data-target="105-decision-guide">10.5 Decision Guide</a></li><li class="toc-l2"><a href="#part-11-recipes" data-target="part-11-recipes">Part 11 — Recipes</a></li><li class="toc-l3"><a href="#recipe-1-chat-with-rooms-node-ws" data-target="recipe-1-chat-with-rooms-node-ws">Recipe 1: Chat with Rooms (Node + ws)</a></li><li class="toc-l3"><a href="#recipe-2-live-notifications-python-fastapi-per-user-channel" data-target="recipe-2-live-notifications-python-fastapi-per-user-channel">Recipe 2: Live Notifications (Python + FastAPI, per-user channel)</a></li><li class="toc-l3"><a href="#recipe-3-real-time-dashboard-node-server-push-metrics" data-target="recipe-3-real-time-dashboard-node-server-push-metrics">Recipe 3: Real-Time Dashboard (Node, server-push metrics)</a></li><li class="toc-l3"><a href="#recipe-4-collaborative-cursors-presence-node-ws" data-target="recipe-4-collaborative-cursors-presence-node-ws">Recipe 4: Collaborative Cursors / Presence (Node + ws)</a></li><li class="toc-l3"><a href="#recipe-5-multiplayer-state-sync-python-websockets-authoritative-server" data-target="recipe-5-multiplayer-state-sync-python-websockets-authoritative-server">Recipe 5: Multiplayer State Sync (Python + websockets, authoritative server)</a></li><li class="toc-l2"><a href="#part-12-end-to-end-walkthrough" data-target="part-12-end-to-end-walkthrough">Part 12 — End-to-End Walkthrough</a></li><li class="toc-l3"><a href="#step-1-choose-the-stack" data-target="step-1-choose-the-stack">Step 1 — Choose the Stack</a></li><li class="toc-l3"><a href="#step-2-authenticate-at-the-handshake" data-target="step-2-authenticate-at-the-handshake">Step 2 — Authenticate at the Handshake</a></li><li class="toc-l3"><a href="#step-3-rooms-with-a-redis-backplane" data-target="step-3-rooms-with-a-redis-backplane">Step 3 — Rooms with a Redis Backplane</a></li><li class="toc-l3"><a href="#step-4-the-message-loop-with-limits" data-target="step-4-the-message-loop-with-limits">Step 4 — The Message Loop, with Limits</a></li><li class="toc-l3"><a href="#step-5-heartbeats" data-target="step-5-heartbeats">Step 5 — Heartbeats</a></li><li class="toc-l3"><a href="#step-6-the-client" data-target="step-6-the-client">Step 6 — The Client</a></li><li class="toc-l3"><a href="#step-7-deploy-behind-a-proxy-and-scale-out" data-target="step-7-deploy-behind-a-proxy-and-scale-out">Step 7 — Deploy Behind a Proxy and Scale Out</a></li><li class="toc-l3"><a href="#what-we-built-mapped-to-the-guide" data-target="what-we-built-mapped-to-the-guide">What We Built, Mapped to the Guide</a></li></ul></nav></aside>
+  <main><h1 id="websockets-study-guide">WebSockets Study Guide</h1>
+<p>A depth-first guide to WebSockets for engineers building real-time features. Assumes you understand HTTP, TCP, and the request-response model (the <a href="NETWORKING_FUNDAMENTALS.md">Networking Fundamentals</a> guide covers those), and that you can read JavaScript and Python. The guide is protocol-first: Part 1 grounds you in how WebSockets actually work on the wire, and every later part — across both Node.js and Python — refers back to it. Parts 1–10 are the fundamentals; Parts 11–12 are the applied recipes and an end-to-end build.</p>
+<blockquote>
+<p><em>A WebSocket is just a TCP connection that started life as an HTTP request and never hung up. Everything else — frames, rooms, reconnection, scaling — is what you build on top of that one idea.</em></p>
+</blockquote>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li><a href="#part-1--foundations--the-protocol">Part 1 — Foundations &amp; the Protocol</a></li>
+<li><a href="#part-2--the-browser-client-api">Part 2 — The Browser Client API</a></li>
+<li><a href="#part-3--nodejs-servers-with-ws">Part 3 — Node.js Servers with <code>ws</code></a></li>
+<li><a href="#part-4--socketio">Part 4 — Socket.IO</a></li>
+<li><a href="#part-5--python-servers">Part 5 — Python Servers</a></li>
+<li><a href="#part-6--message-patterns--application-design">Part 6 — Message Patterns &amp; Application Design</a></li>
+<li><a href="#part-7--scaling-websockets">Part 7 — Scaling WebSockets</a></li>
+<li><a href="#part-8--production-concerns">Part 8 — Production Concerns</a></li>
+<li><a href="#part-9--reliability--edge-cases">Part 9 — Reliability &amp; Edge Cases</a></li>
+<li><a href="#part-10--alternatives--when-not-to-use-websockets">Part 10 — Alternatives &amp; When Not to Use WebSockets</a></li>
+<li><a href="#part-11--recipes">Part 11 — Recipes</a></li>
+<li><a href="#part-12--end-to-end-walkthrough">Part 12 — End-to-End Walkthrough</a></li>
+</ul>
+<hr>
+<h2 id="part-1-foundations-the-protocol">Part 1 — Foundations &amp; the Protocol</h2>
+<h3 id="11-the-problem-websockets-solve">1.1 The Problem WebSockets Solve</h3>
+<p>HTTP is a request-response protocol: the client asks, the server answers, the exchange ends. The server has no way to speak first. For most of the web that's fine — you click a link, you get a page. But an entire class of applications needs the <em>server</em> to push data to the <em>client</em> the moment something happens: a chat message arrives, a stock price ticks, a teammate moves their cursor, a build finishes.</p>
+<p>Before WebSockets, developers faked server push with three workarounds:</p>
+<ul>
+<li><strong>Short polling</strong> — the client asks "anything new?" every few seconds. Simple, but wasteful: most requests return nothing, and you pay a full HTTP round trip (headers, TLS, connection setup) each time. Latency is bounded by your polling interval.</li>
+<li><strong>Long polling</strong> — the client makes a request and the server <em>holds it open</em> until it has something to say, then responds; the client immediately reconnects. Lower latency, but still one HTTP request per message, and it ties up a connection per client on the server.</li>
+<li><strong>Server-Sent Events (SSE)</strong> — a genuine one-way streaming channel from server to client over a single HTTP response (covered in <a href="#part-10--alternatives--when-not-to-use-websockets">Part 10</a>). Great for feeds, but the client still can't send on the same channel.</li>
+</ul>
+<p>WebSockets give you a <strong>full-duplex, bidirectional, persistent connection</strong>: after a one-time handshake, both sides can send messages at any time, independently, over a single long-lived TCP connection, with minimal per-message overhead (as little as 2 bytes of framing). That's the whole value proposition — low-latency, two-way, low-overhead communication.</p>
+<p>References: <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSocket">MDN: WebSocket API</a>, <a href="https://www.rfc-editor.org/rfc/rfc6455">RFC 6455 (The WebSocket Protocol)</a>.</p>
+<h3 id="12-the-upgrade-handshake">1.2 The Upgrade Handshake</h3>
+<p>A WebSocket connection begins its life as an ordinary HTTP/1.1 GET request carrying a few special headers that ask the server to <em>switch protocols</em>. This is the HTTP <code>Upgrade</code> mechanism.</p>
+<p>The client sends:</p>
+<pre><code class="language-http">GET /chat HTTP/1.1
+Host: example.com
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==
+Sec-WebSocket-Version: 13
+Sec-WebSocket-Protocol: chat.v1
+Origin: https://example.com
+</code></pre>
+<ul>
+<li><code>Upgrade: websocket</code> and <code>Connection: Upgrade</code> are the request to switch protocols.</li>
+<li><code>Sec-WebSocket-Key</code> is a random 16-byte value, base64-encoded. It is <strong>not</strong> a security mechanism — it exists to prevent caching proxies and non-WebSocket servers from accidentally treating the request as a successful handshake.</li>
+<li><code>Sec-WebSocket-Version: 13</code> is the protocol version (13 is the only version in real use).</li>
+<li><code>Sec-WebSocket-Protocol</code> optionally negotiates an application-level subprotocol (Section 1.6).</li>
+<li><code>Origin</code> tells the server which web origin initiated the connection — critical for security (see <a href="#part-8--production-concerns">Part 8</a>).</li>
+</ul>
+<p>The server proves it understood by responding <code>101 Switching Protocols</code>:</p>
+<pre><code class="language-http">HTTP/1.1 101 Switching Protocols
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=
+Sec-WebSocket-Protocol: chat.v1
+</code></pre>
+<p>The <code>Sec-WebSocket-Accept</code> value is computed deterministically: take the client's <code>Sec-WebSocket-Key</code>, concatenate the magic GUID <code>258EAFA5-E914-47DA-95CA-C5AB0DC85B11</code>, take the SHA-1 hash, and base64-encode it. The client verifies this to confirm it's really talking to a WebSocket server and not some other service that happened to return 101. Again — this is a correctness check, not encryption.</p>
+<p>After the <code>101</code>, the HTTP semantics are over. The TCP connection stays open, and both sides now speak the <strong>WebSocket framing protocol</strong> instead of HTTP. The connection has been <em>upgraded</em>.</p>
+<p>References: <a href="https://www.rfc-editor.org/rfc/rfc6455#section-1.3">RFC 6455 §1.3: Opening Handshake</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Protocol_upgrade_mechanism">MDN: Protocol upgrade mechanism</a>.</p>
+<h3 id="13-frames">1.3 Frames</h3>
+<p>Once upgraded, data is exchanged in <strong>frames</strong>, not HTTP messages. A frame is a compact binary structure. You almost never construct frames by hand — the library does it — but understanding the structure explains a lot of WebSocket behavior.</p>
+<pre><code class="language-text"> 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-------+-+-------------+-------------------------------+
+|F|R|R|R| op    |M| Payload len |    Extended payload length    |
+|I|S|S|S| code  |A|     (7)     |             (16/64)           |
+|N|V|V|V| (4)   |S|             |   (if payload len==126/127)   |
+| |1|2|3|       |K|             |                               |
++-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +
+|     Extended payload length continued, if payload len == 127  |
++ - - - - - - - - - - - - - - - +-------------------------------+
+|                               | Masking-key, if MASK set to 1 |
++-------------------------------+-------------------------------+
+| Masking-key (continued)       |          Payload Data         |
++-------------------------------- - - - - - - - - - - - - - - - +
+:                     Payload Data continued ...                :
++---------------------------------------------------------------+
+</code></pre>
+<p>The pieces that matter in practice:</p>
+<ul>
+<li><strong>FIN bit</strong> — is this the final frame of a message? A single logical message can be split across multiple frames (<em>fragmentation</em>); FIN marks the last one.</li>
+<li><strong>Opcode</strong> — what kind of frame this is (Section 1.4).</li>
+<li><strong>MASK bit + Masking-key</strong> — client-to-server frames <strong>must</strong> be masked with a random 32-bit key (the payload is XORed with it); server-to-client frames <strong>must not</strong> be masked. This rule exists to defeat a cache-poisoning attack against intermediaries that predate WebSockets — it is not confidentiality (that's what <code>wss://</code> is for).</li>
+<li><strong>Payload length</strong> — 7 bits for lengths up to 125, then an escape to 16 or 64 bits for larger payloads. This variable-length encoding is why small messages have only ~2 bytes of overhead.</li>
+</ul>
+<p>References: <a href="https://www.rfc-editor.org/rfc/rfc6455#section-5.2">RFC 6455 §5.2: Base Framing Protocol</a>.</p>
+<h3 id="14-opcodes-data-frames-and-control-frames">1.4 Opcodes: Data Frames and Control Frames</h3>
+<p>The 4-bit opcode tells the receiver what a frame is:</p>
+<table>
+<thead>
+<tr>
+<th>Opcode</th>
+<th>Name</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0x0</code></td>
+<td>Continuation</td>
+<td>A non-first fragment of a fragmented message</td>
+</tr>
+<tr>
+<td><code>0x1</code></td>
+<td>Text</td>
+<td>UTF-8 text payload</td>
+</tr>
+<tr>
+<td><code>0x2</code></td>
+<td>Binary</td>
+<td>Arbitrary binary payload</td>
+</tr>
+<tr>
+<td><code>0x8</code></td>
+<td>Close</td>
+<td>Begin closing the connection</td>
+</tr>
+<tr>
+<td><code>0x9</code></td>
+<td>Ping</td>
+<td>Heartbeat request</td>
+</tr>
+<tr>
+<td><code>0xA</code></td>
+<td>Pong</td>
+<td>Heartbeat response</td>
+</tr>
+</tbody>
+</table>
+<p>The split between <strong>data frames</strong> (text, binary, continuation) and <strong>control frames</strong> (close, ping, pong) is important. Control frames can be injected in the middle of a fragmented data message, are never fragmented themselves, and have a payload of at most 125 bytes. Ping/pong are the protocol's built-in liveness check (see <a href="#part-8--production-concerns">Part 8</a>): either side can send a ping, and the peer must reply with a pong carrying the same payload.</p>
+<p>Text vs. binary is a real distinction on the wire and in every API. Text frames carry UTF-8 (the library validates it); binary frames carry raw bytes. In the browser you choose how binary arrives — as a <code>Blob</code> or an <code>ArrayBuffer</code> (<a href="#part-2--the-browser-client-api">Part 2</a>).</p>
+<h3 id="15-the-close-handshake-and-close-codes">1.5 The Close Handshake and Close Codes</h3>
+<p>Closing is its own little handshake. One side sends a Close frame (opcode <code>0x8</code>) with an optional status code and reason; the peer replies with its own Close frame; then the underlying TCP connection is torn down. This lets both sides agree the closure was clean rather than a dropped network.</p>
+<p>The status code explains <em>why</em>. The common ones:</p>
+<table>
+<thead>
+<tr>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>1000</code></td>
+<td>Normal closure</td>
+</tr>
+<tr>
+<td><code>1001</code></td>
+<td>Going away (server shutting down, browser navigating away)</td>
+</tr>
+<tr>
+<td><code>1002</code></td>
+<td>Protocol error</td>
+</tr>
+<tr>
+<td><code>1003</code></td>
+<td>Unsupported data (e.g. got binary but only handle text)</td>
+</tr>
+<tr>
+<td><code>1006</code></td>
+<td>Abnormal closure — connection dropped with <strong>no</strong> Close frame. Never sent on the wire; synthesized locally when the TCP connection just dies</td>
+</tr>
+<tr>
+<td><code>1008</code></td>
+<td>Policy violation (a catch-all, often used for auth failures)</td>
+</tr>
+<tr>
+<td><code>1009</code></td>
+<td>Message too big</td>
+</tr>
+<tr>
+<td><code>1011</code></td>
+<td>Internal server error</td>
+</tr>
+</tbody>
+</table>
+<p><code>1006</code> is the one you'll see most in logs and bug reports: it means the connection vanished without a proper close handshake — a crashed server, a killed Wi-Fi connection, a proxy timeout. Your reconnection logic (<a href="#part-2--the-browser-client-api">Part 2</a>) is what handles <code>1006</code>.</p>
+<p>References: <a href="https://www.rfc-editor.org/rfc/rfc6455#section-7.4">RFC 6455 §7.4: Status Codes</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code">MDN: CloseEvent codes</a>.</p>
+<h3 id="16-ws-vs-wss-and-subprotocols">1.6 ws:// vs wss://, and Subprotocols</h3>
+<p>WebSockets have two URL schemes, exactly paralleling HTTP:</p>
+<ul>
+<li><strong><code>ws://</code></strong> — unencrypted, default port 80.</li>
+<li><strong><code>wss://</code></strong> — WebSocket over TLS, default port 443. This is the equivalent of HTTPS for WebSockets.</li>
+</ul>
+<p><strong>Always use <code>wss://</code> in production.</strong> Beyond the obvious confidentiality, <code>wss://</code> dramatically improves connection success rates: corporate proxies and middleboxes frequently mangle or block plaintext <code>ws://</code> upgrades because they don't understand them, whereas <code>wss://</code> traffic is opaque (encrypted) and passes through untouched. TLS here is the same TLS as everywhere else — see the <a href="CRYPTO_FUNDAMENTALS.md">Cryptography</a> guide.</p>
+<p><strong>Subprotocols</strong> let the client and server agree on an application-level message format during the handshake, via <code>Sec-WebSocket-Protocol</code>. The client offers a list in preference order; the server picks one (or none) and echoes it back:</p>
+<pre><code class="language-javascript">// Client offers two; server will pick one and the client reads ws.protocol
+const ws = new WebSocket(&quot;wss://example.com/api&quot;, [&quot;graphql-transport-ws&quot;, &quot;graphql-ws&quot;]);
+</code></pre>
+<p>Real examples: <code>graphql-transport-ws</code> (GraphQL subscriptions), <code>mqtt</code> (MQTT over WebSockets), <code>wamp</code>. Subprotocols are also one of the few ways to smuggle an auth token past the browser's header restrictions (<a href="#part-8--production-concerns">Part 8</a>).</p>
+<p>References: <a href="https://www.rfc-editor.org/rfc/rfc6455#section-1.9">RFC 6455 §1.9: Subprotocols</a>, <a href="https://www.iana.org/assignments/websocket/websocket.xml">IANA WebSocket Subprotocol Registry</a>.</p>
+<h3 id="17-the-connection-lifecycle">1.7 The Connection Lifecycle</h3>
+<p>Putting it together, every WebSocket moves through a fixed lifecycle, and every client/server API in this guide is just a different surface over these states:</p>
+<pre><code class="language-text">   new WebSocket()
+        │
+        ▼
+   CONNECTING ──── HTTP upgrade handshake (101) ────┐
+        │                                            │ handshake fails
+        ▼                                            ▼
+      OPEN  ◄──── data frames flow both ways      CLOSED
+        │         ping/pong keep it alive
+        │  close() / Close frame / TCP drop
+        ▼
+    CLOSING ──── close handshake ────► CLOSED
+</code></pre>
+<p>Keep this picture in mind. When we talk about "broadcasting," we mean iterating over every connection currently in <code>OPEN</code>. When we talk about "reconnection," we mean detecting the transition to <code>CLOSED</code> and starting a new <code>CONNECTING</code>. When we talk about "backpressure," we mean a peer in <code>OPEN</code> that can't drain its send buffer fast enough.</p>
+<hr>
+<h2 id="part-2-the-browser-client-api">Part 2 — The Browser Client API</h2>
+<p>The browser ships a built-in <code>WebSocket</code> object. It's the reference client API, and understanding its surface — including its sharp edges — informs everything on the server side.</p>
+<p>References: <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSocket">MDN: WebSocket</a>, <a href="https://websockets.spec.whatwg.org/">WHATWG: The WebSocket interface</a>.</p>
+<h3 id="21-opening-a-connection">2.1 Opening a Connection</h3>
+<pre><code class="language-javascript">// url must be ws:// or wss://; the optional second arg is subprotocol(s)
+const ws = new WebSocket(&quot;wss://example.com/chat&quot;, [&quot;chat.v1&quot;]);
+
+ws.addEventListener(&quot;open&quot;, () =&gt; {
+  console.log(&quot;connected; server chose subprotocol:&quot;, ws.protocol);
+  ws.send(&quot;hello&quot;);
+});
+</code></pre>
+<p>The constructor kicks off the handshake immediately and asynchronously. You can't send anything until the <code>open</code> event fires — calling <code>send()</code> while still <code>CONNECTING</code> throws an <code>InvalidStateError</code>.</p>
+<p><strong>The critical limitation, stated up front:</strong> the browser <code>WebSocket</code> constructor takes <em>only</em> a URL and an optional subprotocol list. <strong>You cannot set custom request headers</strong> — no <code>Authorization</code>, no custom <code>X-</code> headers. This single constraint shapes how WebSocket authentication is done in the browser, and we devote a section to it in <a href="#part-8--production-concerns">Part 8</a>. (Non-browser clients, like Node or Python, <em>can</em> set headers.)</p>
+<h3 id="22-the-four-events">2.2 The Four Events</h3>
+<p>The client API is entirely event-driven:</p>
+<pre><code class="language-javascript">const ws = new WebSocket(&quot;wss://example.com/chat&quot;);
+
+ws.addEventListener(&quot;open&quot;, (event) =&gt; {
+  // The connection is established and OPEN. Safe to send().
+});
+
+ws.addEventListener(&quot;message&quot;, (event) =&gt; {
+  // A frame arrived. event.data is a string (text frame) OR
+  // a Blob/ArrayBuffer (binary frame) depending on ws.binaryType.
+  console.log(&quot;received:&quot;, event.data);
+});
+
+ws.addEventListener(&quot;close&quot;, (event) =&gt; {
+  // event.code (e.g. 1000, 1006), event.reason (string),
+  // event.wasClean (did we get a proper close handshake?)
+  console.log(`closed: ${event.code} ${event.reason} clean=${event.wasClean}`);
+});
+
+ws.addEventListener(&quot;error&quot;, (event) =&gt; {
+  // Something went wrong. The Error event carries almost no detail
+  // (by design, for security). A 'close' event with code 1006
+  // almost always follows. Use close.code for the real diagnosis.
+});
+</code></pre>
+<p>A few non-obvious truths:</p>
+<ul>
+<li>The <code>error</code> event is deliberately information-free. The browser won't tell you <em>why</em> the handshake failed (was it a 401? a TLS error? a DNS failure?) to avoid leaking cross-origin information. You diagnose from the <code>close</code> event's code and from the network tab, not from <code>error</code>.</li>
+<li><code>error</code> is essentially always followed by <code>close</code>. Put your reconnection logic in the <code>close</code> handler, not <code>error</code>.</li>
+<li><code>close</code> with <code>wasClean: false</code> and <code>code: 1006</code> is the "the network died" signal.</li>
+</ul>
+<h3 id="23-sending-and-receiving-data">2.3 Sending and Receiving Data</h3>
+<pre><code class="language-javascript">// Sending: strings go as text frames; the rest go as binary frames
+ws.send(&quot;a string&quot;);                       // text frame
+ws.send(JSON.stringify({ type: &quot;ping&quot; }));  // text frame (the usual pattern)
+ws.send(new Uint8Array([1, 2, 3]));         // binary frame
+ws.send(new ArrayBuffer(8));                // binary frame
+ws.send(blob);                              // binary frame
+</code></pre>
+<p>For incoming binary data, you choose the type via <code>binaryType</code>:</p>
+<pre><code class="language-javascript">ws.binaryType = &quot;arraybuffer&quot;;  // event.data will be an ArrayBuffer (synchronous, in-memory)
+// vs the default:
+ws.binaryType = &quot;blob&quot;;         // event.data will be a Blob (better for large data / files)
+</code></pre>
+<p>Use <code>"arraybuffer"</code> when you want to parse the bytes immediately (e.g. decode a MessagePack or Protobuf message); use <code>"blob"</code> for large opaque payloads you'll hand to something else (an <code>&amp;lt;img&amp;gt;</code>, a download, the File API).</p>
+<h3 id="24-readystate-and-closing">2.4 readyState and Closing</h3>
+<pre><code class="language-javascript">// readyState is one of these constants
+WebSocket.CONNECTING; // 0
+WebSocket.OPEN;       // 1
+WebSocket.CLOSING;    // 2
+WebSocket.CLOSED;     // 3
+
+if (ws.readyState === WebSocket.OPEN) {
+  ws.send(payload);  // only safe to send when OPEN
+}
+
+// Initiate a clean close. Code must be 1000 or in the 3000–4999 range
+// (application-defined). Reason is a short UTF-8 string (&lt;= 123 bytes).
+ws.close(1000, &quot;user logged out&quot;);
+</code></pre>
+<p>The <code>3000–4999</code> range is reserved for application-defined close codes — use it to signal app-specific reasons (e.g. <code>4001 = "auth expired"</code>) that your own client can interpret on reconnect.</p>
+<h3 id="25-backpressure-bufferedamount">2.5 Backpressure: bufferedAmount</h3>
+<p>When you call <code>send()</code>, the data may not go out immediately — it's queued in an internal buffer if the network can't keep up. <code>bufferedAmount</code> is the number of bytes still queued:</p>
+<pre><code class="language-javascript">const MAX_BUFFER = 1 &lt;&lt; 20; // 1 MB
+
+function safeSend(ws, data) {
+  // Don't pile data onto a socket that can't drain. Drop, or back off.
+  if (ws.bufferedAmount &gt; MAX_BUFFER) {
+    console.warn(&quot;backpressure: skipping send&quot;);
+    return false;
+  }
+  ws.send(data);
+  return true;
+}
+</code></pre>
+<p>This matters for high-frequency senders — a live dashboard pushing updates, a game loop. If you <code>send()</code> faster than the socket drains, <code>bufferedAmount</code> grows without bound and you'll exhaust memory. We return to backpressure on the server side in <a href="#part-8--production-concerns">Part 8</a>.</p>
+<h3 id="26-reconnection-with-exponential-backoff">2.6 Reconnection with Exponential Backoff</h3>
+<p>The built-in <code>WebSocket</code> does <strong>not</strong> reconnect on its own. When the connection drops (the dreaded <code>1006</code>), it stays closed until you make a new one. Production clients need a reconnection wrapper. The essential ingredients are exponential backoff (don't hammer a server that's down) and jitter (don't let thousands of clients reconnect in lockstep — the "thundering herd," revisited in <a href="#part-9--reliability--edge-cases">Part 9</a>):</p>
+<pre><code class="language-javascript">class ReconnectingSocket {
+  constructor(url, protocols) {
+    this.url = url;
+    this.protocols = protocols;
+    this.attempts = 0;
+    this.maxDelay = 30_000; // cap backoff at 30s
+    this.shouldReconnect = true;
+    this.listeners = { message: [], open: [], close: [] };
+    this.connect();
+  }
+
+  connect() {
+    this.ws = new WebSocket(this.url, this.protocols);
+
+    this.ws.addEventListener(&quot;open&quot;, (e) =&gt; {
+      this.attempts = 0; // reset backoff on a successful connection
+      this.listeners.open.forEach((fn) =&gt; fn(e));
+    });
+
+    this.ws.addEventListener(&quot;message&quot;, (e) =&gt; {
+      this.listeners.message.forEach((fn) =&gt; fn(e));
+    });
+
+    this.ws.addEventListener(&quot;close&quot;, (e) =&gt; {
+      this.listeners.close.forEach((fn) =&gt; fn(e));
+      if (this.shouldReconnect) this.scheduleReconnect();
+    });
+  }
+
+  scheduleReconnect() {
+    this.attempts += 1;
+    // Exponential backoff: 1s, 2s, 4s, 8s … capped, plus random jitter
+    const base = Math.min(this.maxDelay, 1000 * 2 ** (this.attempts - 1));
+    const delay = base / 2 + Math.random() * (base / 2); // 50–100% of base
+    setTimeout(() =&gt; this.connect(), delay);
+  }
+
+  send(data) {
+    if (this.ws.readyState === WebSocket.OPEN) this.ws.send(data);
+  }
+
+  on(event, fn) {
+    this.listeners[event].push(fn);
+  }
+
+  close() {
+    this.shouldReconnect = false; // disable auto-reconnect for an intentional close
+    this.ws.close(1000, &quot;client closing&quot;);
+  }
+}
+
+// Usage
+const conn = new ReconnectingSocket(&quot;wss://example.com/chat&quot;, [&quot;chat.v1&quot;]);
+conn.on(&quot;open&quot;, () =&gt; conn.send(JSON.stringify({ type: &quot;subscribe&quot;, room: &quot;general&quot; })));
+conn.on(&quot;message&quot;, (e) =&gt; render(JSON.parse(e.data)));
+</code></pre>
+<p>This pattern — backoff, jitter, reset-on-open, distinguish-intentional-from-accidental-close — is the foundation. Libraries like <a href="https://github.com/pladaria/reconnecting-websocket"><code>reconnecting-websocket</code></a> (browser) and the auto-reconnect built into Socket.IO (<a href="#part-4--socketio">Part 4</a>) package it up, but you should understand what they're doing. State recovery <em>after</em> reconnecting — replaying missed messages — is a harder problem we cover in <a href="#part-9--reliability--edge-cases">Part 9</a>.</p>
+<hr>
+<h2 id="part-3-nodejs-servers-with-ws">Part 3 — Node.js Servers with <code>ws</code></h2>
+<p><a href="https://github.com/websockets/ws"><code>ws</code></a> is the foundational WebSocket library for Node.js — small, fast, spec-compliant, and the dependency under most higher-level tools (including Socket.IO's WebSocket transport). If you want raw WebSockets on the server with no extra protocol on top, this is the library.</p>
+<p>Node.js has shipped a built-in <code>WebSocket</code> <em>client</em> (the same global API as the browser) since Node 22, but it has <strong>no built-in WebSocket server</strong> — for that you use <code>ws</code>.</p>
+<p>References: <a href="https://github.com/websockets/ws/blob/master/doc/ws.md"><code>ws</code> documentation</a>, <a href="https://www.npmjs.com/package/ws"><code>ws</code> on npm</a>.</p>
+<h3 id="31-a-minimal-server">3.1 A Minimal Server</h3>
+<pre><code class="language-javascript">// npm install ws
+import { WebSocketServer } from &quot;ws&quot;;
+
+const wss = new WebSocketServer({ port: 8080 });
+
+wss.on(&quot;connection&quot;, (ws, req) =&gt; {
+  // `ws` is one client connection; `req` is the original HTTP upgrade request
+  console.log(&quot;client connected from&quot;, req.socket.remoteAddress);
+
+  ws.on(&quot;message&quot;, (data, isBinary) =&gt; {
+    // data is a Buffer. isBinary distinguishes binary frames from text.
+    const text = isBinary ? data : data.toString();
+    console.log(&quot;received:&quot;, text);
+    ws.send(`echo: ${text}`); // reply to just this client
+  });
+
+  ws.on(&quot;close&quot;, (code, reason) =&gt; {
+    console.log(`client gone: ${code} ${reason}`);
+  });
+
+  ws.on(&quot;error&quot;, console.error);
+
+  ws.send(&quot;welcome&quot;); // server speaks first — impossible over plain HTTP
+});
+</code></pre>
+<p>Note that incoming <code>message</code> data is a Node <code>Buffer</code>, not a string — <code>ws</code> doesn't assume text. The <code>isBinary</code> flag tells you whether the frame was a text or binary frame so you can decide whether to <code>.toString()</code> it.</p>
+<h3 id="32-broadcasting">3.2 Broadcasting</h3>
+<p>There's no built-in "send to everyone" — you iterate <code>wss.clients</code>, which is a <code>Set</code> of all connected sockets:</p>
+<pre><code class="language-javascript">import { WebSocketServer, WebSocket } from &quot;ws&quot;;
+
+const wss = new WebSocketServer({ port: 8080 });
+
+function broadcast(message, except) {
+  for (const client of wss.clients) {
+    // Only send to sockets that are actually OPEN, optionally skipping the sender
+    if (client.readyState === WebSocket.OPEN &amp;&amp; client !== except) {
+      client.send(message);
+    }
+  }
+}
+
+wss.on(&quot;connection&quot;, (ws) =&gt; {
+  ws.on(&quot;message&quot;, (data) =&gt; {
+    broadcast(data.toString(), ws); // relay to everyone else
+  });
+});
+</code></pre>
+<p>This naive broadcast is fine for a single server. The moment you run <em>two</em> server processes, clients on process A won't receive messages broadcast on process B — each <code>wss.clients</code> only knows its own connections. Solving that is the subject of <a href="#part-7--scaling-websockets">Part 7</a>.</p>
+<h3 id="33-sharing-a-port-with-an-http-server">3.3 Sharing a Port with an HTTP Server</h3>
+<p>In a real app you serve HTTP (your pages, your REST API) <em>and</em> WebSockets on the same port. Attach <code>ws</code> to an existing <code>http.Server</code>:</p>
+<pre><code class="language-javascript">import { createServer } from &quot;node:http&quot;;
+import { WebSocketServer } from &quot;ws&quot;;
+
+const server = createServer((req, res) =&gt; {
+  res.writeHead(200);
+  res.end(&quot;HTTP and WebSocket on the same port&quot;);
+});
+
+// `ws` will handle the 'upgrade' event on this server automatically
+const wss = new WebSocketServer({ server });
+
+wss.on(&quot;connection&quot;, (ws) =&gt; {
+  ws.send(&quot;connected via the shared HTTP server&quot;);
+});
+
+server.listen(8080);
+</code></pre>
+<p>With Express or Fastify, the same idea applies — those frameworks <em>are</em> an <code>http.Server</code> request handler, so you create the server, pass it to both the framework and <code>ws</code>:</p>
+<pre><code class="language-javascript">import express from &quot;express&quot;;
+import { createServer } from &quot;node:http&quot;;
+import { WebSocketServer } from &quot;ws&quot;;
+
+const app = express();
+app.get(&quot;/health&quot;, (req, res) =&gt; res.send(&quot;ok&quot;));
+
+const server = createServer(app);     // Express handles normal requests
+const wss = new WebSocketServer({ server }); // ws handles upgrades
+
+wss.on(&quot;connection&quot;, (ws) =&gt; ws.send(&quot;hi&quot;));
+
+server.listen(3000);
+</code></pre>
+<h3 id="34-manual-upgrade-handling-for-auth-and-routing">3.4 Manual Upgrade Handling (for Auth and Routing)</h3>
+<p>When you need to authenticate <em>before</em> accepting the connection, or route different URL paths to different WebSocket servers, use <code>noServer: true</code> and handle the HTTP <code>upgrade</code> event yourself. This is the most important production pattern in <code>ws</code>:</p>
+<pre><code class="language-javascript">import { createServer } from &quot;node:http&quot;;
+import { WebSocketServer } from &quot;ws&quot;;
+
+const server = createServer();
+// noServer: we control exactly when handleUpgrade is called
+const chatWss = new WebSocketServer({ noServer: true });
+const feedWss = new WebSocketServer({ noServer: true });
+
+server.on(&quot;upgrade&quot;, (req, socket, head) =&gt; {
+  const { pathname } = new URL(req.url, `http://${req.headers.host}`);
+
+  // Authenticate using the handshake request BEFORE completing the upgrade.
+  // (req.headers has cookies, and you can read query params — see Part 8.)
+  const user = authenticate(req);
+  if (!user) {
+    // Reject the handshake with an HTTP error; no WebSocket is established
+    socket.write(&quot;HTTP/1.1 401 Unauthorized\r\n\r\n&quot;);
+    socket.destroy();
+    return;
+  }
+
+  // Route by path to the right WebSocketServer
+  if (pathname === &quot;/chat&quot;) {
+    chatWss.handleUpgrade(req, socket, head, (ws) =&gt; {
+      ws.user = user; // stash auth context on the socket for later
+      chatWss.emit(&quot;connection&quot;, ws, req);
+    });
+  } else if (pathname === &quot;/feed&quot;) {
+    feedWss.handleUpgrade(req, socket, head, (ws) =&gt; {
+      feedWss.emit(&quot;connection&quot;, ws, req);
+    });
+  } else {
+    socket.destroy(); // unknown path
+  }
+});
+
+chatWss.on(&quot;connection&quot;, (ws) =&gt; ws.send(`welcome ${ws.user.name}`));
+server.listen(8080);
+</code></pre>
+<p>Rejecting at the upgrade stage is strictly better than accepting and then immediately closing: you never establish the connection, you return a real HTTP status the client can read, and you don't pay the cost of a short-lived socket.</p>
+<h3 id="35-heartbeats-detecting-dead-connections">3.5 Heartbeats: Detecting Dead Connections</h3>
+<p>TCP connections can die silently — a client's laptop sleeps, Wi-Fi drops, a NAT times out — without ever sending a Close frame. The server keeps the socket open forever, leaking memory. The fix is the protocol's built-in ping/pong (<a href="#part-1--foundations--the-protocol">Part 1</a>): periodically ping every client and terminate any that didn't pong since the last round.</p>
+<pre><code class="language-javascript">import { WebSocketServer } from &quot;ws&quot;;
+
+const wss = new WebSocketServer({ port: 8080 });
+
+wss.on(&quot;connection&quot;, (ws) =&gt; {
+  ws.isAlive = true;
+  // The client (browser) auto-replies to pings with a pong; ws fires 'pong'
+  ws.on(&quot;pong&quot;, () =&gt; { ws.isAlive = true; });
+});
+
+// Every 30s, reap connections that didn't pong, then ping the rest
+const interval = setInterval(() =&gt; {
+  for (const ws of wss.clients) {
+    if (ws.isAlive === false) {
+      ws.terminate(); // hard close — the connection is dead
+      continue;
+    }
+    ws.isAlive = false;
+    ws.ping(); // browser answers automatically at the protocol level
+  }
+}, 30_000);
+
+wss.on(&quot;close&quot;, () =&gt; clearInterval(interval));
+</code></pre>
+<p><code>terminate()</code> is the abrupt teardown (RST the socket) versus <code>close()</code> which does the polite close handshake. For a connection you've already decided is dead, <code>terminate()</code> is correct. We come back to heartbeats and proxy idle-timeouts in <a href="#part-8--production-concerns">Part 8</a>.</p>
+<h3 id="36-per-message-limits-and-compression">3.6 Per-Message Limits and Compression</h3>
+<pre><code class="language-javascript">import { WebSocketServer } from &quot;ws&quot;;
+
+const wss = new WebSocketServer({
+  port: 8080,
+  maxPayload: 1 * 1024 * 1024, // reject frames larger than 1 MB (DoS guard)
+  perMessageDeflate: {
+    // permessage-deflate compression (RFC 7692). Helps text-heavy traffic,
+    // but costs CPU and memory per connection — benchmark before enabling.
+    threshold: 1024, // only compress messages larger than 1 KB
+  },
+});
+</code></pre>
+<p><code>maxPayload</code> is a basic denial-of-service guard — without it, a malicious client can announce a huge frame and exhaust your memory. Compression (<code>permessage-deflate</code>) can shrink JSON dramatically but adds CPU and per-connection memory overhead; it's off by default in <code>ws</code> for that reason. Measure with your real payloads before turning it on.</p>
+<p>References: <a href="https://github.com/websockets/ws/blob/master/doc/ws.md#new-websocketserveroptions-callback"><code>ws</code> server options</a>, <a href="https://www.rfc-editor.org/rfc/rfc7692">RFC 7692: Compression Extensions</a>.</p>
+<hr>
+<h2 id="part-4-socketio">Part 4 — Socket.IO</h2>
+<p><a href="https://socket.io/">Socket.IO</a> is <strong>not</strong> a WebSocket library — it's a real-time framework that <em>uses</em> WebSockets (and falls back to HTTP long-polling). This distinction trips people up constantly: a Socket.IO client <strong>cannot</strong> talk to a raw <code>ws</code> server, and a raw browser <code>WebSocket</code> <strong>cannot</strong> talk to a Socket.IO server. They speak different application protocols. Socket.IO layers its own message format, handshake, and features on top of the transport (via a lower layer called Engine.IO).</p>
+<p>References: <a href="https://socket.io/docs/v4/">Socket.IO documentation</a>, <a href="https://socket.io/docs/v4/how-it-works/">How Socket.IO works</a>.</p>
+<h3 id="41-what-socketio-adds-over-raw-websockets">4.1 What Socket.IO Adds Over Raw WebSockets</h3>
+<p>Socket.IO exists because raw WebSockets leave a lot for you to build. It provides, out of the box:</p>
+<ul>
+<li><strong>Automatic reconnection</strong> with backoff — the wrapper from <a href="#part-2--the-browser-client-api">Part 2</a>, built in.</li>
+<li><strong>Transport fallback</strong> — if WebSockets are blocked (hostile proxy, ancient browser), it transparently falls back to HTTP long-polling, then upgrades to WebSocket when possible.</li>
+<li><strong>Named events</strong> — emit and listen for <code>"chat message"</code>, <code>"user joined"</code>, etc., instead of hand-rolling a message-type field.</li>
+<li><strong>Acknowledgements</strong> — request-response over the socket, with callbacks (the pattern we build manually in <a href="#part-6--message-patterns--application-design">Part 6</a>).</li>
+<li><strong>Rooms and namespaces</strong> — server-side grouping for targeted broadcasts.</li>
+<li><strong>Automatic JSON (and binary) serialization</strong> — you emit objects, not strings.</li>
+<li><strong>A Redis adapter</strong> for multi-server scaling (<a href="#part-7--scaling-websockets">Part 7</a>).</li>
+</ul>
+<p>The cost: a heavier client, a proprietary wire protocol, and overhead you may not need. The decision guide is in Section 4.6.</p>
+<h3 id="42-server-and-client-basics">4.2 Server and Client Basics</h3>
+<pre><code class="language-javascript">// Server — npm install socket.io
+import { createServer } from &quot;node:http&quot;;
+import { Server } from &quot;socket.io&quot;;
+
+const httpServer = createServer();
+const io = new Server(httpServer, {
+  cors: { origin: &quot;https://example.com&quot; }, // Socket.IO needs CORS for its HTTP polling phase
+});
+
+io.on(&quot;connection&quot;, (socket) =&gt; {
+  console.log(&quot;connected:&quot;, socket.id); // every connection gets a unique id
+
+  // Listen for a named event from this client
+  socket.on(&quot;chat message&quot;, (msg) =&gt; {
+    console.log(&quot;message:&quot;, msg);
+    io.emit(&quot;chat message&quot;, msg); // broadcast to ALL connected clients
+  });
+
+  socket.on(&quot;disconnect&quot;, (reason) =&gt; {
+    console.log(&quot;disconnected:&quot;, reason);
+  });
+});
+
+httpServer.listen(3000);
+</code></pre>
+<pre><code class="language-javascript">// Client — npm install socket.io-client (or load from CDN in the browser)
+import { io } from &quot;socket.io-client&quot;;
+
+const socket = io(&quot;https://example.com&quot;); // auto-connects, auto-reconnects
+
+socket.on(&quot;connect&quot;, () =&gt; console.log(&quot;connected as&quot;, socket.id));
+socket.on(&quot;chat message&quot;, (msg) =&gt; render(msg)); // objects, not strings
+socket.emit(&quot;chat message&quot;, { text: &quot;hello&quot;, user: &quot;alice&quot; });
+</code></pre>
+<p>Notice you emit a plain object and receive a plain object — Socket.IO handles serialization. Compare this with the raw <code>ws</code> version where you <code>JSON.stringify</code>/<code>JSON.parse</code> and dispatch on a type field yourself.</p>
+<h3 id="43-emitting-the-targeting-cheat-sheet">4.3 Emitting: The Targeting Cheat Sheet</h3>
+<p>Socket.IO's real power is the variety of ways to target an emit. This table is worth memorizing:</p>
+<pre><code class="language-javascript">io.on(&quot;connection&quot;, (socket) =&gt; {
+  socket.emit(&quot;event&quot;, data);                    // → just this client
+  io.emit(&quot;event&quot;, data);                         // → every connected client
+  socket.broadcast.emit(&quot;event&quot;, data);           // → everyone EXCEPT this client
+  io.to(&quot;room1&quot;).emit(&quot;event&quot;, data);             // → everyone in room1
+  socket.to(&quot;room1&quot;).emit(&quot;event&quot;, data);         // → room1 except this client
+  io.to(&quot;room1&quot;).to(&quot;room2&quot;).emit(&quot;event&quot;, data); // → union of room1 and room2
+  io.except(&quot;room3&quot;).emit(&quot;event&quot;, data);          // → everyone NOT in room3
+  io.to(someSocketId).emit(&quot;event&quot;, data);         // → one specific socket (its id is a room)
+});
+</code></pre>
+<h3 id="44-rooms">4.4 Rooms</h3>
+<p>A <strong>room</strong> is a server-side label you attach to sockets so you can broadcast to a subset. Rooms are purely a server concept — the client never knows which rooms it's in and can't join them directly (the server decides, which is good for security).</p>
+<pre><code class="language-javascript">io.on(&quot;connection&quot;, (socket) =&gt; {
+  socket.on(&quot;join room&quot;, (roomName) =&gt; {
+    socket.join(roomName);                 // add this socket to the room
+    socket.to(roomName).emit(&quot;system&quot;, `${socket.id} joined`);
+  });
+
+  socket.on(&quot;room message&quot;, ({ room, text }) =&gt; {
+    // Only members of `room` receive this
+    io.to(room).emit(&quot;room message&quot;, { from: socket.id, text });
+  });
+
+  socket.on(&quot;leave room&quot;, (roomName) =&gt; {
+    socket.leave(roomName);
+  });
+});
+</code></pre>
+<p>Every socket automatically joins a room named after its own <code>socket.id</code>, which is how <code>io.to(socketId).emit(...)</code> delivers to a single client. Rooms are the building block for chat channels, per-document collaboration sessions, per-user notification streams, and game lobbies.</p>
+<p>References: <a href="https://socket.io/docs/v4/rooms/">Socket.IO Rooms</a>.</p>
+<h3 id="45-acknowledgements-request-response">4.5 Acknowledgements (Request-Response)</h3>
+<p>WebSockets are message-oriented, not request-response — there's no built-in "reply to this specific message." Socket.IO adds <strong>acknowledgements</strong>: pass a callback as the last argument to <code>emit</code>, and the receiver invokes it to reply.</p>
+<pre><code class="language-javascript">// Client asks and awaits a reply (with a timeout)
+try {
+  const response = await socket.timeout(5000).emitWithAck(&quot;create todo&quot;, { title: &quot;Buy milk&quot; });
+  console.log(&quot;server assigned id:&quot;, response.id);
+} catch (err) {
+  console.error(&quot;server did not ack within 5s&quot;); // handle the timeout
+}
+</code></pre>
+<pre><code class="language-javascript">// Server handles it and acks via the callback
+socket.on(&quot;create todo&quot;, (todo, callback) =&gt; {
+  const saved = db.insert(todo);
+  callback({ id: saved.id, status: &quot;created&quot; }); // this resolves the client's promise
+});
+</code></pre>
+<p>The <code>timeout()</code> is essential — without it, a dropped connection or a server that forgets to call the callback leaves the client's promise pending forever. This is the safe, ergonomic version of the correlation-id pattern we implement by hand for raw WebSockets in <a href="#part-6--message-patterns--application-design">Part 6</a>.</p>
+<p>References: <a href="https://socket.io/docs/v4/emitting-events/#acknowledgements">Socket.IO Acknowledgements</a>.</p>
+<h3 id="46-when-to-use-socketio-vs-raw-ws">4.6 When to Use Socket.IO vs. Raw <code>ws</code></h3>
+<table>
+<thead>
+<tr>
+<th>Use raw <code>ws</code> (or browser <code>WebSocket</code>) when…</th>
+<th>Use Socket.IO when…</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>You control both client and server and want a lean wire protocol</td>
+<td>You want batteries-included reconnection, rooms, and acks without building them</td>
+</tr>
+<tr>
+<td>You need to interoperate with non-Socket.IO clients or a standard subprotocol (GraphQL-WS, MQTT)</td>
+<td>All your clients are your own Socket.IO clients</td>
+</tr>
+<tr>
+<td>Every byte and millisecond matters (games, high-frequency data)</td>
+<td>Developer velocity matters more than wire efficiency</td>
+</tr>
+<tr>
+<td>You're behind infra that fully supports WebSockets</td>
+<td>You must survive hostile proxies that block WebSockets (the long-polling fallback saves you)</td>
+</tr>
+<tr>
+<td>You want the smallest possible client bundle</td>
+<td>The extra client weight is acceptable</td>
+</tr>
+</tbody>
+</table>
+<p>A reasonable default: <strong>start with raw <code>ws</code></strong> if your needs are simple and you control both ends; <strong>reach for Socket.IO</strong> when you find yourself reimplementing rooms, reconnection, and acks — because that's most of what Socket.IO is. Note also that Socket.IO with the long-polling fallback <strong>requires sticky sessions</strong> when running multiple servers, a constraint we unpack in <a href="#part-7--scaling-websockets">Part 7</a>.</p>
+<hr>
+<h2 id="part-5-python-servers">Part 5 — Python Servers</h2>
+<p>Python's WebSocket story is built on <strong>asyncio</strong>: a WebSocket server holds thousands of long-lived connections, and that's exactly the I/O-bound concurrency asyncio is designed for. If async Python isn't second nature yet, read the <a href="PYTHON_CONCURRENCY.md">Python Concurrency</a> guide alongside this part — <code>async def</code>, <code>await</code>, and the event loop are assumed throughout.</p>
+<p>There are four tools worth knowing, in rough order of "lowest-level" to "most batteries-included": the <code>websockets</code> library, Starlette/FastAPI, Django Channels, and <code>python-socketio</code>.</p>
+<h3 id="51-the-websockets-library">5.1 The <code>websockets</code> Library</h3>
+<p><a href="https://websockets.readthedocs.io/"><code>websockets</code></a> is the standalone, asyncio-native WebSocket library — the Python counterpart to Node's <code>ws</code>. It's spec-compliant, well-documented, and has no framework baggage.</p>
+<pre><code class="language-python"># pip install websockets
+import asyncio
+from websockets.asyncio.server import serve
+
+async def handler(websocket):
+    # Iterate messages until the client disconnects. Each `message` is
+    # a str (text frame) or bytes (binary frame).
+    async for message in websocket:
+        print(&quot;received:&quot;, message)
+        await websocket.send(f&quot;echo: {message}&quot;)
+
+async def main():
+    # serve() returns an async context manager; the server runs until cancelled
+    async with serve(handler, &quot;localhost&quot;, 8765):
+        await asyncio.get_running_loop().create_future()  # run forever
+
+asyncio.run(main())
+</code></pre>
+<p>A note on versions, because the API was modernized: the <code>websockets.asyncio.server</code> module shown here is the current (v13+) API. Older code and tutorials use <code>websockets.serve</code> with a two-argument handler <code>async def handler(websocket, path)</code>; in the new API the path lives on <code>websocket.request.path</code> instead. New projects should use the form above; recognize the legacy form when you see it.</p>
+<p><strong>Receiving in two styles</strong> — iterate, or call <code>recv()</code> explicitly:</p>
+<pre><code class="language-python">from websockets.exceptions import ConnectionClosed
+
+async def handler(websocket):
+    try:
+        while True:
+            message = await websocket.recv()  # waits for the next message
+            await websocket.send(process(message))
+    except ConnectionClosed:
+        pass  # client disconnected; clean up here
+</code></pre>
+<p>The <code>async for</code> form is just sugar over <code>recv()</code> in a loop that ends cleanly on disconnect. Catching <code>ConnectionClosed</code> is how you detect the client going away when you call <code>recv()</code>/<code>send()</code> directly.</p>
+<p><strong>Broadcasting</strong> with <code>websockets</code> is, like <code>ws</code>, a matter of keeping your own set of connections:</p>
+<pre><code class="language-python">import asyncio
+from websockets.asyncio.server import serve, broadcast
+
+CONNECTIONS = set()
+
+async def handler(websocket):
+    CONNECTIONS.add(websocket)
+    try:
+        await websocket.wait_closed()  # park here until the client leaves
+    finally:
+        CONNECTIONS.discard(websocket)  # always clean up
+
+async def push_updates():
+    while True:
+        await asyncio.sleep(1)
+        # broadcast() is a library helper that sends to many connections,
+        # skipping any that are slow or already closed
+        broadcast(CONNECTIONS, f&quot;the time is {asyncio.get_event_loop().time():.0f}&quot;)
+
+async def main():
+    async with serve(handler, &quot;localhost&quot;, 8765):
+        await push_updates()
+
+asyncio.run(main())
+</code></pre>
+<p>References: <a href="https://websockets.readthedocs.io/en/stable/"><code>websockets</code> documentation</a>, <a href="https://websockets.readthedocs.io/en/stable/intro/index.html"><code>websockets</code> intro/tutorial</a>.</p>
+<h3 id="52-fastapi-starlette">5.2 FastAPI / Starlette</h3>
+<p>If your app is already a <a href="https://fastapi.tiangolo.com/">FastAPI</a> or <a href="https://www.starlette.io/">Starlette</a> service, you get WebSocket endpoints in the same app, on the same port, sharing the same dependency-injection and middleware. FastAPI's WebSocket support comes straight from Starlette underneath.</p>
+<pre><code class="language-python"># pip install fastapi uvicorn
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+
+app = FastAPI()
+
+@app.websocket(&quot;/ws&quot;)
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()  # complete the handshake — you MUST call this
+    try:
+        while True:
+            data = await websocket.receive_text()   # or receive_bytes / receive_json
+            await websocket.send_text(f&quot;echo: {data}&quot;)
+    except WebSocketDisconnect:
+        print(&quot;client disconnected&quot;)
+</code></pre>
+<p>Run it with <code>uvicorn main:app</code>. The <code>receive_json</code>/<code>send_json</code> helpers are particularly handy — they do the <code>json.dumps</code>/<code>json.loads</code> for you, matching the JSON-envelope pattern from <a href="#part-6--message-patterns--application-design">Part 6</a>.</p>
+<p>For broadcasting you maintain a connection registry — the idiomatic FastAPI approach is a small <code>ConnectionManager</code>:</p>
+<pre><code class="language-python">from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+
+class ConnectionManager:
+    def __init__(self) -&gt; None:
+        self.active: list[WebSocket] = []
+
+    async def connect(self, ws: WebSocket) -&gt; None:
+        await ws.accept()
+        self.active.append(ws)
+
+    def disconnect(self, ws: WebSocket) -&gt; None:
+        self.active.remove(ws)
+
+    async def broadcast(self, message: str) -&gt; None:
+        for connection in self.active:
+            await connection.send_text(message)
+
+manager = ConnectionManager()
+app = FastAPI()
+
+@app.websocket(&quot;/ws/{room}&quot;)
+async def chat(websocket: WebSocket, room: str):
+    await manager.connect(websocket)
+    try:
+        while True:
+            text = await websocket.receive_text()
+            await manager.broadcast(f&quot;[{room}] {text}&quot;)
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+</code></pre>
+<p>This single-process <code>ConnectionManager</code> is the FastAPI equivalent of iterating <code>wss.clients</code>, and it hits the same wall at multi-server scale (<a href="#part-7--scaling-websockets">Part 7</a>).</p>
+<p>References: <a href="https://fastapi.tiangolo.com/advanced/websockets/">FastAPI WebSockets</a>, <a href="https://www.starlette.io/websockets/">Starlette WebSockets</a>.</p>
+<h3 id="53-django-channels">5.3 Django Channels</h3>
+<p>Plain Django is synchronous and built around the request-response cycle — it can't hold WebSocket connections. <a href="https://channels.readthedocs.io/">Django Channels</a> extends Django to ASGI and adds <strong>consumers</strong> (the WebSocket equivalent of views) and a <strong>channel layer</strong> (a shared message bus, almost always backed by Redis) that lets consumers across processes talk to each other.</p>
+<pre><code class="language-python"># consumers.py — pip install channels channels-redis
+from channels.generic.websocket import AsyncJsonWebsocketConsumer
+
+class ChatConsumer(AsyncJsonWebsocketConsumer):
+    async def connect(self):
+        self.room = self.scope[&quot;url_route&quot;][&quot;kwargs&quot;][&quot;room&quot;]
+        self.group = f&quot;chat_{self.room}&quot;
+        # Join a group — the channel layer's version of a &quot;room&quot;
+        await self.channel_layer.group_add(self.group, self.channel_name)
+        await self.accept()
+
+    async def disconnect(self, code):
+        await self.channel_layer.group_discard(self.group, self.channel_name)
+
+    async def receive_json(self, content):
+        # Fan the message out to everyone in the group, across all server processes
+        await self.channel_layer.group_send(
+            self.group,
+            {&quot;type&quot;: &quot;chat.message&quot;, &quot;text&quot;: content[&quot;text&quot;]},
+        )
+
+    async def chat_message(self, event):
+        # Handler invoked for each &quot;chat.message&quot; the group receives.
+        # The dotted &quot;chat.message&quot; type maps to this chat_message method.
+        await self.send_json({&quot;text&quot;: event[&quot;text&quot;]})
+</code></pre>
+<pre><code class="language-python"># routing.py
+from django.urls import re_path
+from .consumers import ChatConsumer
+
+websocket_urlpatterns = [
+    re_path(r&quot;ws/chat/(?P&lt;room&gt;\w+)/$&quot;, ChatConsumer.as_asgi()),
+]
+</code></pre>
+<p>The key insight: Channels' <strong>channel layer already solves the multi-server broadcast problem</strong> that we have to bolt on manually for <code>ws</code> and FastAPI. <code>group_send</code> reaches every consumer in the group regardless of which process holds the connection, because the channel layer routes through Redis. That makes Channels the most "scales out of the box" option here — at the cost of buying into Django and ASGI. Channels is the right pick when you already have a Django app and want real-time features that share its models, auth, and ORM.</p>
+<p>References: <a href="https://channels.readthedocs.io/en/latest/">Django Channels documentation</a>, <a href="https://channels.readthedocs.io/en/latest/topics/consumers.html">Channels consumers</a>, <a href="https://channels.readthedocs.io/en/latest/topics/channel_layers.html">Channel layers</a>.</p>
+<h3 id="54-python-socketio">5.4 python-socketio</h3>
+<p>If your frontend uses the Socket.IO client (or you want Socket.IO's features in a Python backend), <a href="https://python-socketio.readthedocs.io/"><code>python-socketio</code></a> is a from-scratch Python implementation of the Socket.IO protocol. It interoperates with the JavaScript Socket.IO client and server, supports rooms, namespaces, and acknowledgements, and has a Redis manager for scaling.</p>
+<pre><code class="language-python"># pip install python-socketio uvicorn
+import socketio
+
+sio = socketio.AsyncServer(async_mode=&quot;asgi&quot;, cors_allowed_origins=&quot;*&quot;)
+app = socketio.ASGIApp(sio)  # mount under uvicorn
+
+@sio.event
+async def connect(sid, environ, auth):
+    print(&quot;connected:&quot;, sid)
+
+@sio.event
+async def chat_message(sid, data):
+    await sio.emit(&quot;chat message&quot;, data)  # broadcast to all
+
+@sio.event
+async def join(sid, room):
+    await sio.enter_room(sid, room)
+    await sio.emit(&quot;system&quot;, f&quot;{sid} joined&quot;, room=room)
+
+@sio.event
+async def disconnect(sid):
+    print(&quot;disconnected:&quot;, sid)
+</code></pre>
+<p>This is the Python mirror of the Socket.IO server from <a href="#part-4--socketio">Part 4</a>, and the same trade-offs apply: you get rooms/acks/reconnection for free, but you're committed to the Socket.IO protocol on both ends.</p>
+<p>References: <a href="https://python-socketio.readthedocs.io/en/stable/">python-socketio documentation</a>, <a href="https://python-socketio.readthedocs.io/en/stable/server.html">python-socketio server API</a>.</p>
+<h3 id="55-choosing-among-the-python-options">5.5 Choosing Among the Python Options</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Reach for it when…</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>websockets</code></td>
+<td>You want a standalone, standards-compliant WebSocket server with no framework. Lowest overhead.</td>
+</tr>
+<tr>
+<td>FastAPI / Starlette</td>
+<td>You already have (or want) a FastAPI/Starlette API and want WebSockets in the same app.</td>
+</tr>
+<tr>
+<td>Django Channels</td>
+<td>You have a Django app; you want real-time that shares Django's auth/ORM, with multi-server broadcast solved by the channel layer.</td>
+</tr>
+<tr>
+<td>python-socketio</td>
+<td>Your clients use the Socket.IO protocol, or you want rooms/acks/fallback without building them.</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="part-6-message-patterns-application-design">Part 6 — Message Patterns &amp; Application Design</h2>
+<p>The raw APIs give you <code>send(bytes)</code> and <code>onmessage</code>. Everything an application actually needs — typed messages, channels, replies, presence — you design on top. This part covers the patterns that recur in every non-trivial WebSocket app, independent of language or library.</p>
+<h3 id="61-design-a-message-envelope-first">6.1 Design a Message Envelope First</h3>
+<p>Raw WebSocket gives you an undifferentiated stream of messages. Before writing any handler, define an <strong>envelope</strong>: a consistent structure that says what kind of message this is and carries its data. The near-universal choice is a JSON object with a <code>type</code> discriminator:</p>
+<pre><code class="language-json">{ &quot;type&quot;: &quot;chat.message&quot;, &quot;id&quot;: &quot;01J...&quot;, &quot;payload&quot;: { &quot;room&quot;: &quot;general&quot;, &quot;text&quot;: &quot;hi&quot; } }
+</code></pre>
+<pre><code class="language-javascript">// Server-side dispatch on the type field — the WebSocket equivalent of routing
+const HANDLERS = {
+  &quot;chat.message&quot;: handleChatMessage,
+  &quot;chat.join&quot;:    handleJoin,
+  &quot;presence.ping&quot;: handlePresencePing,
+};
+
+ws.on(&quot;message&quot;, (raw) =&gt; {
+  let msg;
+  try {
+    msg = JSON.parse(raw);
+  } catch {
+    return ws.close(1003, &quot;invalid JSON&quot;); // 1003 = unsupported data
+  }
+  const handler = HANDLERS[msg.type];
+  if (!handler) return ws.send(JSON.stringify({ type: &quot;error&quot;, error: &quot;unknown type&quot; }));
+  handler(ws, msg.payload, msg.id);
+});
+</code></pre>
+<p>Include a few things in the envelope from day one, because retrofitting them hurts:</p>
+<ul>
+<li><strong><code>type</code></strong> — the discriminator. Namespacing (<code>chat.message</code>, <code>presence.join</code>) keeps it organized as the protocol grows.</li>
+<li><strong><code>id</code></strong> — a unique message id. Enables acknowledgements (Section 6.3), deduplication, and at-least-once delivery (<a href="#part-9--reliability--edge-cases">Part 9</a>).</li>
+<li><strong>A version</strong>, somewhere — even just <code>"v": 1</code>. Wire protocols outlive your assumptions; a version field lets clients and servers evolve independently.</li>
+</ul>
+<h3 id="62-pubsub-and-channels">6.2 Pub/Sub and Channels</h3>
+<p>The dominant WebSocket pattern is publish-subscribe: clients <strong>subscribe</strong> to topics (channels/rooms), publishers <strong>publish</strong> to a topic, and the server fans each message out to that topic's subscribers. Socket.IO rooms (<a href="#part-4--socketio">Part 4</a>) and Channels groups (<a href="#part-5--python-servers">Part 5</a>) are pub/sub primitives; with raw <code>ws</code> you maintain the topic→subscribers map yourself:</p>
+<pre><code class="language-javascript">// Topic → Set of subscribed sockets
+const topics = new Map();
+
+function subscribe(ws, topic) {
+  if (!topics.has(topic)) topics.set(topic, new Set());
+  topics.get(topic).add(ws);
+  (ws.topics ??= new Set()).add(topic); // track on the socket for cleanup
+}
+
+function publish(topic, message) {
+  const subs = topics.get(topic);
+  if (!subs) return;
+  const data = JSON.stringify(message);
+  for (const ws of subs) if (ws.readyState === ws.OPEN) ws.send(data);
+}
+
+// On disconnect, remove the socket from every topic it joined (avoid leaks)
+function cleanup(ws) {
+  for (const topic of ws.topics ?? []) topics.get(topic)?.delete(ws);
+}
+</code></pre>
+<p>This in-process map works for one server. Across servers, "publish to a topic" must reach subscribers on <em>other</em> processes — which is exactly where a Redis pub/sub backplane comes in (<a href="#part-7--scaling-websockets">Part 7</a>). The application-level pattern stays identical; only the fan-out mechanism changes.</p>
+<h3 id="63-request-response-over-a-message-stream">6.3 Request-Response over a Message Stream</h3>
+<p>WebSockets are bidirectional message streams, not request-response — there's no built-in way to say "this message is a reply to that one." When you need RPC semantics (ask the server something, await its answer), implement <strong>correlation ids</strong>: tag each request with a unique id; the server echoes that id in its response; the client matches replies to pending requests.</p>
+<pre><code class="language-javascript">// Client-side RPC wrapper over a raw WebSocket
+const pending = new Map(); // id → { resolve, reject, timer }
+
+function request(ws, type, payload, timeoutMs = 5000) {
+  const id = crypto.randomUUID();
+  return new Promise((resolve, reject) =&gt; {
+    const timer = setTimeout(() =&gt; {
+      pending.delete(id);
+      reject(new Error(&quot;request timed out&quot;)); // never leave a promise dangling
+    }, timeoutMs);
+    pending.set(id, { resolve, reject, timer });
+    ws.send(JSON.stringify({ type, id, payload }));
+  });
+}
+
+ws.addEventListener(&quot;message&quot;, (e) =&gt; {
+  const msg = JSON.parse(e.data);
+  const p = pending.get(msg.id);
+  if (p) {                       // it's a reply to one of our requests
+    clearTimeout(p.timer);
+    pending.delete(msg.id);
+    p.resolve(msg.payload);
+  } else {
+    handleServerPush(msg);       // it's an unsolicited server push
+  }
+});
+
+// Usage: const todo = await request(ws, &quot;todo.create&quot;, { title: &quot;Buy milk&quot; });
+</code></pre>
+<p>This is precisely what Socket.IO acknowledgements (<a href="#part-4--socketio">Part 4</a>) give you for free. If you find yourself building this by hand on top of <code>ws</code>, it's a signal to evaluate whether Socket.IO would pay for itself. The timeout is non-negotiable — without it, every dropped reply is a permanent memory leak of a pending promise.</p>
+<h3 id="64-presence">6.4 Presence</h3>
+<p>"Who's online / who's in this room" is a deceptively tricky feature. The naive version — add to a set on connect, remove on disconnect — breaks on the <code>1006</code> abnormal-closure case, where the disconnect event may be delayed by minutes (until a heartbeat times out). A robust presence system therefore leans on:</p>
+<ul>
+<li><strong>Heartbeat-driven expiry</strong> rather than only the disconnect event — treat a client as present only if it has pinged recently, so a silently-dead connection ages out (<a href="#part-8--production-concerns">Part 8</a> covers heartbeats).</li>
+<li><strong>A shared store</strong> (Redis) when you have multiple servers, since presence must be global, not per-process. A common implementation is a Redis sorted set per room, scored by last-seen timestamp; a periodic sweep evicts entries older than the heartbeat interval, and the membership is published to the room on change.</li>
+</ul>
+<p>Presence is where the edge cases of <a href="#part-9--reliability--edge-cases">Part 9</a> and the scaling of <a href="#part-7--scaling-websockets">Part 7</a> collide, so we defer the full treatment — but flag it now because "show who's here" is one of the most-requested real-time features and one of the most commonly gotten wrong.</p>
+<h3 id="65-framing-json-messagepack-or-protobuf">6.5 Framing: JSON, MessagePack, or Protobuf</h3>
+<p>JSON is the default message format and the right starting point: human-readable, debuggable in the browser network inspector, supported everywhere. But for high-frequency or bandwidth-sensitive workloads, a binary format cuts size and parse cost:</p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Size</th>
+<th>Human-readable</th>
+<th>Schema</th>
+<th>Reach for it when…</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>JSON</strong> (text frame)</td>
+<td>Largest</td>
+<td>Yes</td>
+<td>No</td>
+<td>Default. Debuggability wins until proven otherwise.</td>
+</tr>
+<tr>
+<td><strong>MessagePack</strong> (binary)</td>
+<td>~Smaller</td>
+<td>No</td>
+<td>No</td>
+<td>Drop-in denser JSON; same dynamic shape, smaller and faster to parse.</td>
+</tr>
+<tr>
+<td><strong>Protocol Buffers</strong> (binary)</td>
+<td>Smallest</td>
+<td>No</td>
+<td>Yes (<code>.proto</code>)</td>
+<td>High-throughput, stable schema, cross-language contracts worth enforcing.</td>
+</tr>
+</tbody>
+</table>
+<p>The trade-off is debuggability and flexibility versus size and speed. A pragmatic path: ship JSON first, and only move the hot message types (the position updates in a game, the tick stream in a dashboard) to MessagePack or Protobuf once profiling shows the frame size or parse time actually matters. You can even mix — JSON text frames for control messages, binary frames for the high-volume data — since the opcode (<a href="#part-1--foundations--the-protocol">Part 1</a>) tells the receiver which is which.</p>
+<p>References: <a href="https://msgpack.org/">MessagePack</a>, <a href="https://protobuf.dev/">Protocol Buffers</a>.</p>
+<hr>
+<h2 id="part-7-scaling-websockets">Part 7 — Scaling WebSockets</h2>
+<p>Everything so far assumed one server process. That assumption breaks the moment you need a second one — and WebSockets break in a way that stateless HTTP does not. This part is the most important operational content in the guide.</p>
+<h3 id="71-why-websockets-are-hard-to-scale">7.1 Why WebSockets Are Hard to Scale</h3>
+<p>A stateless HTTP request can go to any server behind a load balancer; nothing is remembered between requests. A WebSocket is the opposite: it's a <strong>long-lived, stateful connection pinned to one specific server process</strong> for its entire lifetime. That single fact creates two distinct problems:</p>
+<ol>
+<li>
+<p><strong>The broadcast problem.</strong> Client Alice is connected to server A; client Bob to server B. Alice sends a chat message. Server A can deliver it to everyone on server A — but it has no idea Bob even exists. The in-process <code>clients</code> set, the <code>ConnectionManager</code>, the topics map — they only know their own process's connections. Broadcasting across processes requires a shared message bus.</p>
+</li>
+<li>
+<p><strong>The routing problem.</strong> When you have N servers, the load balancer must decide which one a new connection goes to, and (for some setups) keep a given client pinned there.</p>
+</li>
+</ol>
+<pre><code class="language-text">        ┌─────────────┐
+        │ Load Balancer│
+        └──┬───────┬───┘
+           │       │
+     ┌─────▼──┐ ┌──▼─────┐
+     │Server A│ │Server B│
+     │ Alice  │ │  Bob   │   ← Alice's message reaches Bob only if
+     └────┬───┘ └───┬────┘     A and B share a backplane
+          │         │
+          └────┬────┘
+          ┌────▼────┐
+          │  Redis  │  ← pub/sub backplane: every server publishes here
+          │ pub/sub │     and subscribes to relay to its local clients
+          └─────────┘
+</code></pre>
+<h3 id="72-the-redis-pubsub-backplane">7.2 The Redis Pub/Sub Backplane</h3>
+<p>The standard solution to the broadcast problem is a <strong>backplane</strong> (also called an adapter): every server subscribes to a shared Redis channel; when any server wants to broadcast, it publishes to Redis instead of only iterating its local connections; every server receives the published message and relays it to <em>its</em> connected clients. Now Alice's message reaches Bob.</p>
+<p>Redis Pub/Sub is the most common backplane because it's simple, fast, and you probably already run Redis. (See the <a href="REDIS_STUDY_GUIDE.md">Redis</a> guide for Pub/Sub mechanics and its caveats — notably that classic Pub/Sub is fire-and-forget: a server that's down misses messages sent while it was gone.)</p>
+<p>Most frameworks give you this with a few lines:</p>
+<pre><code class="language-javascript">// Socket.IO with the Redis adapter — npm install @socket.io/redis-adapter redis
+import { Server } from &quot;socket.io&quot;;
+import { createClient } from &quot;redis&quot;;
+import { createAdapter } from &quot;@socket.io/redis-adapter&quot;;
+
+const io = new Server(httpServer);
+const pubClient = createClient({ url: &quot;redis://localhost:6379&quot; });
+const subClient = pubClient.duplicate(); // pub/sub needs separate connections
+await Promise.all([pubClient.connect(), subClient.connect()]);
+
+io.adapter(createAdapter(pubClient, subClient));
+
+// Now io.to(&quot;room&quot;).emit(...) reaches clients on EVERY server, not just this one.
+</code></pre>
+<pre><code class="language-python"># Django Channels already uses Redis as its channel layer — this is why
+# group_send() in Part 5 transparently worked across servers. settings.py:
+CHANNEL_LAYERS = {
+    &quot;default&quot;: {
+        &quot;BACKEND&quot;: &quot;channels_redis.core.RedisChannelLayer&quot;,
+        &quot;CONFIG&quot;: {&quot;hosts&quot;: [(&quot;localhost&quot;, 6379)]},
+    },
+}
+</code></pre>
+<pre><code class="language-python"># python-socketio with the Redis manager
+import socketio
+
+mgr = socketio.AsyncRedisManager(&quot;redis://localhost:6379&quot;)
+sio = socketio.AsyncServer(client_manager=mgr, async_mode=&quot;asgi&quot;)
+# sio.emit(..., room=...) now spans all servers
+</code></pre>
+<p>With raw <code>ws</code>/<code>websockets</code>, you wire the backplane yourself: subscribe to Redis on startup and relay incoming Redis messages to local subscribers; in your <code>publish()</code> function, <code>PUBLISH</code> to Redis instead of (or in addition to) the local fan-out. The application pub/sub pattern from <a href="#part-6--message-patterns--application-design">Part 6</a> is unchanged; you've just swapped the in-process Map for a Redis channel.</p>
+<p>References: <a href="https://socket.io/docs/v4/redis-adapter/">Socket.IO Redis adapter</a>, <a href="https://socket.io/docs/v4/using-multiple-nodes/">Socket.IO scaling overview</a>, <a href="https://channels.readthedocs.io/en/latest/topics/channel_layers.html">Channels channel layers</a>.</p>
+<h3 id="73-sticky-sessions">7.3 Sticky Sessions</h3>
+<p>The routing problem has two cases:</p>
+<ul>
+<li>
+<p><strong>Pure WebSocket (no fallback):</strong> a WebSocket is a single TCP connection established by the upgrade and kept open. Once the load balancer routes the upgrade to server A, that one connection naturally stays on A — there's nothing to "stick." You just need an L4/L7 load balancer that correctly proxies the upgrade.</p>
+</li>
+<li>
+<p><strong>Socket.IO (or anything with HTTP long-polling fallback):</strong> here a single logical "connection" is actually a <em>series of HTTP requests</em> during the polling phase and the upgrade. If request 2 lands on server B while the session was created on server A, B has never heard of it and the handshake fails. So you <strong>must</strong> enable <strong>sticky sessions</strong> (session affinity) — configure the load balancer to route all requests from a given client to the same server, typically via a cookie or an IP hash.</p>
+</li>
+</ul>
+<pre><code class="language-nginx"># Nginx: sticky sessions by client IP hash, plus the upgrade headers WebSockets need
+upstream app {
+    ip_hash;                      # pin each client IP to one backend
+    server 10.0.0.1:3000;
+    server 10.0.0.2:3000;
+}
+server {
+    location / {
+        proxy_pass http://app;
+        proxy_http_version 1.1;            # required for upgrade
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection &quot;upgrade&quot;;
+        proxy_set_header Host $host;
+        proxy_read_timeout 3600s;          # don't kill idle WS connections (see 8.6)
+    }
+}
+</code></pre>
+<p>This is also why the simpler your transport, the simpler your scaling: pure <code>wss://</code> connections need a backplane for broadcast but not necessarily sticky sessions; Socket.IO with fallback needs both.</p>
+<h3 id="74-connection-limits-and-the-c10kc10m-problem">7.4 Connection Limits and the C10K/C10M Problem</h3>
+<p>Each WebSocket connection consumes a file descriptor and some memory for buffers and bookkeeping. The classic "C10K problem" (10,000 concurrent connections on one box) was solved long ago by event-driven I/O — both Node's libuv and Python's asyncio are built for exactly this. Modern servers reach hundreds of thousands of connections per node, with the real ceilings being:</p>
+<ul>
+<li><strong>File descriptors</strong> — every connection is an open socket. Raise the limits (<code>ulimit -n</code>, and the systemd <code>LimitNOFILE</code> setting shown in the <a href="CADDY_STUDY_GUIDE.md">Caddy</a> guide) from the default ~1024 to a number well above your target connection count.</li>
+<li><strong>Memory per connection</strong> — buffers plus your per-connection application state. At 100k connections, even 10 KB each is 1 GB. Keep per-connection state lean.</li>
+<li><strong>Ephemeral ports on the <em>client</em> side</strong> — a single load balancer or proxy connecting to a backend is limited to ~64k source ports per destination tuple, which can bite at very high fan-in.</li>
+</ul>
+<p>When you outgrow one node, you scale horizontally (more nodes + the backplane from 7.2) rather than trying to cram everything onto one giant server — horizontal scaling also gives you redundancy when a node dies and drops all its connections (clients reconnect, ideally to a survivor; see <a href="#part-9--reliability--edge-cases">Part 9</a>).</p>
+<h3 id="75-a-note-on-edge-and-serverless">7.5 A Note on Edge and Serverless</h3>
+<p>Traditional serverless functions (short-lived, request-scoped) are a poor fit for WebSockets, which need a process that lives as long as the connection. Two paths around this:</p>
+<ul>
+<li><strong>Managed WebSocket gateways</strong> — e.g. AWS API Gateway's WebSocket APIs invoke a Lambda per <em>message</em> while the gateway holds the connection, or managed services like Ably/Pusher that operate the connection layer for you.</li>
+<li><strong>Stateful edge runtimes</strong> — Cloudflare Durable Objects give each connection (or room) a single addressable, stateful actor at the edge, sidestepping the broadcast problem by design; see the <a href="CLOUDFLARE_STUDY_GUIDE.md">Cloudflare</a> guide. This is an increasingly popular way to run rooms without operating your own backplane.</li>
+</ul>
+<hr>
+<h2 id="part-8-production-concerns">Part 8 — Production Concerns</h2>
+<p>The gap between a working WebSocket demo and a production service is mostly this part: authentication, origin security, limits, heartbeats, and getting the connection cleanly through your proxies.</p>
+<h3 id="81-authentication-the-header-problem">8.1 Authentication: The Header Problem</h3>
+<p>Recall the constraint from <a href="#part-2--the-browser-client-api">Part 2</a>: the browser <code>WebSocket</code> constructor <strong>cannot set custom headers</strong>, so the usual <code>Authorization: Bearer &amp;lt;token&amp;gt;</code> is simply unavailable. There are four real options, each with trade-offs:</p>
+<p><strong>1. Cookie-based.</strong> The handshake <em>is</em> an HTTP request, so the browser attaches cookies for the target origin automatically. If your users already have a session cookie, the WebSocket handshake carries it for free, and you authenticate in the upgrade handler. The catch is cross-site request forgery — because cookies are sent automatically, you <strong>must</strong> also validate the <code>Origin</code> header (Section 8.2) to prevent the hijacking attack below. Use <code>SameSite</code> cookies as defense in depth.</p>
+<p><strong>2. Token in the query string.</strong> <code>wss://example.com/ws?token=&amp;lt;jwt&amp;gt;</code>. Simple and works everywhere. The downside is that URLs (including query strings) tend to be logged — by proxies, load balancers, server access logs — so a token here can leak into logs. Mitigate by using <strong>short-lived, single-use tokens</strong>: the client fetches a 30-second connect-token from an authenticated HTTP endpoint, then immediately uses it for the WebSocket handshake.</p>
+<p><strong>3. Subprotocol smuggling.</strong> The <code>Sec-WebSocket-Protocol</code> header <em>is</em> settable from the browser (it's the one application-controlled handshake header). You can pass a token as a fake subprotocol — the trick the Kubernetes API server uses. It's a bit of a hack but keeps the token out of the URL:</p>
+<pre><code class="language-javascript">// Token rides in the subprotocol list; the server reads and validates it,
+// then echoes back the &quot;real&quot; subprotocol it selected.
+const ws = new WebSocket(&quot;wss://example.com/ws&quot;, [`auth.token.${jwt}`, &quot;chat.v1&quot;]);
+</code></pre>
+<p><strong>4. First-message authentication.</strong> Accept the connection, but require an <code>auth</code> message as the very first thing the client sends; close the connection (e.g. code <code>4001</code>) if it doesn't arrive within a few seconds or the credentials are invalid. This keeps the token out of the URL and headers entirely. The cost is a brief window where an unauthenticated connection exists, so rate-limit and time-box it.</p>
+<pre><code class="language-javascript">// First-message auth, server side (ws)
+wss.on(&quot;connection&quot;, (ws) =&gt; {
+  let authed = false;
+  const timer = setTimeout(() =&gt; { if (!authed) ws.close(4001, &quot;auth timeout&quot;); }, 5000);
+
+  ws.on(&quot;message&quot;, (raw) =&gt; {
+    const msg = JSON.parse(raw);
+    if (!authed) {
+      const user = verifyJwt(msg.token);          // first message MUST be auth
+      if (msg.type !== &quot;auth&quot; || !user) return ws.close(4001, &quot;auth failed&quot;);
+      authed = true;
+      ws.user = user;
+      clearTimeout(timer);
+      return ws.send(JSON.stringify({ type: &quot;auth.ok&quot; }));
+    }
+    handleMessage(ws, msg); // only reached after successful auth
+  });
+});
+</code></pre>
+<p><strong>Whichever you choose, prefer authenticating at the handshake</strong> (options 1–3, in the upgrade handler from <a href="#part-3--nodejs-servers-with-ws">Part 3</a>) over first-message auth when you can — rejecting before the WebSocket exists is cleaner and cheaper. And remember tokens <strong>expire mid-connection</strong>: for long-lived sockets, plan to re-validate periodically or push a "re-authenticate" message, then close with an app-specific code (e.g. <code>4002</code>) if the client doesn't.</p>
+<h3 id="82-origin-checking-and-cross-site-websocket-hijacking">8.2 Origin Checking and Cross-Site WebSocket Hijacking</h3>
+<p>This is the security issue most teams miss. <strong>The browser same-origin policy does not apply to WebSockets, and there is no CORS preflight for them.</strong> Any web page, on any origin, can open a WebSocket to your server — and because cookies are sent automatically (Section 8.1, option 1), that page can connect <em>as your logged-in user</em>. This attack is <strong>Cross-Site WebSocket Hijacking (CSWSH)</strong>.</p>
+<p>The server's defense is to <strong>validate the <code>Origin</code> header during the handshake</strong> and reject origins you don't trust:</p>
+<pre><code class="language-javascript">const ALLOWED_ORIGINS = new Set([&quot;https://example.com&quot;, &quot;https://app.example.com&quot;]);
+
+server.on(&quot;upgrade&quot;, (req, socket, head) =&gt; {
+  if (!ALLOWED_ORIGINS.has(req.headers.origin)) {
+    socket.write(&quot;HTTP/1.1 403 Forbidden\r\n\r\n&quot;);
+    socket.destroy();
+    return;
+  }
+  // ... proceed with handleUpgrade
+});
+</code></pre>
+<p>Origin checking is mandatory for any cookie-authenticated WebSocket. Note that <code>Origin</code> is set by browsers and can be forged by non-browser clients — so it defends against the <em>browser-based</em> hijacking attack specifically, which is exactly the threat for cookie auth. Token-based schemes (options 2–4) are inherently less exposed to CSWSH because a malicious page can't read another origin's tokens, but you should still check <code>Origin</code> as defense in depth.</p>
+<p>References: <a href="https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/11-Client-side_Testing/10-Testing_WebSockets">OWASP: Testing for Cross-Site WebSocket Hijacking</a>, <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API/Writing_WebSocket_servers#security_considerations">MDN: WebSocket security</a>.</p>
+<h3 id="83-authorization">8.3 Authorization</h3>
+<p>Authentication says <em>who</em> the client is; authorization says <em>what they can do</em>. WebSocket authorization happens at two moments:</p>
+<ul>
+<li><strong>At connect/subscribe time</strong> — when a client asks to join room <code>project-42</code>, verify they're a member before calling <code>socket.join</code>. Never trust a client-supplied room name without an access check; otherwise anyone can subscribe to anyone's data.</li>
+<li><strong>At message time</strong> — each incoming message is an action. A "delete message" command must check that this user owns that message, exactly as a REST <code>DELETE</code> endpoint would. A common mistake is to authorize the connection once and then trust every subsequent message; treat each message as an independent authorized action.</li>
+</ul>
+<h3 id="84-input-validation-and-rate-limiting">8.4 Input Validation and Rate Limiting</h3>
+<p>Every message is untrusted input. Validate the envelope and payload against a schema (Zod in TypeScript, Pydantic in Python) and reject malformed messages — don't let a missing field throw deep in a handler. And because a single open socket can fire thousands of messages a second, <strong>rate-limit per connection</strong>:</p>
+<pre><code class="language-javascript">// Token-bucket rate limit per socket
+function makeRateLimiter(capacity = 20, refillPerSec = 10) {
+  let tokens = capacity, last = Date.now();
+  return () =&gt; {
+    const now = Date.now();
+    tokens = Math.min(capacity, tokens + ((now - last) / 1000) * refillPerSec);
+    last = now;
+    if (tokens &lt; 1) return false; // over the limit — drop or close
+    tokens -= 1;
+    return true;
+  };
+}
+
+wss.on(&quot;connection&quot;, (ws) =&gt; {
+  const allow = makeRateLimiter();
+  ws.on(&quot;message&quot;, (raw) =&gt; {
+    if (!allow()) return ws.close(1008, &quot;rate limit exceeded&quot;); // 1008 = policy violation
+    handle(ws, raw);
+  });
+});
+</code></pre>
+<p>Also cap message size (<code>maxPayload</code> in <code>ws</code>, Section 3.6) so a client can't send a multi-gigabyte frame to exhaust memory.</p>
+<h3 id="85-backpressure-on-the-server">8.5 Backpressure on the Server</h3>
+<p><a href="#part-2--the-browser-client-api">Part 2</a> covered client-side backpressure; the server has the same problem, magnified. If you broadcast faster than a slow client can receive, that client's send buffer grows without bound and can take your server's memory with it. Watch the buffer and shed load:</p>
+<pre><code class="language-javascript">const MAX_BUFFER = 5 * 1024 * 1024; // 5 MB per socket
+
+function sendOrDrop(ws, data) {
+  if (ws.bufferedAmount &gt; MAX_BUFFER) {
+    // This client can't keep up. For a live feed, dropping is correct —
+    // the next update supersedes this one anyway. For critical data,
+    // disconnect them and let them reconnect + resync (Part 9).
+    return;
+  }
+  ws.send(data);
+}
+</code></pre>
+<p>The right policy depends on the data: for a live dashboard or game, <strong>drop stale updates</strong> (newest wins). For an event log where every message matters, <strong>disconnect the slow consumer</strong> and have it resync on reconnect rather than buffering unboundedly. Never let an unbounded buffer be the outcome.</p>
+<h3 id="86-heartbeats-and-idle-timeouts">8.6 Heartbeats and Idle Timeouts</h3>
+<p>Two independent reasons to send periodic ping/pong (<a href="#part-3--nodejs-servers-with-ws">Part 3</a> showed the server loop):</p>
+<ol>
+<li><strong>Detect dead connections.</strong> A half-open TCP connection (sleeping laptop, dropped Wi-Fi) looks alive to the server until you try to write to it. Heartbeats surface the death promptly so you can free resources and update presence.</li>
+<li><strong>Keep intermediaries from killing idle connections.</strong> Load balancers and proxies close connections they consider idle. AWS ALB defaults to 60 seconds; many proxies default to 60–120s. A WebSocket that's quiet for longer than that idle timeout gets reaped by the proxy even though both endpoints think it's fine. A heartbeat well under the smallest idle timeout in your path keeps the connection "active." Set your ping interval below the tightest proxy timeout, and raise the proxy timeout itself where you can (<code>proxy_read_timeout</code> in Nginx, Section 7.3).</li>
+</ol>
+<h3 id="87-reverse-proxies-and-tls-termination">8.7 Reverse Proxies and TLS Termination</h3>
+<p>A WebSocket upgrade only survives a reverse proxy if the proxy forwards the <code>Upgrade</code> and <code>Connection</code> headers and switches to a tunneling mode for the connection. Behavior differs by proxy:</p>
+<ul>
+<li><strong><a href="CADDY_STUDY_GUIDE.md">Caddy</a></strong> handles WebSocket upgrades <strong>automatically</strong> — <code>reverse_proxy</code> detects the upgrade and tunnels it with no special configuration. (One reason Caddy is pleasant for real-time apps.)</li>
+<li><strong>Nginx</strong> needs the explicit <code>proxy_http_version 1.1</code> + <code>Upgrade</code>/<code>Connection</code> header config shown in Section 7.3, <em>and</em> a raised <code>proxy_read_timeout</code> so it doesn't sever idle connections.</li>
+<li><strong>HAProxy, Envoy, cloud load balancers</strong> each have their own knobs; the common theme is "allow the upgrade, and set a generous idle timeout."</li>
+</ul>
+<p>Terminating TLS at the proxy (so the proxy speaks <code>wss://</code> to the browser and plain <code>ws://</code> to your backend on a trusted network) is standard and fine — the backend then sees <code>ws://</code> but the public connection is encrypted. Make sure the backend trusts <code>X-Forwarded-Proto</code>/<code>X-Forwarded-For</code> from the proxy so it knows the original connection was secure and what the real client IP was.</p>
+<p>References: <a href="https://caddyserver.com/docs/caddyfile/directives/reverse_proxy">Caddy reverse_proxy (WebSocket support)</a>, <a href="https://nginx.org/en/docs/http/websocket.html">Nginx WebSocket proxying</a>.</p>
+<hr>
+<h2 id="part-9-reliability-edge-cases">Part 9 — Reliability &amp; Edge Cases</h2>
+<p>WebSockets feel reliable on localhost and over a good connection. Production is neither. This part is about the failure modes that only show up on real networks — and the fact that the <em>connection</em> being reliable (TCP) does not make your <em>application</em> reliable.</p>
+<h3 id="91-what-websockets-guarantee-and-what-they-dont">9.1 What WebSockets Guarantee — and What They Don't</h3>
+<p>Over a single connection, WebSockets ride on TCP, so you get <strong>in-order, reliable delivery while the connection is up</strong>. The trap is assuming that extends to your application. It does not:</p>
+<ul>
+<li><strong>There is no delivery guarantee across a disconnect.</strong> When the connection drops (<code>1006</code>), messages the server sent during the gap are simply gone — TCP buffers don't survive a dead connection. By default, WebSocket messaging is <strong>at-most-once</strong>.</li>
+<li><strong>There is no built-in acknowledgement</strong> that the <em>application</em> processed a message — only that TCP delivered the bytes to the OS. A message can arrive, then the handler crashes before acting on it.</li>
+<li><strong>There is no automatic replay</strong> of what you missed while disconnected.</li>
+</ul>
+<p>If your app can tolerate occasional loss (a live cursor, a metrics tick — the next update obsoletes the last), at-most-once is fine and you should not over-engineer. If it cannot (chat messages, financial events, anything a human would notice missing), you must build stronger guarantees on top. Decide which regime each message type is in.</p>
+<h3 id="92-at-least-once-delivery-acks-resend-dedup">9.2 At-Least-Once Delivery: Acks, Resend, Dedup</h3>
+<p>To upgrade from at-most-once to <strong>at-least-once</strong>, combine three things, all leaning on the message <code>id</code> from the envelope in <a href="#part-6--message-patterns--application-design">Part 6</a>:</p>
+<ol>
+<li><strong>Acknowledge.</strong> The receiver sends back an ack carrying the message <code>id</code> once it has <em>durably processed</em> the message (not merely received it).</li>
+<li><strong>Resend unacked messages.</strong> The sender keeps recently-sent messages in a buffer and resends any that aren't acked within a timeout (and after a reconnect).</li>
+<li><strong>Deduplicate on the receiver.</strong> Because resends mean a message can arrive twice, the receiver tracks seen <code>id</code>s and ignores duplicates — i.e., processing must be <strong>idempotent</strong>.</li>
+</ol>
+<p>At-least-once + idempotent handling is the standard recipe; true exactly-once is a distributed-systems hard problem you almost never actually need. The cost is real (buffers, ack bookkeeping, dedup state), so apply it only to message types that warrant it.</p>
+<h3 id="93-state-recovery-after-reconnect">9.3 State Recovery After Reconnect</h3>
+<p>The reconnection wrapper from <a href="#part-2--the-browser-client-api">Part 2</a> re-establishes the <em>connection</em>; it does nothing about the <em>messages missed while disconnected</em>. Closing that gap is a separate, deliberate design. The dominant pattern is a <strong>resume cursor</strong>:</p>
+<ul>
+<li>The server tags every message in a stream with a monotonically increasing sequence number (or uses an event-store offset).</li>
+<li>The client remembers the last sequence number it successfully processed.</li>
+<li>On reconnect, the client sends <code>{"type": "resume", "since": &amp;lt;lastSeq&amp;gt;}</code>, and the server replays everything after that point before resuming live delivery.</li>
+</ul>
+<pre><code class="language-javascript">// Client: remember progress, request a resume on reconnect
+let lastSeq = 0;
+conn.on(&quot;message&quot;, (e) =&gt; {
+  const msg = JSON.parse(e.data);
+  if (msg.seq &lt;= lastSeq) return;     // dedup: already saw this
+  lastSeq = msg.seq;
+  apply(msg);
+});
+conn.on(&quot;open&quot;, () =&gt; {
+  conn.send(JSON.stringify({ type: &quot;resume&quot;, since: lastSeq })); // catch up first
+});
+</code></pre>
+<p>This requires the server to retain recent history to replay from — a bounded in-memory ring buffer per room, or a <a href="REDIS_STUDY_GUIDE.md">Redis</a> Stream, or a real event log, depending on how far back you must recover. Socket.IO packages a version of this as <strong>Connection State Recovery</strong>, which transparently restores rooms and replays missed messages for a short window after a disconnect — worth using if you're on Socket.IO rather than rolling your own.</p>
+<p>References: <a href="https://socket.io/docs/v4/connection-state-recovery/">Socket.IO Connection State Recovery</a>, <a href="https://redis.io/docs/latest/develop/data-types/streams/">Redis Streams</a>.</p>
+<h3 id="94-the-thundering-herd">9.4 The Thundering Herd</h3>
+<p>When a server restarts or a network blip ends, <strong>every</strong> disconnected client tries to reconnect at once. Without care, that synchronized stampede hammers your servers the instant they come back — and can knock them straight back down. Two defenses, both introduced earlier:</p>
+<ul>
+<li><strong>Exponential backoff</strong> (<a href="#part-2--the-browser-client-api">Part 2</a>) so repeated failures space out rather than retry in a tight loop.</li>
+<li><strong>Jitter</strong> — randomize each client's delay (the <code>base/2 + random()*base/2</code> in the Part 2 wrapper) so they <em>don't</em> all reconnect on the same tick. Jitter is the part people forget, and it's the part that actually spreads the load.</li>
+</ul>
+<p>On the server side, having more than one node (<a href="#part-7--scaling-websockets">Part 7</a>) means a single node's restart only sheds a fraction of total connections, and those clients can reconnect to the survivors.</p>
+<h3 id="95-detecting-and-handling-dead-connections">9.5 Detecting and Handling Dead Connections</h3>
+<p>Pulling the threads together, "is this connection actually alive?" has no instant answer — TCP can hold a half-open connection open for a long time. Your liveness story is:</p>
+<ul>
+<li><strong>Server → client:</strong> the heartbeat reaper from <a href="#part-3--nodejs-servers-with-ws">Part 3</a>/<a href="#part-8--production-concerns">Part 8</a> — ping periodically, <code>terminate()</code> anything that didn't pong.</li>
+<li><strong>Client → server:</strong> if the client expects regular traffic or pongs and sees silence past a threshold, it should proactively close and reconnect rather than trust a possibly-dead socket.</li>
+<li><strong>Application-level timeouts:</strong> for request-response over the socket (<a href="#part-6--message-patterns--application-design">Part 6</a>), every pending request needs its own timeout, because the connection can die between request and reply.</li>
+</ul>
+<p>The mindset that prevents most WebSocket bugs: <strong>assume the connection will drop at the worst possible moment, and make every operation safe to retry after a reconnect.</strong></p>
+<hr>
+<h2 id="part-10-alternatives-when-not-to-use-websockets">Part 10 — Alternatives &amp; When Not to Use WebSockets</h2>
+<p>WebSockets are the right tool for <em>bidirectional, low-latency</em> communication. Plenty of "real-time" needs are actually one-directional or latency-tolerant, and a simpler technology serves them better. Reaching for WebSockets reflexively is a common over-engineering mistake.</p>
+<h3 id="101-server-sent-events-sse">10.1 Server-Sent Events (SSE)</h3>
+<p><a href="https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events">Server-Sent Events</a> are a one-way streaming channel from server to client over a single long-lived HTTP response. The browser's <code>EventSource</code> API handles it, <strong>including automatic reconnection and a built-in "last event id" resume mechanism</strong> — the <a href="#part-9--reliability--edge-cases">Part 9</a> state-recovery problem, solved for you.</p>
+<pre><code class="language-javascript">// Client — the browser reconnects automatically; no wrapper needed
+const es = new EventSource(&quot;/notifications&quot;);
+es.onmessage = (e) =&gt; render(JSON.parse(e.data));
+es.addEventListener(&quot;price&quot;, (e) =&gt; updatePrice(JSON.parse(e.data))); // named events
+</code></pre>
+<p>SSE wins when data flows <strong>server → client only</strong>: live notifications, activity feeds, news/score tickers, log tailing, LLM token streaming, progress updates. Its advantages: it's plain HTTP (works through every proxy with no upgrade dance, no special config), it auto-reconnects and auto-resumes, and it's dramatically simpler. Its limits: <strong>text only</strong> (no binary), client can't send on the same channel (it uses normal HTTP requests for that), and over HTTP/1.1 there's a ~6-connection-per-domain browser cap (a non-issue over HTTP/2+, which multiplexes). If your "real-time" feature is really just "the server pushes updates," start with SSE.</p>
+<h3 id="102-long-polling">10.2 Long-Polling</h3>
+<p>Long-polling — hold a request open until there's data, then immediately re-request — is the fallback that predates everything and still underpins Socket.IO's degraded mode. You rarely choose it deliberately today; it exists as the universal-compatibility floor for when WebSockets are blocked. Higher latency and more overhead than either SSE or WebSockets, but it works literally everywhere.</p>
+<h3 id="103-webtransport">10.3 WebTransport</h3>
+<p><a href="https://developer.mozilla.org/en-US/docs/Web/API/WebTransport">WebTransport</a> is the modern successor for the cases WebSockets handle awkwardly. It runs over <strong>HTTP/3 / QUIC (UDP)</strong> rather than TCP, which unlocks two things WebSockets structurally cannot offer:</p>
+<ul>
+<li><strong>Unreliable datagrams</strong> — fire-and-forget messages that may be dropped or reordered, like UDP. For 60-times-a-second game state where a lost packet should be <em>skipped</em>, not retransmitted, this avoids TCP head-of-line blocking entirely.</li>
+<li><strong>Multiple independent streams</strong> over one connection — a stall in one stream doesn't block the others (no head-of-line blocking across streams), plus connection migration across network changes (Wi-Fi → cellular).</li>
+</ul>
+<pre><code class="language-javascript">const transport = new WebTransport(&quot;https://example.com:4433/wt&quot;);
+await transport.ready;
+// Unreliable datagrams — ideal for game position updates
+const writer = transport.datagrams.writable.getWriter();
+await writer.write(new Uint8Array([/* ... */]));
+// Reliable streams are also available when you need ordering
+</code></pre>
+<p>The honest status: WebTransport is <strong>not</strong> a wholesale WebSocket replacement yet. It needs HTTP/3/QUIC infrastructure end to end (UDP, which some networks throttle or block), browser support trails WebSockets, and server libraries are less mature. Choose it specifically for lossy-tolerant, high-frequency, or multi-stream workloads (real-time games, live media); for everything else, WebSockets remain the pragmatic default. Keep a WebSocket fallback.</p>
+<h3 id="104-grpc-streaming-and-webrtc-data-channels">10.4 gRPC Streaming and WebRTC Data Channels</h3>
+<p>Two more specialized options round out the landscape:</p>
+<ul>
+<li><strong>gRPC streaming</strong> — bidirectional streaming over HTTP/2, excellent for <strong>service-to-service</strong> real-time inside your backend (typed contracts, code generation; see the API-design tradeoffs in your stack). Not natively browser-reachable — browsers need a gRPC-Web proxy, and even then client-streaming is limited — so it's rarely the browser-facing choice.</li>
+<li><strong>WebRTC data channels</strong> — <strong>peer-to-peer</strong>, low-latency, with optional unreliable/unordered delivery. The right tool when clients should talk <em>directly to each other</em> (video chat side-channels, P2P games, file transfer) rather than through your server. The cost is significant setup complexity (signaling, STUN/TURN for NAT traversal). If a server sits in the middle anyway, WebSockets (or WebTransport) are far simpler.</li>
+</ul>
+<h3 id="105-decision-guide">10.5 Decision Guide</h3>
+<table>
+<thead>
+<tr>
+<th>Need</th>
+<th>Best fit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Server → client updates only (feeds, notifications, token streaming)</td>
+<td><strong>SSE</strong></td>
+</tr>
+<tr>
+<td>Bidirectional, low-latency, browser ↔ server (chat, collaboration, dashboards with client input)</td>
+<td><strong>WebSockets</strong></td>
+</tr>
+<tr>
+<td>High-frequency lossy-tolerant data, multiple streams (real-time games, live media)</td>
+<td><strong>WebTransport</strong> (with a WebSocket fallback)</td>
+</tr>
+<tr>
+<td>Maximum compatibility through hostile proxies</td>
+<td><strong>Long-polling</strong> (usually via Socket.IO's fallback)</td>
+</tr>
+<tr>
+<td>Service-to-service streaming inside the backend</td>
+<td><strong>gRPC streaming</strong></td>
+</tr>
+<tr>
+<td>Direct peer-to-peer between clients</td>
+<td><strong>WebRTC data channels</strong></td>
+</tr>
+</tbody>
+</table>
+<p><strong>When <em>not</em> to use WebSockets</strong>, concretely: if the client never needs to push on the channel, SSE is simpler and auto-resumes. If updates every few seconds are acceptable, plain polling may be all you need. If you only have request-response interactions, regular HTTP is fine — don't open a stateful connection to avoid a fetch. WebSockets earn their operational cost (stateful connections, scaling backplane, reconnection logic) only when you genuinely need low-latency bidirectional messaging.</p>
+<hr>
+<h2 id="part-11-recipes">Part 11 — Recipes</h2>
+<p>Copy-paste starting points for the most common real-time features, each with brief commentary on the decisions that matter. They draw on the patterns from earlier parts; cross-references point back to the relevant discussion. Recipes alternate between Node and Python to show both ecosystems.</p>
+<h3 id="recipe-1-chat-with-rooms-node-ws">Recipe 1: Chat with Rooms (Node + <code>ws</code>)</h3>
+<p>The canonical WebSocket app: clients join named rooms and messages broadcast to roommates. Single-server; the <a href="#part-12--end-to-end-walkthrough">walkthrough</a> adds auth and multi-server scaling.</p>
+<pre><code class="language-javascript">import { WebSocketServer, WebSocket } from &quot;ws&quot;;
+
+const wss = new WebSocketServer({ port: 8080 });
+const rooms = new Map(); // roomName → Set&lt;ws&gt;
+
+function join(ws, room) {
+  ws.room = room;
+  if (!rooms.has(room)) rooms.set(room, new Set());
+  rooms.get(room).add(ws);
+}
+
+function publish(room, message, except) {
+  const data = JSON.stringify(message);
+  for (const client of rooms.get(room) ?? []) {
+    if (client.readyState === WebSocket.OPEN &amp;&amp; client !== except) client.send(data);
+  }
+}
+
+wss.on(&quot;connection&quot;, (ws) =&gt; {
+  ws.on(&quot;message&quot;, (raw) =&gt; {
+    let msg;
+    try { msg = JSON.parse(raw); } catch { return ws.close(1003, &quot;bad JSON&quot;); }
+
+    switch (msg.type) {              // dispatch on the envelope type (Part 6)
+      case &quot;join&quot;:
+        join(ws, msg.room);
+        publish(msg.room, { type: &quot;system&quot;, text: `${msg.user} joined` }, ws);
+        break;
+      case &quot;message&quot;:
+        publish(ws.room, { type: &quot;message&quot;, user: msg.user, text: msg.text });
+        break;
+    }
+  });
+
+  ws.on(&quot;close&quot;, () =&gt; rooms.get(ws.room)?.delete(ws)); // always clean up (Part 6)
+});
+</code></pre>
+<h3 id="recipe-2-live-notifications-python-fastapi-per-user-channel">Recipe 2: Live Notifications (Python + FastAPI, per-user channel)</h3>
+<p>Push notifications to a specific logged-in user wherever they're connected. Note this is <strong>server → client only</strong> — if that's <em>all</em> you need, <a href="#part-10--alternatives--when-not-to-use-websockets">SSE</a> is simpler; use WebSockets here only if the same connection also carries client→server traffic.</p>
+<pre><code class="language-python">from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+
+app = FastAPI()
+# user_id → set of that user's connections (they may have several tabs/devices)
+connections: dict[str, set[WebSocket]] = {}
+
+@app.websocket(&quot;/notifications/{user_id}&quot;)
+async def notifications(ws: WebSocket, user_id: str):
+    await ws.accept()                       # authenticate user_id for real in production (Part 8)
+    connections.setdefault(user_id, set()).add(ws)
+    try:
+        while True:
+            await ws.receive_text()         # keepalive; client may also send read-receipts
+    except WebSocketDisconnect:
+        connections[user_id].discard(ws)
+
+async def notify(user_id: str, payload: dict) -&gt; None:
+    &quot;&quot;&quot;Call from anywhere in your app to push to all of a user's connections.&quot;&quot;&quot;
+    for ws in list(connections.get(user_id, set())):
+        await ws.send_json(payload)         # fan out to every tab/device
+</code></pre>
+<p>The "set of connections per user" shape matters: people open multiple tabs and use multiple devices, and a notification should reach all of them. For multi-server, <code>notify()</code> publishes to Redis and every server delivers to its local copies of that user's connections (<a href="#part-7--scaling-websockets">Part 7</a>).</p>
+<h3 id="recipe-3-real-time-dashboard-node-server-push-metrics">Recipe 3: Real-Time Dashboard (Node, server-push metrics)</h3>
+<p>The server pushes metrics on an interval. The key production detail is <strong>backpressure</strong>: a dashboard tab on a slow link must not balloon the server's send buffer, and stale metrics are worthless — so drop rather than queue (<a href="#part-8--production-concerns">Part 8</a>).</p>
+<pre><code class="language-javascript">import { WebSocketServer, WebSocket } from &quot;ws&quot;;
+
+const wss = new WebSocketServer({ port: 8080 });
+const MAX_BUFFER = 1 &lt;&lt; 20; // 1 MB
+
+setInterval(() =&gt; {
+  const snapshot = JSON.stringify({ type: &quot;metrics&quot;, ts: Date.now(), cpu: readCpu(), rps: readRps() });
+  for (const ws of wss.clients) {
+    if (ws.readyState !== WebSocket.OPEN) continue;
+    if (ws.bufferedAmount &gt; MAX_BUFFER) continue; // slow client: skip this tick (newest-wins)
+    ws.send(snapshot);
+  }
+}, 1000);
+</code></pre>
+<h3 id="recipe-4-collaborative-cursors-presence-node-ws">Recipe 4: Collaborative Cursors / Presence (Node + <code>ws</code>)</h3>
+<p>Show every participant's live cursor in a shared document — high-frequency, loss-tolerant data where the latest position obsoletes the last. Broadcast to the room <em>except</em> the sender, and clean up presence on disconnect.</p>
+<pre><code class="language-javascript">const docs = new Map(); // docId → Map&lt;clientId, ws&gt;
+
+wss.on(&quot;connection&quot;, (ws) =&gt; {
+  ws.on(&quot;message&quot;, (raw) =&gt; {
+    const msg = JSON.parse(raw);
+    if (msg.type === &quot;join-doc&quot;) {
+      ws.docId = msg.docId; ws.clientId = msg.clientId;
+      if (!docs.has(msg.docId)) docs.set(msg.docId, new Map());
+      docs.get(msg.docId).set(msg.clientId, ws);
+      // Tell the newcomer who's already here (initial presence snapshot)
+      const others = [...docs.get(msg.docId).keys()].filter((id) =&gt; id !== msg.clientId);
+      ws.send(JSON.stringify({ type: &quot;presence&quot;, clients: others }));
+    } else if (msg.type === &quot;cursor&quot;) {
+      // Fan out the cursor position to everyone else in the doc
+      for (const [id, peer] of docs.get(ws.docId) ?? []) {
+        if (id !== ws.clientId &amp;&amp; peer.readyState === peer.OPEN) {
+          peer.send(JSON.stringify({ type: &quot;cursor&quot;, clientId: ws.clientId, x: msg.x, y: msg.y }));
+        }
+      }
+    }
+  });
+
+  ws.on(&quot;close&quot;, () =&gt; {
+    const doc = docs.get(ws.docId);
+    if (!doc) return;
+    doc.delete(ws.clientId);
+    // Announce departure so peers remove the stale cursor
+    for (const peer of doc.values()) {
+      if (peer.readyState === peer.OPEN) {
+        peer.send(JSON.stringify({ type: &quot;leave&quot;, clientId: ws.clientId }));
+      }
+    }
+  });
+});
+</code></pre>
+<p>For cursors, throttle on the <em>client</em> (send at most ~20–30 updates/sec) and consider MessagePack (<a href="#part-6--message-patterns--application-design">Part 6</a>) if the volume justifies it. Real collaborative <em>editing</em> (not just cursors) needs conflict resolution — CRDTs or operational transforms — which is a topic beyond the transport; WebSockets just carry the ops.</p>
+<h3 id="recipe-5-multiplayer-state-sync-python-websockets-authoritative-server">Recipe 5: Multiplayer State Sync (Python + <code>websockets</code>, authoritative server)</h3>
+<p>A simple authoritative game loop: the server owns the state, clients send inputs, the server ticks and broadcasts snapshots. Inputs are loss-tolerant (the next tick supersedes them), which is the textbook case for eventually moving the hot path to <a href="#part-10--alternatives--when-not-to-use-websockets">WebTransport</a> datagrams.</p>
+<pre><code class="language-python">import asyncio, json
+from websockets.asyncio.server import serve, broadcast
+
+players: dict = {}          # websocket → player state
+connections = set()
+
+async def handler(ws):
+    connections.add(ws)
+    players[ws] = {&quot;x&quot;: 0, &quot;y&quot;: 0}
+    try:
+        async for raw in ws:
+            msg = json.loads(raw)
+            if msg[&quot;type&quot;] == &quot;input&quot;:           # apply client input to authoritative state
+                p = players[ws]
+                p[&quot;x&quot;] += msg[&quot;dx&quot;]; p[&quot;y&quot;] += msg[&quot;dy&quot;]
+    finally:
+        connections.discard(ws); players.pop(ws, None)
+
+async def game_loop():
+    while True:
+        await asyncio.sleep(1 / 20)              # 20 Hz tick
+        snapshot = json.dumps({&quot;type&quot;: &quot;state&quot;,
+                               &quot;players&quot;: [{&quot;x&quot;: p[&quot;x&quot;], &quot;y&quot;: p[&quot;y&quot;]} for p in players.values()]})
+        broadcast(connections, snapshot)         # library helper skips slow/closed sockets
+
+async def main():
+    async with serve(handler, &quot;0.0.0.0&quot;, 8765):
+        await game_loop()
+
+asyncio.run(main())
+</code></pre>
+<p>Note the <strong>authoritative-server</strong> shape: clients send <em>intentions</em> (inputs), never authoritative positions, so a malicious client can't teleport. This is the same "validate every message, trust nothing from the client" principle as <a href="#part-8--production-concerns">Part 8</a>, applied to game state.</p>
+<hr>
+<h2 id="part-12-end-to-end-walkthrough">Part 12 — End-to-End Walkthrough</h2>
+<p>Let's build a production-shaped chat service from an empty directory, narrating each decision. The target: rooms, JWT authentication, multi-server scaling via Redis, heartbeats, and a reconnecting client. This ties together every part of the guide.</p>
+<h3 id="step-1-choose-the-stack">Step 1 — Choose the Stack</h3>
+<p><strong>Decision: raw <code>ws</code> on Node, not Socket.IO.</strong> We control both client and server, want a lean wire protocol, and want to <em>see</em> the mechanics rather than hide them behind a framework (<a href="#part-4--socketio">Part 4</a> decision guide). We'll add the few things Socket.IO would have given us — reconnection, rooms, a Redis backplane — deliberately, so the trade-off is explicit. For broadcast across servers we'll use Redis Pub/Sub (<a href="#part-7--scaling-websockets">Part 7</a>).</p>
+<h3 id="step-2-authenticate-at-the-handshake">Step 2 — Authenticate at the Handshake</h3>
+<p>Users already authenticate over HTTP and hold a JWT. The browser can't send an <code>Authorization</code> header on a WebSocket (<a href="#part-8--production-concerns">Part 8</a>), so we use a <strong>short-lived token in the query string</strong>: the client hits an authenticated <code>POST /ws-ticket</code> to get a 30-second token, then connects with <code>?token=…</code>. We validate it — and the <code>Origin</code> — in the upgrade handler, rejecting before any WebSocket exists.</p>
+<pre><code class="language-javascript">import { createServer } from &quot;node:http&quot;;
+import { WebSocketServer } from &quot;ws&quot;;
+import jwt from &quot;jsonwebtoken&quot;;
+
+const ALLOWED_ORIGINS = new Set([&quot;https://chat.example.com&quot;]);
+const server = createServer();
+const wss = new WebSocketServer({ noServer: true }); // we drive the upgrade (Part 3)
+
+server.on(&quot;upgrade&quot;, (req, socket, head) =&gt; {
+  // 1. Origin check — defends against Cross-Site WebSocket Hijacking (Part 8.2)
+  if (!ALLOWED_ORIGINS.has(req.headers.origin)) {
+    socket.write(&quot;HTTP/1.1 403 Forbidden\r\n\r\n&quot;); socket.destroy(); return;
+  }
+  // 2. Validate the short-lived connect token from the query string (Part 8.1)
+  const { searchParams } = new URL(req.url, `http://${req.headers.host}`);
+  let user;
+  try { user = jwt.verify(searchParams.get(&quot;token&quot;), process.env.JWT_SECRET); }
+  catch { socket.write(&quot;HTTP/1.1 401 Unauthorized\r\n\r\n&quot;); socket.destroy(); return; }
+
+  // 3. Only now complete the upgrade, stashing identity on the socket
+  wss.handleUpgrade(req, socket, head, (ws) =&gt; {
+    ws.user = user;
+    wss.emit(&quot;connection&quot;, ws, req);
+  });
+});
+</code></pre>
+<h3 id="step-3-rooms-with-a-redis-backplane">Step 3 — Rooms with a Redis Backplane</h3>
+<p>Each chat room is a topic. Locally we keep <code>room → Set&amp;lt;ws&amp;gt;</code> (<a href="#part-6--message-patterns--application-design">Part 6</a>); to reach clients on other servers we publish every chat message to a Redis channel and relay what we receive (<a href="#part-7--scaling-websockets">Part 7</a>). Authorization happens at join time — we check the user may enter the room before adding them (<a href="#part-8--production-concerns">Part 8</a>).</p>
+<pre><code class="language-javascript">import { createClient } from &quot;redis&quot;;
+
+const rooms = new Map();                       // room → Set&lt;ws&gt; (this process only)
+const pub = createClient({ url: process.env.REDIS_URL });
+const sub = pub.duplicate();
+await pub.connect(); await sub.connect();
+
+// Relay messages from OTHER servers to our local room members
+await sub.subscribe(&quot;chat&quot;, (payload) =&gt; {
+  const { room, message } = JSON.parse(payload);
+  for (const ws of rooms.get(room) ?? []) {
+    if (ws.readyState === ws.OPEN) ws.send(message);
+  }
+});
+
+function localJoin(ws, room) {
+  ws.rooms ??= new Set(); ws.rooms.add(room);
+  if (!rooms.has(room)) rooms.set(room, new Set());
+  rooms.get(room).add(ws);
+}
+
+async function publish(room, messageObj) {
+  // Publish to Redis; the subscriber above (on every server, including this one)
+  // does the actual fan-out to connected clients. One code path, all servers.
+  await pub.publish(&quot;chat&quot;, JSON.stringify({ room, message: JSON.stringify(messageObj) }));
+}
+</code></pre>
+<h3 id="step-4-the-message-loop-with-limits">Step 4 — The Message Loop, with Limits</h3>
+<p>We dispatch on the envelope <code>type</code>, rate-limit per connection, validate input, and authorize each action (<a href="#part-8--production-concerns">Part 8</a>). Every message reuses the <code>publish()</code> from Step 3, so single-server and multi-server behave identically.</p>
+<pre><code class="language-javascript">wss.on(&quot;connection&quot;, (ws) =&gt; {
+  const allow = makeRateLimiter(20, 10);       // token bucket from Part 8.4
+
+  ws.on(&quot;message&quot;, async (raw) =&gt; {
+    if (!allow()) return ws.close(1008, &quot;rate limit&quot;);
+    if (raw.length &gt; 16_384) return ws.close(1009, &quot;message too big&quot;); // Part 1 close codes
+
+    let msg;
+    try { msg = JSON.parse(raw); } catch { return ws.close(1003, &quot;bad JSON&quot;); }
+
+    if (msg.type === &quot;join&quot;) {
+      if (!(await userMayJoin(ws.user, msg.room))) return;  // authorize (Part 8.3)
+      localJoin(ws, msg.room);
+      await publish(msg.room, { type: &quot;system&quot;, text: `${ws.user.name} joined` });
+
+    } else if (msg.type === &quot;message&quot;) {
+      if (!ws.rooms?.has(msg.room)) return;     // can't post to a room you're not in
+      const text = String(msg.text ?? &quot;&quot;).slice(0, 2000); // validate + clamp
+      await publish(msg.room, { type: &quot;message&quot;, user: ws.user.name, text, ts: Date.now() });
+    }
+  });
+
+  ws.on(&quot;close&quot;, () =&gt; {
+    for (const room of ws.rooms ?? []) rooms.get(room)?.delete(ws); // cleanup (Part 6)
+  });
+});
+</code></pre>
+<h3 id="step-5-heartbeats">Step 5 — Heartbeats</h3>
+<p>Add the reaper from <a href="#part-3--nodejs-servers-with-ws">Part 3</a>/<a href="#part-8--production-concerns">Part 8</a> so dead connections (sleeping laptops, dropped Wi-Fi) are detected and don't leak, and so idle connections survive proxy timeouts. Ping interval sits below the tightest proxy idle timeout in our path.</p>
+<pre><code class="language-javascript">wss.on(&quot;connection&quot;, (ws) =&gt; { ws.isAlive = true; ws.on(&quot;pong&quot;, () =&gt; { ws.isAlive = true; }); });
+
+setInterval(() =&gt; {
+  for (const ws of wss.clients) {
+    if (!ws.isAlive) { ws.terminate(); continue; } // missed last pong → dead
+    ws.isAlive = false; ws.ping();
+  }
+}, 30_000);
+
+server.listen(8080);
+</code></pre>
+<h3 id="step-6-the-client">Step 6 — The Client</h3>
+<p>The browser side uses the reconnecting wrapper from <a href="#part-2--the-browser-client-api">Part 2</a>, fetches a fresh connect-ticket before each connection attempt (tickets are short-lived), and re-joins its rooms on every <code>open</code> — because a reconnect is a brand-new connection that the server knows nothing about.</p>
+<pre><code class="language-javascript">async function getTicket() {
+  const res = await fetch(&quot;/ws-ticket&quot;, { method: &quot;POST&quot;, credentials: &quot;include&quot; });
+  return (await res.json()).token; // short-lived JWT for the WS handshake
+}
+
+async function connect() {
+  const token = await getTicket();
+  const ws = new WebSocket(`wss://chat.example.com/ws?token=${token}`);
+
+  ws.addEventListener(&quot;open&quot;, () =&gt; {
+    ws.send(JSON.stringify({ type: &quot;join&quot;, room: currentRoom })); // re-join after every (re)connect
+  });
+  ws.addEventListener(&quot;message&quot;, (e) =&gt; renderMessage(JSON.parse(e.data)));
+  ws.addEventListener(&quot;close&quot;, (e) =&gt; {
+    if (e.code !== 1000) scheduleReconnect(connect); // backoff + jitter (Part 2, Part 9.4)
+  });
+  return ws;
+}
+</code></pre>
+<h3 id="step-7-deploy-behind-a-proxy-and-scale-out">Step 7 — Deploy Behind a Proxy and Scale Out</h3>
+<p>Run several instances of the server; put <a href="CADDY_STUDY_GUIDE.md">Caddy</a> in front (it tunnels WebSocket upgrades automatically and terminates TLS, so clients get <code>wss://</code> and the backends see plain <code>ws://</code>):</p>
+<pre><code class="language-caddyfile">chat.example.com {
+    reverse_proxy node-1:8080 node-2:8080 node-3:8080
+}
+</code></pre>
+<p>Because every server shares the Redis backplane (Step 3), a client on <code>node-1</code> and a client on <code>node-3</code> are in the same conversation. Because the connect-token is validated per handshake (Step 2) and we use pure <code>wss://</code> (no long-polling), we don't even need sticky sessions (<a href="#part-7--scaling-websockets">Part 7</a>) — any node can accept any connection. Add nodes to handle more connections; Redis carries the cross-node fan-out.</p>
+<h3 id="what-we-built-mapped-to-the-guide">What We Built, Mapped to the Guide</h3>
+<ul>
+<li><strong>Protocol &amp; framing</strong> (<a href="#part-1--foundations--the-protocol">Part 1</a>) — close codes <code>1003</code>/<code>1008</code>/<code>1009</code>, ping/pong heartbeats.</li>
+<li><strong>Client</strong> (<a href="#part-2--the-browser-client-api">Part 2</a>) — reconnection with backoff + jitter, re-join on open.</li>
+<li><strong>Server</strong> (<a href="#part-3--nodejs-servers-with-ws">Part 3</a>) — <code>noServer</code> manual upgrade, the heartbeat reaper.</li>
+<li><strong>Message design</strong> (<a href="#part-6--message-patterns--application-design">Part 6</a>) — typed envelope, type dispatch, pub/sub rooms, connection cleanup.</li>
+<li><strong>Scaling</strong> (<a href="#part-7--scaling-websockets">Part 7</a>) — Redis Pub/Sub backplane; pure-WSS means no sticky sessions.</li>
+<li><strong>Security</strong> (<a href="#part-8--production-concerns">Part 8</a>) — handshake auth, origin check, per-message authorization, rate limiting, input validation, size caps.</li>
+<li><strong>Reliability</strong> (<a href="#part-9--reliability--edge-cases">Part 9</a>) — re-join on reconnect; for guaranteed history you'd add the resume-cursor from Part 9.3.</li>
+</ul>
+<p>That's the arc from "a TCP connection that started as HTTP" to a service that survives real networks and scales across nodes. The protocol is small; the engineering around it — auth, scaling, reliability — is where the work lives, and where this guide spent most of its pages.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

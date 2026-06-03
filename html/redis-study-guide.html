@@ -1,0 +1,2527 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Redis Deep Dive.">
+<title>Redis Deep Dive - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#ff4438; --accent2:#ff4438; --accent-weak:rgba(255,68,56,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#ff4438; --accent2:#ff4438; --accent-weak:rgba(255,68,56,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">R</span><span>Redis Deep Dive</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#1-the-mental-model" data-target="1-the-mental-model">1. The Mental Model</a></li><li class="toc-l3"><a href="#what-redis-is" data-target="what-redis-is">What Redis Is</a></li><li class="toc-l3"><a href="#why-redis-is-fast" data-target="why-redis-is-fast">Why Redis Is Fast</a></li><li class="toc-l3"><a href="#when-to-use-redis" data-target="when-to-use-redis">When to Use Redis</a></li><li class="toc-l3"><a href="#when-not-to-use-redis" data-target="when-not-to-use-redis">When NOT to Use Redis</a></li><li class="toc-l2"><a href="#2-strings" data-target="2-strings">2. Strings</a></li><li class="toc-l3"><a href="#basic-operations" data-target="basic-operations">Basic Operations</a></li><li class="toc-l3"><a href="#atomic-counters" data-target="atomic-counters">Atomic Counters</a></li><li class="toc-l3"><a href="#practical-caching" data-target="practical-caching">Practical: Caching</a></li><li class="toc-l3"><a href="#practical-distributed-lock" data-target="practical-distributed-lock">Practical: Distributed Lock</a></li><li class="toc-l2"><a href="#3-hashes" data-target="3-hashes">3. Hashes</a></li><li class="toc-l3"><a href="#basic-operations_1" data-target="basic-operations_1">Basic Operations</a></li><li class="toc-l3"><a href="#hash-vs-multiple-strings" data-target="hash-vs-multiple-strings">Hash vs Multiple Strings</a></li><li class="toc-l3"><a href="#practical-session-storage" data-target="practical-session-storage">Practical: Session Storage</a></li><li class="toc-l3"><a href="#practical-feature-flags" data-target="practical-feature-flags">Practical: Feature Flags</a></li><li class="toc-l2"><a href="#4-lists" data-target="4-lists">4. Lists</a></li><li class="toc-l3"><a href="#basic-operations_2" data-target="basic-operations_2">Basic Operations</a></li><li class="toc-l3"><a href="#practical-simple-job-queue" data-target="practical-simple-job-queue">Practical: Simple Job Queue</a></li><li class="toc-l3"><a href="#practical-activity-feed-recent-items" data-target="practical-activity-feed-recent-items">Practical: Activity Feed / Recent Items</a></li><li class="toc-l2"><a href="#5-sets" data-target="5-sets">5. Sets</a></li><li class="toc-l3"><a href="#basic-operations_3" data-target="basic-operations_3">Basic Operations</a></li><li class="toc-l3"><a href="#practical-tag-system" data-target="practical-tag-system">Practical: Tag System</a></li><li class="toc-l3"><a href="#practical-tracking-unique-visitors" data-target="practical-tracking-unique-visitors">Practical: Tracking Unique Visitors</a></li><li class="toc-l2"><a href="#6-sorted-sets" data-target="6-sorted-sets">6. Sorted Sets</a></li><li class="toc-l3"><a href="#basic-operations_4" data-target="basic-operations_4">Basic Operations</a></li><li class="toc-l3"><a href="#practical-leaderboard" data-target="practical-leaderboard">Practical: Leaderboard</a></li><li class="toc-l3"><a href="#practical-rate-limiter-sliding-window" data-target="practical-rate-limiter-sliding-window">Practical: Rate Limiter (Sliding Window)</a></li><li class="toc-l3"><a href="#practical-priority-queue" data-target="practical-priority-queue">Practical: Priority Queue</a></li><li class="toc-l3"><a href="#practical-time-series-data-simple" data-target="practical-time-series-data-simple">Practical: Time-Series Data (Simple)</a></li><li class="toc-l2"><a href="#7-streams" data-target="7-streams">7. Streams</a></li><li class="toc-l3"><a href="#basic-operations_5" data-target="basic-operations_5">Basic Operations</a></li><li class="toc-l3"><a href="#consumer-groups" data-target="consumer-groups">Consumer Groups</a></li><li class="toc-l3"><a href="#practical-event-processing-pipeline" data-target="practical-event-processing-pipeline">Practical: Event Processing Pipeline</a></li><li class="toc-l3"><a href="#streams-vs-pubsub-vs-lists" data-target="streams-vs-pubsub-vs-lists">Streams vs Pub/Sub vs Lists</a></li><li class="toc-l2"><a href="#8-hyperloglog-bitmaps-bitfields" data-target="8-hyperloglog-bitmaps-bitfields">8. HyperLogLog, Bitmaps &amp; Bitfields</a></li><li class="toc-l3"><a href="#hyperloglog" data-target="hyperloglog">HyperLogLog</a></li><li class="toc-l3"><a href="#bitmaps" data-target="bitmaps">Bitmaps</a></li><li class="toc-l3"><a href="#bitfields" data-target="bitfields">Bitfields</a></li><li class="toc-l2"><a href="#9-keys-expiration-eviction" data-target="9-keys-expiration-eviction">9. Keys, Expiration &amp; Eviction</a></li><li class="toc-l3"><a href="#key-naming-conventions" data-target="key-naming-conventions">Key Naming Conventions</a></li><li class="toc-l3"><a href="#key-operations" data-target="key-operations">Key Operations</a></li><li class="toc-l3"><a href="#expiration" data-target="expiration">Expiration</a></li><li class="toc-l3"><a href="#eviction-policies" data-target="eviction-policies">Eviction Policies</a></li><li class="toc-l2"><a href="#10-pubsub" data-target="10-pubsub">10. Pub/Sub</a></li><li class="toc-l3"><a href="#basic-operations_6" data-target="basic-operations_6">Basic Operations</a></li><li class="toc-l3"><a href="#practical-real-time-notifications" data-target="practical-real-time-notifications">Practical: Real-Time Notifications</a></li><li class="toc-l3"><a href="#practical-cache-invalidation" data-target="practical-cache-invalidation">Practical: Cache Invalidation</a></li><li class="toc-l3"><a href="#limitations" data-target="limitations">Limitations</a></li><li class="toc-l2"><a href="#11-transactions-lua-scripting" data-target="11-transactions-lua-scripting">11. Transactions &amp; Lua Scripting</a></li><li class="toc-l3"><a href="#transactions-multiexec" data-target="transactions-multiexec">Transactions (MULTI/EXEC)</a></li><li class="toc-l3"><a href="#optimistic-locking-with-watch" data-target="optimistic-locking-with-watch">Optimistic Locking with WATCH</a></li><li class="toc-l3"><a href="#lua-scripting" data-target="lua-scripting">Lua Scripting</a></li><li class="toc-l2"><a href="#12-pipelining" data-target="12-pipelining">12. Pipelining</a></li><li class="toc-l3"><a href="#performance-impact" data-target="performance-impact">Performance Impact</a></li><li class="toc-l3"><a href="#pipeline-transaction" data-target="pipeline-transaction">Pipeline + Transaction</a></li><li class="toc-l3"><a href="#practical-guidelines" data-target="practical-guidelines">Practical Guidelines</a></li><li class="toc-l2"><a href="#13-persistence-rdb-aof" data-target="13-persistence-rdb-aof">13. Persistence: RDB &amp; AOF</a></li><li class="toc-l3"><a href="#rdb-snapshotting" data-target="rdb-snapshotting">RDB (Snapshotting)</a></li><li class="toc-l3"><a href="#aof-append-only-file" data-target="aof-append-only-file">AOF (Append-Only File)</a></li><li class="toc-l3"><a href="#aof-rewriting" data-target="aof-rewriting">AOF Rewriting</a></li><li class="toc-l3"><a href="#practical-recommendations" data-target="practical-recommendations">Practical Recommendations</a></li><li class="toc-l2"><a href="#14-replication" data-target="14-replication">14. Replication</a></li><li class="toc-l3"><a href="#how-it-works" data-target="how-it-works">How It Works</a></li><li class="toc-l3"><a href="#wait-for-replication" data-target="wait-for-replication">Wait for Replication</a></li><li class="toc-l3"><a href="#read-replicas" data-target="read-replicas">Read Replicas</a></li><li class="toc-l2"><a href="#15-redis-sentinel" data-target="15-redis-sentinel">15. Redis Sentinel</a></li><li class="toc-l3"><a href="#how-failover-works" data-target="how-failover-works">How Failover Works</a></li><li class="toc-l3"><a href="#client-configuration" data-target="client-configuration">Client Configuration</a></li><li class="toc-l3"><a href="#deployment" data-target="deployment">Deployment</a></li><li class="toc-l2"><a href="#16-redis-cluster" data-target="16-redis-cluster">16. Redis Cluster</a></li><li class="toc-l3"><a href="#how-it-works_1" data-target="how-it-works_1">How It Works</a></li><li class="toc-l3"><a href="#multi-key-operations" data-target="multi-key-operations">Multi-Key Operations</a></li><li class="toc-l3"><a href="#resharding" data-target="resharding">Resharding</a></li><li class="toc-l3"><a href="#cluster-vs-sentinel" data-target="cluster-vs-sentinel">Cluster vs Sentinel</a></li><li class="toc-l2"><a href="#17-security" data-target="17-security">17. Security</a></li><li class="toc-l3"><a href="#authentication" data-target="authentication">Authentication</a></li><li class="toc-l3"><a href="#acls-access-control-lists" data-target="acls-access-control-lists">ACLs (Access Control Lists)</a></li><li class="toc-l3"><a href="#network-security" data-target="network-security">Network Security</a></li><li class="toc-l3"><a href="#protected-mode" data-target="protected-mode">Protected Mode</a></li><li class="toc-l2"><a href="#18-performance-memory" data-target="18-performance-memory">18. Performance &amp; Memory</a></li><li class="toc-l3"><a href="#memory-usage" data-target="memory-usage">Memory Usage</a></li><li class="toc-l3"><a href="#memory-optimization" data-target="memory-optimization">Memory Optimization</a></li><li class="toc-l3"><a href="#slow-operations-to-avoid" data-target="slow-operations-to-avoid">Slow Operations to Avoid</a></li><li class="toc-l3"><a href="#monitoring-performance" data-target="monitoring-performance">Monitoring Performance</a></li><li class="toc-l3"><a href="#key-metrics-to-monitor" data-target="key-metrics-to-monitor">Key Metrics to Monitor</a></li><li class="toc-l2"><a href="#19-common-patterns" data-target="19-common-patterns">19. Common Patterns</a></li><li class="toc-l3"><a href="#cache-aside-lazy-loading" data-target="cache-aside-lazy-loading">Cache-Aside (Lazy Loading)</a></li><li class="toc-l3"><a href="#write-through-cache" data-target="write-through-cache">Write-Through Cache</a></li><li class="toc-l3"><a href="#cache-stampede-prevention" data-target="cache-stampede-prevention">Cache Stampede Prevention</a></li><li class="toc-l3"><a href="#sliding-window-counter" data-target="sliding-window-counter">Sliding Window Counter</a></li><li class="toc-l3"><a href="#distributed-semaphore" data-target="distributed-semaphore">Distributed Semaphore</a></li><li class="toc-l3"><a href="#geospatial-index" data-target="geospatial-index">Geospatial Index</a></li><li class="toc-l2"><a href="#20-client-libraries-best-practices" data-target="20-client-libraries-best-practices">20. Client Libraries &amp; Best Practices</a></li><li class="toc-l3"><a href="#client-libraries" data-target="client-libraries">Client Libraries</a></li><li class="toc-l3"><a href="#connection-pooling" data-target="connection-pooling">Connection Pooling</a></li><li class="toc-l3"><a href="#error-handling" data-target="error-handling">Error Handling</a></li><li class="toc-l3"><a href="#key-design-principles" data-target="key-design-principles">Key Design Principles</a></li><li class="toc-l2"><a href="#21-common-mistakes" data-target="21-common-mistakes">21. Common Mistakes</a></li><li class="toc-l3"><a href="#1-using-keys-in-production" data-target="1-using-keys-in-production">1. Using KEYS in Production</a></li><li class="toc-l3"><a href="#2-no-maxmemory-configuration" data-target="2-no-maxmemory-configuration">2. No maxmemory Configuration</a></li><li class="toc-l3"><a href="#3-storing-large-objects" data-target="3-storing-large-objects">3. Storing Large Objects</a></li><li class="toc-l3"><a href="#4-not-using-connection-pools" data-target="4-not-using-connection-pools">4. Not Using Connection Pools</a></li><li class="toc-l3"><a href="#5-fire-and-forget-error-handling" data-target="5-fire-and-forget-error-handling">5. Fire-and-Forget Error Handling</a></li><li class="toc-l3"><a href="#6-using-redis-as-the-primary-data-store" data-target="6-using-redis-as-the-primary-data-store">6. Using Redis as the Primary Data Store</a></li><li class="toc-l3"><a href="#7-not-setting-ttls" data-target="7-not-setting-ttls">7. Not Setting TTLs</a></li><li class="toc-l3"><a href="#8-running-without-replication-in-production" data-target="8-running-without-replication-in-production">8. Running Without Replication in Production</a></li><li class="toc-l3"><a href="#9-ignoring-serialization-costs" data-target="9-ignoring-serialization-costs">9. Ignoring Serialization Costs</a></li><li class="toc-l3"><a href="#10-hot-keys" data-target="10-hot-keys">10. Hot Keys</a></li><li class="toc-l2"><a href="#quick-reference-data-structure-selection" data-target="quick-reference-data-structure-selection">Quick Reference: Data Structure Selection</a></li></ul></nav></aside>
+  <main><h1 id="redis-deep-dive">Redis Deep Dive</h1>
+<p>A practical guide to Redis focused on data structures, usage patterns, and operational concerns. Assumes you know what Redis is and have used it as a basic key-value cache. This guide covers the full range of what Redis can do and when each capability is the right tool.</p>
+<p>Primary references: <a href="https://redis.io/docs/latest/">Redis Documentation</a>, <a href="https://redis.io/docs/latest/commands/">Redis Commands</a>, <a href="https://redis.io/docs/latest/develop/data-types/">Redis Data Types</a></p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#1-the-mental-model">The Mental Model</a></li>
+<li><a href="#2-strings">Strings</a></li>
+<li><a href="#3-hashes">Hashes</a></li>
+<li><a href="#4-lists">Lists</a></li>
+<li><a href="#5-sets">Sets</a></li>
+<li><a href="#6-sorted-sets">Sorted Sets</a></li>
+<li><a href="#7-streams">Streams</a></li>
+<li><a href="#8-hyperloglog-bitmaps--bitfields">HyperLogLog, Bitmaps &amp; Bitfields</a></li>
+<li><a href="#9-keys-expiration--eviction">Keys, Expiration &amp; Eviction</a></li>
+<li><a href="#10-pubsub">Pub/Sub</a></li>
+<li><a href="#11-transactions--lua-scripting">Transactions &amp; Lua Scripting</a></li>
+<li><a href="#12-pipelining">Pipelining</a></li>
+<li><a href="#13-persistence-rdb--aof">Persistence: RDB &amp; AOF</a></li>
+<li><a href="#14-replication">Replication</a></li>
+<li><a href="#15-redis-sentinel">Redis Sentinel</a></li>
+<li><a href="#16-redis-cluster">Redis Cluster</a></li>
+<li><a href="#17-security">Security</a></li>
+<li><a href="#18-performance--memory">Performance &amp; Memory</a></li>
+<li><a href="#19-common-patterns">Common Patterns</a></li>
+<li><a href="#20-client-libraries--best-practices">Client Libraries &amp; Best Practices</a></li>
+<li><a href="#21-common-mistakes">Common Mistakes</a></li>
+</ol>
+<hr>
+<h2 id="1-the-mental-model">1. The Mental Model</h2>
+<h3 id="what-redis-is">What Redis Is</h3>
+<p>Redis is an in-memory data structure server. The key insight is <strong>data structure</strong> — Redis is not just a key-value store. It's a remote, shared, persistent dictionary where the values can be strings, lists, sets, sorted sets, hashes, streams, and more. Each data structure has its own set of O(1) or O(log N) operations.</p>
+<pre><code class="language-text">┌─────────────────────────────────────────────┐
+│                 Redis Server                 │
+│                                             │
+│  key → value (one of many data structures)  │
+│                                             │
+│  &quot;user:1001&quot;     → Hash {name, email, ...}  │
+│  &quot;session:abc&quot;   → String (JSON blob)       │
+│  &quot;queue:emails&quot;  → List [msg1, msg2, ...]   │
+│  &quot;online:users&quot;  → Set {uid1, uid2, ...}    │
+│  &quot;leaderboard&quot;   → Sorted Set {(score,id)}  │
+│  &quot;events:stream&quot; → Stream [(id, fields)]    │
+└─────────────────────────────────────────────┘
+</code></pre>
+<h3 id="why-redis-is-fast">Why Redis Is Fast</h3>
+<ul>
+<li><strong>In-memory</strong>: all data lives in RAM. No disk seeks, no page faults for hot data.</li>
+<li><strong>Single-threaded event loop</strong>: no locks, no context switching, no contention. One thread handles all commands sequentially. (I/O and persistence run on background threads.)</li>
+<li><strong>Efficient data structures</strong>: purpose-built C implementations — skip lists for sorted sets, hash tables, zip lists for small collections.</li>
+<li><strong>Simple protocol</strong>: RESP (Redis Serialization Protocol) is text-based with minimal overhead.</li>
+</ul>
+<p>Typical latency: <strong>sub-millisecond</strong> for most operations on a local network. Throughput: <strong>100K–300K+ operations/second</strong> on modest hardware.</p>
+<h3 id="when-to-use-redis">When to Use Redis</h3>
+<table>
+<thead>
+<tr>
+<th>Use case</th>
+<th>Why Redis fits</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Caching</td>
+<td>Sub-ms reads, TTL-based expiration, eviction policies</td>
+</tr>
+<tr>
+<td>Session storage</td>
+<td>Fast reads, automatic expiry, atomic operations</td>
+</tr>
+<tr>
+<td>Rate limiting</td>
+<td>Atomic counters with expiry</td>
+</tr>
+<tr>
+<td>Queues / job processing</td>
+<td>List-based queues with blocking pops</td>
+</tr>
+<tr>
+<td>Real-time leaderboards</td>
+<td>Sorted sets with O(log N) insert and rank lookup</td>
+</tr>
+<tr>
+<td>Pub/sub messaging</td>
+<td>Built-in publish/subscribe channels</td>
+</tr>
+<tr>
+<td>Distributed locks</td>
+<td>Atomic SET with NX and EX flags</td>
+</tr>
+<tr>
+<td>Real-time analytics</td>
+<td>HyperLogLog for cardinality, bitmaps for daily activity</td>
+</tr>
+<tr>
+<td>Event streaming</td>
+<td>Streams with consumer groups</td>
+</tr>
+<tr>
+<td>Geospatial indexing</td>
+<td>Geo commands for radius queries</td>
+</tr>
+</tbody>
+</table>
+<h3 id="when-not-to-use-redis">When NOT to Use Redis</h3>
+<ul>
+<li><strong>Primary data store for data you can't lose</strong> — Redis can persist to disk, but it's not a database. Use Postgres for your source of truth and Redis as a derived cache.</li>
+<li><strong>Data larger than RAM</strong> — Redis stores everything in memory. If your dataset doesn't fit in RAM, Redis isn't the right choice (or use Redis on Flash / tiered storage).</li>
+<li><strong>Complex queries</strong> — no JOINs, no secondary indexes (without modules), no SQL. If you need ad-hoc queries, use a database.</li>
+<li><strong>Large values</strong> — storing 100MB blobs in Redis works but wastes memory and blocks the event loop during I/O. Use object storage for large files.</li>
+</ul>
+<hr>
+<h2 id="2-strings">2. Strings</h2>
+<p>Reference: <a href="https://redis.io/docs/latest/develop/data-types/strings/">Strings</a></p>
+<p>The simplest data type. A Redis string can hold text, serialized JSON, binary data, or an integer/float (Redis auto-detects for atomic arithmetic).</p>
+<h3 id="basic-operations">Basic Operations</h3>
+<pre><code class="language-redis">SET user:1001:name &quot;Alice&quot;
+GET user:1001:name                    -- &quot;Alice&quot;
+
+-- set with expiration
+SET session:abc &quot;data&quot; EX 3600        -- expires in 1 hour
+SET session:abc &quot;data&quot; PX 5000        -- expires in 5 seconds
+
+-- set only if key doesn't exist (used for distributed locks)
+SET lock:order:123 &quot;worker-1&quot; NX EX 30
+
+-- set only if key already exists
+SET user:1001:name &quot;Bob&quot; XX
+
+-- get and set atomically
+GETSET counter &quot;0&quot;                    -- returns old value, sets new
+
+-- set multiple keys
+MSET user:1001:name &quot;Alice&quot; user:1001:email &quot;alice@example.com&quot;
+MGET user:1001:name user:1001:email
+</code></pre>
+<h3 id="atomic-counters">Atomic Counters</h3>
+<pre><code class="language-redis">SET page:views 0
+INCR page:views                       -- 1
+INCR page:views                       -- 2
+INCRBY page:views 10                  -- 12
+DECR page:views                       -- 11
+DECRBY page:views 5                   -- 6
+INCRBYFLOAT price 2.50                -- works with floats
+</code></pre>
+<p>These operations are atomic — no race conditions even under concurrent access. This makes Redis ideal for counters, rate limiters, and sequence generators.</p>
+<h3 id="practical-caching">Practical: Caching</h3>
+<pre><code class="language-python">import json
+import redis
+
+r = redis.Redis()
+
+def get_user(user_id):
+    cache_key = f&quot;user:{user_id}&quot;
+
+    # check cache
+    cached = r.get(cache_key)
+    if cached:
+        return json.loads(cached)
+
+    # cache miss — fetch from database
+    user = db.query(&quot;SELECT * FROM users WHERE id = %s&quot;, user_id)
+
+    # populate cache with 5-minute TTL
+    r.setex(cache_key, 300, json.dumps(user))
+
+    return user
+</code></pre>
+<h3 id="practical-distributed-lock">Practical: Distributed Lock</h3>
+<pre><code class="language-python">import uuid
+import time
+
+def acquire_lock(r, lock_name, timeout=10):
+    token = str(uuid.uuid4())
+    acquired = r.set(f&quot;lock:{lock_name}&quot;, token, nx=True, ex=timeout)
+    return token if acquired else None
+
+def release_lock(r, lock_name, token):
+    # atomic check-and-delete using Lua to prevent releasing someone else's lock
+    script = &quot;&quot;&quot;
+    if redis.call(&quot;GET&quot;, KEYS[1]) == ARGV[1] then
+        return redis.call(&quot;DEL&quot;, KEYS[1])
+    else
+        return 0
+    end
+    &quot;&quot;&quot;
+    r.eval(script, 1, f&quot;lock:{lock_name}&quot;, token)
+
+# usage
+token = acquire_lock(r, &quot;process-order-123&quot;)
+if token:
+    try:
+        process_order(123)
+    finally:
+        release_lock(r, &quot;process-order-123&quot;, token)
+</code></pre>
+<p>For production distributed locks, use <a href="https://redis.io/docs/latest/develop/use/patterns/distributed-locks/">Redlock</a> across multiple Redis instances or a coordination service like etcd/ZooKeeper.</p>
+<hr>
+<h2 id="3-hashes">3. Hashes</h2>
+<p>Reference: <a href="https://redis.io/docs/latest/develop/data-types/hashes/">Hashes</a></p>
+<p>A hash is a map of field-value pairs — like a nested dictionary. Ideal for representing objects.</p>
+<h3 id="basic-operations_1">Basic Operations</h3>
+<pre><code class="language-redis">-- set fields
+HSET user:1001 name &quot;Alice&quot; email &quot;alice@example.com&quot; age 30
+
+-- get a single field
+HGET user:1001 name                   -- &quot;Alice&quot;
+
+-- get multiple fields
+HMGET user:1001 name email            -- [&quot;Alice&quot;, &quot;alice@example.com&quot;]
+
+-- get all fields and values
+HGETALL user:1001                     -- {name: Alice, email: alice@example.com, age: 30}
+
+-- check field existence
+HEXISTS user:1001 phone               -- 0 (false)
+
+-- delete a field
+HDEL user:1001 age
+
+-- increment a numeric field
+HINCRBY user:1001 login_count 1
+
+-- get all field names
+HKEYS user:1001
+
+-- get all values
+HVALS user:1001
+
+-- count fields
+HLEN user:1001
+</code></pre>
+<h3 id="hash-vs-multiple-strings">Hash vs Multiple Strings</h3>
+<pre><code class="language-redis">-- option A: separate keys
+SET user:1001:name &quot;Alice&quot;
+SET user:1001:email &quot;alice@example.com&quot;
+SET user:1001:age &quot;30&quot;
+
+-- option B: one hash
+HSET user:1001 name &quot;Alice&quot; email &quot;alice@example.com&quot; age 30
+</code></pre>
+<p>Hashes are better because:
+- <strong>Memory efficiency</strong>: small hashes (&lt; ~100 fields) use a compact encoding (listpack) that's significantly more memory-efficient than separate keys
+- <strong>Atomic operations</strong>: <code>HGETALL</code> fetches all fields in one roundtrip
+- <strong>Logical grouping</strong>: one key represents one entity
+- <strong>TTL</strong>: one expiration for the whole object instead of managing TTLs per field</p>
+<p>Use separate keys when fields need independent TTLs or when individual fields are very large.</p>
+<h3 id="practical-session-storage">Practical: Session Storage</h3>
+<pre><code class="language-python">def create_session(r, session_id, user_data):
+    key = f&quot;session:{session_id}&quot;
+    r.hset(key, mapping={
+        &quot;user_id&quot;: user_data[&quot;id&quot;],
+        &quot;username&quot;: user_data[&quot;username&quot;],
+        &quot;role&quot;: user_data[&quot;role&quot;],
+        &quot;created_at&quot;: int(time.time()),
+    })
+    r.expire(key, 86400)  # 24 hours
+
+def get_session(r, session_id):
+    data = r.hgetall(f&quot;session:{session_id}&quot;)
+    if not data:
+        return None
+    return {k.decode(): v.decode() for k, v in data.items()}
+
+def update_session_field(r, session_id, field, value):
+    key = f&quot;session:{session_id}&quot;
+    if r.exists(key):
+        r.hset(key, field, value)
+</code></pre>
+<h3 id="practical-feature-flags">Practical: Feature Flags</h3>
+<pre><code class="language-python">def init_feature_flags(r):
+    r.hset(&quot;features&quot;, mapping={
+        &quot;dark_mode&quot;: &quot;true&quot;,
+        &quot;new_checkout&quot;: &quot;false&quot;,
+        &quot;beta_api&quot;: &quot;true&quot;,
+    })
+
+def is_feature_enabled(r, feature_name):
+    value = r.hget(&quot;features&quot;, feature_name)
+    return value == b&quot;true&quot; if value else False
+
+def toggle_feature(r, feature_name, enabled):
+    r.hset(&quot;features&quot;, feature_name, &quot;true&quot; if enabled else &quot;false&quot;)
+</code></pre>
+<hr>
+<h2 id="4-lists">4. Lists</h2>
+<p>Reference: <a href="https://redis.io/docs/latest/develop/data-types/lists/">Lists</a></p>
+<p>Redis lists are linked lists of strings. O(1) push/pop at both ends, O(N) access by index. Use them for queues, stacks, timelines, and recent-items lists.</p>
+<h3 id="basic-operations_2">Basic Operations</h3>
+<pre><code class="language-redis">-- push to the left (head) or right (tail)
+LPUSH queue:emails &quot;msg1&quot;
+RPUSH queue:emails &quot;msg2&quot; &quot;msg3&quot;
+-- queue is now: [msg1, msg2, msg3]
+
+-- pop from left or right
+LPOP queue:emails                     -- &quot;msg1&quot;
+RPOP queue:emails                     -- &quot;msg3&quot;
+
+-- peek without removing
+LINDEX queue:emails 0                 -- first element
+LRANGE queue:emails 0 -1             -- all elements
+LRANGE queue:emails 0 9              -- first 10 elements
+
+-- length
+LLEN queue:emails
+
+-- trim to a fixed size (keep most recent N)
+LTRIM recent:posts 0 99              -- keep only first 100 elements
+
+-- blocking pop (waits for an element if list is empty)
+BLPOP queue:emails 30                -- wait up to 30 seconds
+BRPOP queue:emails 0                 -- wait forever
+
+-- move element between lists atomically
+LMOVE source destination LEFT RIGHT
+BLMOVE source destination LEFT RIGHT 30  -- blocking version
+</code></pre>
+<h3 id="practical-simple-job-queue">Practical: Simple Job Queue</h3>
+<pre><code class="language-python"># producer
+def enqueue_job(r, queue_name, job_data):
+    r.rpush(f&quot;queue:{queue_name}&quot;, json.dumps(job_data))
+
+# consumer
+def process_jobs(r, queue_name):
+    while True:
+        # BLMOVE atomically: pop from queue, push to processing list
+        # if worker crashes, job is still in the processing list for recovery
+        job = r.blmove(
+            f&quot;queue:{queue_name}&quot;,
+            f&quot;processing:{queue_name}&quot;,
+            timeout=30,
+            wherefrom=&quot;LEFT&quot;,
+            whereto=&quot;RIGHT&quot;,
+        )
+        if job is None:
+            continue
+
+        try:
+            data = json.loads(job)
+            handle_job(data)
+            # success — remove from processing list
+            r.lrem(f&quot;processing:{queue_name}&quot;, 1, job)
+        except Exception:
+            # failure — move back to queue for retry
+            r.lmove(
+                f&quot;processing:{queue_name}&quot;,
+                f&quot;queue:{queue_name}&quot;,
+                &quot;RIGHT&quot;, &quot;LEFT&quot;
+            )
+</code></pre>
+<p><code>BLMOVE</code> (or the older <code>BRPOPLPUSH</code>) is the key primitive — it atomically moves an item from one list to another. If the worker crashes between popping and completing, the job is still in the processing list and can be recovered.</p>
+<p>For production job queues, consider purpose-built tools (Celery, Sidekiq, BullMQ) that add retries, dead-letter queues, priorities, and monitoring on top of Redis lists.</p>
+<h3 id="practical-activity-feed-recent-items">Practical: Activity Feed / Recent Items</h3>
+<pre><code class="language-python">def add_activity(r, user_id, activity):
+    key = f&quot;feed:{user_id}&quot;
+    r.lpush(key, json.dumps(activity))
+    r.ltrim(key, 0, 99)  # keep only the 100 most recent
+
+def get_recent_activity(r, user_id, count=20):
+    items = r.lrange(f&quot;feed:{user_id}&quot;, 0, count - 1)
+    return [json.loads(item) for item in items]
+</code></pre>
+<p><code>LPUSH</code> + <code>LTRIM</code> is the standard pattern for bounded, most-recent-first lists.</p>
+<hr>
+<h2 id="5-sets">5. Sets</h2>
+<p>Reference: <a href="https://redis.io/docs/latest/develop/data-types/sets/">Sets</a></p>
+<p>Unordered collections of unique strings. O(1) add, remove, and membership check. Supports set operations (union, intersection, difference).</p>
+<h3 id="basic-operations_3">Basic Operations</h3>
+<pre><code class="language-redis">-- add members
+SADD online:users &quot;user:1001&quot; &quot;user:1002&quot; &quot;user:1003&quot;
+
+-- check membership
+SISMEMBER online:users &quot;user:1001&quot;    -- 1 (true)
+
+-- remove a member
+SREM online:users &quot;user:1002&quot;
+
+-- count members
+SCARD online:users                    -- 2
+
+-- get all members
+SMEMBERS online:users                 -- {&quot;user:1001&quot;, &quot;user:1003&quot;}
+
+-- get a random member
+SRANDMEMBER online:users
+SRANDMEMBER online:users 3            -- 3 random members
+
+-- pop a random member (remove and return)
+SPOP online:users
+
+-- set operations
+SADD group:a &quot;alice&quot; &quot;bob&quot; &quot;carol&quot;
+SADD group:b &quot;bob&quot; &quot;carol&quot; &quot;dave&quot;
+
+SINTER group:a group:b               -- {&quot;bob&quot;, &quot;carol&quot;}  (intersection)
+SUNION group:a group:b               -- {&quot;alice&quot;, &quot;bob&quot;, &quot;carol&quot;, &quot;dave&quot;}
+SDIFF group:a group:b                -- {&quot;alice&quot;}  (in a but not b)
+
+-- store results in a new key
+SINTERSTORE group:both group:a group:b
+</code></pre>
+<h3 id="practical-tag-system">Practical: Tag System</h3>
+<pre><code class="language-python">def tag_article(r, article_id, tags):
+    for tag in tags:
+        r.sadd(f&quot;tag:{tag}&quot;, article_id)
+        r.sadd(f&quot;article:{article_id}:tags&quot;, tag)
+
+def get_articles_by_tag(r, tag):
+    return r.smembers(f&quot;tag:{tag}&quot;)
+
+def get_articles_by_all_tags(r, tags):
+    # articles that have ALL the specified tags
+    keys = [f&quot;tag:{tag}&quot; for tag in tags]
+    return r.sinter(*keys)
+
+def get_articles_by_any_tag(r, tags):
+    # articles that have ANY of the specified tags
+    keys = [f&quot;tag:{tag}&quot; for tag in tags]
+    return r.sunion(*keys)
+
+def get_tags_for_article(r, article_id):
+    return r.smembers(f&quot;article:{article_id}:tags&quot;)
+</code></pre>
+<h3 id="practical-tracking-unique-visitors">Practical: Tracking Unique Visitors</h3>
+<pre><code class="language-python">def track_visit(r, page, user_id):
+    today = datetime.now().strftime(&quot;%Y-%m-%d&quot;)
+    r.sadd(f&quot;visitors:{page}:{today}&quot;, user_id)
+    r.expire(f&quot;visitors:{page}:{today}&quot;, 86400 * 7)  # keep for 7 days
+
+def unique_visitors_today(r, page):
+    today = datetime.now().strftime(&quot;%Y-%m-%d&quot;)
+    return r.scard(f&quot;visitors:{page}:{today}&quot;)
+
+def visitors_both_pages(r, page_a, page_b):
+    today = datetime.now().strftime(&quot;%Y-%m-%d&quot;)
+    return r.sinter(f&quot;visitors:{page_a}:{today}&quot;, f&quot;visitors:{page_b}:{today}&quot;)
+</code></pre>
+<p>For very high cardinalities (millions of unique visitors), switch to HyperLogLog (Section 8) to save memory at the cost of approximate counts.</p>
+<hr>
+<h2 id="6-sorted-sets">6. Sorted Sets</h2>
+<p>Reference: <a href="https://redis.io/docs/latest/develop/data-types/sorted-sets/">Sorted Sets</a></p>
+<p>Sorted sets are the most versatile Redis data structure. Each member has a floating-point score, and members are ordered by score. O(log N) insert, remove, and rank lookup. O(log N + M) range queries.</p>
+<h3 id="basic-operations_4">Basic Operations</h3>
+<pre><code class="language-redis">-- add members with scores
+ZADD leaderboard 1500 &quot;alice&quot; 1200 &quot;bob&quot; 1800 &quot;carol&quot;
+
+-- get score of a member
+ZSCORE leaderboard &quot;alice&quot;            -- 1500
+
+-- increment a score
+ZINCRBY leaderboard 50 &quot;alice&quot;        -- 1550
+
+-- rank (0-based, lowest score first)
+ZRANK leaderboard &quot;bob&quot;               -- 0 (lowest)
+ZREVRANK leaderboard &quot;carol&quot;          -- 0 (highest)
+
+-- range by rank (ascending)
+ZRANGE leaderboard 0 -1 WITHSCORES   -- all members, lowest first
+ZREVRANGE leaderboard 0 9 WITHSCORES -- top 10, highest first
+
+-- range by score
+ZRANGEBYSCORE leaderboard 1000 1500  -- members with scores 1000-1500
+ZRANGEBYSCORE leaderboard &quot;-inf&quot; &quot;+inf&quot;  -- all members by score
+
+-- count members in a score range
+ZCOUNT leaderboard 1000 1500         -- 1
+
+-- remove members
+ZREM leaderboard &quot;bob&quot;
+
+-- remove by rank (keep only top N)
+ZREMRANGEBYRANK leaderboard 0 -11    -- remove all but top 10
+
+-- remove by score
+ZREMRANGEBYSCORE leaderboard &quot;-inf&quot; 1000
+
+-- cardinality
+ZCARD leaderboard
+
+-- set operations
+ZUNIONSTORE dest 2 set1 set2 WEIGHTS 1 2  -- weighted union
+ZINTERSTORE dest 2 set1 set2               -- intersection
+</code></pre>
+<h3 id="practical-leaderboard">Practical: Leaderboard</h3>
+<pre><code class="language-python">def update_score(r, game_id, user_id, score):
+    r.zadd(f&quot;leaderboard:{game_id}&quot;, {user_id: score})
+
+def add_points(r, game_id, user_id, points):
+    r.zincrby(f&quot;leaderboard:{game_id}&quot;, points, user_id)
+
+def get_top_players(r, game_id, count=10):
+    return r.zrevrange(f&quot;leaderboard:{game_id}&quot;, 0, count - 1, withscores=True)
+
+def get_player_rank(r, game_id, user_id):
+    rank = r.zrevrank(f&quot;leaderboard:{game_id}&quot;, user_id)
+    return rank + 1 if rank is not None else None  # 1-based rank
+
+def get_players_around(r, game_id, user_id, window=5):
+    rank = r.zrevrank(f&quot;leaderboard:{game_id}&quot;, user_id)
+    if rank is None:
+        return []
+    start = max(0, rank - window)
+    end = rank + window
+    return r.zrevrange(f&quot;leaderboard:{game_id}&quot;, start, end, withscores=True)
+</code></pre>
+<h3 id="practical-rate-limiter-sliding-window">Practical: Rate Limiter (Sliding Window)</h3>
+<pre><code class="language-python">def is_rate_limited(r, user_id, action, max_requests, window_seconds):
+    key = f&quot;ratelimit:{action}:{user_id}&quot;
+    now = time.time()
+    window_start = now - window_seconds
+
+    pipe = r.pipeline()
+    pipe.zremrangebyscore(key, &quot;-inf&quot;, window_start)  # remove old entries
+    pipe.zadd(key, {f&quot;{now}:{uuid4()}&quot;: now})          # add current request
+    pipe.zcard(key)                                     # count requests in window
+    pipe.expire(key, window_seconds)                    # auto-cleanup
+    results = pipe.execute()
+
+    request_count = results[2]
+    return request_count &gt; max_requests
+
+# usage: max 100 requests per 60 seconds
+if is_rate_limited(r, &quot;user:1001&quot;, &quot;api&quot;, max_requests=100, window_seconds=60):
+    return HttpResponse(status=429)
+</code></pre>
+<p>This is a sliding window rate limiter — each request timestamp is stored as a sorted set member with the timestamp as the score. Old entries are pruned, and the count of remaining entries is the request count within the window.</p>
+<h3 id="practical-priority-queue">Practical: Priority Queue</h3>
+<pre><code class="language-python">def enqueue_priority(r, queue_name, job_data, priority):
+    # lower score = higher priority (processed first)
+    job_id = str(uuid4())
+    r.zadd(f&quot;pqueue:{queue_name}&quot;, {json.dumps({&quot;id&quot;: job_id, **job_data}): priority})
+
+def dequeue_highest_priority(r, queue_name):
+    # atomically pop the lowest-scored (highest priority) member
+    result = r.zpopmin(f&quot;pqueue:{queue_name}&quot;)
+    if result:
+        member, score = result[0]
+        return json.loads(member)
+    return None
+</code></pre>
+<h3 id="practical-time-series-data-simple">Practical: Time-Series Data (Simple)</h3>
+<pre><code class="language-python">def record_metric(r, metric_name, value):
+    timestamp = time.time()
+    r.zadd(f&quot;metric:{metric_name}&quot;, {f&quot;{timestamp}:{value}&quot;: timestamp})
+
+def get_metrics_in_range(r, metric_name, start_time, end_time):
+    entries = r.zrangebyscore(
+        f&quot;metric:{metric_name}&quot;, start_time, end_time, withscores=True
+    )
+    return [(float(m.decode().split(&quot;:&quot;)[1]), score) for m, score in entries]
+
+def trim_old_metrics(r, metric_name, max_age_seconds):
+    cutoff = time.time() - max_age_seconds
+    r.zremrangebyscore(f&quot;metric:{metric_name}&quot;, &quot;-inf&quot;, cutoff)
+</code></pre>
+<p>For serious time-series workloads, use Redis TimeSeries (a module) or a dedicated time-series database.</p>
+<hr>
+<h2 id="7-streams">7. Streams</h2>
+<p>Reference: <a href="https://redis.io/docs/latest/develop/data-types/streams/">Streams</a></p>
+<p>Streams are an append-only log data structure with consumer groups. Think of them as a Redis-native, lighter-weight alternative to Kafka for event streaming within a single Redis deployment.</p>
+<h3 id="basic-operations_5">Basic Operations</h3>
+<pre><code class="language-redis">-- add an entry (auto-generated ID)
+XADD events * user &quot;alice&quot; action &quot;login&quot; ip &quot;1.2.3.4&quot;
+-- returns &quot;1700000000000-0&quot; (millisecond timestamp + sequence number)
+
+-- add with a specific ID
+XADD events 1700000000000-0 user &quot;alice&quot; action &quot;login&quot;
+
+-- read entries
+XRANGE events - +                     -- all entries (- = start, + = end)
+XRANGE events - + COUNT 10           -- first 10 entries
+XRANGE events 1700000000000 +        -- entries after a timestamp
+
+-- read new entries (blocking, like tail -f)
+XREAD COUNT 10 BLOCK 5000 STREAMS events $
+-- $ means &quot;only new entries from now on&quot;
+-- BLOCK 5000 = wait up to 5 seconds
+
+-- length
+XLEN events
+
+-- trim to a maximum length
+XTRIM events MAXLEN ~ 10000          -- approximately 10K entries (~ allows Redis to optimize)
+
+-- delete specific entries
+XDEL events 1700000000000-0
+</code></pre>
+<h3 id="consumer-groups">Consumer Groups</h3>
+<p>Consumer groups allow multiple consumers to share the work of processing a stream, where each message is delivered to exactly one consumer in the group:</p>
+<pre><code class="language-redis">-- create a consumer group
+XGROUP CREATE events mygroup $ MKSTREAM
+-- $ = start reading from new messages only
+-- 0 = start reading from the beginning
+
+-- read as a consumer in a group
+XREADGROUP GROUP mygroup consumer-1 COUNT 10 BLOCK 5000 STREAMS events &gt;
+-- &gt; means &quot;give me undelivered messages&quot;
+
+-- acknowledge processing
+XACK events mygroup 1700000000000-0
+
+-- see pending (unacknowledged) messages
+XPENDING events mygroup
+XPENDING events mygroup - + 10       -- details of up to 10 pending entries
+
+-- claim messages from a dead consumer (been pending &gt; 60 seconds)
+XAUTOCLAIM events mygroup consumer-2 60000 0
+</code></pre>
+<h3 id="practical-event-processing-pipeline">Practical: Event Processing Pipeline</h3>
+<pre><code class="language-python">def publish_event(r, stream, event_type, data):
+    entry = {&quot;type&quot;: event_type, &quot;data&quot;: json.dumps(data), &quot;timestamp&quot;: str(time.time())}
+    r.xadd(stream, entry, maxlen=100000)
+
+def consume_events(r, stream, group, consumer_name):
+    # ensure the consumer group exists
+    try:
+        r.xgroup_create(stream, group, id=&quot;0&quot;, mkstream=True)
+    except redis.ResponseError:
+        pass  # group already exists
+
+    while True:
+        # read new messages
+        entries = r.xreadgroup(group, consumer_name, {stream: &quot;&gt;&quot;}, count=10, block=5000)
+        if not entries:
+            continue
+
+        for stream_name, messages in entries:
+            for msg_id, fields in messages:
+                try:
+                    event_type = fields[b&quot;type&quot;].decode()
+                    data = json.loads(fields[b&quot;data&quot;])
+                    handle_event(event_type, data)
+                    r.xack(stream, group, msg_id)  # acknowledge
+                except Exception as e:
+                    log.error(f&quot;Failed to process {msg_id}: {e}&quot;)
+                    # message stays pending, will be retried or claimed
+
+# run multiple consumers
+# consumer-1, consumer-2, consumer-3 all in the same group
+# each message is delivered to exactly one consumer
+</code></pre>
+<h3 id="streams-vs-pubsub-vs-lists">Streams vs Pub/Sub vs Lists</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Streams</th>
+<th>Pub/Sub</th>
+<th>Lists</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Persistence</td>
+<td>Yes (on disk)</td>
+<td>No (fire-and-forget)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Consumer groups</td>
+<td>Yes</td>
+<td>No</td>
+<td>Manual</td>
+</tr>
+<tr>
+<td>Message replay</td>
+<td>Yes (read from any point)</td>
+<td>No (miss it and it's gone)</td>
+<td>No (once popped, gone)</td>
+</tr>
+<tr>
+<td>Acknowledgment</td>
+<td>Yes (XACK)</td>
+<td>No</td>
+<td>Manual</td>
+</tr>
+<tr>
+<td>Backpressure</td>
+<td>BLOCK + COUNT</td>
+<td>No</td>
+<td>BLPOP</td>
+</tr>
+<tr>
+<td>Use case</td>
+<td>Event sourcing, reliable messaging</td>
+<td>Notifications, real-time broadcasts</td>
+<td>Job queues</td>
+</tr>
+</tbody>
+</table>
+<p>Use streams when you need reliable, replayable messaging. Use pub/sub for ephemeral notifications. Use lists for simple queues.</p>
+<hr>
+<h2 id="8-hyperloglog-bitmaps-bitfields">8. HyperLogLog, Bitmaps &amp; Bitfields</h2>
+<h3 id="hyperloglog">HyperLogLog</h3>
+<p>Reference: <a href="https://redis.io/docs/latest/develop/data-types/probabilistic/hyperloglogs/">HyperLogLog</a></p>
+<p>HyperLogLog counts unique elements approximately with a fixed 12KB of memory regardless of cardinality. Standard error is 0.81%.</p>
+<pre><code class="language-redis">-- add elements
+PFADD visitors:2024-01-15 &quot;user:1001&quot; &quot;user:1002&quot; &quot;user:1003&quot;
+PFADD visitors:2024-01-15 &quot;user:1001&quot;   -- duplicate, doesn't increase count
+
+-- get approximate count
+PFCOUNT visitors:2024-01-15              -- ~3
+
+-- merge multiple HyperLogLogs
+PFMERGE visitors:week visitors:2024-01-15 visitors:2024-01-16 visitors:2024-01-17
+PFCOUNT visitors:week                    -- unique visitors across all three days
+</code></pre>
+<p><strong>When to use</strong>: counting unique items where exact counts aren't required and memory matters — unique visitors, unique searches, unique IPs. At 10 million unique users, a set costs ~400MB; a HyperLogLog costs 12KB.</p>
+<h3 id="bitmaps">Bitmaps</h3>
+<p>Reference: <a href="https://redis.io/docs/latest/develop/data-types/probabilistic/bitmaps/">Bitmaps</a></p>
+<p>Bitmaps are strings treated as arrays of bits. O(1) set/get per bit, O(N) for counting and bitwise operations.</p>
+<pre><code class="language-redis">-- set bit (user 1001 was active today)
+SETBIT active:2024-01-15 1001 1
+
+-- get bit
+GETBIT active:2024-01-15 1001          -- 1
+
+-- count set bits
+BITCOUNT active:2024-01-15             -- number of active users
+
+-- bitwise operations
+BITOP AND active:both active:2024-01-15 active:2024-01-16
+-- users active on BOTH days
+
+BITOP OR active:either active:2024-01-15 active:2024-01-16
+-- users active on EITHER day
+</code></pre>
+<p><strong>Practical: Daily Active Users</strong></p>
+<pre><code class="language-python">def mark_active(r, user_id):
+    today = datetime.now().strftime(&quot;%Y-%m-%d&quot;)
+    r.setbit(f&quot;active:{today}&quot;, user_id, 1)
+
+def count_dau(r, date_str):
+    return r.bitcount(f&quot;active:{date_str}&quot;)
+
+def count_users_active_all_days(r, dates):
+    keys = [f&quot;active:{d}&quot; for d in dates]
+    dest = f&quot;active:intersection:{':'.join(dates)}&quot;
+    r.bitop(&quot;AND&quot;, dest, *keys)
+    count = r.bitcount(dest)
+    r.delete(dest)
+    return count
+
+def user_was_active(r, user_id, date_str):
+    return r.getbit(f&quot;active:{date_str}&quot;, user_id)
+</code></pre>
+<p>One bitmap for 10 million users costs ~1.2MB. A set of user IDs would cost ~80MB.</p>
+<p><strong>Trade-off</strong>: bitmaps use user IDs as offsets, so they work best with sequential integer IDs. Sparse ID spaces (UUIDs) waste memory.</p>
+<h3 id="bitfields">Bitfields</h3>
+<p>Reference: <a href="https://redis.io/docs/latest/develop/data-types/probabilistic/bitfields/">Bitfields</a></p>
+<p>Bitfields let you set, get, and increment integer values at arbitrary bit offsets within a string. Useful for compact storage of small integers.</p>
+<pre><code class="language-redis">-- store multiple small counters in a single key
+-- user 0: 4-bit counter at offset 0
+-- user 1: 4-bit counter at offset 4
+-- user 2: 4-bit counter at offset 8
+
+BITFIELD compact_counters SET u4 0 5       -- set user 0's counter to 5
+BITFIELD compact_counters SET u4 4 12      -- set user 1's counter to 12
+BITFIELD compact_counters INCRBY u4 0 1    -- increment user 0's counter
+BITFIELD compact_counters GET u4 0         -- get user 0's counter: 6
+</code></pre>
+<hr>
+<h2 id="9-keys-expiration-eviction">9. Keys, Expiration &amp; Eviction</h2>
+<h3 id="key-naming-conventions">Key Naming Conventions</h3>
+<p>Use colons as separators and establish a consistent hierarchy:</p>
+<pre><code class="language-text">object-type:id:field
+─────────────────────
+user:1001              hash of user data
+user:1001:sessions     set of active sessions
+session:abc123         hash of session data
+queue:emails           list for email job queue
+cache:api:/users/42    cached API response
+lock:process:order:99  distributed lock
+ratelimit:api:user:42  rate limiter
+</code></pre>
+<p>Consistent naming enables pattern-based operations (<code>KEYS user:*</code>, <code>SCAN 0 MATCH user:*</code>) and makes the keyspace self-documenting.</p>
+<h3 id="key-operations">Key Operations</h3>
+<pre><code class="language-redis">-- check existence
+EXISTS user:1001                       -- 1 if exists
+
+-- delete
+DEL user:1001                          -- synchronous, blocks
+UNLINK user:1001                       -- asynchronous, non-blocking (prefer for large values)
+
+-- type of value stored at key
+TYPE user:1001                         -- &quot;hash&quot;, &quot;string&quot;, &quot;list&quot;, etc.
+
+-- rename
+RENAME old_key new_key
+RENAMENX old_key new_key              -- only if new_key doesn't exist
+
+-- find keys by pattern (NEVER use in production — blocks the server)
+KEYS user:*
+
+-- iterative, non-blocking alternative to KEYS
+SCAN 0 MATCH user:* COUNT 100        -- returns cursor + batch of keys
+</code></pre>
+<h3 id="expiration">Expiration</h3>
+<pre><code class="language-redis">-- set TTL at creation
+SET session:abc &quot;data&quot; EX 3600        -- 3600 seconds
+SET session:abc &quot;data&quot; PX 60000       -- 60000 milliseconds
+
+-- set TTL on existing key
+EXPIRE key 300                         -- 300 seconds from now
+PEXPIRE key 5000                       -- 5000 milliseconds from now
+EXPIREAT key 1700000000               -- at specific Unix timestamp
+PEXPIREAT key 1700000000000           -- at specific Unix timestamp (ms)
+
+-- check remaining TTL
+TTL key                                -- seconds, -1 = no expiry, -2 = doesn't exist
+PTTL key                               -- milliseconds
+
+-- remove expiration (make persistent)
+PERSIST key
+</code></pre>
+<p><strong>How expiration works internally:</strong></p>
+<p>Redis uses two strategies:
+1. <strong>Lazy expiration</strong>: when a key is accessed, Redis checks if it's expired and deletes it
+2. <strong>Active expiration</strong>: 10 times per second, Redis samples 20 random keys with TTLs and deletes expired ones. If &gt;25% were expired, repeat immediately.</p>
+<p>This means expired keys may consume memory for a short time after expiration. Under memory pressure, eviction policies handle this.</p>
+<h3 id="eviction-policies">Eviction Policies</h3>
+<p>When Redis hits its <code>maxmemory</code> limit, it needs to decide what to remove:</p>
+<table>
+<thead>
+<tr>
+<th>Policy</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>noeviction</code></td>
+<td>Return errors on writes. Reads still work. Default — dangerous if you don't monitor.</td>
+</tr>
+<tr>
+<td><code>allkeys-lru</code></td>
+<td>Evict least recently used keys. <strong>Best default for caches.</strong></td>
+</tr>
+<tr>
+<td><code>allkeys-lfu</code></td>
+<td>Evict least frequently used keys. Better than LRU when some keys are consistently hot.</td>
+</tr>
+<tr>
+<td><code>volatile-lru</code></td>
+<td>LRU but only among keys with TTLs set.</td>
+</tr>
+<tr>
+<td><code>volatile-lfu</code></td>
+<td>LFU but only among keys with TTLs set.</td>
+</tr>
+<tr>
+<td><code>allkeys-random</code></td>
+<td>Evict random keys.</td>
+</tr>
+<tr>
+<td><code>volatile-random</code></td>
+<td>Evict random keys with TTLs.</td>
+</tr>
+<tr>
+<td><code>volatile-ttl</code></td>
+<td>Evict keys with the shortest remaining TTL.</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-redis">CONFIG SET maxmemory 2gb
+CONFIG SET maxmemory-policy allkeys-lfu
+</code></pre>
+<p><strong>Recommendation</strong>: <code>allkeys-lfu</code> for most cache workloads. <code>noeviction</code> for data you can't afford to lose (but then you must monitor memory and scale before hitting the limit).</p>
+<hr>
+<h2 id="10-pubsub">10. Pub/Sub</h2>
+<p>Reference: <a href="https://redis.io/docs/latest/develop/interact/pubsub/">Pub/Sub</a></p>
+<p>Pub/Sub is fire-and-forget messaging. Publishers send messages to channels. Subscribers receive messages from channels they're subscribed to. Messages are not persisted — if no subscriber is listening, the message is lost.</p>
+<h3 id="basic-operations_6">Basic Operations</h3>
+<pre><code class="language-redis">-- subscriber (blocks and waits for messages)
+SUBSCRIBE notifications
+SUBSCRIBE channel1 channel2
+
+-- pattern subscribe (match channel names)
+PSUBSCRIBE news.*                      -- matches news.sports, news.tech, etc.
+
+-- publisher (from a different connection)
+PUBLISH notifications &quot;New order received&quot;
+PUBLISH news.sports &quot;Team wins championship&quot;
+
+-- unsubscribe
+UNSUBSCRIBE notifications
+PUNSUBSCRIBE news.*
+</code></pre>
+<h3 id="practical-real-time-notifications">Practical: Real-Time Notifications</h3>
+<pre><code class="language-python"># publisher (in your application code)
+def notify_user(r, user_id, message):
+    channel = f&quot;notifications:{user_id}&quot;
+    r.publish(channel, json.dumps({
+        &quot;type&quot;: &quot;notification&quot;,
+        &quot;message&quot;: message,
+        &quot;timestamp&quot;: time.time()
+    }))
+
+# subscriber (in a WebSocket handler or background worker)
+def listen_for_notifications(r, user_id):
+    pubsub = r.pubsub()
+    pubsub.subscribe(f&quot;notifications:{user_id}&quot;)
+
+    for message in pubsub.listen():
+        if message[&quot;type&quot;] == &quot;message&quot;:
+            data = json.loads(message[&quot;data&quot;])
+            yield data  # send to WebSocket client
+</code></pre>
+<h3 id="practical-cache-invalidation">Practical: Cache Invalidation</h3>
+<pre><code class="language-python"># when data changes, broadcast invalidation
+def update_user(r, user_id, data):
+    db.update_user(user_id, data)
+    r.delete(f&quot;cache:user:{user_id}&quot;)
+    r.publish(&quot;cache:invalidation&quot;, json.dumps({
+        &quot;type&quot;: &quot;user&quot;,
+        &quot;id&quot;: user_id
+    }))
+
+# each application server subscribes and clears its local cache
+def listen_invalidations(r, local_cache):
+    pubsub = r.pubsub()
+    pubsub.subscribe(&quot;cache:invalidation&quot;)
+
+    for message in pubsub.listen():
+        if message[&quot;type&quot;] == &quot;message&quot;:
+            data = json.loads(message[&quot;data&quot;])
+            local_cache.delete(f&quot;{data['type']}:{data['id']}&quot;)
+</code></pre>
+<h3 id="limitations">Limitations</h3>
+<ul>
+<li><strong>No persistence</strong>: if a subscriber is disconnected when a message is published, it misses that message permanently</li>
+<li><strong>No acknowledgment</strong>: the publisher doesn't know if anyone received the message</li>
+<li><strong>No consumer groups</strong>: every subscriber gets every message (no work distribution)</li>
+<li><strong>All-or-nothing delivery</strong>: no selective replay or offset tracking</li>
+</ul>
+<p>For reliable messaging, use Streams (Section 7) or an external message broker.</p>
+<hr>
+<h2 id="11-transactions-lua-scripting">11. Transactions &amp; Lua Scripting</h2>
+<h3 id="transactions-multiexec">Transactions (MULTI/EXEC)</h3>
+<p>Reference: <a href="https://redis.io/docs/latest/develop/interact/transactions/">Transactions</a></p>
+<p><code>MULTI/EXEC</code> groups commands into an atomic batch — all commands execute sequentially without interleaving from other clients:</p>
+<pre><code class="language-redis">MULTI
+SET user:1001:balance 100
+INCR user:1001:login_count
+EXPIRE user:1001:balance 3600
+EXEC
+-- all three commands execute atomically
+</code></pre>
+<p><strong>Important</strong>: Redis transactions are <strong>not</strong> rollback transactions. If one command fails, the others still execute. There is no ROLLBACK. <code>MULTI/EXEC</code> guarantees isolation (no interleaving), not atomicity in the database sense.</p>
+<h3 id="optimistic-locking-with-watch">Optimistic Locking with WATCH</h3>
+<p><code>WATCH</code> enables check-and-set (CAS) behavior:</p>
+<pre><code class="language-redis">WATCH user:1001:balance
+balance = GET user:1001:balance        -- 100
+
+MULTI
+SET user:1001:balance (balance - 25)
+EXEC
+-- if another client modified user:1001:balance after WATCH,
+-- EXEC returns nil and the transaction is aborted
+</code></pre>
+<pre><code class="language-python">def transfer(r, from_user, to_user, amount):
+    with r.pipeline() as pipe:
+        while True:
+            try:
+                from_key = f&quot;user:{from_user}:balance&quot;
+                to_key = f&quot;user:{to_user}:balance&quot;
+
+                pipe.watch(from_key, to_key)
+                from_balance = int(pipe.get(from_key) or 0)
+                to_balance = int(pipe.get(to_key) or 0)
+
+                if from_balance &lt; amount:
+                    pipe.unwatch()
+                    raise ValueError(&quot;Insufficient funds&quot;)
+
+                pipe.multi()
+                pipe.set(from_key, from_balance - amount)
+                pipe.set(to_key, to_balance + amount)
+                pipe.execute()
+                break  # success
+            except redis.WatchError:
+                continue  # retry — someone modified the watched keys
+</code></pre>
+<h3 id="lua-scripting">Lua Scripting</h3>
+<p>Reference: <a href="https://redis.io/docs/latest/develop/interact/programmability/eval-intro/">Scripting with Lua</a></p>
+<p>Lua scripts execute atomically on the server — they're the most powerful way to implement complex atomic operations:</p>
+<pre><code class="language-python"># atomic compare-and-delete (for releasing locks)
+release_lock_script = &quot;&quot;&quot;
+if redis.call(&quot;GET&quot;, KEYS[1]) == ARGV[1] then
+    return redis.call(&quot;DEL&quot;, KEYS[1])
+else
+    return 0
+end
+&quot;&quot;&quot;
+
+# atomic rate limiter
+rate_limit_script = &quot;&quot;&quot;
+local key = KEYS[1]
+local limit = tonumber(ARGV[1])
+local window = tonumber(ARGV[2])
+
+local current = redis.call(&quot;INCR&quot;, key)
+if current == 1 then
+    redis.call(&quot;EXPIRE&quot;, key, window)
+end
+
+if current &gt; limit then
+    return 0  -- rate limited
+else
+    return 1  -- allowed
+end
+&quot;&quot;&quot;
+
+# register script (returns a SHA that can be called without resending the script)
+release_lock = r.register_script(release_lock_script)
+rate_limit = r.register_script(rate_limit_script)
+
+# call
+release_lock(keys=[&quot;lock:order:123&quot;], args=[&quot;my-token&quot;])
+allowed = rate_limit(keys=[&quot;ratelimit:api:user:42&quot;], args=[100, 60])
+</code></pre>
+<p><strong>Lua vs MULTI/EXEC:</strong></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>MULTI/EXEC</th>
+<th>Lua</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Read-then-write patterns</td>
+<td>Needs WATCH + retry loop</td>
+<td>Just read and write in the script</td>
+</tr>
+<tr>
+<td>Conditional logic</td>
+<td>Not possible</td>
+<td>Full programming language</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td>Multiple roundtrips (or pipeline)</td>
+<td>Single roundtrip</td>
+</tr>
+<tr>
+<td>Complexity</td>
+<td>Simple</td>
+<td>Can be complex to debug</td>
+</tr>
+<tr>
+<td>Atomicity</td>
+<td>Isolation only</td>
+<td>True atomicity</td>
+</tr>
+</tbody>
+</table>
+<p>Use Lua when you need to read a value, make a decision, then write — MULTI/EXEC can't do this without WATCH.</p>
+<p><strong>Caution</strong>: long-running Lua scripts block the entire Redis server. Keep scripts short and fast. Redis has a default timeout of 5 seconds (<code>lua-time-limit</code>), after which clients can interrupt.</p>
+<hr>
+<h2 id="12-pipelining">12. Pipelining</h2>
+<p>Reference: <a href="https://redis.io/docs/latest/develop/use/pipelining/">Pipelining</a></p>
+<p>Pipelining sends multiple commands in one batch without waiting for individual responses. This eliminates per-command network roundtrip latency.</p>
+<pre><code class="language-python"># without pipelining: 100 roundtrips
+for i in range(100):
+    r.set(f&quot;key:{i}&quot;, f&quot;value:{i}&quot;)  # each call waits for response
+
+# with pipelining: 1 roundtrip
+pipe = r.pipeline(transaction=False)
+for i in range(100):
+    pipe.set(f&quot;key:{i}&quot;, f&quot;value:{i}&quot;)
+results = pipe.execute()  # all 100 commands sent at once, all 100 responses received at once
+</code></pre>
+<h3 id="performance-impact">Performance Impact</h3>
+<p>On a typical network (0.5ms roundtrip):
+- 100 commands without pipelining: ~50ms
+- 100 commands with pipelining: ~1ms + server processing time</p>
+<p>Pipelining doesn't change the server-side execution time. It eliminates network latency by batching.</p>
+<h3 id="pipeline-transaction">Pipeline + Transaction</h3>
+<pre><code class="language-python"># pipeline with MULTI/EXEC wrapping
+pipe = r.pipeline()  # transaction=True is the default
+pipe.set(&quot;key1&quot;, &quot;value1&quot;)
+pipe.set(&quot;key2&quot;, &quot;value2&quot;)
+pipe.incr(&quot;counter&quot;)
+results = pipe.execute()
+# commands are sent in one batch AND executed atomically
+</code></pre>
+<h3 id="practical-guidelines">Practical Guidelines</h3>
+<ul>
+<li><strong>Batch size</strong>: 100–1000 commands per pipeline is typical. Don't pipeline 1 million commands — the response buffer will consume too much memory.</li>
+<li><strong>Don't pipeline when you need intermediate results</strong>: if command B depends on command A's response, you can't pipeline them.</li>
+<li><strong>Always pipeline in loops</strong>: if you're calling Redis in a <code>for</code> loop, you're probably missing a pipelining opportunity.</li>
+</ul>
+<hr>
+<h2 id="13-persistence-rdb-aof">13. Persistence: RDB &amp; AOF</h2>
+<p>Reference: <a href="https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/">Persistence</a></p>
+<p>Redis is in-memory, but it can persist data to disk for durability. Two mechanisms, often used together:</p>
+<h3 id="rdb-snapshotting">RDB (Snapshotting)</h3>
+<p>Point-in-time snapshots of the entire dataset, written as a compact binary file:</p>
+<pre><code class="language-redis">-- manual snapshot
+BGSAVE                                 -- fork and save in background
+SAVE                                   -- blocks until complete (don't use in production)
+
+-- automatic snapshots (in redis.conf)
+save 900 1                             -- snapshot if ≥1 key changed in 900 seconds
+save 300 10                            -- snapshot if ≥10 keys changed in 300 seconds
+save 60 10000                          -- snapshot if ≥10000 keys changed in 60 seconds
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Compact binary format, fast to load</td>
+<td>Data loss between snapshots (could be minutes)</td>
+</tr>
+<tr>
+<td>Perfect for backups</td>
+<td><code>fork()</code> can be slow on large datasets (copies page tables)</td>
+</tr>
+<tr>
+<td>Fast restart from RDB</td>
+<td>Not suitable for minimal data loss requirements</td>
+</tr>
+</tbody>
+</table>
+<h3 id="aof-append-only-file">AOF (Append-Only File)</h3>
+<p>Logs every write operation. Replayed on restart to reconstruct the dataset:</p>
+<pre><code class="language-redis">-- enable AOF
+CONFIG SET appendonly yes
+
+-- fsync policies
+appendfsync always                     -- fsync after every write (safest, slowest)
+appendfsync everysec                   -- fsync every second (good compromise)
+appendfsync no                         -- let the OS decide (fastest, least safe)
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Minimal data loss (at most 1 second with <code>everysec</code>)</td>
+<td>Larger file than RDB</td>
+</tr>
+<tr>
+<td>Append-only, so it survives partial writes</td>
+<td>Slower restart (must replay all operations)</td>
+</tr>
+<tr>
+<td>Human-readable format</td>
+<td>Write amplification</td>
+</tr>
+</tbody>
+</table>
+<h3 id="aof-rewriting">AOF Rewriting</h3>
+<p>The AOF file grows over time. Redis periodically rewrites it to contain only the minimal set of commands to reconstruct the current dataset:</p>
+<pre><code class="language-redis">BGREWRITEAOF                           -- trigger manual rewrite
+
+-- automatic rewrite (in redis.conf)
+auto-aof-rewrite-percentage 100        -- rewrite when AOF is 100% larger than last rewrite
+auto-aof-rewrite-min-size 64mb         -- don't rewrite if AOF is smaller than 64MB
+</code></pre>
+<h3 id="practical-recommendations">Practical Recommendations</h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Configuration</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pure cache (data is reconstructible)</td>
+<td>No persistence, or RDB only for faster restarts</td>
+</tr>
+<tr>
+<td>General purpose (some data loss acceptable)</td>
+<td>RDB + AOF with <code>everysec</code></td>
+</tr>
+<tr>
+<td>Maximum durability</td>
+<td>AOF with <code>always</code> (but accept the performance hit)</td>
+</tr>
+<tr>
+<td>Backups</td>
+<td>RDB snapshots copied to external storage (S3, etc.)</td>
+</tr>
+</tbody>
+</table>
+<p>For most production deployments: <strong>enable both RDB and AOF</strong>. RDB for fast restarts and backups. AOF for minimal data loss. Redis uses the AOF to restore on startup if both exist (it's more complete).</p>
+<hr>
+<h2 id="14-replication">14. Replication</h2>
+<p>Reference: <a href="https://redis.io/docs/latest/operate/oss_and_stack/management/replication/">Replication</a></p>
+<p>Redis replication creates read replicas that are exact copies of a primary instance:</p>
+<pre><code class="language-text">Writes ──→ Primary ──→ Replica 1 (read-only)
+                   ──→ Replica 2 (read-only)
+                   ──→ Replica 3 (read-only)
+</code></pre>
+<pre><code class="language-redis">-- on the replica
+REPLICAOF primary-host 6379
+
+-- promote a replica to primary
+REPLICAOF NO ONE
+
+-- check replication status
+INFO replication
+</code></pre>
+<h3 id="how-it-works">How It Works</h3>
+<ol>
+<li>Replica connects to primary and requests a full sync</li>
+<li>Primary runs <code>BGSAVE</code> to create an RDB snapshot</li>
+<li>Primary sends the RDB to the replica (initial sync)</li>
+<li>Primary sends all new write commands to the replica in real-time (ongoing replication)</li>
+</ol>
+<p>Replication is <strong>asynchronous</strong> by default — writes to the primary return before replicas confirm receipt. This means:
+- A replica can be slightly behind the primary
+- If the primary fails before a write propagates, that write is lost
+- Read-your-writes consistency requires reading from the primary</p>
+<h3 id="wait-for-replication">Wait for Replication</h3>
+<pre><code class="language-redis">SET key value
+WAIT 2 5000
+-- wait until at least 2 replicas have acknowledged the write
+-- or 5000 milliseconds have passed, whichever comes first
+</code></pre>
+<p><code>WAIT</code> provides synchronous replication on demand. Use it for critical writes where you need replica confirmation.</p>
+<h3 id="read-replicas">Read Replicas</h3>
+<p>Replicas can serve read traffic to scale read-heavy workloads:</p>
+<pre><code class="language-python"># primary for writes
+primary = redis.Redis(host=&quot;primary&quot;, port=6379)
+
+# replicas for reads (round-robin or random)
+replicas = [
+    redis.Redis(host=&quot;replica-1&quot;, port=6379),
+    redis.Redis(host=&quot;replica-2&quot;, port=6379),
+]
+
+def read(key):
+    replica = random.choice(replicas)
+    return replica.get(key)
+
+def write(key, value):
+    primary.set(key, value)
+</code></pre>
+<hr>
+<h2 id="15-redis-sentinel">15. Redis Sentinel</h2>
+<p>Reference: <a href="https://redis.io/docs/latest/operate/oss_and_stack/management/sentinel/">Sentinel</a></p>
+<p>Sentinel provides automatic failover — if the primary goes down, Sentinel promotes a replica and reconfigures the other replicas.</p>
+<pre><code class="language-text">┌──────────┐  ┌──────────┐  ┌──────────┐
+│Sentinel 1│  │Sentinel 2│  │Sentinel 3│    (monitor + vote)
+└────┬─────┘  └────┬─────┘  └────┬─────┘
+     │             │             │
+     ▼             ▼             ▼
+┌──────────┐  ┌──────────┐  ┌──────────┐
+│ Primary  │→ │Replica 1 │  │Replica 2 │    (data nodes)
+└──────────┘  └──────────┘  └──────────┘
+</code></pre>
+<h3 id="how-failover-works">How Failover Works</h3>
+<ol>
+<li>Sentinels continuously ping the primary</li>
+<li>If a quorum of Sentinels agree the primary is unreachable → <strong>objective down (ODOWN)</strong></li>
+<li>One Sentinel is elected leader and selects the best replica</li>
+<li>The selected replica is promoted to primary (<code>REPLICAOF NO ONE</code>)</li>
+<li>Other replicas are reconfigured to replicate from the new primary</li>
+<li>Clients are notified of the new primary's address</li>
+</ol>
+<h3 id="client-configuration">Client Configuration</h3>
+<pre><code class="language-python">from redis.sentinel import Sentinel
+
+sentinel = Sentinel(
+    [(&quot;sentinel-1&quot;, 26379), (&quot;sentinel-2&quot;, 26379), (&quot;sentinel-3&quot;, 26379)],
+    socket_timeout=0.5
+)
+
+# get the current primary
+primary = sentinel.master_for(&quot;mymaster&quot;, socket_timeout=0.5)
+primary.set(&quot;key&quot;, &quot;value&quot;)
+
+# get a replica for reads
+replica = sentinel.slave_for(&quot;mymaster&quot;, socket_timeout=0.5)
+value = replica.get(&quot;key&quot;)
+</code></pre>
+<p><strong>Key point</strong>: clients connect to Sentinel to discover the primary, not directly to a Redis instance. After a failover, the client asks Sentinel for the new primary address.</p>
+<h3 id="deployment">Deployment</h3>
+<p>Always run an <strong>odd number</strong> of Sentinels (3 or 5) for quorum voting. Deploy Sentinels on separate machines from the Redis data nodes so a single machine failure doesn't take out both a data node and a Sentinel.</p>
+<hr>
+<h2 id="16-redis-cluster">16. Redis Cluster</h2>
+<p>Reference: <a href="https://redis.io/docs/latest/operate/oss_and_stack/management/scaling/">Redis Cluster</a></p>
+<p>Redis Cluster distributes data across multiple primaries for horizontal scaling. Each primary owns a subset of the keyspace.</p>
+<h3 id="how-it-works_1">How It Works</h3>
+<p>Redis Cluster divides the keyspace into <strong>16,384 hash slots</strong>. Each key is mapped to a slot using CRC16:</p>
+<pre><code class="language-text">slot = CRC16(key) mod 16384
+</code></pre>
+<p>Slots are distributed across primary nodes:</p>
+<pre><code class="language-text">Primary A: slots 0–5460
+Primary B: slots 5461–10922
+Primary C: slots 10923–16383
+</code></pre>
+<p>Each primary can have replicas for failover (Cluster handles its own failover, no Sentinel needed).</p>
+<h3 id="multi-key-operations">Multi-Key Operations</h3>
+<p>Commands that operate on multiple keys only work if all keys are in the same slot. Use <strong>hash tags</strong> to force keys into the same slot:</p>
+<pre><code class="language-redis">-- these might be on different nodes — MGET fails
+MGET user:1001 user:1002
+
+-- hash tags force keys to the same slot (hashed on the {content} inside braces)
+SET {user:1001}:name &quot;Alice&quot;
+SET {user:1001}:email &quot;alice@example.com&quot;
+MGET {user:1001}:name {user:1001}:email    -- works — same slot
+</code></pre>
+<p>The portion of the key inside <code>{...}</code> determines the slot. All keys with the same hash tag go to the same node.</p>
+<h3 id="resharding">Resharding</h3>
+<p>Adding or removing nodes requires moving slots between nodes. Redis Cluster handles this online (no downtime):</p>
+<pre><code class="language-bash">redis-cli --cluster add-node new-node:6379 existing-node:6379
+redis-cli --cluster reshard existing-node:6379
+redis-cli --cluster rebalance existing-node:6379
+</code></pre>
+<h3 id="cluster-vs-sentinel">Cluster vs Sentinel</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Sentinel</th>
+<th>Cluster</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Purpose</td>
+<td>High availability (failover)</td>
+<td>High availability + horizontal scaling</td>
+</tr>
+<tr>
+<td>Data distribution</td>
+<td>All data on one primary</td>
+<td>Data sharded across multiple primaries</td>
+</tr>
+<tr>
+<td>Max dataset size</td>
+<td>Limited by single node's RAM</td>
+<td>Sum of all nodes' RAM</td>
+</tr>
+<tr>
+<td>Write scaling</td>
+<td>Single primary (one writer)</td>
+<td>Multiple primaries (parallel writes)</td>
+</tr>
+<tr>
+<td>Multi-key operations</td>
+<td>All keys on same server, always work</td>
+<td>Only if keys share a hash tag</td>
+</tr>
+<tr>
+<td>Complexity</td>
+<td>Moderate</td>
+<td>Higher</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Use Sentinel</strong> when your dataset fits on a single machine and you need automatic failover.
+<strong>Use Cluster</strong> when you need more capacity than one machine can provide.</p>
+<hr>
+<h2 id="17-security">17. Security</h2>
+<p>Reference: <a href="https://redis.io/docs/latest/operate/oss_and_stack/management/security/">Security</a></p>
+<h3 id="authentication">Authentication</h3>
+<pre><code class="language-redis">-- set a password (redis.conf)
+requirepass your-strong-password
+
+-- authenticate from a client
+AUTH your-strong-password
+</code></pre>
+<h3 id="acls-access-control-lists">ACLs (Access Control Lists)</h3>
+<p>Redis 6+ supports granular access control:</p>
+<pre><code class="language-redis">-- create a user with limited permissions
+ACL SETUSER appuser on &gt;password ~cache:* +GET +SET +DEL -@dangerous
+
+-- breakdown:
+-- on           = user is active
+-- &gt;password    = set password
+-- ~cache:*     = can only access keys matching cache:*
+-- +GET +SET    = allowed commands
+-- -@dangerous  = deny all commands in the &quot;dangerous&quot; category
+
+-- list users
+ACL LIST
+
+-- check current user
+ACL WHOAMI
+</code></pre>
+<h3 id="network-security">Network Security</h3>
+<ul>
+<li><strong>Bind to specific interfaces</strong>: <code>bind 127.0.0.1 10.0.0.1</code> — never bind to <code>0.0.0.0</code> in production</li>
+<li><strong>TLS</strong>: Redis 6+ supports TLS natively — encrypt traffic between clients and server</li>
+<li><strong>Firewall</strong>: restrict access to the Redis port (6379) to only application servers</li>
+<li><strong>Disable dangerous commands</strong> in production:</li>
+</ul>
+<pre><code class="language-redis">-- in redis.conf
+rename-command FLUSHALL &quot;&quot;
+rename-command FLUSHDB &quot;&quot;
+rename-command DEBUG &quot;&quot;
+rename-command CONFIG &quot;&quot;
+</code></pre>
+<p>Or use ACLs to deny these commands for application users while allowing them for admin users.</p>
+<h3 id="protected-mode">Protected Mode</h3>
+<p>Redis refuses connections from non-loopback interfaces if no password is set and <code>protected-mode</code> is enabled (default). This prevents accidentally exposing an open Redis to the internet. Never disable protected mode without setting authentication.</p>
+<hr>
+<h2 id="18-performance-memory">18. Performance &amp; Memory</h2>
+<h3 id="memory-usage">Memory Usage</h3>
+<pre><code class="language-redis">-- total memory usage
+INFO memory
+-- used_memory: 1073741824 (1GB)
+-- used_memory_human: 1.00G
+-- used_memory_peak: 1.5G
+-- mem_fragmentation_ratio: 1.05
+
+-- memory usage of a specific key
+MEMORY USAGE user:1001               -- bytes
+
+-- memory doctor
+MEMORY DOCTOR                        -- diagnosis and advice
+</code></pre>
+<h3 id="memory-optimization">Memory Optimization</h3>
+<p><strong>Small aggregate encodings</strong>: Redis uses compact encodings for small collections:</p>
+<table>
+<thead>
+<tr>
+<th>Data type</th>
+<th>Compact encoding</th>
+<th>Upgrade threshold</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Hash</td>
+<td>listpack</td>
+<td>&gt; <code>hash-max-listpack-entries</code> (default 128) entries or &gt; <code>hash-max-listpack-value</code> (default 64) bytes per value</td>
+</tr>
+<tr>
+<td>List</td>
+<td>listpack</td>
+<td>&gt; <code>list-max-listpack-size</code> entries</td>
+</tr>
+<tr>
+<td>Set</td>
+<td>listpack (integers: intset)</td>
+<td>&gt; <code>set-max-listpack-entries</code> (default 128) or &gt; <code>set-max-listpack-value</code> (default 64) bytes</td>
+</tr>
+<tr>
+<td>Sorted Set</td>
+<td>listpack</td>
+<td>&gt; <code>zset-max-listpack-entries</code> (default 128) or &gt; <code>zset-max-listpack-value</code> (default 64) bytes</td>
+</tr>
+</tbody>
+</table>
+<p>Keep values small and collections under these thresholds when possible — the compact encoding uses 2–10x less memory than the standard encoding.</p>
+<p><strong>Key optimization strategies:</strong></p>
+<pre><code class="language-python"># bad — verbose keys
+r.set(&quot;application:user:profile:data:user_id:1001:field:name&quot;, &quot;Alice&quot;)
+
+# good — concise keys (saves memory at scale)
+r.set(&quot;u:1001:n&quot;, &quot;Alice&quot;)
+
+# bad — storing JSON blobs when a hash works
+r.set(&quot;user:1001&quot;, json.dumps({&quot;name&quot;: &quot;Alice&quot;, &quot;age&quot;: 30, &quot;email&quot;: &quot;...&quot;}))
+
+# good — use a hash (individual fields, partial reads, atomic updates)
+r.hset(&quot;user:1001&quot;, mapping={&quot;name&quot;: &quot;Alice&quot;, &quot;age&quot;: 30, &quot;email&quot;: &quot;...&quot;})
+
+# bad — many small keys with shared prefix
+r.set(&quot;config:feature:dark_mode&quot;, &quot;true&quot;)
+r.set(&quot;config:feature:new_checkout&quot;, &quot;false&quot;)
+
+# good — one hash
+r.hset(&quot;config:features&quot;, mapping={&quot;dark_mode&quot;: &quot;true&quot;, &quot;new_checkout&quot;: &quot;false&quot;})
+</code></pre>
+<h3 id="slow-operations-to-avoid">Slow Operations to Avoid</h3>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>Problem</th>
+<th>Alternative</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>KEYS *</code></td>
+<td>Scans entire keyspace, blocks server</td>
+<td><code>SCAN</code> with cursor</td>
+</tr>
+<tr>
+<td><code>SMEMBERS</code> on huge sets</td>
+<td>Returns all members</td>
+<td><code>SSCAN</code> with cursor</td>
+</tr>
+<tr>
+<td><code>HGETALL</code> on huge hashes</td>
+<td>Returns all fields</td>
+<td><code>HSCAN</code> with cursor</td>
+</tr>
+<tr>
+<td><code>LRANGE 0 -1</code> on huge lists</td>
+<td>Returns all elements</td>
+<td>Paginate with offsets</td>
+</tr>
+<tr>
+<td><code>SORT</code> on large collections</td>
+<td>O(N*log(N)), blocks</td>
+<td>Sort client-side</td>
+</tr>
+<tr>
+<td><code>DEL</code> on large key</td>
+<td>Blocks while freeing memory</td>
+<td><code>UNLINK</code> (async delete)</td>
+</tr>
+<tr>
+<td><code>FLUSHALL</code> / <code>FLUSHDB</code></td>
+<td>Blocks for entire operation</td>
+<td><code>FLUSHALL ASYNC</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="monitoring-performance">Monitoring Performance</h3>
+<pre><code class="language-redis">-- real-time command monitoring (DANGEROUS in production — adds latency)
+MONITOR
+
+-- slow log — commands that exceeded a threshold
+SLOWLOG GET 10                         -- last 10 slow commands
+CONFIG SET slowlog-log-slower-than 10000  -- log commands &gt; 10ms (in microseconds)
+
+-- command stats
+INFO commandstats                      -- per-command call count, latency
+
+-- latency monitoring
+LATENCY LATEST
+LATENCY HISTORY event-name
+
+-- connected clients
+INFO clients
+CLIENT LIST
+</code></pre>
+<h3 id="key-metrics-to-monitor">Key Metrics to Monitor</h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>What it indicates</th>
+<th>Worry threshold</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>used_memory</code> vs <code>maxmemory</code></td>
+<td>Memory pressure</td>
+<td>&gt; 80% of maxmemory</td>
+</tr>
+<tr>
+<td><code>mem_fragmentation_ratio</code></td>
+<td>Memory fragmentation</td>
+<td>&gt; 1.5 (wasted memory) or &lt; 1 (swapping)</td>
+</tr>
+<tr>
+<td><code>connected_clients</code></td>
+<td>Connection count</td>
+<td>Approaching <code>maxclients</code></td>
+</tr>
+<tr>
+<td><code>evicted_keys</code></td>
+<td>Keys being evicted under memory pressure</td>
+<td>Any non-zero value (if unexpected)</td>
+</tr>
+<tr>
+<td><code>keyspace_misses / keyspace_hits</code></td>
+<td>Cache hit rate</td>
+<td>Hit rate &lt; 90% for a cache</td>
+</tr>
+<tr>
+<td><code>instantaneous_ops_per_sec</code></td>
+<td>Throughput</td>
+<td>Sudden drops indicate problems</td>
+</tr>
+<tr>
+<td><code>rejected_connections</code></td>
+<td>Client connection failures</td>
+<td>Any non-zero value</td>
+</tr>
+<tr>
+<td><code>latest_fork_usec</code></td>
+<td>Time spent in <code>fork()</code> for persistence</td>
+<td>&gt; 1 second</td>
+</tr>
+<tr>
+<td>Slowlog entries</td>
+<td>Commands exceeding latency threshold</td>
+<td>Any entries</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="19-common-patterns">19. Common Patterns</h2>
+<h3 id="cache-aside-lazy-loading">Cache-Aside (Lazy Loading)</h3>
+<p>The most common caching pattern — application manages cache reads and writes:</p>
+<pre><code class="language-python">def get_data(key):
+    # 1. check cache
+    cached = r.get(f&quot;cache:{key}&quot;)
+    if cached:
+        return json.loads(cached)
+
+    # 2. cache miss — fetch from source
+    data = database.query(key)
+
+    # 3. populate cache
+    r.setex(f&quot;cache:{key}&quot;, 300, json.dumps(data))
+    return data
+
+def update_data(key, new_data):
+    # 1. update source
+    database.update(key, new_data)
+
+    # 2. invalidate cache (delete, don't update — avoids race conditions)
+    r.delete(f&quot;cache:{key}&quot;)
+</code></pre>
+<p><strong>Why delete instead of update the cache</strong>: between reading the old data and writing the new cache, another request might fetch the data from the database and write a different cache value. Deleting avoids this race.</p>
+<h3 id="write-through-cache">Write-Through Cache</h3>
+<p>Write to cache and database simultaneously:</p>
+<pre><code class="language-python">def update_data(key, new_data):
+    r.setex(f&quot;cache:{key}&quot;, 300, json.dumps(new_data))
+    database.update(key, new_data)
+</code></pre>
+<p>Keeps cache and database consistent but adds write latency. Use when read-after-write consistency is critical.</p>
+<h3 id="cache-stampede-prevention">Cache Stampede Prevention</h3>
+<p>When a popular key expires, many concurrent requests hit the database simultaneously:</p>
+<pre><code class="language-python">def get_with_stampede_prevention(key, ttl=300, lock_ttl=10):
+    cached = r.get(f&quot;cache:{key}&quot;)
+    if cached:
+        return json.loads(cached)
+
+    # try to acquire a lock — only one request recomputes
+    lock_key = f&quot;lock:cache:{key}&quot;
+    acquired = r.set(lock_key, &quot;1&quot;, nx=True, ex=lock_ttl)
+
+    if acquired:
+        try:
+            data = database.query(key)
+            r.setex(f&quot;cache:{key}&quot;, ttl, json.dumps(data))
+            return data
+        finally:
+            r.delete(lock_key)
+    else:
+        # another request is recomputing — wait and retry
+        time.sleep(0.1)
+        return get_with_stampede_prevention(key, ttl, lock_ttl)
+</code></pre>
+<p>Alternative: set TTLs with jitter to prevent many keys from expiring at the same time.</p>
+<h3 id="sliding-window-counter">Sliding Window Counter</h3>
+<pre><code class="language-python">def count_events(r, key, window_seconds):
+    now = time.time()
+    window_start = now - window_seconds
+
+    pipe = r.pipeline()
+    pipe.zremrangebyscore(key, &quot;-inf&quot;, window_start)
+    pipe.zcard(key)
+    results = pipe.execute()
+    return results[1]
+
+def record_event(r, key, window_seconds):
+    now = time.time()
+    pipe = r.pipeline()
+    pipe.zadd(key, {f&quot;{now}:{uuid4()}&quot;: now})
+    pipe.zremrangebyscore(key, &quot;-inf&quot;, now - window_seconds)
+    pipe.expire(key, window_seconds)
+    pipe.execute()
+</code></pre>
+<h3 id="distributed-semaphore">Distributed Semaphore</h3>
+<p>Limit concurrent access to a shared resource:</p>
+<pre><code class="language-python">def acquire_semaphore(r, name, limit, timeout=10):
+    token = str(uuid4())
+    key = f&quot;semaphore:{name}&quot;
+    now = time.time()
+
+    pipe = r.pipeline(True)
+    pipe.zremrangebyscore(key, &quot;-inf&quot;, now - timeout)  # remove expired
+    pipe.zadd(key, {token: now})
+    pipe.zrank(key, token)
+    _, _, rank = pipe.execute()
+
+    if rank &lt; limit:
+        return token  # acquired
+    else:
+        r.zrem(key, token)  # over limit, remove ourselves
+        return None
+
+def release_semaphore(r, name, token):
+    r.zrem(f&quot;semaphore:{name}&quot;, token)
+</code></pre>
+<h3 id="geospatial-index">Geospatial Index</h3>
+<pre><code class="language-redis">-- add locations
+GEOADD restaurants -122.4194 37.7749 &quot;Pizzeria&quot;
+GEOADD restaurants -122.4089 37.7837 &quot;Sushi Bar&quot;
+GEOADD restaurants -122.4000 37.7900 &quot;Taqueria&quot;
+
+-- find restaurants within 2km of a point
+GEOSEARCH restaurants FROMLONLAT -122.4100 37.7800 BYRADIUS 2 km ASC WITHCOORD WITHDIST
+
+-- distance between two members
+GEODIST restaurants &quot;Pizzeria&quot; &quot;Sushi Bar&quot; km
+
+-- get coordinates
+GEOPOS restaurants &quot;Pizzeria&quot;
+</code></pre>
+<p>Geospatial indexes are built on sorted sets internally — each location is stored as a member with its geohash as the score.</p>
+<hr>
+<h2 id="20-client-libraries-best-practices">20. Client Libraries &amp; Best Practices</h2>
+<h3 id="client-libraries">Client Libraries</h3>
+<table>
+<thead>
+<tr>
+<th>Language</th>
+<th>Library</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Python</td>
+<td><a href="https://github.com/redis/redis-py">redis-py</a></td>
+<td>Official, async support (<code>redis.asyncio</code>)</td>
+</tr>
+<tr>
+<td>Node.js</td>
+<td><a href="https://github.com/redis/ioredis">ioredis</a></td>
+<td>Full-featured, Cluster/Sentinel support</td>
+</tr>
+<tr>
+<td>Go</td>
+<td><a href="https://github.com/redis/go-redis">go-redis</a></td>
+<td>Official, type-safe</td>
+</tr>
+<tr>
+<td>Rust</td>
+<td><a href="https://github.com/redis-rs/redis-rs">redis-rs</a></td>
+<td>Async support, connection pooling</td>
+</tr>
+<tr>
+<td>Java</td>
+<td><a href="https://github.com/redis/jedis">Jedis</a> or <a href="https://github.com/lettuce-io/lettuce-core">Lettuce</a></td>
+<td>Jedis is simpler, Lettuce is reactive/async</td>
+</tr>
+</tbody>
+</table>
+<h3 id="connection-pooling">Connection Pooling</h3>
+<p>Never create a new connection per request — use a connection pool:</p>
+<pre><code class="language-python"># python redis-py (connection pool is built in)
+pool = redis.ConnectionPool(
+    host=&quot;localhost&quot;,
+    port=6379,
+    max_connections=20,
+    decode_responses=True,  # return strings instead of bytes
+)
+r = redis.Redis(connection_pool=pool)
+</code></pre>
+<pre><code class="language-python"># async
+import redis.asyncio as aioredis
+
+pool = aioredis.ConnectionPool.from_url(&quot;redis://localhost&quot;, max_connections=20)
+r = aioredis.Redis(connection_pool=pool)
+
+async def get_data(key):
+    return await r.get(key)
+</code></pre>
+<h3 id="error-handling">Error Handling</h3>
+<pre><code class="language-python">import redis
+
+try:
+    r.get(&quot;key&quot;)
+except redis.ConnectionError:
+    # can't reach Redis — serve from fallback or return error
+    pass
+except redis.TimeoutError:
+    # command took too long — consider increasing timeout or investigating
+    pass
+except redis.RedisError:
+    # all other Redis errors
+    pass
+</code></pre>
+<h3 id="key-design-principles">Key Design Principles</h3>
+<ol>
+<li><strong>Namespace keys consistently</strong>: <code>object:id:field</code> (e.g., <code>user:1001:sessions</code>)</li>
+<li><strong>Set TTLs on everything that's a cache</strong>: don't assume you'll remember to clean up</li>
+<li><strong>Use the right data structure</strong>: don't serialize a list into a string when a Redis list works</li>
+<li><strong>Pipeline bulk operations</strong>: never loop over single commands</li>
+<li><strong>Keep values small</strong>: large values block the event loop and waste memory</li>
+<li><strong>Prefer UNLINK over DEL for large keys</strong>: <code>UNLINK</code> frees memory in the background</li>
+<li><strong>Use SCAN instead of KEYS</strong>: <code>KEYS</code> blocks the server, <code>SCAN</code> is incremental</li>
+</ol>
+<hr>
+<h2 id="21-common-mistakes">21. Common Mistakes</h2>
+<h3 id="1-using-keys-in-production">1. Using KEYS in Production</h3>
+<pre><code class="language-redis">-- NEVER do this in production
+KEYS user:*
+</code></pre>
+<p><code>KEYS</code> scans the entire keyspace and blocks the server until complete. On a database with millions of keys, this freezes Redis for seconds. Use <code>SCAN</code> instead.</p>
+<h3 id="2-no-maxmemory-configuration">2. No maxmemory Configuration</h3>
+<p>Without <code>maxmemory</code>, Redis grows until the OS OOM-killer terminates it, potentially taking down the entire server. Always set <code>maxmemory</code> and an eviction policy.</p>
+<h3 id="3-storing-large-objects">3. Storing Large Objects</h3>
+<p>A 10MB JSON blob in a Redis string blocks the event loop for the duration of the network I/O and serialization. Keep values under 100KB. For larger data, store a reference in Redis and the data in object storage.</p>
+<h3 id="4-not-using-connection-pools">4. Not Using Connection Pools</h3>
+<p>Creating a TCP connection per Redis command adds milliseconds of latency and can exhaust file descriptors under load. Always use a connection pool.</p>
+<h3 id="5-fire-and-forget-error-handling">5. Fire-and-Forget Error Handling</h3>
+<pre><code class="language-python"># bad — silently ignores Redis being down
+def get_cached(key):
+    try:
+        return r.get(key)
+    except:
+        return None
+</code></pre>
+<p>This masks outages. At minimum, log the error. Better: have a clear fallback strategy (serve stale data, bypass cache, return a degraded response).</p>
+<h3 id="6-using-redis-as-the-primary-data-store">6. Using Redis as the Primary Data Store</h3>
+<p>Redis can persist to disk, but it's not a database. Power loss during the gap between an AOF <code>everysec</code> fsync means up to 1 second of data loss. If you can't reconstruct the data from another source, use a real database as the source of truth.</p>
+<h3 id="7-not-setting-ttls">7. Not Setting TTLs</h3>
+<p>Every cache entry should have a TTL. Without TTLs, cached data goes stale, memory grows unbounded, and you end up needing a manual cleanup process. Even long TTLs (24 hours, 7 days) are better than no TTL.</p>
+<h3 id="8-running-without-replication-in-production">8. Running Without Replication in Production</h3>
+<p>A single Redis instance is a single point of failure. At minimum, run a primary with one replica and Sentinel for automatic failover.</p>
+<h3 id="9-ignoring-serialization-costs">9. Ignoring Serialization Costs</h3>
+<pre><code class="language-python"># json.dumps/loads can be a bottleneck at high throughput
+r.set(&quot;key&quot;, json.dumps(large_object))        # slow
+data = json.loads(r.get(&quot;key&quot;))                # slow
+
+# consider msgpack or protobuf for high-throughput paths
+import msgpack
+r.set(&quot;key&quot;, msgpack.packb(large_object))
+data = msgpack.unpackb(r.get(&quot;key&quot;))
+</code></pre>
+<h3 id="10-hot-keys">10. Hot Keys</h3>
+<p>A single key receiving a disproportionate share of traffic becomes a bottleneck. In Redis Cluster, that key's node handles all the load while others idle.</p>
+<p>Solutions:
+- <strong>Read replicas</strong> for hot read keys
+- <strong>Key splitting</strong>: distribute a counter across multiple keys (<code>counter:{0}</code> through <code>counter:{9}</code>), sum on read
+- <strong>Local caching</strong>: cache the hot value in application memory with a short TTL</p>
+<hr>
+<h2 id="quick-reference-data-structure-selection">Quick Reference: Data Structure Selection</h2>
+<table>
+<thead>
+<tr>
+<th>You need to...</th>
+<th>Data structure</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Cache a value with expiry</td>
+<td>String with <code>EX</code>/<code>PX</code></td>
+</tr>
+<tr>
+<td>Represent an object with fields</td>
+<td>Hash</td>
+</tr>
+<tr>
+<td>Count something atomically</td>
+<td>String with <code>INCR</code></td>
+</tr>
+<tr>
+<td>Implement a queue</td>
+<td>List with <code>LPUSH</code>/<code>BRPOP</code></td>
+</tr>
+<tr>
+<td>Track unique items</td>
+<td>Set</td>
+</tr>
+<tr>
+<td>Track unique items (memory-efficient, approximate)</td>
+<td>HyperLogLog</td>
+</tr>
+<tr>
+<td>Rank/sort items by score</td>
+<td>Sorted Set</td>
+</tr>
+<tr>
+<td>Implement a priority queue</td>
+<td>Sorted Set with <code>ZPOPMIN</code></td>
+</tr>
+<tr>
+<td>Rate limit</td>
+<td>Sorted Set (sliding window) or String (fixed window)</td>
+</tr>
+<tr>
+<td>Store time-series events</td>
+<td>Stream</td>
+</tr>
+<tr>
+<td>Track boolean per user (daily activity)</td>
+<td>Bitmap</td>
+</tr>
+<tr>
+<td>Broadcast messages to subscribers</td>
+<td>Pub/Sub</td>
+</tr>
+<tr>
+<td>Reliable event processing with consumer groups</td>
+<td>Stream</td>
+</tr>
+<tr>
+<td>Find items within a geographic radius</td>
+<td>Geospatial (Geo commands)</td>
+</tr>
+<tr>
+<td>Distributed lock</td>
+<td>String with <code>SET NX EX</code></td>
+</tr>
+</tbody>
+</table></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

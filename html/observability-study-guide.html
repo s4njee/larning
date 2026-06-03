@@ -1,0 +1,2641 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Observability Study Guide.">
+<title>Observability Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#de535f; --accent2:#d87f4f; --accent-weak:rgba(222,83,95,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#de535f; --accent2:#d87f4f; --accent-weak:rgba(222,83,95,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">O</span><span>Observability Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#phase-1-foundations" data-target="phase-1-foundations">Phase 1: Foundations</a></li><li class="toc-l3"><a href="#11-monitoring-vs-observability" data-target="11-monitoring-vs-observability">1.1 Monitoring vs. Observability</a></li><li class="toc-l3"><a href="#12-the-three-pillars-framing-and-its-critics" data-target="12-the-three-pillars-framing-and-its-critics">1.2 The "Three Pillars" Framing — and Its Critics</a></li><li class="toc-l3"><a href="#13-cardinality-the-central-constraint" data-target="13-cardinality-the-central-constraint">1.3 Cardinality, the Central Constraint</a></li><li class="toc-l3"><a href="#14-what-observability-is-for" data-target="14-what-observability-is-for">1.4 What Observability Is For</a></li><li class="toc-l2"><a href="#phase-2-metrics" data-target="phase-2-metrics">Phase 2: Metrics</a></li><li class="toc-l3"><a href="#21-the-prometheus-data-model" data-target="21-the-prometheus-data-model">2.1 The Prometheus Data Model</a></li><li class="toc-l3"><a href="#22-the-four-metric-types" data-target="22-the-four-metric-types">2.2 The Four Metric Types</a></li><li class="toc-l3"><a href="#23-exposition-format-and-scraping" data-target="23-exposition-format-and-scraping">2.3 Exposition Format and Scraping</a></li><li class="toc-l3"><a href="#24-exporters" data-target="24-exporters">2.4 Exporters</a></li><li class="toc-l3"><a href="#25-promql-essentials" data-target="25-promql-essentials">2.5 PromQL Essentials</a></li><li class="toc-l3"><a href="#26-recording-rules-and-federation" data-target="26-recording-rules-and-federation">2.6 Recording Rules and Federation</a></li><li class="toc-l3"><a href="#27-remote-write-and-long-term-storage" data-target="27-remote-write-and-long-term-storage">2.7 Remote Write and Long-Term Storage</a></li><li class="toc-l3"><a href="#28-cardinality-control" data-target="28-cardinality-control">2.8 Cardinality Control</a></li><li class="toc-l2"><a href="#phase-3-logs" data-target="phase-3-logs">Phase 3: Logs</a></li><li class="toc-l3"><a href="#31-structured-logging" data-target="31-structured-logging">3.1 Structured Logging</a></li><li class="toc-l3"><a href="#32-log-levels-honestly" data-target="32-log-levels-honestly">3.2 Log Levels, Honestly</a></li><li class="toc-l3"><a href="#33-sampling-retention-cost" data-target="33-sampling-retention-cost">3.3 Sampling, Retention, Cost</a></li><li class="toc-l3"><a href="#34-aggregation-pipelines" data-target="34-aggregation-pipelines">3.4 Aggregation Pipelines</a></li><li class="toc-l3"><a href="#35-loki-vs-elastic-vs-the-vendors" data-target="35-loki-vs-elastic-vs-the-vendors">3.5 Loki vs. Elastic vs. the Vendors</a></li><li class="toc-l3"><a href="#36-logs-vs-metrics-which-carries-what" data-target="36-logs-vs-metrics-which-carries-what">3.6 Logs vs. Metrics — Which Carries What</a></li><li class="toc-l3"><a href="#37-common-pitfalls" data-target="37-common-pitfalls">3.7 Common Pitfalls</a></li><li class="toc-l2"><a href="#phase-4-distributed-tracing" data-target="phase-4-distributed-tracing">Phase 4: Distributed Tracing</a></li><li class="toc-l3"><a href="#41-spans-traces-context" data-target="41-spans-traces-context">4.1 Spans, Traces, Context</a></li><li class="toc-l3"><a href="#42-context-propagation" data-target="42-context-propagation">4.2 Context Propagation</a></li><li class="toc-l3"><a href="#43-sampling-head-vs-tail" data-target="43-sampling-head-vs-tail">4.3 Sampling: Head vs. Tail</a></li><li class="toc-l3"><a href="#44-when-traces-are-the-right-answer" data-target="44-when-traces-are-the-right-answer">4.4 When Traces Are the Right Answer</a></li><li class="toc-l3"><a href="#45-trace-backends" data-target="45-trace-backends">4.5 Trace Backends</a></li><li class="toc-l2"><a href="#phase-5-opentelemetry" data-target="phase-5-opentelemetry">Phase 5: OpenTelemetry</a></li><li class="toc-l3"><a href="#51-what-opentelemetry-is-and-why-it-won" data-target="51-what-opentelemetry-is-and-why-it-won">5.1 What OpenTelemetry Is, and Why It Won</a></li><li class="toc-l3"><a href="#52-the-sdk-architecture" data-target="52-the-sdk-architecture">5.2 The SDK Architecture</a></li><li class="toc-l3"><a href="#53-auto-vs-manual-instrumentation" data-target="53-auto-vs-manual-instrumentation">5.3 Auto vs. Manual Instrumentation</a></li><li class="toc-l3"><a href="#54-the-opentelemetry-collector" data-target="54-the-opentelemetry-collector">5.4 The OpenTelemetry Collector</a></li><li class="toc-l3"><a href="#55-otlp" data-target="55-otlp">5.5 OTLP</a></li><li class="toc-l2"><a href="#phase-6-events-and-profiling" data-target="phase-6-events-and-profiling">Phase 6: Events and Profiling</a></li><li class="toc-l3"><a href="#61-events-as-a-pillar" data-target="61-events-as-a-pillar">6.1 Events as a Pillar</a></li><li class="toc-l3"><a href="#62-continuous-profiling" data-target="62-continuous-profiling">6.2 Continuous Profiling</a></li><li class="toc-l3"><a href="#63-when-each-pillar-carries-the-most-signal" data-target="63-when-each-pillar-carries-the-most-signal">6.3 When Each Pillar Carries the Most Signal</a></li><li class="toc-l2"><a href="#phase-7-slis-slos-slas-and-error-budgets" data-target="phase-7-slis-slos-slas-and-error-budgets">Phase 7: SLIs, SLOs, SLAs, and Error Budgets</a></li><li class="toc-l3"><a href="#71-the-definitions" data-target="71-the-definitions">7.1 The Definitions</a></li><li class="toc-l3"><a href="#72-the-right-slis" data-target="72-the-right-slis">7.2 The Right SLIs</a></li><li class="toc-l3"><a href="#73-picking-the-number" data-target="73-picking-the-number">7.3 Picking the Number</a></li><li class="toc-l3"><a href="#74-error-budgets" data-target="74-error-budgets">7.4 Error Budgets</a></li><li class="toc-l3"><a href="#75-multi-window-burn-rate-alerts" data-target="75-multi-window-burn-rate-alerts">7.5 Multi-Window Burn-Rate Alerts</a></li><li class="toc-l3"><a href="#76-slos-beyond-latency" data-target="76-slos-beyond-latency">7.6 SLOs Beyond Latency</a></li><li class="toc-l2"><a href="#phase-8-alert-design" data-target="phase-8-alert-design">Phase 8: Alert Design</a></li><li class="toc-l3"><a href="#81-symptom-based-vs-cause-based" data-target="81-symptom-based-vs-cause-based">8.1 Symptom-Based vs. Cause-Based</a></li><li class="toc-l3"><a href="#82-the-frameworks" data-target="82-the-frameworks">8.2 The Frameworks</a></li><li class="toc-l3"><a href="#83-alert-anti-patterns" data-target="83-alert-anti-patterns">8.3 Alert Anti-Patterns</a></li><li class="toc-l3"><a href="#84-alert-routing-and-severity" data-target="84-alert-routing-and-severity">8.4 Alert Routing and Severity</a></li><li class="toc-l3"><a href="#85-on-call-ergonomics" data-target="85-on-call-ergonomics">8.5 On-Call Ergonomics</a></li><li class="toc-l2"><a href="#phase-9-dashboards" data-target="phase-9-dashboards">Phase 9: Dashboards</a></li><li class="toc-l3"><a href="#91-what-dashboards-are-for" data-target="91-what-dashboards-are-for">9.1 What Dashboards Are For</a></li><li class="toc-l3"><a href="#92-the-five-second-rule" data-target="92-the-five-second-rule">9.2 The Five-Second Rule</a></li><li class="toc-l3"><a href="#93-the-standard-dashboards" data-target="93-the-standard-dashboards">9.3 The Standard Dashboards</a></li><li class="toc-l3"><a href="#94-dashboards-as-code" data-target="94-dashboards-as-code">9.4 Dashboards as Code</a></li><li class="toc-l3"><a href="#95-grafana-briefly" data-target="95-grafana-briefly">9.5 Grafana, Briefly</a></li><li class="toc-l2"><a href="#phase-10-the-tooling-landscape" data-target="phase-10-the-tooling-landscape">Phase 10: The Tooling Landscape</a></li><li class="toc-l3"><a href="#101-open-source-stacks" data-target="101-open-source-stacks">10.1 Open-Source Stacks</a></li><li class="toc-l3"><a href="#102-hosted-vendor" data-target="102-hosted-vendor">10.2 Hosted / Vendor</a></li><li class="toc-l3"><a href="#103-cost-models-mental-and-dollar" data-target="103-cost-models-mental-and-dollar">10.3 Cost Models, Mental and Dollar</a></li><li class="toc-l2"><a href="#phase-11-operational-realities" data-target="phase-11-operational-realities">Phase 11: Operational Realities</a></li><li class="toc-l3"><a href="#111-observing-the-observer" data-target="111-observing-the-observer">11.1 Observing the Observer</a></li><li class="toc-l3"><a href="#112-cardinality-incidents" data-target="112-cardinality-incidents">11.2 Cardinality Incidents</a></li><li class="toc-l3"><a href="#113-sampling-at-scale" data-target="113-sampling-at-scale">11.3 Sampling at Scale</a></li><li class="toc-l3"><a href="#114-the-build-vs-buy-decision-recurring" data-target="114-the-build-vs-buy-decision-recurring">11.4 The Build-vs-Buy Decision, Recurring</a></li><li class="toc-l3"><a href="#115-multi-tenant-and-multi-region" data-target="115-multi-tenant-and-multi-region">11.5 Multi-Tenant and Multi-Region</a></li><li class="toc-l2"><a href="#phase-12-recipe-instrumenting-a-go-http-service-with-opentelemetry" data-target="phase-12-recipe-instrumenting-a-go-http-service-with-opentelemetry">Phase 12: Recipe — Instrumenting a Go HTTP Service with OpenTelemetry</a></li><li class="toc-l3"><a href="#121-the-service" data-target="121-the-service">12.1 The Service</a></li><li class="toc-l3"><a href="#122-dependencies" data-target="122-dependencies">12.2 Dependencies</a></li><li class="toc-l3"><a href="#123-bootstrap" data-target="123-bootstrap">12.3 Bootstrap</a></li><li class="toc-l3"><a href="#124-the-handler-with-custom-span-and-metric" data-target="124-the-handler-with-custom-span-and-metric">12.4 The Handler with Custom Span and Metric</a></li><li class="toc-l3"><a href="#125-wiring-logs-to-traces" data-target="125-wiring-logs-to-traces">12.5 Wiring Logs to Traces</a></li><li class="toc-l3"><a href="#126-the-collector-for-this-service" data-target="126-the-collector-for-this-service">12.6 The Collector for This Service</a></li><li class="toc-l2"><a href="#phase-13-recipe-multi-window-burn-rate-slo-alerts-in-promql" data-target="phase-13-recipe-multi-window-burn-rate-slo-alerts-in-promql">Phase 13: Recipe — Multi-Window Burn-Rate SLO Alerts in PromQL</a></li><li class="toc-l3"><a href="#131-the-setup" data-target="131-the-setup">13.1 The Setup</a></li><li class="toc-l3"><a href="#132-the-alerts" data-target="132-the-alerts">13.2 The Alerts</a></li><li class="toc-l3"><a href="#133-the-budget-remaining-dashboard-panels" data-target="133-the-budget-remaining-dashboard-panels">13.3 The Budget-Remaining Dashboard Panels</a></li><li class="toc-l2"><a href="#phase-14-recipe-writing-a-runbook" data-target="phase-14-recipe-writing-a-runbook">Phase 14: Recipe — Writing a Runbook</a></li><li class="toc-l3"><a href="#141-runbook-anatomy" data-target="141-runbook-anatomy">14.1 Runbook Anatomy</a></li><li class="toc-l3"><a href="#142-runbook-principles" data-target="142-runbook-principles">14.2 Runbook Principles</a></li><li class="toc-l3"><a href="#143-anti-patterns" data-target="143-anti-patterns">14.3 Anti-Patterns</a></li><li class="toc-l2"><a href="#phase-15-anatomy-of-a-production-observability-stack" data-target="phase-15-anatomy-of-a-production-observability-stack">Phase 15: Anatomy of a Production Observability Stack</a></li><li class="toc-l3"><a href="#151-the-architecture-at-a-glance" data-target="151-the-architecture-at-a-glance">15.1 The Architecture, at a Glance</a></li><li class="toc-l3"><a href="#152-step-by-step-with-the-choices-called-out" data-target="152-step-by-step-with-the-choices-called-out">15.2 Step by Step, with the Choices Called Out</a></li><li class="toc-l3"><a href="#153-the-operational-realities" data-target="153-the-operational-realities">15.3 The Operational Realities</a></li><li class="toc-l3"><a href="#154-why-this-architecture" data-target="154-why-this-architecture">15.4 Why This Architecture</a></li><li class="toc-l2"><a href="#mastery-checklist" data-target="mastery-checklist">Mastery Checklist</a></li><li class="toc-l2"><a href="#recommended-reading-path" data-target="recommended-reading-path">Recommended Reading Path</a></li></ul></nav></aside>
+  <main><h1 id="observability-study-guide">Observability Study Guide</h1>
+<p>A depth-first guide to production observability for working engineers. Assumes you've shipped something that handles real traffic, paged at 3 AM, and stared at a dashboard wondering whether the number you're looking at means anything. Each phase builds on the previous. The goal: by the end, you can design an observability stack from scratch, instrument a service end to end, write SLOs that survive contact with reality, and pick tools without being sold to. The applied phases (12–14) walk through real instrumentation, burn-rate SLO math, runbook design, and the anatomy of a production observability stack — like the dbt project layout in <a href="DATA_ENGINEERING_STUDY_GUIDE.md">DATA_ENGINEERING_STUDY_GUIDE.md</a> and the recipes in <a href="CRYPTO_FUNDAMENTALS.md">CRYPTO_FUNDAMENTALS.md</a>, but for telemetry.</p>
+<blockquote>
+<p>Observability is not about graphs. It's about the speed at which a stranger to your system can answer a novel question about it. If your dashboards only answer the questions you anticipated, you have monitoring, not observability.</p>
+</blockquote>
+<hr>
+<h2 id="phase-1-foundations">Phase 1: Foundations</h2>
+<h3 id="11-monitoring-vs-observability">1.1 Monitoring vs. Observability</h3>
+<p>The words are often used interchangeably. They are not the same.</p>
+<ul>
+<li><strong>Monitoring</strong> is <em>known unknowns</em>. You decide in advance what to measure (CPU, request rate, error rate), set thresholds, and alert when they're crossed. Monitoring answers questions you thought to ask.</li>
+<li><strong>Observability</strong> is <em>unknown unknowns</em>. You instrument the system so that, <em>after</em> the fact, you can ask new questions and get answers without redeploying. Observability is a property of the system, not a tool you bolt on.</li>
+</ul>
+<p>A monitoring system tells you the order-placement endpoint is slow. An observable system lets you pivot from "slow endpoint" to "slow for users on Android 14, in EU-West, with a specific feature flag enabled, when their cart contains a digital-only item" — without writing new code or shipping new metrics.</p>
+<p>The crisp version of the definition, from <a href="https://www.honeycomb.io/blog/observability-3-pillars-fallacy">Charity Majors</a>: observability is the ability to ask arbitrary questions about your system's behavior, in high cardinality and high dimensionality, without having predicted those questions in advance.</p>
+<h3 id="12-the-three-pillars-framing-and-its-critics">1.2 The "Three Pillars" Framing — and Its Critics</h3>
+<p>The dominant teaching framework since ~2017 has been the <strong>three pillars</strong>: metrics, logs, traces. Each pillar gives you a different angle on the same system.</p>
+<table>
+<thead>
+<tr>
+<th>Pillar</th>
+<th>Strength</th>
+<th>Weakness</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Metrics</td>
+<td>Cheap, aggregable, real-time, math-friendly</td>
+<td>Low cardinality, no per-request context</td>
+</tr>
+<tr>
+<td>Logs</td>
+<td>Rich free-form context, easy to add</td>
+<td>Expensive, unstructured by default, hard to aggregate</td>
+</tr>
+<tr>
+<td>Traces</td>
+<td>Per-request causal graph across services</td>
+<td>Costly, requires propagation discipline, sampled</td>
+</tr>
+</tbody>
+</table>
+<p>The pillars are a useful first map. The critique, popularized by Honeycomb, is that the three-pillar framing leads to <strong>three siloed tools and three storage backends</strong>. You jump from Grafana to Splunk to Jaeger trying to correlate one incident across them. The information is in the system; the friction is in the tools.</p>
+<p>The post-pillars framing: a single <strong>wide, structured event</strong> per unit of work, with high cardinality, that you can aggregate into metrics, slice into traces, and read as logs. OpenTelemetry's data model points this direction. In practice, most organizations still run three (or four, with profiles) tools and connect them via shared IDs and a unifying frontend like Grafana.</p>
+<p>Both framings are right. Use pillars when teaching juniors. Use the event model when designing for cardinality.</p>
+<h3 id="13-cardinality-the-central-constraint">1.3 Cardinality, the Central Constraint</h3>
+<p>If you remember one thing from this guide: <strong>cardinality is the constraint that drives every other observability decision</strong>.</p>
+<p><strong>Cardinality</strong> is the number of distinct label combinations on a metric (or distinct values of a dimension on an event). A counter <code>http_requests_total</code> labeled by <code>path</code> and <code>status</code> has cardinality <code>unique(path) × unique(status)</code>. Add <code>user_id</code> and you go from hundreds to millions. Add a UUID-shaped <code>request_id</code> and you go to infinity.</p>
+<p>Why this matters: every distinct label combination is a separate time series in Prometheus, a separate index entry in Loki, a separate row in your TSDB. Prometheus storage cost grows linearly in active series; query cost grows worse. A cardinality explosion is the single most common way to take down your observability system <em>and</em> your alerting <em>and</em> your dashboards at the same time. Mimir, Cortex, and Datadog all have hard-coded per-tenant series limits because of this.</p>
+<p>Rules of thumb:
+- <strong>Metric labels</strong> must be low cardinality. Status code? Yes. Endpoint pattern (<code>/users/:id</code>, not <code>/users/12345</code>)? Yes. Tenant ID with 10K tenants? Maybe, with sharding. User ID? Never.
+- <strong>High-cardinality dimensions belong on events/traces</strong>, where each row stands alone and you aggregate at query time. This is why Honeycomb pitches a single events store: arbitrary dimensions, no pre-aggregation.
+- <strong>Histogram buckets multiply cardinality</strong> by their count. A 10-bucket histogram with 100 endpoint × 5 status = 5000 series. Watch out.</p>
+<p>The mental model: metrics are pre-aggregated time series; events/traces/logs are post-aggregated. You trade cardinality flexibility for storage cost. Knowing where on this spectrum you need to be is the design question.</p>
+<h3 id="14-what-observability-is-for">1.4 What Observability Is For</h3>
+<p>The end users of your observability stack:</p>
+<ol>
+<li><strong>Incident responders</strong> — the 3 AM page audience. They need fast triage: "is it us or them, where, how bad."</li>
+<li><strong>Engineers debugging</strong> — slower, deeper questions about <em>why</em> a behavior happened. Traces and events shine here.</li>
+<li><strong>SREs / capacity planners</strong> — long-horizon trends, saturation, headroom. Metrics and dashboards.</li>
+<li><strong>Product / business</strong> — does feature X correlate with user retention. Often shares the data plane but has different SLAs and access controls.</li>
+<li><strong>Auditors and security</strong> — logs that meet retention and immutability requirements.</li>
+</ol>
+<p>A working stack serves all five with one ingestion path. Failing to acknowledge audience 4 and 5 is how you end up paying for three telemetry systems and a separate SIEM.</p>
+<p>References: <a href="https://www.oreilly.com/library/view/distributed-systems-observability/9781492033431/">Distributed Systems Observability — Cindy Sridharan</a>, <a href="https://www.oreilly.com/library/view/observability-engineering/9781492076438/">Observability Engineering — Majors, Fong-Jones, Miranda</a>, <a href="https://sre.google/workbook/monitoring/">Google SRE Workbook, Ch. 5</a></p>
+<hr>
+<h2 id="phase-2-metrics">Phase 2: Metrics</h2>
+<h3 id="21-the-prometheus-data-model">2.1 The Prometheus Data Model</h3>
+<p>Prometheus is the default. Even if you use Datadog or New Relic, the data model has won, and the protocols look like Prometheus.</p>
+<p>Every Prometheus metric is a <strong>time series</strong> identified by a name and a set of <code>label=value</code> pairs:</p>
+<pre><code class="language-text">http_requests_total{method=&quot;GET&quot;, path=&quot;/api/v1/users&quot;, status=&quot;200&quot;, instance=&quot;api-7d8f&quot;, job=&quot;api&quot;}
+</code></pre>
+<p>Two metrics with identical names but a single different label are different series. The series identity drives storage, indexing, and cardinality cost.</p>
+<p>A series stores a list of <code>(timestamp, float64)</code> samples, scraped at the configured interval (default 15s).</p>
+<p>Conventions enforced by the ecosystem:
+- <strong>Metric names are snake_case</strong>: <code>http_requests_total</code>, not <code>httpRequestsTotal</code>.
+- <strong>Units in the name</strong>: <code>_seconds</code>, <code>_bytes</code>, <code>_total</code>, <code>_ratio</code>. Never <code>_ms</code>, never <code>_kb</code>. Always base SI units; Grafana formats them. The reason: changing units later breaks every dashboard.
+- <strong>Counters end in <code>_total</code></strong>: <code>http_requests_total</code>, <code>errors_total</code>. Enforced by linters.
+- <strong>Reserve <code>__</code> prefix</strong> for internal labels (<code>__name__</code>, <code>__address__</code>).</p>
+<h3 id="22-the-four-metric-types">2.2 The Four Metric Types</h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Semantics</th>
+<th>When to use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Counter</td>
+<td>Monotonically increasing total (may reset on restart)</td>
+<td>Counts of events, bytes sent, errors</td>
+</tr>
+<tr>
+<td>Gauge</td>
+<td>Value that goes up and down</td>
+<td>Current memory, queue depth, temperature</td>
+</tr>
+<tr>
+<td>Histogram</td>
+<td>Pre-bucketed distribution + count + sum</td>
+<td>Latency, request size</td>
+</tr>
+<tr>
+<td>Summary</td>
+<td>Client-computed quantiles + count + sum</td>
+<td>Legacy; prefer histograms</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Counters</strong> are the most common type and the most misused. You never use the raw counter value — you use <code>rate()</code> or <code>increase()</code> to compute <em>per-second</em> or <em>per-window</em> deltas. A counter that resets (process restart) is handled by <code>rate()</code> automatically. Don't store deltas yourself; store totals.</p>
+<p><strong>Gauges</strong> are observation snapshots. <code>node_memory_MemAvailable_bytes</code>, <code>kube_pod_status_phase</code>, <code>db_connections_in_use</code>. Use gauges sparingly; they hide history (you can't tell what happened between scrapes).</p>
+<p><strong>Histograms</strong> are the workhorse for distributions. A Prometheus classic histogram exposes:
+- <code>metric_bucket{le="0.1"}</code> — count of samples ≤ 0.1
+- <code>metric_bucket{le="0.5"}</code> — count of samples ≤ 0.5
+- ...
+- <code>metric_bucket{le="+Inf"}</code> — total count
+- <code>metric_count</code> — total samples
+- <code>metric_sum</code> — sum of all sample values</p>
+<p><code>histogram_quantile(0.99, rate(metric_bucket[5m]))</code> interpolates the 99th percentile from buckets. <strong>Quantile accuracy depends entirely on your bucket choices</strong>: if all your latency is between 50 and 100 ms and your buckets are <code>[0.005, 0.01, 0.025, 0.05, 0.1, 0.25]</code>, p99 lives in the <code>0.1</code> bucket and you'll always get <code>0.1</code> back. Pick buckets that bracket where your data lives.</p>
+<p><strong>Native histograms</strong> (Prometheus 2.40+, stable in 3.x) replace the fixed-bucket scheme with exponential buckets defined by a schema parameter, dramatically reducing series count and removing bucket-tuning. They're the future — when both client and server support them, switch.</p>
+<p><strong>Summaries</strong> compute quantiles client-side and emit them as separate series (<code>metric{quantile="0.99"}</code>). They cannot be aggregated across instances (you can't average a p99). Avoid them in new code.</p>
+<p>References: <a href="https://prometheus.io/docs/concepts/metric_types/">Metric types</a>, <a href="https://prometheus.io/docs/practices/histograms/">Histograms and summaries</a>, <a href="https://prometheus.io/docs/specs/native_histograms/">Native histograms design doc</a></p>
+<h3 id="23-exposition-format-and-scraping">2.3 Exposition Format and Scraping</h3>
+<p>Prometheus is <strong>pull-based</strong>. Targets expose metrics over HTTP (typically <code>:port/metrics</code>) in a plain-text format:</p>
+<pre><code class="language-text"># HELP http_requests_total Total HTTP requests.
+# TYPE http_requests_total counter
+http_requests_total{method=&quot;GET&quot;,status=&quot;200&quot;} 12345
+http_requests_total{method=&quot;GET&quot;,status=&quot;500&quot;} 27
+
+# HELP request_duration_seconds Request latency.
+# TYPE request_duration_seconds histogram
+request_duration_seconds_bucket{le=&quot;0.1&quot;} 11000
+request_duration_seconds_bucket{le=&quot;0.5&quot;} 12200
+request_duration_seconds_bucket{le=&quot;+Inf&quot;} 12372
+request_duration_seconds_count 12372
+request_duration_seconds_sum 845.3
+</code></pre>
+<p>Prometheus scrapes each target on a fixed interval, stores samples in its TSDB, and exposes PromQL for querying. Pull has trade-offs:</p>
+<table>
+<thead>
+<tr>
+<th>Pull (Prometheus default)</th>
+<th>Push (StatsD, OTLP, Pushgateway)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Server-side service discovery</td>
+<td>Targets choose where to push</td>
+</tr>
+<tr>
+<td>Liveness check is free (failed scrape)</td>
+<td>Need a separate health check</td>
+</tr>
+<tr>
+<td>Bad for ephemeral jobs</td>
+<td>Good for short-lived jobs (cron)</td>
+</tr>
+<tr>
+<td>Hard across NAT / firewalls</td>
+<td>Crosses NAT trivially</td>
+</tr>
+<tr>
+<td>Easy to reason about cardinality</td>
+<td>Easy to firehose the server</td>
+</tr>
+</tbody>
+</table>
+<p>Use <strong>Pushgateway</strong> for service-level batch jobs whose results outlive the process (e.g., a nightly backup completion gauge). Do not use Pushgateway as a general push endpoint — it conflates many job runs into one series and resets are awkward.</p>
+<p>OpenTelemetry's metrics SDK supports both push (OTLP to a collector) and pull (Prometheus scrape endpoint). Most large stacks now send push-based OTLP through a collector that <em>exposes</em> a Prometheus endpoint, getting the best of both.</p>
+<h3 id="24-exporters">2.4 Exporters</h3>
+<p>You rarely instrument operating-system metrics yourself. An <strong>exporter</strong> is a small process that scrapes a system (kernel, database, queue, vendor API) and exposes a Prometheus-format endpoint. The ones to know:</p>
+<table>
+<thead>
+<tr>
+<th>Exporter</th>
+<th>What it exposes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>node_exporter</code></td>
+<td>Linux host: CPU, memory, disk, network, filesystem</td>
+</tr>
+<tr>
+<td><code>windows_exporter</code></td>
+<td>Windows equivalent</td>
+</tr>
+<tr>
+<td><code>cAdvisor</code></td>
+<td>Container metrics (cgroup-derived). Built into kubelet</td>
+</tr>
+<tr>
+<td><code>kube-state-metrics</code></td>
+<td>Kubernetes API object state (pod phase, deployment ready)</td>
+</tr>
+<tr>
+<td><code>blackbox_exporter</code></td>
+<td>Probes endpoints (HTTP, TCP, DNS, ICMP) from outside</td>
+</tr>
+<tr>
+<td><code>postgres_exporter</code></td>
+<td>Postgres <code>pg_stat_*</code> views as metrics</td>
+</tr>
+<tr>
+<td><code>mysqld_exporter</code></td>
+<td>MySQL equivalent</td>
+</tr>
+<tr>
+<td><code>redis_exporter</code></td>
+<td>Redis <code>INFO</code> and key statistics</td>
+</tr>
+<tr>
+<td><code>kafka_exporter</code></td>
+<td>Kafka consumer lag, topic counts</td>
+</tr>
+<tr>
+<td><code>nginx-vts-exporter</code></td>
+<td>Nginx upstream and zone metrics</td>
+</tr>
+<tr>
+<td><code>pushgateway</code></td>
+<td>Push endpoint for batch jobs</td>
+</tr>
+<tr>
+<td><code>snmp_exporter</code></td>
+<td>SNMP devices (switches, UPS)</td>
+</tr>
+</tbody>
+</table>
+<p><code>node_exporter</code> is the most installed Go binary on Earth. Learn its metric names — <code>node_cpu_seconds_total</code>, <code>node_filesystem_avail_bytes</code>, <code>node_load1</code> — they appear in every dashboard you'll ever build.</p>
+<p>References: <a href="https://prometheus.io/docs/instrumenting/exporters/">Exporters list</a></p>
+<h3 id="25-promql-essentials">2.5 PromQL Essentials</h3>
+<p>PromQL is its own language. The shape that matters:</p>
+<ul>
+<li><strong>Instant vector</strong> — a set of series, one sample each, at one timestamp. What you see in a query result.</li>
+<li><strong>Range vector</strong> — a set of series, <em>many samples each</em>, over a time window. Selected with <code>[5m]</code>. You can't graph it directly; you reduce it with a function (<code>rate</code>, <code>avg_over_time</code>).</li>
+<li><strong>Scalar / string</strong> — single values.</li>
+</ul>
+<pre><code class="language-promql"># Instant vector: current value
+http_requests_total
+
+# Range vector: last 5 min of samples
+http_requests_total[5m]
+
+# Per-second rate of a counter over 5 min (most important PromQL idiom)
+rate(http_requests_total[5m])
+
+# Same but average over a window
+avg_over_time(node_load1[1h])
+
+# Per-second rate, summed across all instances
+sum(rate(http_requests_total[5m]))
+
+# Aggregate while preserving status label
+sum by (status) (rate(http_requests_total[5m]))
+
+# Error rate (5xx as fraction of total)
+sum(rate(http_requests_total{status=~&quot;5..&quot;}[5m]))
+  / sum(rate(http_requests_total[5m]))
+
+# Histogram p99 latency
+histogram_quantile(
+  0.99,
+  sum by (le) (rate(request_duration_seconds_bucket[5m]))
+)
+
+# Top 3 noisiest endpoints by request rate
+topk(3, sum by (path) (rate(http_requests_total[5m])))
+</code></pre>
+<p>The rules that catch people:
+- <strong><code>rate()</code> requires a counter (monotonic).</strong> Using it on a gauge is wrong; use <code>deriv()</code> or <code>delta()</code> for gauges.
+- <strong>Always rate <em>before</em> you aggregate</strong> — <code>sum(rate(x[5m]))</code>, not <code>rate(sum(x)[5m])</code>. The latter is a syntax error; the former is what you want, because <code>sum</code> of counter resets behaves badly.
+- <strong>The range in <code>[5m]</code> must be ≥ 4× your scrape interval</strong> for stable rates. 5m at 15s scrape is fine.
+- <strong><code>irate()</code> uses only the last two samples</strong> in a window — spikier, more responsive, but unstable for alerts. Use <code>rate()</code> for dashboards and alerts; <code>irate()</code> for poking at incidents.
+- <strong><code>offset 1w</code></strong> compares to last week: <code>rate(x[5m]) / rate(x[5m] offset 1w)</code>.</p>
+<p>Match operators:
+- <code>=</code> exact, <code>!=</code> not equal, <code>=~</code> regex match, <code>!~</code> regex not match.
+- <code>{job="api", status=~"5.."}</code> — common pattern.</p>
+<p>Aggregation operators: <code>sum</code>, <code>avg</code>, <code>min</code>, <code>max</code>, <code>count</code>, <code>stddev</code>, <code>topk</code>, <code>bottomk</code>, <code>quantile</code>, <code>group</code>. All take <code>by (label, ...)</code> or <code>without (label, ...)</code>.</p>
+<p>References: <a href="https://prometheus.io/docs/prometheus/latest/querying/basics/">PromQL basics</a>, <a href="https://prometheus.io/docs/prometheus/latest/querying/functions/">PromQL functions</a></p>
+<h3 id="26-recording-rules-and-federation">2.6 Recording Rules and Federation</h3>
+<p><strong>Recording rules</strong> precompute expensive queries and store the result as a new time series. Every dashboard panel that runs the same heavy query is paying that cost on every refresh; a recording rule pays it once per evaluation interval.</p>
+<pre><code class="language-yaml">groups:
+- name: api_slo
+  interval: 30s
+  rules:
+  - record: job:http_request_errors:rate5m
+    expr: sum by (job) (rate(http_requests_total{status=~&quot;5..&quot;}[5m]))
+  - record: job:http_requests:rate5m
+    expr: sum by (job) (rate(http_requests_total[5m]))
+  - record: job:http_error_ratio:5m
+    expr: job:http_request_errors:rate5m / job:http_requests:rate5m
+</code></pre>
+<p>Naming convention: <code>level:metric:operations</code> — <code>job:http_error_ratio:5m</code> says "aggregated to job level, error ratio metric, 5-minute window." Once internalized, this naming is invaluable for navigating big stacks.</p>
+<p><strong>Federation</strong> lets a higher-level Prometheus scrape <em>aggregates</em> from lower-level Prometheuses. The classic shape:</p>
+<pre><code class="language-text">[per-cluster Prom] ──/federate──&gt; [global Prom]
+[per-cluster Prom] ──/federate──&gt; [global Prom]
+[per-cluster Prom] ──/federate──&gt; [global Prom]
+</code></pre>
+<p>The global only pulls the recording-rule outputs, not every raw series. This keeps the global tractable and isolates failure domains. Federation is the poor person's long-term storage; the rich answer is <code>remote_write</code>.</p>
+<h3 id="27-remote-write-and-long-term-storage">2.7 Remote Write and Long-Term Storage</h3>
+<p>Prometheus's local TSDB is fine for ~15 days of data at modest series counts. For longer retention, HA, multi-tenant, or query across clusters, you push to a remote backend via the <strong><code>remote_write</code></strong> protocol — a streaming protobuf over HTTP.</p>
+<p>The receivers:</p>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>Architecture</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Thanos</td>
+<td>Sidecar uploads TSDB blocks to S3-compatible</td>
+<td>Read path queries S3 + live blocks</td>
+</tr>
+<tr>
+<td>Cortex</td>
+<td>Microservices, multi-tenant remote_write</td>
+<td>Predecessor to Mimir</td>
+</tr>
+<tr>
+<td>Mimir (Grafana)</td>
+<td>Fork of Cortex, simplified, scalable</td>
+<td>The current "right answer" for self-host</td>
+</tr>
+<tr>
+<td>VictoriaMetrics</td>
+<td>Single-binary high-perf TSDB, remote_write</td>
+<td>Simpler ops, very fast, less ecosystem</td>
+</tr>
+<tr>
+<td>Prometheus 2.x HA</td>
+<td>Pair of identical Proms behind dedup</td>
+<td>OK for small setups, doesn't scale</td>
+</tr>
+<tr>
+<td>Grafana Cloud Metrics</td>
+<td>Hosted Mimir</td>
+<td>The pay-someone-else answer</td>
+</tr>
+</tbody>
+</table>
+<p>The choice points: <strong>how much data are you keeping for how long</strong>, <strong>what's your QPS to the query layer</strong>, and <strong>how multi-tenant are you</strong>. Mimir scales to billions of active series; Thanos is more flexible but operationally heavier; VictoriaMetrics is the easy single-binary path.</p>
+<p>References: <a href="https://prometheus.io/docs/specs/remote_write_spec/">Remote write spec</a>, <a href="https://thanos.io/">Thanos</a>, <a href="https://grafana.com/oss/mimir/">Mimir</a></p>
+<h3 id="28-cardinality-control">2.8 Cardinality Control</h3>
+<p>You will get a cardinality explosion. Plan for it.</p>
+<p>Defenses:
+- <strong>Linting at instrumentation time</strong> — code review for label values that could be unbounded (user IDs, full URLs, trace IDs). Use a static linter like <code>promlinter</code>.
+- <strong>Relabeling at scrape time</strong> — drop or rewrite labels in the scrape config before ingestion:</p>
+<p><code>yaml
+  metric_relabel_configs:
+  - source_labels: [__name__]
+    regex: "go_.*"
+    action: drop
+  - source_labels: [path]
+    regex: "/users/[0-9]+"
+    target_label: path
+    replacement: "/users/:id"</code></p>
+<ul>
+<li><strong>Series limits per target/job</strong> (<code>sample_limit</code>, <code>target_limit</code>) — scrape config caps that drop the whole scrape if exceeded. Better to lose one job's metrics than the entire Prometheus.</li>
+<li><strong>TSDB head limit</strong> — Mimir / Cortex enforce <code>max_global_series_per_user</code>. Set it; alert on getting close.</li>
+<li><strong>Recording rules to pre-aggregate</strong> the worst offenders, then drop the raw series via <code>metric_relabel_configs</code>.</li>
+</ul>
+<p>Monitor your own observability stack:
+- <code>prometheus_tsdb_head_series</code> — current active series count.
+- <code>prometheus_tsdb_head_chunks</code> — sized for series × resolution.
+- <code>scrape_samples_post_metric_relabeling</code> — per-target series count after relabeling.
+- Top-cardinality metrics via the <code>/api/v1/status/tsdb</code> endpoint.</p>
+<p>References: <a href="https://grafana.com/blog/2022/02/15/avoid-prometheus-high-cardinality-issues-and-fix-them-when-they-happen/">Cardinality is key (Grafana blog)</a></p>
+<hr>
+<h2 id="phase-3-logs">Phase 3: Logs</h2>
+<h3 id="31-structured-logging">3.1 Structured Logging</h3>
+<p>The single biggest lever in logging: emit <strong>structured logs</strong> (JSON or logfmt), not free-form strings.</p>
+<p>Bad:</p>
+<pre><code class="language-text">2026-05-20 14:30:01 INFO User 12345 placed order $59.99 for product widget-7
+</code></pre>
+<p>Good:</p>
+<pre><code class="language-json">{&quot;ts&quot;:&quot;2026-05-20T14:30:01Z&quot;,&quot;level&quot;:&quot;info&quot;,&quot;msg&quot;:&quot;order placed&quot;,&quot;user_id&quot;:&quot;12345&quot;,&quot;order_total&quot;:59.99,&quot;product&quot;:&quot;widget-7&quot;,&quot;request_id&quot;:&quot;abc&quot;,&quot;trace_id&quot;:&quot;def&quot;}
+</code></pre>
+<p>Why it matters: every log aggregator (Loki, Splunk, Elastic, Datadog) can index and aggregate JSON fields. Free-form strings force grep-and-pray. The cost of structuring at write time is one library; the value is queryability forever.</p>
+<p>Conventions:
+- <strong>One event per line</strong> (JSON Lines). Never multi-line logs that span records; stack traces go in a single <code>stack</code> field with <code>\n</code>.
+- <strong>Timestamp in RFC 3339</strong> with millisecond resolution and UTC: <code>2026-05-20T14:30:01.123Z</code>.
+- <strong>Stable field names across services</strong>: <code>request_id</code>, <code>trace_id</code>, <code>span_id</code>, <code>user_id</code>, <code>tenant_id</code>. Wire them once and never rename.
+- <strong>Levels are an enum</strong>: <code>trace</code>, <code>debug</code>, <code>info</code>, <code>warn</code>, <code>error</code>, <code>fatal</code>. Don't invent <code>notice</code> or <code>critical</code>.
+- <strong>Reserved fields</strong>: <code>ts</code>, <code>level</code>, <code>msg</code>, <code>service</code>, <code>env</code>. Pin them via your logger config; let everything else be free.</p>
+<p>The libraries (just pick the idiomatic one for your language):</p>
+<table>
+<thead>
+<tr>
+<th>Language</th>
+<th>Library</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Go</td>
+<td><code>log/slog</code> (stdlib, Go 1.21+), <code>zap</code>, <code>zerolog</code></td>
+</tr>
+<tr>
+<td>Java</td>
+<td>Logback + <code>logstash-logback-encoder</code> or Log4j2 JSON</td>
+</tr>
+<tr>
+<td>Python</td>
+<td><code>structlog</code>, stdlib <code>logging</code> with <code>JSONFormatter</code></td>
+</tr>
+<tr>
+<td>Node</td>
+<td><code>pino</code></td>
+</tr>
+<tr>
+<td>Ruby</td>
+<td><code>semantic_logger</code>, <code>lograge</code></td>
+</tr>
+<tr>
+<td>Rust</td>
+<td><code>tracing</code> with <code>tracing-subscriber</code> JSON formatter</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-log-levels-honestly">3.2 Log Levels, Honestly</h3>
+<p>Most projects use 5–6 levels and almost no one uses them consistently. A working definition:</p>
+<ul>
+<li><strong><code>error</code></strong> — something happened that needs human attention. The default request for help. Pages should be derived from these, gated on rate.</li>
+<li><strong><code>warn</code></strong> — something is suspect but the request continued. Useful for detecting drift, not for pages.</li>
+<li><strong><code>info</code></strong> — significant lifecycle events: process start, config load, request completed. One per request is fine; one per inner loop iteration is not.</li>
+<li><strong><code>debug</code></strong> — verbose, opt-in, the developer's friend. Off in production by default; toggleable per-service or per-trace.</li>
+<li><strong><code>trace</code></strong> — even more verbose. Almost never on in production.</li>
+</ul>
+<p>The discipline: <strong><code>error</code> is for pages, <code>info</code> is the story of your service, <code>debug</code> is for hard problems</strong>. If you can't articulate why a log is <code>info</code> vs <code>debug</code>, it's probably <code>debug</code>.</p>
+<p>Common anti-patterns:
+- Logging the same condition at multiple levels in different code paths.
+- Using <code>error</code> for "expected" failures like 4xx responses. They aren't your service's errors; they're the caller's.
+- Logging every iteration of a loop. Sample, summarize, or move it to a metric.</p>
+<h3 id="33-sampling-retention-cost">3.3 Sampling, Retention, Cost</h3>
+<p>Logs are the most expensive pillar by storage volume. A busy service can emit 1+ KB per request × 10K req/s × seconds-in-a-day = 1 TB/day per service. Multiply by services and retention period and the bill arrives.</p>
+<p>Controls:</p>
+<ul>
+<li><strong>Sampling</strong> — drop a fraction of low-value logs at the source. <code>info</code> logs from healthy requests can be sampled 1:100; <code>error</code> logs never sampled.</li>
+<li><strong>Aggressive retention tiers</strong> — hot (queryable), warm (queryable, slow), cold (S3, restorable). The classic tiering: 7 days hot, 30 days warm, 90+ days cold. Compliance often dictates the floor.</li>
+<li><strong>Drop noise at the collector</strong> — most logs from health-check endpoints, kubelet probes, sidecar liveness should never reach the aggregator. Filter at Fluent Bit / Vector / OTel Collector.</li>
+<li><strong>Field cardinality</strong> — same problem as metrics, different surface. Logging a full request body explodes index size in Elasticsearch. Either don't index that field, or store it in object storage and log a reference.</li>
+<li><strong>Compress on the wire</strong> — Loki uses gzip/snappy on chunks by default; Elasticsearch does best-effort. Without compression your bandwidth bill ruins you.</li>
+</ul>
+<p>Cost-control rule of thumb: a typical production log volume of 100–500 GB/day per major service is normal; 5+ TB/day from a single service is a smell. Audit it.</p>
+<h3 id="34-aggregation-pipelines">3.4 Aggregation Pipelines</h3>
+<p>The shape of every modern logging pipeline:</p>
+<pre><code class="language-text">[app] → [agent] → [aggregator/buffer] → [store] → [UI]
+</code></pre>
+<p>The pieces:</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Agent</td>
+<td>Fluent Bit, Vector, OpenTelemetry Collector, Filebeat</td>
+</tr>
+<tr>
+<td>Aggregator</td>
+<td>Fluentd, Vector, Kafka, OTel Collector</td>
+</tr>
+<tr>
+<td>Store</td>
+<td>Loki, Elasticsearch, Splunk, Datadog, ClickHouse</td>
+</tr>
+<tr>
+<td>UI</td>
+<td>Grafana (Loki), Kibana (ES), vendor-specific</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Fluent Bit</strong> vs. <strong>Vector</strong> vs. <strong>OpenTelemetry Collector</strong>:
+- <em>Fluent Bit</em>: C, tiny memory footprint, the default sidecar/daemonset. Good plugin set, decent transforms.
+- <em>Vector</em>: Rust, faster and more powerful transforms (VRL language), more flexibility. Becoming the new default for serious pipelines.
+- <em>OTel Collector</em>: Go, the unified telemetry router (metrics + logs + traces in one binary). Lower-level transforms than Vector but the right answer if you're already in OTel.</p>
+<p>The aggregator's job: buffer, transform, route. Kafka in front of an aggregator gives you durable, replayable buffering across restarts — worth it once your volume exceeds a single aggregator instance.</p>
+<h3 id="35-loki-vs-elastic-vs-the-vendors">3.5 Loki vs. Elastic vs. the Vendors</h3>
+<p>The two open-source camps:</p>
+<p><strong>Loki</strong> — Grafana's "logs like Prometheus." Indexes only labels (job, service, level), not log content. Content is stored as compressed chunks in object storage (S3, GCS). Queries are LogQL, which looks like PromQL plus pattern matching:</p>
+<pre><code class="language-logql">{service=&quot;api&quot;, level=&quot;error&quot;} |= &quot;timeout&quot; | json | latency &gt; 1
+</code></pre>
+<ul>
+<li>Strengths: dramatically cheap (you index hundreds of bytes of labels, not megabytes of content), scales by sharding by label, integrates trivially with Grafana.</li>
+<li>Weaknesses: full-text search is a scan over chunks — fast enough at small label cardinality, slow at huge. Wrong tool for security/forensics use cases that need true full-text.</li>
+</ul>
+<p><strong>Elasticsearch / OpenSearch</strong> — Inverse trade-off. Indexes everything by default. Queries are blazing fast over any field; storage cost and operational complexity are an order of magnitude higher.</p>
+<ul>
+<li>Strengths: rich queries, geo and analytics, mature ecosystem (Kibana, ELK stack).</li>
+<li>Weaknesses: index management is a job. Heap pressure, shard balancing, snapshot/restore are full-time concerns at scale.</li>
+</ul>
+<p>The vendor offerings (<strong>Datadog Logs</strong>, <strong>Splunk</strong>, <strong>New Relic Logs</strong>, <strong>Sumo Logic</strong>) all index aggressively and charge per ingest GB. They are easy to set up and shockingly expensive at scale. Cost models vary — some charge ingest, some indexed volume, some retention separately. Read the contract.</p>
+<p><strong>ClickHouse</strong>-backed log stores (Signoz, Highlight, OpenObserve, vendor offerings like Better Stack) are an interesting middle ground: columnar storage, very fast aggregations, low storage cost.</p>
+<p>Picking:
+- <em>Default for K8s + Grafana shop</em>: Loki. Cheap, integrated, sufficient for incident logs.
+- <em>Security or forensics needs full-text everything</em>: Elastic/OpenSearch (or Splunk if you have the budget).
+- <em>Vendor-everything, want it to just work</em>: Datadog, but budget accordingly.</p>
+<h3 id="36-logs-vs-metrics-which-carries-what">3.6 Logs vs. Metrics — Which Carries What</h3>
+<p>A frequent question: "should this be a log or a metric?"</p>
+<table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Log</th>
+<th>Metric</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"How many of X happened in window W?"</td>
+<td>bad</td>
+<td>great</td>
+</tr>
+<tr>
+<td>"What did request R do?"</td>
+<td>great</td>
+<td>bad</td>
+</tr>
+<tr>
+<td>"Show me the distribution of latency"</td>
+<td>bad</td>
+<td>great</td>
+</tr>
+<tr>
+<td>"Find requests with field F = V"</td>
+<td>great</td>
+<td>bad</td>
+</tr>
+<tr>
+<td>"Alert me when X exceeds threshold"</td>
+<td>bad</td>
+<td>great</td>
+</tr>
+<tr>
+<td>"Why did request R take 3.4 seconds?"</td>
+<td>great</td>
+<td>bad</td>
+</tr>
+</tbody>
+</table>
+<p>The pattern: <strong>metrics for <em>how many<em>, logs (and traces) for </em>which one</em></strong>. A <code>request_duration_seconds</code> histogram tells you p99 is 800ms; a log/trace tells you <em>that one request</em> spent 700ms in DB.</p>
+<p>The dark side: many teams use logs as metrics by counting <code>grep</code>s of log lines. This is fragile and expensive. If you're counting, emit a metric.</p>
+<h3 id="37-common-pitfalls">3.7 Common Pitfalls</h3>
+<ul>
+<li><strong>Printf debugging in production.</strong> A <code>log.info("here1")</code> that survived code review. Add real telemetry and remove the temp logs before merging.</li>
+<li><strong>PII in logs.</strong> Customer emails, tokens, full request bodies. Once they're in your log store, they're in backups, in vendor systems, and possibly screenshotted into Slack. Redact at the source.</li>
+<li><strong>Logging exceptions you also rethrow.</strong> Either log + handle, or rethrow. Logging-and-rethrowing produces duplicate entries at every layer.</li>
+<li><strong>Logging in tight loops.</strong> A loop that logs each iteration at 100K/s overwhelms the agent. Sample or summarize.</li>
+<li><strong>Re-implementing structured logging poorly.</strong> Use the library, not <code>printf("k=%s v=%s", k, v)</code>.</li>
+</ul>
+<p>References: <a href="https://opentelemetry.io/docs/specs/otel/logs/">OpenTelemetry Logs spec</a>, <a href="https://grafana.com/docs/loki/latest/get-started/overview/">Loki Design</a>, <a href="https://12factor.net/logs">The 12-Factor App: Logs</a></p>
+<hr>
+<h2 id="phase-4-distributed-tracing">Phase 4: Distributed Tracing</h2>
+<h3 id="41-spans-traces-context">4.1 Spans, Traces, Context</h3>
+<p>A <strong>span</strong> is a single operation: an HTTP handler, a DB query, a function call, a queue write. It has:
+- A start time and duration.
+- A name (the operation).
+- A trace ID (shared with all spans in the same request).
+- A span ID (unique to this span).
+- A parent span ID (linking it to the span that triggered it).
+- Attributes (key-value pairs).
+- Events (timestamped logs scoped to this span).
+- A status (ok, error).</p>
+<p>A <strong>trace</strong> is the DAG of spans for a single end-to-end request, identified by the trace ID.</p>
+<p>Visually:</p>
+<pre><code class="language-text">trace_id=abc
+├── span: HTTP POST /checkout         (api-gateway)   850ms
+│   ├── span: validate cart           (api-gateway)    30ms
+│   ├── span: GET /inventory          (inventory-svc) 200ms
+│   │   └── span: SELECT stock        (postgres)       80ms
+│   ├── span: POST /payment           (payment-svc)   500ms
+│   │   └── span: HTTPS api.stripe    (stripe)        420ms
+│   └── span: enqueue order_created   (kafka)          15ms
+</code></pre>
+<p>The trace shows the <em>causal structure</em> of a request across processes. Metrics tell you p99 latency is 850ms; a trace tells you 420ms of it was Stripe.</p>
+<h3 id="42-context-propagation">4.2 Context Propagation</h3>
+<p>The hard part of tracing is <strong>propagating the trace and parent span IDs across process boundaries</strong> so all the spans link up.</p>
+<p>Standards:
+- <strong>W3C Trace Context</strong> (<a href="https://www.w3.org/TR/trace-context/">spec</a>) — the now-universal HTTP header standard. Two headers:
+  - <code>traceparent: 00-&amp;lt;trace-id&amp;gt;-&amp;lt;parent-span-id&amp;gt;-&amp;lt;flags&amp;gt;</code> — e.g. <code>00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01</code>. The <code>01</code> flag is the "sampled" bit.
+  - <code>tracestate</code> — vendor-specific extensions, an ordered list of <code>key=value</code> pairs.
+- <strong>W3C Baggage</strong> (<a href="https://www.w3.org/TR/baggage/">spec</a>) — <code>baggage: userId=alice,session=xyz</code> — application-level key-value that propagates with the trace but isn't part of the trace itself.
+- <strong>B3</strong> (Zipkin's legacy headers) — <code>X-B3-TraceId</code>, <code>X-B3-SpanId</code>, <code>X-B3-Sampled</code>. Still seen in older systems. OTel SDKs read it for interop.
+- <strong>Jaeger</strong> legacy: <code>uber-trace-id</code>. Same situation.</p>
+<p>Wire-protocol propagation matters; in-process propagation matters equally. The instrumentation libraries store the current span in a thread-local / async-local / Go context, so when your handler calls a function deep down the stack, that function can attach to the correct parent without explicit passing. The two pieces — wire and in-process — must agree.</p>
+<p>References: <a href="https://www.w3.org/TR/trace-context/">W3C Trace Context</a>, <a href="https://opentelemetry.io/docs/specs/otel/context/">OTel Context propagation</a></p>
+<h3 id="43-sampling-head-vs-tail">4.3 Sampling: Head vs. Tail</h3>
+<p>Tracing every single request is wasteful and expensive. You sample. The question is <em>when</em> to decide.</p>
+<p><strong>Head sampling</strong> — the decision is made at the start of the trace, by the first service. If sampled, every span downstream is recorded; if not, none are. The sampling bit is propagated in <code>traceparent</code>.</p>
+<ul>
+<li>Pros: cheap, simple. No coordination across services.</li>
+<li>Cons: you can't "save" interesting-after-the-fact traces. If you sample 1% and the 99% you didn't sample contains an outlier, it's gone.</li>
+</ul>
+<p>Common head policies:
+- Fixed-rate: 1% of traces.
+- Rate-limited: max N traces/sec per service.
+- Parent-based: respect the upstream sampling decision (the default for downstream services).</p>
+<p><strong>Tail sampling</strong> — every span is collected and buffered. The decision (keep or drop) happens <em>after the trace completes</em>, based on the trace's properties (had an error, was slow, came from a specific tenant). Implemented in the OTel Collector via the <code>tail_sampling</code> processor.</p>
+<ul>
+<li>Pros: you get the interesting traces (errors, p99 latency, specific routes).</li>
+<li>Cons: expensive — every span must be buffered for the trace's duration. Requires a "collector tier" that groups all spans of a trace together (consistent hashing on trace ID).</li>
+</ul>
+<p>A typical hybrid: head-sample at 5–10%, and on top of that, tail-sample 100% of traces with errors or above a latency threshold. Pay for the few interesting things, drop the rest.</p>
+<p>References: <a href="https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/processor/tailsamplingprocessor">OTel Tail sampling processor</a></p>
+<h3 id="44-when-traces-are-the-right-answer">4.4 When Traces Are the Right Answer</h3>
+<p>Traces shine for:
+- <strong>Diagnosing latency</strong>: which span ate the budget?
+- <strong>Diagnosing partial failures</strong>: which downstream returned the error?
+- <strong>Understanding fan-out</strong>: how many DB calls did this endpoint make?
+- <strong>Finding the n+1</strong>: 47 sequential <code>SELECT * FROM ...</code> spans is unambiguous.</p>
+<p>Traces are <em>not</em> the right answer for:
+- <strong>"How often does X happen?"</strong> — that's a metric.
+- <strong>"What did the function compute?"</strong> — that's an attribute or log.
+- <strong>Long-running processes</strong> that span hours/days. Trace storage isn't designed for it; emit metrics and discrete spans for milestones.</p>
+<h3 id="45-trace-backends">4.5 Trace Backends</h3>
+<table>
+<thead>
+<tr>
+<th>Backend</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Jaeger</td>
+<td>Open source, the original; Cassandra/ES/Badger</td>
+</tr>
+<tr>
+<td>Zipkin</td>
+<td>Older, Twitter origin; functional but mostly legacy</td>
+</tr>
+<tr>
+<td>Tempo (Grafana)</td>
+<td>Object-store-backed (S3/GCS), no full index, cheap</td>
+</tr>
+<tr>
+<td>Honeycomb</td>
+<td>Hosted, event-store-based; pivots to high-cardinality</td>
+</tr>
+<tr>
+<td>Datadog APM</td>
+<td>Trace + metrics + logs in one bill</td>
+</tr>
+<tr>
+<td>New Relic</td>
+<td>Same</td>
+</tr>
+<tr>
+<td>Lightstep</td>
+<td>Acquired by ServiceNow; satellite-based head/tail mix</td>
+</tr>
+</tbody>
+</table>
+<p>Like Loki for logs, <strong>Tempo</strong> is "traces as Prometheus" — minimal indexing, trace-id-only lookup, store everything in object storage. The trade-off: you can find traces by ID (fast), but querying "all traces where <code>http.status_code=500</code>" requires the metrics layer (TraceQL helps but is still constrained).</p>
+<p><strong>Honeycomb</strong> takes the opposite stance: a wide-event store. Every span is a row with arbitrary high-cardinality dimensions; you slice and dice at query time. Tempo + metrics + logs vs. Honeycomb's "one store, query everything" is the central design choice in tracing infrastructure.</p>
+<p>References: <a href="https://grafana.com/docs/tempo/latest/operations/architecture/">Tempo design</a>, <a href="https://docs.honeycomb.io/get-started/basics/tracing/">Honeycomb tracing</a></p>
+<hr>
+<h2 id="phase-5-opentelemetry">Phase 5: OpenTelemetry</h2>
+<h3 id="51-what-opentelemetry-is-and-why-it-won">5.1 What OpenTelemetry Is, and Why It Won</h3>
+<p><strong>OpenTelemetry</strong> (OTel) is a CNCF project providing:
+- <strong>A specification</strong> for what telemetry data looks like (semantic conventions, data model).
+- <strong>SDKs</strong> in every major language for producing it.
+- <strong>A protocol</strong> (OTLP, OpenTelemetry Protocol — protobuf over gRPC or HTTP).
+- <strong>A collector</strong> — a configurable agent/gateway that ingests OTLP and ships to any backend.</p>
+<p>It emerged in 2019 from the merger of OpenTracing (API spec) and OpenCensus (Google's library). It's now the de facto standard. Every major vendor and open-source backend accepts OTLP. Why it won:</p>
+<ol>
+<li><strong>Vendor neutrality</strong>: instrumenting with OTel decouples your code from your backend. Swap Datadog for Tempo without touching application code.</li>
+<li><strong>Three pillars in one library</strong>: metrics, logs, and traces share context, correlation IDs, and resource attributes.</li>
+<li><strong>Semantic conventions</strong>: standardized attribute names (<code>http.method</code>, <code>db.system</code>, <code>messaging.system</code>) so dashboards and tools work across stacks.</li>
+<li><strong>CNCF + every major cloud</strong>: AWS, GCP, Azure, Datadog, Splunk, Dynatrace, Honeycomb all back it.</li>
+</ol>
+<h3 id="52-the-sdk-architecture">5.2 The SDK Architecture</h3>
+<p>The pieces in an SDK:</p>
+<ul>
+<li><strong>API</strong> — the public interface code uses. <code>Tracer.startSpan()</code>, <code>Meter.counter()</code>, <code>Logger.log()</code>.</li>
+<li><strong>SDK</strong> — the implementation. Configures samplers, processors, exporters.</li>
+<li><strong>Resources</strong> — attributes describing the producer: <code>service.name</code>, <code>service.version</code>, <code>deployment.environment</code>, <code>k8s.pod.name</code>. Set once, attached to every signal.</li>
+<li><strong>Context propagators</strong> — read/write trace headers (W3C, B3, baggage).</li>
+<li><strong>Processors</strong> — pipeline stages: batch processor, span processor.</li>
+<li><strong>Exporters</strong> — emit OTLP, Jaeger, Zipkin, Prometheus, console, etc.</li>
+</ul>
+<p>A typical Go bootstrap:</p>
+<pre><code class="language-go">import (
+  &quot;go.opentelemetry.io/otel&quot;
+  &quot;go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc&quot;
+  &quot;go.opentelemetry.io/otel/sdk/resource&quot;
+  sdktrace &quot;go.opentelemetry.io/otel/sdk/trace&quot;
+  semconv &quot;go.opentelemetry.io/otel/semconv/v1.24.0&quot;
+)
+
+exp, _ := otlptracegrpc.New(ctx)
+tp := sdktrace.NewTracerProvider(
+  sdktrace.WithBatcher(exp),
+  sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(0.1))),
+  sdktrace.WithResource(resource.NewWithAttributes(
+    semconv.SchemaURL,
+    semconv.ServiceName(&quot;api&quot;),
+    semconv.ServiceVersion(&quot;v1.2.3&quot;),
+    semconv.DeploymentEnvironment(&quot;prod&quot;),
+  )),
+)
+otel.SetTracerProvider(tp)
+</code></pre>
+<h3 id="53-auto-vs-manual-instrumentation">5.3 Auto vs. Manual Instrumentation</h3>
+<p><strong>Auto-instrumentation</strong> uses runtime hooks (Java's <code>-javaagent</code>, Python's <code>opentelemetry-instrument</code>, Node's <code>--require</code>) or monkey-patching to wrap popular libraries (HTTP clients, web frameworks, DB drivers) without code changes.</p>
+<ul>
+<li>Pros: drop-in coverage. You get HTTP/gRPC/DB spans for free.</li>
+<li>Cons: not portable across languages, sometimes overhead, sometimes wrong span names. Misses business semantics ("which checkout flow ran").</li>
+</ul>
+<p><strong>Manual instrumentation</strong> is application code calling the OTel API. Required for business spans, custom attributes, and any signal the auto-instrumentation doesn't generate.</p>
+<p>The right answer is <em>both</em>. Start with auto-instrumentation everywhere to get baseline coverage in days. Layer manual spans on the critical business paths. Add high-cardinality attributes (tenant, plan tier, feature flag) on those spans — they are the dimensions you'll slice by in incidents.</p>
+<p>References: <a href="https://opentelemetry.io/docs/concepts/instrumentation/automatic/">OTel auto-instrumentation</a>, <a href="https://opentelemetry.io/docs/specs/semconv/">OTel semantic conventions</a></p>
+<h3 id="54-the-opentelemetry-collector">5.4 The OpenTelemetry Collector</h3>
+<p>The Collector is a standalone binary that receives, processes, and exports telemetry. It has three pipeline component types:</p>
+<ul>
+<li><strong>Receivers</strong> — <code>otlp</code>, <code>prometheus</code>, <code>kafka</code>, <code>filelog</code>, <code>hostmetrics</code>, vendor-specific.</li>
+<li><strong>Processors</strong> — <code>batch</code>, <code>memory_limiter</code>, <code>resource</code>, <code>attributes</code>, <code>tail_sampling</code>, <code>transform</code>, <code>redaction</code>, <code>k8sattributes</code>.</li>
+<li><strong>Exporters</strong> — <code>otlphttp</code>, <code>prometheusremotewrite</code>, <code>loki</code>, <code>tempo</code>, <code>datadog</code>, <code>splunkhec</code>, <code>kafka</code>, dozens more.</li>
+</ul>
+<p>Pipelines are wired together in YAML:</p>
+<pre><code class="language-yaml">receivers:
+  otlp:
+    protocols:
+      grpc: { endpoint: 0.0.0.0:4317 }
+      http: { endpoint: 0.0.0.0:4318 }
+
+processors:
+  batch: { timeout: 5s, send_batch_size: 1024 }
+  memory_limiter: { check_interval: 1s, limit_mib: 1500 }
+  attributes:
+    actions:
+    - key: env
+      value: prod
+      action: upsert
+  tail_sampling:
+    decision_wait: 10s
+    policies:
+    - name: errors
+      type: status_code
+      status_code: { status_codes: [ERROR] }
+    - name: slow
+      type: latency
+      latency: { threshold_ms: 1000 }
+    - name: random-5pct
+      type: probabilistic
+      probabilistic: { sampling_percentage: 5 }
+
+exporters:
+  otlphttp/tempo:
+    endpoint: http://tempo:4318
+  prometheusremotewrite:
+    endpoint: http://mimir:9009/api/v1/push
+  loki:
+    endpoint: http://loki:3100/loki/api/v1/push
+
+service:
+  pipelines:
+    traces:
+      receivers:  [otlp]
+      processors: [memory_limiter, tail_sampling, batch]
+      exporters:  [otlphttp/tempo]
+    metrics:
+      receivers:  [otlp]
+      processors: [memory_limiter, batch]
+      exporters:  [prometheusremotewrite]
+    logs:
+      receivers:  [otlp]
+      processors: [memory_limiter, attributes, batch]
+      exporters:  [loki]
+</code></pre>
+<p>Deployment patterns:
+- <strong>Agent-as-sidecar / daemonset</strong> — one collector per host or pod, lightweight, batches and ships.
+- <strong>Gateway tier</strong> — a cluster of collectors behind a load balancer, doing tail sampling and routing. Required for tail-sampling to see whole traces.
+- <strong>Both</strong> — agent for resource attribution (host, pod labels) → gateway for global processing.</p>
+<p>The Collector is a more general routing layer than Fluent Bit or Vector — it speaks OTLP natively and is the unification point for the three pillars.</p>
+<p>References: <a href="https://opentelemetry.io/docs/collector/">OTel Collector docs</a>, <a href="https://opentelemetry.io/docs/collector/configuration/">Collector configuration</a></p>
+<h3 id="55-otlp">5.5 OTLP</h3>
+<p>OTLP is the wire format. Protobuf, transported over gRPC (default, faster) or HTTP/protobuf (firewall-friendly) or HTTP/JSON (debuggable).</p>
+<pre><code class="language-text">Application → OTLP/gRPC → Collector → OTLP/gRPC → Collector → backends
+</code></pre>
+<p>Backends accept OTLP directly now: Tempo, Loki (logs), Mimir (metrics, via Prometheus remote_write or OTLP), Honeycomb, Datadog (via vendor exporter), etc. The collector is often optional — you can ship OTLP from app to backend — but the collector earns its keep for batching, sampling, redaction, and resource enrichment.</p>
+<p>References: <a href="https://github.com/open-telemetry/opentelemetry-proto">OTLP spec</a></p>
+<hr>
+<h2 id="phase-6-events-and-profiling">Phase 6: Events and Profiling</h2>
+<p>The pillars debate sometimes adds two more: <strong>events</strong> (wide structured records of work units) and <strong>profiles</strong> (CPU/memory/lock samples over time).</p>
+<h3 id="61-events-as-a-pillar">6.1 Events as a Pillar</h3>
+<p>A wide structured <strong>event</strong> is one row per unit of work (request, job execution, scheduled task) with arbitrary key-value dimensions. The Honeycomb pitch is: events subsume the other pillars.</p>
+<ul>
+<li>Aggregate events over time → metrics.</li>
+<li>Each event is a structured log.</li>
+<li>A causally-linked sequence of events is a trace.</li>
+</ul>
+<p>In practice, events show up as:
+- Spans in OTel (a span <em>is</em> an event with timing and parent linkage).
+- Wide JSON records in Honeycomb, Snowplow, custom event pipelines.
+- Audit logs and security-event streams.</p>
+<p>When events shine: any analytical question requiring multiple high-cardinality dimensions ("how many failed checkouts last hour, by country, by plan tier, by browser, when feature X was on"). Try that on Prometheus and you'll run out of cardinality. Try it on Honeycomb and it's one query.</p>
+<h3 id="62-continuous-profiling">6.2 Continuous Profiling</h3>
+<p>A <strong>profile</strong> is a sampled view of where a process is spending time (CPU profile), allocating (heap profile), blocking (goroutine/lock profile). Historically, profiling was on-demand: SSH in, run <code>pprof</code>, grab a 30-second sample. <strong>Continuous profiling</strong> runs constantly, low overhead, in production — building a queryable history.</p>
+<p>The tools:</p>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Approach</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pyroscope</td>
+<td>Multi-language continuous profiler, now under Grafana</td>
+</tr>
+<tr>
+<td>Parca</td>
+<td>eBPF-based, language-agnostic system profiler</td>
+</tr>
+<tr>
+<td>Grafana Phlare</td>
+<td>Continuous profiles, integrated with Grafana stack</td>
+</tr>
+<tr>
+<td>Polar Signals</td>
+<td>Hosted Parca, eBPF-driven</td>
+</tr>
+<tr>
+<td>Datadog Profiler</td>
+<td>Built into Datadog APM agents</td>
+</tr>
+<tr>
+<td>Google Cloud Profiler</td>
+<td>The original, for GCP workloads</td>
+</tr>
+</tbody>
+</table>
+<p>The signal: <strong>flame graphs</strong> showing where wall-clock time went. They diagnose problems metrics can't see — a hot function consuming 30% of CPU is invisible to <code>request_duration_seconds</code> if it's amortized across many requests.</p>
+<p>eBPF profilers (Parca, Polar Signals) work without code instrumentation by sampling the kernel's perf events and unwinding stacks. Powerful for polyglot environments where instrumenting every language is impractical.</p>
+<h3 id="63-when-each-pillar-carries-the-most-signal">6.3 When Each Pillar Carries the Most Signal</h3>
+<table>
+<thead>
+<tr>
+<th>Question</th>
+<th>Best pillar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>"Is the service up?"</td>
+<td>Metrics</td>
+</tr>
+<tr>
+<td>"What's our SLO compliance?"</td>
+<td>Metrics</td>
+</tr>
+<tr>
+<td>"Why did this specific request fail?"</td>
+<td>Traces</td>
+</tr>
+<tr>
+<td>"What did the system print at 03:42 UTC?"</td>
+<td>Logs</td>
+</tr>
+<tr>
+<td>"Where is the CPU going right now?"</td>
+<td>Profiles</td>
+</tr>
+<tr>
+<td>"Are users in country X more likely to churn?"</td>
+<td>Events</td>
+</tr>
+<tr>
+<td>"Did we deploy a regression at 14:00?"</td>
+<td>Metrics + traces</td>
+</tr>
+<tr>
+<td>"Why does the heap keep growing?"</td>
+<td>Profiles</td>
+</tr>
+</tbody>
+</table>
+<p>References: <a href="https://grafana.com/docs/pyroscope/">Pyroscope docs</a>, <a href="https://www.parca.dev/">Parca / eBPF profiling</a>, <a href="https://www.brendangregg.com/flamegraphs.html">Brendan Gregg on flame graphs</a></p>
+<hr>
+<h2 id="phase-7-slis-slos-slas-and-error-budgets">Phase 7: SLIs, SLOs, SLAs, and Error Budgets</h2>
+<p>The Google SRE Workbook formalized this vocabulary and it's now the industry standard. Internalize the definitions; vague usage causes endless org confusion.</p>
+<h3 id="71-the-definitions">7.1 The Definitions</h3>
+<ul>
+<li><strong>SLI</strong> (Service Level Indicator) — a <em>measured</em> number expressing reliability. "Fraction of requests served under 250ms over the last 5 minutes." It's a query, often a ratio.</li>
+<li><strong>SLO</strong> (Service Level Objective) — a <em>target</em> for the SLI over a window. "99.9% of requests in 30 days served under 250ms." Internal-facing.</li>
+<li><strong>SLA</strong> (Service Level Agreement) — a <em>contractual</em> commitment, usually with money attached. "If less than 99.5% of requests over a month are served, customer gets a 10% credit." External-facing. Almost always weaker than the internal SLO (you give yourself headroom).</li>
+</ul>
+<p>Most engineers say "SLA" when they mean "SLO." Stop doing this. SLAs involve lawyers; SLOs involve oncall.</p>
+<h3 id="72-the-right-slis">7.2 The Right SLIs</h3>
+<p>An SLI must be a <em>ratio</em> (good events / total events). Examples:</p>
+<table>
+<thead>
+<tr>
+<th>Domain</th>
+<th>Good / Valid SLI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTTP service</td>
+<td><code>(requests with status &lt; 500) / (all requests)</code></td>
+</tr>
+<tr>
+<td>Latency</td>
+<td><code>(requests under 200ms) / (all requests)</code></td>
+</tr>
+<tr>
+<td>Pipeline freshness</td>
+<td><code>(partitions on time) / (expected partitions)</code></td>
+</tr>
+<tr>
+<td>Async job system</td>
+<td><code>(jobs completed within 5 min) / (jobs enqueued)</code></td>
+</tr>
+<tr>
+<td>Data pipeline (see <a href="DATA_ENGINEERING_STUDY_GUIDE.md">DATA_ENGINEERING_STUDY_GUIDE.md</a>)</td>
+<td><code>(tables fresh by 9 AM) / (tables expected)</code></td>
+</tr>
+</tbody>
+</table>
+<p>The wrong SLIs:
+- <strong>Mean latency</strong> — averages hide outliers. A service with 99% fast and 1% catastrophic looks fine in the mean.
+- <strong>Raw counts</strong> ("we want &lt; 100 errors per day"). Doesn't scale with traffic.
+- <strong>CPU usage</strong> — that's a resource, not a user-perceived signal. SLIs measure what users feel.</p>
+<h3 id="73-picking-the-number">7.3 Picking the Number</h3>
+<p>The 9s ladder:</p>
+<table>
+<thead>
+<tr>
+<th>SLO</th>
+<th>Downtime / 30 days</th>
+<th>Downtime / year</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>99%</td>
+<td>7h 12m</td>
+<td>87h 36m</td>
+</tr>
+<tr>
+<td>99.5%</td>
+<td>3h 36m</td>
+<td>43h 48m</td>
+</tr>
+<tr>
+<td>99.9%</td>
+<td>43m 12s</td>
+<td>8h 45m</td>
+</tr>
+<tr>
+<td>99.95%</td>
+<td>21m 36s</td>
+<td>4h 23m</td>
+</tr>
+<tr>
+<td>99.99%</td>
+<td>4m 19s</td>
+<td>52m 35s</td>
+</tr>
+<tr>
+<td>99.999%</td>
+<td>25.9s</td>
+<td>5m 15s</td>
+</tr>
+</tbody>
+</table>
+<p><strong>You almost never want 99.999%.</strong> Five nines is multiple data centers, redundant networks, change-control overhead, and an oncall culture that costs more than the business it serves. Three nines (99.9%) is the typical SaaS default; four (99.99%) is for systems that meaningfully break the world when down.</p>
+<p>Calibrate against:
+- <strong>Customer expectations</strong> — what do users actually tolerate?
+- <strong>Dependency floor</strong> — if you depend on a 99.9% SLO upstream, you cannot have a higher SLO than them (excluding retries and caching).
+- <strong>Cost of meeting it</strong> — every extra nine roughly 3–10× the engineering effort.</p>
+<h3 id="74-error-budgets">7.4 Error Budgets</h3>
+<p>If your SLO is 99.9% over 30 days, your <strong>error budget</strong> is the remaining 0.1% — 43m 12s of failure you're "allowed." Burning it is normal; over-burning it is the signal.</p>
+<p>The cultural function of error budgets: they convert "is the system reliable?" into a number with a sign. When the budget is empty, you slow feature work and pay down reliability debt. When it's full, you can ship faster and take more risk.</p>
+<p>Mathematically:</p>
+<pre><code class="language-text">budget_remaining_fraction = 1 - (1 - SLI) / (1 - SLO)
+                          = 1 - error_rate / allowed_error_rate
+</code></pre>
+<p>If <code>SLO = 99.9%</code> (allowed error rate <code>0.001</code>) and the observed error rate over the window is <code>0.0005</code>, you've consumed 50% of the budget.</p>
+<h3 id="75-multi-window-burn-rate-alerts">7.5 Multi-Window Burn-Rate Alerts</h3>
+<p>Naïve approach: alert when "error rate &gt; 0.1% over 5 minutes." Too noisy at low traffic, too slow at high.</p>
+<p>The Google SRE Workbook (<a href="https://sre.google/workbook/alerting-on-slos/">Ch. 5, "Alerting on SLOs"</a>) formalizes <strong>burn-rate</strong> alerts. The <strong>burn rate</strong> at any instant is <code>current_error_rate / SLO_error_rate</code>. A burn rate of 1 means you're consuming budget exactly at the rate that empties it in 30 days; a burn rate of 14.4 means you'd burn the entire budget in 30 days / 14.4 ≈ 2 days.</p>
+<p>The recommended <strong>multi-window, multi-burn-rate</strong> pattern uses two windows simultaneously for each alert level:</p>
+<table>
+<thead>
+<tr>
+<th>Severity</th>
+<th>Long window</th>
+<th>Short window</th>
+<th>Burn rate</th>
+<th>Catches</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Page</td>
+<td>1h</td>
+<td>5m</td>
+<td>14.4×</td>
+<td>Fast burns; ~2% budget consumed before paging</td>
+</tr>
+<tr>
+<td>Page</td>
+<td>6h</td>
+<td>30m</td>
+<td>6×</td>
+<td>Slower burns; ~5% budget consumed</td>
+</tr>
+<tr>
+<td>Ticket</td>
+<td>24h</td>
+<td>2h</td>
+<td>3×</td>
+<td>Long-term drift</td>
+</tr>
+<tr>
+<td>Ticket</td>
+<td>72h</td>
+<td>6h</td>
+<td>1×</td>
+<td>Slow erosion</td>
+</tr>
+</tbody>
+</table>
+<p>The <strong>two windows</strong> part matters: both must be in violation for the alert to fire. The long window confirms the trend; the short window confirms it's ongoing (auto-resolves quickly when the incident ends).</p>
+<p>Concrete PromQL is in Phase 13.</p>
+<p>References: <a href="https://sre.google/workbook/alerting-on-slos/">SRE Workbook, Ch. 5</a>, <a href="https://www.squadcast.com/blog/how-to-slo">How to SLO — Squadcast</a>, <a href="https://github.com/grafana/slo-libraries">Alex Ewerlöf SLO templates</a></p>
+<h3 id="76-slos-beyond-latency">7.6 SLOs Beyond Latency</h3>
+<p>SLOs aren't just for online services. Examples from other domains (see also <a href="DATA_ENGINEERING_STUDY_GUIDE.md">DATA_ENGINEERING_STUDY_GUIDE.md</a> and <a href="NETWORKING_FUNDAMENTALS.md">NETWORKING_FUNDAMENTALS.md</a>):</p>
+<ul>
+<li><strong>Data freshness SLO</strong>: 99% of daily mart tables ready by 9 AM in 30 days.</li>
+<li><strong>Job completion SLO</strong>: 99.5% of async jobs complete within 5 minutes of enqueue.</li>
+<li><strong>Build SLO</strong>: 95% of CI builds complete in under 15 minutes.</li>
+<li><strong>Network packet loss SLO</strong>: 99.99% of inter-AZ packets delivered.</li>
+</ul>
+<p>Define the SLI, measure it, set a target. The framework is the same.</p>
+<hr>
+<h2 id="phase-8-alert-design">Phase 8: Alert Design</h2>
+<p>Alerting is where observability meets pain. A bad alerting strategy makes oncall miserable and trains people to ignore pages. The goal is <em>every page is actionable, urgent, and not self-resolving</em>.</p>
+<h3 id="81-symptom-based-vs-cause-based">8.1 Symptom-Based vs. Cause-Based</h3>
+<p><strong>Symptom-based</strong>: alert on what the user feels. "Error rate &gt; 1%." "Latency p99 &gt; 1s." These are SLO violations.</p>
+<p><strong>Cause-based</strong>: alert on what <em>might</em> lead to a symptom. "CPU &gt; 90%." "Memory &gt; 85%." "Disk free &lt; 10%."</p>
+<p>The Google SRE rule of thumb: <strong>prefer symptom-based alerts</strong>. Reasons:
+- Cause-based alerts page you for things that aren't actually broken. CPU pinned at 95% for an hour with no user impact is "we should look at this," not "wake someone up."
+- Symptoms are stable; causes are many. The same symptom (high latency) has dozens of causes (slow DB, queue backed up, dependency timeout). Alert on the symptom; diagnose the cause.</p>
+<p>Cause-based alerts have their place as <strong>tickets</strong> (next-business-day attention), not pages, and as <strong>capacity planning signals</strong>. Wakeups should be symptom-driven.</p>
+<h3 id="82-the-frameworks">8.2 The Frameworks</h3>
+<p>Three overlapping mnemonics. Learn all three.</p>
+<p><strong>The Four Golden Signals</strong> (Google SRE):
+1. <strong>Latency</strong> — how long requests take. Differentiate successful vs. failed latency (a fast 500 is its own problem).
+2. <strong>Traffic</strong> — how many requests/sec.
+3. <strong>Errors</strong> — fraction failing.
+4. <strong>Saturation</strong> — how full the system is (CPU, memory, queue depth, connection pool).</p>
+<p><strong>RED</strong> (Tom Wilkie, request-driven services):
+- <strong>Rate</strong> — requests per second.
+- <strong>Errors</strong> — failures per second.
+- <strong>Duration</strong> — distribution (p50, p95, p99).</p>
+<p>A RED dashboard, one row per service, one column for each: this is the default starting point for microservices monitoring.</p>
+<p><strong>USE</strong> (Brendan Gregg, resource utilization):
+- <strong>Utilization</strong> — % time the resource is busy.
+- <strong>Saturation</strong> — queue depth / wait time.
+- <strong>Errors</strong> — error count.</p>
+<p>USE applies to <em>resources</em> (CPU, disk, network, memory, connection pool); RED applies to <em>services</em>. Together they're complete: RED on the services, USE on the things they consume.</p>
+<p>References: <a href="https://sre.google/sre-book/monitoring-distributed-systems/">SRE Book, Ch. 6 Monitoring</a>, <a href="https://thenewstack.io/monitoring-microservices-red-method/">Tom Wilkie on RED</a>, <a href="https://www.brendangregg.com/usemethod.html">Brendan Gregg USE method</a></p>
+<h3 id="83-alert-anti-patterns">8.3 Alert Anti-Patterns</h3>
+<p>The set of well-known mistakes:</p>
+<ul>
+<li><strong>The flapping alert.</strong> Fires, resolves, fires, resolves. Usually a threshold sitting right at normal load. Fix by widening the threshold, lengthening the window, or using burn-rate alerts.</li>
+<li><strong>The static threshold for dynamic traffic.</strong> "Page if requests/sec &lt; 100." Wakes up at 3 AM when traffic naturally dips. Compare to last week's same hour, or alert on <em>error ratio</em>, not raw rate.</li>
+<li><strong>The cause-based page for benign causes.</strong> "CPU &gt; 80%." Most modern services tolerate sustained 80% CPU. Page on user-visible effects.</li>
+<li><strong>The alert that points at the wrong on-call.</strong> Alerts must route to the team that can fix it. Cross-team alerts are tickets, not pages.</li>
+<li><strong>No runbook.</strong> A page that arrives at 3 AM with no link to "what to do next" is hostile to the responder. Every page must link to an actionable runbook.</li>
+<li><strong>Alert on individual hosts.</strong> "Pod X has high CPU" — in a fleet of 100 pods, who cares? Alert on <em>fleet-level symptoms</em>.</li>
+<li><strong>Repeating the same alert at the same level.</strong> Don't ticket-flood. Group by service or incident.</li>
+<li><strong>Test/staging alerts paging prod oncall.</strong> Separate routing trees per environment.</li>
+<li><strong>Alerting on the wrong derivative.</strong> "Disk filling up" vs. "disk will fill in 4 hours." The latter is far more actionable; use <code>predict_linear()</code> in PromQL.</li>
+</ul>
+<h3 id="84-alert-routing-and-severity">8.4 Alert Routing and Severity</h3>
+<p>Severity tiers (typical):
+- <strong>P1 / page</strong> — user impact ongoing, immediate response, wake people up.
+- <strong>P2 / urgent</strong> — significant impact, response within business hours.
+- <strong>P3 / ticket</strong> — must be addressed but not blocking.
+- <strong>P4 / informational</strong> — log it; don't notify.</p>
+<p>Routing:
+- Pages → on-call rotation (PagerDuty, OpsGenie, Squadcast, VictorOps, Grafana OnCall).
+- Tickets → Slack channel + Jira issue.
+- Informational → dashboard counter only.</p>
+<p><strong>Escalation policy</strong> — first responder doesn't ack in 10 minutes → next person → manager → entire team. PagerDuty has this baked in; configure it on every page.</p>
+<h3 id="85-on-call-ergonomics">8.5 On-Call Ergonomics</h3>
+<p>The team-level health metric: <strong>pages per shift</strong>. Two pages a week per responder is sustainable. Two pages a <em>night</em> makes them quit.</p>
+<p>Practices that keep oncall livable:
+- <strong>Weekly oncall review</strong> — every page from last week, was it actionable? If not, kill or rewrite the alert.
+- <strong>Page → action loop</strong> — every page resolved either with a fix, an alert improvement, or a runbook update. The page didn't just close; the system improved.
+- <strong>The "you build it, you run it" team boundary</strong> — the team that ships the service gets paged on it. Otherwise no incentive to fix flakiness.
+- <strong>Pre-rotation handoff</strong> — incoming oncall reads through open incidents, recent pages, known issues. Doc lives in the team's runbook.</p>
+<p>The single most powerful org-level change is <strong>counting and reporting page volume</strong>. Once page count is a tracked metric, teams have permission to spend time killing noise. Without that visibility, noise wins.</p>
+<p>References: <a href="https://response.pagerduty.com/">PagerDuty Incident Response</a>, <a href="https://increment.com/on-call/">Increment: On-Call</a></p>
+<hr>
+<h2 id="phase-9-dashboards">Phase 9: Dashboards</h2>
+<p>Dashboards are where observability gets <em>consumed</em>. A great dashboard answers a real question in seconds; a bad one is wallpaper.</p>
+<h3 id="91-what-dashboards-are-for">9.1 What Dashboards Are For</h3>
+<p>Three legitimate uses:
+1. <strong>Status at a glance</strong> — is the service healthy? RED dashboards, traffic dashboards, top-level SLO compliance.
+2. <strong>Incident triage</strong> — when paged, the responder pulls this up to localize the problem.
+3. <strong>Capacity / trend</strong> — long-horizon: are we growing into a wall?</p>
+<p>What dashboards are <em>not</em> for:
+- Exploration. Dashboards are pre-canned views; arbitrary questions go to the query layer (Explore in Grafana, or the backend's own query UI).
+- Browsing for bugs. If you're hunting a problem, you should be in logs / traces / events, not adjusting time ranges on graphs.
+- Decoration. The Grafana wallpaper in the office TV is fine; it's not observability.</p>
+<h3 id="92-the-five-second-rule">9.2 The Five-Second Rule</h3>
+<p>A dashboard panel should communicate its meaning within five seconds of looking at it. If a stranger to the system can't tell whether a number is good or bad in five seconds, the panel is failing.</p>
+<p>Implications:
+- <strong>Always have a baseline visible.</strong> Comparison to "last week" (<code>offset 7d</code>) or to an SLO line or to a deploy marker is the difference between "graph went up — bad?" and "graph went up 30% from last week — bad."
+- <strong>Color tells the story.</strong> Red = bad. Green = good. Use thresholds. Don't use rainbow palettes for time-series.
+- <strong>Units on the axes.</strong> "seconds" or "requests/sec" or "%." Grafana's unit picker is non-negotiable.
+- <strong>Title says the question, not the metric name.</strong> "p99 checkout latency" instead of <code>histogram_quantile_0.99_request_duration_seconds_checkout_bucket</code>.
+- <strong>One question per panel.</strong> Don't mix latency and error rate in one chart; the user has to parse it.</p>
+<h3 id="93-the-standard-dashboards">9.3 The Standard Dashboards</h3>
+<p>Every service should have, at minimum, three dashboards:</p>
+<p><strong>RED dashboard</strong> — service-level, one row per endpoint or operation:
+- Rate (requests/sec)
+- Errors (errors/sec or error ratio)
+- Duration (p50, p95, p99 latency histograms)</p>
+<p><strong>USE dashboard</strong> — for the underlying resources:
+- CPU utilization, load average
+- Memory used vs. limit
+- Disk IOPS, throughput
+- Network in/out
+- Saturation: connection pool usage, queue depth, GC pause time</p>
+<p><strong>SLO dashboard</strong> — for the contract:
+- Current SLO compliance (% over 30 days)
+- Error budget remaining (gauge)
+- Burn rate (current and historical)
+- Time-to-exhaustion projection</p>
+<p>For data pipelines, freshness and run-success dashboards replace RED. For batch infrastructure, USE plus job-success dashboards. The framework is the same; the SLIs differ.</p>
+<h3 id="94-dashboards-as-code">9.4 Dashboards as Code</h3>
+<p>Click-built dashboards in Grafana are easy but unreviewable, ungovernable, and break silently when someone edits them. Mature stacks define dashboards as code:</p>
+<ul>
+<li><strong>Grafonnet</strong> (Jsonnet) — Grafana's official dashboard-as-code library. Verbose but precise.</li>
+<li><strong>grafanalib</strong> (Python) — community library.</li>
+<li><strong>Terraform Grafana provider</strong> — manage dashboards (and folders, alert rules, datasources) declaratively.</li>
+<li><strong>Grizzly</strong> — Grafana Labs' Kubernetes-style YAML for Grafana objects.</li>
+<li><strong>Perses</strong> — newer CNCF dashboarding project, dashboards-as-code by design.</li>
+</ul>
+<p>The pattern:
+1. Define dashboards in code, in a repo.
+2. CI lints them (e.g. ensure unit annotations, threshold colors).
+3. CD applies them via Terraform or the Grafana API.
+4. Manual edits in the UI are read-only or auto-reverted.</p>
+<p>References: <a href="https://grafana.github.io/grafonnet-lib/">Grafonnet</a>, <a href="https://www.brendangregg.com/usemethod.html">USE method dashboards</a>, <a href="https://www.weave.works/blog/the-red-method-key-metrics-for-microservices-architecture/">RED method (Weaveworks)</a></p>
+<h3 id="95-grafana-briefly">9.5 Grafana, Briefly</h3>
+<p>Grafana is the de facto open-source dashboard UI. Key features to internalize:</p>
+<ul>
+<li><strong>Datasources</strong> — Prometheus, Loki, Tempo, Mimir, Cortex, InfluxDB, PostgreSQL, MySQL, CloudWatch, Datadog, many more. A single dashboard can pull from multiple datasources.</li>
+<li><strong>Variables</strong> — <code>$service</code>, <code>$env</code>, <code>$cluster</code>. Templated dashboards that work across many instances.</li>
+<li><strong>Annotations</strong> — overlay deploy markers, incident timelines.</li>
+<li><strong>Explore</strong> — interactive query UI for ad-hoc investigation. The right place to be when poking, not a saved dashboard.</li>
+<li><strong>Alerting</strong> — Grafana has its own unified alerting layer (Grafana 8+) that can use any datasource. Many shops use Prometheus's native alertmanager for metric alerts and Grafana for cross-source alerts (e.g., correlating logs and metrics).</li>
+<li><strong>Service Graph</strong> — a Tempo feature that derives service maps from traces.</li>
+</ul>
+<p>Grafana's competition: vendor dashboards (Datadog, New Relic), open-source alternatives (Perses, Chronograf, Kibana). Grafana wins by being multi-datasource — it sits in front of your <em>whole</em> observability stack.</p>
+<hr>
+<h2 id="phase-10-the-tooling-landscape">Phase 10: The Tooling Landscape</h2>
+<p>Be honest about what each tool is for and what it costs. The matrix is busy; here's the working engineer's view.</p>
+<h3 id="101-open-source-stacks">10.1 Open-Source Stacks</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Pillar</th>
+<th>Strength</th>
+<th>Weakness</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Prometheus</td>
+<td>Metrics</td>
+<td>The standard. Universal exporters, PromQL</td>
+<td>Single-binary scale ceiling</td>
+</tr>
+<tr>
+<td>Mimir</td>
+<td>Metrics (long-term)</td>
+<td>Horizontally scalable Prometheus</td>
+<td>Operationally non-trivial</td>
+</tr>
+<tr>
+<td>Cortex</td>
+<td>Metrics</td>
+<td>Predecessor to Mimir</td>
+<td>Mostly superseded by Mimir</td>
+</tr>
+<tr>
+<td>Thanos</td>
+<td>Metrics</td>
+<td>Object-store sidecar approach</td>
+<td>More moving parts than Mimir</td>
+</tr>
+<tr>
+<td>VictoriaMetrics</td>
+<td>Metrics</td>
+<td>High-perf single-binary TSDB</td>
+<td>Smaller ecosystem</td>
+</tr>
+<tr>
+<td>Loki</td>
+<td>Logs</td>
+<td>Cheap, label-indexed</td>
+<td>Full-text search is a scan</td>
+</tr>
+<tr>
+<td>OpenSearch / Elastic</td>
+<td>Logs</td>
+<td>Rich query, mature</td>
+<td>Operationally heavy, costly</td>
+</tr>
+<tr>
+<td>Tempo</td>
+<td>Traces</td>
+<td>Object-store-backed traces</td>
+<td>Limited query (TraceQL still maturing)</td>
+</tr>
+<tr>
+<td>Jaeger</td>
+<td>Traces</td>
+<td>The OG, well-trodden</td>
+<td>Storage backends each their own thing</td>
+</tr>
+<tr>
+<td>Pyroscope / Phlare</td>
+<td>Profiles</td>
+<td>Continuous profiling</td>
+<td>Smaller ecosystem</td>
+</tr>
+<tr>
+<td>Parca</td>
+<td>Profiles</td>
+<td>eBPF, language-agnostic</td>
+<td>Requires kernel support</td>
+</tr>
+<tr>
+<td>Grafana</td>
+<td>UI</td>
+<td>Multi-datasource, dashboards, alerting</td>
+<td>UI/UX evolves, breaking changes</td>
+</tr>
+<tr>
+<td>OpenTelemetry Collector</td>
+<td>Router</td>
+<td>Unified telemetry routing</td>
+<td>Config sprawl at scale</td>
+</tr>
+</tbody>
+</table>
+<p>The canonical open-source "Grafana LGTM" stack: <strong>Loki + Grafana + Tempo + Mimir</strong> (formerly Cortex), all with Grafana as UI. A complete metrics + logs + traces stack, self-hostable, with OTel as the ingestion path. Add Pyroscope for profiles.</p>
+<h3 id="102-hosted-vendor">10.2 Hosted / Vendor</h3>
+<table>
+<thead>
+<tr>
+<th>Vendor</th>
+<th>Coverage</th>
+<th>Pricing model</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Datadog</td>
+<td>Metrics, logs, traces, profiles, RUM, security, infra, synthetics</td>
+<td>Per host + per ingest GB + per indexed log + many add-ons</td>
+</tr>
+<tr>
+<td>New Relic</td>
+<td>Same breadth</td>
+<td>Per ingested GB, single tier</td>
+</tr>
+<tr>
+<td>Splunk Observability Cloud</td>
+<td>Metrics, traces, RUM; Splunk Enterprise for logs</td>
+<td>Per host + per ingested log</td>
+</tr>
+<tr>
+<td>Dynatrace</td>
+<td>Metrics, traces, RUM, AI-driven</td>
+<td>Per host-hour + per ingested item</td>
+</tr>
+<tr>
+<td>Honeycomb</td>
+<td>Events / traces (their model)</td>
+<td>Per event ingest</td>
+</tr>
+<tr>
+<td>Grafana Cloud</td>
+<td>The LGTM stack hosted</td>
+<td>Per active series + per ingested log GB + per traced span</td>
+</tr>
+<tr>
+<td>Chronosphere</td>
+<td>Metrics-focused (Mimir-style)</td>
+<td>Per active series</td>
+</tr>
+<tr>
+<td>Lightstep</td>
+<td>Traces + metrics</td>
+<td>Acquired into ServiceNow</td>
+</tr>
+<tr>
+<td>Sentry</td>
+<td>Errors + (now) traces</td>
+<td>Per event</td>
+</tr>
+<tr>
+<td>AWS CloudWatch</td>
+<td>AWS-native; integrates with everything</td>
+<td>Per metric + per log GB</td>
+</tr>
+<tr>
+<td>GCP Cloud Operations</td>
+<td>GCP-native</td>
+<td>Per metric + per log GB</td>
+</tr>
+<tr>
+<td>Azure Monitor</td>
+<td>Azure-native</td>
+<td>Per ingested GB</td>
+</tr>
+</tbody>
+</table>
+<p>The honest summary:</p>
+<ul>
+<li><strong>Datadog</strong> is the most-featured one-stop shop. Setup time measured in days. Bills measured in surprise. Has the best out-of-the-box integration coverage for vendors.</li>
+<li><strong>Honeycomb</strong> is the best at high-cardinality event-style observability. If your bug-fixing pattern is "slice traces by 4 dimensions," Honeycomb is the answer.</li>
+<li><strong>New Relic</strong> simplified its pricing to per-GB, which is friendlier for small teams.</li>
+<li><strong>Splunk</strong> dominates security / SIEM use cases; Splunk Observability is its APM half (acquired SignalFx).</li>
+<li><strong>Grafana Cloud</strong> is the easiest open-source-feeling hosted option; you avoid running Mimir/Loki/Tempo yourself.</li>
+<li><strong>CloudWatch / GCP Operations / Azure Monitor</strong> are fine for the bare minimum; expensive at scale and weaker on traces.</li>
+</ul>
+<h3 id="103-cost-models-mental-and-dollar">10.3 Cost Models, Mental and Dollar</h3>
+<p>Hidden costs to budget:
+- <strong>Series count, not metric count.</strong> A single metric with 50 labels is 50× a single metric with 1.
+- <strong>Ingest vs. indexed vs. retained.</strong> Datadog famously bills all three.
+- <strong>Log GB grows with traffic</strong> — your logs bill doubles when your business does. Plan for sampling and tiered retention before you cross $10K/mo.
+- <strong>Profiles are tiny</strong> — adding profiles is the rare freebie.
+- <strong>High-cardinality logs blow up indexing</strong>. Vendor pricing models incentivize you to keep log fields low-cardinality even when it hurts debugging.</p>
+<p>Self-host vs. buy:
+- <strong>Buy at 0–20 engineers.</strong> Operational cost of running observability infra &gt; vendor bill.
+- <strong>Hybrid at 20–200.</strong> Self-host metrics (Mimir/Prometheus), buy logs (cost-prohibitive to self-host high-volume), buy traces.
+- <strong>Self-host at 200+</strong> or where vendor cost grows faster than engineering cost. Big tech runs custom internal stacks.</p>
+<p>Vendor lock-in:
+- <strong>Custom dashboards</strong> are the deepest lock-in. Use Grafana even with vendor backends; Grafana speaks Datadog, CloudWatch, etc.
+- <strong>Custom alert rules</strong> in vendor UIs are second-deepest. Define alerts as code (Terraform, Pulumi) where possible.
+- <strong>OpenTelemetry instrumentation</strong> removes the <em>producer-side</em> lock-in. The agent-side bill is the easiest to switch.</p>
+<p>References: <a href="https://charity.wtf/2024/01/15/the-cost-of-observability/">The Cost of Observability — Charity Majors</a>, <a href="https://www.honeycomb.io/pricing-rationale">Honeycomb pricing rationale</a></p>
+<hr>
+<h2 id="phase-11-operational-realities">Phase 11: Operational Realities</h2>
+<p>The things you only learn after running an observability stack in anger.</p>
+<h3 id="111-observing-the-observer">11.1 Observing the Observer</h3>
+<p>Your observability stack is itself a production system. It needs:
+- Its own alerts (Prometheus is down → fall back to a sidecar; Mimir ingestion lag → page).
+- Its own dashboards (active series, ingested GB/s, query QPS, P99 query latency).
+- Its own SLO ("99% of pages alert within 90s of an incident starting").</p>
+<p>Prometheus alerts itself via <a href="https://github.com/prometheus/alertmanager/blob/main/doc/examples/simple.yml">Dead Man's Switch</a>: a perpetually-firing alert that an <em>external</em> watchdog (Cronitor, HealthChecks.io, AWS) monitors. If the watchdog stops getting the heartbeat, the watchdog pages — because your alerting system is down.</p>
+<h3 id="112-cardinality-incidents">11.2 Cardinality Incidents</h3>
+<p>The classic outage: a developer adds a label like <code>request_id</code> to a metric. Series count goes from 10K to 100M in an hour. Prometheus OOMs. Alerting stops. Now you're flying blind during the incident <em>you caused</em>.</p>
+<p>Defenses (recap):
+- Lint at commit time.
+- Series limits per scrape and per tenant.
+- Pre-rollout testing with cardinality reports.
+- Recording rules + drop relabeling for the worst metrics.
+- Per-team cardinality budgets, visible.</p>
+<p>When it happens (it will), the playbook:
+1. Identify the offending metric/series via <code>/api/v1/status/tsdb</code> top-cardinality endpoint.
+2. Add a <code>metric_relabel_configs</code> drop rule at the scrape layer (faster than redeploying the producer).
+3. Rolling-restart Prometheus.
+4. File the postmortem; add the rule to lint config.</p>
+<h3 id="113-sampling-at-scale">11.3 Sampling at Scale</h3>
+<p>Once you cross a few thousand spans/sec, you can't afford to keep them all. Tail-sampling is the technical answer; the operational reality is:</p>
+<ul>
+<li><strong>Tail sampling requires the same collector to see all spans of a trace.</strong> Use consistent hashing on trace ID at the load balancer.</li>
+<li><strong>Buffer memory grows with <code>decision_wait</code> × QPS.</strong> A 10s decision wait on a 100K spans/sec service buffers a million spans. Plan capacity.</li>
+<li><strong>The "interesting" sampling policies need calibration.</strong> "Sample errors" sounds simple — but if your service has a 5% error rate, errors aren't rare, and you'll keep too much. Add rate limits.</li>
+</ul>
+<h3 id="114-the-build-vs-buy-decision-recurring">11.4 The Build-vs-Buy Decision, Recurring</h3>
+<p>Three forces:
+1. <strong>Operational cost</strong> of running the stack — engineers, infra, on-call for the stack itself.
+2. <strong>Vendor cost</strong> — the bill, often growing nonlinearly in scale.
+3. <strong>Capability cost</strong> — features (continuous profiling, RUM, synthetics, ML) are hard to DIY.</p>
+<p>The honest move: revisit the choice every 12–18 months. Vendors change pricing. Open-source projects mature (Mimir didn't exist five years ago; Tempo six). Your scale grows. The right answer at headcount 5 is not the right answer at headcount 500.</p>
+<h3 id="115-multi-tenant-and-multi-region">11.5 Multi-Tenant and Multi-Region</h3>
+<p>At scale you'll want:
+- <strong>Per-team / per-tenant rate limits</strong> — one team can't fire-hose the shared TSDB.
+- <strong>Per-team quotas</strong> — visible to teams so they self-regulate.
+- <strong>Multi-region collection</strong> — collectors regional, central tier aggregates. Reduces cross-region traffic and respects data-residency rules.
+- <strong>Disaster recovery</strong> — your metrics and logs live in object storage with cross-region replication. Mimir / Loki / Tempo all play well here.</p>
+<p>References: <a href="https://grafana.com/docs/mimir/latest/manage/">Mimir operational guide</a>, <a href="https://prometheus.io/docs/practices/">Prometheus operational best practices</a></p>
+<hr>
+<h2 id="phase-12-recipe-instrumenting-a-go-http-service-with-opentelemetry">Phase 12: Recipe — Instrumenting a Go HTTP Service with OpenTelemetry</h2>
+<p>End-to-end. Metrics, logs, traces — one consistent set of attributes, OTLP to a collector. Demonstrates the conventions you'd use anywhere.</p>
+<h3 id="121-the-service">12.1 The Service</h3>
+<p>A trivial HTTP server exposing <code>GET /users/:id</code> that fetches a user from Postgres.</p>
+<h3 id="122-dependencies">12.2 Dependencies</h3>
+<pre><code class="language-go">// go.mod (relevant lines)
+require (
+    go.opentelemetry.io/otel v1.28.0
+    go.opentelemetry.io/otel/sdk v1.28.0
+    go.opentelemetry.io/otel/sdk/metric v1.28.0
+    go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.28.0
+    go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.28.0
+    go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.53.0
+    go.opentelemetry.io/contrib/instrumentation/github.com/jackc/pgx/otelpgx v0.4.0
+    log/slog
+)
+</code></pre>
+<h3 id="123-bootstrap">12.3 Bootstrap</h3>
+<pre><code class="language-go">package telemetry
+
+import (
+    &quot;context&quot;
+    &quot;log/slog&quot;
+    &quot;os&quot;
+
+    &quot;go.opentelemetry.io/otel&quot;
+    &quot;go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc&quot;
+    &quot;go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc&quot;
+    &quot;go.opentelemetry.io/otel/propagation&quot;
+    sdkmetric &quot;go.opentelemetry.io/otel/sdk/metric&quot;
+    &quot;go.opentelemetry.io/otel/sdk/resource&quot;
+    sdktrace &quot;go.opentelemetry.io/otel/sdk/trace&quot;
+    semconv &quot;go.opentelemetry.io/otel/semconv/v1.24.0&quot;
+)
+
+func Init(ctx context.Context, service, version, env string) (func(context.Context) error, error) {
+    res, err := resource.New(ctx,
+        resource.WithAttributes(
+            semconv.ServiceName(service),
+            semconv.ServiceVersion(version),
+            semconv.DeploymentEnvironment(env),
+        ),
+        resource.WithHost(),
+        resource.WithProcess(),
+        resource.WithContainer(),
+    )
+    if err != nil {
+        return nil, err
+    }
+
+    // Traces
+    traceExp, err := otlptracegrpc.New(ctx)
+    if err != nil {
+        return nil, err
+    }
+    tp := sdktrace.NewTracerProvider(
+        sdktrace.WithBatcher(traceExp),
+        sdktrace.WithResource(res),
+        sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(0.1))),
+    )
+    otel.SetTracerProvider(tp)
+
+    // Metrics
+    metricExp, err := otlpmetricgrpc.New(ctx)
+    if err != nil {
+        return nil, err
+    }
+    mp := sdkmetric.NewMeterProvider(
+        sdkmetric.WithReader(sdkmetric.NewPeriodicReader(metricExp)),
+        sdkmetric.WithResource(res),
+    )
+    otel.SetMeterProvider(mp)
+
+    // W3C trace context + baggage propagation
+    otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
+        propagation.TraceContext{},
+        propagation.Baggage{},
+    ))
+
+    // Structured logs — slog JSON handler, attach trace_id/span_id via middleware.
+    logger := slog.New(slog.NewJSONHandler(os.Stdout, &amp;slog.HandlerOptions{Level: slog.LevelInfo}))
+    slog.SetDefault(logger)
+
+    shutdown := func(ctx context.Context) error {
+        _ = tp.Shutdown(ctx)
+        _ = mp.Shutdown(ctx)
+        return nil
+    }
+    return shutdown, nil
+}
+</code></pre>
+<p><code>OTEL_EXPORTER_OTLP_ENDPOINT=http://collector:4317</code> and friends control where it goes — no hardcoded endpoints.</p>
+<h3 id="124-the-handler-with-custom-span-and-metric">12.4 The Handler with Custom Span and Metric</h3>
+<pre><code class="language-go">package main
+
+import (
+    &quot;context&quot;
+    &quot;log/slog&quot;
+    &quot;net/http&quot;
+
+    &quot;go.opentelemetry.io/otel&quot;
+    &quot;go.opentelemetry.io/otel/attribute&quot;
+    &quot;go.opentelemetry.io/otel/codes&quot;
+    &quot;go.opentelemetry.io/otel/metric&quot;
+    &quot;go.opentelemetry.io/otel/contrib/instrumentation/net/http/otelhttp&quot;
+)
+
+var (
+    tracer        = otel.Tracer(&quot;api&quot;)
+    meter         = otel.Meter(&quot;api&quot;)
+    reqCounter    metric.Int64Counter
+    reqHistogram  metric.Float64Histogram
+)
+
+func init() {
+    var err error
+    reqCounter, err = meter.Int64Counter(&quot;http_requests_total&quot;,
+        metric.WithDescription(&quot;Total HTTP requests&quot;),
+    )
+    if err != nil { panic(err) }
+    reqHistogram, err = meter.Float64Histogram(&quot;http_request_duration_seconds&quot;,
+        metric.WithDescription(&quot;HTTP request duration&quot;),
+        metric.WithUnit(&quot;s&quot;),
+        metric.WithExplicitBucketBoundaries(
+            0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10,
+        ),
+    )
+    if err != nil { panic(err) }
+}
+
+func getUser(w http.ResponseWriter, r *http.Request) {
+    ctx, span := tracer.Start(r.Context(), &quot;getUser&quot;,
+        // High-cardinality on spans is fine; on metrics it is not.
+        // user_id goes on the span, not on the counter.
+        attribute.String(&quot;user.id&quot;, r.PathValue(&quot;id&quot;)),
+    )
+    defer span.End()
+
+    user, err := fetchUser(ctx, r.PathValue(&quot;id&quot;))
+    if err != nil {
+        span.RecordError(err)
+        span.SetStatus(codes.Error, err.Error())
+        slog.ErrorContext(ctx, &quot;fetchUser failed&quot;,
+            &quot;user_id&quot;, r.PathValue(&quot;id&quot;),
+            &quot;trace_id&quot;, span.SpanContext().TraceID().String(),
+            &quot;error&quot;, err,
+        )
+        http.Error(w, &quot;internal&quot;, http.StatusInternalServerError)
+        return
+    }
+    _ = writeJSON(w, user)
+}
+
+func main() {
+    ctx := context.Background()
+    shutdown, _ := telemetry.Init(ctx, &quot;api&quot;, &quot;v1.2.3&quot;, &quot;prod&quot;)
+    defer shutdown(ctx)
+
+    mux := http.NewServeMux()
+    mux.HandleFunc(&quot;GET /users/{id}&quot;, getUser)
+
+    // otelhttp auto-instruments: spans, metrics, propagation
+    handler := otelhttp.NewHandler(mux, &quot;api&quot;,
+        otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
+            return r.Method + &quot; &quot; + r.Pattern // /users/{id}, not /users/12345
+        }),
+    )
+
+    _ = http.ListenAndServe(&quot;:8080&quot;, handler)
+}
+</code></pre>
+<h3 id="125-wiring-logs-to-traces">12.5 Wiring Logs to Traces</h3>
+<p>The discipline: every log emitted inside a request handler attaches <code>trace_id</code> and <code>span_id</code> (extracted from the context). Then in Grafana, a log line links straight to the trace and vice versa.</p>
+<pre><code class="language-go">func WithTrace(ctx context.Context, attrs ...slog.Attr) []slog.Attr {
+    sc := trace.SpanContextFromContext(ctx)
+    if sc.HasTraceID() {
+        attrs = append(attrs,
+            slog.String(&quot;trace_id&quot;, sc.TraceID().String()),
+            slog.String(&quot;span_id&quot;, sc.SpanID().String()),
+        )
+    }
+    return attrs
+}
+</code></pre>
+<p>Make it a middleware / wrapper logger so individual handlers don't repeat the boilerplate.</p>
+<h3 id="126-the-collector-for-this-service">12.6 The Collector for This Service</h3>
+<pre><code class="language-yaml">receivers:
+  otlp:
+    protocols:
+      grpc: { endpoint: 0.0.0.0:4317 }
+
+processors:
+  memory_limiter: { check_interval: 1s, limit_mib: 1500 }
+  resourcedetection:
+    detectors: [env, system, ec2]
+  batch: { timeout: 5s, send_batch_size: 1024 }
+  attributes/redact:
+    actions:
+    - key: http.request.header.authorization
+      action: delete
+
+exporters:
+  otlp/tempo:    { endpoint: tempo:4317,    tls: { insecure: true } }
+  prometheusremotewrite:
+    endpoint: http://mimir:9009/api/v1/push
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, attributes/redact, batch]
+      exporters: [otlp/tempo]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, batch]
+      exporters: [prometheusremotewrite]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, attributes/redact, batch]
+      exporters: [otlphttp/loki]
+</code></pre>
+<p>Now every request emits a trace, increments a counter, samples a histogram, and produces a structured log line — all sharing <code>trace_id</code>, <code>service</code>, <code>env</code>, <code>version</code>. In Grafana, a panel on the dashboard links straight to logs filtered by <code>trace_id</code>, and from any log line you jump to the trace.</p>
+<p>References: <a href="https://github.com/open-telemetry/opentelemetry-go-contrib">OTel Go contrib</a>, <a href="https://opentelemetry.io/docs/specs/semconv/">semconv</a></p>
+<hr>
+<h2 id="phase-13-recipe-multi-window-burn-rate-slo-alerts-in-promql">Phase 13: Recipe — Multi-Window Burn-Rate SLO Alerts in PromQL</h2>
+<p>Translating Phase 7's theory into real queries you'd deploy.</p>
+<h3 id="131-the-setup">13.1 The Setup</h3>
+<p>Service <code>api</code>. SLO: <strong>99.9% of HTTP requests return non-5xx in 30 days.</strong> Error budget allowed rate: <code>1 - 0.999 = 0.001</code>.</p>
+<p>The base SLIs as recording rules:</p>
+<pre><code class="language-yaml">groups:
+- name: slo:api:rules
+  interval: 30s
+  rules:
+  - record: slo:api:requests:rate5m
+    expr: sum(rate(http_requests_total{job=&quot;api&quot;}[5m]))
+  - record: slo:api:errors:rate5m
+    expr: sum(rate(http_requests_total{job=&quot;api&quot;, status=~&quot;5..&quot;}[5m]))
+  - record: slo:api:error_ratio:5m
+    expr: slo:api:errors:rate5m / slo:api:requests:rate5m
+
+  # Repeat for the other windows we need
+  - record: slo:api:error_ratio:30m
+    expr: |
+      sum(rate(http_requests_total{job=&quot;api&quot;, status=~&quot;5..&quot;}[30m]))
+        / sum(rate(http_requests_total{job=&quot;api&quot;}[30m]))
+  - record: slo:api:error_ratio:1h
+    expr: |
+      sum(rate(http_requests_total{job=&quot;api&quot;, status=~&quot;5..&quot;}[1h]))
+        / sum(rate(http_requests_total{job=&quot;api&quot;}[1h]))
+  - record: slo:api:error_ratio:6h
+    expr: |
+      sum(rate(http_requests_total{job=&quot;api&quot;, status=~&quot;5..&quot;}[6h]))
+        / sum(rate(http_requests_total{job=&quot;api&quot;}[6h]))
+  - record: slo:api:error_ratio:2h
+    expr: |
+      sum(rate(http_requests_total{job=&quot;api&quot;, status=~&quot;5..&quot;}[2h]))
+        / sum(rate(http_requests_total{job=&quot;api&quot;}[2h]))
+  - record: slo:api:error_ratio:24h
+    expr: |
+      sum(rate(http_requests_total{job=&quot;api&quot;, status=~&quot;5..&quot;}[24h]))
+        / sum(rate(http_requests_total{job=&quot;api&quot;}[24h]))
+  - record: slo:api:error_ratio:3d
+    expr: |
+      sum(rate(http_requests_total{job=&quot;api&quot;, status=~&quot;5..&quot;}[3d]))
+        / sum(rate(http_requests_total{job=&quot;api&quot;}[3d]))
+</code></pre>
+<h3 id="132-the-alerts">13.2 The Alerts</h3>
+<p>The multi-window burn-rate pattern from the SRE Workbook. SLO error budget is <code>0.001</code>. Burn-rate thresholds derived from "consume X% of 30d budget in window Y":</p>
+<pre><code class="language-yaml">groups:
+- name: slo:api:alerts
+  rules:
+  # Fast burn: would deplete entire 30d budget in ~2 days at this rate
+  # Both 1h and 5m windows must be elevated for the alert to fire
+  - alert: APIFastErrorBudgetBurn
+    expr: |
+      (
+        slo:api:error_ratio:1h &gt; (14.4 * 0.001)
+        and
+        slo:api:error_ratio:5m &gt; (14.4 * 0.001)
+      )
+    for: 2m
+    labels:
+      severity: page
+      slo: api-availability
+    annotations:
+      summary: &quot;API burning error budget very fast&quot;
+      description: &quot;1h error rate is {{ $value | humanizePercentage }} (&gt;14.4x SLO error rate).&quot;
+      runbook: &quot;https://wiki.example.com/runbooks/api-error-budget&quot;
+
+  # Medium burn: would deplete 30d budget in ~5 days
+  - alert: APIMediumErrorBudgetBurn
+    expr: |
+      (
+        slo:api:error_ratio:6h &gt; (6 * 0.001)
+        and
+        slo:api:error_ratio:30m &gt; (6 * 0.001)
+      )
+    for: 15m
+    labels:
+      severity: page
+      slo: api-availability
+    annotations:
+      summary: &quot;API burning error budget moderately fast&quot;
+      runbook: &quot;https://wiki.example.com/runbooks/api-error-budget&quot;
+
+  # Slow burn: would deplete 30d budget in ~10 days. Ticket, not page.
+  - alert: APISlowErrorBudgetBurn
+    expr: |
+      (
+        slo:api:error_ratio:24h &gt; (3 * 0.001)
+        and
+        slo:api:error_ratio:2h &gt; (3 * 0.001)
+      )
+    for: 1h
+    labels:
+      severity: ticket
+      slo: api-availability
+
+  # Very slow long-term erosion: ticket
+  - alert: APIErrorBudgetEroding
+    expr: |
+      (
+        slo:api:error_ratio:3d &gt; (1 * 0.001)
+        and
+        slo:api:error_ratio:6h &gt; (1 * 0.001)
+      )
+    for: 3h
+    labels:
+      severity: ticket
+      slo: api-availability
+</code></pre>
+<p>The four-tier pattern ensures:
+- <strong>Fast and big</strong> incidents page within ~2 minutes.
+- <strong>Slow drips</strong> are caught as tickets, not 3 AM pages.
+- The short window guards against alerting on incidents that have <em>already resolved</em>; once the 5m or 30m short window drops below threshold, the alert auto-clears.</p>
+<h3 id="133-the-budget-remaining-dashboard-panels">13.3 The Budget-Remaining Dashboard Panels</h3>
+<pre><code class="language-promql"># Error budget remaining as a fraction (1 = full budget, 0 = empty, negative = over)
+1 - (
+  (1 - (sum(increase(http_requests_total{job=&quot;api&quot;,status=~&quot;5..&quot;}[30d]))
+         / sum(increase(http_requests_total{job=&quot;api&quot;}[30d]))))
+  - 0.999
+) / 0.001
+</code></pre>
+<p>Or, more transparently, using recording rules for the 30d ratio:</p>
+<pre><code class="language-yaml">- record: slo:api:error_ratio:30d
+  expr: |
+    sum(rate(http_requests_total{job=&quot;api&quot;,status=~&quot;5..&quot;}[30d]))
+      / sum(rate(http_requests_total{job=&quot;api&quot;}[30d]))
+</code></pre>
+<p>Then:</p>
+<pre><code class="language-promql"># Budget consumed fraction
+slo:api:error_ratio:30d / 0.001
+
+# Budget remaining fraction
+1 - slo:api:error_ratio:30d / 0.001
+</code></pre>
+<p>Plot the remaining as a gauge with red below 0, amber 0–0.25, green above. Anyone glancing at the dashboard knows the state in two seconds.</p>
+<p>References: <a href="https://sre.google/workbook/alerting-on-slos/">SRE Workbook, Ch. 5</a>, <a href="https://sloth.dev/">Sloth — SLO generator</a>, <a href="https://github.com/pyrra-dev/pyrra">Pyrra</a></p>
+<hr>
+<h2 id="phase-14-recipe-writing-a-runbook">Phase 14: Recipe — Writing a Runbook</h2>
+<p>A runbook is what a stranger reads at 3 AM when paged. The single highest-leverage observability artifact, and the most universally neglected.</p>
+<h3 id="141-runbook-anatomy">14.1 Runbook Anatomy</h3>
+<pre><code class="language-markdown"># Runbook: APIFastErrorBudgetBurn
+
+## What this alert means
+The api service is burning its 99.9% availability SLO budget fast enough
+that the 30-day budget would be exhausted in ~2 days at the current rate.
+This means roughly: 5xx error rate on the api service has spiked above
+1.44% sustained for at least 5 minutes.
+
+## Severity
+P1 / page. Customer-facing impact ongoing.
+
+## Owner
+team-platform-api. Slack: #api-oncall. Escalation: @api-oncall.
+
+## Diagnose
+
+1. Open the API service dashboard:
+   https://grafana.example.com/d/api-overview?from=now-1h
+   Confirm: RED panel shows elevated error rate. Identify which endpoint(s).
+
+2. Pivot to per-endpoint error ratio:
+   Query: `sum by (path) (rate(http_requests_total{job=&quot;api&quot;,status=~&quot;5..&quot;}[5m]))
+            / sum by (path) (rate(http_requests_total{job=&quot;api&quot;}[5m]))`
+   The top result is where the errors live.
+
+3. For the top endpoint, look at traces:
+   Open Tempo, filter by `service.name=api`, `http.route=&lt;endpoint&gt;`,
+   `status=error`. Pick a recent trace. The span with the red icon is
+   where the request failed. Common causes:
+   - Downstream service 5xx → check that service's dashboard
+   - DB query timeout → check Postgres dashboard, look for long queries
+   - Panic / unhandled exception → check logs (see step 4)
+
+4. For the top endpoint, query logs:
+   Loki: `{service=&quot;api&quot;} |= &quot;level=error&quot; |~ &quot;&lt;endpoint&gt;&quot;`
+   Look at the most recent error message and stack trace.
+
+5. Correlate to deploys: check the deploy annotation track in Grafana.
+   Was there a deploy of api within the last hour? Roll it back first,
+   diagnose second.
+
+## Mitigation
+
+- **If recent deploy is suspect**: roll back via `kubectl rollout undo
+  deployment/api -n prod`. Verify error rate drops within 5 min.
+- **If a downstream is failing**: page that team. Consider circuit-breaking
+  the dependency via flag `feature.&lt;name&gt;.fallback=true`.
+- **If DB is overloaded**: throttle traffic via the API gateway (see
+  https://wiki.example.com/runbooks/api-throttle). Page DBA.
+- **If unknown**: declare an incident in #incidents. Get IC on the call.
+
+## Post-incident
+
+- Open a postmortem within 24 hours.
+- Confirm the alert fired correctly and resolved correctly.
+- If the alert took too long to fire, file a ticket to tune burn-rate windows.
+- If the alert was noisy, same.
+
+## Related dashboards / queries
+- API overview: https://grafana.example.com/d/api-overview
+- API SLO budget: https://grafana.example.com/d/api-slo
+- Postgres health: https://grafana.example.com/d/postgres
+
+## Last reviewed: 2026-04-02 by @sanjee
+</code></pre>
+<h3 id="142-runbook-principles">14.2 Runbook Principles</h3>
+<ul>
+<li><strong>Located at the alert.</strong> Link from the alert annotation directly. Don't make the responder hunt.</li>
+<li><strong>Diagnose before mitigate.</strong> Tell them what's likely wrong before what to do about it.</li>
+<li><strong>One concrete query per claim.</strong> "Check the latency" is useless; "open this dashboard and look at this panel" is gold.</li>
+<li><strong>Updated after every incident.</strong> A runbook that wasn't useful last incident must be improved or rewritten.</li>
+<li><strong>Versioned.</strong> In a repo, alongside code. Reviewed like code.</li>
+<li><strong>Tested.</strong> Periodically, in chaos drills or fire-drills, have someone follow the runbook cold. If they get stuck, the runbook needs work.</li>
+</ul>
+<h3 id="143-anti-patterns">14.3 Anti-Patterns</h3>
+<ul>
+<li><strong>Runbooks that say "ask Alice."</strong> Alice goes on vacation; the runbook breaks. Document the steps Alice takes.</li>
+<li><strong>Runbooks that are just SOP-style prose.</strong> Use commands and links.</li>
+<li><strong>One mega-runbook for the service.</strong> Per-alert runbooks. Each alert links to its own.</li>
+<li><strong>Runbooks for non-alerts.</strong> "How to deploy" is a procedure, not a runbook. Runbooks are <em>for incidents</em>.</li>
+</ul>
+<p>References: <a href="https://response.pagerduty.com/oncall/runbooks/">PagerDuty Runbook templates</a>, <a href="https://increment.com/documentation/">Increment: Documentation</a></p>
+<hr>
+<h2 id="phase-15-anatomy-of-a-production-observability-stack">Phase 15: Anatomy of a Production Observability Stack</h2>
+<p>Walking through a realistic end-to-end stack so the pieces land in place. Scenario: a mid-stage SaaS, ~150 engineers, K8s on AWS, Go and Python services, a Postgres OLTP DB, Kafka, a data lake.</p>
+<h3 id="151-the-architecture-at-a-glance">15.1 The Architecture, at a Glance</h3>
+<pre><code class="language-text">   ┌────────────┐    ┌────────────┐    ┌─────────────┐
+   │ Go service │    │ Py service │    │  Postgres   │
+   │  (OTel SDK)│    │ (OTel SDK) │    │ (exporter)  │
+   └──────┬─────┘    └──────┬─────┘    └──────┬──────┘
+          │ OTLP/gRPC       │ OTLP/gRPC       │ /metrics
+          ▼                 ▼                 ▼
+   ┌──────────────────────────────────────────────────┐
+   │  OpenTelemetry Collector — DaemonSet (agent tier)│
+   │  Receives OTLP + scrapes node_exporter, cAdvisor │
+   │  Adds k8s.* resource attrs, host attrs           │
+   └──────────────────────┬───────────────────────────┘
+                          │ OTLP/gRPC
+                          ▼
+   ┌──────────────────────────────────────────────────┐
+   │  OpenTelemetry Collector — Deployment (gateway)  │
+   │  Tail sampling, redaction, routing               │
+   └──────┬────────────────┬──────────────────┬───────┘
+          │ remote_write   │ OTLP             │ OTLP/Loki
+          ▼                ▼                  ▼
+   ┌──────────┐      ┌──────────┐       ┌──────────┐
+   │  Mimir   │      │  Tempo   │       │   Loki   │
+   │ (metrics)│      │ (traces) │       │  (logs)  │
+   └────┬─────┘      └────┬─────┘       └────┬─────┘
+        │                  │                  │
+        ▼                  ▼                  ▼
+   ┌──────────────────────────────────────────────────┐
+   │     S3 (object storage — long-term retention)    │
+   └──────────────────────────────────────────────────┘
+                          │
+                          ▼
+              ┌───────────────────────┐
+              │       Grafana         │ ◀── humans
+              │ (dashboards, Explore, │
+              │  unified alerting)    │
+              └─────┬─────────────────┘
+                    │
+                    ▼
+        ┌───────────────────────────┐
+        │   PagerDuty + Slack       │
+        └───────────────────────────┘
+</code></pre>
+<h3 id="152-step-by-step-with-the-choices-called-out">15.2 Step by Step, with the Choices Called Out</h3>
+<p><strong>Producers</strong></p>
+<ul>
+<li><strong>Go and Python services</strong> — instrumented with the OpenTelemetry SDK. Auto-instrumentation for HTTP/gRPC/DB; manual spans on business operations. Each service sets <code>service.name</code>, <code>service.version</code>, <code>deployment.environment</code> via env vars from the K8s downward API. Logs are structured JSON (<code>slog</code> in Go, <code>structlog</code> in Python), shipped over OTLP — <em>not</em> via files, removing the agent-scraping dependency for logs.</li>
+<li><strong>Postgres and other infra</strong> — scraped by exporters. <code>postgres_exporter</code>, <code>redis_exporter</code>, <code>kafka_exporter</code>, <code>blackbox_exporter</code> (external probes). These targets are discovered via K8s annotations.</li>
+</ul>
+<p>Choice points:
+- <em>OTLP everywhere</em> over Datadog SDKs / New Relic agents. Vendor-agnostic; one library to learn per language.
+- <em>Structured logs via OTLP</em>, not log files. Saves the log-tail agent; ensures trace_id and span_id correlate automatically.</p>
+<p><strong>Agent tier — OTel Collector DaemonSet</strong></p>
+<ul>
+<li>One collector per node, running as a DaemonSet. Workloads send OTLP to <code>127.0.0.1:4317</code> (localhost, very fast).</li>
+<li>The agent enriches with K8s resource attributes (<code>k8s.pod.name</code>, <code>k8s.namespace.name</code>, <code>k8s.node.name</code>) via the <code>k8sattributes</code> processor.</li>
+<li>It also scrapes <code>node_exporter</code> and <code>cAdvisor</code> on its host and emits OTLP metrics.</li>
+<li>Local buffering on disk via the <code>file_storage</code> extension. Survives short collector restarts without dropping data.</li>
+</ul>
+<p>Choice points:
+- <em>Agent + gateway</em> instead of agent-only. The gateway enables global tail sampling; the agent enables low-latency local ingestion. Both layers are stateless and horizontally scalable.</p>
+<p><strong>Gateway tier — OTel Collector Deployment</strong></p>
+<ul>
+<li>A horizontally-scaled fleet behind a Kubernetes Service. Trace ID hashing at the LB level (<code>load_balancing_exporter</code> between agents and gateways) so all spans of a trace hit the same gateway pod — required for tail sampling.</li>
+<li>Processors: <code>tail_sampling</code> (keep all errors, all slow traces, 5% of everything else), <code>transform</code> (PII redaction on log bodies), <code>batch</code>, <code>memory_limiter</code>.</li>
+<li>Exporters: <code>prometheusremotewrite</code> → Mimir; <code>otlp</code> → Tempo; <code>otlphttp</code> → Loki.</li>
+</ul>
+<p>Choice points:
+- <em>Tail-sampling at the gateway</em>, not the agent. The agent can't see whole traces; the gateway can.
+- <em>Redaction at the gateway</em>, not in producer code. Centralized policy, faster to change. Producer code is responsible for <em>not putting raw PII into spans</em> in the first place — defense in depth.</p>
+<p><strong>Storage — Mimir + Tempo + Loki</strong></p>
+<ul>
+<li><strong>Mimir</strong> for metrics. Multi-tenant; one tenant per business unit. Per-tenant series limits enforced (1M active series each). S3 backend for long-term storage; 13-month retention.</li>
+<li><strong>Tempo</strong> for traces. S3-backed; 30 days. Trace lookup by ID (fast). For trace search by attribute, exemplars from metrics link to representative traces.</li>
+<li><strong>Loki</strong> for logs. S3-backed; 14 days hot, 90 days cold (compacted via Loki's compactor). Label cardinality strictly controlled: <code>service</code>, <code>namespace</code>, <code>level</code>, <code>cluster</code>. Everything else stays in the log body.</li>
+<li><strong>Pyroscope</strong> for profiles. Continuous CPU + heap from Go services. 14 days. Profiles are tiny.</li>
+</ul>
+<p>Choice points:
+- <em>LGTM stack</em> over Datadog. Self-hosted is cheaper at this scale (~150 engineers, billions of metrics samples/day). Worth the operational overhead. Run a 2–3 engineer "platform observability" team to own it.
+- <em>S3 everywhere</em> for storage. Cross-region replication via S3 features; data lasts longer than the compute.</p>
+<p><strong>Recording rules and alerts</strong></p>
+<ul>
+<li>Recording rules in Mimir for the standard <code>job:metric:rate5m</code> patterns, plus SLO-specific <code>slo:service:error_ratio:Xm</code> rules (Phase 13).</li>
+<li>Alerts defined as YAML in a Git repo. Applied via CI to Mimir's ruler.</li>
+<li>Burn-rate alerts per service for the four major SLOs (availability, latency, freshness, success). Per-tenant routing labels (<code>team=platform-api</code>).</li>
+<li>A "dead-man" alert that always fires, watched by an external service (Cronitor), pages if our alerting system is down.</li>
+</ul>
+<p>Choice points:
+- <em>Alerts in Git</em>, not the UI. PR review for alert changes. Same as code.</p>
+<p><strong>Dashboards</strong></p>
+<ul>
+<li>Dashboards as code (Grafonnet) in the same repo as alerts. CI lints them, CD applies via the Grafana provisioning API.</li>
+<li>Per-service: RED dashboard, USE dashboard, SLO dashboard. Generated from a service template — adding a new service means committing a <code>service.libsonnet</code> entry, not building dashboards by hand.</li>
+<li>Cross-cutting dashboards: per-team SLO compliance, per-tenant cost (active series, ingested log GB).</li>
+<li>Annotations from Argo CD deploys overlay on every dashboard's time axis — every spike answers "did we deploy then?"</li>
+</ul>
+<p><strong>Alert routing</strong></p>
+<ul>
+<li>Alertmanager (or Grafana's unified alerting). Routing tree: by service label → team's PagerDuty service; by severity → page vs. Slack.</li>
+<li>Mute windows for known-noisy maintenance windows.</li>
+<li>Weekly Slack digest of all paged alerts and their resolutions, reviewed by each team's SRE counterpart.</li>
+</ul>
+<h3 id="153-the-operational-realities">15.3 The Operational Realities</h3>
+<ul>
+<li><strong>The page-able stack components</strong>: Mimir ingesters, Tempo distributors, Loki ingesters, OTel Collector gateway pods. They have their own SLOs. The platform team is oncall for them.</li>
+<li><strong>Cost monitoring</strong>: a dashboard breaks down ingested bytes per service per signal. Outliers visible to their team. A monthly report goes to engineering leadership.</li>
+<li><strong>Cardinality</strong>: a daily report ranks the top-30 metrics by series count, by team. Teams own their cardinality budgets; egregious metrics get tickets.</li>
+<li><strong>Sampling tuning</strong>: tail-sampling policies reviewed quarterly. Error rate per service changes; sampling thresholds change with it.</li>
+<li><strong>Schema discipline</strong>: a CI lint on producer code enforces metric naming (<code>_total</code>, <code>_seconds</code>, <code>_bytes</code>), log field names (<code>trace_id</code>, <code>service</code>), and span attribute names (semantic conventions).</li>
+<li><strong>Disaster drills</strong>: quarterly, the platform team simulates Mimir loss and verifies fallback paths (local Prom for short-term, external dead-man for paging).</li>
+</ul>
+<h3 id="154-why-this-architecture">15.4 Why This Architecture</h3>
+<p>The decisions that shaped it:</p>
+<ol>
+<li><strong>OpenTelemetry everywhere on the producer side.</strong> Vendor-agnostic, three pillars unified, semantic conventions automatic.</li>
+<li><strong>Self-host LGTM</strong> at this scale. Datadog/New Relic bills would be 5–10× the engineering cost of running Mimir/Tempo/Loki. Past ~$1M/yr vendor spend, self-host pays.</li>
+<li><strong>Agent + gateway</strong> collector topology. Buys tail sampling, centralized redaction, multi-region routing, all without producer code changes.</li>
+<li><strong>Burn-rate SLO alerts</strong> over threshold alerts. Honest signal, lower noise, faster on real incidents.</li>
+<li><strong>Everything as code</strong> — dashboards, alerts, runbooks. Reviewed, versioned, automated. UI edits are auto-reverted.</li>
+<li><strong>Per-team cardinality and cost budgets.</strong> Without per-team accountability, the shared system gets abused.</li>
+</ol>
+<p>None of these are right in the abstract. They're right <em>for this scale and team shape</em>. The right answer for 10 engineers is "Grafana Cloud + OpenTelemetry SDKs," skip the self-hosted backend entirely. The right answer for 1500 engineers is more like Netflix's Atlas / custom Honeycomb / multi-region everything. The framework is the same; the choices change.</p>
+<p>For comparison, the data pipeline architecture in Phase 14 of <a href="DATA_ENGINEERING_STUDY_GUIDE.md">DATA_ENGINEERING_STUDY_GUIDE.md</a> has the same shape: many sources, a routing tier, multiple backends per signal type, dashboards over the top. The same mental model applies.</p>
+<hr>
+<h2 id="mastery-checklist">Mastery Checklist</h2>
+<p>You're solid on observability when you can, without looking anything up:</p>
+<ul>
+<li>Explain monitoring vs. observability and the cardinality argument behind the distinction.</li>
+<li>Pick the right pillar (metric / log / trace / event / profile) for a given question.</li>
+<li>Name the four Prometheus metric types and pick the right one for a new use case.</li>
+<li>Read and write PromQL: <code>rate</code>, <code>sum by</code>, <code>histogram_quantile</code>, <code>topk</code>, <code>offset</code>.</li>
+<li>Explain why <code>rate(sum(...))</code> is wrong and <code>sum(rate(...))</code> is right.</li>
+<li>Diagnose and fix a cardinality explosion: identify offender, drop relabel, fix at producer.</li>
+<li>Set up Prometheus, write recording rules, federate to a global Prom or <code>remote_write</code> to Mimir.</li>
+<li>Explain head vs. tail sampling and when to use each.</li>
+<li>Bootstrap OpenTelemetry in any major language and emit traces, metrics, and logs with shared resource attributes.</li>
+<li>Configure an OTel Collector pipeline with receivers, processors, exporters.</li>
+<li>Write structured logs with <code>trace_id</code>, <code>span_id</code>, stable fields, levels used honestly.</li>
+<li>Articulate the SLI / SLO / SLA / error-budget terms without using them interchangeably.</li>
+<li>Pick the right SLI for a service, the right SLO target, and defend both.</li>
+<li>Compute multi-window burn-rate alerts in PromQL and explain the windows.</li>
+<li>Write a useful runbook from scratch.</li>
+<li>Apply RED to a request-driven service and USE to its resources.</li>
+<li>Distinguish symptom-based and cause-based alerts and prefer the former.</li>
+<li>Build a RED dashboard, an SLO dashboard, a USE dashboard.</li>
+<li>Define dashboards and alerts as code, in a repo, reviewed by CI.</li>
+<li>Choose between Prometheus self-host, Mimir, VictoriaMetrics, and a vendor at a given scale, and justify it.</li>
+<li>Choose between Loki and Elastic for logs, and Tempo vs. Jaeger vs. Honeycomb for traces.</li>
+<li>Estimate the cost of an instrumentation change before merging it.</li>
+<li>Design an end-to-end observability stack for a 100-engineer org from scratch, defending each component.</li>
+</ul>
+<hr>
+<h2 id="recommended-reading-path">Recommended Reading Path</h2>
+<p>The canon, in roughly the order to read it:</p>
+<ol>
+<li><strong><a href="https://sre.google/sre-book/monitoring-distributed-systems/">Google SRE Book, Ch. 6 "Monitoring Distributed Systems"</a></strong> — the foundations. The Four Golden Signals are from here.</li>
+<li><strong><a href="https://sre.google/workbook/implementing-slos/">Google SRE Workbook, Ch. 2 "Implementing SLOs"</a></strong> and <strong><a href="https://sre.google/workbook/alerting-on-slos/">Ch. 5 "Alerting on SLOs"</a></strong> — the math for SLOs and burn-rate alerts. Re-read until the formulas are intuitive.</li>
+<li><strong><a href="https://www.oreilly.com/library/view/distributed-systems-observability/9781492033431/">Distributed Systems Observability — Cindy Sridharan</a></strong> — the 2018 free O'Reilly book that defined the modern frame.</li>
+<li><strong><a href="https://www.oreilly.com/library/view/observability-engineering/9781492076438/">Observability Engineering — Majors, Fong-Jones, Miranda</a></strong> — the Honeycomb-flavored event-centric view. The critique of the three pillars lives here.</li>
+<li><strong><a href="https://www.oreilly.com/library/view/prometheus-up/9781492034131/">Prometheus: Up and Running — Brian Brazil</a></strong> — the deep reference for Prometheus, exposition, PromQL, exporters.</li>
+<li><strong><a href="https://opentelemetry.io/docs/">The OpenTelemetry docs</a></strong> — the spec is a reference, not a tutorial; read the concepts pages cover to cover.</li>
+<li><strong><a href="https://www.brendangregg.com/systems-performance-2nd-edition-book.html">Brendan Gregg, Systems Performance, 2nd ed.</a></strong> — for USE, flame graphs, and the systems side of observability.</li>
+<li><strong><a href="https://www.honeycomb.io/blog">Honeycomb blog</a></strong> and <strong><a href="https://charity.wtf/">Charity Majors's writing</a></strong> — opinionated, sharp, frequently updated. Read them to develop taste.</li>
+<li><strong><a href="https://grafana.com/blog/">Grafana Labs blog</a></strong> — practical, current, vendor-honest about its own products.</li>
+<li><strong><a href="https://increment.com/on-call/">Increment Magazine on On-Call</a></strong> — the human side.</li>
+</ol>
+<p>Talks worth watching:
+- <strong>"Performance Matters"</strong> — Emery Berger, Strange Loop 2019.
+- <strong>"Observability: The Hard Parts"</strong> — Cindy Sridharan.
+- <strong>"The Hard Truths of Observability"</strong> — Charity Majors.
+- <strong>"Stop Using Histograms"</strong> — Björn Rabenstein, on quantiles and aggregation pitfalls.</p>
+<p>The discipline isn't a finite body of knowledge. The fundamentals (cardinality, the data model, sampling, SLOs) are stable; the tools shift every couple of years. Internalize the fundamentals, keep tabs on the tooling churn, and you'll stay current.</p>
+<hr>
+<p><em>The bar to clear: someone wakes you up at 3 AM. You open one dashboard, see the symptom, click through to the trace, find the bad span, open the log line via shared <code>trace_id</code>, and have the root cause inside 15 minutes. If your stack does that for the kinds of failures you actually have, it's working. If it doesn't, find the missing piece and add it.</em></p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

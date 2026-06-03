@@ -8,16 +8,16 @@ Primary references: [GitHub Actions documentation](https://docs.github.com/en/ac
 
 ## Table of Contents
 
-1. [Part 1 — Foundations & Mental Model](#part-1--foundations--mental-model)
-2. [Part 2 — The Workflow Language](#part-2--the-workflow-language)
-3. [Part 3 — Build, Test, Cache, Artifacts](#part-3--build-test-cache-artifacts)
-4. [Part 4 — Composition & Reuse](#part-4--composition--reuse)
-5. [Part 5 — Writing Custom Actions](#part-5--writing-custom-actions)
-6. [Part 6 — Deployment & Release Automation](#part-6--deployment--release-automation)
-7. [Part 7 — Security Hardening](#part-7--security-hardening)
-8. [Part 8 — Operations at Scale](#part-8--operations-at-scale)
-9. [Part 9 — Comparison to Alternatives](#part-9--comparison-to-alternatives)
-10. [Part 10 — Recipes & End-to-End Walkthrough](#part-10--recipes--end-to-end-walkthrough)
+1. [Part 1 — Foundations & Mental Model](#part-1-foundations-mental-model)
+2. [Part 2 — The Workflow Language](#part-2-the-workflow-language)
+3. [Part 3 — Build, Test, Cache, Artifacts](#part-3-build-test-cache-artifacts)
+4. [Part 4 — Composition & Reuse](#part-4-composition-reuse)
+5. [Part 5 — Writing Custom Actions](#part-5-writing-custom-actions)
+6. [Part 6 — Deployment & Release Automation](#part-6-deployment-release-automation)
+7. [Part 7 — Security Hardening](#part-7-security-hardening)
+8. [Part 8 — Operations at Scale](#part-8-operations-at-scale)
+9. [Part 9 — Comparison to Alternatives](#part-9-comparison-to-alternatives)
+10. [Part 10 — Recipes & End-to-End Walkthrough](#part-10-recipes-end-to-end-walkthrough)
 
 ---
 

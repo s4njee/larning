@@ -1,0 +1,1256 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Python Concurrency Guide.">
+<title>Python Concurrency Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#ffd43b; --accent2:#ffd43b; --accent-weak:rgba(255,212,59,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#ffd43b; --accent2:#ffd43b; --accent-weak:rgba(255,212,59,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">P</span><span>Python Concurrency Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-the-mental-model" data-target="part-1-the-mental-model">Part 1 — The Mental Model</a></li><li class="toc-l3"><a href="#concurrency-is-not-parallelism" data-target="concurrency-is-not-parallelism">Concurrency Is Not Parallelism</a></li><li class="toc-l3"><a href="#the-master-distinction-io-bound-vs-cpu-bound" data-target="the-master-distinction-io-bound-vs-cpu-bound">The Master Distinction: I/O-Bound vs CPU-Bound</a></li><li class="toc-l3"><a href="#the-three-models-at-a-glance" data-target="the-three-models-at-a-glance">The Three Models at a Glance</a></li><li class="toc-l3"><a href="#a-map-of-what-follows" data-target="a-map-of-what-follows">A Map of What Follows</a></li><li class="toc-l2"><a href="#part-2-the-gil" data-target="part-2-the-gil">Part 2 — The GIL</a></li><li class="toc-l3"><a href="#what-the-gil-is" data-target="what-the-gil-is">What the GIL Is</a></li><li class="toc-l3"><a href="#why-it-exists" data-target="why-it-exists">Why It Exists</a></li><li class="toc-l3"><a href="#what-the-gil-does-and-doesnt-block" data-target="what-the-gil-does-and-doesnt-block">What the GIL Does and Doesn't Block</a></li><li class="toc-l3"><a href="#how-the-switch-happens" data-target="how-the-switch-happens">How the Switch Happens</a></li><li class="toc-l3"><a href="#the-practical-rules" data-target="the-practical-rules">The Practical Rules</a></li><li class="toc-l2"><a href="#part-3-threading" data-target="part-3-threading">Part 3 — Threading</a></li><li class="toc-l3"><a href="#the-model" data-target="the-model">The Model</a></li><li class="toc-l3"><a href="#races-and-locks-the-cost-of-shared-memory" data-target="races-and-locks-the-cost-of-shared-memory">Races and Locks: The Cost of Shared Memory</a></li><li class="toc-l3"><a href="#prefer-the-pool-to-raw-threads" data-target="prefer-the-pool-to-raw-threads">Prefer the Pool to Raw Threads</a></li><li class="toc-l3"><a href="#threadinglocal-and-daemon-threads" data-target="threadinglocal-and-daemon-threads">threading.local and Daemon Threads</a></li><li class="toc-l2"><a href="#part-4-multiprocessing" data-target="part-4-multiprocessing">Part 4 — Multiprocessing</a></li><li class="toc-l3"><a href="#the-model-and-its-cost" data-target="the-model-and-its-cost">The Model and Its Cost</a></li><li class="toc-l3"><a href="#start-methods-fork-vs-spawn-vs-forkserver-the-big-gotcha" data-target="start-methods-fork-vs-spawn-vs-forkserver-the-big-gotcha">Start Methods: fork vs spawn vs forkserver (The Big Gotcha)</a></li><li class="toc-l3"><a href="#sharing-data-between-processes" data-target="sharing-data-between-processes">Sharing Data Between Processes</a></li><li class="toc-l3"><a href="#when-native-libraries-beat-multiprocessing" data-target="when-native-libraries-beat-multiprocessing">When Native Libraries Beat Multiprocessing</a></li><li class="toc-l2"><a href="#part-5-concurrentfutures-the-unifying-layer" data-target="part-5-concurrentfutures-the-unifying-layer">Part 5 — concurrent.futures: The Unifying Layer</a></li><li class="toc-l3"><a href="#one-api-two-backends" data-target="one-api-two-backends">One API, Two Backends</a></li><li class="toc-l3"><a href="#submit-vs-map" data-target="submit-vs-map">submit vs map</a></li><li class="toc-l3"><a href="#the-future-object" data-target="the-future-object">The Future Object</a></li><li class="toc-l3"><a href="#the-exception-trap" data-target="the-exception-trap">The Exception Trap</a></li><li class="toc-l3"><a href="#sizing-the-pool" data-target="sizing-the-pool">Sizing the Pool</a></li><li class="toc-l2"><a href="#part-6-asyncio-the-survey" data-target="part-6-asyncio-the-survey">Part 6 — asyncio: The Survey</a></li><li class="toc-l3"><a href="#the-core-idea-cooperative-single-threaded-concurrency" data-target="the-core-idea-cooperative-single-threaded-concurrency">The Core Idea: Cooperative Single-Threaded Concurrency</a></li><li class="toc-l3"><a href="#two-consequences-worth-internalizing" data-target="two-consequences-worth-internalizing">Two Consequences Worth Internalizing</a></li><li class="toc-l3"><a href="#key-primitives" data-target="key-primitives">Key Primitives</a></li><li class="toc-l3"><a href="#the-ecosystem-tax-async-is-viral" data-target="the-ecosystem-tax-async-is-viral">The Ecosystem Tax (Async Is Viral)</a></li><li class="toc-l2"><a href="#part-7-choosing-a-model" data-target="part-7-choosing-a-model">Part 7 — Choosing a Model</a></li><li class="toc-l3"><a href="#the-decision-tree" data-target="the-decision-tree">The Decision Tree</a></li><li class="toc-l3"><a href="#the-real-fork-threadpoolexecutor-vs-asyncio" data-target="the-real-fork-threadpoolexecutor-vs-asyncio">The Real Fork: ThreadPoolExecutor vs asyncio</a></li><li class="toc-l3"><a href="#theyre-not-eitheror" data-target="theyre-not-eitheror">They're Not Either/Or</a></li><li class="toc-l3"><a href="#the-one-line-heuristics" data-target="the-one-line-heuristics">The One-Line Heuristics</a></li><li class="toc-l2"><a href="#part-8-concurrency-patterns" data-target="part-8-concurrency-patterns">Part 8 — Concurrency Patterns</a></li><li class="toc-l3"><a href="#bounded-concurrency-dont-fan-out-unbounded" data-target="bounded-concurrency-dont-fan-out-unbounded">Bounded Concurrency (Don't Fan Out Unbounded)</a></li><li class="toc-l3"><a href="#producerconsumer-the-queue-pattern" data-target="producerconsumer-the-queue-pattern">Producer/Consumer (The Queue Pattern)</a></li><li class="toc-l3"><a href="#fan-out-fan-in" data-target="fan-out-fan-in">Fan-Out / Fan-In</a></li><li class="toc-l3"><a href="#the-pipeline" data-target="the-pipeline">The Pipeline</a></li><li class="toc-l3"><a href="#timeouts-and-cancellation" data-target="timeouts-and-cancellation">Timeouts and Cancellation</a></li><li class="toc-l2"><a href="#part-9-the-future-free-threading-sub-interpreters" data-target="part-9-the-future-free-threading-sub-interpreters">Part 9 — The Future: Free-Threading &amp; Sub-Interpreters</a></li><li class="toc-l3"><a href="#free-threaded-cpython-pep-703" data-target="free-threaded-cpython-pep-703">Free-Threaded CPython (PEP 703)</a></li><li class="toc-l3"><a href="#sub-interpreters-pep-684-pep-734" data-target="sub-interpreters-pep-684-pep-734">Sub-Interpreters (PEP 684 &amp; PEP 734)</a></li><li class="toc-l3"><a href="#what-this-means-for-your-decisions" data-target="what-this-means-for-your-decisions">What This Means for Your Decisions</a></li><li class="toc-l2"><a href="#part-10-recipes-pitfalls" data-target="part-10-recipes-pitfalls">Part 10 — Recipes &amp; Pitfalls</a></li><li class="toc-l3"><a href="#recipe-1-parallel-io-with-a-thread-pool" data-target="recipe-1-parallel-io-with-a-thread-pool">Recipe 1: Parallel I/O with a Thread Pool</a></li><li class="toc-l3"><a href="#recipe-2-cpu-parallelism-with-a-process-pool" data-target="recipe-2-cpu-parallelism-with-a-process-pool">Recipe 2: CPU Parallelism with a Process Pool</a></li><li class="toc-l3"><a href="#recipe-3-high-concurrency-async-io" data-target="recipe-3-high-concurrency-async-io">Recipe 3: High-Concurrency Async I/O</a></li><li class="toc-l3"><a href="#recipe-4-blocking-call-inside-async-code" data-target="recipe-4-blocking-call-inside-async-code">Recipe 4: Blocking Call Inside Async Code</a></li><li class="toc-l3"><a href="#recipe-5-cpu-work-from-within-an-async-app" data-target="recipe-5-cpu-work-from-within-an-async-app">Recipe 5: CPU Work From Within an Async App</a></li><li class="toc-l3"><a href="#the-pitfalls" data-target="the-pitfalls">The Pitfalls</a></li><li class="toc-l3"><a href="#the-decision-one-more-time" data-target="the-decision-one-more-time">The Decision, One More Time</a></li></ul></nav></aside>
+  <main><h1 id="python-concurrency-guide">Python Concurrency Guide</h1>
+<p>A depth-first guide to Python's concurrency models — threads, processes, and async — for engineers who need to make Python do more than one thing at a time and want to pick the <em>right</em> model instead of cargo-culting one. It assumes you can write ordinary Python and have hit the wall where a sequential script is too slow, but it does <strong>not</strong> assume you understand the GIL, why threads sometimes help and sometimes don't, or when async is worth its complexity.</p>
+<p>This is the <strong>map and the decision guide</strong> for Python concurrency: it covers the whole landscape, explains <em>why</em> each model behaves the way it does, and — most importantly — helps you choose. It is the survey that the deeper guides hand off from and to:</p>
+<ul>
+<li>For the depth-first treatment of <strong>async specifically</strong> — the event loop, structured concurrency, <code>aiohttp</code>, and async performance — see the companion <a href="ASYNCIO_STUDY_GUIDE.md">Asyncio &amp; aiohttp guide</a>.</li>
+<li>For the <strong>CPython runtime and language internals</strong> underneath all of this — the object model, the GIL's implementation, memory — see the <a href="ADVANCED_PYTHON_STUDY_GUIDE.md">Advanced Python guide</a>.</li>
+<li>For how Python's async model <strong>compares to another language's</strong>, see <a href="PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md">Python vs Node.js: Async Compared</a>.</li>
+</ul>
+<p>The single decision this guide exists to get right is captured up front, and everything else elaborates it:</p>
+<blockquote>
+<p><strong>Is your work I/O-bound or CPU-bound?</strong> I/O-bound → threads or async. CPU-bound → processes. Get this one classification right and the model almost picks itself; get it wrong and no amount of tuning will save you.</p>
+</blockquote>
+<p>Primary references: the <a href="https://docs.python.org/3/library/concurrent.futures.html"><code>concurrent.futures</code></a>, <a href="https://docs.python.org/3/library/threading.html"><code>threading</code></a>, <a href="https://docs.python.org/3/library/multiprocessing.html"><code>multiprocessing</code></a>, and <a href="https://docs.python.org/3/library/asyncio.html"><code>asyncio</code></a> docs; <a href="https://peps.python.org/pep-0703/">PEP 703</a> (free-threaded CPython) and <a href="https://peps.python.org/pep-0684/">PEP 684</a> (per-interpreter GIL); and David Beazley's <a href="https://www.dabeaz.com/GIL/">talks on the GIL</a> (still the clearest explanation of why it behaves as it does).</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1--the-mental-model">Part 1 — The Mental Model</a></li>
+<li><a href="#part-2--the-gil">Part 2 — The GIL</a></li>
+<li><a href="#part-3--threading">Part 3 — Threading</a></li>
+<li><a href="#part-4--multiprocessing">Part 4 — Multiprocessing</a></li>
+<li><a href="#part-5--concurrentfutures-the-unifying-layer">Part 5 — concurrent.futures: The Unifying Layer</a></li>
+<li><a href="#part-6--asyncio-the-survey">Part 6 — asyncio: The Survey</a></li>
+<li><a href="#part-7--choosing-a-model">Part 7 — Choosing a Model</a></li>
+<li><a href="#part-8--concurrency-patterns">Part 8 — Concurrency Patterns</a></li>
+<li><a href="#part-9--the-future-free-threading--sub-interpreters">Part 9 — The Future: Free-Threading &amp; Sub-Interpreters</a></li>
+<li><a href="#part-10--recipes--pitfalls">Part 10 — Recipes &amp; Pitfalls</a></li>
+</ol>
+<hr>
+<h2 id="part-1-the-mental-model">Part 1 — The Mental Model</h2>
+<p>Before any code, get the model right. Almost every "I added threads and it got <em>slower</em>" story, every "why won't my async code run in parallel" question, traces back to a single missing distinction — and once you have it, the whole landscape becomes legible.</p>
+<h3 id="concurrency-is-not-parallelism">Concurrency Is Not Parallelism</h3>
+<p>These words get used interchangeably and they are not the same thing:</p>
+<ul>
+<li><strong>Concurrency</strong> is <em>dealing with</em> many things at once — structuring a program so multiple tasks are in progress over the same period, interleaved. A single chef juggling four dishes, switching between them, is concurrent. One worker, many tasks in flight.</li>
+<li><strong>Parallelism</strong> is <em>doing</em> many things at once — multiple tasks literally executing at the same instant, on multiple CPU cores. Four chefs each cooking one dish is parallel. Many workers, simultaneous execution.</li>
+</ul>
+<p>Concurrency is about <em>structure</em>; parallelism is about <em>execution</em>. You can have concurrency without parallelism (one core, time-slicing between tasks — this is exactly what <code>asyncio</code> does) and parallelism without meaningful concurrency (a numeric library splitting one array operation across cores). The reason this matters in Python specifically: <strong>the GIL (Part 2) permits concurrency freely but restricts parallelism of Python code to processes.</strong> Holding the distinction is what lets you predict whether a given model will actually use your eight cores or just interleave on one.</p>
+<h3 id="the-master-distinction-io-bound-vs-cpu-bound">The Master Distinction: I/O-Bound vs CPU-Bound</h3>
+<p>This is the most important classification in the entire guide. Every workload sits somewhere on this axis, and which end it's on dictates the model:</p>
+<ul>
+<li><strong>I/O-bound</strong> — the program spends most of its time <em>waiting</em> for something external: a network response, a disk read, a database query, a subprocess. The CPU is mostly idle, blocked on I/O. Examples: a web scraper, an API gateway, a service that fans out to other services, a chat server holding thousands of connections.</li>
+<li><strong>CPU-bound</strong> — the program spends most of its time <em>computing</em>: parsing large documents, image/video processing, numerical work, cryptography, machine learning. The CPU is pegged at 100%; there's no waiting to overlap. Examples: resizing a million images, training a model, crunching a large dataset.</li>
+</ul>
+<p>How to tell which you have: <strong>run the task and watch a CPU monitor.</strong> If one core sits near 100% the whole time, you're CPU-bound. If CPU usage is low while the program is clearly busy (it's waiting on the network or disk), you're I/O-bound. When in doubt, profile (the <a href="ADVANCED_PYTHON_STUDY_GUIDE.md">Advanced Python guide</a> covers <code>cProfile</code> and friends) — <em>measure before choosing a concurrency model</em>, because the two ends want opposite tools.</p>
+<p>Why it's decisive:</p>
+<ul>
+<li>For <strong>I/O-bound</strong> work, the win comes from <strong>overlapping the waiting</strong> — while task A waits for its network reply, run task B. You don't need multiple cores; you need a way to not sit idle. Threads and async both do this, and the GIL doesn't hurt you because the GIL is <em>released</em> during I/O waits (Part 2).</li>
+<li>For <strong>CPU-bound</strong> work, there's no waiting to overlap — the cores are the bottleneck, and you need <em>actual parallelism</em> across them. In CPython, that means <strong>processes</strong> (or a GIL-releasing native library), because the GIL prevents threads from running Python bytecode in parallel.</li>
+</ul>
+<p>Put bluntly: <strong>threads and async make waiting cheaper; processes make computing faster.</strong> Use the wrong one and you either add overhead with no benefit (threads on CPU work) or pointlessly pay process-spawn costs (processes on light I/O).</p>
+<h3 id="the-three-models-at-a-glance">The Three Models at a Glance</h3>
+<table>
+<thead>
+<tr>
+<th>Model</th>
+<th>Mechanism</th>
+<th>Parallel?</th>
+<th>Best for</th>
+<th>GIL impact</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Threads</strong></td>
+<td>OS threads, shared memory</td>
+<td>Concurrent, not parallel (for Python code)</td>
+<td>I/O-bound</td>
+<td>Held; released during I/O and by some C extensions</td>
+</tr>
+<tr>
+<td><strong>Processes</strong></td>
+<td>Separate interpreters, separate memory</td>
+<td><strong>Truly parallel</strong></td>
+<td>CPU-bound</td>
+<td>None — each process has its own GIL</td>
+</tr>
+<tr>
+<td><strong>Async</strong></td>
+<td>Coroutines on one thread, one event loop</td>
+<td>Concurrent, not parallel</td>
+<td>Massive I/O concurrency</td>
+<td>N/A — cooperative, single-threaded</td>
+</tr>
+</tbody>
+</table>
+<p>Read the table through the master distinction: the first and third rows are your I/O-bound options (threads for simplicity and blocking libraries, async for scale), the middle row is your CPU-bound option (the only one that gives true parallelism for Python code).</p>
+<h3 id="a-map-of-what-follows">A Map of What Follows</h3>
+<p>The guide builds in that order — understand the constraint, then each model, then how to choose, then the patterns and the future:</p>
+<pre><code class="language-text">  Part 1: the mental model (I/O vs CPU — the decision that drives everything)
+  Part 2: the GIL (the constraint that makes Python concurrency unusual)
+     │
+  Part 3: threading   ┐
+  Part 4: processes   ├─ the three models, in depth
+  Part 6: asyncio     ┘  (Part 5: concurrent.futures unifies threads &amp; processes)
+     │
+  Part 7: choosing a model (the decision framework + the ThreadPool-vs-asyncio fork)
+  Part 8: patterns (producer/consumer, fan-out, bounded concurrency, pipelines)
+  Part 9: the future (free-threading &amp; sub-interpreters — the GIL's end)
+  Part 10: recipes &amp; pitfalls
+</code></pre>
+<p>If you remember one thing from Part 1: <strong>classify the work first — I/O-bound (overlap the waiting: threads or async) or CPU-bound (parallelize the computing: processes).</strong> That single judgment, made by watching a CPU monitor, decides more than any amount of later tuning.</p>
+<hr>
+<h2 id="part-2-the-gil">Part 2 — The GIL</h2>
+<p>You cannot reason about Python concurrency without understanding the <strong>Global Interpreter Lock</strong>. It is the single fact that makes Python's concurrency story different from Java's, Go's, or C's — and it's the source of the field's biggest surprise: that adding threads to CPU-bound Python makes it <em>no faster, and often slower</em>.</p>
+<h3 id="what-the-gil-is">What the GIL Is</h3>
+<p>The GIL is a <strong>mutex inside the CPython interpreter that allows only one thread to execute Python bytecode at a time.</strong> Even on a 64-core machine, a single Python process runs Python code on exactly one core at any instant. Threads exist and switch, but they take turns holding the GIL; they do not run Python bytecode simultaneously.</p>
+<p>It is a property of <strong>CPython</strong> (the reference implementation, the one you almost certainly run), not of the Python language. Other implementations differ: Jython and IronPython have no GIL; PyPy has one; and CPython itself now ships an experimental <em>free-threaded</em> build that removes it (Part 9). But for the Python you're running today, the GIL is the rule.</p>
+<h3 id="why-it-exists">Why It Exists</h3>
+<p>The GIL isn't an oversight — it's a deliberate trade that has kept CPython simple and fast for single-threaded code for thirty years. The reason is <strong>memory management</strong>: CPython tracks object lifetimes with <strong>reference counting</strong> (every object has a counter of how many references point to it; when it hits zero, the object is freed — covered in the <a href="ADVANCED_PYTHON_STUDY_GUIDE.md">Advanced Python guide</a>). Reference counts are updated constantly — on essentially every assignment, function call, and data-structure operation — and those updates are <em>not</em> atomic. If two threads incremented and decremented the same object's refcount simultaneously without coordination, the counts would corrupt, leading to objects freed while still in use (crashes) or never freed (leaks).</p>
+<p>The GIL solves this with one big lock instead of millions of tiny ones: hold the GIL, and you can touch refcounts safely because no other thread is running. The alternative — fine-grained locking on every object — is what free-threaded Python (Part 9) had to build, and it took years and adds overhead. The GIL bought simplicity and single-threaded speed at the cost of multi-threaded CPU parallelism.</p>
+<h3 id="what-the-gil-does-and-doesnt-block">What the GIL Does and Doesn't Block</h3>
+<p>This is the nuance that the "Python can't do threads" meme misses, and it's exactly why threads are still useful:</p>
+<p><strong>The GIL is <em>released</em> during:</strong></p>
+<ul>
+<li><strong>Blocking I/O</strong> — network reads/writes, disk I/O, <code>time.sleep</code>, subprocess waits. When a thread makes a blocking syscall, CPython releases the GIL so other threads can run while it waits. <strong>This is why threads genuinely help I/O-bound work</strong> — the waiting overlaps.</li>
+<li><strong>Heavy work in GIL-aware C extensions</strong> — NumPy, pandas, Pillow, lxml, and many scientific/data libraries release the GIL around their compute-heavy C loops. So multithreaded code calling NumPy <em>can</em> use multiple cores, because the parallel part runs in C with the GIL dropped. This is a major and underappreciated escape hatch.</li>
+</ul>
+<p><strong>The GIL is <em>held</em> during:</strong></p>
+<ul>
+<li><strong>Pure-Python bytecode execution</strong> — any computation written in Python (loops, arithmetic, string manipulation, object creation). This is the CPU-bound case, and it's why threads don't parallelize it: the threads serialize on the GIL, taking turns, with context-switching overhead on top — so the threaded version is often <em>slower</em> than the sequential one.</li>
+</ul>
+<pre><code class="language-python"># CPU-bound: threads DON'T help (GIL held during pure-Python compute).
+# This runs ~as slow as sequential, plus thread overhead — often slower.
+import threading
+def count(n):
+    while n &gt; 0: n -= 1
+threads = [threading.Thread(target=count, args=(50_000_000,)) for _ in range(4)]
+# ... start/join ... → NOT 4x faster. The GIL serializes them.
+
+# I/O-bound: threads DO help (GIL released during the network wait).
+import threading, urllib.request
+def fetch(url): urllib.request.urlopen(url).read()
+threads = [threading.Thread(target=fetch, args=(u,)) for u in urls]
+# ... start/join ... → genuinely concurrent; the waits overlap.
+</code></pre>
+<h3 id="how-the-switch-happens">How the Switch Happens</h3>
+<p>So that one CPU-bound thread doesn't hog the GIL forever, CPython forces a periodic <strong>GIL release-and-reacquire</strong> — by default every 5 milliseconds (tunable via <code>sys.setswitchinterval()</code>). The running thread drops the GIL, and the OS scheduler lets another GIL-waiting thread grab it. This is what gives the <em>illusion</em> of concurrency for CPU-bound threads — they interleave in 5ms slices — but it's still only one running at a time, and the switching adds overhead, which is why CPU-bound threading is a net loss.</p>
+<h3 id="the-practical-rules">The Practical Rules</h3>
+<p>Everything you need to carry from this part:</p>
+<ol>
+<li><strong>CPU-bound + need parallelism → use processes</strong>, not threads. Each process has its own interpreter and its own GIL, so they run on separate cores genuinely in parallel (Part 4).</li>
+<li><strong>I/O-bound → threads (or async) are fine</strong>, because the GIL is released during the waits that dominate the runtime (Parts 3, 6).</li>
+<li><strong>CPU-bound work in a GIL-releasing C library (NumPy etc.) → threads can parallelize it</strong>, because the heavy loop runs in C with the GIL dropped. Check your library's docs.</li>
+<li><strong>The GIL is not forever.</strong> Free-threaded CPython (3.13+, Part 9) removes it, changing rule 1 — but it's opt-in and maturing, so design for today's GIL and watch the transition.</li>
+</ol>
+<p>If you remember one thing from Part 2: <strong>the GIL lets only one thread run Python bytecode at a time — so threads parallelize <em>waiting</em> (I/O, where the GIL is released) but not <em>computing</em> (pure Python, where it's held); for CPU parallelism you need processes, and that single fact explains why "add threads" speeds up a scraper and slows down a number-cruncher.</strong></p>
+<hr>
+<h2 id="part-3-threading">Part 3 — Threading</h2>
+<p>Threads are the oldest and most familiar concurrency model: multiple lines of execution sharing one memory space. In Python, after Part 2, you know their precise niche — <strong>I/O-bound work</strong> — and their precise limitation — <strong>no CPU parallelism</strong>. This part is how to use them well and the traps of shared memory.</p>
+<h3 id="the-model">The Model</h3>
+<p>The <code>threading</code> module gives you OS-level threads. They share the process's memory — globals, objects, module state — which is both their power (cheap communication, no serialization) and their danger (race conditions). They're preemptively scheduled: the OS can switch between them at <em>any</em> bytecode boundary (every ~5ms per the GIL switch interval), so you never control exactly when a switch happens.</p>
+<pre><code class="language-python">import threading
+
+def worker(n, results):
+    results[n] = n * n          # shared dict — works, but see &quot;races&quot; below
+
+results = {}
+threads = [threading.Thread(target=worker, args=(i, results)) for i in range(5)]
+for t in threads: t.start()     # begin execution
+for t in threads: t.join()      # wait for completion
+print(results)
+</code></pre>
+<p><strong>Use threads for I/O-bound work</strong> in an otherwise synchronous program: making several blocking network calls, reading many files, talking to a blocking database driver. The GIL releases during each wait, so the operations genuinely overlap.</p>
+<h3 id="races-and-locks-the-cost-of-shared-memory">Races and Locks: The Cost of Shared Memory</h3>
+<p>Because threads share memory and the OS can switch between them mid-operation, <strong>any shared mutable state is a hazard.</strong> The classic example:</p>
+<pre><code class="language-python">counter = 0
+def increment():
+    global counter
+    for _ in range(1_000_000):
+        counter += 1            # NOT atomic: read counter, add 1, write back
+
+# Two threads doing this concurrently: the final value is &lt; 2_000_000,
+# because both can read the same value before either writes back (a lost update).
+</code></pre>
+<p><code>counter += 1</code> looks atomic but is three bytecode operations (load, add, store), and a thread switch between them loses an update. The fix is a <strong>lock</strong> (mutex), ensuring only one thread is in the critical section at a time:</p>
+<pre><code class="language-python">import threading
+counter = 0
+lock = threading.Lock()
+def increment():
+    global counter
+    for _ in range(1_000_000):
+        with lock:              # acquire on enter, release on exit
+            counter += 1        # now atomic with respect to other threads
+</code></pre>
+<p>The synchronization toolkit:</p>
+<ul>
+<li><strong><code>Lock</code></strong> — mutual exclusion; one holder at a time. The workhorse.</li>
+<li><strong><code>RLock</code></strong> — reentrant lock; the same thread can acquire it multiple times (for recursive code).</li>
+<li><strong><code>Semaphore(n)</code></strong> — allow up to <code>n</code> concurrent holders (bound concurrency to a resource).</li>
+<li><strong><code>Event</code></strong> — a flag threads can wait on and set (signal "something happened").</li>
+<li><strong><code>Condition</code></strong> — wait for a condition and be notified (producer/consumer, Part 8).</li>
+<li><strong><code>queue.Queue</code></strong> — a <strong>thread-safe</strong> queue; the <em>preferred</em> way to pass data between threads, because it handles all the locking for you. Prefer a <code>Queue</code> over shared state + manual locks wherever possible.</li>
+</ul>
+<p>The deeper point: <strong>locks are correct but easy to get wrong</strong> — too little locking gives races; too much gives deadlocks (two threads each waiting for a lock the other holds) and contention (threads serializing on a hot lock, erasing the concurrency you wanted). This fragility is a major reason <code>asyncio</code> (Part 6), which only switches at explicit <code>await</code> points, is attractive: between awaits, your code is atomic, so most of these races simply can't occur.</p>
+<h3 id="prefer-the-pool-to-raw-threads">Prefer the Pool to Raw Threads</h3>
+<p>You will rarely create <code>threading.Thread</code> objects directly in production code. The <code>ThreadPoolExecutor</code> from <code>concurrent.futures</code> (Part 5) is better for almost everything: it manages the thread lifecycle, caps concurrency, hands results and exceptions back through <code>Future</code> objects, and cleans up automatically. Raw <code>threading</code> is for when you need a long-lived background thread (a daemon doing periodic work) or fine control over a specific thread; the pool is for "run these tasks concurrently."</p>
+<h3 id="threadinglocal-and-daemon-threads"><code>threading.local</code> and Daemon Threads</h3>
+<p>Two details worth knowing:</p>
+<ul>
+<li><strong><code>threading.local()</code></strong> gives each thread its own copy of an attribute — useful for per-thread state like a database connection, avoiding sharing (and thus avoiding locks).</li>
+<li><strong>Daemon threads</strong> (<code>Thread(..., daemon=True)</code>) are background threads that <em>don't</em> block the program from exiting — when the main thread finishes, daemons are killed abruptly (no cleanup). Use them for fire-and-forget background work, but never for anything that must finish cleanly (it may be cut off mid-write).</li>
+</ul>
+<p>If you remember one thing from Part 3: <strong>threads are for I/O-bound work in synchronous code, they share memory (so guard mutable shared state with a <code>Lock</code>, or better, pass data through a thread-safe <code>queue.Queue</code>), and you should almost always use a <code>ThreadPoolExecutor</code> rather than raw <code>Thread</code> objects.</strong></p>
+<hr>
+<h2 id="part-4-multiprocessing">Part 4 — Multiprocessing</h2>
+<p>When the work is CPU-bound, the GIL (Part 2) makes threads useless for parallelism — so you reach for <strong>processes</strong>. Each Python process is a separate interpreter with its own memory and its own GIL, so processes run Python bytecode <em>genuinely in parallel</em> across cores. This is the only built-in way to make pure-Python computation use more than one core.</p>
+<h3 id="the-model-and-its-cost">The Model and Its Cost</h3>
+<p><code>multiprocessing</code> spawns separate OS processes. The upside is real parallelism; the costs are the things that distinguish it sharply from threading, and you must design around them:</p>
+<ul>
+<li><strong>No shared memory by default.</strong> Each process has its own address space. Data passed between processes must be <strong>serialized</strong> (pickled), sent over a pipe, and deserialized on the other side. This is far more expensive than threads sharing a pointer.</li>
+<li><strong>Arguments and return values must be picklable.</strong> Lambdas, local functions, open file handles, and many other objects can't be pickled and will raise errors. Top-level functions and plain data work.</li>
+<li><strong>Spawn overhead.</strong> Creating a process is much heavier than creating a thread (a new interpreter, re-imported modules). You amortize this with a <em>pool</em> (below), not by spawning per task.</li>
+</ul>
+<pre><code class="language-python">from multiprocessing import Process, Queue
+
+def worker(n, q):
+    q.put(n * n)                # results go back via a queue (pickled across the boundary)
+
+if __name__ == &quot;__main__&quot;:       # REQUIRED on spawn platforms — see start methods
+    q = Queue()
+    procs = [Process(target=worker, args=(i, q)) for i in range(4)]
+    for p in procs: p.start()
+    for p in procs: p.join()
+    print([q.get() for _ in procs])
+</code></pre>
+<h3 id="start-methods-fork-vs-spawn-vs-forkserver-the-big-gotcha">Start Methods: fork vs spawn vs forkserver (The Big Gotcha)</h3>
+<p>How a child process is created differs by platform and is a frequent source of baffling bugs:</p>
+<ul>
+<li><strong><code>fork</code></strong> (default on Linux historically) — the child is a near-instant copy of the parent's entire memory. Fast, and the child inherits everything (open files, locks, module state). The danger: forking a <em>multithreaded</em> process can deadlock (a lock held by a thread that doesn't exist in the child), and inherited state causes subtle bugs. Because of this, <strong>Python 3.14 changes the default away from <code>fork</code></strong> on Linux toward the safer <code>forkserver</code>.</li>
+<li><strong><code>spawn</code></strong> (default on macOS and Windows) — the child starts a fresh interpreter and re-imports your module. Safe and clean, but slower, and it means <strong>module-level code runs again in the child</strong> — which is exactly why the <code>if __name__ == "__main__":</code> guard is mandatory: without it, the child re-runs your process-spawning code and you get an infinite explosion of processes.</li>
+<li><strong><code>forkserver</code></strong> — a small server process is forked once at start; children are forked from <em>it</em> (a clean, single-threaded template). Combines fork's speed with spawn's safety; becoming the recommended default.</li>
+</ul>
+<p>Set it explicitly for portability:</p>
+<pre><code class="language-python">import multiprocessing as mp
+if __name__ == &quot;__main__&quot;:
+    mp.set_start_method(&quot;spawn&quot;)     # or &quot;forkserver&quot; — be explicit, don't rely on the platform default
+</code></pre>
+<p>The practical rule: <strong>always write the <code>if __name__ == "__main__":</code> guard</strong>, and assume <code>spawn</code>/<code>forkserver</code> semantics (re-imported module, everything must be picklable) so your code is portable and future-proof.</p>
+<h3 id="sharing-data-between-processes">Sharing Data Between Processes</h3>
+<p>Since there's no shared memory, you have a few options, in rough order of preference:</p>
+<ul>
+<li><strong>Return values via a pool</strong> (Part 5) — the cleanest: <code>pool.map(fn, items)</code> handles the pickling and collection for you. Prefer this.</li>
+<li><strong><code>multiprocessing.Queue</code> / <code>Pipe</code></strong> — explicit message passing between processes.</li>
+<li><strong><code>multiprocessing.shared_memory</code></strong> (3.8+) — a genuine shared memory block for large data (e.g., a big NumPy array) you don't want to copy. The fast path for big numeric payloads, avoiding pickle entirely.</li>
+<li><strong><code>Manager</code></strong> — a server process that hosts shared objects (<code>list</code>, <code>dict</code>) accessible to all processes via proxies. Convenient but slow (every access is a round-trip); use sparingly.</li>
+</ul>
+<p>The cost of moving data is the thing that decides whether multiprocessing pays off: if each task does a lot of computation on a little data, processes win big. If each task does a little computation on a lot of data, the pickling/copying overhead can eat the entire benefit. <strong>Coarse-grained tasks (lots of compute per chunk) are what multiprocessing is for.</strong></p>
+<h3 id="when-native-libraries-beat-multiprocessing">When Native Libraries Beat Multiprocessing</h3>
+<p>A crucial alternative from Part 2: if your CPU-bound work is numerical, a <strong>GIL-releasing native library is often better than multiprocessing.</strong> NumPy, pandas, Polars, PyTorch, and scikit-learn do their heavy loops in C/C++/Rust with the GIL released, so they already use multiple cores (or can, with threads) <em>without</em> the pickling and spawn overhead of separate processes. The decision: for <em>your own</em> pure-Python CPU loops, use multiprocessing; for <em>array/dataframe/tensor</em> math, let the native library parallelize and skip multiprocessing entirely. (The <a href="ADVANCED_PYTHON_STUDY_GUIDE.md">Advanced Python guide</a> covers vectorization in depth.)</p>
+<p>If you remember one thing from Part 4: <strong>processes give true CPU parallelism because each has its own GIL, at the cost of no shared memory (everything is pickled and copied) and spawn overhead — so use them for coarse-grained, compute-heavy pure-Python work via a pool, always write the <code>__main__</code> guard, and reach for a GIL-releasing native library instead when the work is numerical.</strong></p>
+<h2 id="part-5-concurrentfutures-the-unifying-layer">Part 5 — concurrent.futures: The Unifying Layer</h2>
+<p>Parts 3 and 4 showed the low-level <code>threading</code> and <code>multiprocessing</code> modules. In practice you rarely touch them directly — you use <strong><code>concurrent.futures</code></strong>, the high-level layer that unifies threads and processes behind one clean API. It's the right default for "run these tasks concurrently and collect the results," and learning it once gives you both models.</p>
+<h3 id="one-api-two-backends">One API, Two Backends</h3>
+<p>The module gives you two executors with an <strong>identical interface</strong> — swap one for the other by changing a single line:</p>
+<pre><code class="language-python">from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+
+# I/O-bound → threads:
+with ThreadPoolExecutor(max_workers=10) as pool:
+    results = list(pool.map(fetch_url, urls))
+
+# CPU-bound → processes. SAME API, just a different executor:
+with ProcessPoolExecutor() as pool:
+    results = list(pool.map(heavy_compute, datasets))
+</code></pre>
+<p>This symmetry is the module's great virtue: you make the I/O-vs-CPU decision from Part 1, pick the matching executor, and the rest of your code is the same. The <code>with</code> block guarantees cleanup — it calls <code>shutdown(wait=True)</code> on exit, blocking until all submitted work finishes.</p>
+<h3 id="submit-vs-map"><code>submit</code> vs <code>map</code></h3>
+<p>Two ways to hand work to an executor:</p>
+<pre><code class="language-python">from concurrent.futures import ThreadPoolExecutor, as_completed
+
+# map: apply one function over an iterable; results come back in INPUT order.
+with ThreadPoolExecutor(max_workers=10) as pool:
+    for result in pool.map(fetch, urls):       # yielded in the order of `urls`
+        handle(result)
+
+# submit + as_completed: a Future per task; handle results as they FINISH.
+with ThreadPoolExecutor(max_workers=10) as pool:
+    futures = {pool.submit(fetch, url): url for url in urls}
+    for fut in as_completed(futures):          # COMPLETION order, not submission order
+        url = futures[fut]
+        try:
+            handle(fut.result())               # the exception (if any) re-raises HERE
+        except Exception as e:
+            log.warning(&quot;failed %s: %r&quot;, url, e)
+</code></pre>
+<p>Use <strong><code>map</code></strong> for the simple "apply this to everything, I want the results in order" case. Use <strong><code>submit</code> + <code>as_completed</code></strong> when you want per-task error handling, or to act on whichever task finishes first rather than waiting for the slow ones in order.</p>
+<h3 id="the-future-object">The Future Object</h3>
+<p>Both <code>submit</code> and <code>map</code> are built on the <strong><code>Future</code></strong> — an object representing a result that will exist eventually (the same concept as a JavaScript Promise; see the <a href="PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md">Python vs Node async guide</a>). A <code>Future</code> lets you:</p>
+<ul>
+<li><code>fut.result(timeout=None)</code> — block until done and return the value (or <strong>re-raise the task's exception</strong>).</li>
+<li><code>fut.done()</code> / <code>fut.running()</code> — check state without blocking.</li>
+<li><code>fut.add_done_callback(fn)</code> — run <code>fn</code> when it completes.</li>
+<li><code>fut.cancel()</code> — cancel <strong>only if it hasn't started running yet</strong> (you cannot interrupt a task already executing in a thread — a hard limitation).</li>
+</ul>
+<h3 id="the-exception-trap">The Exception Trap</h3>
+<p>The single most important <code>concurrent.futures</code> gotcha: <strong>a task that raises does not crash the pool — the exception is stored on its <code>Future</code> and only surfaces when you call <code>.result()</code></strong> (or when <code>map</code>'s iterator reaches that item). If you submit work and never retrieve the results, <strong>exceptions vanish silently</strong> — your tasks fail and you never know. Always retrieve results, even if only to log failures:</p>
+<pre><code class="language-python"># WRONG — exceptions are silently swallowed:
+for url in urls:
+    pool.submit(process, url)        # fire and forget → errors lost forever
+
+# RIGHT — retrieve results so exceptions surface:
+futures = [pool.submit(process, url) for url in urls]
+for fut in as_completed(futures):
+    try:
+        fut.result()                 # raises here if the task failed
+    except Exception as e:
+        log.error(&quot;task failed: %r&quot;, e)
+</code></pre>
+<h3 id="sizing-the-pool">Sizing the Pool</h3>
+<ul>
+<li><strong><code>ThreadPoolExecutor</code></strong> defaults to <code>min(32, os.cpu_count() + 4)</code> — tuned for I/O. For I/O-bound work you can often go higher (threads spend most of their time blocked), but the practical ceiling is in the <strong>hundreds</strong>, not thousands — each thread costs stack memory and context-switching. Size to your real I/O concurrency <em>and the downstream's limits</em> (don't open 500 connections to an API that allows 10).</li>
+<li><strong><code>ProcessPoolExecutor</code></strong> defaults to <code>os.cpu_count()</code> workers — right for CPU-bound work, where more processes than cores just adds context-switching with no gain. The <code>chunksize</code> parameter to <code>map</code> matters for many small tasks: it batches items per IPC message, cutting per-task pickling overhead (e.g., <code>pool.map(fn, items, chunksize=100)</code>).</li>
+</ul>
+<p>If you remember one thing from Part 5: <strong><code>concurrent.futures</code> is your default concurrency API — <code>ThreadPoolExecutor</code> for I/O, <code>ProcessPoolExecutor</code> for CPU, identical interface, <code>map</code> for ordered results and <code>submit</code>+<code>as_completed</code> for per-task handling — and you must always retrieve <code>.result()</code> or exceptions disappear silently.</strong></p>
+<hr>
+<h2 id="part-6-asyncio-the-survey">Part 6 — asyncio: The Survey</h2>
+<p><code>asyncio</code> is Python's framework for <strong>cooperative concurrency</strong>: a single thread, one event loop, juggling thousands of I/O operations with near-zero overhead per task. This part is the <em>survey</em> — enough to understand what it is, when to choose it, and how it differs from threads. The <strong>depth-first treatment</strong> — the event loop internals, structured concurrency in detail, <code>aiohttp</code> client and server, and async performance tuning — lives in the companion <a href="ASYNCIO_STUDY_GUIDE.md">Asyncio &amp; aiohttp guide</a>. This section gets you to the decision; that guide gets you to mastery.</p>
+<h3 id="the-core-idea-cooperative-single-threaded-concurrency">The Core Idea: Cooperative Single-Threaded Concurrency</h3>
+<p>Where threads are <em>preemptively</em> scheduled (the OS switches them at any point, Part 3), coroutines are <em>cooperatively</em> scheduled: a coroutine runs <strong>uninterrupted until it voluntarily yields</strong> at an <code>await</code>. One thread, one event loop, and the loop runs whichever coroutine is ready while the others wait on their I/O.</p>
+<pre><code class="language-python">import asyncio
+
+async def worker(n):
+    await asyncio.sleep(1)          # yields control here; other workers run during this wait
+    return n * 2
+
+async def main():
+    async with asyncio.TaskGroup() as tg:        # structured concurrency (3.11+)
+        tasks = [tg.create_task(worker(i)) for i in range(1000)]
+    print([t.result() for t in tasks])
+
+asyncio.run(main())                  # all 1000 &quot;run&quot; in ~1 second on ONE thread
+</code></pre>
+<p>A thousand coroutines, one thread, finishing in ~1 second — because all thousand <code>sleep</code>s overlap. Doing this with a thousand threads would exhaust memory; with coroutines it's trivial, because each coroutine costs ~kilobytes, not the ~megabytes of a thread's stack.</p>
+<h3 id="two-consequences-worth-internalizing">Two Consequences Worth Internalizing</h3>
+<p>The cooperative model produces two defining properties:</p>
+<ol>
+<li><strong>Between <code>await</code> points, your code is atomic.</strong> No other coroutine can run, because control only switches at <code>await</code>. This means <strong>most of the race conditions that plague threading (Part 3) simply can't happen</strong> — you rarely need locks for in-memory state. This is a real correctness advantage over threads.</li>
+<li><strong>One blocking call freezes <em>everything</em>.</strong> Because it's a single thread, a coroutine that doesn't yield — a CPU-bound computation, or a <em>blocking</em> I/O call like <code>requests.get</code> or <code>time.sleep</code> — stalls the entire event loop, and every other coroutine hangs until it returns. This is the cardinal sin of asyncio:</li>
+</ol>
+<pre><code class="language-python"># CATASTROPHE: blocks the whole event loop for the entire HTTP round-trip.
+async def handler():
+    data = requests.get(url)         # ❌ blocking call — every other coroutine freezes
+
+# CORRECT: use an async-native library...
+async def handler():
+    async with aiohttp.ClientSession() as s:
+        async with s.get(url) as resp:    # ✓ yields during the wait
+            data = await resp.text()
+
+# ...or offload the unavoidable blocking call to a thread:
+async def handler():
+    data = await asyncio.to_thread(requests.get, url)   # ✓ runs in a thread, loop keeps going
+</code></pre>
+<h3 id="key-primitives">Key Primitives</h3>
+<p>The vocabulary (each covered deeply in the <a href="ASYNCIO_STUDY_GUIDE.md">Asyncio guide</a>):</p>
+<ul>
+<li><strong><code>async def</code> / <code>await</code></strong> — define a coroutine; await another coroutine or awaitable.</li>
+<li><strong><code>asyncio.run(coro)</code></strong> — the top-level entry point that starts the loop.</li>
+<li><strong><code>asyncio.TaskGroup</code></strong> (3.11+) — structured concurrency: run tasks concurrently with automatic cancellation-on-failure and clean error grouping. The modern default; prefer it over <code>gather</code>.</li>
+<li><strong><code>asyncio.gather(*coros)</code></strong> — run coroutines concurrently and collect results (the older tool).</li>
+<li><strong><code>asyncio.to_thread(fn, *args)</code></strong> (3.9+) — offload a blocking call to a thread pool so it doesn't freeze the loop. The bridge between async and the blocking world.</li>
+<li><strong><code>asyncio.Queue</code>, <code>Lock</code>, <code>Semaphore</code>, <code>Event</code></strong> — async coordination primitives (Part 8).</li>
+<li><strong><code>asyncio.timeout()</code></strong> (3.11+) — a context manager that cancels work that runs too long.</li>
+</ul>
+<h3 id="the-ecosystem-tax-async-is-viral">The Ecosystem Tax (Async Is Viral)</h3>
+<p>The catch that the <a href="PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md">Python vs Node async guide</a> covers in depth: choosing asyncio means choosing <strong>async-native libraries</strong> for all your I/O. <code>requests</code> → <code>aiohttp</code>/<code>httpx</code>; <code>psycopg2</code> → <code>asyncpg</code>; the synchronous Redis client → its async variant. A single blocking library in your async code silently serializes everything. And async is <strong>viral</strong> — <code>await</code> requires an <code>async</code> caller, all the way up the stack ("async all the way down"). This contagion, plus the need to re-select your dependency stack, is the real cost of asyncio, and it's why threads remain the better choice when a blocking library has no async port or your codebase is already synchronous.</p>
+<p>Worth knowing alongside <code>asyncio</code>: <strong><code>httpx</code></strong> (HTTP client with both sync and async APIs), <strong><code>uvloop</code></strong> (a drop-in faster event loop built on libuv — the same engine as Node.js, 2–4× faster), <strong><code>Trio</code></strong> and <strong><code>AnyIO</code></strong> (alternative/abstraction async frameworks), and <strong><code>aiofiles</code></strong> (async file I/O, since real file I/O is blocking).</p>
+<p>If you remember one thing from Part 6: <strong>asyncio is single-threaded cooperative concurrency — thousands of coroutines on one thread, atomic between <code>await</code>s (so few races), but one blocking call freezes the whole loop, and it requires async-native libraries throughout. Use it for high-concurrency I/O; read the <a href="ASYNCIO_STUDY_GUIDE.md">Asyncio guide</a> to master it.</strong></p>
+<hr>
+<h2 id="part-7-choosing-a-model">Part 7 — Choosing a Model</h2>
+<p>This is the part the whole guide exists to serve. You've seen each model; now decide. The good news from Part 1: get the I/O-vs-CPU classification right and the choice is nearly made. The remaining nuance is the genuine fork — <em>for I/O-bound work, threads or async?</em> — which this part settles.</p>
+<h3 id="the-decision-tree">The Decision Tree</h3>
+<pre><code class="language-text">Is the work CPU-bound or I/O-bound?  (watch a CPU monitor; profile if unsure)
+│
+├── CPU-BOUND (cores are the bottleneck)
+│   │
+│   ├── Is it numerical (arrays, dataframes, tensors)?
+│   │   └── YES → use a GIL-releasing native library (NumPy/Polars/PyTorch);
+│   │            it already parallelizes. No multiprocessing needed.
+│   │   └── NO (your own pure-Python compute) → ProcessPoolExecutor / multiprocessing
+│   │
+│   └── Need many cores on free-threaded Python 3.13+? → threads may now work (Part 9)
+│
+└── I/O-BOUND (waiting is the bottleneck)
+    │
+    ├── Do async-native libraries exist AND do you need high concurrency (1000s)?
+    │   └── YES → asyncio + aiohttp/httpx/asyncpg
+    │
+    ├── Is your library blocking, or is the codebase synchronous,
+    │   or is concurrency modest (dozens–hundreds)?
+    │   └── YES → ThreadPoolExecutor
+    │
+    └── Both at once (mostly async, a few blocking calls)?
+        └── asyncio + asyncio.to_thread() for the blocking parts
+</code></pre>
+<h3 id="the-real-fork-threadpoolexecutor-vs-asyncio">The Real Fork: ThreadPoolExecutor vs asyncio</h3>
+<p>For I/O-bound work, both threads and async overlap the waiting and neither gives CPU parallelism (the GIL applies to both). The difference is <em>how</em> they interleave, and that drives the choice:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>ThreadPoolExecutor</th>
+<th>asyncio</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Concurrency unit</td>
+<td>OS thread</td>
+<td>coroutine</td>
+</tr>
+<tr>
+<td>Switching</td>
+<td>preemptive (OS, at any bytecode)</td>
+<td>cooperative (only at <code>await</code>)</td>
+</tr>
+<tr>
+<td>Overhead per unit</td>
+<td>~MBs of stack + context switch</td>
+<td>~KBs, very cheap</td>
+</tr>
+<tr>
+<td>Practical ceiling</td>
+<td>hundreds of threads</td>
+<td>tens of thousands of coroutines</td>
+</tr>
+<tr>
+<td>Works with <em>blocking</em> libraries</td>
+<td><strong>yes — that's the point</strong></td>
+<td>no — they freeze the loop</td>
+</tr>
+<tr>
+<td>Needs <em>async-native</em> libraries</td>
+<td>no</td>
+<td><strong>yes</strong> (<code>aiohttp</code>, <code>asyncpg</code>, …)</td>
+</tr>
+<tr>
+<td>Mental model</td>
+<td>plain functions + futures</td>
+<td><code>async</code>/<code>await</code> + event loop</td>
+</tr>
+<tr>
+<td>Shared-state races</td>
+<td>need locks (can switch anywhere)</td>
+<td>rare (switch only at <code>await</code>)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Reach for <code>ThreadPoolExecutor</code> when:</strong></p>
+<ul>
+<li><strong>Your I/O library is blocking and has no async version.</strong> The deciding factor most of the time — wrap the calls in a thread pool, no rewrite. A sync-only vendor SDK, a driver with no async port, <code>requests</code> in legacy code.</li>
+<li><strong>Your codebase is synchronous.</strong> async is viral; a thread pool drops into existing sync code with no restructuring.</li>
+<li><strong>Concurrency is modest</strong> — dozens to a few hundred operations. Threads handle that comfortably and the code is simpler.</li>
+<li><strong>You want the simplest thing that works.</strong> <code>with ThreadPoolExecutor() as pool: pool.map(fn, items)</code> is two lines and no new concepts.</li>
+</ul>
+<p><strong>Reach for <code>asyncio</code> when:</strong></p>
+<ul>
+<li><strong>You need very high concurrency</strong> — thousands to tens of thousands of simultaneous connections (a crawler hitting 10k hosts, a server holding many WebSockets). Threads fall over here on memory; coroutines don't. See the <a href="WEBSOCKETS_STUDY_GUIDE.md">WebSockets guide</a>.</li>
+<li><strong>Async-native libraries exist for your I/O</strong> — <code>aiohttp</code>/<code>httpx</code>, <code>asyncpg</code>, async Redis. The ecosystem is there, so you scale without fighting blocking calls.</li>
+<li><strong>You're already in an async stack</strong> — FastAPI, aiohttp, an existing event loop. Use the native model.</li>
+<li><strong>You want fine-grained control</strong> — structured concurrency (<code>TaskGroup</code>), precise cancellation and timeouts, backpressure via bounded queues.</li>
+</ul>
+<h3 id="theyre-not-eitheror">They're Not Either/Or</h3>
+<p>asyncio uses a thread pool internally for exactly the "blocking library inside an async program" case. <code>asyncio.to_thread(fn, *args)</code> pushes a blocking call onto a thread so it doesn't stall the loop. So a common real-world shape is <strong>async for the I/O that has async libraries, plus a thread pool for the few blocking calls that don't</strong> — and <code>loop.run_in_executor</code> can even push CPU work to a <em>process</em> pool from within an async app.</p>
+<h3 id="the-one-line-heuristics">The One-Line Heuristics</h3>
+<ul>
+<li><strong>CPU-bound?</strong> → processes (or a native library if numerical). Never threads, never async.</li>
+<li><strong>I/O-bound, async library exists, high concurrency?</strong> → asyncio.</li>
+<li><strong>I/O-bound otherwise</strong> (blocking library, sync codebase, modest scale)? → ThreadPoolExecutor.</li>
+<li><strong>Unsure if it's even your bottleneck?</strong> → profile first. The right model depends on the <em>measured</em> bottleneck, not a guess.</li>
+</ul>
+<p>If you remember one thing from Part 7: <strong>classify I/O vs CPU (that's most of the decision), then for I/O-bound work choose asyncio when async libraries exist and you need scale, otherwise a ThreadPoolExecutor — and for CPU-bound work use processes, or a GIL-releasing native library if the work is numerical.</strong></p>
+<hr>
+<h2 id="part-8-concurrency-patterns">Part 8 — Concurrency Patterns</h2>
+<p>The models are tools; these are the <em>shapes</em> you build with them. The same handful of patterns recur across threads, processes, and async — the API differs, the structure is identical. Recognizing them is what turns "I know the models" into "I can design concurrent programs."</p>
+<h3 id="bounded-concurrency-dont-fan-out-unbounded">Bounded Concurrency (Don't Fan Out Unbounded)</h3>
+<p>The most common real-world need and the most common mistake. Launching one task per item — 10,000 URLs, 10,000 concurrent requests — overwhelms the target, exhausts file descriptors, and gets you rate-limited. <strong>Bound the concurrency</strong> to a fixed number in flight:</p>
+<pre><code class="language-python"># Threads: the pool's max_workers IS the bound.
+with ThreadPoolExecutor(max_workers=20) as pool:
+    results = list(pool.map(fetch, urls))    # at most 20 concurrent
+
+# asyncio: a Semaphore is the bound.
+sem = asyncio.Semaphore(20)
+async def bounded_fetch(url):
+    async with sem:                          # at most 20 coroutines past this point
+        return await fetch(url)
+results = await asyncio.gather(*(bounded_fetch(u) for u in urls))
+</code></pre>
+<p>The bound should match the <em>downstream's</em> capacity (the API's rate limit, the database's connection pool size), not your ambition. This is the single most important production pattern — see the <a href="ASYNCIO_STUDY_GUIDE.md">Asyncio guide</a> for the async version in depth.</p>
+<h3 id="producerconsumer-the-queue-pattern">Producer/Consumer (The Queue Pattern)</h3>
+<p>Decouple work generation from work processing with a <strong>queue</strong>: producers put items in, consumers take them out, and the queue absorbs the rate mismatch (backpressure). It's the same shape in every model:</p>
+<pre><code class="language-python"># Threads: queue.Queue is thread-safe — no manual locking needed.
+import queue, threading
+q = queue.Queue(maxsize=100)             # bounded: producers block when full (backpressure)
+def producer():
+    for item in source(): q.put(item)
+def consumer():
+    while (item := q.get()) is not None:
+        process(item); q.task_done()
+
+# asyncio: asyncio.Queue, same idea, awaitable.
+q = asyncio.Queue(maxsize=100)
+async def producer():
+    async for item in source(): await q.put(item)
+async def consumer():
+    while True:
+        item = await q.get(); process(item); q.task_done()
+</code></pre>
+<p>The <strong>bounded</strong> queue (<code>maxsize</code>) is what gives you backpressure: when consumers fall behind, the queue fills, and producers <em>block</em> rather than building an unbounded backlog that exhausts memory. This is the in-process version of the messaging patterns in the <a href="DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md">Distributed Systems guide</a>.</p>
+<h3 id="fan-out-fan-in">Fan-Out / Fan-In</h3>
+<p>Split work across workers (fan-out), then collect and combine the results (fan-in). This is what <code>pool.map</code> and <code>asyncio.gather</code> <em>are</em> — the pattern is so common the libraries bake it in:</p>
+<pre><code class="language-python"># Fan-out to processes, fan-in the results — CPU-bound map-reduce.
+with ProcessPoolExecutor() as pool:
+    partial_results = pool.map(process_chunk, chunks)   # fan-out
+total = combine(partial_results)                         # fan-in
+</code></pre>
+<h3 id="the-pipeline">The Pipeline</h3>
+<p>Chain stages, each doing one transformation, connected by queues — stage 1 feeds stage 2 feeds stage 3, each running concurrently. This lets a slow stage be scaled independently (more workers on the bottleneck stage) and keeps data flowing rather than processing in batches. It's the in-memory cousin of the streaming ETL pipelines in the <a href="DATA_ENGINEERING_STUDY_GUIDE.md">Data Engineering guide</a>, and generators are often the simplest way to express the lazy version (the <a href="ADVANCED_PYTHON_STUDY_GUIDE.md">Advanced Python guide</a> covers generator pipelines).</p>
+<h3 id="timeouts-and-cancellation">Timeouts and Cancellation</h3>
+<p>Never wait forever on an external operation. Each model has its tool:</p>
+<pre><code class="language-python"># Futures: timeout on result retrieval.
+try:
+    result = fut.result(timeout=5.0)
+except TimeoutError:
+    ...                                  # note: the task keeps running; you just stop waiting
+
+# asyncio: timeout that actually CANCELS the work (3.11+).
+async with asyncio.timeout(5.0):
+    await long_operation()               # cancelled if it exceeds 5s
+</code></pre>
+<p>A real difference worth noting (and the <a href="PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md">Python vs Node guide</a> explores): asyncio's <code>timeout</code> <em>cancels</em> the underlying coroutine (first-class cancellation), while a thread's <code>future.result(timeout=...)</code> only stops <em>you</em> from waiting — the thread keeps running, because you cannot safely interrupt a running thread in Python. This is a genuine advantage of async for timeout-heavy work.</p>
+<p>If you remember one thing from Part 8: <strong>the patterns are model-independent — bound your concurrency (the #1 production rule), use queues for producer/consumer with backpressure, fan-out/fan-in for map-reduce, pipelines for staged work, and always set timeouts — and the same shape works whether you build it with threads, processes, or coroutines.</strong></p>
+<hr>
+<h2 id="part-9-the-future-free-threading-sub-interpreters">Part 9 — The Future: Free-Threading &amp; Sub-Interpreters</h2>
+<p>The GIL (Part 2) has defined Python concurrency for thirty years, and as of 2026 that's actively changing. Two developments are reshaping the landscape, and while neither is the default yet, both will affect how you make these decisions over the next few years.</p>
+<h3 id="free-threaded-cpython-pep-703">Free-Threaded CPython (PEP 703)</h3>
+<p>Since <strong>Python 3.13</strong>, CPython ships an experimental <strong>free-threaded build</strong> (sometimes called "nogil") that <strong>removes the GIL entirely.</strong> In this build, threads execute Python bytecode <em>truly in parallel</em> across cores — the thing Part 2 said was impossible becomes possible. CPU-bound multithreading would finally scale, and the "use processes for CPU parallelism" rule would relax to "use threads."</p>
+<p>The status and the caveats, as of 2026:</p>
+<ul>
+<li>It's <strong>opt-in</strong> — a separate build (<code>python3.13t</code>), not the default interpreter. By 3.14 it's more mature but still not the standard build.</li>
+<li>It carries a <strong>single-threaded performance cost</strong> (historically ~5–10%) because removing the GIL meant adding finer-grained locking and changing reference counting (biased/deferred refcounting). That overhead is shrinking with each release but isn't zero.</li>
+<li><strong>C extensions must be made compatible.</strong> Many popular packages have added free-threaded support, but the ecosystem isn't fully there — a single incompatible extension can force the GIL back on or fail to load.</li>
+<li>The threading <strong>race conditions</strong> of Part 3 become <em>more</em> dangerous, not less: with true parallelism, data races that the GIL accidentally papered over (by serializing bytecode) can now actually manifest. Free-threaded code needs <em>more</em> disciplined locking, not less.</li>
+</ul>
+<p>The practical stance: <strong>design for today's GIL</strong> (the rules in Parts 2–7 hold for the default build), <strong>but watch this transition</strong> — test your CPU-bound workloads on the free-threaded build, because the day it becomes default-and-fast, the threads-vs-processes calculus flips.</p>
+<h3 id="sub-interpreters-pep-684-pep-734">Sub-Interpreters (PEP 684 &amp; PEP 734)</h3>
+<p>A second, complementary path to parallelism within one process. <strong>Per-interpreter GIL</strong> (PEP 684, Python 3.12) gives each <em>sub-interpreter</em> its own GIL, so multiple sub-interpreters in one process can run Python bytecode in parallel — combining process-like isolation with thread-like (lower) overhead, since they share the process but not the interpreter state. <strong>PEP 734</strong> (Python 3.13) adds a standard-library <code>interpreters</code> module to create and drive them from Python.</p>
+<p>The model sits <em>between</em> threads and processes: more isolated than threads (each sub-interpreter has its own module state, so fewer shared-state races), but lighter than processes (no separate OS process, cheaper communication). It's early and the ergonomics are still maturing, but it's a promising third option for CPU parallelism that avoids both the GIL (unlike threads) and the spawn/pickle overhead (unlike processes).</p>
+<h3 id="what-this-means-for-your-decisions">What This Means for Your Decisions</h3>
+<p>For now, <strong>nothing changes in how you choose</strong> — the default CPython you ship on has the GIL, so Parts 2–7 stand. But the direction is clear: Python is acquiring real in-process parallelism, by two routes at once. Over the next few years, expect the "processes for CPU work" rule to soften as free-threading matures and sub-interpreters stabilize. Keep an eye on your key C extensions' free-threading support — that ecosystem readiness, more than the interpreter itself, is what will gate the transition.</p>
+<p>If you remember one thing from Part 9: <strong>the GIL is on its way out — free-threaded CPython (3.13+, opt-in) makes threads parallelize CPU work, and per-interpreter GILs add a third parallelism option between threads and processes — but both are still maturing, so design for the GIL today while testing the free-threaded build for your CPU-bound code.</strong></p>
+<hr>
+<h2 id="part-10-recipes-pitfalls">Part 10 — Recipes &amp; Pitfalls</h2>
+<p>The payoff — copy-paste-ready patterns for the common cases, and the mistakes that cost the most debugging time.</p>
+<h3 id="recipe-1-parallel-io-with-a-thread-pool">Recipe 1: Parallel I/O with a Thread Pool</h3>
+<p>The everyday "fetch many things over the network" — blocking library, modest concurrency:</p>
+<pre><code class="language-python">from concurrent.futures import ThreadPoolExecutor, as_completed
+import requests
+
+def fetch(url):
+    return url, requests.get(url, timeout=10).status_code
+
+def fetch_all(urls, workers=20):
+    results = {}
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(fetch, u): u for u in urls}
+        for fut in as_completed(futures):
+            try:
+                url, status = fut.result()
+                results[url] = status
+            except Exception as e:
+                results[futures[fut]] = f&quot;error: {e}&quot;   # never let one failure abort the batch
+    return results
+</code></pre>
+<h3 id="recipe-2-cpu-parallelism-with-a-process-pool">Recipe 2: CPU Parallelism with a Process Pool</h3>
+<p>Coarse-grained, compute-heavy, pure-Python work across all cores:</p>
+<pre><code class="language-python">from concurrent.futures import ProcessPoolExecutor
+
+def process_chunk(chunk):
+    return sum(expensive_transform(x) for x in chunk)   # heavy compute per chunk
+
+def parallel_sum(data, chunk_size=10_000):
+    chunks = [data[i:i+chunk_size] for i in range(0, len(data), chunk_size)]
+    with ProcessPoolExecutor() as pool:
+        return sum(pool.map(process_chunk, chunks, chunksize=4))
+
+if __name__ == &quot;__main__&quot;:            # REQUIRED — spawn/forkserver re-imports the module
+    print(parallel_sum(big_list))
+</code></pre>
+<h3 id="recipe-3-high-concurrency-async-io">Recipe 3: High-Concurrency Async I/O</h3>
+<p>Thousands of requests, async-native library, bounded:</p>
+<pre><code class="language-python">import asyncio, httpx
+
+async def fetch_all(urls, concurrency=50):
+    sem = asyncio.Semaphore(concurrency)             # bound in-flight requests
+    async with httpx.AsyncClient(timeout=10) as client:
+        async def fetch(url):
+            async with sem:
+                r = await client.get(url)
+                return url, r.status_code
+        return await asyncio.gather(*(fetch(u) for u in urls), return_exceptions=True)
+
+results = asyncio.run(fetch_all(urls))
+</code></pre>
+<h3 id="recipe-4-blocking-call-inside-async-code">Recipe 4: Blocking Call Inside Async Code</h3>
+<p>The bridge — a sync-only library in an async app, without freezing the loop:</p>
+<pre><code class="language-python">import asyncio
+
+async def handler():
+    # blocking_sdk has no async version → run it in a thread, loop keeps serving
+    result = await asyncio.to_thread(blocking_sdk.query, params)
+    return result
+</code></pre>
+<h3 id="recipe-5-cpu-work-from-within-an-async-app">Recipe 5: CPU Work From Within an Async App</h3>
+<p>When an async service occasionally needs to crunch — push it to a <em>process</em> pool so it doesn't block the loop <em>or</em> fight the GIL:</p>
+<pre><code class="language-python">import asyncio
+from concurrent.futures import ProcessPoolExecutor
+
+pool = ProcessPoolExecutor()
+
+async def handle_request(data):
+    loop = asyncio.get_running_loop()
+    # offload CPU-bound work to a separate process; await it without blocking the loop
+    result = await loop.run_in_executor(pool, heavy_compute, data)
+    return result
+</code></pre>
+<h3 id="the-pitfalls">The Pitfalls</h3>
+<p>The mistakes that recur, each tied to a part of this guide:</p>
+<ol>
+<li><strong>Threads for CPU-bound work</strong> (Part 2). The GIL serializes them; you get overhead with no speedup, often slower than sequential. → Use processes.</li>
+<li><strong>Blocking the event loop</strong> (Part 6). <code>requests</code>, <code>time.sleep</code>, a CPU loop, or any sync I/O inside a coroutine freezes <em>every</em> coroutine. → Async-native libraries, or <code>asyncio.to_thread</code>.</li>
+<li><strong>Unbounded fan-out</strong> (Part 8). One task per item against 10,000 items overwhelms the downstream and your own resources. → Bound with <code>max_workers</code> or a <code>Semaphore</code>.</li>
+<li><strong>Forgetting <code>.result()</code></strong> (Part 5). Submitted-but-never-retrieved tasks swallow their exceptions silently — failures you never see. → Always retrieve results.</li>
+<li><strong>Missing the <code>__main__</code> guard</strong> (Part 4). On spawn/forkserver, the child re-imports your module; without the guard it re-runs your process-spawning code → infinite process explosion. → Always guard the entry point.</li>
+<li><strong>Unpicklable arguments to processes</strong> (Part 4). Lambdas, closures, open handles can't cross the process boundary. → Top-level functions and plain data only.</li>
+<li><strong>Races in threaded shared state</strong> (Part 3). <code>+=</code> and friends aren't atomic; concurrent access corrupts data. → A <code>Lock</code>, or pass data through a <code>queue.Queue</code>.</li>
+<li><strong>Choosing a model before profiling</strong> (Part 1). Optimizing the wrong bottleneck, or adding concurrency where the cost is elsewhere. → Measure first; classify I/O vs CPU from real data.</li>
+</ol>
+<h3 id="the-decision-one-more-time">The Decision, One More Time</h3>
+<pre><code class="language-text">CPU-bound  → ProcessPoolExecutor   (or a GIL-releasing native library if numerical)
+I/O-bound, high concurrency, async libs available  → asyncio + aiohttp/httpx
+I/O-bound, blocking library or sync codebase or modest scale  → ThreadPoolExecutor
+Mixed  → asyncio for the async I/O + to_thread / run_in_executor for the rest
+Always → bound concurrency, set timeouts, retrieve results, profile first
+</code></pre>
+<p>If you remember one thing from Part 10: <strong>the recipes are short because the models are well-designed — pick the executor that matches your I/O-vs-CPU classification, bound the concurrency, retrieve every result, and guard the <code>__main__</code> entry point — and most of the pitfalls are just the consequences of skipping the Part 1 classification.</strong></p>
+<hr>
+<p>That's the guide. It's deliberately the <em>map</em> — the model picker — and it hands off to its siblings for depth: the <a href="ASYNCIO_STUDY_GUIDE.md">Asyncio &amp; aiohttp guide</a> for mastering async, the <a href="ADVANCED_PYTHON_STUDY_GUIDE.md">Advanced Python guide</a> for the runtime underneath, and the <a href="PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md">Python vs Node.js async guide</a> for how Python's model compares. From here the highest-leverage next step is to take the slowest thing you've written, watch a CPU monitor while it runs to classify it I/O- or CPU-bound, and apply the one matching model from Part 7 — because in Python concurrency, that single classification is most of the battle, and everything else is detail on top of it.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

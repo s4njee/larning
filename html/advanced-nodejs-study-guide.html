@@ -1,0 +1,1729 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Advanced Node.js Study Guide.">
+<title>Advanced Node.js Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#de659a; --accent2:#d86161; --accent-weak:rgba(222,101,154,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#de659a; --accent2:#d86161; --accent-weak:rgba(222,101,154,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">A</span><span>Advanced Node.js Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-the-runtime-model" data-target="part-1-the-runtime-model">Part 1 — The Runtime Model</a></li><li class="toc-l3"><a href="#the-three-pieces" data-target="the-three-pieces">The Three Pieces</a></li><li class="toc-l3"><a href="#single-threaded-does-not-mean-single-process" data-target="single-threaded-does-not-mean-single-process">Single-Threaded Does Not Mean Single-Process</a></li><li class="toc-l3"><a href="#the-foundational-trade-off" data-target="the-foundational-trade-off">The Foundational Trade-off</a></li><li class="toc-l2"><a href="#part-2-v8-how-your-javascript-gets-fast" data-target="part-2-v8-how-your-javascript-gets-fast">Part 2 — V8: How Your JavaScript Gets Fast</a></li><li class="toc-l3"><a href="#the-compilation-pipeline" data-target="the-compilation-pipeline">The Compilation Pipeline</a></li><li class="toc-l3"><a href="#hidden-classes-mapsshapes" data-target="hidden-classes-mapsshapes">Hidden Classes (Maps/Shapes)</a></li><li class="toc-l3"><a href="#inline-caches-ics" data-target="inline-caches-ics">Inline Caches (ICs)</a></li><li class="toc-l3"><a href="#smis-heapnumbers-and-the-number-trap" data-target="smis-heapnumbers-and-the-number-trap">SMIs, HeapNumbers, and the Number Trap</a></li><li class="toc-l3"><a href="#typed-arrays-the-numpy-of-javascript" data-target="typed-arrays-the-numpy-of-javascript">Typed Arrays: The NumPy of JavaScript</a></li><li class="toc-l3"><a href="#deoptimization-the-silent-killer" data-target="deoptimization-the-silent-killer">Deoptimization: The Silent Killer</a></li><li class="toc-l2"><a href="#part-3-the-event-loop-actually" data-target="part-3-the-event-loop-actually">Part 3 — The Event Loop, Actually</a></li><li class="toc-l3"><a href="#the-phases" data-target="the-phases">The Phases</a></li><li class="toc-l3"><a href="#microtasks-processnexttick-and-queuemicrotask" data-target="microtasks-processnexttick-and-queuemicrotask">Microtasks: process.nextTick and queueMicrotask</a></li><li class="toc-l3"><a href="#settimeoutfn-0-vs-setimmediatefn" data-target="settimeoutfn-0-vs-setimmediatefn">setTimeout(fn, 0) vs. setImmediate(fn)</a></li><li class="toc-l3"><a href="#blocking-the-loop-the-cardinal-sin" data-target="blocking-the-loop-the-cardinal-sin">Blocking the Loop: The Cardinal Sin</a></li><li class="toc-l2"><a href="#part-4-async-patterns-pitfalls" data-target="part-4-async-patterns-pitfalls">Part 4 — Async Patterns &amp; Pitfalls</a></li><li class="toc-l3"><a href="#sequential-vs-concurrent-await" data-target="sequential-vs-concurrent-await">Sequential vs. Concurrent await</a></li><li class="toc-l3"><a href="#promiseall-vs-promiseallsettled-vs-promiseany-vs-promiserace" data-target="promiseall-vs-promiseallsettled-vs-promiseany-vs-promiserace">Promise.all vs. Promise.allSettled vs. Promise.any vs. Promise.race</a></li><li class="toc-l3"><a href="#bounded-concurrency" data-target="bounded-concurrency">Bounded Concurrency</a></li><li class="toc-l3"><a href="#error-handling-in-async-code" data-target="error-handling-in-async-code">Error Handling in Async Code</a></li><li class="toc-l3"><a href="#abortcontroller-and-cancellation" data-target="abortcontroller-and-cancellation">AbortController and Cancellation</a></li><li class="toc-l2"><a href="#part-5-streams-backpressure" data-target="part-5-streams-backpressure">Part 5 — Streams &amp; Backpressure</a></li><li class="toc-l3"><a href="#the-four-stream-types" data-target="the-four-stream-types">The Four Stream Types</a></li><li class="toc-l3"><a href="#the-pipeline-streampipeline" data-target="the-pipeline-streampipeline">The Pipeline: stream.pipeline</a></li><li class="toc-l3"><a href="#backpressure" data-target="backpressure">Backpressure</a></li><li class="toc-l3"><a href="#async-iterators-the-modern-stream-api" data-target="async-iterators-the-modern-stream-api">Async Iterators: The Modern Stream API</a></li><li class="toc-l3"><a href="#highwatermark-and-buffer-sizing" data-target="highwatermark-and-buffer-sizing">highWaterMark and Buffer Sizing</a></li><li class="toc-l3"><a href="#object-mode-streams" data-target="object-mode-streams">Object-Mode Streams</a></li><li class="toc-l2"><a href="#part-6-worker-threads-clustering" data-target="part-6-worker-threads-clustering">Part 6 — Worker Threads &amp; Clustering</a></li><li class="toc-l3"><a href="#worker-threads" data-target="worker-threads">Worker Threads</a></li><li class="toc-l3"><a href="#transferable-objects-and-zero-copy" data-target="transferable-objects-and-zero-copy">Transferable Objects and Zero-Copy</a></li><li class="toc-l3"><a href="#clustering" data-target="clustering">Clustering</a></li><li class="toc-l3"><a href="#workers-vs-cluster-when-to-use-which" data-target="workers-vs-cluster-when-to-use-which">Workers vs. Cluster: When to Use Which</a></li><li class="toc-l2"><a href="#part-7-memory-management-gc-tuning" data-target="part-7-memory-management-gc-tuning">Part 7 — Memory Management &amp; GC Tuning</a></li><li class="toc-l3"><a href="#v8s-heap-layout" data-target="v8s-heap-layout">V8's Heap Layout</a></li><li class="toc-l3"><a href="#the-heap-size-limit" data-target="the-heap-size-limit">The Heap Size Limit</a></li><li class="toc-l3"><a href="#finding-memory-leaks" data-target="finding-memory-leaks">Finding Memory Leaks</a></li><li class="toc-l3"><a href="#common-leak-patterns" data-target="common-leak-patterns">Common Leak Patterns</a></li><li class="toc-l3"><a href="#gc-tuning" data-target="gc-tuning">GC Tuning</a></li><li class="toc-l2"><a href="#part-8-profiling-measurement" data-target="part-8-profiling-measurement">Part 8 — Profiling &amp; Measurement</a></li><li class="toc-l3"><a href="#cpu-profiling" data-target="cpu-profiling">CPU Profiling</a></li><li class="toc-l3"><a href="#event-loop-monitoring" data-target="event-loop-monitoring">Event-Loop Monitoring</a></li><li class="toc-l3"><a href="#benchmarking" data-target="benchmarking">Benchmarking</a></li><li class="toc-l3"><a href="#key-metrics-to-watch-in-production" data-target="key-metrics-to-watch-in-production">Key Metrics to Watch in Production</a></li><li class="toc-l2"><a href="#part-9-performance-levers" data-target="part-9-performance-levers">Part 9 — Performance Levers</a></li><li class="toc-l3"><a href="#lever-1-choose-a-fast-framework-or-no-framework" data-target="lever-1-choose-a-fast-framework-or-no-framework">Lever 1: Choose a Fast Framework (or No Framework)</a></li><li class="toc-l3"><a href="#lever-2-serialize-json-faster" data-target="lever-2-serialize-json-faster">Lever 2: Serialize JSON Faster</a></li><li class="toc-l3"><a href="#lever-3-use-streams-for-large-payloads" data-target="lever-3-use-streams-for-large-payloads">Lever 3: Use Streams for Large Payloads</a></li><li class="toc-l3"><a href="#lever-4-connection-pooling-and-keep-alive" data-target="lever-4-connection-pooling-and-keep-alive">Lever 4: Connection Pooling and Keep-Alive</a></li><li class="toc-l3"><a href="#lever-5-avoid-blocking-the-event-loop" data-target="lever-5-avoid-blocking-the-event-loop">Lever 5: Avoid Blocking the Event Loop</a></li><li class="toc-l3"><a href="#lever-6-cache-aggressively" data-target="lever-6-cache-aggressively">Lever 6: Cache Aggressively</a></li><li class="toc-l3"><a href="#lever-7-optimize-v8-part-2s-practical-application" data-target="lever-7-optimize-v8-part-2s-practical-application">Lever 7: Optimize V8 (Part 2's Practical Application)</a></li><li class="toc-l3"><a href="#lever-8-cluster-and-scale-horizontally" data-target="lever-8-cluster-and-scale-horizontally">Lever 8: Cluster and Scale Horizontally</a></li><li class="toc-l3"><a href="#lever-9-move-the-hot-path-out-of-javascript" data-target="lever-9-move-the-hot-path-out-of-javascript">Lever 9: Move the Hot Path Out of JavaScript</a></li><li class="toc-l2"><a href="#part-10-high-performance-recipes" data-target="part-10-high-performance-recipes">Part 10 — High-Performance Recipes</a></li><li class="toc-l3"><a href="#recipe-1-schema-compiled-json-serialization" data-target="recipe-1-schema-compiled-json-serialization">Recipe 1: Schema-Compiled JSON Serialization</a></li><li class="toc-l3"><a href="#recipe-2-stream-a-large-file-through-a-transform" data-target="recipe-2-stream-a-large-file-through-a-transform">Recipe 2: Stream a Large File Through a Transform</a></li><li class="toc-l3"><a href="#recipe-3-bounded-concurrency-api-fan-out" data-target="recipe-3-bounded-concurrency-api-fan-out">Recipe 3: Bounded-Concurrency API Fan-Out</a></li><li class="toc-l3"><a href="#recipe-4-offload-cpu-work-to-a-worker-pool" data-target="recipe-4-offload-cpu-work-to-a-worker-pool">Recipe 4: Offload CPU Work to a Worker Pool</a></li><li class="toc-l3"><a href="#recipe-5-database-connection-pooling-with-query-batching" data-target="recipe-5-database-connection-pooling-with-query-batching">Recipe 5: Database Connection Pooling with Query Batching</a></li><li class="toc-l3"><a href="#recipe-6-efficient-caching-with-lru-and-stale-while-revalidate" data-target="recipe-6-efficient-caching-with-lru-and-stale-while-revalidate">Recipe 6: Efficient Caching with LRU and Stale-While-Revalidate</a></li><li class="toc-l3"><a href="#recipe-7-chunking-cpu-work-to-avoid-blocking-the-loop" data-target="recipe-7-chunking-cpu-work-to-avoid-blocking-the-loop">Recipe 7: Chunking CPU Work to Avoid Blocking the Loop</a></li><li class="toc-l3"><a href="#recipe-8-zero-copy-buffer-operations" data-target="recipe-8-zero-copy-buffer-operations">Recipe 8: Zero-Copy Buffer Operations</a></li><li class="toc-l3"><a href="#recipe-9-http-keep-alive-and-undici-for-outbound-requests" data-target="recipe-9-http-keep-alive-and-undici-for-outbound-requests">Recipe 9: HTTP Keep-Alive and Undici for Outbound Requests</a></li><li class="toc-l3"><a href="#recipe-10-graceful-shutdown" data-target="recipe-10-graceful-shutdown">Recipe 10: Graceful Shutdown</a></li><li class="toc-l3"><a href="#the-decision-tree" data-target="the-decision-tree">The Decision Tree</a></li></ul></nav></aside>
+  <main><h1 id="advanced-nodejs-study-guide">Advanced Node.js Study Guide</h1>
+<p>A depth-first guide to Node.js internals and high-performance patterns for engineers who already build production services with it. It assumes you write JavaScript/TypeScript daily, know the basics of Express/Fastify/Koa, and have used <code>async</code>/<code>await</code> — but it does <strong>not</strong> assume you understand what the event loop actually is (most explanations get it wrong), how V8 optimizes your code, or why your 32-core server is using one CPU.</p>
+<p>The throughline is the same as the <a href="ADVANCED_PYTHON_STUDY_GUIDE.md">Advanced Python guide</a>: <strong>performance with understanding.</strong> Every optimization here is motivated by a model of what the runtime is actually doing — V8's JIT compilation pipeline, libuv's event loop phases, the cost of a heap allocation versus a stack-allocated SMI — so you can reason about new situations instead of cargo-culting benchmark results. The closing recipe chapter is the payoff: profiled, production-grade patterns for making Node.js fast.</p>
+<p>This guide has siblings that go deeper on adjacent ground: the <a href="TYPESCRIPT_STUDY_GUIDE.md">TypeScript guide</a> (the type system), the <a href="WEBSOCKETS_STUDY_GUIDE.md">WebSockets guide</a> (real-time with <code>ws</code> and Socket.IO on Node), the <a href="NETWORKING_FUNDAMENTALS.md">Networking Fundamentals guide</a> (TCP, HTTP, load balancing), and the <a href="OBSERVABILITY_STUDY_GUIDE.md">Observability guide</a> (tracing, metrics, SLOs).</p>
+<p>Primary references: the <a href="https://nodejs.org/docs/latest/api/">Node.js documentation</a>, the <a href="https://v8.dev/blog">V8 blog</a> (the authoritative source on JIT internals), the <a href="https://docs.libuv.org/en/v1.x/design.html">libuv design overview</a>, and Matteo Collina's <a href="https://github.com/mcollina">talks and modules</a> — he's the closest thing Node.js performance has to a single canonical voice.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1--the-runtime-model">Part 1 — The Runtime Model</a></li>
+<li><a href="#part-2--v8-how-your-javascript-gets-fast">Part 2 — V8: How Your JavaScript Gets Fast</a></li>
+<li><a href="#part-3--the-event-loop-actually">Part 3 — The Event Loop, Actually</a></li>
+<li><a href="#part-4--async-patterns--pitfalls">Part 4 — Async Patterns &amp; Pitfalls</a></li>
+<li><a href="#part-5--streams--backpressure">Part 5 — Streams &amp; Backpressure</a></li>
+<li><a href="#part-6--worker-threads--clustering">Part 6 — Worker Threads &amp; Clustering</a></li>
+<li><a href="#part-7--memory-management--gc-tuning">Part 7 — Memory Management &amp; GC Tuning</a></li>
+<li><a href="#part-8--profiling--measurement">Part 8 — Profiling &amp; Measurement</a></li>
+<li><a href="#part-9--performance-levers">Part 9 — Performance Levers</a></li>
+<li><a href="#part-10--high-performance-recipes">Part 10 — High-Performance Recipes</a></li>
+</ol>
+<hr>
+<h2 id="part-1-the-runtime-model">Part 1 — The Runtime Model</h2>
+<p>Before any optimization, get the architecture right. Node.js is not "JavaScript on the server" — it's a specific machine with specific parts, and knowing which part does what is what separates "it works" from "it works under load."</p>
+<h3 id="the-three-pieces">The Three Pieces</h3>
+<p>Node.js is three things bolted together:</p>
+<ol>
+<li><strong>V8</strong> — Google's JavaScript engine (also in Chrome and Deno). It parses, compiles, and executes your JavaScript. It manages the <strong>heap</strong> (where objects live) and the <strong>garbage collector.</strong> It knows nothing about files, networks, or HTTP.</li>
+<li><strong>libuv</strong> — a C library that provides the <strong>event loop</strong>, a <strong>thread pool</strong> for blocking OS operations (filesystem, DNS, some crypto), and cross-platform async I/O primitives (epoll on Linux, kqueue on macOS, IOCP on Windows). It's what makes Node.js async.</li>
+<li><strong>Node.js bindings and standard library</strong> — the C++ glue that connects V8 to libuv and wraps OS capabilities into JavaScript APIs (<code>fs</code>, <code>net</code>, <code>http</code>, <code>crypto</code>, <code>child_process</code>, <code>worker_threads</code>).</li>
+</ol>
+<p>The consequence: <strong>your JavaScript runs on a single V8 thread, but I/O happens in the OS kernel (non-blocking) or on libuv's thread pool (for things the OS can't do async).</strong> The event loop is the coordinator that dispatches JavaScript callbacks when I/O completes. That single-threaded execution is the defining constraint — and the defining strength.</p>
+<h3 id="single-threaded-does-not-mean-single-process">Single-Threaded Does Not Mean Single-Process</h3>
+<p>A common misconception. One Node process uses <strong>one main thread</strong> for JavaScript execution, but the process itself has more threads:</p>
+<ul>
+<li>The <strong>main thread</strong> — runs all your JS, the event loop, and microtask processing.</li>
+<li>The <strong>libuv thread pool</strong> (default: 4 threads, tunable via <code>UV_THREADPOOL_SIZE</code>, max 1024) — handles file-system operations (<code>fs.*</code>), DNS lookups (<code>dns.lookup</code>, not <code>dns.resolve</code>), <code>zlib</code> compression, <code>crypto.pbkdf2</code>/<code>crypto.randomBytes</code>, and anything explicitly offloaded. These are the "blocking" calls that Node makes async by running them on a background thread and calling back to the main thread when done.</li>
+<li><strong>V8 GC threads</strong> and <strong>V8 compilation threads</strong> — V8 compiles and garbage-collects on background threads, not the main thread.</li>
+<li><strong>Worker threads</strong> (<code>worker_threads</code>) — additional V8 isolates you spawn explicitly for CPU-bound work (Part 6).</li>
+</ul>
+<p>So "single-threaded" means <em>JavaScript execution</em> is single-threaded — not that the process has one thread. Network I/O (TCP, HTTP, TLS) bypasses the thread pool entirely and goes through the OS's non-blocking mechanisms (epoll/kqueue/IOCP), which is why Node handles tens of thousands of concurrent connections with one JS thread — the kernel does the waiting.</p>
+<h3 id="the-foundational-trade-off">The Foundational Trade-off</h3>
+<p>Node's architecture is optimized for <strong>I/O-heavy workloads with many concurrent connections</strong> — API servers, proxies, real-time services, microservices — where each request does relatively little CPU work but waits on networks and databases. It's this workload where Node genuinely outperforms thread-per-request models: no thread-creation overhead per connection, no contention, no stack-per-thread memory.</p>
+<p>It is <strong>not</strong> optimized for CPU-heavy computation. A single CPU-bound task — parsing a large CSV, image processing, heavy JSON serialization — blocks the main thread and freezes <em>every other request</em> until it finishes. The event loop can't process callbacks while JS is executing. This is the cardinal sin of Node.js (the counterpart to "blocking the asyncio event loop" from the <a href="ASYNCIO_STUDY_GUIDE.md">Asyncio guide</a>), and the entire reason Worker Threads and clustering exist (Part 6).</p>
+<p>If you remember one thing from Part 1: <strong>Node.js is V8 (one JS thread) + libuv (event loop + thread pool) + kernel async I/O. Your JavaScript never runs in parallel with itself (without Workers), but I/O overlaps massively because the OS and libuv do the waiting.</strong> Every performance lever in this guide either keeps the main thread unblocked (Parts 3–5) or offloads CPU work off it (Part 6).</p>
+<hr>
+<h2 id="part-2-v8-how-your-javascript-gets-fast">Part 2 — V8: How Your JavaScript Gets Fast</h2>
+<p>V8 doesn't interpret JavaScript — it <strong>compiles</strong> it, twice, adaptively. Understanding this pipeline explains why "the same" code can be 100× faster or slower depending on how you write it, and it's the foundation of the optimization advice in Parts 9 and 10.</p>
+<h3 id="the-compilation-pipeline">The Compilation Pipeline</h3>
+<p>When V8 first sees a function:</p>
+<ol>
+<li><strong>Parse</strong> → build an Abstract Syntax Tree (AST).</li>
+<li><strong>Ignition (the baseline interpreter/compiler)</strong> → compile the AST to <strong>bytecode</strong> and start executing immediately. Bytecode is compact and fast to generate, but interpreted execution is relatively slow. While running, V8 collects <strong>type feedback</strong> — it watches what types each variable actually holds, which branches are taken, which functions are called.</li>
+<li><strong>Maglev (mid-tier JIT, V8 12.2+ / Node 22+)</strong> → if a function is "warm" (called enough to be worth optimizing but not yet hot), Maglev compiles it to moderately optimized machine code using the type feedback. Faster than Ignition bytecode, cheaper to compile than full optimization.</li>
+<li><strong>TurboFan (the optimizing compiler)</strong> → if a function is "hot" (run many times), TurboFan compiles it to <strong>highly optimized native machine code</strong> — speculative, type-specialized, inlined, with register allocation. This is where JavaScript approaches C speed.</li>
+</ol>
+<p>The key word is <strong>speculative</strong>: TurboFan compiles based on the assumption that the types it <em>observed</em> are the types it will <em>always</em> see. If that assumption is violated later (you pass a string where it saw only numbers), V8 must <strong>deoptimize</strong> — throw away the optimized code and fall back to Ignition or Maglev. Deoptimization is expensive and is the single most common silent performance killer.</p>
+<h3 id="hidden-classes-mapsshapes">Hidden Classes (Maps/Shapes)</h3>
+<p>JavaScript objects are bags of properties with no declared type, so V8 has to <em>infer</em> structure. It does this with <strong>hidden classes</strong> (V8 calls them "Maps" internally; other engines call them "Shapes"):</p>
+<pre><code class="language-javascript">const a = {};   // V8 assigns hidden class C0 (empty)
+a.x = 1;        // transition to C1: { x: offset 0 }
+a.y = 2;        // transition to C2: { x: offset 0, y: offset 1 }
+
+const b = {};
+b.x = 10;       // same transition C0 → C1
+b.y = 20;       // same transition C1 → C2 — b shares the SAME hidden class as a
+</code></pre>
+<p>Objects created with the same properties, in the same order, share the same hidden class. This is critical because TurboFan's optimized code does <strong>direct-offset property access</strong> (like a C struct field) based on the hidden class — it's a single pointer dereference, not a hash-table lookup. But if objects have different property orders, or one has an extra property, they get <strong>different hidden classes</strong> and the optimized code can't assume a common layout:</p>
+<pre><code class="language-javascript">// BAD — different property orders → different hidden classes → no optimization
+function makePoint(flag) {
+  const p = {};
+  if (flag) { p.x = 0; p.y = 0; }  // hidden class: { x, y }
+  else      { p.y = 0; p.x = 0; }  // hidden class: { y, x } — DIFFERENT
+  return p;
+}
+
+// GOOD — same order, same hidden class, fast
+function makePoint(x, y) {
+  return { x, y };                   // always { x, y } — one hidden class
+}
+</code></pre>
+<p>The practical rules:</p>
+<ul>
+<li><strong>Initialize all properties in the constructor, in the same order.</strong> Objects with consistent shapes share hidden classes and get fast property access.</li>
+<li><strong>Don't add or delete properties after construction.</strong> Adding a property at runtime creates a hidden-class transition; deleting one forces a transition to a "slow dictionary mode" object. Use <code>undefined</code> instead of <code>delete obj.prop</code>.</li>
+<li><strong>Use classes or factory functions</strong>, not ad-hoc object construction — they naturally produce consistent shapes.</li>
+</ul>
+<h3 id="inline-caches-ics">Inline Caches (ICs)</h3>
+<p>Every property access (<code>obj.x</code>) and function call (<code>fn()</code>) goes through an <strong>inline cache</strong>. On the first call, V8 looks up the property using the hidden class (slow path) and records the result. On subsequent calls, if the hidden class is the same, V8 uses the cached lookup (fast path — one compare and one memory load). This is why <strong>monomorphic</strong> code (one hidden class at each call site) is fast, and <strong>polymorphic/megamorphic</strong> code (many different hidden classes at one call site) is slow:</p>
+<pre><code class="language-javascript">// MONOMORPHIC — one shape, fast IC:
+function getX(p) { return p.x; }
+getX({ x: 1, y: 2 });
+getX({ x: 3, y: 4 });   // same shape → cached lookup
+
+// MEGAMORPHIC — many shapes, slow:
+getX({ x: 1, y: 2 });
+getX({ x: 1, y: 2, z: 3 });
+getX({ x: 1 });
+getX({ a: 0, x: 1 });    // four different hidden classes → IC gives up, goes generic
+</code></pre>
+<p>Once an IC goes megamorphic, V8 stops trying to specialize — it falls back to generic (slow) dictionary lookups at that call site. The practical rule: <strong>don't pass structurally different objects to the same function</strong> in a hot loop.</p>
+<h3 id="smis-heapnumbers-and-the-number-trap">SMIs, HeapNumbers, and the Number Trap</h3>
+<p>V8 has a crucial optimization for integers: <strong>Small Integers (SMIs)</strong> — integers that fit in 31 bits (on 64-bit: -2³⁰ to 2³⁰−1, roughly ±1 billion) — are stored <strong>directly in the pointer field</strong> as a tagged value, with no heap allocation. No GC, no memory overhead, and arithmetic on two SMIs is a machine instruction plus a tag check.</p>
+<p>The moment a number exceeds SMI range <em>or becomes a float</em>, V8 must allocate a <strong>HeapNumber</strong> — a heap object, with GC overhead. This matters in hot loops:</p>
+<pre><code class="language-javascript">// FAST — SMIs, no allocations:
+for (let i = 0; i &lt; 1000000; i++) { arr[i] = i; }
+
+// SLOWER — HeapNumbers, allocations on every iteration:
+for (let i = 0; i &lt; 1000000; i++) { arr[i] = i + 0.5; }
+</code></pre>
+<p>The practical takeaway: <strong>prefer integers in hot paths when the semantics allow it</strong>, and know that crossing the SMI boundary (e.g., a counter that overflows ~1 billion) silently slows things down.</p>
+<h3 id="typed-arrays-the-numpy-of-javascript">Typed Arrays: The NumPy of JavaScript</h3>
+<p>Just as Python has NumPy to escape per-object overhead, JavaScript has <strong>Typed Arrays</strong> (<code>Int32Array</code>, <code>Float64Array</code>, <code>Uint8Array</code>, …) backed by an <code>ArrayBuffer</code> — a contiguous, fixed-size block of raw memory:</p>
+<pre><code class="language-javascript">const buf = new ArrayBuffer(4_000_000);          // 4 MB of raw bytes
+const floats = new Float64Array(buf);            // view as 500,000 float64s
+
+// V8 optimizes typed-array access to direct memory loads/stores —
+// no boxing, no hidden-class checks, no GC pressure per element.
+for (let i = 0; i &lt; floats.length; i++) {
+  floats[i] = Math.sqrt(i);                     // fast: direct memory write
+}
+</code></pre>
+<p>Typed arrays are what Node uses internally for <code>Buffer</code>, what WebGL and WebAssembly use, and what you should use for any performance-critical numerical work. They're the escape hatch from V8's object overhead for bulk data.</p>
+<h3 id="deoptimization-the-silent-killer">Deoptimization: The Silent Killer</h3>
+<p>When V8's speculative optimizations are violated, it <strong>deoptimizes</strong> — discards the optimized machine code and falls back to the interpreter. Common triggers:</p>
+<ul>
+<li><strong>Type change:</strong> a variable was always a number, then you pass a string.</li>
+<li><strong>Shape change:</strong> an object gains or loses a property at a call site where TurboFan assumed a fixed shape.</li>
+<li><strong>Hidden class mismatch:</strong> a polymorphic/megamorphic call site.</li>
+<li><strong>try/catch:</strong> historically deoptimized entire functions (modern V8 handles this much better, but extremely hot inner loops still benefit from being outside try/catch).</li>
+<li><strong><code>arguments</code> object leaking:</strong> passing <code>arguments</code> to another function prevents optimization (use rest parameters <code>...args</code> instead).</li>
+</ul>
+<p>You can see deoptimizations happening:</p>
+<pre><code class="language-bash">node --trace-deopt app.js 2&gt;&amp;1 | grep &quot;deoptimize&quot;
+</code></pre>
+<p>If you remember one thing from Part 2: <strong>V8 compiles hot functions to specialized machine code based on observed types — keep shapes consistent, call sites monomorphic, and numbers as SMIs, or V8 deoptimizes and your hot path slows by 10–100×.</strong></p>
+<hr>
+<h2 id="part-3-the-event-loop-actually">Part 3 — The Event Loop, Actually</h2>
+<p>Most event-loop explanations are wrong or dangerously oversimplified. The event loop is not "callbacks happen later" — it's a <strong>specific sequence of phases</strong>, and knowing the phase order explains the behavior of <code>setTimeout</code> vs. <code>setImmediate</code>, <code>process.nextTick</code> vs. <code>queueMicrotask</code>, and why certain patterns starve I/O.</p>
+<h3 id="the-phases">The Phases</h3>
+<p>The event loop runs in a cycle. Each iteration ("tick") has these phases, in this order:</p>
+<pre><code class="language-text">   ┌───────────────────────────┐
+   │        timers              │   setTimeout / setInterval callbacks
+   ├───────────────────────────┤
+   │     pending callbacks      │   deferred I/O callbacks from the previous cycle
+   ├───────────────────────────┤
+   │       idle, prepare        │   internal use only
+   ├───────────────────────────┤
+   │         poll               │   retrieve new I/O events; execute I/O callbacks
+   │                           │   (this is where Node spends most of its time)
+   ├───────────────────────────┤
+   │         check              │   setImmediate callbacks
+   ├───────────────────────────┤
+   │     close callbacks        │   socket.on('close', ...) etc.
+   └──────────┬────────────────┘
+              │
+              └── next iteration ──►
+</code></pre>
+<ol>
+<li><strong>Timers</strong> — runs callbacks whose timers (<code>setTimeout</code>/<code>setInterval</code>) have elapsed. Note: timers are checked at the <em>start</em> of each iteration, not with millisecond precision; a <code>setTimeout(fn, 100)</code> fires "at or after 100 ms," not exactly at 100.</li>
+<li><strong>Pending callbacks</strong> — executes some system-level callbacks deferred from the previous cycle (e.g., TCP connection errors).</li>
+<li><strong>Poll</strong> — the heart. Node calculates how long to block here, fetches I/O events from the kernel (epoll/kqueue), and runs their callbacks (incoming data, connection events, completed file reads). If the poll queue is empty and there are <code>setImmediate</code> callbacks waiting, it moves to check. If the poll queue is empty and no <code>setImmediate</code>, it waits for events or the next timer.</li>
+<li><strong>Check</strong> — runs <code>setImmediate</code> callbacks. <code>setImmediate</code> runs after the poll phase of the <em>current</em> iteration.</li>
+<li><strong>Close callbacks</strong> — <code>'close'</code> event handlers.</li>
+</ol>
+<h3 id="microtasks-processnexttick-and-queuemicrotask">Microtasks: <code>process.nextTick</code> and <code>queueMicrotask</code></h3>
+<p>Between <strong>every phase transition</strong> (and after every individual callback within a phase), Node drains two queues:</p>
+<ol>
+<li><strong><code>process.nextTick</code> queue</strong> — drained first, completely, before moving on.</li>
+<li><strong>Microtask queue</strong> — <code>Promise.then</code>/<code>.catch</code>/<code>.finally</code>, <code>queueMicrotask()</code>. Drained next, completely.</li>
+</ol>
+<p>This is <em>why</em> a recursive <code>process.nextTick</code> starves I/O — it keeps refilling its queue and the event loop never advances to the poll phase:</p>
+<pre><code class="language-javascript">// BUG: starves I/O — nextTick queue never empties
+function bad() {
+  process.nextTick(bad);   // re-queues itself before any I/O can run
+}
+bad();
+// setTimeout, setImmediate, and I/O callbacks NEVER fire.
+
+// SAFE: queueMicrotask is slightly less aggressive, but still dangerous if recursive.
+// For deferred work that shouldn't starve I/O, use setImmediate.
+</code></pre>
+<p>The practical rules:</p>
+<ul>
+<li><strong><code>process.nextTick</code></strong>: use sparingly — only when you need something to happen <em>before</em> any I/O and <em>before</em> promises in the current phase. The main legitimate use: ensuring an API is always async (emitting errors after returning to the caller).</li>
+<li><strong><code>queueMicrotask</code> / Promises</strong>: the default async primitive. Runs after the current callback but before the next I/O phase.</li>
+<li><strong><code>setImmediate</code></strong>: use when you want to yield to I/O <em>first</em> and run your callback in the <em>next</em> phase. This is the tool for breaking up CPU work without starving the event loop (Part 6).</li>
+</ul>
+<h3 id="settimeoutfn-0-vs-setimmediatefn"><code>setTimeout(fn, 0)</code> vs. <code>setImmediate(fn)</code></h3>
+<p>A classic interview question and a real design decision:</p>
+<ul>
+<li><code>setTimeout(fn, 0)</code> runs in the <strong>timers</strong> phase of the <em>next</em> loop iteration (or the current one if timers haven't fired yet). There's a minimum delay (~1 ms due to the timer implementation).</li>
+<li><code>setImmediate(fn)</code> runs in the <strong>check</strong> phase of the <em>current</em> loop iteration (after poll).</li>
+</ul>
+<p><strong>Inside an I/O callback</strong>, <code>setImmediate</code> always fires before <code>setTimeout(fn, 0)</code> — the check phase comes before the next iteration's timers phase. Outside an I/O callback, the order is <strong>non-deterministic</strong> (depends on whether the loop started with timers or check first). <strong>Prefer <code>setImmediate</code> when you want to yield to I/O</strong>, because that's its purpose and its behavior is more predictable.</p>
+<h3 id="blocking-the-loop-the-cardinal-sin">Blocking the Loop: The Cardinal Sin</h3>
+<p>Any synchronous JavaScript that takes a long time — a tight computation, a <code>JSON.parse</code> on a 50 MB payload, a synchronous <code>fs</code> call, a regex with catastrophic backtracking — <strong>blocks the entire event loop</strong> for its duration. No other request can be processed, no callback fires, no I/O is serviced. A 200 ms <code>JSON.parse</code> on a server handling 1,000 req/s means 200 requests <em>queue up</em> behind it.</p>
+<p>Detecting blocked loops:</p>
+<pre><code class="language-javascript">// Measure event-loop lag — the gap between when a timer should fire and when it does:
+const start = process.hrtime.bigint();
+setTimeout(() =&gt; {
+  const lag = Number(process.hrtime.bigint() - start) / 1e6 - 100; // ms above expected
+  console.log(`Event loop lag: ${lag.toFixed(1)}ms`);
+}, 100);
+
+// In production, use the perf_hooks API:
+import { monitorEventLoopDelay } from &quot;node:perf_hooks&quot;;
+const h = monitorEventLoopDelay({ resolution: 20 });
+h.enable();
+setInterval(() =&gt; {
+  console.log(`EL delay p99: ${(h.percentile(99) / 1e6).toFixed(1)}ms`);
+  h.reset();
+}, 5000);
+</code></pre>
+<p>The production tool is <strong>Clinic.js Doctor</strong> (Part 8), which profiles event-loop blocking automatically. The fixes are: offload CPU work to a Worker Thread (Part 6), use streaming (Part 5) for large payloads, and avoid synchronous APIs entirely in request-handling code.</p>
+<p>If you remember one thing from Part 3: <strong>the event loop is a fixed sequence of phases — timers → poll (I/O) → check (setImmediate) — with microtask queues drained between every step. Any long-running JS blocks the entire thing, and recursive <code>process.nextTick</code> starves I/O.</strong></p>
+<hr>
+<h2 id="part-4-async-patterns-pitfalls">Part 4 — Async Patterns &amp; Pitfalls</h2>
+<p><code>async</code>/<code>await</code> makes Node code <em>look</em> synchronous, which is both its power and its danger — it's easy to write code that <em>looks</em> concurrent but actually runs sequentially, or that fires off unbounded parallel work that overwhelms a downstream service. This part is about the patterns that make async code both correct and fast.</p>
+<h3 id="sequential-vs-concurrent-await">Sequential vs. Concurrent <code>await</code></h3>
+<p>The single most common performance bug in Node.js applications:</p>
+<pre><code class="language-javascript">// SEQUENTIAL — 3 seconds total (each awaits before the next starts):
+const a = await fetchA();   // 1s
+const b = await fetchB();   // 1s
+const c = await fetchC();   // 1s
+
+// CONCURRENT — 1 second total (all three in flight at once):
+const [a, b, c] = await Promise.all([fetchA(), fetchB(), fetchC()]);
+</code></pre>
+<p><code>await</code> <em>suspends</em> the current function until the promise resolves — so three sequential <code>await</code>s serialize three independent I/O operations. If they're independent, wrap them in <strong><code>Promise.all</code></strong>. This is the async equivalent of the Python <code>asyncio.gather</code> pattern.</p>
+<h3 id="promiseall-vs-promiseallsettled-vs-promiseany-vs-promiserace"><code>Promise.all</code> vs. <code>Promise.allSettled</code> vs. <code>Promise.any</code> vs. <code>Promise.race</code></h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Resolves when</th>
+<th>Rejects when</th>
+<th>Use case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Promise.all</code></td>
+<td><strong>all</strong> resolve</td>
+<td><strong>any one</strong> rejects (fast-fail)</td>
+<td>need all results; one failure means the whole batch failed</td>
+</tr>
+<tr>
+<td><code>Promise.allSettled</code></td>
+<td><strong>all</strong> settle (resolve or reject)</td>
+<td>never rejects</td>
+<td>need all results regardless of individual failures</td>
+</tr>
+<tr>
+<td><code>Promise.any</code></td>
+<td><strong>first</strong> resolves</td>
+<td><strong>all</strong> reject</td>
+<td>fastest successful response (e.g., hit multiple mirrors)</td>
+</tr>
+<tr>
+<td><code>Promise.race</code></td>
+<td><strong>first</strong> settles (resolve or reject)</td>
+<td>first settles with rejection</td>
+<td>timeouts: <code>Promise.race([fetch(url), timeout(5000)])</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>Promise.allSettled</code> is the tool for "do all of these, log the failures, keep the successes" — the correct pattern for fan-out where partial failure is acceptable.</p>
+<h3 id="bounded-concurrency">Bounded Concurrency</h3>
+<p><code>Promise.all</code> on 10,000 URLs opens 10,000 connections simultaneously — overwhelming the target, exhausting file descriptors, and getting rate-limited. You need a <strong>concurrency limiter</strong>:</p>
+<pre><code class="language-javascript">// Simple bounded-concurrency pool:
+async function mapConcurrent(items, fn, concurrency) {
+  const results = [];
+  const executing = new Set();
+  for (const item of items) {
+    const p = fn(item).then(result =&gt; {
+      executing.delete(p);
+      return result;
+    });
+    executing.add(p);
+    results.push(p);
+    if (executing.size &gt;= concurrency) {
+      await Promise.race(executing);
+    }
+  }
+  return Promise.all(results);
+}
+
+// Usage: at most 20 fetches in flight at once
+const results = await mapConcurrent(urls, fetch, 20);
+</code></pre>
+<p>In production, use <strong><code>p-limit</code></strong> or <strong><code>p-map</code></strong> from the <code>sindresorhus</code> ecosystem — they handle edge cases (error propagation, abort signals) correctly.</p>
+<h3 id="error-handling-in-async-code">Error Handling in Async Code</h3>
+<p>Unhandled promise rejections crash the process in modern Node (since Node 15+). Three rules:</p>
+<ol>
+<li><strong>Always <code>try</code>/<code>catch</code> around <code>await</code></strong> in any function that can recover, or let the rejection propagate to a top-level handler.</li>
+<li><strong>Never ignore promises.</strong> A <code>someAsyncFn()</code> call without <code>await</code> or <code>.catch()</code> silently drops errors. If you intentionally don't await, add <code>.catch(handleError)</code>.</li>
+<li><strong><code>Promise.allSettled</code> for fan-out</strong> — it doesn't reject on individual failures, so you handle errors per-item instead of aborting the batch.</li>
+</ol>
+<pre><code class="language-javascript">// Top-level safety net (last resort — don't rely on it):
+process.on(&quot;unhandledRejection&quot;, (err) =&gt; {
+  logger.fatal({ err }, &quot;Unhandled rejection&quot;);
+  process.exit(1);   // fail loud, don't continue in an unknown state
+});
+</code></pre>
+<h3 id="abortcontroller-and-cancellation"><code>AbortController</code> and Cancellation</h3>
+<p>The standard cancellation primitive (shared with <code>fetch</code>, streams, and many Node APIs):</p>
+<pre><code class="language-javascript">const controller = new AbortController();
+const { signal } = controller;
+
+// Pass the signal to cancellable operations:
+const response = await fetch(url, { signal });
+const data = await fs.readFile(path, { signal });
+
+// Cancel from anywhere (e.g., on timeout):
+setTimeout(() =&gt; controller.abort(), 5000);
+// All operations listening to this signal throw AbortError.
+</code></pre>
+<p>This is the correct way to implement request-level timeouts in Node.js — create an <code>AbortController</code> per request, pass its signal through the call chain, and abort it when the request deadline expires.</p>
+<p>If you remember one thing from Part 4: <strong><code>await</code> serializes by default — use <code>Promise.all</code> for independent operations, bound the concurrency to avoid overwhelming downstream systems, and treat every unhandled promise rejection as a crash waiting to happen.</strong></p>
+<hr>
+<h2 id="part-5-streams-backpressure">Part 5 — Streams &amp; Backpressure</h2>
+<p>Streams are Node.js's answer to "process data larger than memory" — the same idea as Python's generators (see the <a href="ADVANCED_PYTHON_STUDY_GUIDE.md">Advanced Python guide</a>, Part 5) but with a richer API, built-in backpressure, and deep integration into the platform. HTTP requests and responses, file I/O, <code>zlib</code>, <code>crypto</code>, TCP sockets, child-process stdio — they're all streams. Understanding them is what lets a Node.js server proxy a 10 GB file upload without buffering it in memory.</p>
+<h3 id="the-four-stream-types">The Four Stream Types</h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Does</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Readable</code></td>
+<td>produces data</td>
+<td><code>fs.createReadStream</code>, HTTP <code>req</code>, <code>process.stdin</code></td>
+</tr>
+<tr>
+<td><code>Writable</code></td>
+<td>consumes data</td>
+<td><code>fs.createWriteStream</code>, HTTP <code>res</code>, <code>process.stdout</code></td>
+</tr>
+<tr>
+<td><code>Duplex</code></td>
+<td>both reads and writes (independent)</td>
+<td>TCP socket, WebSocket</td>
+</tr>
+<tr>
+<td><code>Transform</code></td>
+<td>reads, modifies, writes</td>
+<td><code>zlib.createGzip()</code>, <code>crypto.createCipheriv()</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-pipeline-streampipeline">The Pipeline: <code>stream.pipeline</code></h3>
+<p>The correct way to connect streams — it handles backpressure, error propagation, and cleanup automatically:</p>
+<pre><code class="language-javascript">import { pipeline } from &quot;node:stream/promises&quot;;
+import { createReadStream, createWriteStream } from &quot;node:fs&quot;;
+import { createGzip } from &quot;node:zlib&quot;;
+
+await pipeline(
+  createReadStream(&quot;input.log&quot;),     // readable
+  createGzip(),                       // transform
+  createWriteStream(&quot;input.log.gz&quot;), // writable
+);
+// Memory usage: constant (~64 KB buffers), regardless of file size.
+</code></pre>
+<p><strong>Never use <code>.pipe()</code> in production code.</strong> It doesn't propagate errors — if the writable errors, the readable leaks and the process may hang. <code>pipeline</code> (or <code>stream.pipeline</code> with callbacks) does it correctly.</p>
+<h3 id="backpressure">Backpressure</h3>
+<p>Backpressure is the mechanism that prevents a fast producer from overwhelming a slow consumer. When a writable's internal buffer fills past its <code>highWaterMark</code>, <code>write()</code> returns <code>false</code> — a signal to stop writing until the <code>drain</code> event fires. <code>pipeline</code> handles this automatically; if you're writing manually:</p>
+<pre><code class="language-javascript">const writable = createWriteStream(&quot;out.dat&quot;);
+
+for (const chunk of hugeDataSource) {
+  const canContinue = writable.write(chunk);
+  if (!canContinue) {
+    // Backpressure! Wait for the writable to drain before sending more.
+    await new Promise(resolve =&gt; writable.once(&quot;drain&quot;, resolve));
+  }
+}
+writable.end();
+</code></pre>
+<p>Without this check, you keep buffering in memory and eventually OOM — the classic stream leak.</p>
+<h3 id="async-iterators-the-modern-stream-api">Async Iterators: The Modern Stream API</h3>
+<p>Since Node 10+, Readable streams implement the async iterator protocol, so you can consume them with <code>for await</code>:</p>
+<pre><code class="language-javascript">import { createReadStream } from &quot;node:fs&quot;;
+import { createInterface } from &quot;node:readline&quot;;
+
+const rl = createInterface({
+  input: createReadStream(&quot;large.csv&quot;),
+  crlfDelay: Infinity,
+});
+
+for await (const line of rl) {
+  // Process one line at a time, constant memory
+  if (line.startsWith(&quot;ERROR&quot;)) {
+    errors.push(parseLine(line));
+  }
+}
+</code></pre>
+<p>This is the cleanest way to process streams line-by-line. For byte-level processing, <code>for await (const chunk of readableStream)</code> gives you <code>Buffer</code> chunks.</p>
+<h3 id="highwatermark-and-buffer-sizing"><code>highWaterMark</code> and Buffer Sizing</h3>
+<p>The <code>highWaterMark</code> (default: 16 KB for streams, 16 objects for object-mode streams) controls <strong>how much data the stream buffers</strong> before applying backpressure. It's a throughput-vs-memory knob:</p>
+<ul>
+<li><strong>Too low:</strong> many small reads/writes, high system-call overhead.</li>
+<li><strong>Too high:</strong> large buffers, high memory per stream. With 10,000 concurrent connections each buffering 1 MB, that's 10 GB.</li>
+<li><strong>Default is fine for most cases.</strong> Tune it when profiling shows stream overhead or memory pressure.</li>
+</ul>
+<h3 id="object-mode-streams">Object-Mode Streams</h3>
+<p>By default, streams carry <code>Buffer</code> or <code>string</code> chunks. In <strong>object mode</strong> (<code>objectMode: true</code>), each chunk is an arbitrary JS object — useful for streaming parsed records (JSON lines, database rows) through a transform pipeline. The <code>highWaterMark</code> then counts <em>objects</em>, not bytes.</p>
+<p>If you remember one thing from Part 5: <strong>use <code>stream.pipeline</code> (not <code>.pipe</code>) to chain streams with automatic backpressure and error handling, and consume Readable streams with <code>for await</code> — this is how you process data larger than memory without leaking it.</strong></p>
+<hr>
+<h2 id="part-6-worker-threads-clustering">Part 6 — Worker Threads &amp; Clustering</h2>
+<p>Part 3 established the cardinal sin: blocking the event loop. This part is about the two escape hatches when your workload is genuinely CPU-bound: <strong>Worker Threads</strong> (multiple V8 isolates in one process) and <strong>Clustering</strong> (multiple processes). They solve different problems and are not interchangeable.</p>
+<h3 id="worker-threads">Worker Threads</h3>
+<p><code>worker_threads</code> (Node 10.5+) spawn additional V8 isolates inside the same process. Each worker has <strong>its own event loop, its own heap, its own GC</strong> — JavaScript doesn't share memory between workers (no data races). Communication is via <strong>message passing</strong> (<code>postMessage</code>/<code>on('message')</code>) or, for advanced cases, <code>SharedArrayBuffer</code> with <code>Atomics</code> for true shared memory.</p>
+<pre><code class="language-javascript">// main.js
+import { Worker } from &quot;node:worker_threads&quot;;
+
+function runWorker(data) {
+  return new Promise((resolve, reject) =&gt; {
+    const worker = new Worker(&quot;./worker.js&quot;, { workerData: data });
+    worker.on(&quot;message&quot;, resolve);
+    worker.on(&quot;error&quot;, reject);
+  });
+}
+
+const result = await runWorker({ numbers: [1, 2, 3, 4, 5] });
+
+// worker.js
+import { workerData, parentPort } from &quot;node:worker_threads&quot;;
+const sum = workerData.numbers.reduce((a, b) =&gt; a + b, 0);
+parentPort.postMessage(sum);
+</code></pre>
+<p>Key points:</p>
+<ul>
+<li><strong>Use for CPU-bound work:</strong> image processing, parsing, compression, crypto, heavy JSON serialization. The worker runs on a separate thread with its own V8, so it doesn't block the main event loop.</li>
+<li><strong>Don't use for I/O:</strong> I/O is already non-blocking on the main thread. A worker doing <code>fetch</code> or <code>fs.readFile</code> gains nothing — it just adds IPC overhead.</li>
+<li><strong>Worker startup is expensive</strong> (~30–50 ms, plus memory for a new V8 heap). For recurring CPU tasks, use a <strong>worker pool</strong> — <code>piscina</code> or <code>workerpool</code> — that keeps workers alive and dispatches jobs to them:</li>
+</ul>
+<pre><code class="language-javascript">import Piscina from &quot;piscina&quot;;
+
+const pool = new Piscina({
+  filename: &quot;./worker.js&quot;,
+  maxThreads: 4,                // match CPU cores
+});
+
+// Dispatches to the next available worker, returns a Promise:
+const result = await pool.run({ numbers: [1, 2, 3, 4, 5] });
+</code></pre>
+<p><strong><code>piscina</code></strong> (by Matteo Collina &amp; James Snell) is the go-to worker pool — it handles job queueing, backpressure (it won't accept new work when all workers are busy), and <code>transferList</code> for zero-copy data transfer.</p>
+<h3 id="transferable-objects-and-zero-copy">Transferable Objects and Zero-Copy</h3>
+<p><code>postMessage</code> by default <strong>serializes</strong> (structured clone) data — which means copying. For large <code>ArrayBuffer</code>s, that copy is expensive. <strong>Transferring</strong> instead <em>moves</em> the buffer to the worker in O(1), making the original unusable:</p>
+<pre><code class="language-javascript">const buffer = new ArrayBuffer(100_000_000);  // 100 MB
+worker.postMessage(buffer, [buffer]);          // transfer, not copy — O(1)
+// buffer.byteLength is now 0 in the main thread — it's been moved
+</code></pre>
+<p>Use transfer for large typed arrays, image data, and any bulk binary data passed to/from workers.</p>
+<h3 id="clustering">Clustering</h3>
+<p><code>cluster</code> (or running multiple Node processes behind a load balancer) is the answer to <strong>scaling across CPU cores for I/O-bound workloads.</strong> Each cluster worker is a separate Node.js process with its own V8, its own memory, listening on the same port (the OS load-balances incoming connections across them):</p>
+<pre><code class="language-javascript">import cluster from &quot;node:cluster&quot;;
+import { cpus } from &quot;node:os&quot;;
+import { createServer } from &quot;node:http&quot;;
+
+if (cluster.isPrimary) {
+  const numCPUs = cpus().length;
+  for (let i = 0; i &lt; numCPUs; i++) {
+    cluster.fork();
+  }
+  cluster.on(&quot;exit&quot;, (worker) =&gt; {
+    console.log(`Worker ${worker.process.pid} died, restarting...`);
+    cluster.fork();                    // auto-restart
+  });
+} else {
+  createServer((req, res) =&gt; {
+    res.end(&quot;Hello from worker &quot; + process.pid);
+  }).listen(3000);
+}
+</code></pre>
+<p>In practice, <strong>use a process manager instead of hand-rolling cluster:</strong> <code>pm2</code> (most common), or run multiple replicas behind a reverse proxy (Nginx, Caddy — see the <a href="CADDY_STUDY_GUIDE.md">Caddy guide</a>) or Kubernetes. The process manager handles restarts, log management, and graceful reloads.</p>
+<h3 id="workers-vs-cluster-when-to-use-which">Workers vs. Cluster: When to Use Which</h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CPU-bound task blocking the event loop (image resize, CSV parse, heavy crypto)</td>
+<td><strong>Worker Thread</strong> (offload the task, keep the main thread serving I/O)</td>
+</tr>
+<tr>
+<td>Scale an I/O-bound HTTP server across all CPU cores</td>
+<td><strong>Cluster</strong> (multiple processes, each with its own event loop)</td>
+</tr>
+<tr>
+<td>Both (I/O-heavy server that occasionally does CPU work)</td>
+<td><strong>Cluster</strong> for scaling + <strong>worker pool</strong> (<code>piscina</code>) for CPU tasks within each process</td>
+</tr>
+</tbody>
+</table>
+<p>If you remember one thing from Part 6: <strong>Worker Threads offload CPU-bound work to a separate V8 isolate (use <code>piscina</code> as a pool); clustering runs multiple processes for I/O-bound scaling. Don't use Workers for I/O, and don't use clustering to solve a CPU-bound problem in a single request.</strong></p>
+<hr>
+<h2 id="part-7-memory-management-gc-tuning">Part 7 — Memory Management &amp; GC Tuning</h2>
+<p>V8's garbage collector is generational, concurrent, and mostly invisible — until it isn't. A memory leak that grows at 1 MB/hour takes three days to crash a container, and a GC pause at the wrong moment adds 100 ms to your p99. This part is about understanding V8's heap well enough to find leaks, avoid pressure, and tune when the defaults aren't enough.</p>
+<h3 id="v8s-heap-layout">V8's Heap Layout</h3>
+<p>V8 divides the heap into <strong>spaces</strong>:</p>
+<ul>
+<li><strong>New Space (Young Generation):</strong> small (~1–8 MB), holds newly allocated objects. Collected frequently with a fast <strong>Scavenge</strong> (copying) collector — most objects die young and are cleaned up here cheaply. Objects that survive two scavenges are <strong>promoted</strong> to Old Space.</li>
+<li><strong>Old Space (Old Generation):</strong> holds long-lived objects. Collected less frequently with the <strong>Major GC</strong> (Mark-Sweep-Compact), which is more expensive. Old Space is where leaks accumulate.</li>
+<li><strong>Large Object Space:</strong> objects too large for New Space go here directly.</li>
+<li><strong>Code Space:</strong> compiled machine code (JIT output).</li>
+</ul>
+<p>The practical implication: <strong>short-lived objects are cheap</strong> (allocated and collected in New Space, often never touching Old Space). Long-lived objects and leaking references are what cause GC pressure.</p>
+<h3 id="the-heap-size-limit">The Heap Size Limit</h3>
+<p>V8 defaults to a <strong>~1.5 GB</strong> Old Space limit on 64-bit systems (or ~700 MB on 32-bit). When the heap approaches this limit, GC becomes increasingly aggressive and eventually V8 crashes with <strong>"FATAL ERROR: CALL_AND_RETRY_LAST Allocation failed — JavaScript heap out of memory."</strong></p>
+<p>You can raise it:</p>
+<pre><code class="language-bash">node --max-old-space-size=4096 app.js   # 4 GB old space
+</code></pre>
+<p>But raising the limit is treating the symptom, not the cause. The usual cause is a <strong>memory leak</strong>.</p>
+<h3 id="finding-memory-leaks">Finding Memory Leaks</h3>
+<p>The three-snapshot technique is the standard diagnostic:</p>
+<ol>
+<li><strong>Baseline:</strong> take a heap snapshot after the app is warmed up.</li>
+<li><strong>Exercise:</strong> run the operation you suspect leaks (e.g., 10,000 requests).</li>
+<li><strong>Snapshot again:</strong> compare to the baseline. Objects that grew are your suspects.</li>
+</ol>
+<pre><code class="language-javascript">// Take a heap snapshot programmatically:
+import v8 from &quot;node:v8&quot;;
+import fs from &quot;node:fs&quot;;
+
+const snapshotPath = `/tmp/heap-${Date.now()}.heapsnapshot`;
+v8.writeHeapSnapshot(snapshotPath);
+// Open in Chrome DevTools → Memory → Load
+</code></pre>
+<p>Or from outside, without code changes:</p>
+<pre><code class="language-bash"># Send SIGUSR2 to a running Node process (with --heapsnapshot-signal=SIGUSR2):
+node --heapsnapshot-signal=SIGUSR2 app.js &amp;
+kill -USR2 $!
+</code></pre>
+<p>In Chrome DevTools, the <strong>Comparison</strong> view between two snapshots shows exactly which constructor/type grew and by how many objects — the fastest path to "this closure over <code>req</code> is leaking."</p>
+<h3 id="common-leak-patterns">Common Leak Patterns</h3>
+<table>
+<thead>
+<tr>
+<th>Pattern</th>
+<th>Why it leaks</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Growing <code>Map</code>/<code>Set</code>/array used as a cache</td>
+<td>entries never evicted</td>
+<td>use an LRU (<code>lru-cache</code>, <code>mnemonist</code>) or <code>WeakRef</code> + <code>FinalizationRegistry</code></td>
+</tr>
+<tr>
+<td>Event listeners not removed</td>
+<td>each <code>on()</code> retains a closure over its scope</td>
+<td><code>removeListener</code> / <code>off</code>, or use <code>{ once: true }</code> / <code>AbortSignal</code></td>
+</tr>
+<tr>
+<td>Closures capturing <code>req</code>/<code>res</code></td>
+<td>the request object (large) lives as long as the closure</td>
+<td>null out references, don't close over the whole request</td>
+</tr>
+<tr>
+<td>Unbounded queues (job lists, pending promises)</td>
+<td>producer outpaces consumer</td>
+<td>add backpressure (Part 5) or bounded concurrency (Part 4)</td>
+</tr>
+<tr>
+<td>Global variables / module-level state</td>
+<td>never garbage collected</td>
+<td>avoid global mutable state; use <code>WeakMap</code>/<code>WeakRef</code> for caches keyed by objects</td>
+</tr>
+</tbody>
+</table>
+<h3 id="gc-tuning">GC Tuning</h3>
+<p>You rarely need to tune V8's GC, but when you do:</p>
+<ul>
+<li><strong><code>--max-semi-space-size=N</code></strong> (MB) — size of each semi-space in New Space. Doubling it (e.g., to 16 or 32 MB) helps workloads that allocate many short-lived objects per request, reducing promotion to Old Space.</li>
+<li><strong><code>--max-old-space-size=N</code></strong> — total old-generation limit.</li>
+<li><strong><code>--expose-gc</code> + <code>global.gc()</code></strong> — force a GC from JS (for benchmarks, never production).</li>
+<li>Watch GC with <code>--trace-gc</code>:</li>
+</ul>
+<pre><code class="language-bash">node --trace-gc app.js
+# [12345:0x...]    34 ms: Scavenge 4.2 (6.3) -&gt; 3.8 (8.3) MB, 1.2 / 0.0 ms ...
+# [12345:0x...]   200 ms: Mark-Sweep 15.2 (20.3) -&gt; 10.1 (18.3) MB, 12.5 / 0.0 ms ...
+</code></pre>
+<p>The numbers: <code>before (allocated) -&gt; after (allocated) MB, pause / ... ms</code>. If Major GC pauses are &gt;50 ms and frequent, you have too many long-lived objects or too much heap pressure.</p>
+<p>If you remember one thing from Part 7: <strong>short-lived objects are cheap (collected quickly in New Space); memory leaks are growing caches, un-removed listeners, and closures over large scopes — find them with the three-snapshot comparison in Chrome DevTools.</strong></p>
+<hr>
+<h2 id="part-8-profiling-measurement">Part 8 — Profiling &amp; Measurement</h2>
+<p>As with the <a href="ADVANCED_PYTHON_STUDY_GUIDE.md">Advanced Python guide</a>, the cardinal rule: <strong>measure before you optimize.</strong> Node.js has outstanding profiling tools — many built into the platform — and intuition about where time is spent is almost always wrong.</p>
+<h3 id="cpu-profiling">CPU Profiling</h3>
+<p><strong>Option 1: The built-in V8 profiler (the quickest start):</strong></p>
+<pre><code class="language-bash">node --prof app.js
+# Run your workload, then Ctrl+C.
+# Produces an isolate-*.log file.
+node --prof-process isolate-*.log &gt; processed.txt
+</code></pre>
+<p>The output shows bottom-up and top-down call trees with time percentages — enough to find "this function takes 40% of CPU."</p>
+<p><strong>Option 2: Chrome DevTools (the most visual):</strong></p>
+<pre><code class="language-bash">node --inspect app.js
+# Open chrome://inspect in Chrome → click &quot;inspect&quot; → go to the Performance tab
+# Hit Record, run your workload, stop recording.
+# You get a flame chart: horizontal axis is time, vertical is call stack depth.
+</code></pre>
+<p>The <strong>flame chart</strong> is the single best tool for understanding where CPU time goes — wide bars are slow functions, and you can zoom into specific intervals.</p>
+<p><strong>Option 3: Clinic.js (the most automated):</strong></p>
+<pre><code class="language-bash">npx clinic doctor -- node app.js
+# Runs the app, then opens a browser with a diagnosis:
+# event loop blocked? I/O bottleneck? GC pressure?
+</code></pre>
+<p><a href="https://clinicjs.org/">Clinic.js</a> is a suite of three tools: <strong>Doctor</strong> (automated bottleneck diagnosis), <strong>Flame</strong> (flame chart specific to Node), and <strong>Bubbleprof</strong> (async flow visualization). <code>clinic doctor</code> is the starting point — it tells you <em>what kind</em> of problem you have.</p>
+<h3 id="event-loop-monitoring">Event-Loop Monitoring</h3>
+<p>The most Node-specific metric. High event-loop delay means the main thread is blocked and requests are queuing:</p>
+<pre><code class="language-javascript">import { monitorEventLoopDelay } from &quot;node:perf_hooks&quot;;
+
+const h = monitorEventLoopDelay({ resolution: 20 });
+h.enable();
+
+// Periodically report:
+setInterval(() =&gt; {
+  console.log({
+    min: (h.min / 1e6).toFixed(1),
+    mean: (h.mean / 1e6).toFixed(1),
+    p99: (h.percentile(99) / 1e6).toFixed(1),
+    max: (h.max / 1e6).toFixed(1),
+  });
+  h.reset();
+}, 10_000);
+</code></pre>
+<p><strong>Healthy:</strong> mean &lt;5 ms, p99 &lt;20 ms. <strong>Unhealthy:</strong> p99 &gt;100 ms — something is blocking the loop.</p>
+<h3 id="benchmarking">Benchmarking</h3>
+<p>For microbenchmarks, use a proper harness that warms up, runs many iterations, and reports statistically:</p>
+<pre><code class="language-bash">npm install -D tinybench   # or benchmark.js
+</code></pre>
+<pre><code class="language-javascript">import { Bench } from &quot;tinybench&quot;;
+
+const bench = new Bench({ time: 1000 });
+bench
+  .add(&quot;JSON.parse&quot;, () =&gt; JSON.parse('{&quot;a&quot;:1,&quot;b&quot;:2}'))
+  .add(&quot;manual parse&quot;, () =&gt; { /* ... */ });
+
+await bench.run();
+console.table(bench.table());
+</code></pre>
+<p><strong>Never benchmark with a single <code>Date.now()</code> measurement</strong> — it's noisy and misses JIT warmup. Use <code>performance.now()</code> at minimum, and run thousands of iterations.</p>
+<h3 id="key-metrics-to-watch-in-production">Key Metrics to Watch in Production</h3>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>What it tells you</th>
+<th>Tool</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Event loop delay (p50, p99)</td>
+<td>main thread blockage</td>
+<td><code>perf_hooks</code>, Prometheus client</td>
+</tr>
+<tr>
+<td>Heap used / heap total</td>
+<td>memory pressure, leaks</td>
+<td><code>process.memoryUsage()</code>, <code>--trace-gc</code></td>
+</tr>
+<tr>
+<td>Active handles / requests</td>
+<td>resource leaks (open sockets, timers)</td>
+<td><code>process._getActiveHandles().length</code></td>
+</tr>
+<tr>
+<td>GC pause duration and frequency</td>
+<td>GC pressure</td>
+<td><code>--trace-gc</code>, <code>perf_hooks</code> GC observer</td>
+</tr>
+<tr>
+<td>HTTP request latency (p50, p99, p999)</td>
+<td>end-user impact</td>
+<td>OpenTelemetry, the <a href="OBSERVABILITY_STUDY_GUIDE.md">Observability guide</a></td>
+</tr>
+</tbody>
+</table>
+<p>If you remember one thing from Part 8: <strong><code>node --inspect</code> + Chrome DevTools flame chart for CPU, Clinic.js Doctor for automated diagnosis, <code>monitorEventLoopDelay</code> for loop health, and the three-snapshot technique for memory leaks — always profile the real workload, not a guess.</strong></p>
+<hr>
+<h2 id="part-9-performance-levers">Part 9 — Performance Levers</h2>
+<p>Now the levers, ordered by effort vs. impact — easiest and highest-return first. Each one addresses a specific bottleneck from the runtime model: either keeping the event loop unblocked, reducing V8 object overhead, avoiding deoptimization, or reducing I/O round-trips.</p>
+<h3 id="lever-1-choose-a-fast-framework-or-no-framework">Lever 1: Choose a Fast Framework (or No Framework)</h3>
+<p>The framework dominates HTTP throughput. A simple routing + JSON-response benchmark on a single core (representative of real overhead per request):</p>
+<table>
+<thead>
+<tr>
+<th>Framework</th>
+<th>Requests/sec (approx.)</th>
+<th>Relative</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>raw <code>node:http</code></strong></td>
+<td>~65,000</td>
+<td>1.0×</td>
+</tr>
+<tr>
+<td><strong>Fastify</strong></td>
+<td>~55,000</td>
+<td>0.85×</td>
+</tr>
+<tr>
+<td><strong>Koa</strong></td>
+<td>~35,000</td>
+<td>0.55×</td>
+</tr>
+<tr>
+<td><strong>Express</strong></td>
+<td>~15,000</td>
+<td>0.23×</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Fastify</strong> is the performance-oriented framework: schema-based serialization (it compiles JSON serializers from your schema at startup — Part 10), a plugin system that avoids middleware overhead, built-in validation with Ajv, and first-class TypeScript. If you're starting a new service and performance matters, Fastify is the default choice. Express is fine for low-traffic services where ecosystem and familiarity matter more than throughput.</p>
+<h3 id="lever-2-serialize-json-faster">Lever 2: Serialize JSON Faster</h3>
+<p><code>JSON.stringify</code> is a top-of-profile function in most Node.js API servers — it's called on every response. The default implementation handles arbitrary shapes at runtime; if you <em>know</em> the shape (and you usually do), you can <strong>compile a serializer from a JSON Schema</strong> that's 2–5× faster:</p>
+<pre><code class="language-javascript">import fastJson from &quot;fast-json-stringify&quot;;
+
+const stringify = fastJson({
+  type: &quot;object&quot;,
+  properties: {
+    id: { type: &quot;integer&quot; },
+    name: { type: &quot;string&quot; },
+    email: { type: &quot;string&quot; },
+  },
+});
+
+stringify({ id: 1, name: &quot;Alice&quot;, email: &quot;a@b.com&quot; });
+// 2-5× faster than JSON.stringify — it generates specialized code at startup
+</code></pre>
+<p>Fastify does this automatically when you declare response schemas — which is a big part of why it's fast.</p>
+<p>For <code>JSON.parse</code>, there's no schema-based shortcut (you don't know the shape until you parse), but <strong>streaming parsers</strong> (<code>@streamparser/json</code>, <code>stream-json</code>) avoid buffering the whole string for large payloads.</p>
+<h3 id="lever-3-use-streams-for-large-payloads">Lever 3: Use Streams for Large Payloads</h3>
+<p>Anything over a few hundred KB should be streamed, not buffered:</p>
+<pre><code class="language-javascript">// BAD — buffers the entire file in memory, then sends:
+app.get(&quot;/download&quot;, async (req, res) =&gt; {
+  const data = await fs.readFile(&quot;large.bin&quot;);   // entire file in memory
+  res.send(data);
+});
+
+// GOOD — streams, constant memory:
+app.get(&quot;/download&quot;, (req, res) =&gt; {
+  const stream = fs.createReadStream(&quot;large.bin&quot;);
+  pipeline(stream, res).catch(err =&gt; { /* handle */ });
+});
+</code></pre>
+<p>Same applies to request bodies: don't <code>await req.json()</code> on a 50 MB upload; stream it through a transform.</p>
+<h3 id="lever-4-connection-pooling-and-keep-alive">Lever 4: Connection Pooling and Keep-Alive</h3>
+<p>Every TCP connection costs a handshake (1 RTT for TCP, 2+ for TLS). Reuse them:</p>
+<pre><code class="language-javascript">// Node's built-in fetch and undici use keep-alive and connection pooling by default.
+// For the legacy http module, set an agent:
+import { Agent } from &quot;node:http&quot;;
+const agent = new Agent({ keepAlive: true, maxSockets: 50 });
+http.get(url, { agent }, callback);
+</code></pre>
+<p>For database connections, <strong>always use a pool</strong> (pg's <code>Pool</code>, knex, Prisma's connection pool) — creating a new Postgres connection takes ~5–20 ms; reusing one from a pool takes &lt;1 ms.</p>
+<h3 id="lever-5-avoid-blocking-the-event-loop">Lever 5: Avoid Blocking the Event Loop</h3>
+<p>Profile for event-loop lag (Part 8). The common offenders and their fixes:</p>
+<table>
+<thead>
+<tr>
+<th>Blocker</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>JSON.parse</code>/<code>stringify</code> on huge payloads</td>
+<td>stream the parsing; offload to a Worker for &gt;1 MB</td>
+</tr>
+<tr>
+<td>Synchronous <code>fs</code> calls (<code>readFileSync</code>)</td>
+<td>use async versions — <strong>always</strong></td>
+</tr>
+<tr>
+<td>Heavy regex (catastrophic backtracking)</td>
+<td>rewrite the regex, or use <code>re2</code> (linear-time regex)</td>
+</tr>
+<tr>
+<td>Large <code>for</code> loop (data transformation)</td>
+<td>chunk with <code>setImmediate</code> or offload to a Worker</td>
+</tr>
+<tr>
+<td>Crypto (pbkdf2, scrypt)</td>
+<td>use async versions (<code>crypto.pbkdf2</code>, not <code>crypto.pbkdf2Sync</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="lever-6-cache-aggressively">Lever 6: Cache Aggressively</h3>
+<ul>
+<li><strong>In-process LRU</strong> (<code>lru-cache</code>, <code>mnemonist/lru-cache</code>) — for per-instance, latency-critical caching (parsed configs, compiled templates, resolved DNS).</li>
+<li><strong>Redis</strong> — for shared-across-instances caching. See the <a href="REDIS_STUDY_GUIDE.md">Redis guide</a> for patterns (cache-aside, write-through, TTL, and eviction).</li>
+<li><strong>HTTP caching headers</strong> (<code>Cache-Control</code>, <code>ETag</code>, <code>Last-Modified</code>) — let the CDN or browser cache responses without hitting your server at all.</li>
+</ul>
+<h3 id="lever-7-optimize-v8-part-2s-practical-application">Lever 7: Optimize V8 (Part 2's Practical Application)</h3>
+<ul>
+<li><strong>Consistent object shapes</strong> — initialize all properties in constructors, same order.</li>
+<li><strong>Monomorphic call sites</strong> — don't pass structurally different objects to the same hot function.</li>
+<li><strong>Avoid <code>delete</code></strong> — use <code>obj.prop = undefined</code> instead.</li>
+<li><strong>Prefer SMI-range integers</strong> in hot paths.</li>
+<li><strong>Use <code>Buffer.allocUnsafe(n)</code></strong> instead of <code>Buffer.alloc(n)</code> when you'll immediately fill the buffer — <code>alloc</code> zero-fills (safe but slow for large buffers).</li>
+<li><strong>Pre-allocate arrays</strong> with known sizes (<code>new Array(n)</code>) rather than growing dynamically.</li>
+</ul>
+<h3 id="lever-8-cluster-and-scale-horizontally">Lever 8: Cluster and Scale Horizontally</h3>
+<p>A single Node.js process uses one CPU core. For an I/O-bound server, running one process per core (via <code>cluster</code>, pm2, or container replicas) linearly multiplies throughput up to core count. See Part 6.</p>
+<h3 id="lever-9-move-the-hot-path-out-of-javascript">Lever 9: Move the Hot Path Out of JavaScript</h3>
+<p>When you've exhausted the above and the bottleneck is CPU-bound JavaScript:</p>
+<ul>
+<li><strong>WebAssembly (Wasm):</strong> compile C/C++/Rust to Wasm and call it from Node. Good for codecs, parsers, crypto, and any CPU-intensive algorithm. V8 runs Wasm at near-native speed with no GC.</li>
+<li><strong>Native addons (N-API / <code>node-addon-api</code>):</strong> write the hot function in C/C++ and call it from JS. N-API is stable across Node versions. PyO3's equivalent for Node is <strong>Neon</strong> (Rust → Node via N-API).</li>
+<li><strong>Rust via Neon or <code>napi-rs</code>:</strong> write the extension in Rust, compile to a native module. Increasingly popular — <code>napi-rs</code> is the ergonomic choice and is what powers <code>@swc/core</code>, <code>lightningcss</code>, and <code>@parcel/css</code>.</li>
+</ul>
+<p>If you remember one thing from Part 9: <strong>the levers in order of effort-to-impact are: faster framework (Fastify) → schema-compiled JSON → streams for large data → connection pooling → unblock the event loop → caching → V8 shape discipline → cluster across cores → native/Wasm for the hot path.</strong> Profile first, fix the measured bottleneck.</p>
+<hr>
+<h2 id="part-10-high-performance-recipes">Part 10 — High-Performance Recipes</h2>
+<p>Each recipe is a complete, worked pattern for a common Node.js performance problem — profiled, explained, and ready to adapt.</p>
+<h3 id="recipe-1-schema-compiled-json-serialization">Recipe 1: Schema-Compiled JSON Serialization</h3>
+<p>The single biggest throughput win for JSON API servers:</p>
+<pre><code class="language-javascript">import Fastify from &quot;fastify&quot;;
+
+const app = Fastify({ logger: true });
+
+app.get(&quot;/users/:id&quot;, {
+  schema: {
+    response: {
+      200: {
+        type: &quot;object&quot;,
+        properties: {
+          id:    { type: &quot;integer&quot; },
+          name:  { type: &quot;string&quot; },
+          email: { type: &quot;string&quot; },
+          role:  { type: &quot;string&quot;, enum: [&quot;admin&quot;, &quot;user&quot;] },
+        },
+      },
+    },
+  },
+  handler: async (req) =&gt; {
+    const user = await db.getUser(req.params.id);
+    return user;   // Fastify serializes with the compiled serializer — 2-5× faster
+  },
+});
+
+await app.listen({ port: 3000 });
+</code></pre>
+<p>Fastify takes the response schema, passes it to <code>fast-json-stringify</code> at startup, and uses the <strong>compiled function</strong> on every response — it generates code like <code>'"id":' + obj.id + ',"name":"' + obj.name + '"'</code> instead of walking the object generically. This also acts as a <strong>security filter</strong> — properties not in the schema are stripped from the response.</p>
+<h3 id="recipe-2-stream-a-large-file-through-a-transform">Recipe 2: Stream a Large File Through a Transform</h3>
+<p>Process a multi-GB file line-by-line in constant memory:</p>
+<pre><code class="language-javascript">import { createReadStream } from &quot;node:fs&quot;;
+import { createInterface } from &quot;node:readline&quot;;
+import { pipeline } from &quot;node:stream/promises&quot;;
+import { createWriteStream } from &quot;node:fs&quot;;
+import { Transform } from &quot;node:stream&quot;;
+
+const filterErrors = new Transform({
+  objectMode: true,
+  transform(line, encoding, callback) {
+    if (line.includes(&quot;ERROR&quot;)) {
+      this.push(line + &quot;\n&quot;);
+    }
+    callback();
+  },
+});
+
+const rl = createInterface({
+  input: createReadStream(&quot;app.log&quot;),   // lazy, ~64 KB buffer
+  crlfDelay: Infinity,
+});
+
+// readline emits lines; pipe through filter; write to output
+const lines = (async function* () {
+  for await (const line of rl) yield line;
+})();
+
+await pipeline(
+  createReadStream(&quot;app.log&quot;),
+  async function* (source) {
+    const rl = createInterface({ input: source, crlfDelay: Infinity });
+    for await (const line of rl) {
+      if (line.includes(&quot;ERROR&quot;)) yield line + &quot;\n&quot;;
+    }
+  },
+  createWriteStream(&quot;errors.log&quot;),
+);
+// Peak memory: ~64 KB regardless of file size.
+</code></pre>
+<p>The async generator as a pipeline stage is the modern, ergonomic pattern — it's a stream transform without the class boilerplate.</p>
+<h3 id="recipe-3-bounded-concurrency-api-fan-out">Recipe 3: Bounded-Concurrency API Fan-Out</h3>
+<p>Fetch data from 500 endpoints without overwhelming them:</p>
+<pre><code class="language-javascript">import pLimit from &quot;p-limit&quot;;
+
+const limit = pLimit(25);   // max 25 concurrent requests
+
+const urls = Array.from({ length: 500 }, (_, i) =&gt; `https://api.example.com/items/${i}`);
+
+const results = await Promise.allSettled(
+  urls.map(url =&gt; limit(() =&gt;
+    fetch(url, { signal: AbortSignal.timeout(5000) })
+      .then(res =&gt; {
+        if (!res.ok) throw new Error(`${res.status}`);
+        return res.json();
+      })
+  ))
+);
+
+const successes = results.filter(r =&gt; r.status === &quot;fulfilled&quot;).map(r =&gt; r.value);
+const failures  = results.filter(r =&gt; r.status === &quot;rejected&quot;);
+console.log(`${successes.length} ok, ${failures.length} failed`);
+</code></pre>
+<p><code>p-limit</code> queues excess work; <code>AbortSignal.timeout</code> prevents any single request from hanging; <code>Promise.allSettled</code> collects partial results instead of aborting on the first failure.</p>
+<h3 id="recipe-4-offload-cpu-work-to-a-worker-pool">Recipe 4: Offload CPU Work to a Worker Pool</h3>
+<p>Image thumbnailing that doesn't block the event loop:</p>
+<pre><code class="language-javascript">// thumbnail-worker.js
+import sharp from &quot;sharp&quot;;
+import { workerData, parentPort } from &quot;node:worker_threads&quot;;
+
+const { inputBuffer, width, height } = workerData;
+const result = await sharp(inputBuffer)
+  .resize(width, height)
+  .webp({ quality: 80 })
+  .toBuffer();
+
+parentPort.postMessage(result, [result.buffer]);  // transfer, not copy
+
+// main.js — use piscina for pooling
+import Piscina from &quot;piscina&quot;;
+
+const pool = new Piscina({
+  filename: &quot;./thumbnail-worker.js&quot;,
+  maxThreads: 4,
+});
+
+app.post(&quot;/upload&quot;, async (req, res) =&gt; {
+  const imageBuffer = await req.arrayBuffer();
+  const thumbnail = await pool.run({
+    inputBuffer: Buffer.from(imageBuffer),
+    width: 200,
+    height: 200,
+  });
+  // Main thread was never blocked — it kept serving other requests during resize
+  res.type(&quot;image/webp&quot;).send(thumbnail);
+});
+</code></pre>
+<h3 id="recipe-5-database-connection-pooling-with-query-batching">Recipe 5: Database Connection Pooling with Query Batching</h3>
+<pre><code class="language-javascript">import pg from &quot;pg&quot;;
+const { Pool } = pg;
+
+const pool = new Pool({
+  host: &quot;localhost&quot;,
+  database: &quot;app&quot;,
+  max: 20,                          // 20 connections in the pool
+  idleTimeoutMillis: 30_000,        // close idle connections after 30s
+  connectionTimeoutMillis: 5_000,   // fail if can't get a connection in 5s
+});
+
+// Single query — borrows and returns a connection automatically:
+const { rows } = await pool.query(&quot;SELECT * FROM users WHERE id = $1&quot;, [userId]);
+
+// Transaction — hold a single connection:
+const client = await pool.acquire();
+try {
+  await client.query(&quot;BEGIN&quot;);
+  await client.query(&quot;UPDATE accounts SET balance = balance - $1 WHERE id = $2&quot;, [100, from]);
+  await client.query(&quot;UPDATE accounts SET balance = balance + $1 WHERE id = $2&quot;, [100, to]);
+  await client.query(&quot;COMMIT&quot;);
+} catch (err) {
+  await client.query(&quot;ROLLBACK&quot;);
+  throw err;
+} finally {
+  client.release();                 // always return to pool
+}
+</code></pre>
+<p><strong>Never create a new connection per request</strong> — the handshake cost alone (TCP + TLS + Postgres auth) can exceed the query time. Pool sizing: start with <code>max = 2 × CPU cores + 1</code> (the Postgres wiki recommendation) and tune from there.</p>
+<h3 id="recipe-6-efficient-caching-with-lru-and-stale-while-revalidate">Recipe 6: Efficient Caching with LRU and Stale-While-Revalidate</h3>
+<pre><code class="language-javascript">import { LRUCache } from &quot;lru-cache&quot;;
+
+const cache = new LRUCache({
+  max: 10_000,                      // max entries
+  ttl: 60_000,                      // 60 seconds
+  allowStale: true,                 // return stale entry while refreshing
+  fetchMethod: async (key) =&gt; {
+    // Called when the key is missing or stale:
+    return db.query(&quot;SELECT * FROM products WHERE id = $1&quot;, [key]);
+  },
+});
+
+// Usage — one call, handles miss/stale/refresh:
+app.get(&quot;/products/:id&quot;, async (req, res) =&gt; {
+  const product = await cache.fetch(req.params.id);
+  res.json(product);
+});
+</code></pre>
+<p><code>allowStale: true</code> is the "stale-while-revalidate" pattern: when a cached entry expires, the <em>old</em> value is returned immediately (fast) while a background <code>fetchMethod</code> refreshes it (fresh for the next caller). This eliminates the latency spike of a cold cache miss and the thundering-herd problem (only one fetch runs per key, not one per concurrent requester).</p>
+<h3 id="recipe-7-chunking-cpu-work-to-avoid-blocking-the-loop">Recipe 7: Chunking CPU Work to Avoid Blocking the Loop</h3>
+<p>When you can't use a Worker (maybe the task is too small to justify IPC) but it's blocking the loop:</p>
+<pre><code class="language-javascript">async function processLargeArray(items) {
+  const results = [];
+  for (let i = 0; i &lt; items.length; i++) {
+    results.push(heavyTransform(items[i]));
+
+    // Every 1000 items, yield to the event loop:
+    if (i % 1000 === 0) {
+      await new Promise(resolve =&gt; setImmediate(resolve));
+    }
+  }
+  return results;
+}
+</code></pre>
+<p><code>setImmediate</code> runs the callback in the <strong>check</strong> phase, <em>after</em> pending I/O — so this pattern processes 1,000 items, yields to let I/O callbacks and other requests run, then resumes. It won't win any speed contests (the work still runs on the main thread), but it keeps the event loop responsive — p99 latency for other requests stays low.</p>
+<h3 id="recipe-8-zero-copy-buffer-operations">Recipe 8: Zero-Copy Buffer Operations</h3>
+<pre><code class="language-javascript">// Reuse a single buffer for repeated writes instead of allocating each time:
+const RESPONSE_BUF = Buffer.from('{&quot;ok&quot;:true}');
+
+app.get(&quot;/health&quot;, (req, res) =&gt; {
+  res.writeHead(200, { &quot;Content-Type&quot;: &quot;application/json&quot; });
+  res.end(RESPONSE_BUF);   // no allocation per request — same buffer every time
+});
+
+// Slice without copying (shares underlying ArrayBuffer):
+const big = Buffer.allocUnsafe(1024 * 1024);
+const header = big.subarray(0, 12);   // zero-copy view of the first 12 bytes
+const body = big.subarray(12);        // zero-copy view of the rest
+
+// Concatenate buffers efficiently (one allocation):
+const combined = Buffer.concat([header, body]);
+</code></pre>
+<p><code>Buffer.allocUnsafe</code> skips zero-filling — safe when you'll immediately write into it, and significantly faster for large buffers. <code>subarray</code> returns a view (no copy); <code>slice</code> copies in older Node but is now an alias for <code>subarray</code>.</p>
+<h3 id="recipe-9-http-keep-alive-and-undici-for-outbound-requests">Recipe 9: HTTP Keep-Alive and Undici for Outbound Requests</h3>
+<p>Node's built-in <code>fetch</code> (backed by <strong>undici</strong>) uses keep-alive and HTTP/1.1 pipelining by default. For maximum control over outbound HTTP performance:</p>
+<pre><code class="language-javascript">import { Pool } from &quot;undici&quot;;
+
+const pool = new Pool(&quot;https://api.example.com&quot;, {
+  connections: 20,           // max concurrent connections to this origin
+  pipelining: 1,             // 1 = no pipelining; increase for trusted backends
+  keepAliveTimeout: 60_000,  // reuse connections for 60s
+});
+
+const { statusCode, body } = await pool.request({
+  method: &quot;GET&quot;,
+  path: &quot;/data&quot;,
+});
+
+const data = await body.json();
+</code></pre>
+<p><code>undici</code> is significantly faster than the legacy <code>http</code> module for outbound requests — it's what powers Node's built-in <code>fetch</code>, and using its <code>Pool</code> directly gives you connection-pooling tuning.</p>
+<h3 id="recipe-10-graceful-shutdown">Recipe 10: Graceful Shutdown</h3>
+<p>Not a speed recipe — a correctness recipe that prevents data loss and broken connections during deploys:</p>
+<pre><code class="language-javascript">async function gracefulShutdown(server) {
+  console.log(&quot;Shutting down gracefully...&quot;);
+
+  // 1. Stop accepting new connections:
+  server.close();
+
+  // 2. Set a hard deadline:
+  const forceExit = setTimeout(() =&gt; {
+    console.error(&quot;Forced shutdown after timeout&quot;);
+    process.exit(1);
+  }, 30_000);
+
+  // 3. Wait for in-flight requests to complete:
+  // (Fastify: await app.close(); Express: server.close(callback))
+
+  // 4. Close database pools, flush caches, finish streams:
+  await pool.end();
+
+  clearTimeout(forceExit);
+  process.exit(0);
+}
+
+process.on(&quot;SIGTERM&quot;, () =&gt; gracefulShutdown(server));
+process.on(&quot;SIGINT&quot;,  () =&gt; gracefulShutdown(server));
+</code></pre>
+<p>In Kubernetes, <code>SIGTERM</code> is sent before a pod is killed; you get <code>terminationGracePeriodSeconds</code> (default: 30s) to drain. Without graceful shutdown, in-flight requests get <code>ECONNRESET</code> and database transactions may be left open.</p>
+<h3 id="the-decision-tree">The Decision Tree</h3>
+<p>When a Node.js service is too slow, work through this:</p>
+<pre><code class="language-text">1. Profile it (Part 8): flame chart, event-loop delay, memory
+   │
+2. Event loop blocked? (lag &gt; 50 ms)
+   │ yes → find the blocker: sync fs? heavy JSON? CPU loop? regex?
+   │        → stream it, async it, Worker it, or chunk with setImmediate
+   │ no ↓
+3. Framework overhead? (is Express the bottleneck?)
+   │ yes → switch to Fastify, add response schemas
+   │ no ↓
+4. JSON serialization? (JSON.stringify in the top-10 profile)
+   │ yes → fast-json-stringify with response schema
+   │ no ↓
+5. Database round-trips? (many small queries, connection churn)
+   │ yes → connection pool, batch queries, add caching
+   │ no ↓
+6. Outbound HTTP? (waiting on APIs, no concurrency)
+   │ yes → Promise.all with bounded concurrency, connection pooling
+   │ no ↓
+7. Memory pressure / GC pauses?
+   │ yes → find the leak (3 snapshots), reduce allocations, tune --max-semi-space-size
+   │ no ↓
+8. V8 deoptimization? (megamorphic, shape changes)
+   │ yes → consistent shapes, monomorphic call sites, avoid delete
+   │ no ↓
+9. Single core saturated?
+   │ yes → cluster / pm2 / container replicas
+   │ no ↓
+10. CPU-bound hot path?
+    │ yes → Worker pool (piscina), or rewrite in Rust/Wasm
+    │ no ↓
+11. Accept it, or rethink the architecture.
+</code></pre>
+<p>If you remember one thing from Part 10: <strong>profile first, then pick the cheapest lever — response-schema JSON compilation and connection pooling are the two highest-return, lowest-effort wins for most Node.js API servers, and <code>setImmediate</code> chunking or a <code>piscina</code> worker pool is how you keep the event loop alive when CPU work is unavoidable.</strong></p>
+<hr>
+<p>That's the guide. From here the highest-leverage next step is the same as every performance guide in this repo: take a service you own, run <code>node --inspect</code> and record a flame chart under realistic load, find the wide bar, and apply the cheapest matching lever from Part 9. The pattern — measure, identify the bottleneck class, apply the lever, re-measure — is the skill, and it compounds from here.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

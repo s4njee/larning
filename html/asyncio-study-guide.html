@@ -1,0 +1,1745 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Asyncio &amp; aiohttp Study Guide.">
+<title>Asyncio &amp; aiohttp Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#ffd43b; --accent2:#ffd43b; --accent-weak:rgba(255,212,59,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#ffd43b; --accent2:#ffd43b; --accent-weak:rgba(255,212,59,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">A</span><span>Asyncio &amp; aiohttp Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-why-async-and-when-it-actually-helps" data-target="part-1-why-async-and-when-it-actually-helps">Part 1 — Why Async, and When It Actually Helps</a></li><li class="toc-l3"><a href="#11-the-one-idea" data-target="11-the-one-idea">1.1 The One Idea</a></li><li class="toc-l3"><a href="#12-io-bound-vs-cpu-bound-the-decision-that-comes-first" data-target="12-io-bound-vs-cpu-bound-the-decision-that-comes-first">1.2 I/O-Bound vs CPU-Bound — The Decision That Comes First</a></li><li class="toc-l3"><a href="#13-async-vs-threads-vs-processes" data-target="13-async-vs-threads-vs-processes">1.3 Async vs Threads vs Processes</a></li><li class="toc-l3"><a href="#14-the-cost-you-take-on" data-target="14-the-cost-you-take-on">1.4 The Cost You Take On</a></li><li class="toc-l2"><a href="#part-2-the-execution-model" data-target="part-2-the-execution-model">Part 2 — The Execution Model</a></li><li class="toc-l3"><a href="#21-coroutines-calling-one-does-nothing" data-target="21-coroutines-calling-one-does-nothing">2.1 Coroutines: Calling One Does Nothing</a></li><li class="toc-l3"><a href="#22-the-event-loop" data-target="22-the-event-loop">2.2 The Event Loop</a></li><li class="toc-l3"><a href="#23-await-is-a-yield-point" data-target="23-await-is-a-yield-point">2.3 await Is a Yield Point</a></li><li class="toc-l3"><a href="#24-coroutines-tasks-and-futures" data-target="24-coroutines-tasks-and-futures">2.4 Coroutines, Tasks, and Futures</a></li><li class="toc-l3"><a href="#25-one-footgun-to-name-now-keep-a-reference-to-your-tasks" data-target="25-one-footgun-to-name-now-keep-a-reference-to-your-tasks">2.5 One Footgun to Name Now: Keep a Reference to Your Tasks</a></li><li class="toc-l2"><a href="#part-3-running-things-concurrently" data-target="part-3-running-things-concurrently">Part 3 — Running Things Concurrently</a></li><li class="toc-l3"><a href="#31-asynciogather-run-many-collect-results-in-order" data-target="31-asynciogather-run-many-collect-results-in-order">3.1 asyncio.gather — Run Many, Collect Results in Order</a></li><li class="toc-l3"><a href="#32-asynciotaskgroup-structured-concurrency-311" data-target="32-asynciotaskgroup-structured-concurrency-311">3.2 asyncio.TaskGroup — Structured Concurrency (3.11+)</a></li><li class="toc-l3"><a href="#33-asyncioas_completed-process-results-as-they-arrive" data-target="33-asyncioas_completed-process-results-as-they-arrive">3.3 asyncio.as_completed — Process Results as They Arrive</a></li><li class="toc-l3"><a href="#34-asynciowait-low-level-control" data-target="34-asynciowait-low-level-control">3.4 asyncio.wait — Low-Level Control</a></li><li class="toc-l3"><a href="#35-choosing-among-them" data-target="35-choosing-among-them">3.5 Choosing Among Them</a></li><li class="toc-l2"><a href="#part-4-cancellation-timeouts-exceptions" data-target="part-4-cancellation-timeouts-exceptions">Part 4 — Cancellation, Timeouts &amp; Exceptions</a></li><li class="toc-l3"><a href="#41-timeouts" data-target="41-timeouts">4.1 Timeouts</a></li><li class="toc-l3"><a href="#42-how-cancellation-actually-works" data-target="42-how-cancellation-actually-works">4.2 How Cancellation Actually Works</a></li><li class="toc-l3"><a href="#43-cancellederror-is-not-a-normal-exception" data-target="43-cancellederror-is-not-a-normal-exception">4.3 CancelledError Is Not a Normal Exception</a></li><li class="toc-l3"><a href="#44-shielding-critical-sections" data-target="44-shielding-critical-sections">4.4 Shielding Critical Sections</a></li><li class="toc-l3"><a href="#45-exception-propagation-gather-vs-taskgroup" data-target="45-exception-propagation-gather-vs-taskgroup">4.5 Exception Propagation: gather vs TaskGroup</a></li><li class="toc-l2"><a href="#part-5-coordination-backpressure" data-target="part-5-coordination-backpressure">Part 5 — Coordination &amp; Backpressure</a></li><li class="toc-l3"><a href="#51-semaphore-bound-your-concurrency" data-target="51-semaphore-bound-your-concurrency">5.1 Semaphore — Bound Your Concurrency</a></li><li class="toc-l3"><a href="#52-queue-the-producerconsumer-pattern" data-target="52-queue-the-producerconsumer-pattern">5.2 Queue — The Producer/Consumer Pattern</a></li><li class="toc-l3"><a href="#53-lock-protecting-state-across-await" data-target="53-lock-protecting-state-across-await">5.3 Lock — Protecting State Across await</a></li><li class="toc-l3"><a href="#54-event-signaling-between-tasks" data-target="54-event-signaling-between-tasks">5.4 Event — Signaling Between Tasks</a></li><li class="toc-l2"><a href="#part-6-the-cardinal-sin-blocking-the-event-loop" data-target="part-6-the-cardinal-sin-blocking-the-event-loop">Part 6 — The Cardinal Sin: Blocking the Event Loop</a></li><li class="toc-l3"><a href="#61-what-blocking-means-and-why-its-catastrophic" data-target="61-what-blocking-means-and-why-its-catastrophic">6.1 What "Blocking" Means and Why It's Catastrophic</a></li><li class="toc-l3"><a href="#62-detecting-it-debug-mode-and-slow-callback-warnings" data-target="62-detecting-it-debug-mode-and-slow-callback-warnings">6.2 Detecting It: Debug Mode and Slow-Callback Warnings</a></li><li class="toc-l3"><a href="#63-offloading-blocking-work-to_thread-and-executors" data-target="63-offloading-blocking-work-to_thread-and-executors">6.3 Offloading Blocking Work: to_thread and Executors</a></li><li class="toc-l3"><a href="#64-file-io-is-special-enter-aiofiles" data-target="64-file-io-is-special-enter-aiofiles">6.4 File I/O Is Special — Enter aiofiles</a></li><li class="toc-l2"><a href="#part-7-aiohttp-client" data-target="part-7-aiohttp-client">Part 7 — aiohttp Client</a></li><li class="toc-l3"><a href="#71-the-session-is-the-connection-pool-reuse-it" data-target="71-the-session-is-the-connection-pool-reuse-it">7.1 The Session Is the Connection Pool — Reuse It</a></li><li class="toc-l3"><a href="#72-connection-pooling-with-tcpconnector" data-target="72-connection-pooling-with-tcpconnector">7.2 Connection Pooling with TCPConnector</a></li><li class="toc-l3"><a href="#73-timeouts-set-them-explicitly" data-target="73-timeouts-set-them-explicitly">7.3 Timeouts — Set Them Explicitly</a></li><li class="toc-l3"><a href="#74-reading-responses-including-streaming" data-target="74-reading-responses-including-streaming">7.4 Reading Responses, Including Streaming</a></li><li class="toc-l3"><a href="#75-bounded-concurrent-fan-out" data-target="75-bounded-concurrent-fan-out">7.5 Bounded Concurrent Fan-Out</a></li><li class="toc-l3"><a href="#76-retries" data-target="76-retries">7.6 Retries</a></li><li class="toc-l2"><a href="#part-8-aiohttp-server" data-target="part-8-aiohttp-server">Part 8 — aiohttp Server</a></li><li class="toc-l3"><a href="#81-application-handlers-routes" data-target="81-application-handlers-routes">8.1 Application, Handlers, Routes</a></li><li class="toc-l3"><a href="#82-application-state-and-lifecycle-where-pools-live" data-target="82-application-state-and-lifecycle-where-pools-live">8.2 Application State and Lifecycle — Where Pools Live</a></li><li class="toc-l3"><a href="#83-middleware" data-target="83-middleware">8.3 Middleware</a></li><li class="toc-l3"><a href="#84-streaming-responses-and-websockets" data-target="84-streaming-responses-and-websockets">8.4 Streaming Responses and WebSockets</a></li><li class="toc-l3"><a href="#85-running-in-production-workers-for-multiple-cores" data-target="85-running-in-production-workers-for-multiple-cores">8.5 Running in Production: Workers for Multiple Cores</a></li><li class="toc-l2"><a href="#part-9-talking-to-databases-files" data-target="part-9-talking-to-databases-files">Part 9 — Talking to Databases &amp; Files</a></li><li class="toc-l3"><a href="#91-asyncpg-the-performance-choice" data-target="91-asyncpg-the-performance-choice">9.1 asyncpg — The Performance Choice</a></li><li class="toc-l3"><a href="#92-aiopg-the-compatibility-choice" data-target="92-aiopg-the-compatibility-choice">9.2 aiopg — The Compatibility Choice</a></li><li class="toc-l3"><a href="#93-the-accidental-serialization-trap" data-target="93-the-accidental-serialization-trap">9.3 The Accidental-Serialization Trap</a></li><li class="toc-l3"><a href="#94-pool-sizing-the-lever-that-cuts-both-ways" data-target="94-pool-sizing-the-lever-that-cuts-both-ways">9.4 Pool Sizing — The Lever That Cuts Both Ways</a></li><li class="toc-l3"><a href="#95-files-aiofiles-in-the-data-path" data-target="95-files-aiofiles-in-the-data-path">9.5 Files: aiofiles in the Data Path</a></li><li class="toc-l2"><a href="#part-10-performance-measuring-tuning" data-target="part-10-performance-measuring-tuning">Part 10 — Performance: Measuring &amp; Tuning</a></li><li class="toc-l3"><a href="#101-measure-first-and-know-the-two-usual-culprits" data-target="101-measure-first-and-know-the-two-usual-culprits">10.1 Measure First — and Know the Two Usual Culprits</a></li><li class="toc-l3"><a href="#102-uvloop-a-faster-event-loop" data-target="102-uvloop-a-faster-event-loop">10.2 uvloop — A Faster Event Loop</a></li><li class="toc-l3"><a href="#103-kill-accidental-serialization" data-target="103-kill-accidental-serialization">10.3 Kill Accidental Serialization</a></li><li class="toc-l3"><a href="#104-batch-and-pipeline-especially-at-the-database" data-target="104-batch-and-pipeline-especially-at-the-database">10.4 Batch and Pipeline — Especially at the Database</a></li><li class="toc-l3"><a href="#105-tune-connection-pools-and-concurrency-limits" data-target="105-tune-connection-pools-and-concurrency-limits">10.5 Tune Connection Pools and Concurrency Limits</a></li><li class="toc-l3"><a href="#106-know-when-async-has-stopped-being-the-answer" data-target="106-know-when-async-has-stopped-being-the-answer">10.6 Know When Async Has Stopped Being the Answer</a></li><li class="toc-l2"><a href="#part-11-debugging-production" data-target="part-11-debugging-production">Part 11 — Debugging &amp; Production</a></li><li class="toc-l3"><a href="#111-always-develop-with-debug-mode" data-target="111-always-develop-with-debug-mode">11.1 Always Develop with Debug Mode</a></li><li class="toc-l3"><a href="#112-the-error-catalog" data-target="112-the-error-catalog">11.2 The Error Catalog</a></li><li class="toc-l3"><a href="#113-graceful-shutdown" data-target="113-graceful-shutdown">11.3 Graceful Shutdown</a></li><li class="toc-l3"><a href="#114-logging-and-observability" data-target="114-logging-and-observability">11.4 Logging and Observability</a></li><li class="toc-l2"><a href="#part-12-recipes" data-target="part-12-recipes">Part 12 — Recipes</a></li><li class="toc-l3"><a href="#recipe-1-concurrent-download-to-disk-aiohttp-aiofiles" data-target="recipe-1-concurrent-download-to-disk-aiohttp-aiofiles">Recipe 1: Concurrent Download-to-Disk (aiohttp + aiofiles)</a></li><li class="toc-l3"><a href="#recipe-2-fast-bulk-load-a-file-into-postgres-aiofiles-asyncpg-copy" data-target="recipe-2-fast-bulk-load-a-file-into-postgres-aiofiles-asyncpg-copy">Recipe 2: Fast Bulk-Load a File into Postgres (aiofiles + asyncpg COPY)</a></li><li class="toc-l3"><a href="#recipe-3-bounded-concurrent-queries-through-an-asyncpg-pool" data-target="recipe-3-bounded-concurrent-queries-through-an-asyncpg-pool">Recipe 3: Bounded Concurrent Queries Through an asyncpg Pool</a></li><li class="toc-l3"><a href="#recipe-4-streaming-etl-pipeline-aiofiles-queue-asyncpg-copy" data-target="recipe-4-streaming-etl-pipeline-aiofiles-queue-asyncpg-copy">Recipe 4: Streaming ETL Pipeline (aiofiles + Queue + asyncpg COPY)</a></li><li class="toc-l3"><a href="#recipe-5-the-aiopg-variant-compatibility-path" data-target="recipe-5-the-aiopg-variant-compatibility-path">Recipe 5: The aiopg Variant (Compatibility Path)</a></li></ul></nav></aside>
+  <main><h1 id="asyncio-aiohttp-study-guide">Asyncio &amp; aiohttp Study Guide</h1>
+<p>A depth-first guide to <code>asyncio</code> and <code>aiohttp</code> for Python engineers who need to make I/O-bound code fast and keep it correct. It assumes you can write ordinary Python and have at least seen <code>async</code>/<code>await</code>; it does <strong>not</strong> assume you understand the event loop. This guide is the deep dive that the <a href="PYTHON_CONCURRENCY.md">Python Concurrency</a> survey hands off to — that guide answers "which concurrency model do I pick?"; this one answers "I've picked asyncio — now how do I master it, build real services with aiohttp, and actually make it fast?"</p>
+<blockquote>
+<p><em>Async doesn't make your code run faster. It makes your code stop waiting. Everything in this guide follows from that one distinction — and most async bugs come from forgetting it.</em></p>
+</blockquote>
+<p>The guide leans hard on two things you asked any performance-minded async guide to deliver: <strong>aiohttp</strong> (client and server, in depth) and <strong>practical performance</strong> — bounded concurrency, connection pooling, <code>uvloop</code>, bulk-loading Postgres with <code>asyncpg</code>, streaming files with <code>aiofiles</code>, and the anti-patterns that quietly serialize your "concurrent" code.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ul>
+<li><a href="#part-1--why-async-and-when-it-actually-helps">Part 1 — Why Async, and When It Actually Helps</a></li>
+<li><a href="#part-2--the-execution-model">Part 2 — The Execution Model</a></li>
+<li><a href="#part-3--running-things-concurrently">Part 3 — Running Things Concurrently</a></li>
+<li><a href="#part-4--cancellation-timeouts--exceptions">Part 4 — Cancellation, Timeouts &amp; Exceptions</a></li>
+<li><a href="#part-5--coordination--backpressure">Part 5 — Coordination &amp; Backpressure</a></li>
+<li><a href="#part-6--the-cardinal-sin-blocking-the-event-loop">Part 6 — The Cardinal Sin: Blocking the Event Loop</a></li>
+<li><a href="#part-7--aiohttp-client">Part 7 — aiohttp Client</a></li>
+<li><a href="#part-8--aiohttp-server">Part 8 — aiohttp Server</a></li>
+<li><a href="#part-9--talking-to-databases--files">Part 9 — Talking to Databases &amp; Files</a></li>
+<li><a href="#part-10--performance-measuring--tuning">Part 10 — Performance: Measuring &amp; Tuning</a></li>
+<li><a href="#part-11--debugging--production">Part 11 — Debugging &amp; Production</a></li>
+<li><a href="#part-12--recipes">Part 12 — Recipes</a></li>
+</ul>
+<hr>
+<h2 id="part-1-why-async-and-when-it-actually-helps">Part 1 — Why Async, and When It Actually Helps</h2>
+<h3 id="11-the-one-idea">1.1 The One Idea</h3>
+<p>A normal Python program that makes a network call <em>blocks</em>: it sends the request, then sits on the thread doing nothing until the response comes back. If a request takes 200ms and you make 100 of them, that's 20 seconds of mostly <em>waiting</em> — the CPU is idle the whole time.</p>
+<p><code>asyncio</code> lets a single thread do something else during that wait. When one coroutine is parked waiting on the network, the event loop runs another. The CPU stays busy issuing requests and processing responses instead of idling. Make those same 100 requests concurrently and they finish in roughly the time of the slowest one, not the sum of all of them.</p>
+<p>That is the entire value proposition: <strong>async eliminates idle waiting on I/O.</strong> It does not make any individual operation faster, and it does not add CPU cores. Hold onto that — it's the lens for every decision in this guide.</p>
+<h3 id="12-io-bound-vs-cpu-bound-the-decision-that-comes-first">1.2 I/O-Bound vs CPU-Bound — The Decision That Comes First</h3>
+<p>Whether async helps you depends entirely on what your program spends its time doing:</p>
+<ul>
+<li>
+<p><strong>I/O-bound</strong> — most of the time is spent <em>waiting</em>: network calls, database queries, reading files, talking to other services. The CPU is mostly idle. <strong>This is where async shines.</strong> A web scraper, an API gateway, a service that fans out to ten microservices — async can turn sequential waiting into concurrent waiting and win enormously.</p>
+</li>
+<li>
+<p><strong>CPU-bound</strong> — most of the time is spent <em>computing</em>: parsing huge documents, image processing, numerical work, cryptography. The CPU is pegged. <strong>Async does nothing for you here.</strong> Worse, a long computation inside a coroutine <em>blocks the entire event loop</em> (Part 6) and stalls every other task. CPU-bound work needs multiple processes (or a native-threaded library), not asyncio — see the <a href="PYTHON_CONCURRENCY.md">Python Concurrency</a> guide for that side.</p>
+</li>
+</ul>
+<pre><code class="language-text">   Sequential I/O          Concurrent I/O (async)
+   req1 ====              req1 ====
+        req2 ====         req2 ====
+             req3 ====    req3 ====
+   |--- 3× latency ---|   |- 1× latency -|
+</code></pre>
+<p>The first question for any "make it faster with async" task is therefore not <em>how</em> but <em>whether</em>: <strong>is this workload actually I/O-bound?</strong> If you're not waiting on I/O, async is the wrong tool and Part 10's tuning won't save you.</p>
+<h3 id="13-async-vs-threads-vs-processes">1.3 Async vs Threads vs Processes</h3>
+<p>Python has three concurrency models; async is one of them, and it's worth knowing precisely why you'd pick it:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>asyncio</strong></th>
+<th><strong>Threads</strong></th>
+<th><strong>Processes</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Good for</td>
+<td>I/O-bound, <em>many</em> concurrent ops</td>
+<td>I/O-bound, <em>some</em> blocking calls</td>
+<td>CPU-bound</td>
+</tr>
+<tr>
+<td>Concurrency unit</td>
+<td>Coroutine (cheap — KBs)</td>
+<td>OS thread (MBs)</td>
+<td>OS process (heavy)</td>
+</tr>
+<tr>
+<td>How many feasible</td>
+<td>10,000s+</td>
+<td>100s</td>
+<td>~ CPU cores</td>
+</tr>
+<tr>
+<td>Switching</td>
+<td>Cooperative (at <code>await</code>)</td>
+<td>Preemptive (OS)</td>
+<td>Preemptive (OS)</td>
+</tr>
+<tr>
+<td>Parallel on multiple cores?</td>
+<td>No (one thread)</td>
+<td>No (the GIL)*</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Failure mode</td>
+<td>One blocking call stalls <em>everything</em></td>
+<td>Races, locks, deadlocks</td>
+<td>IPC cost, memory</td>
+</tr>
+</tbody>
+</table>
+<p>* Until the free-threaded build (PEP 703, experimental in 3.13) matures.</p>
+<p>The reason to reach for asyncio specifically: it scales to <strong>tens of thousands</strong> of concurrent operations on one thread with kilobytes of overhead each, because a parked coroutine is just a small object, not an OS thread with a megabyte stack. A thread pool tops out in the hundreds before context-switching and memory cost dominate. If you need 5,000 simultaneous outbound HTTP requests or 50,000 open WebSocket connections (see the <a href="WEBSOCKETS_STUDY_GUIDE.md">WebSockets</a> guide), async is the only model that does it comfortably.</p>
+<h3 id="14-the-cost-you-take-on">1.4 The Cost You Take On</h3>
+<p>Async is not free, and pretending otherwise leads to the bugs in Parts 4, 6, and 11. The honest costs:</p>
+<ul>
+<li><strong>It's viral.</strong> <code>await</code> can only be used inside <code>async def</code>. Once one function is async, its callers tend to become async too — "async all the way down." Mixing sync and async correctly takes care.</li>
+<li><strong>The whole ecosystem must cooperate.</strong> A single blocking library call (the classic: <code>requests</code>, or <code>time.sleep</code>, or a synchronous DB driver) freezes the event loop and every task on it (Part 6). You need <em>async</em> libraries — <code>aiohttp</code> not <code>requests</code>, <code>asyncpg</code> not <code>psycopg2</code>-sync.</li>
+<li><strong>The failure modes are unfamiliar.</strong> "Coroutine was never awaited," "Task was destroyed but it is pending," accidental serialization that makes your concurrent code secretly sequential. Part 11 is a catalog of these.</li>
+</ul>
+<p>Take on this cost when the workload is genuinely I/O-bound and concurrency is high enough to matter. For a script that makes three API calls, <code>ThreadPoolExecutor</code> is simpler and just as fast. For a service juggling thousands of concurrent I/O operations, async pays for itself many times over.</p>
+<p>References: <a href="https://docs.python.org/3/library/asyncio.html">asyncio — Asynchronous I/O</a>, <a href="https://docs.python.org/3/library/asyncio-dev.html">Developing with asyncio</a>.</p>
+<hr>
+<h2 id="part-2-the-execution-model">Part 2 — The Execution Model</h2>
+<p>Most async bugs trace back to a fuzzy mental model of what's actually happening. This part makes it precise. Internalize it and the rest of the guide is mostly application.</p>
+<h3 id="21-coroutines-calling-one-does-nothing">2.1 Coroutines: Calling One Does Nothing</h3>
+<p>A coroutine function is defined with <code>async def</code>. The crucial surprise: <strong>calling it does not run it.</strong> It returns a coroutine <em>object</em> — a paused computation waiting to be driven.</p>
+<pre><code class="language-python">import asyncio
+
+async def greet():
+    print(&quot;hello&quot;)
+
+coro = greet()          # prints NOTHING — just creates a coroutine object
+print(type(coro))       # &lt;class 'coroutine'&gt;
+# RuntimeWarning: coroutine 'greet' was never awaited
+
+asyncio.run(greet())    # NOW it runs and prints &quot;hello&quot;
+</code></pre>
+<p>This is the single most common beginner trip-up, and the source of the <code>coroutine 'x' was never awaited</code> warning (Part 11). A coroutine only makes progress when something <em>drives</em> it: you <code>await</code> it, you wrap it in a Task, or you hand it to <code>asyncio.run</code>.</p>
+<h3 id="22-the-event-loop">2.2 The Event Loop</h3>
+<p>The <strong>event loop</strong> is the engine. It maintains a queue of ready-to-run tasks and a set of tasks parked on I/O. Its job is a simple cycle: run a task until it hits an <code>await</code> that can't complete immediately; park it; run the next ready task; when an awaited I/O operation completes, mark its task ready again.</p>
+<pre><code class="language-python">asyncio.run(main())     # creates a loop, runs main() to completion, closes the loop
+</code></pre>
+<p><code>asyncio.run</code> is the standard entry point. It builds a fresh event loop, runs your top-level coroutine until it finishes, then cleans up. You generally call it <strong>once</strong>, at the top of your program. (Calling it inside an already-running loop raises <code>RuntimeError: asyncio.run() cannot be called from a running event loop</code> — the Jupyter/<code>await</code>-at-top-level gotcha from Part 11.)</p>
+<p>There is exactly <strong>one loop, on one thread</strong>, running <strong>one</strong> piece of your code at any instant. Async concurrency is not parallelism — it's fast interleaving.</p>
+<h3 id="23-await-is-a-yield-point">2.3 <code>await</code> Is a Yield Point</h3>
+<p><code>await</code> does two things: it waits for an awaitable to produce a result, and — critically — it <strong>gives the event loop permission to run other tasks</strong> while waiting. Every <code>await</code> is a point where control <em>may</em> leave your coroutine and go elsewhere.</p>
+<pre><code class="language-python">async def fetch_user(uid):
+    print(f&quot;start {uid}&quot;)
+    await asyncio.sleep(1)      # yields control here; loop runs other tasks for ~1s
+    print(f&quot;done {uid}&quot;)
+    return uid
+</code></pre>
+<p>This has a profound and easily-missed consequence: <strong>between two <code>await</code>s, your coroutine runs without interruption</strong> (no other task can touch shared state), but <strong>at every <code>await</code>, other tasks can run and mutate shared state.</strong> That's why asyncio rarely needs locks for CPU operations — but <em>does</em> need them when a critical section spans an <code>await</code> (Part 5). Cooperative scheduling means you always know where the switch points are: they're exactly the <code>await</code>s.</p>
+<p>Equally important in reverse: code with <strong>no <code>await</code></strong> never yields. A coroutine that does a long synchronous computation, or calls a blocking function, holds the loop hostage — nothing else runs until it returns. That's Part 6, and it's the cardinal sin of async.</p>
+<h3 id="24-coroutines-tasks-and-futures">2.4 Coroutines, Tasks, and Futures</h3>
+<p>Three "awaitable" things exist, and knowing the difference clears up most confusion:</p>
+<ul>
+<li>
+<p><strong>Coroutine</strong> — the paused computation from an <code>async def</code>. Awaiting one runs it <em>inline</em>: <code>result = await fetch_user(1)</code> runs <code>fetch_user</code> to completion before the next line. By itself, a coroutine gives you <strong>sequencing, not concurrency</strong>.</p>
+</li>
+<li>
+<p><strong>Task</strong> — a coroutine <em>scheduled on the loop to run concurrently</em>. <code>asyncio.create_task(coro)</code> wraps a coroutine in a Task and hands it to the loop immediately; the Task makes progress on its own at await points, alongside whatever else is running. This is the unit of concurrency.</p>
+</li>
+<li>
+<p><strong>Future</strong> — a low-level placeholder for a result that will exist later. You rarely create Futures directly; libraries use them under the hood. A Task <em>is</em> a kind of Future.</p>
+</li>
+</ul>
+<pre><code class="language-python"># Awaiting a coroutine directly = sequential. Total time ≈ 2 seconds.
+async def sequential():
+    a = await fetch_user(1)     # runs fully...
+    b = await fetch_user(2)     # ...then this runs. One after the other.
+
+# Wrapping in Tasks = concurrent. Total time ≈ 1 second.
+async def concurrent():
+    t1 = asyncio.create_task(fetch_user(1))   # scheduled, starts running
+    t2 = asyncio.create_task(fetch_user(2))   # scheduled, starts running
+    a = await t1                               # both are already in flight;
+    b = await t2                               # we just wait for their results
+</code></pre>
+<p>The difference between <code>sequential</code> and <code>concurrent</code> above is the difference between "using asyncio" and "benefiting from asyncio." It is <em>the</em> thing people get wrong (Part 10 calls it accidental serialization). <code>await some_coroutine()</code> in a loop is sequential; you need Tasks — or the higher-level <code>gather</code>/<code>TaskGroup</code> of Part 3 — to actually run things at the same time.</p>
+<h3 id="25-one-footgun-to-name-now-keep-a-reference-to-your-tasks">2.5 One Footgun to Name Now: Keep a Reference to Your Tasks</h3>
+<p><code>create_task</code> schedules a Task, but the event loop only keeps a <strong>weak</strong> reference to it. If you don't hold a reference yourself, the garbage collector can destroy the Task mid-flight — producing the baffling <code>Task was destroyed but it is pending!</code> (Part 11).</p>
+<pre><code class="language-python"># BAD: nothing holds the task; it may be GC'd before finishing
+asyncio.create_task(background_job())
+
+# GOOD: keep a strong reference until it's done
+background_tasks = set()
+task = asyncio.create_task(background_job())
+background_tasks.add(task)
+task.add_done_callback(background_tasks.discard)   # clean up when finished
+</code></pre>
+<p>In practice the cleanest fix is to not manage bare tasks at all — use a <code>TaskGroup</code> (Part 3), which owns its tasks and guarantees they complete. We flag the footgun here because it follows directly from "the loop only weakly references tasks," and it explains an error you <em>will</em> otherwise hit.</p>
+<p>References: <a href="https://docs.python.org/3/library/asyncio-task.html">Coroutines and Tasks</a>, <a href="https://docs.python.org/3/library/asyncio-task.html#asyncio.create_task"><code>asyncio.create_task</code></a>, <a href="https://docs.python.org/3/library/asyncio-eventloop.html">Event Loop</a>.</p>
+<hr>
+<h2 id="part-3-running-things-concurrently">Part 3 — Running Things Concurrently</h2>
+<p>Part 2 established that concurrency comes from Tasks, not from awaiting coroutines inline. This part covers the high-level APIs you'll actually use to launch and collect concurrent work. There are four, and they are not interchangeable.</p>
+<h3 id="31-asynciogather-run-many-collect-results-in-order">3.1 <code>asyncio.gather</code> — Run Many, Collect Results in Order</h3>
+<p><code>gather</code> schedules a batch of awaitables concurrently and returns their results as a list, <strong>in the order you passed them</strong> (not the order they finished):</p>
+<pre><code class="language-python">import asyncio
+
+async def fetch(uid):
+    await asyncio.sleep(uid)        # pretend this is a network call
+    return f&quot;user-{uid}&quot;
+
+async def main():
+    # All three run concurrently; total time ≈ 3s (the slowest), not 6s (the sum)
+    results = await asyncio.gather(fetch(1), fetch(2), fetch(3))
+    print(results)                  # ['user-1', 'user-2', 'user-3'] — input order
+
+asyncio.run(main())
+</code></pre>
+<p><code>gather</code> is the workhorse for "do these N things at once and give me all the answers." A common idiom is to gather over a comprehension:</p>
+<pre><code class="language-python">urls = [...]
+results = await asyncio.gather(*(fetch(u) for u in urls))   # the * unpacks the generator
+</code></pre>
+<p><strong>The exception behavior is a trap.</strong> By default, if any awaitable raises, <code>gather</code> propagates that first exception immediately — but the <em>other</em> tasks keep running, now unobserved, and you lose their results (and may get warnings about un-retrieved exceptions). Pass <code>return_exceptions=True</code> to instead get a list where failures appear as exception objects alongside successful results:</p>
+<pre><code class="language-python">results = await asyncio.gather(*coros, return_exceptions=True)
+for r in results:
+    if isinstance(r, Exception):
+        log.warning(&quot;one failed: %r&quot;, r)     # handle per-item failure
+    else:
+        process(r)
+</code></pre>
+<p>Use <code>return_exceptions=True</code> whenever partial success is acceptable (scraping 1,000 URLs and tolerating a few failures). Use the default when any failure should abort the batch — but prefer <code>TaskGroup</code> (next) for that case, because it cleans up properly.</p>
+<p>References: <a href="https://docs.python.org/3/library/asyncio-task.html#asyncio.gather"><code>asyncio.gather</code></a>.</p>
+<h3 id="32-asynciotaskgroup-structured-concurrency-311">3.2 <code>asyncio.TaskGroup</code> — Structured Concurrency (3.11+)</h3>
+<p><code>TaskGroup</code> (Python 3.11+) is the <strong>modern, preferred</strong> way to run concurrent tasks. It's an async context manager that owns its tasks: it won't exit the <code>async with</code> block until all of them finish, and if any task raises, it <strong>cancels the rest</strong> and propagates the error. This is <em>structured concurrency</em> — tasks can't outlive the block that spawned them, so you can't leak orphaned tasks.</p>
+<pre><code class="language-python">async def main():
+    async with asyncio.TaskGroup() as tg:
+        t1 = tg.create_task(fetch(1))
+        t2 = tg.create_task(fetch(2))
+        t3 = tg.create_task(fetch(3))
+    # On exit: all tasks are guaranteed done. Results available via .result().
+    print(t1.result(), t2.result(), t3.result())
+</code></pre>
+<p>Why prefer it over <code>gather</code>:</p>
+<ul>
+<li><strong>No leaked tasks.</strong> The block can't be left with tasks still running, so the "keep a reference" footgun (Part 2.5) and "Task was destroyed" error simply can't happen.</li>
+<li><strong>Correct cancellation.</strong> If one task fails, the others are cancelled rather than left running unobserved.</li>
+<li><strong>Grouped errors.</strong> Multiple simultaneous failures surface as an <code>ExceptionGroup</code>, handled with <code>except*</code>:</li>
+</ul>
+<pre><code class="language-python">try:
+    async with asyncio.TaskGroup() as tg:
+        for u in urls:
+            tg.create_task(fetch(u))
+except* ConnectionError as eg:
+    # eg.exceptions is the tuple of all ConnectionErrors that occurred
+    log.error(&quot;%d connections failed&quot;, len(eg.exceptions))
+except* ValueError as eg:
+    log.error(&quot;%d validation errors&quot;, len(eg.exceptions))
+</code></pre>
+<p>For new code on 3.11+, <strong>default to <code>TaskGroup</code></strong>; reach for <code>gather</code> mainly when you specifically want <code>return_exceptions=True</code> semantics (collect-all-including-failures) or you're on an older Python.</p>
+<p>References: <a href="https://docs.python.org/3/library/asyncio-task.html#task-groups"><code>asyncio.TaskGroup</code></a>, <a href="https://peps.python.org/pep-0654/">PEP 654 — Exception Groups</a>.</p>
+<h3 id="33-asyncioas_completed-process-results-as-they-arrive">3.3 <code>asyncio.as_completed</code> — Process Results as They Arrive</h3>
+<p>Sometimes you don't want to wait for the whole batch — you want to handle each result the moment it's ready, fastest first. <code>as_completed</code> yields awaitables in <em>completion</em> order:</p>
+<pre><code class="language-python">async def main():
+    coros = [fetch(3), fetch(1), fetch(2)]
+    for earliest in asyncio.as_completed(coros):
+        result = await earliest         # yields in finish order: user-1, user-2, user-3
+        print(&quot;ready:&quot;, result)         # start processing the fast ones immediately
+</code></pre>
+<p>This matters for latency: if you're querying five replicas and want to act on the first response, or streaming results to a user as each completes, <code>as_completed</code> lets you start work without waiting for stragglers.</p>
+<p>References: <a href="https://docs.python.org/3/library/asyncio-task.html#asyncio.as_completed"><code>asyncio.as_completed</code></a>.</p>
+<h3 id="34-asynciowait-low-level-control">3.4 <code>asyncio.wait</code> — Low-Level Control</h3>
+<p><code>wait</code> is the low-level primitive. It takes <strong>Tasks</strong> (not bare coroutines — wrap them first) and returns two sets, <code>(done, pending)</code>, giving you fine control over <em>when</em> to stop waiting via <code>return_when</code>:</p>
+<pre><code class="language-python">tasks = [asyncio.create_task(fetch(u)) for u in urls]
+done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+# Act on whatever finished first; `pending` is still running — cancel or keep waiting.
+for t in pending:
+    t.cancel()
+</code></pre>
+<p><code>return_when</code> can be <code>FIRST_COMPLETED</code>, <code>FIRST_EXCEPTION</code>, or <code>ALL_COMPLETED</code> (the default). Unlike <code>gather</code>/<code>TaskGroup</code>, <code>wait</code> does <strong>not</strong> propagate exceptions — a failed task just lands in <code>done</code>, and you inspect it yourself. Most code should use <code>gather</code> or <code>TaskGroup</code>; reach for <code>wait</code> only when you need this manual done/pending control.</p>
+<h3 id="35-choosing-among-them">3.5 Choosing Among Them</h3>
+<table>
+<thead>
+<tr>
+<th>Use</th>
+<th>When</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>TaskGroup</code></td>
+<td>Default for 3.11+. Run a batch, all-or-nothing, clean cancellation and error grouping.</td>
+</tr>
+<tr>
+<td><code>gather</code></td>
+<td>You want results as a list and/or <code>return_exceptions=True</code> partial-success semantics; or pre-3.11.</td>
+</tr>
+<tr>
+<td><code>as_completed</code></td>
+<td>You want to process results in completion order (latency-sensitive, streaming).</td>
+</tr>
+<tr>
+<td><code>wait</code></td>
+<td>You need low-level <code>(done, pending)</code> control, e.g. "act on the first to finish, cancel the rest."</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="part-4-cancellation-timeouts-exceptions">Part 4 — Cancellation, Timeouts &amp; Exceptions</h2>
+<p>This is where async stops being "functions with <code>await</code>" and starts being a discipline. Cancellation and timeouts are first-class in asyncio, and getting them wrong causes hung tasks, leaked resources, and swallowed errors. Skipping this part is why people's async code "mostly works."</p>
+<h3 id="41-timeouts">4.1 Timeouts</h3>
+<p>Never wait forever on I/O. asyncio gives you two ways to bound it.</p>
+<p><strong><code>asyncio.timeout</code> (3.11+)</strong> — the modern, preferred context manager. If the block doesn't finish in time, the operation inside is cancelled and <code>TimeoutError</code> is raised:</p>
+<pre><code class="language-python">async def main():
+    try:
+        async with asyncio.timeout(5):       # 5-second budget for everything inside
+            data = await fetch_slow_resource()
+    except TimeoutError:
+        log.warning(&quot;gave up after 5s&quot;)
+</code></pre>
+<p><strong><code>asyncio.wait_for(aw, timeout)</code></strong> — the older single-awaitable form, still common:</p>
+<pre><code class="language-python">try:
+    data = await asyncio.wait_for(fetch_slow_resource(), timeout=5)
+except TimeoutError:
+    log.warning(&quot;timed out&quot;)
+</code></pre>
+<p>Prefer <code>asyncio.timeout</code> on 3.11+: it wraps a whole block (not just one awaitable), and there's also <code>asyncio.timeout_at(deadline)</code> for an absolute deadline shared across several operations. <strong>A timeout somewhere is mandatory</strong> for any external call — the library default (aiohttp's is 5 minutes, Part 7) is almost never what you want.</p>
+<p>References: <a href="https://docs.python.org/3/library/asyncio-task.html#asyncio.timeout"><code>asyncio.timeout</code></a>, <a href="https://docs.python.org/3/library/asyncio-task.html#asyncio.wait_for"><code>asyncio.wait_for</code></a>.</p>
+<h3 id="42-how-cancellation-actually-works">4.2 How Cancellation Actually Works</h3>
+<p>Cancellation in asyncio is <strong>not</strong> a kill switch. Calling <code>task.cancel()</code> schedules a <code>CancelledError</code> to be raised inside the coroutine <strong>at its next <code>await</code></strong>. The coroutine then unwinds like any exception — running <code>finally</code> blocks and <code>async with</code> cleanup on the way out.</p>
+<pre><code class="language-python">async def worker():
+    try:
+        while True:
+            await do_chunk()            # cancellation lands at one of these awaits
+    except asyncio.CancelledError:
+        await flush_partial_results()   # cleanup runs
+        raise                            # ALWAYS re-raise (see below)
+    finally:
+        release_resources()             # finally always runs
+
+task = asyncio.create_task(worker())
+await asyncio.sleep(1)
+task.cancel()                            # request cancellation
+await task                               # await it to let cleanup complete
+</code></pre>
+<p>Two rules that prevent the worst bugs:</p>
+<ol>
+<li>
+<p><strong>A coroutine that never <code>await</code>s cannot be cancelled.</strong> Cancellation is delivered at await points; a tight synchronous loop with no <code>await</code> is uncancellable <em>and</em> blocks the loop (Part 6). Two bugs for the price of one.</p>
+</li>
+<li>
+<p><strong>If you catch <code>CancelledError</code>, re-raise it.</strong> Swallowing it (catching and not re-raising) tells asyncio "I refused cancellation," which breaks timeouts and <code>TaskGroup</code> shutdown in ways that are maddening to debug. Catch it only to clean up, then <code>raise</code>.</p>
+</li>
+</ol>
+<h3 id="43-cancellederror-is-not-a-normal-exception">4.3 <code>CancelledError</code> Is Not a Normal Exception</h3>
+<p>Since Python 3.8, <code>asyncio.CancelledError</code> inherits from <code>BaseException</code>, <strong>not</strong> <code>Exception</code>. This is deliberate and important: a blanket <code>except Exception</code> will <strong>not</strong> accidentally swallow a cancellation.</p>
+<pre><code class="language-python">try:
+    await something()
+except Exception as e:        # does NOT catch CancelledError — good
+    log.error(&quot;real error: %r&quot;, e)
+# CancelledError propagates past this handler, as it should
+</code></pre>
+<p>If you write <code>except BaseException</code> or bare <code>except:</code>, you <em>will</em> catch cancellation — almost always a bug. Catch <code>Exception</code> for real errors; let <code>CancelledError</code> flow.</p>
+<h3 id="44-shielding-critical-sections">4.4 Shielding Critical Sections</h3>
+<p>Occasionally an operation must complete even if its caller is cancelled — committing a transaction, releasing a distributed lock. <code>asyncio.shield</code> protects an awaitable from cancellation propagating inward:</p>
+<pre><code class="language-python"># If this coroutine is cancelled, the commit still completes rather than
+# being interrupted half-way.
+await asyncio.shield(commit_transaction())
+</code></pre>
+<p>Use <code>shield</code> sparingly and deliberately — it's an escape hatch from structured cancellation, and overusing it reintroduces the leaked-work problems structured concurrency exists to prevent.</p>
+<p>References: <a href="https://docs.python.org/3/library/asyncio-task.html#asyncio.shield"><code>asyncio.shield</code></a>, <a href="https://docs.python.org/3/library/asyncio-task.html#task-cancellation">Task cancellation</a>.</p>
+<h3 id="45-exception-propagation-gather-vs-taskgroup">4.5 Exception Propagation: gather vs TaskGroup</h3>
+<p>Tying Parts 3 and 4 together, because the difference bites in production:</p>
+<ul>
+<li><strong><code>gather</code> (default)</strong> — the first exception propagates to the caller; sibling tasks keep running, now unobserved. You can lose results and leak work.</li>
+<li><strong><code>gather(return_exceptions=True)</code></strong> — nothing propagates; exceptions come back as values in the result list for you to inspect.</li>
+<li><strong><code>TaskGroup</code></strong> — the first exception cancels all siblings, then <em>all</em> exceptions that occurred are raised together as an <code>ExceptionGroup</code> (handle with <code>except*</code>). Nothing leaks.</li>
+</ul>
+<p>The practical guidance: for "all of these must succeed or we abort cleanly," <code>TaskGroup</code> is correct because it cancels and reports everything. For "run all of these and tell me which succeeded and which failed," <code>gather(return_exceptions=True)</code> is the tool. Plain <code>gather</code> with default exception handling is the one to be wary of — it's easy to reach for and easy to leak work with.</p>
+<hr>
+<h2 id="part-5-coordination-backpressure">Part 5 — Coordination &amp; Backpressure</h2>
+<p>Launching 10,000 coroutines is easy. Launching 10,000 coroutines that all hit your database at once is how you take the database down. This part is about <em>controlling</em> concurrency — and it contains the single most important performance-and-stability lever in async: <strong>bounding how much runs at once.</strong></p>
+<h3 id="51-semaphore-bound-your-concurrency">5.1 Semaphore — Bound Your Concurrency</h3>
+<p>A naive <code>gather</code> over 5,000 URLs creates 5,000 simultaneous connections. That will exhaust file descriptors, blow past the remote server's rate limits, or melt your connection pool. An <code>asyncio.Semaphore</code> caps how many coroutines are in a section at once:</p>
+<pre><code class="language-python">import asyncio, aiohttp
+
+async def fetch(session, url, sem):
+    async with sem:                      # acquire a slot; block here if all are taken
+        async with session.get(url) as resp:
+            return await resp.text()
+    # slot released automatically on exit
+
+async def main(urls):
+    sem = asyncio.Semaphore(20)          # at most 20 requests in flight at once
+    async with aiohttp.ClientSession() as session:
+        results = await asyncio.gather(*(fetch(session, u, sem) for u in urls))
+</code></pre>
+<p>This pattern — <strong><code>gather</code> over everything, <code>Semaphore</code> to bound it</strong> — is the backbone of every well-behaved async fan-out in this guide. You still <em>create</em> all the coroutines, but only N of them are doing work at any moment; the rest wait their turn at the <code>async with sem</code>. Tuning that N is a core part of performance work (Part 10): too low and you leave throughput on the table, too high and you overwhelm the downstream.</p>
+<blockquote>
+<p>A rule of thumb worth internalizing: <strong>unbounded concurrency is a bug, not a feature.</strong> Any time you <code>gather</code> over a collection whose size you don't control, there should be a semaphore (or a worker-pool, below) bounding it.</p>
+</blockquote>
+<p>References: <a href="https://docs.python.org/3/library/asyncio-sync.html#asyncio.Semaphore"><code>asyncio.Semaphore</code></a>.</p>
+<h3 id="52-queue-the-producerconsumer-pattern">5.2 Queue — The Producer/Consumer Pattern</h3>
+<p><code>asyncio.Queue</code> decouples work production from work consumption, and a <em>bounded</em> queue gives you <strong>backpressure</strong> for free: when the queue is full, producers block on <code>put</code> until consumers catch up, so a fast producer can't pile unbounded work into memory.</p>
+<pre><code class="language-python">async def producer(queue, items):
+    for item in items:
+        await queue.put(item)            # blocks when the queue is full → backpressure
+    for _ in range(NUM_WORKERS):
+        await queue.put(None)            # one sentinel per worker to signal &quot;done&quot;
+
+async def worker(queue):
+    while True:
+        item = await queue.get()
+        if item is None:                 # sentinel: shut this worker down
+            queue.task_done()
+            break
+        await process(item)
+        queue.task_done()
+
+async def main(items):
+    queue = asyncio.Queue(maxsize=100)   # bounded → backpressure when full
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(producer(queue, items))
+        for _ in range(NUM_WORKERS := 10):
+            tg.create_task(worker(queue))
+</code></pre>
+<p>This fixed-worker-pool shape is the other way to bound concurrency (versus the semaphore): you spawn exactly N workers that pull from a shared queue. It's the right structure for streaming pipelines — ingest a large file, transform, write to a database — where you want steady, bounded throughput rather than a single giant fan-out. We build exactly this pipeline in Part 12.</p>
+<p>References: <a href="https://docs.python.org/3/library/asyncio-queue.html"><code>asyncio.Queue</code></a>.</p>
+<h3 id="53-lock-protecting-state-across-await">5.3 Lock — Protecting State Across <code>await</code></h3>
+<p>Recall from Part 2.3 that other tasks can run at every <code>await</code>. If a critical section <em>spans</em> an <code>await</code> and touches shared mutable state, you have a race — and you need <code>asyncio.Lock</code>:</p>
+<pre><code class="language-python">lock = asyncio.Lock()
+
+async def transfer(account, amount):
+    async with lock:                     # only one task in this block at a time
+        balance = await read_balance(account)   # await → another task could run...
+        await write_balance(account, balance + amount)  # ...so guard the read+write
+</code></pre>
+<p>Without the lock, two <code>transfer</code>s could both read the old balance during each other's <code>await</code> and one update would be lost. Note the nuance: you do <strong>not</strong> need a lock for a sequence of pure synchronous statements (no <code>await</code> between them means no task switch). You need it precisely when the invariant must hold across a suspension point. This is rarer than in threaded code — and that's one of async's quiet advantages — but when you need it, you really need it.</p>
+<h3 id="54-event-signaling-between-tasks">5.4 Event — Signaling Between Tasks</h3>
+<p><code>asyncio.Event</code> is a one-bit broadcast: tasks <code>await event.wait()</code> until another task calls <code>event.set()</code>. It's how you signal "the system is ready" or "shutdown requested" to many waiters at once:</p>
+<pre><code class="language-python">ready = asyncio.Event()
+
+async def consumer():
+    await ready.wait()                   # park until someone sets the event
+    await do_work()
+
+async def setup():
+    await initialize()
+    ready.set()                          # wake every waiter
+</code></pre>
+<p><code>Semaphore</code>, <code>Queue</code>, <code>Lock</code>, and <code>Event</code> round out the coordination toolkit. In practice you'll reach for <code>Semaphore</code> (bound a fan-out) and <code>Queue</code> (pipelines) constantly, <code>Lock</code> occasionally, and <code>Event</code> for lifecycle signaling.</p>
+<p>References: <a href="https://docs.python.org/3/library/asyncio-sync.html">Synchronization Primitives</a>.</p>
+<hr>
+<h2 id="part-6-the-cardinal-sin-blocking-the-event-loop">Part 6 — The Cardinal Sin: Blocking the Event Loop</h2>
+<p>Everything in this guide depends on one rule, and breaking it silently destroys the performance you came for. <strong>Never block the event loop.</strong> This part explains what that means, how to detect it, and how to do blocking work safely.</p>
+<h3 id="61-what-blocking-means-and-why-its-catastrophic">6.1 What "Blocking" Means and Why It's Catastrophic</h3>
+<p>There is one event loop on one thread (Part 2). When a coroutine runs synchronous code that takes time — a CPU computation, <code>time.sleep</code>, a blocking network call, reading a big file the synchronous way — it does <strong>not</strong> yield. The loop is stuck inside that call. <strong>Every other task on the loop is frozen</strong> until it returns: every in-flight request stalls, every timer is late, your "concurrent" server handles exactly one thing at a time.</p>
+<pre><code class="language-python">import time, asyncio
+
+async def handler():
+    time.sleep(2)                # DISASTER: blocks the ENTIRE loop for 2 seconds.
+                                 # Every other coroutine is frozen the whole time.
+    return &quot;done&quot;
+
+async def handler_fixed():
+    await asyncio.sleep(2)       # correct: yields; the loop runs other tasks for 2s
+    return &quot;done&quot;
+</code></pre>
+<p>The insidious part is that it <em>works</em> in development with one user and looks fine. Under concurrency it falls over, and the symptom — "my async server isn't any faster" — sends people tuning the wrong things. The usual culprits:</p>
+<ul>
+<li><code>time.sleep()</code> instead of <code>await asyncio.sleep()</code></li>
+<li><code>requests.get()</code> (or any sync HTTP client) instead of <code>aiohttp</code>/<code>httpx</code></li>
+<li>A synchronous database driver (<code>psycopg2</code> in sync mode) instead of <code>asyncpg</code>/<code>aiopg</code></li>
+<li><code>open(...).read()</code> on a large file instead of <code>aiofiles</code> (Section 6.4)</li>
+<li>Heavy CPU work — JSON-parsing a 100 MB payload, hashing, image resizing — inline in a coroutine</li>
+<li><code>json.dumps</code>/<code>loads</code>, regex, or compression on large data</li>
+</ul>
+<h3 id="62-detecting-it-debug-mode-and-slow-callback-warnings">6.2 Detecting It: Debug Mode and Slow-Callback Warnings</h3>
+<p>You don't have to guess. asyncio's <strong>debug mode</strong> logs a warning whenever a callback or coroutine step hogs the loop for too long (default: 100 ms):</p>
+<pre><code class="language-python">asyncio.run(main(), debug=True)        # enable debug mode
+# or: set the env var PYTHONASYNCIODEBUG=1
+# or: tune the threshold — loop.slow_callback_duration = 0.05  (50ms)
+</code></pre>
+<p>When something blocks, you'll see: <code>Executing &amp;lt;Task ...&amp;gt; took 2.003 seconds</code>. That line is gold — it points straight at the blocking call. Make a habit of running your test suite or a load test with debug mode on; it surfaces blocking before production does. For deeper digging, a sampling profiler like <a href="https://github.com/benfred/py-spy"><code>py-spy</code></a> can show where the loop thread spends time without modifying your code (Part 11).</p>
+<p>References: <a href="https://docs.python.org/3/library/asyncio-dev.html#asyncio-debug-mode">asyncio debug mode</a>.</p>
+<h3 id="63-offloading-blocking-work-to_thread-and-executors">6.3 Offloading Blocking Work: <code>to_thread</code> and Executors</h3>
+<p>When you <em>must</em> call blocking code (a library with no async version, an unavoidable CPU step), don't run it on the loop — push it to a thread or process so the loop stays free.</p>
+<p><strong>Blocking I/O → a thread.</strong> <code>asyncio.to_thread</code> (3.9+) runs a sync function in a thread pool and gives you an awaitable:</p>
+<pre><code class="language-python">import asyncio
+
+def blocking_io():
+    with open(&quot;big.bin&quot;, &quot;rb&quot;) as f:    # a blocking call from a sync library
+        return f.read()
+
+async def main():
+    # The loop keeps running other tasks while the thread does the blocking read
+    data = await asyncio.to_thread(blocking_io)
+</code></pre>
+<p>This works for blocking I/O because the GIL is released during I/O syscalls, so the thread genuinely runs in parallel with the loop. The older, more general form is <code>loop.run_in_executor(executor, func, *args)</code>.</p>
+<p><strong>CPU-bound work → a process.</strong> Threads don't help CPU-bound work (the GIL serializes Python bytecode). Offload to a <code>ProcessPoolExecutor</code> so the computation runs on another core, leaving both the loop and the GIL free:</p>
+<pre><code class="language-python">from concurrent.futures import ProcessPoolExecutor
+
+async def main():
+    loop = asyncio.get_running_loop()
+    with ProcessPoolExecutor() as pool:
+        # heavy_compute runs in a separate process, on a separate core
+        result = await loop.run_in_executor(pool, heavy_compute, big_input)
+</code></pre>
+<p>The decision rule restated: <strong>blocking I/O → <code>to_thread</code>; CPU-bound → <code>ProcessPoolExecutor</code> via <code>run_in_executor</code>; genuinely async I/O → just <code>await</code> it.</strong> Mixing these up is the root of most "async didn't help" disappointments.</p>
+<p>References: <a href="https://docs.python.org/3/library/asyncio-task.html#asyncio.to_thread"><code>asyncio.to_thread</code></a>, <a href="https://docs.python.org/3/library/asyncio-eventloop.html#executing-code-in-thread-or-process-pools">Running in threads / executors</a>.</p>
+<h3 id="64-file-io-is-special-enter-aiofiles">6.4 File I/O Is Special — Enter <code>aiofiles</code></h3>
+<p>Here's a subtlety that surprises people: <strong>there is no truly asynchronous file I/O on most systems.</strong> Sockets can be non-blocking at the OS level; ordinary disk file reads and writes generally cannot. So when you read a large file, that call blocks — even though it "feels" like the kind of I/O async should handle.</p>
+<p><a href="https://github.com/Tinche/aiofiles"><code>aiofiles</code></a> gives file operations an async API, but under the hood it does exactly what Section 6.3 prescribes: it <strong>delegates the blocking file operation to a thread pool</strong>. Set expectations correctly — <code>aiofiles</code> does <strong>not</strong> make disk I/O faster. Its job is to keep the <em>event loop unblocked</em> so that a slow file read doesn't freeze all your concurrent network work:</p>
+<pre><code class="language-python">import aiofiles
+
+async def read_config(path):
+    async with aiofiles.open(path, mode=&quot;r&quot;) as f:
+        return await f.read()            # the read happens in a thread; loop stays free
+
+async def stream_lines(path):
+    async with aiofiles.open(path, mode=&quot;r&quot;) as f:
+        async for line in f:             # iterate without loading the whole file
+            await handle(line)
+</code></pre>
+<p>So the mental model for <code>aiofiles</code>: it's the file-I/O-shaped wrapper around "offload blocking work to a thread" (Section 6.3), with a convenient <code>async with</code>/<code>async for</code> API. Use it whenever a coroutine touches the filesystem and you care about keeping the loop responsive — which, in an aiohttp server handling many requests, you always do. We use it heavily in the performance recipes of Part 12, paired with <code>aiohttp</code> (stream a download to disk) and <code>asyncpg</code> (read a file, bulk-load it).</p>
+<p>A caveat to keep honest: because <code>aiofiles</code> is thread-pool-backed, throwing thousands of concurrent file operations at it doesn't give thousands-fold parallelism — it's bounded by the thread pool, and ultimately by your disk. For massive <em>file-crunching</em> throughput (not just loop-friendliness), you're back to processes and the realities of disk bandwidth. <code>aiofiles</code> solves "don't freeze the loop," not "make the disk infinitely fast."</p>
+<p>References: <a href="https://github.com/Tinche/aiofiles"><code>aiofiles</code> (GitHub)</a>.</p>
+<hr>
+<h2 id="part-7-aiohttp-client">Part 7 — aiohttp Client</h2>
+<p><a href="https://docs.aiohttp.org/en/stable/"><code>aiohttp</code></a> is the de-facto asyncio HTTP library — both a client and a server. This part covers the client; it's what you reach for instead of <code>requests</code> (which is blocking and would freeze the loop, Part 6). Getting the client right is mostly about three things: reusing the session, bounding concurrency, and setting timeouts.</p>
+<h3 id="71-the-session-is-the-connection-pool-reuse-it">7.1 The Session Is the Connection Pool — Reuse It</h3>
+<p>The <code>ClientSession</code> owns the connection pool, the DNS cache, cookies, and default headers. <strong>Create one session and reuse it for the lifetime of your program (or request batch).</strong> Creating a session per request — the single most common aiohttp mistake — throws away connection pooling and TLS session reuse, turning every request into a fresh TCP+TLS handshake.</p>
+<pre><code class="language-python">import aiohttp, asyncio
+
+# WRONG: a new session (and new connection pool) per request
+async def fetch_bad(url):
+    async with aiohttp.ClientSession() as session:   # ← created and destroyed every call
+        async with session.get(url) as resp:
+            return await resp.text()
+
+# RIGHT: one session, reused across all requests
+async def fetch(session, url):
+    async with session.get(url) as resp:
+        resp.raise_for_status()                       # raise on 4xx/5xx
+        return await resp.text()
+
+async def main(urls):
+    async with aiohttp.ClientSession() as session:    # one pool for the whole batch
+        return await asyncio.gather(*(fetch(session, u) for u in urls))
+</code></pre>
+<p>In a long-lived service (like the aiohttp <em>server</em> of Part 8), create the session once at startup and store it on the app, closing it on shutdown — never per-request.</p>
+<p>References: <a href="https://docs.aiohttp.org/en/stable/client_quickstart.html">Client quickstart</a>, <a href="https://docs.aiohttp.org/en/stable/client_reference.html">Client reference</a>.</p>
+<h3 id="72-connection-pooling-with-tcpconnector">7.2 Connection Pooling with <code>TCPConnector</code></h3>
+<p>The <code>TCPConnector</code> controls the pool. Its limits are a primary performance and politeness lever:</p>
+<pre><code class="language-python">connector = aiohttp.TCPConnector(
+    limit=100,              # max total simultaneous connections (default 100)
+    limit_per_host=10,      # max simultaneous connections to one host (default 0 = unlimited)
+    ttl_dns_cache=300,      # cache DNS lookups for 5 minutes
+)
+session = aiohttp.ClientSession(connector=connector)
+</code></pre>
+<p><code>limit</code> is a hard ceiling on concurrent connections across the whole session; once reached, further requests queue until a connection frees up. This means the connector <em>itself</em> provides a form of concurrency bounding — but it's coarse (it caps connections, not your in-flight task count) and silent (tasks just wait). For clear, intentional control, pair it with an explicit <code>Semaphore</code> (Part 5.1). <code>limit_per_host</code> is the polite-citizen knob: it stops you from opening 100 connections to a single API and getting rate-limited or banned.</p>
+<p>References: <a href="https://docs.aiohttp.org/en/stable/client_advanced.html#limiting-connection-pool-size">Connection pooling / <code>TCPConnector</code></a>.</p>
+<h3 id="73-timeouts-set-them-explicitly">7.3 Timeouts — Set Them Explicitly</h3>
+<p>aiohttp's default total timeout is <strong>5 minutes</strong>. That is almost never what you want; a hung upstream would tie up a connection (and a task) for five minutes. Set timeouts deliberately:</p>
+<pre><code class="language-python">timeout = aiohttp.ClientTimeout(
+    total=30,           # whole operation: connect + send + receive
+    connect=5,          # acquiring a connection from the pool + establishing it
+    sock_connect=5,     # establishing a new socket connection
+    sock_read=10,       # max gap between reads of response data
+)
+async with aiohttp.ClientSession(timeout=timeout) as session:
+    async with session.get(url) as resp:    # uses the session default...
+        ...
+    # ...or override per request:
+    async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+        ...
+</code></pre>
+<p>Set a session-wide default that's sane for most calls, and override per-request where a specific endpoint needs more or less. This composes with <code>asyncio.timeout</code> (Part 4) — aiohttp's timeout bounds the HTTP operation; an outer <code>asyncio.timeout</code> can bound a higher-level unit of work that includes several calls.</p>
+<p>References: <a href="https://docs.aiohttp.org/en/stable/client_quickstart.html#timeouts">Timeouts</a>.</p>
+<h3 id="74-reading-responses-including-streaming">7.4 Reading Responses, Including Streaming</h3>
+<p>For small responses, read the whole body:</p>
+<pre><code class="language-python">async with session.get(url) as resp:
+    text = await resp.text()        # decoded str
+    data = await resp.json()        # parsed JSON
+    raw = await resp.read()         # raw bytes
+</code></pre>
+<p>For <strong>large</strong> responses — a multi-gigabyte file, a long export — never load the whole body into memory. Stream it in chunks. This is essential for the download-to-disk recipe in Part 12:</p>
+<pre><code class="language-python">async with session.get(url) as resp:
+    resp.raise_for_status()
+    async for chunk in resp.content.iter_chunked(64 * 1024):   # 64 KB at a time
+        await sink.write(chunk)     # write to aiofiles, a queue, another socket…
+</code></pre>
+<p>Streaming keeps memory flat regardless of response size, and lets you start processing before the whole body arrives.</p>
+<h3 id="75-bounded-concurrent-fan-out">7.5 Bounded Concurrent Fan-Out</h3>
+<p>The canonical client workload — "fetch these N URLs as fast as is polite" — combines everything so far: one session, a semaphore to bound concurrency, timeouts, and <code>gather</code> (or <code>TaskGroup</code>) with per-item error tolerance.</p>
+<pre><code class="language-python">import aiohttp, asyncio
+
+async def fetch_one(session, sem, url):
+    async with sem:                                  # bound concurrency (Part 5)
+        try:
+            async with session.get(url) as resp:
+                resp.raise_for_status()
+                return url, await resp.text()
+        except aiohttp.ClientError as e:             # network/HTTP errors
+            return url, e
+        except TimeoutError as e:                    # from ClientTimeout
+            return url, e
+
+async def fetch_all(urls, concurrency=20):
+    sem = asyncio.Semaphore(concurrency)
+    timeout = aiohttp.ClientTimeout(total=30)
+    connector = aiohttp.TCPConnector(limit=concurrency)   # align pool with concurrency
+    async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
+        return await asyncio.gather(*(fetch_one(session, sem, u) for u in urls))
+</code></pre>
+<p>Aligning the connector <code>limit</code> with your semaphore size avoids the two fighting each other. Catching <code>aiohttp.ClientError</code> (the base class for connection errors, HTTP errors, etc.) and <code>TimeoutError</code> per item means one bad URL doesn't sink the batch — partial-success semantics, which is usually what you want for a large fan-out.</p>
+<p>References: <a href="https://docs.aiohttp.org/en/stable/client_reference.html#client-exceptions"><code>ClientError</code> hierarchy</a>.</p>
+<h3 id="76-retries">7.6 Retries</h3>
+<p>aiohttp has <strong>no built-in retry</strong> — a deliberate choice, since correct retry policy is application-specific. Roll a small retry-with-backoff helper, retrying only <em>idempotent</em> requests and <em>transient</em> failures (connection errors, timeouts, 5xx — never a 4xx, which won't change by retrying):</p>
+<pre><code class="language-python">import asyncio, random, aiohttp
+
+async def fetch_with_retry(session, url, attempts=4):
+    for attempt in range(attempts):
+        try:
+            async with session.get(url) as resp:
+                if resp.status &gt;= 500:
+                    raise aiohttp.ClientResponseError(
+                        resp.request_info, resp.history, status=resp.status)
+                resp.raise_for_status()
+                return await resp.text()
+        except (aiohttp.ClientError, TimeoutError):
+            if attempt == attempts - 1:
+                raise                                  # out of retries
+            # exponential backoff with jitter (Part 4 of the WebSockets guide too)
+            delay = 2 ** attempt + random.random()
+            await asyncio.sleep(delay)
+</code></pre>
+<p>The backoff-with-jitter shape is the same one used for WebSocket reconnection in the <a href="WEBSOCKETS_STUDY_GUIDE.md">WebSockets guide</a> — it spreads retries out so a recovering server isn't stampeded. If you'd rather not hand-roll it, the <a href="https://github.com/inyutin/aiohttp_retry"><code>aiohttp-retry</code></a> package wraps the session with configurable retry policies.</p>
+<hr>
+<h2 id="part-8-aiohttp-server">Part 8 — aiohttp Server</h2>
+<p>aiohttp is also a capable async web framework. It's lower-level and less magical than FastAPI/Starlette (covered in the <a href="WEBSOCKETS_STUDY_GUIDE.md">WebSockets guide</a>)— closer to the metal, with an explicit application object and lifecycle. That explicitness makes it a good vehicle for understanding how an async server actually fits together.</p>
+<p>References: <a href="https://docs.aiohttp.org/en/stable/web_quickstart.html">Server quickstart</a>, <a href="https://docs.aiohttp.org/en/stable/web_reference.html">Web server reference</a>.</p>
+<h3 id="81-application-handlers-routes">8.1 Application, Handlers, Routes</h3>
+<p>A handler is a coroutine that takes a <code>Request</code> and returns a <code>Response</code>. An <code>Application</code> ties handlers to routes:</p>
+<pre><code class="language-python">from aiohttp import web
+
+async def hello(request):
+    return web.Response(text=&quot;Hello, world&quot;)
+
+async def get_user(request):
+    uid = request.match_info[&quot;uid&quot;]              # path parameter
+    fmt = request.query.get(&quot;format&quot;, &quot;json&quot;)    # query string ?format=
+    return web.json_response({&quot;id&quot;: uid, &quot;format&quot;: fmt})
+
+async def create_user(request):
+    body = await request.json()                  # parse JSON request body
+    return web.json_response({&quot;created&quot;: body}, status=201)
+
+app = web.Application()
+app.add_routes([
+    web.get(&quot;/&quot;, hello),
+    web.get(&quot;/users/{uid}&quot;, get_user),           # {uid} → request.match_info[&quot;uid&quot;]
+    web.post(&quot;/users&quot;, create_user),
+])
+
+if __name__ == &quot;__main__&quot;:
+    web.run_app(app, host=&quot;0.0.0.0&quot;, port=8080)
+</code></pre>
+<p><code>web.json_response(...)</code> serializes to JSON and sets the content type; <code>web.Response(text=..., status=...)</code> is the general form. Path parameters arrive in <code>request.match_info</code>, query params in <code>request.query</code>, and the body via <code>await request.json()</code> / <code>await request.post()</code> / <code>await request.read()</code>.</p>
+<p>There's also a decorator style with <code>RouteTableDef</code> (<code>routes = web.RouteTableDef()</code> then <code>@routes.get("/")</code>), handy for spreading routes across modules.</p>
+<h3 id="82-application-state-and-lifecycle-where-pools-live">8.2 Application State and Lifecycle — Where Pools Live</h3>
+<p>A real service needs resources that are expensive to create and must be shared across requests: a database connection pool (Part 9), an <code>aiohttp.ClientSession</code> for outbound calls (Part 7), a Redis client. <strong>Create them once at startup, share them via the app, and close them on shutdown.</strong> aiohttp's <code>cleanup_ctx</code> is the clean idiom — an async generator that sets up before <code>yield</code> and tears down after:</p>
+<pre><code class="language-python">from aiohttp import web
+import asyncpg, aiohttp
+
+async def db_pool_ctx(app):
+    # --- startup: runs once before serving ---
+    app[&quot;db&quot;] = await asyncpg.create_pool(dsn=&quot;postgresql://localhost/app&quot;,
+                                          min_size=5, max_size=20)
+    yield
+    # --- shutdown: runs once after the server stops accepting requests ---
+    await app[&quot;db&quot;].close()
+
+async def http_client_ctx(app):
+    app[&quot;http&quot;] = aiohttp.ClientSession()        # one outbound session for the service
+    yield
+    await app[&quot;http&quot;].close()
+
+async def list_users(request):
+    pool = request.app[&quot;db&quot;]                      # reuse the shared pool
+    rows = await pool.fetch(&quot;SELECT id, name FROM users LIMIT 100&quot;)
+    return web.json_response([dict(r) for r in rows])
+
+app = web.Application()
+app.cleanup_ctx.append(db_pool_ctx)               # register lifecycle hooks
+app.cleanup_ctx.append(http_client_ctx)
+app.add_routes([web.get(&quot;/users&quot;, list_users)])
+</code></pre>
+<p>This is the most important structural pattern for an aiohttp service: shared, pooled resources created once and reused by every request handler, with deterministic cleanup. Creating a DB pool or <code>ClientSession</code> <em>inside a handler</em> is the server-side version of the per-request-session mistake from Part 7 — it destroys pooling and tanks throughput. (<code>app.on_startup</code> / <code>app.on_cleanup</code> lists exist too; <code>cleanup_ctx</code> is preferred because setup and teardown live together and teardown still runs if startup partially failed.)</p>
+<p>References: <a href="https://docs.aiohttp.org/en/stable/web_advanced.html#cleanup-context">Application lifecycle / cleanup contexts</a>, <a href="https://docs.aiohttp.org/en/stable/web_advanced.html#data-sharing-aka-no-singletons-please">Sharing state</a>.</p>
+<h3 id="83-middleware">8.3 Middleware</h3>
+<p>Middleware wraps every request — for logging, auth, error handling, metrics. A middleware is a coroutine taking <code>(request, handler)</code> that calls <code>await handler(request)</code> somewhere in the middle:</p>
+<pre><code class="language-python">from aiohttp import web
+import time, logging
+
+log = logging.getLogger(&quot;access&quot;)
+
+@web.middleware
+async def logging_middleware(request, handler):
+    start = time.perf_counter()
+    try:
+        response = await handler(request)
+        return response
+    finally:
+        dur = (time.perf_counter() - start) * 1000
+        log.info(&quot;%s %s -&gt; %dms&quot;, request.method, request.path, dur)
+
+@web.middleware
+async def error_middleware(request, handler):
+    try:
+        return await handler(request)
+    except web.HTTPException:
+        raise                                     # let aiohttp's own HTTP errors through
+    except Exception:
+        log.exception(&quot;unhandled error&quot;)
+        return web.json_response({&quot;error&quot;: &quot;internal&quot;}, status=500)
+
+app = web.Application(middlewares=[error_middleware, logging_middleware])
+</code></pre>
+<p>Middleware runs in the order listed (outermost first), so put error handling outermost so it catches everything inside. This is the natural place to add the structured logging and request metrics you'd feed into an <a href="OBSERVABILITY_STUDY_GUIDE.md">Observability</a> stack.</p>
+<p>References: <a href="https://docs.aiohttp.org/en/stable/web_advanced.html#middlewares">Middleware</a>.</p>
+<h3 id="84-streaming-responses-and-websockets">8.4 Streaming Responses and WebSockets</h3>
+<p>For large or open-ended responses, stream instead of buffering. <code>StreamResponse</code> lets you write the body incrementally:</p>
+<pre><code class="language-python">async def download(request):
+    resp = web.StreamResponse()
+    resp.content_type = &quot;text/csv&quot;
+    await resp.prepare(request)                   # send headers, begin streaming
+    async for row in generate_rows():
+        await resp.write(row.encode())            # write chunks as they're produced
+    await resp.write_eof()
+    return resp
+</code></pre>
+<p>aiohttp also has first-class <strong>WebSocket</strong> support on the server side, which is exactly the asyncio-shaped use case the <a href="WEBSOCKETS_STUDY_GUIDE.md">WebSockets guide</a> explores in depth (rooms, auth, scaling). The aiohttp surface:</p>
+<pre><code class="language-python">async def websocket_handler(request):
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)                     # complete the upgrade handshake
+    async for msg in ws:                          # iterate messages until close
+        if msg.type == web.WSMsgType.TEXT:
+            await ws.send_str(f&quot;echo: {msg.data}&quot;)
+        elif msg.type == web.WSMsgType.ERROR:
+            break
+    return ws
+</code></pre>
+<p>The single-thread event loop is what makes one aiohttp process able to hold thousands of these connections at once — the same property from Part 1.3. For the protocol, scaling backplane, and auth patterns, see the WebSockets guide; this is just the aiohttp entry point.</p>
+<p>References: <a href="https://docs.aiohttp.org/en/stable/web_quickstart.html#streaming-response">Streaming responses</a>, <a href="https://docs.aiohttp.org/en/stable/web_quickstart.html#websockets">WebSockets</a>.</p>
+<h3 id="85-running-in-production-workers-for-multiple-cores">8.5 Running in Production: Workers for Multiple Cores</h3>
+<p><code>web.run_app(app)</code> runs a single process on a single core — fine for development and for I/O-bound services that don't saturate a core. But remember Part 1: <strong>one event loop uses one core.</strong> To use a multi-core machine, run <strong>multiple worker processes</strong>. The standard way is Gunicorn with aiohttp's worker class:</p>
+<pre><code class="language-bash">gunicorn myapp:app \
+  --bind 0.0.0.0:8080 \
+  --worker-class aiohttp.GunicornWebWorker \
+  --workers 4                                    # ≈ number of CPU cores
+</code></pre>
+<p>Each worker is an independent process with its own event loop, and the OS load-balances connections across them. This is how you scale an aiohttp service horizontally on one box; to scale across boxes, put a load balancer (the <a href="CADDY_STUDY_GUIDE.md">Caddy</a> guide) in front of several instances. Note that per-worker state (in-memory caches, WebSocket connection registries) is <em>not</em> shared across workers — shared state needs an external store like Redis, exactly as in the WebSockets scaling discussion.</p>
+<p>For app-factory setups, expose an <code>async def init_app()</code> returning the application and point Gunicorn at it. Pair this with a sane <code>--graceful-timeout</code> so in-flight requests drain on deploy (Part 11).</p>
+<p>References: <a href="https://docs.aiohttp.org/en/stable/deployment.html">Deployment with Gunicorn</a>, <a href="https://docs.aiohttp.org/en/stable/deployment.html#start-gunicorn"><code>GunicornWebWorker</code> setup</a>.</p>
+<hr>
+<h2 id="part-9-talking-to-databases-files">Part 9 — Talking to Databases &amp; Files</h2>
+<p>An async service is only as async as its slowest dependency. Use a <em>synchronous</em> database driver in a coroutine and you block the loop (Part 6) — every request freezes while one query runs. This part covers the async Postgres drivers (<code>asyncpg</code> and <code>aiopg</code>), the connection-pool model, file I/O with <code>aiofiles</code>, and the accidental-serialization trap that quietly makes "async" database code sequential.</p>
+<h3 id="91-asyncpg-the-performance-choice">9.1 asyncpg — The Performance Choice</h3>
+<p><a href="https://magicstack.github.io/asyncpg/current/"><code>asyncpg</code></a> is a from-scratch PostgreSQL driver built for asyncio. It does <strong>not</strong> use <code>psycopg2</code>; it speaks Postgres's binary protocol directly, which makes it substantially faster than the alternatives — the project benchmarks it at roughly <strong>3× faster than <code>psycopg2</code>/<code>aiopg</code></strong> for many workloads, largely thanks to binary encoding and automatic prepared-statement caching. For new, performance-sensitive async code, it's the default.</p>
+<pre><code class="language-python">import asyncpg, asyncio
+
+async def main():
+    # A pool is the right unit: a set of reusable connections, created once.
+    pool = await asyncpg.create_pool(
+        &quot;postgresql://user:pass@localhost/app&quot;,
+        min_size=5, max_size=20,            # see pool sizing in 9.4
+    )
+    async with pool.acquire() as conn:      # borrow a connection; returned on exit
+        # Parameters use $1, $2 placeholders — NEVER f-strings (SQL injection)
+        rows = await conn.fetch(&quot;SELECT id, name FROM users WHERE age &gt; $1&quot;, 18)
+        for r in rows:                      # Records are tuple- AND dict-like
+            print(r[&quot;id&quot;], r[&quot;name&quot;])
+
+        one = await conn.fetchrow(&quot;SELECT * FROM users WHERE id = $1&quot;, 42)
+        count = await conn.fetchval(&quot;SELECT count(*) FROM users&quot;)   # single scalar
+        await conn.execute(&quot;UPDATE users SET seen = now() WHERE id = $1&quot;, 42)
+
+    await pool.close()
+
+asyncio.run(main())
+</code></pre>
+<p>asyncpg's headline methods: <code>fetch</code> (list of rows), <code>fetchrow</code> (one row), <code>fetchval</code> (one scalar), <code>execute</code> (no rows), <code>executemany</code> (batched parameterized statement), and <code>copy_records_to_table</code> (COPY — the bulk-load fast path, Part 10). Transactions are an async context manager:</p>
+<pre><code class="language-python">async with pool.acquire() as conn:
+    async with conn.transaction():          # BEGIN; COMMIT on success, ROLLBACK on error
+        await conn.execute(&quot;INSERT INTO ledger(amount) VALUES($1)&quot;, 100)
+        await conn.execute(&quot;UPDATE balance SET total = total + $1&quot;, 100)
+</code></pre>
+<p>The parameter style is positional <code>$1, $2</code>. As always, pass parameters as arguments — never build SQL with f-strings or <code>%</code> formatting, which opens SQL injection (see the <a href="POSTGRES_STUDY_GUIDE.md">Postgres</a> guide for query-level depth).</p>
+<p>References: <a href="https://magicstack.github.io/asyncpg/current/">asyncpg documentation</a>, <a href="https://magicstack.github.io/asyncpg/current/usage.html">asyncpg usage</a>, <a href="https://magicstack.github.io/asyncpg/current/api/index.html#connection-pools">Connection pools</a>.</p>
+<h3 id="92-aiopg-the-compatibility-choice">9.2 aiopg — The Compatibility Choice</h3>
+<p><a href="https://aiopg.readthedocs.io/"><code>aiopg</code></a> takes the other approach: it wraps <code>psycopg2</code>, driving libpq in its asynchronous (non-blocking) mode. Its API mirrors psycopg2's cursor model, and it offers <code>aiopg.sa</code> for SQLAlchemy Core integration.</p>
+<pre><code class="language-python">import aiopg, asyncio
+
+async def main():
+    pool = await aiopg.create_pool(&quot;dbname=app user=user password=pass host=localhost&quot;)
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            # psycopg2 parameter style: %s placeholders (params as a tuple)
+            await cur.execute(&quot;SELECT id, name FROM users WHERE age &gt; %s&quot;, (18,))
+            async for row in cur:           # iterate the cursor
+                print(row)
+    pool.close()
+    await pool.wait_closed()
+
+asyncio.run(main())
+</code></pre>
+<p>When to choose <code>aiopg</code> over <code>asyncpg</code>, honestly:</p>
+<ul>
+<li>You have existing <strong>psycopg2</strong> code or SQL using <code>%s</code> placeholders and want minimal changes.</li>
+<li>You specifically need <strong><code>aiopg.sa</code></strong> (SQLAlchemy Core in an async style).</li>
+</ul>
+<p>For most new code, prefer <code>asyncpg</code> for the performance, and note that modern <strong>SQLAlchemy (1.4+/2.0) has native async support built on asyncpg</strong> via <code>create_async_engine("postgresql+asyncpg://…")</code> — which largely supersedes <code>aiopg.sa</code> if you want an ORM/Core layer with asyncpg's speed underneath. Treat <code>aiopg</code> as the compatibility bridge, not the performance pick.</p>
+<p>References: <a href="https://aiopg.readthedocs.io/en/stable/">aiopg documentation</a>, <a href="https://docs.sqlalchemy.org/en/20/orm/extensions/asyncio.html">SQLAlchemy asyncio extension</a>.</p>
+<h3 id="93-the-accidental-serialization-trap">9.3 The Accidental-Serialization Trap</h3>
+<p>Here is the database performance bug that hides in plain sight. A single connection processes one query at a time, and awaiting queries in a loop runs them strictly sequentially:</p>
+<pre><code class="language-python"># SLOW: N queries, one after another. Total ≈ N × query_latency.
+async def get_many_slow(pool, user_ids):
+    results = []
+    async with pool.acquire() as conn:
+        for uid in user_ids:
+            results.append(await conn.fetchrow(&quot;SELECT * FROM users WHERE id=$1&quot;, uid))
+    return results
+</code></pre>
+<p>There are two correct fixes, and the better one is usually <em>not</em> "add more concurrency":</p>
+<pre><code class="language-python"># BETTER: one set-based query instead of N round trips. One trip to the DB.
+async def get_many_fast(pool, user_ids):
+    async with pool.acquire() as conn:
+        return await conn.fetch(&quot;SELECT * FROM users WHERE id = ANY($1)&quot;, user_ids)
+
+# WHEN you genuinely need N independent queries: parallelize across pool connections.
+async def run_independent(pool, queries):
+    async def one(q):
+        async with pool.acquire() as conn:    # each gets its OWN connection
+            return await conn.fetch(q)
+        # NB: bounded by pool max_size — that's your concurrency cap
+    return await asyncio.gather(*(one(q) for q in queries))
+</code></pre>
+<p>The hierarchy of fixes: <strong>first, eliminate the N queries</strong> with a set-based query (<code>= ANY($1)</code>, a join, an aggregate) — fewer round trips beats more concurrency every time, and it's where the <a href="POSTGRES_STUDY_GUIDE.md">Postgres</a> guide's set-based thinking pays off. <strong>Only if the queries are genuinely independent</strong> should you fan them out — and then each needs its <em>own</em> connection from the pool (you can't run two queries concurrently on one connection), which means your real concurrency ceiling is the pool's <code>max_size</code>.</p>
+<h3 id="94-pool-sizing-the-lever-that-cuts-both-ways">9.4 Pool Sizing — The Lever That Cuts Both Ways</h3>
+<p>The pool's <code>max_size</code> is one of the most consequential numbers in an async service, and bigger is <strong>not</strong> better. Every pooled connection is a real Postgres backend <strong>process</strong> on the server (Postgres forks per connection). A few thousand connections will exhaust Postgres's memory and scheduler long before they help you.</p>
+<p>Practical guidance:</p>
+<ul>
+<li>Size the pool to the <strong>database's</strong> capacity, not your task count. Tens of connections per service instance is typical; the right number depends on Postgres's <code>max_connections</code> and how many instances you run.</li>
+<li>If you need to support far more concurrent <em>clients</em> than the database can hold <em>connections</em>, put <strong>PgBouncer</strong> (a connection pooler) in front of Postgres — it multiplexes many client connections onto a small pool of real backends. This is standard at scale.</li>
+<li>Remember the chain: your <code>Semaphore</code> (Part 5) bounds tasks → tasks contend for pool connections → the pool bounds real DB connections. Make these numbers consistent so one isn't silently throttling behind another.</li>
+</ul>
+<h3 id="95-files-aiofiles-in-the-data-path">9.5 Files: <code>aiofiles</code> in the Data Path</h3>
+<p>Part 6.4 introduced <code>aiofiles</code> and the key truth — file I/O is thread-pool-backed, used to keep the <em>loop</em> responsive, not to make the disk faster. In a data pipeline it pairs naturally with the database and HTTP client: stream a download to disk without buffering it in memory, or read a file and bulk-load it into Postgres. Those are exactly the Part 12 recipes. The pattern to carry forward:</p>
+<pre><code class="language-python">import aiofiles
+
+async def save_stream(resp, path):           # resp from aiohttp (Part 7.4)
+    async with aiofiles.open(path, &quot;wb&quot;) as f:
+        async for chunk in resp.content.iter_chunked(64 * 1024):
+            await f.write(chunk)              # disk write offloaded; loop stays free
+</code></pre>
+<hr>
+<h2 id="part-10-performance-measuring-tuning">Part 10 — Performance: Measuring &amp; Tuning</h2>
+<p>This is the part you came for: making async code actually fast. The headline is uncomfortable — <strong>most "slow async" is not slow because the loop is slow; it's slow because of two specific bugs.</strong> Find those first, then tune.</p>
+<h3 id="101-measure-first-and-know-the-two-usual-culprits">10.1 Measure First — and Know the Two Usual Culprits</h3>
+<p>Before tuning anything, measure, and check for the two bugs that account for the overwhelming majority of async performance problems:</p>
+<ol>
+<li><strong>Blocking the event loop</strong> (Part 6) — a synchronous call freezing everything. Symptom: throughput collapses under concurrency; CPU pegged on one core inside a sync call.</li>
+<li><strong>Accidental serialization</strong> (Parts 2.4, 9.3) — <code>await</code> in a loop running "concurrent" work sequentially. Symptom: total time scales with the <em>number</em> of operations, not the <em>slowest</em> one.</li>
+</ol>
+<p>Tools to find them:</p>
+<pre><code class="language-python"># 1. asyncio debug mode flags loop-blocking with &quot;took N seconds&quot; warnings
+asyncio.run(main(), debug=True)
+
+# 2. Coarse timing to spot serialization: does time scale with N or with max?
+import time
+start = time.perf_counter()
+await do_the_work()
+print(f&quot;{time.perf_counter() - start:.2f}s&quot;)     # compare against expected concurrent time
+</code></pre>
+<p>For production or hard-to-reproduce cases, <a href="https://github.com/benfred/py-spy"><code>py-spy</code></a> samples a running process without code changes — <code>py-spy top --pid &amp;lt;pid&amp;gt;</code> shows where the loop thread spends time, and <code>py-spy dump</code> shows what every task is stuck on. <strong>Don't tune blind:</strong> a guessed <code>uvloop</code> install won't help if your real problem is a <code>requests.get</code> blocking the loop.</p>
+<h3 id="102-uvloop-a-faster-event-loop">10.2 uvloop — A Faster Event Loop</h3>
+<p><a href="https://uvloop.readthedocs.io/"><code>uvloop</code></a> is a drop-in replacement for asyncio's event loop, built on libuv (the same engine behind Node.js). It's a genuine, free speedup for I/O-heavy workloads — commonly <strong>2–4× higher throughput</strong> on network benchmarks — with a one-line change:</p>
+<pre><code class="language-python">import asyncio, uvloop
+
+# Python 3.12+: pass a loop factory
+asyncio.run(main(), loop_factory=uvloop.new_event_loop)
+
+# Or the classic form (works broadly):
+uvloop.install()
+asyncio.run(main())
+
+# uvloop also provides its own runner:
+uvloop.run(main())
+</code></pre>
+<p>Caveats: uvloop doesn't run on Windows, and it speeds up <em>loop overhead</em> — it won't fix a blocked loop or serialized awaits (Section 10.1), and it won't help CPU-bound work. But for a correctly-written I/O-bound service, it's close to free performance. (aiohttp's docs explicitly recommend it.)</p>
+<p>References: <a href="https://uvloop.readthedocs.io/">uvloop</a>, <a href="https://pypi.org/project/uvloop/">uvloop on PyPI</a>.</p>
+<h3 id="103-kill-accidental-serialization">10.3 Kill Accidental Serialization</h3>
+<p>This is the highest-leverage <em>correctness-as-performance</em> fix. Anywhere you <code>await</code> inside a loop over independent work, you're leaving concurrency on the table:</p>
+<pre><code class="language-python"># SLOW — sequential despite &quot;being async&quot;. Time = sum of all latencies.
+results = []
+for item in items:
+    results.append(await process(item))
+
+# FAST — concurrent (bounded). Time ≈ slowest item, throughput capped sanely.
+sem = asyncio.Semaphore(50)
+async def bounded(item):
+    async with sem:
+        return await process(item)
+results = await asyncio.gather(*(bounded(item) for item in items))
+</code></pre>
+<p>The fix is always the same shape: build the coroutines, run them with <code>gather</code>/<code>TaskGroup</code>, bound them with a <code>Semaphore</code> (Part 5). The discipline: whenever you write <code>await</code> inside a <code>for</code>, ask "do these depend on each other?" If not, you're serializing needlessly.</p>
+<h3 id="104-batch-and-pipeline-especially-at-the-database">10.4 Batch and Pipeline — Especially at the Database</h3>
+<p>Cutting the <em>number</em> of round trips usually beats adding concurrency. The biggest single lever in data-loading code is using Postgres <code>COPY</code> via asyncpg's <code>copy_records_to_table</code> instead of inserting row by row — it can be <strong>one to two orders of magnitude faster</strong> than per-row <code>INSERT</code>s, because it's a single bulk protocol operation instead of thousands of round trips:</p>
+<pre><code class="language-python"># SLOW: one INSERT per row — thousands of round trips
+async with pool.acquire() as conn:
+    for rec in records:
+        await conn.execute(&quot;INSERT INTO events(ts, kind, payload) VALUES($1,$2,$3)&quot;, *rec)
+
+# FASTER: executemany batches the parameterized statement
+async with pool.acquire() as conn:
+    await conn.executemany(&quot;INSERT INTO events(ts, kind, payload) VALUES($1,$2,$3)&quot;, records)
+
+# FASTEST: COPY — bulk-load in a single operation (often 10–100× the per-row loop)
+async with pool.acquire() as conn:
+    await conn.copy_records_to_table(
+        &quot;events&quot;, records=records, columns=[&quot;ts&quot;, &quot;kind&quot;, &quot;payload&quot;])
+</code></pre>
+<p>The same principle generalizes: prefer one set-based query over N (Part 9.3); use an API's batch endpoint over N individual calls; coalesce many small writes into fewer larger ones. Part 12 builds the full file-to-Postgres <code>COPY</code> recipe.</p>
+<p>For JSON-heavy services, swapping the stdlib <code>json</code> for <a href="https://github.com/ijl/orjson"><code>orjson</code></a> is another easy win — it serializes/deserializes several times faster, which matters when you're encoding large responses on the hot path.</p>
+<h3 id="105-tune-connection-pools-and-concurrency-limits">10.5 Tune Connection Pools and Concurrency Limits</h3>
+<p>With the bugs gone and batching in place, tune the dials — together, because they form a chain (Part 9.4):</p>
+<ul>
+<li><strong>HTTP</strong>: the <code>TCPConnector</code> <code>limit</code> / <code>limit_per_host</code> (Part 7.2) and your fan-out <code>Semaphore</code> (Part 5.1). Align them.</li>
+<li><strong>Database</strong>: the pool <code>max_size</code> (Part 9.4), sized to Postgres's capacity, with PgBouncer if you need more client concurrency than DB connections.</li>
+<li><strong>Workers</strong>: process count for multi-core (Part 8.5).</li>
+</ul>
+<p>The non-obvious lesson: <strong>more concurrency is not monotonically faster.</strong> Past the real bottleneck — the remote API's rate limit, the database's connection ceiling, your disk's bandwidth — adding concurrency only adds contention, context-switching, and memory pressure, and can make throughput <em>worse</em>. The job is to find the bottleneck (Section 10.1) and size concurrency to <em>just</em> saturate it, not to crank every number to maximum.</p>
+<h3 id="106-know-when-async-has-stopped-being-the-answer">10.6 Know When Async Has Stopped Being the Answer</h3>
+<p>Finally, the honest boundary. Async tuning helps an I/O-bound workload. If profiling shows you're <strong>CPU-bound</strong> — the loop thread is pegged doing computation, not waiting — no amount of <code>uvloop</code>, pooling, or <code>gather</code> will help, because one event loop is one core (Part 1). At that point the levers are different:</p>
+<ul>
+<li>Offload the CPU work to a <code>ProcessPoolExecutor</code> (Part 6.3) so it runs on other cores.</li>
+<li>Scale out to multiple worker processes (Part 8.5) behind a load balancer.</li>
+<li>Reconsider whether async was the right model at all — for a CPU-bound batch job, processes (see <a href="PYTHON_CONCURRENCY.md">Python Concurrency</a>) may be simpler and faster.</li>
+</ul>
+<p>Recognizing this boundary is itself a performance skill: it stops you from tuning an event loop that was never your bottleneck.</p>
+<hr>
+<h2 id="part-11-debugging-production">Part 11 — Debugging &amp; Production</h2>
+<p>Async failures look different from synchronous ones, and the error messages are cryptic until you've seen them once. This part is a field guide to the errors you'll actually hit and the production hygiene that prevents most of them.</p>
+<h3 id="111-always-develop-with-debug-mode">11.1 Always Develop with Debug Mode</h3>
+<p>asyncio's debug mode (Part 6.2) is the cheapest bug-catcher you have. It warns on loop-blocking, on coroutines that were never awaited, and on tasks destroyed while pending — turning silent misbehavior into loud warnings:</p>
+<pre><code class="language-python">asyncio.run(main(), debug=True)        # or set PYTHONASYNCIODEBUG=1
+</code></pre>
+<p>Run your tests and a local load test with it on. Most of the errors below surface immediately under debug mode instead of intermittently in production.</p>
+<h3 id="112-the-error-catalog">11.2 The Error Catalog</h3>
+<p><strong><code>RuntimeWarning: coroutine 'foo' was never awaited</code></strong> — you called an <code>async def</code> function but never drove it (Part 2.1). You wrote <code>foo()</code> where you meant <code>await foo()</code> or <code>asyncio.create_task(foo())</code>.</p>
+<pre><code class="language-python">foo()                       # ← bug: creates a coroutine, never runs it
+await foo()                 # fix: run it inline
+asyncio.create_task(foo())  # fix: run it concurrently (and keep a reference, below)
+</code></pre>
+<p><strong><code>Task was destroyed but it is pending!</code></strong> — you created a task but didn't keep a reference, and it was garbage-collected mid-flight (Part 2.5). Fix by holding a reference, or — far better — by using a <code>TaskGroup</code> (Part 3.2) that owns its tasks.</p>
+<p><strong><code>RuntimeError: Event loop is closed</code></strong> — something tried to use the loop after <code>asyncio.run</code> closed it. The classic cause is an <code>aiohttp.ClientSession</code> (or DB pool) that wasn't closed before the program ended. Always close them — <code>async with</code> for short scripts, <code>cleanup_ctx</code> for servers (Part 8.2):</p>
+<pre><code class="language-python">async with aiohttp.ClientSession() as session:   # guarantees close before loop teardown
+    ...
+</code></pre>
+<p><strong><code>RuntimeError: asyncio.run() cannot be called from a running event loop</code></strong> — you called <code>asyncio.run</code> while a loop is already running. Most common in Jupyter/IPython (which runs a loop for you) — there you simply <code>await</code> at the top level instead of calling <code>asyncio.run</code>. In library code, accept a coroutine and let the caller run it; don't call <code>asyncio.run</code> yourself.</p>
+<p><strong><code>got Future &lt;...&gt; attached to a different loop</code></strong> — an awaitable created under one event loop is being awaited under another. Usually from creating loop-bound objects (a session, a lock, a pool) at import time or in another thread, then using them inside <code>asyncio.run</code>. Fix: create loop-bound resources <em>inside</em> the running loop (e.g. in <code>cleanup_ctx</code>, not at module top level).</p>
+<p><strong><code>RuntimeWarning: Enable tracemalloc to get the object allocation traceback</code></strong> — not an error itself; it accompanies the warnings above. Set <code>PYTHONTRACEMALLOC=1</code> (or <code>tracemalloc.start()</code>) to get a traceback pointing at where the offending coroutine/task was created.</p>
+<h3 id="113-graceful-shutdown">11.3 Graceful Shutdown</h3>
+<p>A production async service must shut down cleanly: stop accepting new work, let in-flight work finish (or cancel it deliberately), and close pools and sessions so no connections leak. <code>aiohttp</code>'s <code>web.run_app</code> and <code>cleanup_ctx</code> (Part 8.2) handle most of this for you — on <code>SIGTERM</code>/<code>SIGINT</code> it stops the listener, drains in-flight requests, and runs cleanup contexts in reverse. That's why putting your pool/session lifecycle in <code>cleanup_ctx</code> matters: it ties resource teardown to the shutdown sequence automatically.</p>
+<p>For a standalone (non-aiohttp) async program, handle signals explicitly and cancel outstanding tasks:</p>
+<pre><code class="language-python">import asyncio, signal
+
+async def main():
+    stop = asyncio.Event()
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, stop.set)   # set the event on signal
+
+    async with asyncio.TaskGroup() as tg:
+        worker = tg.create_task(run_workers())
+        await stop.wait()                         # block until a signal arrives
+        worker.cancel()                           # request graceful cancellation (Part 4)
+    # TaskGroup exit waits for cleanup; finally-blocks in workers run here
+
+asyncio.run(main())
+</code></pre>
+<p>The shape: a shutdown <code>Event</code> set by a signal handler, tasks that handle <code>CancelledError</code> to flush and release resources (Part 4.2), and a <code>TaskGroup</code> to guarantee everything is awaited before exit. This is what separates a service that drops in-flight requests on deploy from one that drains cleanly.</p>
+<p>References: <a href="https://docs.python.org/3/library/asyncio-eventloop.html#unix-signals">Event loop signal handling</a>, <a href="https://docs.aiohttp.org/en/stable/web_advanced.html#graceful-shutdown">aiohttp graceful shutdown</a>.</p>
+<h3 id="114-logging-and-observability">11.4 Logging and Observability</h3>
+<p>Standard <code>logging</code> works in async code, but add request/task context so interleaved logs are readable — async logs from many concurrent tasks are otherwise an unintelligible braid. Attach a correlation id (per request, per task) via <code>logging</code> <code>extra=</code> or <code>contextvars</code> (which are async-task-aware, unlike thread-locals). The aiohttp logging middleware from Part 8.3 is the natural hook for per-request timing and ids, and those structured logs and latency metrics feed directly into the <a href="OBSERVABILITY_STUDY_GUIDE.md">Observability</a> stack — RED-style request rate/errors/duration is exactly what an async service should export.</p>
+<hr>
+<h2 id="part-12-recipes">Part 12 — Recipes</h2>
+<p>Copy-paste performance recipes built from the parts above, centered on the libraries you'll lean on most: <code>aiohttp</code>, <code>aiofiles</code>, and <code>asyncpg</code>/<code>aiopg</code>. Each one is a complete, runnable shape with the decisions called out.</p>
+<h3 id="recipe-1-concurrent-download-to-disk-aiohttp-aiofiles">Recipe 1: Concurrent Download-to-Disk (aiohttp + aiofiles)</h3>
+<p>Download many files concurrently and stream each to disk, so <strong>neither the network nor the disk ever blocks the loop</strong>, memory stays flat regardless of file size, and concurrency is bounded. This is the textbook <code>aiohttp</code> + <code>aiofiles</code> pairing (Parts 6.4, 7.4, 9.5).</p>
+<pre><code class="language-python">import asyncio, aiohttp, aiofiles
+from pathlib import Path
+
+async def download(session, sem, url, dest):
+    async with sem:                                   # bound concurrency (Part 5.1)
+        async with session.get(url) as resp:
+            resp.raise_for_status()
+            async with aiofiles.open(dest, &quot;wb&quot;) as f:
+                # Stream in chunks: response body never fully buffered in memory,
+                # and the disk write is offloaded to a thread so the loop stays free.
+                async for chunk in resp.content.iter_chunked(64 * 1024):
+                    await f.write(chunk)
+    return dest
+
+async def download_all(urls, outdir=&quot;downloads&quot;, concurrency=10):
+    Path(outdir).mkdir(exist_ok=True)
+    sem = asyncio.Semaphore(concurrency)
+    timeout = aiohttp.ClientTimeout(total=300, sock_read=30)   # explicit (Part 7.3)
+    connector = aiohttp.TCPConnector(limit=concurrency)        # align pool with concurrency
+    async with aiohttp.ClientSession(timeout=timeout, connector=connector) as session:
+        tasks = [download(session, sem, u, Path(outdir) / Path(u).name) for u in urls]
+        results = await asyncio.gather(*tasks, return_exceptions=True)  # tolerate failures
+    for url, res in zip(urls, results):
+        if isinstance(res, Exception):
+            print(f&quot;FAILED {url}: {res!r}&quot;)
+        else:
+            print(f&quot;saved  {res}&quot;)
+
+asyncio.run(download_all([&quot;https://example.com/a.zip&quot;, &quot;https://example.com/b.zip&quot;]))
+</code></pre>
+<p>Why it performs: streaming (<code>iter_chunked</code> + <code>aiofiles.write</code>) keeps memory constant for any file size; the semaphore stops a thousand-URL list from opening a thousand sockets; <code>return_exceptions=True</code> means one dead URL doesn't abort the batch.</p>
+<h3 id="recipe-2-fast-bulk-load-a-file-into-postgres-aiofiles-asyncpg-copy">Recipe 2: Fast Bulk-Load a File into Postgres (aiofiles + asyncpg COPY)</h3>
+<p>Read a large CSV/JSONL file without blocking the loop, parse it, and load it into Postgres with <strong><code>COPY</code></strong> — the fast path that's often 10–100× a per-row insert loop (Part 10.4).</p>
+<pre><code class="language-python">import asyncio, aiofiles, asyncpg, csv, io
+
+async def bulk_load(dsn, path, table):
+    # 1. Read the file without blocking the loop (Part 6.4 / 9.5)
+    async with aiofiles.open(path, &quot;r&quot;) as f:
+        content = await f.read()
+
+    # 2. Parse into tuples (CPU-light here; for huge files, see Recipe 4's streaming)
+    reader = csv.reader(io.StringIO(content))
+    next(reader)                                       # skip header
+    records = [(row[0], int(row[1]), row[2]) for row in reader]
+
+    # 3. COPY the records in one bulk operation — the big performance lever
+    conn = await asyncpg.connect(dsn)
+    try:
+        await conn.copy_records_to_table(
+            table, records=records, columns=[&quot;name&quot;, &quot;age&quot;, &quot;city&quot;])
+        print(f&quot;loaded {len(records)} rows via COPY&quot;)
+    finally:
+        await conn.close()
+
+asyncio.run(bulk_load(&quot;postgresql://localhost/app&quot;, &quot;people.csv&quot;, &quot;people&quot;))
+</code></pre>
+<p>The contrast that makes the point — the same load done the slow way:</p>
+<pre><code class="language-python"># SLOW baseline: one INSERT per row. For 100k rows this is 100k round trips.
+async with pool.acquire() as conn:
+    for rec in records:
+        await conn.execute(
+            &quot;INSERT INTO people(name, age, city) VALUES($1,$2,$3)&quot;, *rec)
+# copy_records_to_table replaces all of that with a single bulk transfer.
+</code></pre>
+<p>For files too large to hold in memory, don't <code>await f.read()</code> the whole thing — stream it (Recipe 4) and <code>COPY</code> in batches.</p>
+<h3 id="recipe-3-bounded-concurrent-queries-through-an-asyncpg-pool">Recipe 3: Bounded Concurrent Queries Through an asyncpg Pool</h3>
+<p>Run many independent queries concurrently, correctly: each on its <strong>own</strong> pooled connection (Part 9.3), with the pool's <code>max_size</code> as the real concurrency ceiling (Part 9.4). Contrast with the serialized loop that looks async but isn't.</p>
+<pre><code class="language-python">import asyncio, asyncpg
+
+async def fan_out_queries(dsn, user_ids):
+    pool = await asyncpg.create_pool(dsn, min_size=5, max_size=20)  # 20 = concurrency cap
+    try:
+        async def fetch_user(uid):
+            async with pool.acquire() as conn:        # own connection per concurrent query
+                return await conn.fetchrow(&quot;SELECT * FROM users WHERE id=$1&quot;, uid)
+        # Concurrent, bounded by the pool. NOT a sequential await-in-a-loop.
+        return await asyncio.gather(*(fetch_user(uid) for uid in user_ids))
+    finally:
+        await pool.close()
+
+# Reminder from Part 9.3: if these IDs are just a set lookup, the RIGHT answer is
+# a single set-based query, which beats any amount of fan-out:
+async def fetch_users_best(pool, user_ids):
+    async with pool.acquire() as conn:
+        return await conn.fetch(&quot;SELECT * FROM users WHERE id = ANY($1)&quot;, user_ids)
+</code></pre>
+<p>The lesson embedded here: reach for <code>fetch_users_best</code> (one round trip) first; use the bounded fan-out only when the queries are genuinely different and independent.</p>
+<h3 id="recipe-4-streaming-etl-pipeline-aiofiles-queue-asyncpg-copy">Recipe 4: Streaming ETL Pipeline (aiofiles + Queue + asyncpg COPY)</h3>
+<p>The capstone, combining a bounded queue (Part 5.2), <code>aiofiles</code> streaming (Part 6.4), and batched <code>COPY</code> (Part 10.4): read a file too big for memory line by line, transform with a pool of workers, and bulk-load to Postgres in batches — with backpressure throughout so memory stays bounded no matter how big the input.</p>
+<pre><code class="language-python">import asyncio, aiofiles, asyncpg, json
+
+BATCH_SIZE = 1000
+NUM_WORKERS = 4
+
+async def producer(path, queue):
+    # Stream the file line by line — never load it all into memory (Part 6.4)
+    async with aiofiles.open(path, &quot;r&quot;) as f:
+        async for line in f:
+            await queue.put(line)                  # blocks when full → backpressure (Part 5.2)
+    for _ in range(NUM_WORKERS):
+        await queue.put(None)                      # one sentinel per worker
+
+async def worker(queue, pool):
+    batch = []
+    async def flush():
+        if batch:
+            async with pool.acquire() as conn:
+                await conn.copy_records_to_table(   # COPY each batch — the fast path
+                    &quot;events&quot;, records=batch, columns=[&quot;ts&quot;, &quot;kind&quot;, &quot;payload&quot;])
+            batch.clear()
+    while True:
+        line = await queue.get()
+        if line is None:                            # sentinel: drain and stop
+            await flush()
+            queue.task_done()
+            break
+        rec = json.loads(line)                      # transform
+        batch.append((rec[&quot;ts&quot;], rec[&quot;kind&quot;], json.dumps(rec[&quot;payload&quot;])))
+        if len(batch) &gt;= BATCH_SIZE:
+            await flush()                           # COPY in bounded batches
+        queue.task_done()
+
+async def run_etl(dsn, path):
+    queue = asyncio.Queue(maxsize=10_000)           # bounded → memory stays flat
+    pool = await asyncpg.create_pool(dsn, min_size=NUM_WORKERS, max_size=NUM_WORKERS)
+    try:
+        async with asyncio.TaskGroup() as tg:       # structured: all tasks awaited (Part 3.2)
+            tg.create_task(producer(path, queue))
+            for _ in range(NUM_WORKERS):
+                tg.create_task(worker(queue, pool))
+    finally:
+        await pool.close()
+
+asyncio.run(run_etl(&quot;postgresql://localhost/app&quot;, &quot;events.jsonl&quot;))
+</code></pre>
+<p>This pipeline holds memory constant for an arbitrarily large input (bounded queue + line streaming), keeps the loop unblocked (aiofiles for the read), and maximizes load throughput (batched <code>COPY</code> instead of per-row inserts), with <code>NUM_WORKERS</code> and <code>BATCH_SIZE</code> as the tuning dials. It's the whole guide in one program: bounded concurrency (Part 5), non-blocking file I/O (Part 6), structured concurrency (Part 3), and the database fast path (Parts 9–10).</p>
+<h3 id="recipe-5-the-aiopg-variant-compatibility-path">Recipe 5: The aiopg Variant (Compatibility Path)</h3>
+<p>The same concurrent fan-out as Recipe 3, via <code>aiopg</code> — for when you're tied to psycopg2's <code>%s</code> parameter style or <code>aiopg.sa</code>. The honest note travels with it: this is the compatibility path, and <code>asyncpg</code> (Recipe 3) is meaningfully faster (Part 9.1–9.2).</p>
+<pre><code class="language-python">import asyncio, aiopg
+
+async def fan_out_aiopg(dsn, user_ids):
+    pool = await aiopg.create_pool(dsn, maxsize=20)
+    try:
+        async def fetch_user(uid):
+            async with pool.acquire() as conn:
+                async with conn.cursor() as cur:
+                    await cur.execute(
+                        &quot;SELECT id, name FROM users WHERE id = %s&quot;, (uid,))  # %s style
+                    return await cur.fetchone()
+        return await asyncio.gather(*(fetch_user(uid) for uid in user_ids))
+    finally:
+        pool.close()
+        await pool.wait_closed()
+</code></pre>
+<p>If you control the stack and care about throughput, prefer Recipe 3's <code>asyncpg</code>. Reach for this <code>aiopg</code> shape only when an existing psycopg2/SQLAlchemy-Core codebase makes it the path of least resistance — and even then, evaluate SQLAlchemy 2.0's native async-over-asyncpg (Part 9.2) before committing.</p>
+<hr>
+<p>That's the arc: async buys you the elimination of idle waiting (Part 1), at the cost of a new execution model and new failure modes (Parts 2–4) that you manage with bounded concurrency and a strict no-blocking rule (Parts 5–6). <code>aiohttp</code> gives you a fast client and server on top of that model (Parts 7–8); <code>asyncpg</code>/<code>aiopg</code>/<code>aiofiles</code> connect it to your data (Part 9); and real performance comes from measuring, killing serialization, batching at the database, and sizing concurrency to the bottleneck (Part 10) — not from cranking every dial to maximum. The recipes are where it all comes together.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

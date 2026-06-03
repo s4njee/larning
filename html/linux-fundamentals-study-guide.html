@@ -1,0 +1,1529 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Linux Fundamentals Study Guide.">
+<title>Linux Fundamentals Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#4d74d6; --accent2:#5e4ad0; --accent-weak:rgba(77,116,214,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#4d74d6; --accent2:#5e4ad0; --accent-weak:rgba(77,116,214,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">L</span><span>Linux Fundamentals Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-everything-is-a-file-almost" data-target="part-1-everything-is-a-file-almost">Part 1 — Everything Is a File (Almost)</a></li><li class="toc-l3"><a href="#the-principle" data-target="the-principle">The Principle</a></li><li class="toc-l3"><a href="#the-filesystem-hierarchy" data-target="the-filesystem-hierarchy">The Filesystem Hierarchy</a></li><li class="toc-l3"><a href="#the-virtual-filesystems-youll-actually-use" data-target="the-virtual-filesystems-youll-actually-use">The Virtual Filesystems You'll Actually Use</a></li><li class="toc-l2"><a href="#part-2-processes" data-target="part-2-processes">Part 2 — Processes</a></li><li class="toc-l3"><a href="#what-a-process-is" data-target="what-a-process-is">What a Process Is</a></li><li class="toc-l3"><a href="#fork-and-exec-how-processes-are-born" data-target="fork-and-exec-how-processes-are-born">fork and exec: How Processes Are Born</a></li><li class="toc-l3"><a href="#the-process-tree" data-target="the-process-tree">The Process Tree</a></li><li class="toc-l3"><a href="#process-states" data-target="process-states">Process States</a></li><li class="toc-l3"><a href="#threads" data-target="threads">Threads</a></li><li class="toc-l3"><a href="#exit-wait-and-exit-codes" data-target="exit-wait-and-exit-codes">Exit, Wait, and Exit Codes</a></li><li class="toc-l2"><a href="#part-3-file-descriptors-io" data-target="part-3-file-descriptors-io">Part 3 — File Descriptors &amp; I/O</a></li><li class="toc-l3"><a href="#what-a-file-descriptor-is" data-target="what-a-file-descriptor-is">What a File Descriptor Is</a></li><li class="toc-l3"><a href="#file-descriptors-are-inherited-across-fork-and-survive-exec" data-target="file-descriptors-are-inherited-across-fork-and-survive-exec">File Descriptors Are Inherited Across fork and Survive exec</a></li><li class="toc-l3"><a href="#the-ulimit-and-the-too-many-open-files-error" data-target="the-ulimit-and-the-too-many-open-files-error">The ulimit and the "Too Many Open Files" Error</a></li><li class="toc-l3"><a href="#blocking-vs-non-blocking-io-and-how-the-event-loop-works" data-target="blocking-vs-non-blocking-io-and-how-the-event-loop-works">Blocking vs. Non-Blocking I/O (and How the Event Loop Works)</a></li><li class="toc-l3"><a href="#pipes-the-simplest-ipc" data-target="pipes-the-simplest-ipc">Pipes: The Simplest IPC</a></li><li class="toc-l2"><a href="#part-4-signals" data-target="part-4-signals">Part 4 — Signals</a></li><li class="toc-l3"><a href="#the-signal-catalog-the-ones-that-matter" data-target="the-signal-catalog-the-ones-that-matter">The Signal Catalog (the Ones That Matter)</a></li><li class="toc-l3"><a href="#graceful-shutdown-sigterm-cleanup-exit" data-target="graceful-shutdown-sigterm-cleanup-exit">Graceful Shutdown: SIGTERM → cleanup → exit</a></li><li class="toc-l3"><a href="#the-pid-1-problem-in-containers" data-target="the-pid-1-problem-in-containers">The PID 1 Problem in Containers</a></li><li class="toc-l3"><a href="#sigpipe-the-silent-killer" data-target="sigpipe-the-silent-killer">SIGPIPE — The Silent Killer</a></li><li class="toc-l3"><a href="#sigquit-the-debugging-signal" data-target="sigquit-the-debugging-signal">SIGQUIT — The Debugging Signal</a></li><li class="toc-l2"><a href="#part-5-users-permissions-capabilities" data-target="part-5-users-permissions-capabilities">Part 5 — Users, Permissions &amp; Capabilities</a></li><li class="toc-l3"><a href="#users-and-groups" data-target="users-and-groups">Users and Groups</a></li><li class="toc-l3"><a href="#file-permissions" data-target="file-permissions">File Permissions</a></li><li class="toc-l3"><a href="#the-sticky-bit-suid-and-sgid" data-target="the-sticky-bit-suid-and-sgid">The Sticky Bit, SUID, and SGID</a></li><li class="toc-l3"><a href="#linux-capabilities-fine-grained-root" data-target="linux-capabilities-fine-grained-root">Linux Capabilities: Fine-Grained Root</a></li><li class="toc-l2"><a href="#part-6-the-filesystem-in-depth" data-target="part-6-the-filesystem-in-depth">Part 6 — The Filesystem in Depth</a></li><li class="toc-l3"><a href="#inodes-and-the-inodedata-split" data-target="inodes-and-the-inodedata-split">Inodes and the Inode/Data Split</a></li><li class="toc-l3"><a href="#mount-points-and-filesystem-types" data-target="mount-points-and-filesystem-types">Mount Points and Filesystem Types</a></li><li class="toc-l3"><a href="#tmpfs-and-when-to-use-it" data-target="tmpfs-and-when-to-use-it">tmpfs and When to Use It</a></li><li class="toc-l2"><a href="#part-7-systemd" data-target="part-7-systemd">Part 7 — systemd</a></li><li class="toc-l3"><a href="#units-the-building-block" data-target="units-the-building-block">Units: The Building Block</a></li><li class="toc-l3"><a href="#anatomy-of-a-service-unit" data-target="anatomy-of-a-service-unit">Anatomy of a Service Unit</a></li><li class="toc-l3"><a href="#the-commands-youll-use" data-target="the-commands-youll-use">The Commands You'll Use</a></li><li class="toc-l3"><a href="#journald-structured-logging" data-target="journald-structured-logging">Journald: Structured Logging</a></li><li class="toc-l3"><a href="#timers-the-modern-cron" data-target="timers-the-modern-cron">Timers: The Modern Cron</a></li><li class="toc-l2"><a href="#part-8-namespaces-cgroups-how-containers-work" data-target="part-8-namespaces-cgroups-how-containers-work">Part 8 — Namespaces &amp; cgroups (How Containers Work)</a></li><li class="toc-l3"><a href="#namespaces-isolation-of-what-you-can-see" data-target="namespaces-isolation-of-what-you-can-see">Namespaces: Isolation of What You Can See</a></li><li class="toc-l3"><a href="#cgroups-limits-on-what-you-can-use" data-target="cgroups-limits-on-what-you-can-use">cgroups: Limits on What You Can Use</a></li><li class="toc-l3"><a href="#building-a-container-from-scratch-conceptually" data-target="building-a-container-from-scratch-conceptually">Building a Container From Scratch (Conceptually)</a></li><li class="toc-l2"><a href="#part-9-the-network-stack-from-the-os-side" data-target="part-9-the-network-stack-from-the-os-side">Part 9 — The Network Stack From the OS Side</a></li><li class="toc-l3"><a href="#interfaces-ip-addresses-and-routing" data-target="interfaces-ip-addresses-and-routing">Interfaces, IP Addresses, and Routing</a></li><li class="toc-l3"><a href="#virtual-network-devices-how-container-networking-works" data-target="virtual-network-devices-how-container-networking-works">Virtual Network Devices (How Container Networking Works)</a></li><li class="toc-l3"><a href="#iptables-nftables-the-kernel-firewall-and-nat" data-target="iptables-nftables-the-kernel-firewall-and-nat">iptables / nftables: The Kernel Firewall and NAT</a></li><li class="toc-l3"><a href="#dns-resolution-how-etcresolvconf-works" data-target="dns-resolution-how-etcresolvconf-works">DNS Resolution: How /etc/resolv.conf Works</a></li><li class="toc-l2"><a href="#part-10-the-diagnostic-toolkit" data-target="part-10-the-diagnostic-toolkit">Part 10 — The Diagnostic Toolkit</a></li><li class="toc-l3"><a href="#process-and-resource-tools" data-target="process-and-resource-tools">Process and Resource Tools</a></li><li class="toc-l3"><a href="#disk-and-filesystem-tools" data-target="disk-and-filesystem-tools">Disk and Filesystem Tools</a></li><li class="toc-l3"><a href="#network-tools" data-target="network-tools">Network Tools</a></li><li class="toc-l3"><a href="#advanced-diagnostic-tools" data-target="advanced-diagnostic-tools">Advanced Diagnostic Tools</a></li><li class="toc-l3"><a href="#the-diagnostic-workflow" data-target="the-diagnostic-workflow">The Diagnostic Workflow</a></li><li class="toc-l3"><a href="#strace-the-universal-debugger" data-target="strace-the-universal-debugger">strace: The Universal Debugger</a></li></ul></nav></aside>
+  <main><h1 id="linux-fundamentals-study-guide">Linux Fundamentals Study Guide</h1>
+<p>A depth-first guide to how Linux actually works — the process model, file descriptors, signals, the filesystem, users and permissions, systemd, and the container primitives (cgroups and namespaces) — for engineers who use Linux daily but have never looked beneath the surface of <code>ps</code>, <code>kill</code>, and <code>chmod</code>. It assumes you can navigate a shell, edit files, and install packages, but not that you understand <em>why</em> <code>kill -9</code> is different from <code>kill -15</code>, what a file descriptor actually is, how a container is "just a process," or what happens between pressing Enter and seeing output.</p>
+<p>This is the guide I called "the most load-bearing gap in the collection," and the reason is simple: <strong>Linux is the substrate under almost everything else in this repo.</strong> Docker containers are cgroups + namespaces (Part 8 here connects directly to the <a href="DOCKER_STUDY_GUIDE.md">Docker guide</a>). Kubernetes pods are namespaced, cgroup-limited processes (the <a href="k8s/KUBERNETES_STUDY_GUIDE.md">Kubernetes guides</a>). The <a href="KALI_LINUX_STUDY_GUIDE.md">Kali guide</a> runs on this OS. The <a href="NETWORKING_FUNDAMENTALS.md">Networking guide</a> assumes a Linux network stack. Signals are how your <a href="ADVANCED_NODEJS_STUDY_GUIDE.md">Node</a> and <a href="ADVANCED_GO_STUDY_GUIDE.md">Go</a> services shut down gracefully. File descriptors are what your async event loops poll. systemd is how your services start. Understanding this layer retroactively deepens half the repo and directly explains behaviors you've observed but never traced to their source.</p>
+<p>Primary references: the <a href="https://man7.org/linux/man-pages/">Linux man pages</a> (the authoritative source — <code>man 2 open</code>, <code>man 7 signal</code>, <code>man 7 namespaces</code>), Michael Kerrisk's <a href="https://man7.org/tlpi/"><em>The Linux Programming Interface</em></a> (the definitive book), the <a href="https://www.kernel.org/doc/html/latest/">kernel documentation</a>, and Brendan Gregg's <a href="https://www.brendangregg.com/">systems performance work</a>.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1--everything-is-a-file-almost">Part 1 — Everything Is a File (Almost)</a></li>
+<li><a href="#part-2--processes">Part 2 — Processes</a></li>
+<li><a href="#part-3--file-descriptors--io">Part 3 — File Descriptors &amp; I/O</a></li>
+<li><a href="#part-4--signals">Part 4 — Signals</a></li>
+<li><a href="#part-5--users-permissions--capabilities">Part 5 — Users, Permissions &amp; Capabilities</a></li>
+<li><a href="#part-6--the-filesystem-in-depth">Part 6 — The Filesystem in Depth</a></li>
+<li><a href="#part-7--systemd">Part 7 — systemd</a></li>
+<li><a href="#part-8--namespaces--cgroups-how-containers-work">Part 8 — Namespaces &amp; cgroups (How Containers Work)</a></li>
+<li><a href="#part-9--the-network-stack-from-the-os-side">Part 9 — The Network Stack From the OS Side</a></li>
+<li><a href="#part-10--the-diagnostic-toolkit">Part 10 — The Diagnostic Toolkit</a></li>
+</ol>
+<hr>
+<h2 id="part-1-everything-is-a-file-almost">Part 1 — Everything Is a File (Almost)</h2>
+<p>The single most important design principle in Unix/Linux, and the one that explains the most about how the system fits together: <strong>almost every system resource is exposed as a file — or something that behaves like one — in a hierarchical namespace.</strong></p>
+<h3 id="the-principle">The Principle</h3>
+<p>Regular files on disk are files, obviously. But so are:</p>
+<ul>
+<li><strong>Directories</strong> — files that contain name-to-inode mappings.</li>
+<li><strong>Devices</strong> — <code>/dev/sda</code> (a disk), <code>/dev/null</code> (a sink), <code>/dev/urandom</code> (random bytes). Read from and write to them like files.</li>
+<li><strong>Pipes</strong> — <code>|</code> in the shell creates a pipe; <code>mkfifo</code> creates a named pipe. Data flows in one direction, byte-stream semantics.</li>
+<li><strong>Sockets</strong> — network connections and local IPC, accessible as file descriptors (Part 3).</li>
+<li><strong>Symlinks</strong> — pointers to other paths.</li>
+<li><strong><code>/proc</code></strong> — a <em>virtual</em> filesystem (no disk backing) that exposes <strong>kernel and process state</strong> as readable files. <code>/proc/[pid]/status</code> shows a process's state; <code>/proc/meminfo</code> shows memory; <code>/proc/[pid]/fd/</code> lists its open file descriptors. This is where <code>ps</code>, <code>top</code>, and every monitoring tool get their data — they just read files.</li>
+<li><strong><code>/sys</code></strong> — another virtual filesystem exposing <strong>hardware and kernel subsystem information</strong> (devices, drivers, cgroups, network interfaces) as files. <code>echo 1 &gt; /sys/class/leds/…/brightness</code> turns on an LED. On the Pi Zero 2 W, GPIO is exposed through <code>/sys/class/gpio/</code>.</li>
+</ul>
+<p>The practical consequence: <strong>the same small set of operations — open, read, write, close, stat — works on an enormous range of resources.</strong> A tool that reads files can read process state, device output, and kernel parameters without special APIs. This uniformity is the design genius of Unix, and it's why shell pipelines are so powerful — every tool speaks the same byte-stream protocol.</p>
+<h3 id="the-filesystem-hierarchy">The Filesystem Hierarchy</h3>
+<p>Where things live, and why it matters when your <a href="DOCKER_STUDY_GUIDE.md">Docker guide</a> images mount volumes or your <a href="ANSIBLE_STUDY_GUIDE.md">Ansible guide</a> playbooks template files:</p>
+<table>
+<thead>
+<tr>
+<th>Path</th>
+<th>Contains</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>/</code></td>
+<td>the root — everything hangs off this</td>
+</tr>
+<tr>
+<td><code>/bin</code>, <code>/sbin</code></td>
+<td>essential binaries (merged into <code>/usr/bin</code>, <code>/usr/sbin</code> on modern distros)</td>
+</tr>
+<tr>
+<td><code>/etc</code></td>
+<td>system-wide configuration (the place Ansible, Terraform, and your playbooks target)</td>
+</tr>
+<tr>
+<td><code>/home</code></td>
+<td>user home directories</td>
+</tr>
+<tr>
+<td><code>/var</code></td>
+<td>variable data — logs (<code>/var/log</code>), caches, spool, database files</td>
+</tr>
+<tr>
+<td><code>/tmp</code></td>
+<td>temporary files (cleared on reboot, or mounted as tmpfs — i.e., RAM)</td>
+</tr>
+<tr>
+<td><code>/proc</code></td>
+<td>virtual — process and kernel state (no disk)</td>
+</tr>
+<tr>
+<td><code>/sys</code></td>
+<td>virtual — hardware and subsystem state (no disk)</td>
+</tr>
+<tr>
+<td><code>/dev</code></td>
+<td>device files</td>
+</tr>
+<tr>
+<td><code>/usr</code></td>
+<td>user-space programs, libraries, and shared data</td>
+</tr>
+<tr>
+<td><code>/opt</code></td>
+<td>optional/third-party software</td>
+</tr>
+<tr>
+<td><code>/run</code></td>
+<td>runtime state since boot (PID files, sockets) — tmpfs</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-virtual-filesystems-youll-actually-use">The Virtual Filesystems You'll Actually Use</h3>
+<p><strong><code>/proc</code></strong> is the one you'll read constantly:</p>
+<pre><code class="language-bash">cat /proc/cpuinfo              # CPU info — model, cores, flags
+cat /proc/meminfo              # memory: total, free, buffers, cached
+cat /proc/loadavg              # load averages (1, 5, 15 min) — the &quot;how busy&quot; metric
+cat /proc/[pid]/status         # a single process: state, memory, threads, UID
+cat /proc/[pid]/cmdline        # the full command that started it
+cat /proc/[pid]/environ        # its environment variables
+ls -l /proc/[pid]/fd/          # its open file descriptors (Part 3)
+cat /proc/[pid]/maps           # its memory map (shared libraries, heap, stack)
+cat /proc/[pid]/limits         # its resource limits (open files, stack size, etc.)
+</code></pre>
+<p>Every monitoring and debugging tool you use — <code>ps</code>, <code>top</code>, <code>htop</code>, <code>free</code>, Prometheus's <code>node_exporter</code> — is reading <code>/proc</code>. When a tool is unavailable (a minimal container with no <code>ps</code>), you can <em>always</em> read <code>/proc</code> directly because it's the kernel itself.</p>
+<p>If you remember one thing from Part 1: <strong>Linux exposes processes, devices, and kernel state as files in <code>/proc</code> and <code>/sys</code> — so the tools you use daily (ps, top, free) are just reading files, and when the tools aren't available, the files still are.</strong></p>
+<hr>
+<h2 id="part-2-processes">Part 2 — Processes</h2>
+<p>A process is the fundamental unit of execution in Linux — every program you run, every service, every container, is one or more processes. Understanding the process model explains how programs start, how they relate to each other, how they die, and what happens when they don't die cleanly.</p>
+<h3 id="what-a-process-is">What a Process Is</h3>
+<p>A process is the kernel's record of a running program: its <strong>memory space</strong> (code, data, heap, stack), its <strong>open file descriptors</strong> (Part 3), its <strong>credentials</strong> (user, group), its <strong>signal handlers</strong> (Part 4), its <strong>PID</strong> (a unique integer), and its <strong>state</strong> (running, sleeping, stopped, zombie). Critically, each process has its own <strong>virtual address space</strong> — processes are isolated from each other by the CPU's memory management hardware (the MMU). One process cannot read or write another's memory (without explicit shared-memory setup). This isolation is fundamental to OS security and stability.</p>
+<h3 id="fork-and-exec-how-processes-are-born"><code>fork</code> and <code>exec</code>: How Processes Are Born</h3>
+<p>Every process in Linux (except PID 1) is created by <strong><code>fork()</code></strong>: the kernel <em>duplicates</em> the calling process — same code, same data, same file descriptors, same everything — and returns twice: once in the parent (with the child's PID) and once in the child (with 0). The child is an <em>almost-exact copy</em> of the parent, running from the same point in the same code.</p>
+<p>Then, usually, the child calls <strong><code>exec()</code></strong> — which <em>replaces</em> its entire memory image with a new program (loaded from a binary on disk). <code>exec</code> does <strong>not</strong> create a new process (the PID stays the same); it <em>transforms</em> the existing one into a different program. So the idiom is:</p>
+<pre><code class="language-text">parent calls fork() → child (copy of parent) calls exec(&quot;new-program&quot;) → child is now new-program
+</code></pre>
+<p>This <code>fork</code>+<code>exec</code> pair is how <em>every</em> program launch works — your shell, <code>systemd</code>, Docker, Kubernetes's kubelet. When you type <code>ls</code> in bash, bash <code>fork</code>s itself, the child <code>exec</code>s <code>/usr/bin/ls</code>, <code>ls</code> runs and exits, and bash (the parent) continues. The <a href="DOCKER_STUDY_GUIDE.md">Docker guide</a>'s <code>docker run</code> ultimately does <code>fork</code>+<code>exec</code> of your container's entrypoint process, inside namespaces and cgroups (Part 8).</p>
+<p>(Modern Linux also has <code>clone()</code>, a more flexible version of <code>fork</code> that lets you share specific resources — memory, file descriptors, PID namespace — between parent and child. <code>clone</code> is the actual syscall that creates threads and, critically, namespaced processes for containers.)</p>
+<h3 id="the-process-tree">The Process Tree</h3>
+<p>Because every process is <code>fork</code>ed from a parent, all processes form a <strong>tree</strong> rooted at PID 1 (the init system, usually <code>systemd</code> — Part 7). You can see it:</p>
+<pre><code class="language-bash">pstree -p
+# systemd(1)─┬─sshd(800)───sshd(1200)───bash(1201)───vim(1300)
+#             ├─dockerd(900)───containerd(901)───...
+#             └─nginx(850)─┬─nginx(851)
+#                           └─nginx(852)
+</code></pre>
+<p>The parent-child relationship matters for three things: <strong>signals</strong> (sending <code>SIGTERM</code> to a parent can be configured to cascade to children), <strong>wait</strong> (a parent must <code>wait()</code> on a child to collect its exit status — see zombies below), and <strong>namespaces</strong> (a child inherits its parent's namespace memberships, which is how containers scope their children).</p>
+<h3 id="process-states">Process States</h3>
+<p>At any moment, a process is in one of these states (visible in <code>ps</code> and <code>/proc/[pid]/status</code>):</p>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Running</strong></td>
+<td><code>R</code></td>
+<td>executing on a CPU or ready to run (in the run queue)</td>
+</tr>
+<tr>
+<td><strong>Sleeping (interruptible)</strong></td>
+<td><code>S</code></td>
+<td>waiting for an event (I/O, timer, signal) — the normal "idle" state for most processes</td>
+</tr>
+<tr>
+<td><strong>Sleeping (uninterruptible)</strong></td>
+<td><code>D</code></td>
+<td>waiting for I/O that <em>cannot</em> be interrupted (typically disk) — cannot be killed, even with <code>SIGKILL</code>, until the I/O completes. A process stuck in <code>D</code> usually means a disk/NFS/storage problem.</td>
+</tr>
+<tr>
+<td><strong>Stopped</strong></td>
+<td><code>T</code></td>
+<td>paused by a signal (<code>SIGSTOP</code> or <code>SIGTSTP</code> — Ctrl-Z)</td>
+</tr>
+<tr>
+<td><strong>Zombie</strong></td>
+<td><code>Z</code></td>
+<td>finished executing but its parent hasn't <code>wait()</code>ed for it yet — the process is dead but its entry in the process table remains so the parent can read the exit status</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Zombies</strong> are the state that confuses people. A zombie is <em>not</em> running and consumes <em>no</em> CPU or memory (its memory is already freed). It's just a process-table entry — a few bytes — waiting for its parent to call <code>wait()</code>. Normally this happens instantly, but if the parent is buggy (never calls <code>wait</code>) or if the parent died without cleaning up its children, zombies accumulate. They're mostly harmless individually, but a buildup can exhaust the PID space. When the parent dies, orphaned children are <strong>re-parented to PID 1</strong> (<code>systemd</code>), which <code>wait()</code>s on them and cleans up the zombies — this is one of PID 1's essential jobs, and it's why running your own app as PID 1 in a Docker container (without an init) can lead to zombie accumulation (the app doesn't <code>wait()</code> on children it didn't know about). The fix: use <code>tini</code> or <code>--init</code> in Docker, or <code>shareProcessNamespace</code> in Kubernetes — both are covered in the <a href="DOCKER_STUDY_GUIDE.md">Docker guide</a>.</p>
+<h3 id="threads">Threads</h3>
+<p>A thread in Linux is <strong>just a process that shares its memory space, file descriptors, and signal handlers with another process.</strong> Internally, Linux doesn't distinguish threads from processes at the scheduler level — both are "tasks." Threads are created with <code>clone()</code> with the <code>CLONE_VM | CLONE_FILES | CLONE_SIGHAND</code> flags (sharing virtual memory, file table, and signal handlers). They share the same PID (from userspace's perspective — <code>gettid()</code> returns the thread's unique "TID," and <code>/proc/[pid]/task/</code> lists them all).</p>
+<p>This is directly relevant to the <a href="ADVANCED_GO_STUDY_GUIDE.md">Advanced Go guide</a>: Go's Ms (OS threads) are Linux threads (<code>clone</code>d with shared memory), and goroutines are user-space "green threads" multiplexed onto them. The GMP scheduler from that guide is running on top of this kernel mechanism.</p>
+<h3 id="exit-wait-and-exit-codes">Exit, Wait, and Exit Codes</h3>
+<p>When a process finishes (<code>exit()</code> or returning from <code>main</code>), it becomes a zombie until its parent calls <code>wait()</code>. The exit code (0–255) is the universal success/failure signal:</p>
+<ul>
+<li><strong>0</strong> = success — every well-behaved program returns 0 on success.</li>
+<li><strong>Non-zero</strong> = failure — by convention, different non-zero values mean different errors, but the convention varies.</li>
+<li><strong>128 + N</strong> = killed by signal N — e.g., exit code <strong>137 = 128 + 9 (SIGKILL)</strong>, the code you see when Kubernetes OOM-kills a container. Exit code <strong>143 = 128 + 15 (SIGTERM)</strong> = normal graceful-shutdown signal.</li>
+</ul>
+<p>So when your Kubernetes pod shows <code>exitCode: 137</code>, you now know: it was killed by SIGKILL — most likely the OOM killer, because the process exceeded its cgroup memory limit (Part 8, and the <a href="ADVANCED_GO_STUDY_GUIDE.md">Advanced Go guide</a>'s <code>GOMEMLIMIT</code> discussion).</p>
+<p>If you remember one thing from Part 2: <strong>every process is born from <code>fork</code>+<code>exec</code>, lives in a tree rooted at PID 1, and dies by exiting (or being killed by a signal) — and exit code 137 means SIGKILL (probably OOM), which connects directly to container memory limits in Docker and Kubernetes.</strong></p>
+<hr>
+<h2 id="part-3-file-descriptors-io">Part 3 — File Descriptors &amp; I/O</h2>
+<p>Part 1 said "everything is a file." File descriptors are <em>how</em> — the kernel's handle for an open resource. Understanding them explains how your programs talk to files, pipes, sockets, and devices; how I/O redirection works; and what the event loop in your <a href="ADVANCED_NODEJS_STUDY_GUIDE.md">Node</a> and <a href="ASYNCIO_STUDY_GUIDE.md">Python async</a> runtimes is actually polling.</p>
+<h3 id="what-a-file-descriptor-is">What a File Descriptor Is</h3>
+<p>A <strong>file descriptor (fd)</strong> is a small non-negative integer that identifies an open file (or pipe, socket, device, etc.) within a process. When you <code>open()</code> a file, the kernel creates an entry in the process's <strong>file descriptor table</strong> pointing to an internal file object (which tracks the current offset, the mode, and the underlying inode or device). The fd is the handle you use for all subsequent operations — <code>read(fd, ...)</code>, <code>write(fd, ...)</code>, <code>close(fd)</code>.</p>
+<p>Every process starts with three:</p>
+<table>
+<thead>
+<tr>
+<th>fd</th>
+<th>Name</th>
+<th>Default</th>
+<th>Shell symbol</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td><strong>stdin</strong></td>
+<td>the terminal (keyboard)</td>
+<td><code>&lt;</code></td>
+</tr>
+<tr>
+<td>1</td>
+<td><strong>stdout</strong></td>
+<td>the terminal (screen)</td>
+<td><code>&gt;</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>stderr</strong></td>
+<td>the terminal (screen)</td>
+<td><code>2&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<p>Shell redirection is <em>just fd manipulation</em>: <code>cmd &gt; out.txt</code> means "open <code>out.txt</code> for writing, make fd 1 point to it instead of the terminal, then exec <code>cmd</code>." Piping <code>cmd1 | cmd2</code> creates a kernel pipe, connects cmd1's fd 1 (stdout) to the write end and cmd2's fd 0 (stdin) to the read end. No temporary file, no copying — data flows through a kernel buffer directly.</p>
+<h3 id="file-descriptors-are-inherited-across-fork-and-survive-exec">File Descriptors Are Inherited Across <code>fork</code> and Survive <code>exec</code></h3>
+<p>When a process <code>fork</code>s, the child gets <strong>a copy</strong> of the parent's file descriptor table — the same fds, pointing to the same kernel file objects (sharing the file offset). This is <em>why</em> piping works: the shell sets up the pipe fds, forks, and the child inherits them before exec'ing the target program. It's also why a leaked fd in a parent process leaks into every child (a security and resource concern — set <code>O_CLOEXEC</code> / <code>FD_CLOEXEC</code> on fds you don't want inherited).</p>
+<h3 id="the-ulimit-and-the-too-many-open-files-error">The <code>ulimit</code> and the "Too Many Open Files" Error</h3>
+<p>Each process has a <strong>limit</strong> on how many fds it can hold open (the <code>nofile</code> rlimit). The default soft limit is often <strong>1024</strong>, and the hard limit is higher. When a busy server (or a leaking one) tries to open its 1025th fd, it gets <code>EMFILE: too many open files</code> — a classic production failure for high-connection servers:</p>
+<pre><code class="language-bash">ulimit -n              # show the current soft limit (often 1024)
+ulimit -n 65536        # raise it for this shell session
+cat /proc/[pid]/limits # show a running process's limits
+</code></pre>
+<p>For production services, raise the limit in your systemd unit (<code>LimitNOFILE=65536</code> — Part 7) or container config. The <a href="ADVANCED_NODEJS_STUDY_GUIDE.md">Advanced Node.js guide</a>'s "the netpoller handles tens of thousands of connections" is only true if the fd limit allows it.</p>
+<h3 id="blocking-vs-non-blocking-io-and-how-the-event-loop-works">Blocking vs. Non-Blocking I/O (and How the Event Loop Works)</h3>
+<p>By default, a <code>read()</code> on a socket <strong>blocks</strong> — the process (or thread) sleeps until data arrives. A server handling 10,000 connections with blocking I/O needs 10,000 threads, each mostly sleeping — expensive.</p>
+<p>The alternative: mark the fd as <strong>non-blocking</strong> (<code>O_NONBLOCK</code>), and <code>read()</code> returns immediately with <code>EAGAIN</code> if no data is ready. But then you need to <em>know when to try again</em> — and that's what <strong><code>epoll</code></strong> (Linux), <strong><code>kqueue</code></strong> (macOS), and <strong><code>IOCP</code></strong> (Windows) provide: a system call that watches <em>many</em> fds at once and tells you which ones are ready for I/O. You register thousands of fds with <code>epoll_create</code> + <code>epoll_ctl</code>, then call <code>epoll_wait</code> — it blocks until <em>any</em> of them is ready, and returns the set of ready fds. Now one thread handles thousands of connections, checking only the ones that have data.</p>
+<p>This is <strong>the</strong> mechanism underneath:</p>
+<ul>
+<li><strong>libuv</strong> (Node.js's event loop and Python's uvloop) — wraps <code>epoll</code>/<code>kqueue</code> into a portable event loop.</li>
+<li><strong>Go's netpoller</strong> — the runtime registers socket fds with epoll and parks goroutines until their fd is ready (the <a href="ADVANCED_GO_STUDY_GUIDE.md">Advanced Go guide</a>, Part 2).</li>
+<li><strong>Python's asyncio</strong> — the default <code>SelectorEventLoop</code> uses <code>epoll</code> (or <code>select</code>/<code>kqueue</code>); uvloop uses libuv which uses <code>epoll</code>.</li>
+</ul>
+<p>So when the <a href="ADVANCED_NODEJS_STUDY_GUIDE.md">Advanced Node.js guide</a> says "the event loop polls for I/O in the poll phase," this is what it's doing: calling <code>epoll_wait</code> on every socket fd the process has registered, waking up callbacks when data arrives. <strong>The event loop <em>is</em> an <code>epoll</code> loop.</strong> And when Node or Go or asyncio handle tens of thousands of concurrent connections on one thread, it's because <code>epoll</code> scales to hundreds of thousands of fds with O(ready) cost, not O(total).</p>
+<h3 id="pipes-the-simplest-ipc">Pipes: The Simplest IPC</h3>
+<p>A pipe is a unidirectional byte stream between two fds — one for writing, one for reading — backed by a kernel buffer (default ~64 KB on Linux). Pipes are anonymous (created by <code>pipe()</code>, used between parent and child via <code>fork</code>+<code>exec</code>) or named (<code>mkfifo</code>, exists as a file on disk). Shell pipes (<code>|</code>) are anonymous pipes, and they're the foundation of the Unix "small tools, composed" philosophy.</p>
+<p>The key property: pipes have <strong>backpressure built in.</strong> If the reader is slow, the pipe buffer fills, and the writer's <code>write()</code> blocks (or returns <code>EAGAIN</code> for non-blocking). If the writer closes, the reader gets EOF. If the reader closes, the writer gets <code>SIGPIPE</code> (Part 4). This natural flow control is the same concept the <a href="ADVANCED_NODEJS_STUDY_GUIDE.md">Advanced Node.js guide</a>'s streams chapter describes at a higher level — it's the OS primitive underneath <code>highWaterMark</code> and <code>drain</code>.</p>
+<p>If you remember one thing from Part 3: <strong>a file descriptor is the kernel's handle for an open file/socket/pipe/device, every process starts with three (stdin/stdout/stderr), the <code>nofile</code> limit caps how many you can open (raise it for servers), and <code>epoll</code> watching many fds at once is the mechanism underneath every event loop you use — Node's, Go's, and Python's.</strong></p>
+<hr>
+<h2 id="part-4-signals">Part 4 — Signals</h2>
+<p>Signals are Linux's oldest inter-process communication — asynchronous notifications sent to a process by the kernel, by another process, or by the process itself. They're how your services shut down gracefully, how Ctrl-C works, and why containers sometimes die mysteriously. This is one of the most practically important chapters for anyone running services.</p>
+<h3 id="the-signal-catalog-the-ones-that-matter">The Signal Catalog (the Ones That Matter)</h3>
+<p>There are ~30 standard signals; you need to know ~8:</p>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Number</th>
+<th>Default</th>
+<th>Sent by</th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SIGTERM</code></td>
+<td>15</td>
+<td>terminate</td>
+<td><code>kill</code>, Docker/K8s on shutdown</td>
+<td>"please shut down gracefully" — the polite request. <strong>Catchable.</strong></td>
+</tr>
+<tr>
+<td><code>SIGKILL</code></td>
+<td>9</td>
+<td>terminate</td>
+<td><code>kill -9</code>, OOM killer, K8s after grace period</td>
+<td>"die now" — <strong>cannot be caught, blocked, or ignored.</strong> Instant death.</td>
+</tr>
+<tr>
+<td><code>SIGINT</code></td>
+<td>2</td>
+<td>terminate</td>
+<td>Ctrl-C in the terminal</td>
+<td>"user wants to interrupt" — like SIGTERM but interactive. Catchable.</td>
+</tr>
+<tr>
+<td><code>SIGHUP</code></td>
+<td>1</td>
+<td>terminate</td>
+<td>terminal closes, or manual</td>
+<td>traditionally "reload config" (Nginx, Apache). Catchable.</td>
+</tr>
+<tr>
+<td><code>SIGQUIT</code></td>
+<td>3</td>
+<td>terminate + core dump</td>
+<td>Ctrl-\</td>
+<td>"quit and dump core" — Go uses this to print all goroutine stacks.</td>
+</tr>
+<tr>
+<td><code>SIGSTOP</code></td>
+<td>19</td>
+<td>stop (pause)</td>
+<td><code>kill -STOP</code></td>
+<td>pause the process — <strong>cannot be caught.</strong></td>
+</tr>
+<tr>
+<td><code>SIGTSTP</code></td>
+<td>20</td>
+<td>stop</td>
+<td>Ctrl-Z</td>
+<td>interactive pause — catchable (but usually not caught).</td>
+</tr>
+<tr>
+<td><code>SIGCONT</code></td>
+<td>18</td>
+<td>continue</td>
+<td><code>fg</code>, <code>bg</code>, <code>kill -CONT</code></td>
+<td>resume a stopped process.</td>
+</tr>
+<tr>
+<td><code>SIGCHLD</code></td>
+<td>17</td>
+<td>ignore</td>
+<td>kernel → parent</td>
+<td>"your child exited or stopped" — the signal that triggers <code>wait()</code>.</td>
+</tr>
+<tr>
+<td><code>SIGPIPE</code></td>
+<td>13</td>
+<td>terminate</td>
+<td>kernel</td>
+<td>"you wrote to a broken pipe/socket" — the reader closed.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="graceful-shutdown-sigterm-cleanup-exit">Graceful Shutdown: SIGTERM → cleanup → exit</h3>
+<p>This is the pattern every production service must implement, and understanding it from the OS side ties together Docker, Kubernetes, systemd, and your application code:</p>
+<ol>
+<li><strong>Something sends <code>SIGTERM</code></strong> — <code>systemctl stop</code>, <code>docker stop</code>, Kubernetes sending <code>SIGTERM</code> before killing a pod.</li>
+<li><strong>Your process catches it</strong> and begins cleanup — flush buffers, close database connections, finish in-flight requests, drain a work queue.</li>
+<li><strong>Your process exits</strong> (exit code 0 for clean shutdown).</li>
+<li><strong>If it doesn't exit within the grace period</strong>, the sender sends <code>SIGKILL</code> — which cannot be caught. The process is killed instantly, mid-operation.</li>
+</ol>
+<p>The grace period varies: Docker defaults to 10 seconds (<code>docker stop</code>), Kubernetes defaults to 30 seconds (<code>terminationGracePeriodSeconds</code>), systemd defaults to 90 seconds (<code>TimeoutStopSec</code>).</p>
+<pre><code class="language-python"># Python: catch SIGTERM for graceful shutdown
+import signal, sys
+
+def handle_sigterm(signum, frame):
+    print(&quot;SIGTERM received, shutting down...&quot;)
+    # flush, close connections, drain work queue
+    sys.exit(0)
+
+signal.signal(signal.SIGTERM, handle_sigterm)
+</code></pre>
+<pre><code class="language-go">// Go: catch SIGTERM with signal.Notify + context
+ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+defer stop()
+// ... start server with ctx ...
+&lt;-ctx.Done()   // blocks until SIGTERM/SIGINT
+// graceful drain, close connections, exit
+</code></pre>
+<pre><code class="language-javascript">// Node: catch SIGTERM (the Electron guide's graceful-shutdown recipe is this)
+process.on(&quot;SIGTERM&quot;, async () =&gt; {
+  console.log(&quot;SIGTERM received&quot;);
+  await server.close();   // stop accepting, drain in-flight
+  await pool.end();       // close DB connections
+  process.exit(0);
+});
+</code></pre>
+<h3 id="the-pid-1-problem-in-containers">The PID 1 Problem in Containers</h3>
+<p>PID 1 in Linux has special signal behavior: <strong>SIGTERM is ignored by default</strong> (unlike other processes, where the default is to terminate). Normal processes <em>don't</em> handle SIGTERM unless they register a handler — but the default action is "terminate." PID 1 gets <em>no</em> default action for most signals; it must explicitly register a handler, or the signal is silently dropped.</p>
+<p>This is why running your app directly as PID 1 in a container (<code>CMD ["myapp"]</code> in a Dockerfile, without an init) leads to a common problem: <code>docker stop</code> sends SIGTERM to PID 1 (your app), your app <em>ignores it</em> (no handler, PID 1 default), Docker waits 10 seconds, then sends SIGKILL. Your "graceful" shutdown is always a hard kill. Fixes:</p>
+<ul>
+<li><strong><code>docker run --init</code></strong> — injects <code>tini</code> as PID 1, which forwards signals to your app (now PID 2, with normal signal defaults).</li>
+<li><strong>Use <code>exec</code> in shell entrypoints</strong> — <code>CMD ["sh", "-c", "exec myapp"]</code> replaces the shell with your app, so your app <em>is</em> PID 1 and receives the signal (provided it has a handler).</li>
+<li><strong>In Kubernetes</strong>, <code>shareProcessNamespace: true</code> or running an init container serves a similar purpose.</li>
+</ul>
+<h3 id="sigpipe-the-silent-killer"><code>SIGPIPE</code> — The Silent Killer</h3>
+<p>When a process writes to a pipe or socket whose read end is closed, the kernel sends <code>SIGPIPE</code> — and the default action is <em>terminate</em>. This is why a long pipeline like <code>cmd | head -1</code> doesn't leave <code>cmd</code> running forever after <code>head</code> exits — <code>cmd</code> gets <code>SIGPIPE</code> on its next write and dies. But it's also why a server writing to a client that disconnected can <em>unexpectedly crash</em>. Go ignores SIGPIPE by default (smart); Python and Node don't, but frameworks typically handle it. Know that it exists, and if your service is dying mysteriously after a client disconnect, SIGPIPE is the first suspect.</p>
+<h3 id="sigquit-the-debugging-signal"><code>SIGQUIT</code> — The Debugging Signal</h3>
+<p>Sending <code>SIGQUIT</code> (signal 3, Ctrl-\ in the terminal) to a Go program makes the runtime print <strong>every goroutine's stack trace</strong> and then exit. This is invaluable for debugging hung Go services — it's the emergency "what are all goroutines doing right now?" button:</p>
+<pre><code class="language-bash">kill -QUIT [pid]    # prints all goroutine stacks to stderr, then exits
+</code></pre>
+<p>If you remember one thing from Part 4: <strong>SIGTERM is "please stop" (catchable, your code must handle it for graceful shutdown), SIGKILL is "die now" (uncatchable), and the PID 1 signal problem in containers is why <code>docker stop</code> sometimes hard-kills your app after the grace period — fix it with <code>--init</code> or <code>exec</code> in your entrypoint.</strong></p>
+<hr>
+<h2 id="part-5-users-permissions-capabilities">Part 5 — Users, Permissions &amp; Capabilities</h2>
+<p>The Unix security model is simple and load-bearing: <strong>every process runs as a user, every file has an owner and permission bits, and the kernel enforces access.</strong> This is the layer your <a href="k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md">Kubernetes Security guide</a>'s <code>runAsNonRoot</code> and <code>securityContext</code> are sitting on top of.</p>
+<h3 id="users-and-groups">Users and Groups</h3>
+<ul>
+<li>Every process has a <strong>UID</strong> (user ID) and a <strong>GID</strong> (primary group ID), plus supplementary groups. These are numbers; names (<code>root</code>, <code>www-data</code>) are just lookups in <code>/etc/passwd</code> and <code>/etc/group</code>.</li>
+<li><strong>UID 0 is root</strong> — the traditional superuser, which bypasses most permission checks. Running as root in a container is the security risk the K8s security guide warns about, because root inside the container is (by default, without user namespaces) root on the host.</li>
+<li><strong>Non-root users</strong> are subject to permission checks. Running your service as a non-root user is the first and simplest container-security hardening.</li>
+</ul>
+<h3 id="file-permissions">File Permissions</h3>
+<p>Every file has three permission sets — <strong>owner</strong>, <strong>group</strong>, and <strong>other</strong> — each with <strong>read (r=4)</strong>, <strong>write (w=2)</strong>, and <strong>execute (x=1)</strong> bits:</p>
+<pre><code class="language-bash">ls -l file.txt
+# -rw-r--r-- 1 sanjee staff 1024 Jan 1 00:00 file.txt
+#  │├─┤├─┤├─┤
+#  │ │   │  │
+#  │ │   │  └── other: r-- (read only)
+#  │ │   └───── group: r-- (read only)
+#  │ └───────── owner: rw- (read, write)
+#  └──────────── type: - (regular file; d for directory, l for symlink)
+</code></pre>
+<p><code>chmod 755 file</code> = owner rwx, group r-x, other r-x (a common pattern for scripts and binaries). <code>chmod 600 file</code> = owner rw, nobody else (private keys, <code>.env</code> files). The octal math: add up r(4)+w(2)+x(1) per set.</p>
+<p>For <strong>directories</strong>, the bits mean slightly different things: <strong>read</strong> lets you list contents, <strong>write</strong> lets you create/delete files in it, and <strong>execute</strong> lets you <code>cd</code> into it and access files by name. A directory without <code>x</code> is inaccessible even if you can read its listing.</p>
+<h3 id="the-sticky-bit-suid-and-sgid">The Sticky Bit, SUID, and SGID</h3>
+<p>Three special permission bits that have outsized security implications:</p>
+<ul>
+<li><strong>Sticky bit</strong> (<code>chmod +t</code>, shown as <code>t</code> in the other-execute position): on a directory, only the file's owner (or root) can delete it — even if the directory is world-writable. This is why <code>/tmp</code> is <code>drwxrwxrwt</code>: anyone can create files, but only you (or root) can delete yours.</li>
+<li><strong>SUID</strong> (<code>chmod u+s</code>): when an executable has the SUID bit set, it runs as the <strong>file's owner</strong>, not the user who launched it. <code>/usr/bin/passwd</code> is SUID root — it needs root to modify <code>/etc/shadow</code>, but any user can run it. SUID is a common attack vector (a SUID-root binary with a vulnerability gives the attacker root), which is why the K8s security guide's <code>no-new-privileges</code> and <code>allowPrivilegeEscalation: false</code> exist: they prevent SUID from working inside a container.</li>
+<li><strong>SGID</strong> on a directory: files created inside inherit the directory's group (not the creator's primary group) — useful for shared project directories.</li>
+</ul>
+<h3 id="linux-capabilities-fine-grained-root">Linux Capabilities: Fine-Grained Root</h3>
+<p>Traditional Unix has two levels: root (can do everything) and non-root (subject to permission checks). <strong>Capabilities</strong> (since Linux 2.2) split root's powers into ~40 discrete privileges, so you can grant <em>only</em> the ones needed:</p>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Allows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CAP_NET_BIND_SERVICE</code></td>
+<td>bind to ports below 1024 (80, 443) without root</td>
+</tr>
+<tr>
+<td><code>CAP_NET_RAW</code></td>
+<td>use raw sockets (ping, tcpdump)</td>
+</tr>
+<tr>
+<td><code>CAP_SYS_PTRACE</code></td>
+<td>trace/debug other processes</td>
+</tr>
+<tr>
+<td><code>CAP_SYS_ADMIN</code></td>
+<td>a grab-bag of admin powers — nearly as dangerous as root</td>
+</tr>
+<tr>
+<td><code>CAP_DAC_OVERRIDE</code></td>
+<td>bypass file read/write/execute permission checks</td>
+</tr>
+</tbody>
+</table>
+<p>Containers drop most capabilities by default — the <a href="DOCKER_STUDY_GUIDE.md">Docker guide</a> and <a href="k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md">K8s Security guide</a> both discuss which ones to add back and when. The principle: <strong>don't run as root; if you need one specific privilege, add only that capability.</strong> <code>CAP_SYS_ADMIN</code> in a container is effectively root — treat it as such.</p>
+<p>If you remember one thing from Part 5: <strong>every process runs as a UID, every file has permission bits, UID 0 (root) bypasses them, and capabilities let you grant specific root-like powers without full root — which is exactly what your Kubernetes securityContext and Docker <code>--cap-add</code> are manipulating.</strong></p>
+<hr>
+<h2 id="part-6-the-filesystem-in-depth">Part 6 — The Filesystem in Depth</h2>
+<p>Beyond the hierarchy — how Linux organizes data on disk, what an inode is, and why it matters for understanding links, mount points, Docker layers, and "disk full but <code>df</code> disagrees."</p>
+<h3 id="inodes-and-the-inodedata-split">Inodes and the Inode/Data Split</h3>
+<p>A file on disk has two parts: the <strong>inode</strong> (metadata: size, permissions, timestamps, block pointers — identified by an <strong>inode number</strong>) and the <strong>data blocks</strong> (the actual contents). A <strong>directory</strong> is a file whose data blocks contain a list of <code>(name, inode number)</code> entries — a phone book mapping names to inodes.</p>
+<p>This separation explains:</p>
+<ul>
+<li><strong>Hard links</strong> (<code>ln file link</code>): two directory entries pointing to the <em>same inode</em>. Both names are equally "the file" — there's no "original." Deleting one name decrements the inode's link count; the data persists until the count reaches zero. Hard links can't cross filesystem boundaries and can't point to directories.</li>
+<li><strong>Symlinks</strong> (<code>ln -s target link</code>): a separate file whose data is the <em>path</em> of the target. If the target is moved or deleted, the symlink <strong>breaks</strong> (dangling symlink). Symlinks can cross filesystems and point to directories.</li>
+<li><strong>"Disk full but files are small"</strong>: the filesystem has a fixed number of inodes. If you create millions of tiny files, you can exhaust inodes before filling disk space — <code>df -i</code> shows inode usage. This actually happens in practice with package managers and build systems that create enormous numbers of small files.</li>
+<li><strong>"File deleted but space not freed"</strong>: if a process still has the file open (holds an fd), deleting the directory entry decrements the link count but the inode and data persist until the fd is closed. <code>lsof +D /path</code> finds processes holding deleted files open — a common cause of "I deleted the log file but the disk is still full."</li>
+</ul>
+<h3 id="mount-points-and-filesystem-types">Mount Points and Filesystem Types</h3>
+<p>A <strong>mount point</strong> is a directory where a filesystem is attached. <code>/</code> is the root mount; <code>/home</code> might be a separate disk; <code>/tmp</code> might be <strong>tmpfs</strong> (RAM-backed, fast, lost on reboot); <code>/proc</code> and <code>/sys</code> are virtual filesystems backed by the kernel (Part 1).</p>
+<pre><code class="language-bash">mount                     # list all mounts
+findmnt -T /var/log       # which filesystem is /var/log on?
+df -h                     # disk usage per mount
+</code></pre>
+<p>Docker's <strong>overlay filesystem</strong> mounts layers (read-only) with a writable top layer, presenting them as a single merged view — the mechanism behind Docker images and containers. Each image layer is a directory of files; overlayfs composites them. This is why understanding mounts matters for containers.</p>
+<h3 id="tmpfs-and-when-to-use-it"><code>tmpfs</code> and When to Use It</h3>
+<p>A <code>tmpfs</code> mount lives entirely in RAM (and swap). It's fast (no disk I/O), automatically sized (uses only as much RAM as its contents), and cleared on reboot. Uses:</p>
+<ul>
+<li><code>/tmp</code> is often tmpfs — so writing large files to <code>/tmp</code> <em>consumes RAM</em>, not disk. A surprise for programs that treat <code>/tmp</code> as "free disk."</li>
+<li>Docker's <code>--tmpfs</code> flag and Kubernetes's <code>emptyDir: { medium: Memory }</code> both create tmpfs mounts — useful for scratch data that should never touch disk (secrets, temporary processing).</li>
+</ul>
+<p>If you remember one thing from Part 6: <strong>a file is an inode (metadata) plus data blocks, directories are name→inode maps, hard links are multiple names for the same inode, and "deleted file but disk still full" means a process is holding the fd open — <code>lsof</code> finds it.</strong></p>
+<hr>
+<h2 id="part-7-systemd">Part 7 — systemd</h2>
+<p>systemd is the init system and service manager on virtually all mainstream Linux distributions (Ubuntu, Fedora, Debian, RHEL, Arch, SUSE). It's PID 1 — the first process the kernel starts, the parent (directly or transitively) of every other process, the zombie reaper, and the supervisor of your services. Understanding it explains how services start, restart, and log on a Linux machine, and how the <a href="ANSIBLE_STUDY_GUIDE.md">Ansible guide</a>'s <code>systemd</code> module and the <a href="CADDY_STUDY_GUIDE.md">Caddy guide</a>'s systemd unit work.</p>
+<h3 id="units-the-building-block">Units: The Building Block</h3>
+<p>systemd manages <strong>units</strong>, each described by a unit file. The most common types:</p>
+<table>
+<thead>
+<tr>
+<th>Unit type</th>
+<th>Suffix</th>
+<th>What it manages</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Service</strong></td>
+<td><code>.service</code></td>
+<td>a long-running process (a daemon)</td>
+</tr>
+<tr>
+<td><strong>Timer</strong></td>
+<td><code>.timer</code></td>
+<td>a scheduled activation (cron replacement)</td>
+</tr>
+<tr>
+<td><strong>Socket</strong></td>
+<td><code>.socket</code></td>
+<td>a socket that activates a service on connection</td>
+</tr>
+<tr>
+<td><strong>Mount</strong></td>
+<td><code>.mount</code></td>
+<td>a filesystem mount point</td>
+</tr>
+<tr>
+<td><strong>Target</strong></td>
+<td><code>.target</code></td>
+<td>a group of units (e.g., <code>multi-user.target</code> ≈ "the system is up")</td>
+</tr>
+</tbody>
+</table>
+<p>Unit files live in <code>/etc/systemd/system/</code> (admin-created, highest priority), <code>/run/systemd/system/</code> (runtime), and <code>/usr/lib/systemd/system/</code> (package-installed, lowest priority).</p>
+<h3 id="anatomy-of-a-service-unit">Anatomy of a Service Unit</h3>
+<pre><code class="language-ini"># /etc/systemd/system/myapp.service
+[Unit]
+Description=My Application Server
+After=network-online.target postgresql.service    # start after network and Postgres
+Wants=postgresql.service                          # soft dependency (continue if Postgres fails)
+# Requires=... would be a hard dependency (fail if it fails)
+
+[Service]
+Type=exec                         # the process IS the service (most common for modern apps)
+User=myapp                        # run as this user, not root (Part 5)
+Group=myapp
+WorkingDirectory=/opt/myapp
+ExecStart=/opt/myapp/bin/server --config /etc/myapp/config.toml
+ExecReload=/bin/kill -HUP $MAINPID     # SIGHUP to reload config (Part 4)
+Restart=on-failure                # restart if it crashes; not on clean exit (code 0)
+RestartSec=5                      # wait 5s between restarts
+
+# Resource limits (these map to ulimits — Part 3 — and cgroups — Part 8):
+LimitNOFILE=65536                 # raise the fd limit for a busy server
+MemoryMax=2G                      # cgroup memory limit (like K8s memory limit)
+CPUQuota=200%                     # max 2 CPU cores (like K8s CPU limit)
+
+# Security hardening (capabilities, namespaces):
+NoNewPrivileges=true              # block SUID escalation (Part 5)
+ProtectSystem=strict              # mount / read-only (except explicit paths)
+ProtectHome=true                  # hide /home
+PrivateTmp=true                   # private /tmp namespace
+
+[Install]
+WantedBy=multi-user.target        # enable on boot
+</code></pre>
+<h3 id="the-commands-youll-use">The Commands You'll Use</h3>
+<pre><code class="language-bash">systemctl start myapp             # start now
+systemctl stop myapp              # send SIGTERM, wait TimeoutStopSec, then SIGKILL
+systemctl restart myapp           # stop + start
+systemctl reload myapp            # send ExecReload (usually SIGHUP — config reload, no restart)
+systemctl enable myapp            # start on boot (creates a symlink into the target)
+systemctl disable myapp
+systemctl status myapp            # state, recent log lines, PID, memory, CPU
+systemctl daemon-reload           # re-read unit files after editing (REQUIRED after changes)
+</code></pre>
+<h3 id="journald-structured-logging">Journald: Structured Logging</h3>
+<p>systemd captures your service's <strong>stdout and stderr</strong> into the <strong>journal</strong> — a structured, indexed, binary log. No log file management, no logrotate (the journal rotates itself), and queries are fast:</p>
+<pre><code class="language-bash">journalctl -u myapp               # all logs for a service
+journalctl -u myapp -f            # follow (tail) — like `tail -f`
+journalctl -u myapp --since &quot;1 hour ago&quot;
+journalctl -u myapp -p err        # only errors and above
+journalctl -u myapp -o json       # structured JSON output (for log pipelines)
+</code></pre>
+<p>The journal stores metadata (unit, PID, timestamp, priority) alongside the message, so filtering by service, time, and severity is instant. For production systems, forward journal data to a centralized log system (the <a href="../OBSERVABILITY_STUDY_GUIDE.md">Observability guide</a>'s logging chapter).</p>
+<h3 id="timers-the-modern-cron">Timers: The Modern Cron</h3>
+<p>systemd timers replace cron with a unit-based, logged, dependency-aware alternative:</p>
+<pre><code class="language-ini"># /etc/systemd/system/backup.timer
+[Unit]
+Description=Daily backup
+
+[Timer]
+OnCalendar=*-*-* 02:00:00     # daily at 2 AM
+Persistent=true                 # if the machine was off at 2 AM, run on next boot
+RandomizedDelaySec=600          # jitter to avoid thundering herd (Part 9 of Distributed Systems)
+
+[Install]
+WantedBy=timers.target
+</code></pre>
+<p>The timer activates a corresponding <code>.service</code> unit (same name, or specify <code>Unit=</code>). <code>systemctl list-timers</code> shows upcoming triggers. The advantage over cron: logging in the journal, dependency ordering, resource limits, and no more mysterious cron emails.</p>
+<p>If you remember one thing from Part 7: <strong>systemd is PID 1 — it starts, stops, restarts, and logs your services via unit files, and its <code>LimitNOFILE</code>, <code>MemoryMax</code>, and <code>CPUQuota</code> directives are cgroup controls that map directly to Kubernetes resource limits and Docker's <code>--memory</code>/<code>--cpus</code>.</strong></p>
+<hr>
+<h2 id="part-8-namespaces-cgroups-how-containers-work">Part 8 — Namespaces &amp; cgroups (How Containers Work)</h2>
+<p>This is the chapter the repo has been building toward. The <a href="DOCKER_STUDY_GUIDE.md">Docker guide</a> says "a container is an isolated process"; the <a href="k8s/KUBERNETES_STUDY_GUIDE.md">Kubernetes guides</a> say "a pod is a group of containers sharing namespaces." This part explains what those words <em>actually mean</em> at the kernel level — because a container is not a VM, not a sandbox, and not magic. It's a <strong>regular Linux process</strong> with two kernel features applied: <strong>namespaces</strong> (what it can <em>see</em>) and <strong>cgroups</strong> (what it can <em>use</em>).</p>
+<h3 id="namespaces-isolation-of-what-you-can-see">Namespaces: Isolation of What You Can See</h3>
+<p>A <strong>namespace</strong> wraps a global system resource so that the process inside the namespace sees its own isolated instance. Linux has eight namespace types:</p>
+<table>
+<thead>
+<tr>
+<th>Namespace</th>
+<th>Isolates</th>
+<th>Container effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>PID</strong></td>
+<td>process ID numbers</td>
+<td>the container sees its own PID 1 (its entrypoint), not the host's</td>
+</tr>
+<tr>
+<td><strong>Mount (mnt)</strong></td>
+<td>filesystem mount points</td>
+<td>the container has its own root filesystem (the image), can't see host mounts</td>
+</tr>
+<tr>
+<td><strong>Network (net)</strong></td>
+<td>network stack (interfaces, routing, ports)</td>
+<td>the container has its own <code>eth0</code>, IP address, port space</td>
+</tr>
+<tr>
+<td><strong>UTS</strong></td>
+<td>hostname and domain name</td>
+<td>the container has its own <code>hostname</code></td>
+</tr>
+<tr>
+<td><strong>IPC</strong></td>
+<td>System V IPC, POSIX message queues</td>
+<td>separate shared-memory segments</td>
+</tr>
+<tr>
+<td><strong>User</strong></td>
+<td>UID/GID mappings</td>
+<td>UID 0 inside → a non-root UID outside ("rootless containers")</td>
+</tr>
+<tr>
+<td><strong>Cgroup</strong></td>
+<td>the view of the cgroup hierarchy</td>
+<td>the container sees its cgroup as the root</td>
+</tr>
+<tr>
+<td><strong>Time</strong> (5.6+)</td>
+<td><code>CLOCK_MONOTONIC</code> and <code>CLOCK_BOOTTIME</code></td>
+<td>rare, for specialized use</td>
+</tr>
+</tbody>
+</table>
+<p>A <code>docker run</code> creates a process with <em>new instances of each namespace</em> (except user, by default). That's what makes it feel like a separate machine — the process literally <em>can't see</em> the host's other processes, network, or filesystem. But it's <em>the same kernel</em>: the container shares the host's kernel, unlike a VM which runs its own. This is the fundamental container security boundary — and its fundamental limitation.</p>
+<p><strong>Kubernetes pods</strong> share <em>some</em> namespaces across containers in the pod (Network and IPC by default — so containers in a pod share <code>localhost</code> and can communicate over IPC) while keeping separate PID and Mount namespaces per container. Setting <code>shareProcessNamespace: true</code> on a pod shares the PID namespace too — so containers can see each other's processes (useful for debugging sidecars, and for the PID 1 / zombie-reaping problem from Part 4).</p>
+<h3 id="cgroups-limits-on-what-you-can-use">cgroups: Limits on What You Can Use</h3>
+<p><strong>Control groups (cgroups)</strong> limit, account for, and isolate the <strong>resource usage</strong> (CPU, memory, I/O, PIDs) of a group of processes. Where namespaces answer "what can you see?", cgroups answer "how much can you use?"</p>
+<p>The two versions: <strong>cgroups v1</strong> (the original, multiple hierarchies) and <strong>cgroups v2</strong> (unified hierarchy, the modern default on recent kernels and distros). cgroups v2 is cleaner and is what Docker and Kubernetes use on modern systems.</p>
+<p>The cgroup controllers that matter:</p>
+<table>
+<thead>
+<tr>
+<th>Controller</th>
+<th>Limits</th>
+<th>Docker flag</th>
+<th>K8s manifest</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>memory</strong></td>
+<td>memory usage (RSS + cache), with OOM killing</td>
+<td><code>--memory 512m</code></td>
+<td><code>resources.limits.memory: 512Mi</code></td>
+</tr>
+<tr>
+<td><strong>cpu</strong></td>
+<td>CPU time (shares, quota, period)</td>
+<td><code>--cpus 2</code></td>
+<td><code>resources.limits.cpu: "2"</code></td>
+</tr>
+<tr>
+<td><strong>pids</strong></td>
+<td>number of processes/threads</td>
+<td><code>--pids-limit 100</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>io</strong> (blkio)</td>
+<td>disk I/O bandwidth and IOPS</td>
+<td><code>--device-read-bps</code></td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<p>When a container's memory cgroup limit is exceeded, the kernel's <strong>OOM killer</strong> sends <strong>SIGKILL</strong> (Part 4) to the process — exit code 137. This is the exact mechanism behind the Kubernetes OOM-kill you see when a container exceeds its <code>resources.limits.memory</code>. The <a href="ADVANCED_GO_STUDY_GUIDE.md">Advanced Go guide</a>'s <code>GOMEMLIMIT</code> and the <a href="ADVANCED_NODEJS_STUDY_GUIDE.md">Advanced Node.js guide</a>'s <code>--max-old-space-size</code> both exist to keep the runtime <em>under</em> this cgroup ceiling so the OOM killer doesn't fire.</p>
+<p>CPU cgroups work via <strong>CFS (Completely Fair Scheduler) bandwidth control</strong>: a quota of microseconds per period. <code>--cpus 2</code> means 200,000 µs of CPU time per 100,000 µs period — the process gets throttled if it exceeds this. This is what Kubernetes CPU limits enforce, and it's why CPU <em>limits</em> cause <strong>throttling</strong> (your process is artificially slowed) while CPU <em>requests</em> are about <strong>scheduling</strong> (the scheduler's minimum guarantee).</p>
+<h3 id="building-a-container-from-scratch-conceptually">Building a Container From Scratch (Conceptually)</h3>
+<p>To demystify what Docker and containerd actually do, the recipe for a "container" is:</p>
+<pre><code class="language-text">1. Create new namespaces (PID, Mount, Network, UTS, IPC) with clone() or unshare()
+2. Set up the filesystem:
+   - Mount the container image (overlay of read-only layers + writable top)
+   - pivot_root or chroot to make it the new root
+   - Mount /proc and /sys inside
+3. Create a cgroup and assign the process to it, with limits (memory, CPU)
+4. Set the hostname (UTS namespace)
+5. Configure networking (create a veth pair, assign an IP, set up routing)
+6. Drop capabilities (Part 5), set seccomp filters, apply AppArmor/SELinux profiles
+7. exec() the container's entrypoint — it's now &quot;in a container&quot;
+</code></pre>
+<p>That's it. There is no hypervisor, no guest kernel, no hardware virtualization. A container is <strong>a process with namespaces, cgroups, and a separate root filesystem.</strong> Understanding this is understanding why container escapes are possible (you're still on the same kernel, and a kernel exploit bypasses all namespace/cgroup isolation), and why the K8s security guide's hardening (dropping capabilities, read-only root filesystem, non-root user, seccomp profiles) is not optional — each layer plugs a different hole in what is, at bottom, process-level isolation, not machine-level.</p>
+<p>If you remember one thing from Part 8: <strong>a container is a regular Linux process with namespaces (what it can see) and cgroups (what it can use) — namespaces isolate PID/network/filesystem/hostname, cgroups enforce memory and CPU limits (and the OOM killer is what sends SIGKILL at exit code 137), and understanding this makes Docker, Kubernetes, and their security models concrete rather than magical.</strong></p>
+<hr>
+<h2 id="part-9-the-network-stack-from-the-os-side">Part 9 — The Network Stack From the OS Side</h2>
+<p>The <a href="NETWORKING_FUNDAMENTALS.md">Networking Fundamentals guide</a> covers the protocols; this part is about how <strong>Linux implements them</strong> — the interfaces, routing, and virtual devices that Docker, Kubernetes, and your services sit on top of.</p>
+<h3 id="interfaces-ip-addresses-and-routing">Interfaces, IP Addresses, and Routing</h3>
+<pre><code class="language-bash">ip addr                          # list interfaces and their IPs
+ip route                         # show the routing table
+ip link                          # show link-level details (MTU, state, type)
+ss -tlnp                         # show listening TCP sockets (replaces netstat)
+</code></pre>
+<p>A <strong>network interface</strong> (<code>eth0</code>, <code>lo</code>, <code>wlan0</code>) is a named endpoint in the network stack. <code>lo</code> (loopback, 127.0.0.1) is the localhost interface — traffic never leaves the machine. Physical interfaces (<code>eth0</code>, <code>ens3</code>) correspond to hardware; virtual interfaces (<code>veth</code>, <code>bridge</code>, <code>tun</code>) are software constructs used heavily by containers.</p>
+<p>The <strong>routing table</strong> decides where to send packets. <code>ip route</code> shows rules like <code>default via 10.0.0.1 dev eth0</code> — "for anything without a more specific rule, send it out <code>eth0</code> toward the gateway at 10.0.0.1." More specific routes match first (longest prefix match). Container networking adds routes for pod CIDR ranges, pointing at virtual interfaces.</p>
+<h3 id="virtual-network-devices-how-container-networking-works">Virtual Network Devices (How Container Networking Works)</h3>
+<p>Docker and Kubernetes create virtual network plumbing that lives entirely in the kernel:</p>
+<ul>
+<li><strong><code>veth</code> pairs</strong> — a virtual Ethernet cable: two interfaces connected back-to-back. One end lives in the container's network namespace; the other lives in the host (or a bridge). Traffic into one end comes out the other. Every Docker container and every Kubernetes pod has a veth pair connecting it to the host's network.</li>
+<li><strong>Bridges</strong> (<code>docker0</code>, <code>cni0</code>) — a virtual switch. Multiple veth endpoints plug into a bridge, and the bridge forwards frames between them (Layer 2). Docker's default networking uses a bridge; some Kubernetes CNIs use a bridge per node.</li>
+<li><strong><code>tun</code>/<code>tap</code></strong> — virtual interfaces for VPNs and overlay networks. A <code>tun</code> device carries IP packets; a <code>tap</code> device carries Ethernet frames. Overlay networks (VXLAN, used by Flannel and Calico in VXLAN mode) encapsulate pod traffic in UDP packets via these devices.</li>
+</ul>
+<p>The <a href="k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md">Docker &amp; Kubernetes Networking guide</a> covers the higher-level patterns (Services, CNIs, ingress); this is the kernel machinery underneath them.</p>
+<h3 id="iptables-nftables-the-kernel-firewall-and-nat">iptables / nftables: The Kernel Firewall and NAT</h3>
+<p><strong>iptables</strong> (and its modern replacement <strong>nftables</strong>) is the Linux kernel's packet-filtering framework. It inspects every packet passing through the network stack and applies rules organized in <strong>chains</strong> (INPUT, OUTPUT, FORWARD, PREROUTING, POSTROUTING) within <strong>tables</strong> (filter, nat, mangle).</p>
+<p>Kubernetes uses iptables (or IPVS, or eBPF via Cilium) for <strong>Service load balancing</strong>: when a packet arrives for a Service's ClusterIP, an iptables DNAT rule rewrites the destination to one of the backend Pod IPs — the kernel does the load balancing, transparently. <code>kube-proxy</code> is the component that programs these rules. Understanding <code>iptables -t nat -L</code> is how you debug "my Service isn't reaching the right Pod."</p>
+<pre><code class="language-bash">iptables -t nat -L -n -v         # show NAT rules (Service → Pod rewrites)
+iptables -L -n -v                # show filter rules (NetworkPolicy enforcement)
+conntrack -L                     # show connection tracking (NAT state)
+</code></pre>
+<h3 id="dns-resolution-how-etcresolvconf-works">DNS Resolution: How <code>/etc/resolv.conf</code> Works</h3>
+<p>Every process resolves names through the <strong>resolver</strong> configured in <code>/etc/resolv.conf</code>:</p>
+<pre><code class="language-text">nameserver 10.96.0.10            # in a K8s pod: CoreDNS's ClusterIP
+search default.svc.cluster.local svc.cluster.local cluster.local
+ndots: 5                          # if a name has fewer than 5 dots, try the search domains first
+</code></pre>
+<p>The <code>ndots: 5</code> default in Kubernetes means <code>redis</code> gets expanded to <code>redis.default.svc.cluster.local</code> before trying <code>redis</code> as-is — which generates many extra DNS queries for external names (each short name tries all search domains). This is a known K8s performance footgun for workloads that resolve many external domains; the fix is <code>ndots: 2</code> or using FQDNs with a trailing dot (<code>api.example.com.</code>).</p>
+<p>If you remember one thing from Part 9: <strong>container networking is built from veth pairs (virtual cables), bridges (virtual switches), and iptables/nftables rules (NAT and filtering) — all standard Linux kernel features — and Kubernetes Services are iptables DNAT rules that rewrite ClusterIP destinations to Pod IPs.</strong></p>
+<hr>
+<h2 id="part-10-the-diagnostic-toolkit">Part 10 — The Diagnostic Toolkit</h2>
+<p>The closing part ties everything together with the tools you reach for when something goes wrong — and maps each one back to the kernel concept it reads.</p>
+<h3 id="process-and-resource-tools">Process and Resource Tools</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Shows</th>
+<th>Reads from</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ps aux</code></td>
+<td>all processes with CPU/memory</td>
+<td><code>/proc/[pid]/*</code></td>
+</tr>
+<tr>
+<td><code>top</code> / <code>htop</code></td>
+<td>live process activity, sorted by CPU/mem</td>
+<td><code>/proc/stat</code>, <code>/proc/[pid]/stat</code></td>
+</tr>
+<tr>
+<td><code>pstree -p</code></td>
+<td>the process tree (parent→child)</td>
+<td><code>/proc/[pid]/status</code></td>
+</tr>
+<tr>
+<td><code>free -h</code></td>
+<td>memory: total, used, free, buffers, cache</td>
+<td><code>/proc/meminfo</code></td>
+</tr>
+<tr>
+<td><code>uptime</code> / <code>cat /proc/loadavg</code></td>
+<td>load averages (runnable + uninterruptible tasks)</td>
+<td><code>/proc/loadavg</code></td>
+</tr>
+<tr>
+<td><code>lsof -p [pid]</code></td>
+<td>open file descriptors for a process</td>
+<td><code>/proc/[pid]/fd/</code></td>
+</tr>
+<tr>
+<td><code>lsof -i :8080</code></td>
+<td>what process is listening on port 8080</td>
+<td><code>/proc/net/*</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="disk-and-filesystem-tools">Disk and Filesystem Tools</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>df -h</code></td>
+<td>disk usage per mount</td>
+</tr>
+<tr>
+<td><code>df -i</code></td>
+<td>inode usage per mount (Part 6)</td>
+</tr>
+<tr>
+<td><code>du -sh /var/log/*</code></td>
+<td>disk usage per directory</td>
+</tr>
+<tr>
+<td><code>lsblk</code></td>
+<td>block devices and their mount points</td>
+</tr>
+<tr>
+<td><code>mount</code> / <code>findmnt</code></td>
+<td>mounted filesystems and their types</td>
+</tr>
+<tr>
+<td><code>iostat -x 1</code></td>
+<td>per-disk I/O statistics (utilization, latency, IOPS)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="network-tools">Network Tools</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Shows</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ss -tlnp</code></td>
+<td>listening TCP sockets with PIDs (replaces <code>netstat</code>)</td>
+</tr>
+<tr>
+<td><code>ss -tanp</code></td>
+<td>all TCP connections (established, time-wait, etc.)</td>
+</tr>
+<tr>
+<td><code>ip addr</code> / <code>ip route</code> / <code>ip link</code></td>
+<td>interfaces, routing, link state</td>
+</tr>
+<tr>
+<td><code>ping</code> / <code>traceroute</code> / <code>mtr</code></td>
+<td>connectivity and path</td>
+</tr>
+<tr>
+<td><code>dig</code> / <code>nslookup</code></td>
+<td>DNS resolution</td>
+</tr>
+<tr>
+<td><code>curl -v</code></td>
+<td>HTTP with verbose connection details</td>
+</tr>
+<tr>
+<td><code>tcpdump -i eth0 port 80</code></td>
+<td>packet capture (raw)</td>
+</tr>
+<tr>
+<td><code>iptables -L -n -v</code></td>
+<td>firewall/NAT rules</td>
+</tr>
+</tbody>
+</table>
+<h3 id="advanced-diagnostic-tools">Advanced Diagnostic Tools</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What it does</th>
+<th>When to use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>strace -p [pid]</code></td>
+<td>traces <strong>system calls</strong> a process makes</td>
+<td>"what is this process actually doing?" — see every open, read, write, connect</td>
+</tr>
+<tr>
+<td><code>ltrace -p [pid]</code></td>
+<td>traces <strong>library calls</strong></td>
+<td>less common, but useful for debugging shared-library issues</td>
+</tr>
+<tr>
+<td><code>perf top</code> / <code>perf record</code></td>
+<td>CPU profiling via hardware counters</td>
+<td>"where is CPU time going?" at the kernel+userspace level</td>
+</tr>
+<tr>
+<td><code>dmesg</code> / <code>journalctl -k</code></td>
+<td>kernel log messages</td>
+<td>OOM kills, hardware errors, driver issues</td>
+</tr>
+<tr>
+<td><code>sar</code></td>
+<td>historical system stats (CPU, memory, I/O, network)</td>
+<td>"what was happening an hour ago?"</td>
+</tr>
+<tr>
+<td><code>vmstat 1</code></td>
+<td>virtual memory stats: procs, memory, swap, IO, CPU</td>
+<td>quick health check</td>
+</tr>
+<tr>
+<td><code>pidstat 1</code></td>
+<td>per-process CPU/IO/memory stats</td>
+<td>"which process is consuming resources?"</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-diagnostic-workflow">The Diagnostic Workflow</h3>
+<p>When something is wrong, work through this order:</p>
+<pre><code class="language-text">1. Is the process running?         →  systemctl status, ps aux | grep, pstree
+2. What does it say?               →  journalctl -u service -f, application logs
+3. Is it resource-starved?
+   - CPU?                          →  top/htop (look for high %CPU, load &gt; cores)
+   - Memory?                       →  free -h, dmesg | grep -i oom (OOM killed?)
+   - Disk?                         →  df -h, df -i, iostat -x (high %util = disk bottleneck)
+   - File descriptors?             →  lsof -p [pid] | wc -l, check ulimit
+   - Network?                      →  ss -tanp (connection count, states), tcpdump
+4. Is it blocked on something?     →  strace -p [pid] (what syscall is it stuck in?)
+5. Is it a kernel/hardware issue?  →  dmesg, journalctl -k
+</code></pre>
+<h3 id="strace-the-universal-debugger"><code>strace</code>: The Universal Debugger</h3>
+<p>When nothing else explains what a process is doing, <code>strace</code> shows you every <strong>system call</strong> — every <code>open</code>, <code>read</code>, <code>write</code>, <code>connect</code>, <code>accept</code>, <code>mmap</code>, <code>epoll_wait</code>:</p>
+<pre><code class="language-bash">strace -p 12345 -f -e trace=network   # trace network syscalls of PID 12345 and its threads
+strace -c ./myapp                       # run myapp and summarize syscall counts/times
+</code></pre>
+<p>It's slow (significant overhead) and noisy (hundreds of calls per second), but it's the "I don't know what else to try" tool that always works, because system calls are the <em>only</em> interface between your program and the kernel — everything your program does is visible here. When a Go service hangs and you can't attach a debugger, <code>strace</code> shows you whether it's stuck in an <code>epoll_wait</code> (waiting for I/O — normal), a <code>futex</code> (stuck on a lock — contention), or a <code>read</code> on a specific fd (waiting on a specific connection — check the other end).</p>
+<p>If you remember one thing from Part 10: <strong>every monitoring tool reads from <code>/proc</code> and <code>/sys</code>; when the tools aren't available or aren't enough, <code>strace</code> shows you every system call the process makes — and the diagnostic workflow is always: is it running? → what does it say? → is it resource-starved? → is it blocked? → is it a kernel issue?</strong></p>
+<hr>
+<p>That's the guide. From here the highest-leverage next step is to connect these fundamentals to the systems you're already running: <code>cat /proc/self/cgroup</code> inside a Docker container to see <em>your</em> cgroup, <code>ls -l /proc/self/ns/</code> to see your process's namespace memberships, and <code>strace -p $(pgrep myapp) -e trace=network</code> on a running service to watch the syscalls your event loop is making. Once you've seen <code>epoll_wait</code> return and your Node callback fire, or watched the OOM killer send SIGKILL in <code>dmesg</code> and matched it to exit code 137 in Kubernetes — the substrate becomes real, and every other guide in this repo makes more sense for it.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

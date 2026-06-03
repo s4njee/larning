@@ -1,0 +1,1609 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Data Engineering Study Guide.">
+<title>Data Engineering Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#7ae152; --accent2:#4edb63; --accent-weak:rgba(122,225,82,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#7ae152; --accent2:#4edb63; --accent-weak:rgba(122,225,82,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">D</span><span>Data Engineering Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#phase-1-foundations" data-target="phase-1-foundations">Phase 1: Foundations</a></li><li class="toc-l3"><a href="#11-what-data-engineering-actually-is" data-target="11-what-data-engineering-actually-is">1.1 What Data Engineering Actually Is</a></li><li class="toc-l3"><a href="#12-oltp-vs-olap" data-target="12-oltp-vs-olap">1.2 OLTP vs. OLAP</a></li><li class="toc-l3"><a href="#13-batch-vs-streaming-vs-micro-batch" data-target="13-batch-vs-streaming-vs-micro-batch">1.3 Batch vs. Streaming vs. Micro-batch</a></li><li class="toc-l3"><a href="#14-the-modern-data-stack-vs-the-old-etl-world" data-target="14-the-modern-data-stack-vs-the-old-etl-world">1.4 The Modern Data Stack vs. the Old ETL World</a></li><li class="toc-l3"><a href="#15-the-data-engineers-maturity-curve" data-target="15-the-data-engineers-maturity-curve">1.5 The Data Engineer's Maturity Curve</a></li><li class="toc-l2"><a href="#phase-2-storage-formats" data-target="phase-2-storage-formats">Phase 2: Storage Formats</a></li><li class="toc-l3"><a href="#21-row-vs-columnar" data-target="21-row-vs-columnar">2.1 Row vs. Columnar</a></li><li class="toc-l3"><a href="#22-parquet" data-target="22-parquet">2.2 Parquet</a></li><li class="toc-l3"><a href="#23-the-other-formats" data-target="23-the-other-formats">2.3 The Other Formats</a></li><li class="toc-l3"><a href="#24-partitioning-and-file-layout" data-target="24-partitioning-and-file-layout">2.4 Partitioning and File Layout</a></li><li class="toc-l2"><a href="#phase-3-warehouses-lakes-and-lakehouses" data-target="phase-3-warehouses-lakes-and-lakehouses">Phase 3: Warehouses, Lakes, and Lakehouses</a></li><li class="toc-l3"><a href="#31-the-mpp-massively-parallel-processing-architecture" data-target="31-the-mpp-massively-parallel-processing-architecture">3.1 The MPP (Massively Parallel Processing) Architecture</a></li><li class="toc-l3"><a href="#32-the-players-in-2026" data-target="32-the-players-in-2026">3.2 The Players in 2026</a></li><li class="toc-l3"><a href="#33-storage-and-compute-separation" data-target="33-storage-and-compute-separation">3.3 Storage and Compute Separation</a></li><li class="toc-l3"><a href="#34-choosing-between-them" data-target="34-choosing-between-them">3.4 Choosing Between Them</a></li><li class="toc-l2"><a href="#phase-4-open-table-formats-and-the-lakehouse" data-target="phase-4-open-table-formats-and-the-lakehouse">Phase 4: Open Table Formats and the Lakehouse</a></li><li class="toc-l3"><a href="#41-what-an-open-table-format-is" data-target="41-what-an-open-table-format-is">4.1 What an "Open Table Format" Is</a></li><li class="toc-l3"><a href="#42-the-three-contenders" data-target="42-the-three-contenders">4.2 The Three Contenders</a></li><li class="toc-l3"><a href="#43-what-these-formats-give-you-over-raw-parquet" data-target="43-what-these-formats-give-you-over-raw-parquet">4.3 What These Formats Give You Over Raw Parquet</a></li><li class="toc-l3"><a href="#44-lakehouse-operational-concerns" data-target="44-lakehouse-operational-concerns">4.4 Lakehouse Operational Concerns</a></li><li class="toc-l2"><a href="#phase-5-ingestion" data-target="phase-5-ingestion">Phase 5: Ingestion</a></li><li class="toc-l3"><a href="#51-the-three-sources" data-target="51-the-three-sources">5.1 The Three Sources</a></li><li class="toc-l3"><a href="#52-database-ingestion-cdc-vs-snapshot" data-target="52-database-ingestion-cdc-vs-snapshot">5.2 Database Ingestion: CDC vs. Snapshot</a></li><li class="toc-l3"><a href="#53-saas-ingestion-fivetran-airbyte-stitch" data-target="53-saas-ingestion-fivetran-airbyte-stitch">5.3 SaaS Ingestion: Fivetran, Airbyte, Stitch</a></li><li class="toc-l3"><a href="#54-event-streams-kafka-as-the-backbone" data-target="54-event-streams-kafka-as-the-backbone">5.4 Event Streams: Kafka as the Backbone</a></li><li class="toc-l3"><a href="#55-the-bronze-silver-gold-convention" data-target="55-the-bronze-silver-gold-convention">5.5 The Bronze / Silver / Gold Convention</a></li><li class="toc-l2"><a href="#phase-6-transformation-with-dbt" data-target="phase-6-transformation-with-dbt">Phase 6: Transformation with dbt</a></li><li class="toc-l3"><a href="#61-the-core-concepts" data-target="61-the-core-concepts">6.1 The Core Concepts</a></li><li class="toc-l3"><a href="#62-materializations" data-target="62-materializations">6.2 Materializations</a></li><li class="toc-l3"><a href="#63-incremental-models" data-target="63-incremental-models">6.3 Incremental Models</a></li><li class="toc-l3"><a href="#64-snapshots-slowly-changing-dimensions" data-target="64-snapshots-slowly-changing-dimensions">6.4 Snapshots (Slowly Changing Dimensions)</a></li><li class="toc-l3"><a href="#65-testing" data-target="65-testing">6.5 Testing</a></li><li class="toc-l3"><a href="#66-documentation-and-lineage" data-target="66-documentation-and-lineage">6.6 Documentation and Lineage</a></li><li class="toc-l3"><a href="#67-the-footguns" data-target="67-the-footguns">6.7 The Footguns</a></li><li class="toc-l2"><a href="#phase-7-orchestration" data-target="phase-7-orchestration">Phase 7: Orchestration</a></li><li class="toc-l3"><a href="#71-the-three-frameworks" data-target="71-the-three-frameworks">7.1 The Three Frameworks</a></li><li class="toc-l3"><a href="#72-core-concepts-across-all-three" data-target="72-core-concepts-across-all-three">7.2 Core Concepts (Across All Three)</a></li><li class="toc-l3"><a href="#73-common-patterns" data-target="73-common-patterns">7.3 Common Patterns</a></li><li class="toc-l3"><a href="#74-what-orchestrators-are-not-for" data-target="74-what-orchestrators-are-not-for">7.4 What Orchestrators Are Not For</a></li><li class="toc-l2"><a href="#phase-8-distributed-compute" data-target="phase-8-distributed-compute">Phase 8: Distributed Compute</a></li><li class="toc-l3"><a href="#81-spark-fundamentals" data-target="81-spark-fundamentals">8.1 Spark Fundamentals</a></li><li class="toc-l3"><a href="#82-the-concepts-you-have-to-know" data-target="82-the-concepts-you-have-to-know">8.2 The Concepts You Have to Know</a></li><li class="toc-l3"><a href="#83-reading-a-spark-plan" data-target="83-reading-a-spark-plan">8.3 Reading a Spark Plan</a></li><li class="toc-l3"><a href="#84-when-spark-is-the-right-choice" data-target="84-when-spark-is-the-right-choice">8.4 When Spark Is the Right Choice</a></li><li class="toc-l3"><a href="#85-when-spark-is-not" data-target="85-when-spark-is-not">8.5 When Spark Is Not</a></li><li class="toc-l3"><a href="#86-duckdb-and-polars" data-target="86-duckdb-and-polars">8.6 DuckDB and Polars</a></li><li class="toc-l2"><a href="#phase-9-streaming" data-target="phase-9-streaming">Phase 9: Streaming</a></li><li class="toc-l3"><a href="#91-the-kafka-model" data-target="91-the-kafka-model">9.1 The Kafka Model</a></li><li class="toc-l3"><a href="#92-schema-management" data-target="92-schema-management">9.2 Schema Management</a></li><li class="toc-l3"><a href="#93-stream-processing-engines" data-target="93-stream-processing-engines">9.3 Stream Processing Engines</a></li><li class="toc-l3"><a href="#94-lambda-vs-kappa-architectures" data-target="94-lambda-vs-kappa-architectures">9.4 Lambda vs. Kappa Architectures</a></li><li class="toc-l3"><a href="#95-exactly-once-semantics" data-target="95-exactly-once-semantics">9.5 Exactly-Once Semantics</a></li><li class="toc-l2"><a href="#phase-10-data-modeling" data-target="phase-10-data-modeling">Phase 10: Data Modeling</a></li><li class="toc-l3"><a href="#101-kimball-dimensional-modeling" data-target="101-kimball-dimensional-modeling">10.1 Kimball Dimensional Modeling</a></li><li class="toc-l3"><a href="#102-slowly-changing-dimensions" data-target="102-slowly-changing-dimensions">10.2 Slowly Changing Dimensions</a></li><li class="toc-l3"><a href="#103-data-vault" data-target="103-data-vault">10.3 Data Vault</a></li><li class="toc-l3"><a href="#104-one-big-table-obt-wide-tables" data-target="104-one-big-table-obt-wide-tables">10.4 One Big Table (OBT) / Wide Tables</a></li><li class="toc-l3"><a href="#105-the-modeling-smell-tests" data-target="105-the-modeling-smell-tests">10.5 The Modeling Smell Tests</a></li><li class="toc-l2"><a href="#phase-11-quality-testing-observability" data-target="phase-11-quality-testing-observability">Phase 11: Quality, Testing, Observability</a></li><li class="toc-l3"><a href="#111-the-five-pillars-of-data-observability" data-target="111-the-five-pillars-of-data-observability">11.1 The Five Pillars of Data Observability</a></li><li class="toc-l3"><a href="#112-the-tools" data-target="112-the-tools">11.2 The Tools</a></li><li class="toc-l3"><a href="#113-data-contracts" data-target="113-data-contracts">11.3 Data Contracts</a></li><li class="toc-l3"><a href="#114-lineage" data-target="114-lineage">11.4 Lineage</a></li><li class="toc-l3"><a href="#115-testing-strategy" data-target="115-testing-strategy">11.5 Testing Strategy</a></li><li class="toc-l2"><a href="#phase-12-operations-governance" data-target="phase-12-operations-governance">Phase 12: Operations &amp; Governance</a></li><li class="toc-l3"><a href="#121-cost" data-target="121-cost">12.1 Cost</a></li><li class="toc-l3"><a href="#122-pii-and-access-control" data-target="122-pii-and-access-control">12.2 PII and Access Control</a></li><li class="toc-l3"><a href="#123-schema-evolution" data-target="123-schema-evolution">12.3 Schema Evolution</a></li><li class="toc-l3"><a href="#124-catalogs" data-target="124-catalogs">12.4 Catalogs</a></li><li class="toc-l3"><a href="#125-right-to-be-forgotten-gdprccpa" data-target="125-right-to-be-forgotten-gdprccpa">12.5 Right-to-be-Forgotten (GDPR/CCPA)</a></li><li class="toc-l2"><a href="#phase-13-practical-recipes" data-target="phase-13-practical-recipes">Phase 13: Practical Recipes</a></li><li class="toc-l3"><a href="#131-a-real-dbt-project-layout" data-target="131-a-real-dbt-project-layout">13.1 A Real dbt Project Layout</a></li><li class="toc-l3"><a href="#132-airflow-dag-patterns-and-anti-patterns" data-target="132-airflow-dag-patterns-and-anti-patterns">13.2 Airflow DAG Patterns and Anti-Patterns</a></li><li class="toc-l3"><a href="#133-warehouse-cost-optimization-recipes" data-target="133-warehouse-cost-optimization-recipes">13.3 Warehouse Cost Optimization Recipes</a></li><li class="toc-l2"><a href="#phase-14-anatomy-of-a-production-pipeline" data-target="phase-14-anatomy-of-a-production-pipeline">Phase 14: Anatomy of a Production Pipeline</a></li><li class="toc-l3"><a href="#141-the-architecture-at-a-glance" data-target="141-the-architecture-at-a-glance">14.1 The Architecture, at a Glance</a></li><li class="toc-l3"><a href="#142-step-by-step-with-the-choices-called-out" data-target="142-step-by-step-with-the-choices-called-out">14.2 Step by Step, with the Choices Called Out</a></li><li class="toc-l3"><a href="#143-the-operational-realities" data-target="143-the-operational-realities">14.3 The Operational Realities</a></li><li class="toc-l3"><a href="#144-why-this-architecture" data-target="144-why-this-architecture">14.4 Why This Architecture</a></li><li class="toc-l2"><a href="#mastery-checklist" data-target="mastery-checklist">Mastery Checklist</a></li><li class="toc-l2"><a href="#recommended-reading-path" data-target="recommended-reading-path">Recommended Reading Path</a></li></ul></nav></aside>
+  <main><h1 id="data-engineering-study-guide">Data Engineering Study Guide</h1>
+<p>A depth-first guide to what data engineers actually build. Assumes you know SQL and have written application code in at least one language. Each phase builds on the previous. The fundamentals (Phases 1–12) carry you from storage formats up through governance; the applied phases (13–14) walk through real project layouts, anti-patterns, cost recipes, and the anatomy of a production pipeline end to end.</p>
+<blockquote>
+<p>Data engineering is mostly <em>plumbing well-chosen building blocks</em>. Almost nobody writes a query optimizer or a streaming engine from scratch. Knowing what each component is for, how it composes, and where it fails is the job.</p>
+</blockquote>
+<hr>
+<h2 id="phase-1-foundations">Phase 1: Foundations</h2>
+<h3 id="11-what-data-engineering-actually-is">1.1 What Data Engineering Actually Is</h3>
+<p>A working definition: <strong>build and operate the systems that move data from where it's produced to where it's used for decisions</strong>. The "systems" part is broad — ingestion, storage, transformation, orchestration, modeling, quality, access control.</p>
+<p>The three roles you'll see at most companies, and how they differ:</p>
+<ul>
+<li><strong>Software engineer</strong> — writes the application code that <em>produces</em> the data. Owns OLTP databases (Postgres, MySQL).</li>
+<li><strong>Data engineer</strong> — moves that data into analytics systems, transforms it, models it, owns the pipelines and the warehouse. Owns OLAP storage.</li>
+<li><strong>Analytics engineer / Analyst</strong> — writes SQL on top of the modeled data. dbt blurred this boundary; "analytics engineering" is essentially "data engineer who only writes SQL transformations."</li>
+<li><strong>ML engineer / Data scientist</strong> — consumes data engineering's output for models. Increasingly overlaps with DE on feature stores and online inference.</li>
+</ul>
+<p>The job-to-be-done in one sentence: <strong>make trustworthy data available to people and systems that need it, at the right freshness and the right cost</strong>.</p>
+<h3 id="12-oltp-vs-olap">1.2 OLTP vs. OLAP</h3>
+<p>The single most important distinction in data engineering. Everything downstream follows from it.</p>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>OLTP (transactions)</th>
+<th>OLAP (analytics)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Workload</td>
+<td>Short, indexed point reads/writes</td>
+<td>Long scans, aggregations across rows</td>
+</tr>
+<tr>
+<td>Storage layout</td>
+<td>Row-oriented</td>
+<td>Columnar</td>
+</tr>
+<tr>
+<td>Indexing</td>
+<td>Heavy use of B-tree indexes</td>
+<td>Mostly scan-and-filter, sometimes zone maps</td>
+</tr>
+<tr>
+<td>Consistency</td>
+<td>ACID, serializable</td>
+<td>Eventual or batch-consistent</td>
+</tr>
+<tr>
+<td>Schema design</td>
+<td>Normalized (3NF)</td>
+<td>Denormalized (star, OBT, etc.)</td>
+</tr>
+<tr>
+<td>Examples</td>
+<td>Postgres, MySQL, SQL Server</td>
+<td>Snowflake, BigQuery, Redshift, Databricks</td>
+</tr>
+<tr>
+<td>Sweet spot row count</td>
+<td>Thousands of rows per query</td>
+<td>Millions to billions per query</td>
+</tr>
+</tbody>
+</table>
+<p>You will move data from OLTP → OLAP constantly. The reason is structural: the access patterns are different enough that a single storage engine can't be excellent at both. (Modern systems like ClickHouse and DuckDB are trying to bridge this with HTAP / convergent designs, but the dichotomy still drives most architecture.)</p>
+<h3 id="13-batch-vs-streaming-vs-micro-batch">1.3 Batch vs. Streaming vs. Micro-batch</h3>
+<ul>
+<li><strong>Batch</strong> — process bounded chunks of data on a schedule. "Run nightly at 2 AM, transform yesterday's data." Simple to reason about, cheap, the right default. Most analytics pipelines should start here.</li>
+<li><strong>Streaming</strong> — process data record-by-record as it arrives. Continuous, low-latency, but operationally heavier (state management, exactly-once semantics, backpressure). Use when business value depends on freshness measured in seconds.</li>
+<li><strong>Micro-batch</strong> — process small batches at high frequency (every minute or two). Spark Structured Streaming and dbt's incremental models live here. Often the right pragmatic middle ground.</li>
+</ul>
+<p>A useful rule: <strong>start with batch. Move to streaming when the latency requirement is concrete and quantified.</strong> "Real-time" is rarely the actual requirement; "fresh enough by the morning" almost always is.</p>
+<h3 id="14-the-modern-data-stack-vs-the-old-etl-world">1.4 The Modern Data Stack vs. the Old ETL World</h3>
+<p>The "modern data stack" (MDS) emerged ~2018 and dominated DE by ~2022. The defining shift:</p>
+<ul>
+<li><strong>Old ETL</strong>: extract → transform (in-flight, often in Python/Spark) → load. Tools like Informatica, Talend, custom shell scripts.</li>
+<li><strong>Modern ELT</strong>: extract → load (raw, untransformed) into the warehouse → transform <em>inside</em> the warehouse with SQL. Warehouse compute got cheap; storage got cheap; SQL got better; transforming in-place is faster and easier to debug.</li>
+</ul>
+<p>The canonical MDS stack:
+- <strong>Ingest</strong> — Fivetran / Airbyte (SaaS sources), Kafka / Debezium (CDC), or custom for niche sources.
+- <strong>Store</strong> — Snowflake, BigQuery, Databricks, Redshift (warehouses), or S3 + Iceberg/Delta (lakehouse).
+- <strong>Transform</strong> — dbt for SQL transformations.
+- <strong>Orchestrate</strong> — Airflow, Dagster, or Prefect.
+- <strong>Serve</strong> — BI tools (Looker, Mode, Metabase, Tableau, Hex), reverse ETL (Hightouch, Census), feature stores (Tecton, Feast).
+- <strong>Govern / observe</strong> — data catalogs (Atlan, Unity, OpenMetadata), data quality (dbt tests, Great Expectations, Soda, Monte Carlo).</p>
+<p>We're now in a "post-MDS" phase where the conversation has shifted to the lakehouse + open table formats (Phase 4) eating proprietary warehouse storage, and to operationalizing AI/ML workloads alongside analytics.</p>
+<h3 id="15-the-data-engineers-maturity-curve">1.5 The Data Engineer's Maturity Curve</h3>
+<p>A useful internal model for where any data org sits:</p>
+<ol>
+<li><strong>Spreadsheets and ad-hoc queries.</strong> Numbers don't match across reports. Trust is low.</li>
+<li><strong>Centralized warehouse + dashboards.</strong> Single source of truth for top-line metrics. Most numbers agree.</li>
+<li><strong>Modeled layer (Kimball or similar) + tests.</strong> Dimensional models documented; tests catch breakages; lineage is visible.</li>
+<li><strong>Streaming + operational analytics.</strong> Pipelines power product features, not just dashboards.</li>
+<li><strong>Data products + contracts + automated governance.</strong> Producers commit to schemas; consumers consume against versioned interfaces.</li>
+</ol>
+<p>Most companies live in 2 or 3. Skipping levels rarely works.</p>
+<p>References: <a href="https://www.oreilly.com/library/view/fundamentals-of-data/9781098108298/">Fundamentals of Data Engineering (Reis &amp; Housley)</a>, <a href="https://a16z.com/emerging-architectures-for-modern-data-infrastructure/">The Modern Data Stack — a16z</a></p>
+<hr>
+<h2 id="phase-2-storage-formats">Phase 2: Storage Formats</h2>
+<p>How bytes are laid out on disk determines what's fast and what's expensive. The single highest-leverage thing to internalize early.</p>
+<h3 id="21-row-vs-columnar">2.1 Row vs. Columnar</h3>
+<p><strong>Row storage</strong> keeps all values of a single record together. Optimal when you read whole rows (OLTP).</p>
+<p><strong>Columnar storage</strong> keeps all values of a single column together. Optimal when you read a few columns out of many (OLAP) — you read only the columns you need from disk, skip the rest entirely.</p>
+<p>A query like <code>SELECT AVG(price) FROM orders WHERE date = '2026-05-01'</code> on a 200-column <code>orders</code> table touches 2 columns. Row storage reads ~all 200 from disk (since they're interleaved); columnar storage reads exactly 2. Often a 50–100× I/O reduction.</p>
+<p>Columnar also compresses dramatically better, because values in the same column tend to be similar (same type, often similar magnitude, often repetitive). Dictionary encoding, RLE, delta encoding, bit-packing all become viable.</p>
+<h3 id="22-parquet">2.2 Parquet</h3>
+<p>The default analytics file format. Apache Parquet is columnar, self-describing, and designed for object stores.</p>
+<p><strong>Anatomy</strong> of a Parquet file:
+- <strong>Row groups</strong> — large horizontal partitions (typically 128 MB or 512 MB of raw data). Each row group contains column chunks.
+- <strong>Column chunks</strong> — all values for one column within a row group, stored contiguously.
+- <strong>Pages</strong> — the unit of compression and encoding within a column chunk (typically 1 MB).
+- <strong>Footer</strong> — metadata: schema, row group offsets, column statistics (min/max/null count per column chunk).</p>
+<p>The footer is what makes Parquet powerful. A query engine reads the footer, sees the min/max for <code>date</code> in each row group, and can skip entire row groups whose ranges don't match the predicate. This is <strong>predicate pushdown</strong> — the killer feature.</p>
+<p><strong>Encodings</strong> Parquet uses, automatically:
+- <strong>Dictionary encoding</strong> — replace repeated values with small dictionary IDs. Devastatingly effective on low-cardinality columns.
+- <strong>Run-length encoding (RLE)</strong> — replace runs of the same value with <code>(value, count)</code>.
+- <strong>Delta encoding</strong> — store differences between consecutive values.
+- <strong>Bit-packing</strong> — pack small integers into fewer bits.</p>
+<p><strong>Compression</strong> sits on top: SNAPPY (fast, decent ratio — the default), ZSTD (better ratio, slightly slower), GZIP (slow, legacy).</p>
+<p><strong>Tuning levers worth knowing</strong>:
+- Row-group size: smaller = better filtering granularity, more metadata overhead. Default 128 MB is usually right; consider 512 MB for cold storage.
+- File size: aim for <strong>100 MB – 1 GB per file</strong>. Smaller wastes object-store list/get overhead ("small files problem"); larger reduces parallelism.
+- Column ordering in the schema doesn't matter for storage but does for some readers.</p>
+<p>References: <a href="https://parquet.apache.org/docs/">Parquet documentation</a>, <a href="https://www.influxdata.com/blog/apache-parquet-explained/">Inside Parquet (Influxdata)</a></p>
+<h3 id="23-the-other-formats">2.3 The Other Formats</h3>
+<ul>
+<li><strong>ORC</strong> (Optimized Row Columnar) — Parquet's main competitor, originally from Hive. Slight differences in metadata, stripe vs. row group naming. In 2026, Parquet has won the open-format war; ORC remains in legacy Hive/Hortonworks shops.</li>
+<li><strong>Avro</strong> — <em>row</em>-oriented, binary, with a schema stored alongside the data. Excellent for <em>streaming</em> and for messages on a Kafka topic where you want compact serialization and forward/backward schema compatibility. Bad for analytics scans (no column pruning).</li>
+<li><strong>JSON / CSV</strong> — fine for human-readable interchange and small data. Terrible at scale: no schema (CSV), redundant text encoding (JSON), no column pruning, no predicate pushdown, expensive to parse. If you find yourself writing analytics queries against multi-GB JSON files, convert to Parquet first.</li>
+<li><strong>Arrow</strong> — not a file format, but the <strong>in-memory</strong> columnar standard. Parquet's the format on disk; Arrow's the format in RAM. Polars, DuckDB, pandas 2.0, Spark, BigQuery all speak Arrow. Zero-copy data exchange between processes/languages.</li>
+</ul>
+<h3 id="24-partitioning-and-file-layout">2.4 Partitioning and File Layout</h3>
+<p>How files are laid out in your data lake is as important as the format.</p>
+<ul>
+<li><strong>Partitioning</strong> = splitting a logical table into directories by column value: <code>s3://bucket/orders/year=2026/month=05/day=01/file.parquet</code>. A scan filtering <code>year=2026 AND month=05</code> reads only that directory.</li>
+<li><strong>Choose the right partition key</strong>: high enough cardinality to be useful, low enough that you don't have millions of tiny partitions. <code>date</code> is almost always right. <code>user_id</code> is almost always wrong.</li>
+<li><strong>The small-files problem</strong>: many tiny files = many object-store HEAD/GET calls = catastrophic query latency. Tools like Spark <code>coalesce</code>, Delta <code>OPTIMIZE</code>, Iceberg compaction merge small files.</li>
+<li><strong>Z-ordering / clustering</strong> (Delta, BigQuery, Snowflake) — sort data within a partition by additional columns so range filters on those columns also prune. The modern alternative to second-level partitioning.</li>
+</ul>
+<p>A useful smell test: if your "small files problem" gets worse over time, you don't have a compaction story. Add one.</p>
+<hr>
+<h2 id="phase-3-warehouses-lakes-and-lakehouses">Phase 3: Warehouses, Lakes, and Lakehouses</h2>
+<h3 id="31-the-mpp-massively-parallel-processing-architecture">3.1 The MPP (Massively Parallel Processing) Architecture</h3>
+<p>Modern data warehouses are all built on the same fundamental pattern:</p>
+<ul>
+<li><strong>Coordinator / Leader node</strong> — receives the query, plans it, distributes work.</li>
+<li><strong>Worker / Compute nodes</strong> — execute work in parallel on partitioned data.</li>
+<li><strong>Shuffle</strong> — data is redistributed between workers when needed (joins, group-bys with high-cardinality keys).</li>
+<li><strong>Columnar storage + vectorized execution</strong> — operate on batches of column values in SIMD-friendly loops.</li>
+</ul>
+<p>The differentiators between products mostly come down to:
+- <strong>Storage and compute separation</strong> (Snowflake popularized this; everyone else followed).
+- <strong>Caching strategy</strong> (which layers cache, where).
+- <strong>Cluster sizing model</strong> (fixed vs. autoscaling vs. per-query).
+- <strong>Optimizer quality</strong> (more important than people realize).</p>
+<h3 id="32-the-players-in-2026">3.2 The Players in 2026</h3>
+<ul>
+<li><strong>Snowflake</strong> — separation of storage and compute, multi-cluster warehouses for concurrency, per-second billing. Strong default for most companies. Strengths: ergonomics, time travel, zero-copy cloning. Weaknesses: opaque pricing at scale, vendor lock-in (mitigated now by Iceberg support).</li>
+<li><strong>BigQuery</strong> — fully serverless. No clusters to size. Charged per byte scanned (on-demand) or per slot-hour (capacity). Strengths: zero ops, BigQuery ML, integrated GIS. Weaknesses: pricing surprises if you're sloppy with <code>SELECT *</code>, weaker streaming story than its peers.</li>
+<li><strong>Databricks</strong> (SQL + Lakehouse) — built on Spark and Delta Lake. Strengths: best ML/AI integration, lakehouse-native (your data stays in your S3/ADLS), Photon engine is fast. Weaknesses: more operational surface than Snowflake/BQ, pricing is complicated.</li>
+<li><strong>Redshift</strong> — AWS's warehouse. Two flavors: provisioned (legacy, RA3 nodes) and serverless (modern). Strengths: AWS integration. Weaknesses: lags Snowflake/BQ on ergonomics and optimizer quality; AWS is investing more in Athena + Iceberg.</li>
+<li><strong>ClickHouse</strong> — open-source columnar database, screamingly fast for narrow analytics queries. Increasingly used as the warehouse for product analytics, observability, and real-time dashboards. Strengths: latency (sub-second on large tables), cost. Weaknesses: requires more ops know-how than serverless competitors; less mature optimizer for complex joins.</li>
+<li><strong>DuckDB</strong> — the "SQLite of analytics." In-process, single-node, embeds in Python/R/Node. Not a warehouse — but increasingly the right tool for "I have a Parquet file and I want to query it without spinning up infrastructure." See Phase 8.</li>
+</ul>
+<h3 id="33-storage-and-compute-separation">3.3 Storage and Compute Separation</h3>
+<p>The defining architectural shift of the 2010s. Old MPP (Teradata, Redshift legacy) coupled storage to compute: storage lived on the compute nodes' disks; resizing the cluster meant reshuffling all the data. New MPP (Snowflake, Databricks, BigQuery, modern Redshift) stores data in object storage (S3/GCS/ADLS) and treats compute as ephemeral.</p>
+<p>Consequences:
+- Compute clusters can scale up/down independently of data size.
+- Multiple compute clusters can read the same data simultaneously without contention.
+- You pay for storage cheaply (S3 prices) and pay for compute only when you query.
+- Zero-copy operations (Snowflake's <code>CLONE</code>, BigQuery's snapshots) become trivial.</p>
+<p>This is the architectural foundation that lakehouses build on (Phase 4).</p>
+<h3 id="34-choosing-between-them">3.4 Choosing Between Them</h3>
+<p>A pragmatic decision tree:</p>
+<ul>
+<li><strong>Already heavy AWS, mostly SQL, want zero ops</strong> → Snowflake (or Redshift Serverless if vendor lock-in is a strong concern).</li>
+<li><strong>Already heavy GCP, want zero ops</strong> → BigQuery.</li>
+<li><strong>Heavy ML/AI workloads, want one platform for ETL + ML + serving</strong> → Databricks.</li>
+<li><strong>Tight latency requirements (sub-second), product analytics workload</strong> → ClickHouse.</li>
+<li><strong>Small or medium data, want to avoid infra entirely</strong> → DuckDB + object storage, no warehouse at all.</li>
+<li><strong>Long-term vendor neutrality matters more than ergonomics</strong> → lakehouse architecture (Iceberg/Delta on S3) with a query engine of choice (Trino, Spark, Athena, even Snowflake reading Iceberg).</li>
+</ul>
+<p>References: <a href="https://docs.snowflake.com/en/user-guide/intro-key-concepts">Snowflake architecture</a>, <a href="https://cloud.google.com/blog/products/bigquery/bigquery-under-the-hood">BigQuery internals</a>, <a href="https://www.cidrdb.org/cidr2021/papers/cidr2021_paper17.pdf">Databricks Lakehouse paper</a></p>
+<hr>
+<h2 id="phase-4-open-table-formats-and-the-lakehouse">Phase 4: Open Table Formats and the Lakehouse</h2>
+<h3 id="41-what-an-open-table-format-is">4.1 What an "Open Table Format" Is</h3>
+<p>Parquet is a <em>file</em> format. A <em>table</em> format is the layer above: a way to make many Parquet files behave like a single ACID-transactional table, with schema evolution, partitioning, time travel, and concurrent writers.</p>
+<p>Why this matters: it decouples <em>storage</em> from the <em>query engine</em>. You can store your data in Iceberg on S3, and query it with Snowflake, Trino, Spark, Athena, DuckDB, and BigQuery — sometimes all in the same week. This is the lakehouse promise: warehouse-grade semantics on commodity object storage, with engine choice.</p>
+<h3 id="42-the-three-contenders">4.2 The Three Contenders</h3>
+<ul>
+<li><strong>Apache Iceberg</strong> — originated at Netflix, now broadly adopted (Snowflake, BigQuery, AWS Athena, Trino, Spark all read/write it; even Databricks committed to it after acquiring Tabular). Schema evolution and partitioning evolution without rewriting data. The default winner of the table format wars.</li>
+<li><strong>Delta Lake</strong> — originated at Databricks. Strongest on Databricks itself. Open-sourced under Linux Foundation. Effectively equivalent feature set to Iceberg for most workloads. Was the leader; now neck-and-neck with Iceberg.</li>
+<li><strong>Apache Hudi</strong> — originated at Uber. Optimized for <em>upsert-heavy</em> workloads (CDC). Lost mindshare to Iceberg/Delta, but still strong in CDC-heavy lakehouses.</li>
+</ul>
+<p>By 2026 the practical question is mostly "Iceberg or Delta?" and the answer is usually Iceberg for new builds outside Databricks, Delta inside Databricks.</p>
+<h3 id="43-what-these-formats-give-you-over-raw-parquet">4.3 What These Formats Give You Over Raw Parquet</h3>
+<ul>
+<li><strong>ACID transactions</strong> — concurrent writers don't corrupt each other; readers see consistent snapshots.</li>
+<li><strong>Schema evolution</strong> — add, drop, rename columns; widen types; the format tracks the history.</li>
+<li><strong>Partition evolution</strong> (Iceberg) — change your partitioning scheme without rewriting historical data. Old partitions stay as they were; new data uses the new scheme.</li>
+<li><strong>Time travel</strong> — <code>SELECT * FROM orders FOR VERSION AS OF 12345</code> or <code>FOR TIMESTAMP AS OF '2026-05-01'</code>. Useful for debugging and (sparingly) for recovery.</li>
+<li><strong>Hidden partitioning</strong> (Iceberg) — query with <code>WHERE date = ...</code> and the engine figures out which partitions to read, even if the partition column is derived (<code>date(ts)</code>).</li>
+<li><strong>Compaction / OPTIMIZE</strong> — periodic background process that merges small files, sorts data, and rewrites manifests. Without this, lakehouses degrade.</li>
+</ul>
+<h3 id="44-lakehouse-operational-concerns">4.4 Lakehouse Operational Concerns</h3>
+<ul>
+<li><strong>Catalog choice</strong> — the catalog is the metadata service that tells engines about your tables. AWS Glue, Unity Catalog (Databricks), Polaris (Snowflake's open catalog), Nessie (Git-like branching), Hive Metastore (legacy). REST catalog spec is increasingly the lingua franca.</li>
+<li><strong>Compaction is not optional</strong> — schedule <code>OPTIMIZE</code> / <code>rewrite_data_files</code> regularly. Without it, query performance decays linearly with write frequency.</li>
+<li><strong>Vacuum is not optional</strong> — old snapshots and orphaned files accumulate. Schedule <code>VACUUM</code> (Delta) or <code>expire_snapshots</code> (Iceberg) with a retention window long enough for time-travel recovery but short enough to control storage cost.</li>
+<li><strong>Concurrent writes</strong> require optimistic concurrency reconciliation; conflicts manifest as commit failures that your jobs must retry.</li>
+</ul>
+<p>References: <a href="https://iceberg.apache.org/spec/">Apache Iceberg spec</a>, <a href="https://github.com/delta-io/delta/blob/master/PROTOCOL.md">Delta Lake protocol</a>, <a href="https://www.databricks.com/glossary/data-lakehouse">"What is a lakehouse?" (Databricks)</a></p>
+<hr>
+<h2 id="phase-5-ingestion">Phase 5: Ingestion</h2>
+<p>Moving data <em>into</em> your analytics system. The unglamorous half of the job, and the part that breaks most often.</p>
+<h3 id="51-the-three-sources">5.1 The Three Sources</h3>
+<ul>
+<li><strong>Operational databases</strong> (Postgres, MySQL, SQL Server, Mongo) — your own application's OLTP store. Highest-value, most operationally sensitive.</li>
+<li><strong>SaaS sources</strong> (Salesforce, HubSpot, Stripe, Zendesk, etc.) — external APIs you don't control.</li>
+<li><strong>Event streams</strong> (clickstream, server logs, IoT) — high-volume, often streaming.</li>
+</ul>
+<h3 id="52-database-ingestion-cdc-vs-snapshot">5.2 Database Ingestion: CDC vs. Snapshot</h3>
+<ul>
+<li><strong>Snapshot loading</strong> — periodically dump the table and reload. Simple. Acceptable for small tables (&lt; 1M rows). Doesn't capture deletes. Doesn't capture intermediate states.</li>
+<li><strong>Incremental snapshot</strong> — query for <code>WHERE updated_at &gt; &lt;last_load&gt;</code>. Better. Misses deletes. Requires a reliable <code>updated_at</code> on every row, with index on it.</li>
+<li><strong>Change Data Capture (CDC)</strong> — read the database's <em>write-ahead log</em> (Postgres WAL, MySQL binlog, SQL Server CDC). Captures every change including deletes, in order, with low impact on the source database. The right answer at scale.</li>
+</ul>
+<p>The dominant tool: <strong>Debezium</strong> (open-source, log-based CDC for major databases, produces a Kafka topic per source table). Commercial alternatives: Fivetran HVR, Striim, AWS DMS.</p>
+<p>CDC pitfalls to know:
+- <strong>Replication slots can fill disks</strong> — on Postgres, an inactive replication slot causes WAL to accumulate forever. Monitor <code>pg_replication_slots.active</code> and <code>pg_wal</code> size.
+- <strong>Schema changes are subtle</strong> — DDL on the source needs a downstream story. Modern CDC tools handle ADD COLUMN; DROP COLUMN and type changes are harder.
+- <strong>Initial snapshot is its own beast</strong> — for terabyte-scale tables, the initial snapshot can take days. Incremental snapshot (chunked, with watermarks) is the current best practice (Netflix's <a href="https://netflixtechblog.com/dblog-a-generic-change-data-capture-framework-69351fb9099b">DBLog</a>).</p>
+<h3 id="53-saas-ingestion-fivetran-airbyte-stitch">5.3 SaaS Ingestion: Fivetran, Airbyte, Stitch</h3>
+<p>For SaaS sources, you're not building connectors yourself. Use a managed service:</p>
+<ul>
+<li><strong>Fivetran</strong> — most mature, most expensive. Set-and-forget. Strong choice if you can afford it.</li>
+<li><strong>Airbyte</strong> — open-source connectors with a managed cloud offering. Less mature than Fivetran but improving rapidly; self-hosting is feasible.</li>
+<li><strong>Stitch</strong> — older, owned by Talend. Declining.</li>
+<li><strong>Hightouch + reverse ETL</strong> — note: reverse ETL is the <em>output</em> side (warehouse → SaaS), not ingestion.</li>
+</ul>
+<p>The economics: Fivetran-class tools charge per "monthly active row" (MAR) or similar. At small scale: cheap. At large scale: expensive enough that engineering a custom Airbyte deployment makes sense. The crossover is usually somewhere around $100K/year of Fivetran spend.</p>
+<h3 id="54-event-streams-kafka-as-the-backbone">5.4 Event Streams: Kafka as the Backbone</h3>
+<p>Almost every modern data platform funnels event data through <strong>Kafka</strong> (or a Kafka-protocol-compatible alternative: Redpanda, Confluent Cloud, AWS MSK). For the streaming details, see Phase 9; for ingestion purposes the patterns are:</p>
+<ul>
+<li><strong>Producer → Kafka topic → Consumer that writes to warehouse / lakehouse.</strong></li>
+<li>Use <strong>Avro</strong> (with a Schema Registry) for event payloads at scale. JSON is fine to start; switch when the cost of schema drift or payload size becomes painful.</li>
+<li><strong>Sink connectors</strong> (Kafka Connect S3, Iceberg, Snowflake, BigQuery sinks) handle the warehouse-write half declaratively. Worth using before writing custom consumers.</li>
+<li><strong>Exactly-once</strong> end-to-end requires care: producer idempotency, transactional writes, and a sink that supports idempotent commits (Iceberg, Snowflake Snowpipe Streaming).</li>
+</ul>
+<h3 id="55-the-bronze-silver-gold-convention">5.5 The Bronze / Silver / Gold Convention</h3>
+<p>A widely-used naming convention for ingestion + transformation layers (popularized by Databricks; the names are arbitrary but the structure is the right one):</p>
+<ul>
+<li><strong>Bronze</strong> (raw) — exact copy of the source. No business logic. Preserved for replay/reprocessing. Often immutable, append-only.</li>
+<li><strong>Silver</strong> (cleaned / conformed) — deduplicated, type-corrected, joined to references. Still close to source structure.</li>
+<li><strong>Gold</strong> (modeled / mart) — business-facing dimensional models, aggregates, the tables analysts query.</li>
+</ul>
+<p>dbt naming convention uses <code>staging</code> → <code>intermediate</code> → <code>marts</code> for the same layers; pick one and stick to it.</p>
+<p>References: <a href="https://debezium.io/documentation/">Debezium documentation</a>, <a href="https://www.fivetran.com/blog">Fivetran competitive analysis</a>, <a href="https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying">"The Log: What every software engineer should know about real-time data's unifying abstraction"</a></p>
+<hr>
+<h2 id="phase-6-transformation-with-dbt">Phase 6: Transformation with dbt</h2>
+<p>dbt (data build tool) is the dominant SQL transformation framework. It does one thing well: take a directory of SQL files, work out the dependency graph, materialize them in the right order, and test them.</p>
+<h3 id="61-the-core-concepts">6.1 The Core Concepts</h3>
+<ul>
+<li><strong>Model</strong> — a SQL file in <code>models/</code>. Each model is a <code>SELECT</code> statement. dbt wraps it in <code>CREATE TABLE AS</code> (or <code>CREATE VIEW AS</code>, etc.) at run time. Each model produces one table or view in your warehouse.</li>
+<li><strong>Source</strong> — declared input table that dbt didn't create (e.g., a raw table from Fivetran). Declared in <code>sources.yml</code>. Referenced as <code>{{ source('schema_name', 'table_name') }}</code>.</li>
+<li><strong>Ref</strong> — reference to another dbt model. Referenced as <code>{{ ref('model_name') }}</code>. dbt uses these refs to build the DAG.</li>
+<li><strong>Seed</strong> — a CSV file in <code>seeds/</code> that dbt loads into a table. Use for small reference data (country codes, lookup tables).</li>
+<li><strong>Snapshot</strong> — captures slowly-changing dimensions. dbt tracks changes over time.</li>
+<li><strong>Test</strong> — assertion on a model (e.g., <code>not_null</code>, <code>unique</code>, custom SQL).</li>
+<li><strong>Macro</strong> — Jinja-templated SQL function. Reusable logic.</li>
+<li><strong>Package</strong> — a dbt project you import as a dependency.</li>
+</ul>
+<h3 id="62-materializations">6.2 Materializations</h3>
+<p>How a model is <em>physically</em> persisted. Choose per-model based on size, freshness, and query patterns.</p>
+<ul>
+<li><strong>view</strong> (default) — a database view. Cheap to build, expensive to query (re-runs the SQL every time). Right for small, infrequently-queried models.</li>
+<li><strong>table</strong> — full table replacement on each run. Right for medium-size models with frequent queries.</li>
+<li><strong>incremental</strong> — append (or merge) only new/changed rows. Right for large event tables. Requires careful thinking about idempotency.</li>
+<li><strong>ephemeral</strong> — inlined as a CTE in downstream models. No persistence. Right for trivial transformations used in one place.</li>
+<li><strong>materialized_view</strong> — supported on Snowflake, BigQuery, Redshift, Postgres; the warehouse maintains it automatically. Right for low-latency aggregations of source data that updates frequently.</li>
+</ul>
+<h3 id="63-incremental-models">6.3 Incremental Models</h3>
+<p>The most operationally important materialization, and the one most often misconfigured.</p>
+<pre><code class="language-sql">{{ config(
+    materialized='incremental',
+    unique_key='order_id',
+    on_schema_change='append_new_columns'
+) }}
+
+SELECT * FROM {{ source('raw', 'orders') }}
+
+{% if is_incremental() %}
+  WHERE updated_at &gt; (SELECT MAX(updated_at) FROM {{ this }})
+{% endif %}
+</code></pre>
+<p>Key choices:</p>
+<ul>
+<li><strong>Incremental strategy</strong>:</li>
+<li><code>append</code> — just <code>INSERT</code> new rows. Cheapest. Right for immutable event streams.</li>
+<li><code>merge</code> — <code>MERGE</code> on <code>unique_key</code>. Right when records can update.</li>
+<li><code>delete+insert</code> — delete matching keys then insert. Workaround for warehouses without <code>MERGE</code>.</li>
+<li><code>insert_overwrite</code> — overwrite specific partitions wholesale. Excellent for BigQuery/Spark partitioned tables; idempotent reruns.</li>
+<li><strong>Watermark</strong> — what counts as "new"? <code>updated_at &gt; MAX(updated_at)</code>? Date partition? Whatever you pick, ensure the source actually maintains it monotonically.</li>
+<li><strong>Late-arriving data</strong> — if source rows can arrive with an <code>updated_at</code> earlier than <code>MAX(updated_at)</code>, your incremental will miss them. Either widen the watermark window or use <code>insert_overwrite</code> of recent partitions.</li>
+<li><strong><code>is_incremental()</code></strong> — true on every run <em>except</em> the first (full refresh). Always include the watermark filter inside this conditional.</li>
+</ul>
+<h3 id="64-snapshots-slowly-changing-dimensions">6.4 Snapshots (Slowly Changing Dimensions)</h3>
+<p>dbt snapshots implement SCD Type 2 (track history) declaratively:</p>
+<pre><code class="language-sql">{% snapshot orders_snapshot %}
+{{ config(
+    target_database='analytics',
+    target_schema='snapshots',
+    unique_key='order_id',
+    strategy='timestamp',
+    updated_at='updated_at',
+) }}
+
+SELECT * FROM {{ source('raw', 'orders') }}
+{% endsnapshot %}
+</code></pre>
+<p>Each <code>dbt snapshot</code> run adds rows whose <code>updated_at</code> has changed since last run, marking the previous version with <code>dbt_valid_to = now()</code>. The result is a time-versioned history of the source table.</p>
+<p>Strategies: <code>timestamp</code> (use a column that increases on update) or <code>check</code> (compare specific columns).</p>
+<h3 id="65-testing">6.5 Testing</h3>
+<pre><code class="language-yaml"># models/marts/orders.yml
+models:
+  - name: orders
+    columns:
+      - name: order_id
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        tests:
+          - relationships:
+              to: ref('customers')
+              field: customer_id
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['pending', 'shipped', 'cancelled', 'returned']
+</code></pre>
+<p>Built-in tests cover ~80% of what you want. For the other 20%, write <strong>singular tests</strong> (a <code>.sql</code> file that returns failing rows) or <strong>generic tests</strong> (parameterized macros). The <code>dbt-utils</code> and <code>dbt-expectations</code> packages add dozens of common assertions.</p>
+<p>Run tests as part of every pipeline run. Failed tests should block downstream models or surface clearly to oncall.</p>
+<h3 id="66-documentation-and-lineage">6.6 Documentation and Lineage</h3>
+<p>dbt generates a documentation site from your project: every model, every column, descriptions you wrote, and <strong>the dependency DAG</strong>. <code>dbt docs generate &amp;&amp; dbt docs serve</code>.</p>
+<p>The DAG is the most underused feature in DE. When something breaks, click upstream. When something changes, see what's downstream. Make the docs site easily accessible to analysts.</p>
+<h3 id="67-the-footguns">6.7 The Footguns</h3>
+<ul>
+<li><strong><code>SELECT *</code> from <code>ref()</code></strong> in transformations — surface schema drift will cascade unexpectedly. Be explicit, especially in mart-layer models.</li>
+<li><strong>Full-refresh assumptions</strong> — incremental models that don't produce the same output on full-refresh as on incremental are bugs waiting to happen. Test both.</li>
+<li><strong>Jinja-in-SQL madness</strong> — Jinja is powerful; over-using macros makes SQL unreadable. Reach for it last, not first.</li>
+<li><strong>Slow <code>WHERE</code> clauses with subqueries</strong> — <code>WHERE updated_at &gt; (SELECT MAX(updated_at) FROM {{ this }})</code> runs a scan on <code>{{ this }}</code> per run. Often fine; for large tables, precompute the max in a variable.</li>
+<li><strong>Not pinning dbt-core / adapter versions</strong> — auto-upgrades have broken production. Pin in <code>requirements.txt</code>.</li>
+</ul>
+<p>References: <a href="https://docs.getdbt.com/">dbt documentation</a>, <a href="https://docs.getdbt.com/best-practices">dbt best practices guide</a>, <a href="https://www.locallyoptimistic.com/post/how-we-structure-our-dbt-projects/">Locally Optimistic — How we structure our dbt projects</a></p>
+<hr>
+<h2 id="phase-7-orchestration">Phase 7: Orchestration</h2>
+<p>You have transformations. You need to run them on a schedule, in dependency order, with retries, alerts, and backfills. That's orchestration.</p>
+<h3 id="71-the-three-frameworks">7.1 The Three Frameworks</h3>
+<p>The DE world is currently torn between three orchestrators. Each has a real personality.</p>
+<p><strong>Apache Airflow</strong> — the incumbent. Originally from Airbnb (2014), now an Apache project. Defines pipelines as Python DAGs of <em>tasks</em>. Massive plugin ecosystem (providers for every cloud service). Battle-tested, ubiquitous, well-known by hiring managers.
+- <em>Strengths</em>: every connector you can name, biggest community, mature operationally.
+- <em>Weaknesses</em>: pipelines are tasks, not data — Airflow doesn't know what tasks <em>produce</em> or <em>consume</em>. Local development is awkward. The scheduler is historically a sore spot (improving in Airflow 2 / 3).</p>
+<p><strong>Dagster</strong> — the modern challenger. Pipelines are defined around <em>assets</em> (the data they produce), not tasks (the operations). Strong typing, integrated lineage, much better local dev story.
+- <em>Strengths</em>: asset-based mental model matches how DE actually thinks; local dev with hot-reload; cleaner UI; declarative dependencies via <code>@asset</code> decorators.
+- <em>Weaknesses</em>: smaller community than Airflow, fewer turnkey integrations.</p>
+<p><strong>Prefect</strong> — the third option. Started as a "modern Airflow" (Prefect 1), pivoted to a more flexible "orchestration of any Python function" model (Prefect 2/3). Strong remote-execution story.
+- <em>Strengths</em>: Python-native, low ceremony, good for "I want to schedule a Python function" without DAG ceremony.
+- <em>Weaknesses</em>: less opinionated about data; can lead to less-structured pipelines if you're not disciplined.</p>
+<p>Honest recommendation for new projects in 2026: <strong>Dagster</strong> if you're greenfield and have a small-to-medium team. <strong>Airflow</strong> if your team already knows it, or if you need a specific Airflow provider that the others lack. <strong>Prefect</strong> for teams who treat orchestration as "scheduled Python functions" rather than as a data platform.</p>
+<h3 id="72-core-concepts-across-all-three">7.2 Core Concepts (Across All Three)</h3>
+<ul>
+<li><strong>DAG / Job / Flow</strong> — the pipeline. A graph of work to be done.</li>
+<li><strong>Task / Op / Asset</strong> — a unit of work.</li>
+<li><strong>Scheduler</strong> — decides what runs when. Cron, event-driven, or sensor-based.</li>
+<li><strong>Executor / Runner</strong> — actually runs the work. Local, Celery, Kubernetes, ECS, etc.</li>
+<li><strong>Sensor</strong> — task that polls for an external condition (file arrival, API readiness) before firing.</li>
+<li><strong>Backfill</strong> — re-running historical instances of a scheduled pipeline.</li>
+<li><strong>Retry</strong> — automatic re-execution on failure, with backoff.</li>
+</ul>
+<h3 id="73-common-patterns">7.3 Common Patterns</h3>
+<ul>
+<li><strong>Daily batch transform</strong> — extract at 2 AM → load → dbt run → tests → notify. The boring 80% of orchestration.</li>
+<li><strong>Sensor-driven</strong> — wait for a file to land in S3, then trigger downstream. Replace with event-driven via SQS/PubSub where possible.</li>
+<li><strong>Backfill from historical date</strong> — <code>dbt run --vars '{start_date: 2020-01-01}'</code> with the orchestrator iterating dates. Iceberg/Delta time travel makes this safer.</li>
+<li><strong>Fan-out / fan-in</strong> — process N partitions in parallel, then merge. Dagster's <code>DynamicOutput</code>, Airflow's <code>expand()</code> (dynamic task mapping), Prefect's <code>map</code>.</li>
+<li><strong>Cross-DAG dependency</strong> — DAG B should wait for DAG A. Airflow: <code>ExternalTaskSensor</code> or dataset triggers. Dagster: native via asset deps across jobs. Prefect: flow-of-flows.</li>
+</ul>
+<h3 id="74-what-orchestrators-are-not-for">7.4 What Orchestrators Are Not For</h3>
+<ul>
+<li><strong>Data transformation logic.</strong> Use dbt or Spark or SQL. Orchestrators should <em>call</em> those tools, not contain transformation logic.</li>
+<li><strong>Streaming.</strong> Orchestrators are for batch. Use Flink/Kafka Streams/Spark Structured Streaming for stream processing.</li>
+<li><strong>Low-latency triggering.</strong> Orchestrators schedule on minute granularity, not second. For event-driven sub-second triggers, use serverless functions or a real event bus.</li>
+</ul>
+<p>References: <a href="https://airflow.apache.org/docs/">Airflow documentation</a>, <a href="https://docs.dagster.io/">Dagster documentation</a>, <a href="https://docs.prefect.io/">Prefect documentation</a></p>
+<hr>
+<h2 id="phase-8-distributed-compute">Phase 8: Distributed Compute</h2>
+<p>When your data is too big for a single warehouse query to be efficient, or when your transformations are too complex to express in SQL, you reach for distributed compute. Spark dominates this niche; DuckDB and Polars are increasingly displacing it for single-node workloads.</p>
+<h3 id="81-spark-fundamentals">8.1 Spark Fundamentals</h3>
+<p><strong>Apache Spark</strong> is a distributed compute engine. Started at Berkeley (2009), now an Apache project. Most production data engineering with custom Python/Scala code runs on Spark.</p>
+<p>The three APIs, in order of historical age:</p>
+<ul>
+<li><strong>RDDs</strong> (Resilient Distributed Datasets) — low-level, typed, functional. Old. Don't use for new code unless you have specific reasons.</li>
+<li><strong>DataFrames</strong> — high-level, schema-aware, optimizer-driven. The default API.</li>
+<li><strong>Spark SQL</strong> — write SQL, execute on Spark. The same query planner as DataFrames.</li>
+</ul>
+<p>The data flows the same way regardless of API: through the <strong>Catalyst optimizer</strong> (logical → physical plan, cost-based optimization) and the <strong>Tungsten execution engine</strong> (whole-stage code generation, vectorized operators).</p>
+<h3 id="82-the-concepts-you-have-to-know">8.2 The Concepts You Have to Know</h3>
+<ul>
+<li><strong>Lazy evaluation</strong> — Spark builds a plan as you compose operations; nothing runs until you call an action (<code>collect</code>, <code>count</code>, <code>write</code>).</li>
+<li><strong>Transformations vs. actions</strong> — <code>select</code>, <code>filter</code>, <code>join</code>, <code>groupBy</code> are transformations (lazy). <code>count</code>, <code>show</code>, <code>write</code> are actions (trigger execution).</li>
+<li><strong>Narrow vs. wide transformations</strong>:</li>
+<li><em>Narrow</em> — each output partition depends on one input partition. <code>map</code>, <code>filter</code>. Cheap.</li>
+<li><em>Wide</em> — each output partition depends on many input partitions. <code>groupBy</code>, <code>join</code>. Trigger a <strong>shuffle</strong>.</li>
+<li><strong>Shuffle</strong> — moving data between executors over the network. The single dominant cost in Spark jobs.</li>
+<li><strong>Partitioning</strong> — Spark splits a DataFrame into partitions; each partition is processed by one task. Too few partitions = parallelism is limited. Too many = scheduling overhead dominates. Rule of thumb: aim for <strong>128 MB – 1 GB per partition</strong>.</li>
+<li><strong>Broadcast join</strong> — when one side of a join is small (&lt; 100 MB), Spark can send a copy to every executor instead of shuffling both sides. Massive speedup. Auto-triggered, but check <code>broadcastHashJoin</code> in the plan.</li>
+<li><strong>Adaptive Query Execution (AQE)</strong> — Spark 3+ runtime optimization: re-partition mid-query based on actual data sizes. Turn it on (<code>spark.sql.adaptive.enabled=true</code>).</li>
+</ul>
+<h3 id="83-reading-a-spark-plan">8.3 Reading a Spark Plan</h3>
+<pre><code class="language-python">df.explain(mode=&quot;extended&quot;)
+</code></pre>
+<p>Look for:
+- <strong>Exchange</strong> = shuffle. Each one is expensive. Question every Exchange.
+- <strong>BroadcastHashJoin</strong> good; <strong>SortMergeJoin</strong> with two Exchanges expensive.
+- <strong>PartitionFilters</strong> show predicate pushdown working.
+- <strong>PushedFilters</strong> show filter pushdown into Parquet readers.</p>
+<p>If your job is slow, the explain plan is the first thing to look at. Not the executor logs.</p>
+<h3 id="84-when-spark-is-the-right-choice">8.4 When Spark Is the Right Choice</h3>
+<ul>
+<li>Your transformation is too complex for SQL alone (custom UDFs in Python/Scala, ML pipelines, complex joins across many sources).</li>
+<li>Your data is too large for your warehouse to be cost-effective (petabyte scale).</li>
+<li>You're already on Databricks (Spark is the native runtime).</li>
+</ul>
+<h3 id="85-when-spark-is-not">8.5 When Spark Is Not</h3>
+<ul>
+<li>Your transformation fits in SQL. Use the warehouse.</li>
+<li>Your data fits in memory of a single machine (&lt; ~100 GB). <strong>Use DuckDB or Polars.</strong></li>
+<li>You're doing low-latency, single-query work. Use a warehouse with a fast query engine (ClickHouse, BigQuery, Snowflake).</li>
+</ul>
+<h3 id="86-duckdb-and-polars">8.6 DuckDB and Polars</h3>
+<p>The 2022–2026 story: enormous improvements in single-node columnar engines have eaten a lot of small-Spark's lunch.</p>
+<ul>
+<li><strong>DuckDB</strong> — embedded analytics database, SQL interface, reads Parquet/CSV/JSON natively. Stunning performance on a single node. Embeds in Python (<code>pip install duckdb</code>), R, Rust, Wasm. The right tool for "I have ~10–500 GB of Parquet on S3 and I want to query it without infrastructure."</li>
+<li><strong>Polars</strong> — DataFrame library written in Rust. Pandas-like API, but multithreaded, lazy, with a query optimizer. Often 5–50× faster than pandas. The right tool for analytics code in Python that's too big for pandas but too small for Spark.</li>
+</ul>
+<p>A useful 2026 heuristic:
+- <strong>&lt; 100 GB</strong>: DuckDB or Polars in a single process.
+- <strong>100 GB – 10 TB</strong>: Warehouse SQL, or Spark on a small cluster.
+- <strong>&gt; 10 TB</strong>: Warehouse SQL (with partition pruning), or Spark on a real cluster.</p>
+<p>References: <a href="https://spark.apache.org/docs/latest/">Spark documentation</a>, <a href="https://therinspark.com/">"Mastering Spark with R" plan explanations</a>, <a href="https://duckdb.org/docs/">DuckDB documentation</a>, <a href="https://pola-rs.github.io/polars/">Polars user guide</a></p>
+<hr>
+<h2 id="phase-9-streaming">Phase 9: Streaming</h2>
+<p>Stream processing handles data record-by-record (or in small micro-batches) as it arrives. The decision to go streaming carries real operational complexity; do it when you have to, not when you want to.</p>
+<h3 id="91-the-kafka-model">9.1 The Kafka Model</h3>
+<p>Kafka is the de facto streaming backbone. The concepts:</p>
+<ul>
+<li><strong>Topic</strong> — named, ordered, append-only log. Partitioned across brokers.</li>
+<li><strong>Partition</strong> — a single ordered log within a topic. Ordering is guaranteed <em>within</em> a partition, not across partitions.</li>
+<li><strong>Producer</strong> — writes records to topics.</li>
+<li><strong>Consumer</strong> — reads records from topics. Maintains an <em>offset</em> per partition.</li>
+<li><strong>Consumer group</strong> — set of consumers that collectively read a topic; each partition assigned to exactly one consumer in the group. Scales horizontally up to the partition count.</li>
+<li><strong>Replication</strong> — each partition is replicated across brokers; one is the leader.</li>
+<li><strong>Retention</strong> — messages persist for a configured time (or size). Default 7 days. Increase if downstream consumers need replay capability.</li>
+</ul>
+<p>The mental model that pays off: <strong>a topic is a durable, replayable log</strong>. Once data is in Kafka, you can have N independent consumers, each at their own offset, without affecting producers. This decoupling is the architectural win.</p>
+<h3 id="92-schema-management">9.2 Schema Management</h3>
+<p>In production Kafka, <strong>always use a schema registry</strong> (Confluent Schema Registry is the canonical implementation). Producers and consumers register and resolve Avro/JSON Schema/Protobuf schemas by ID; the payload carries just the schema ID, not the full schema.</p>
+<p>This buys you:
+- <strong>Forward and backward compatibility</strong> — old consumers can read new producers' messages; new consumers can read old producers' messages.
+- <strong>Strong typing</strong> — payloads aren't a JSON soup that breaks the moment an upstream renames a field.
+- <strong>Storage efficiency</strong> — Avro binary is dramatically smaller than JSON.</p>
+<p>The cost: an additional service to operate, and a tighter coupling between producers and the registry. Worth it once you're past hobby scale.</p>
+<h3 id="93-stream-processing-engines">9.3 Stream Processing Engines</h3>
+<ul>
+<li><strong>Kafka Streams</strong> — JVM library, runs inside your application. Stateful operations (joins, aggregations, windowing) with state in RocksDB plus changelog topics for fault tolerance. Tight coupling to Kafka but operationally simple — your stream processor <em>is</em> a regular JVM service.</li>
+<li><strong>Apache Flink</strong> — the heavyweight streaming engine. Best-in-class for stateful, exactly-once, low-latency stream processing. Cluster-based; more ops than Kafka Streams. The right choice when you need real streaming with complex state.</li>
+<li><strong>Spark Structured Streaming</strong> — micro-batch (default ~1s batches) implemented on the Spark engine. Easier to operate than Flink if you're already on Spark. Higher latency than Flink for true streaming.</li>
+<li><strong>Streaming SQL</strong> — Materialize, RisingWave, ksqlDB. Write SQL; the engine maintains incrementally-updated materialized views over Kafka topics. Excellent ergonomics; relatively new but production-ready.</li>
+</ul>
+<h3 id="94-lambda-vs-kappa-architectures">9.4 Lambda vs. Kappa Architectures</h3>
+<p>The old debate, still useful framing:</p>
+<ul>
+<li><strong>Lambda</strong> — separate batch and streaming pipelines that produce the same outputs. Batch is authoritative; streaming is for fresh-but-approximate results. Two codebases to maintain.</li>
+<li><strong>Kappa</strong> — one streaming pipeline. Reprocess history by replaying from the start of the Kafka log. No separate batch code. Possible only if Kafka retention is long enough (or the data is also archived to S3).</li>
+</ul>
+<p>By 2026 most "Kappa" deployments are pragmatically Lambda-shaped: Kafka for live, lakehouse for history, with shared transformation logic in dbt or streaming SQL.</p>
+<h3 id="95-exactly-once-semantics">9.5 Exactly-Once Semantics</h3>
+<p>The hardest problem in streaming: <em>each input record produces exactly one set of output effects, even with failures</em>.</p>
+<ul>
+<li><strong>At-most-once</strong> — events may be lost, never duplicated. Simple, often unacceptable.</li>
+<li><strong>At-least-once</strong> — events may be duplicated, never lost. Easy; requires downstream idempotency.</li>
+<li><strong>Exactly-once</strong> — neither. Requires coordinated transactions across producer, broker, and sink.</li>
+</ul>
+<p>Kafka has supported exactly-once <em>within</em> a Kafka-to-Kafka topology since 2017 (transactional producer + read-committed isolation). Exactly-once <em>into a warehouse / lakehouse</em> requires the sink to support idempotent or transactional writes. Iceberg, Snowflake Snowpipe Streaming, and modern Spark sinks all support this; older sinks don't.</p>
+<p>In practice: <strong>design for at-least-once + downstream idempotency</strong> unless the cost of duplicates is concrete and unacceptable. Idempotent inserts (<code>MERGE ON unique_key</code>) are usually sufficient.</p>
+<p>References: <a href="https://kafka.apache.org/documentation/">Kafka documentation</a>, <a href="https://dataintensive.net/">"Designing Data-Intensive Applications" Ch. 11 — Stream Processing</a>, <a href="https://nightlies.apache.org/flink/flink-docs-stable/">Flink documentation</a></p>
+<hr>
+<h2 id="phase-10-data-modeling">Phase 10: Data Modeling</h2>
+<p>The schema of your analytics layer determines what queries are easy, what queries are expensive, and how analysts feel about working with your data. The investment in modeling pays back forever.</p>
+<h3 id="101-kimball-dimensional-modeling">10.1 Kimball Dimensional Modeling</h3>
+<p>Ralph Kimball's dimensional modeling (1996; <em>The Data Warehouse Toolkit</em>) is the canonical approach and the one most teams should default to.</p>
+<ul>
+<li><strong>Fact table</strong> — the things that happened. One row per event/transaction. Mostly foreign keys + numeric measures. Examples: <code>fct_orders</code>, <code>fct_page_views</code>, <code>fct_sessions</code>.</li>
+<li><strong>Dimension table</strong> — the context. Slowly-changing reference data. Examples: <code>dim_customers</code>, <code>dim_products</code>, <code>dim_dates</code>.</li>
+<li><strong>Star schema</strong> — one fact + the dimensions it joins to. The shape analysts can query without thinking.</li>
+<li><strong>Snowflake schema</strong> — dimensions joined to other dimensions. Don't bother; flatten dimensions instead.</li>
+</ul>
+<p>Why this layout: it matches how analysts actually think (<em>"orders per customer per region per month"</em> = fact + dimensions), it's optimizable by query engines, and it's stable as the business grows.</p>
+<h3 id="102-slowly-changing-dimensions">10.2 Slowly Changing Dimensions</h3>
+<p>Dimensions change over time. A customer's address changes; a product's category changes. How you handle this depends on what the business cares about.</p>
+<ul>
+<li><strong>SCD Type 1</strong> — overwrite. The old value is gone. Right when history doesn't matter (typos, corrections).</li>
+<li><strong>SCD Type 2</strong> — keep history. Add <code>valid_from</code> / <code>valid_to</code> columns; each version is a separate row. The default for anything where historical accuracy matters.</li>
+<li><strong>SCD Type 3</strong> — keep the <em>previous</em> value in a column (<code>current_address</code>, <code>previous_address</code>). Limited utility; usable for "I want to compare current to one historical state."</li>
+<li><strong>SCD Type 6</strong> — combination: Type 1 + Type 2 + Type 3. Mostly academic.</li>
+</ul>
+<p>dbt snapshots (Phase 6.4) implement Type 2 well. Use them.</p>
+<h3 id="103-data-vault">10.3 Data Vault</h3>
+<p>A modeling approach from Dan Linstedt; popular in heavily-regulated industries (banks, government).</p>
+<ul>
+<li><strong>Hub</strong> — business keys.</li>
+<li><strong>Link</strong> — many-to-many relationships between hubs.</li>
+<li><strong>Satellite</strong> — descriptive attributes for hubs and links, with full history.</li>
+</ul>
+<p>Data Vault optimizes for <strong>auditability and source-system independence</strong>. The cost: more tables, more joins, more cognitive overhead.</p>
+<p>Use Data Vault if you have multiple OLTP sources with overlapping entities and strict audit requirements. For most companies, Kimball is enough.</p>
+<h3 id="104-one-big-table-obt-wide-tables">10.4 One Big Table (OBT) / Wide Tables</h3>
+<p>The pragmatic counter to dimensional modeling: just denormalize everything into one wide table per topic.</p>
+<ul>
+<li><em>Pros</em>: no joins at query time; matches how BigQuery and Snowflake love to scan; analyst-friendly.</li>
+<li><em>Cons</em>: storage cost grows; updates to dimension attributes require rebuilding; you lose the structural elegance of star schemas.</li>
+</ul>
+<p>OBT is increasingly common as a <em>mart</em> layer on top of a Kimball-modeled warehouse: keep dimension + fact tables for flexibility, ship a few OBTs for the hottest dashboards. Best of both.</p>
+<h3 id="105-the-modeling-smell-tests">10.5 The Modeling Smell Tests</h3>
+<p>Your model is probably wrong if:
+- Analysts copy-paste the same join over and over. Add a wider mart-layer table.
+- Different dashboards return different numbers for the same metric. You have multiple definitions of the metric; consolidate.
+- Schema changes break dashboards weekly. Source-coupled mart layer; introduce a stable interface (the <em>semantic layer</em>: dbt's <a href="https://docs.getdbt.com/docs/use-dbt-semantic-layer/dbt-sl">Semantic Layer</a>, Cube, LookML).
+- "What was X on date D?" is impossible to answer. You don't have SCD2 history.</p>
+<p>References: <a href="https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/books/">The Data Warehouse Toolkit</a>, <a href="https://www.datavaultalliance.com/">The Data Vault Guru</a>, <a href="https://docs.getdbt.com/best-practices/how-we-structure/1-guide-overview">dbt — How we structure our dbt projects</a></p>
+<hr>
+<h2 id="phase-11-quality-testing-observability">Phase 11: Quality, Testing, Observability</h2>
+<p>"Pipeline ran successfully" tells you nothing about whether the <em>data</em> is correct. Quality is a discipline distinct from operational uptime.</p>
+<h3 id="111-the-five-pillars-of-data-observability">11.1 The Five Pillars of Data Observability</h3>
+<p>Originally articulated by Monte Carlo, broadly adopted:</p>
+<ol>
+<li><strong>Freshness</strong> — is data arriving on the expected schedule?</li>
+<li><strong>Volume</strong> — is the row count in the expected range?</li>
+<li><strong>Schema</strong> — has the schema changed unexpectedly?</li>
+<li><strong>Distribution</strong> — are values within expected ranges (no nulls where there shouldn't be, no negative prices, valid enum values)?</li>
+<li><strong>Lineage</strong> — where did this data come from, and what does it feed?</li>
+</ol>
+<p>A robust DE platform monitors all five.</p>
+<h3 id="112-the-tools">11.2 The Tools</h3>
+<ul>
+<li><strong>dbt tests</strong> — built into your transformation framework. <code>unique</code>, <code>not_null</code>, <code>accepted_values</code>, <code>relationships</code>, plus packages (<code>dbt-utils</code>, <code>dbt-expectations</code>) with dozens of additional assertions. Free, version-controlled, runs in your existing pipeline.</li>
+<li><strong>Great Expectations</strong> — Python framework for data assertions. More expressive than dbt tests, more overhead to operate. Use when assertions need to be reused across multiple tools or when you need a richer expectation library.</li>
+<li><strong>Soda</strong> — declarative checks defined in YAML, runs as a service or CLI. Cleaner ergonomics than GE for SQL-first teams.</li>
+<li><strong>Monte Carlo, Bigeye, Anomalo, Metaplane</strong> — commercial data observability platforms. Anomaly detection on metrics (freshness, volume, distribution) without writing explicit checks. Worth evaluating once you've outgrown declarative checks.</li>
+</ul>
+<h3 id="113-data-contracts">11.3 Data Contracts</h3>
+<p>Increasingly important: a <em>data contract</em> is a versioned, explicit interface between data producer and consumer. Producers commit to:
+- A schema (with backward-compatibility rules).
+- A freshness SLO.
+- A volume range.
+- Owner contact info.</p>
+<p>Consumers consume against the contract, not against the underlying table directly. If the producer violates the contract, the consumer's pipeline fails (or alerts) at the contract boundary, not deep in some downstream report.</p>
+<p>Tools: <a href="https://docs.getdbt.com/docs/collaborate/govern/model-contracts">dbt model contracts</a>, <a href="https://datacontract.com/">DataContract.com spec</a>, Schema Registry for Kafka.</p>
+<h3 id="114-lineage">11.4 Lineage</h3>
+<p>Where did this column come from? What downstream things depend on it? Lineage answers this.</p>
+<ul>
+<li><strong>dbt</strong> generates column-level lineage natively for SQL transformations.</li>
+<li><strong>OpenLineage</strong> is the open standard for cross-tool lineage; Airflow, Spark, dbt, Dagster all emit OpenLineage events.</li>
+<li><strong>Marquez</strong> is the open-source backend for OpenLineage events.</li>
+<li><strong>Atlan, OpenMetadata, DataHub, Unity Catalog</strong> are higher-level catalogs that ingest lineage and present it for humans.</li>
+</ul>
+<p>Why this matters: at scale, "what breaks if I change this column?" is unanswerable without lineage. Without it, schema changes become political.</p>
+<h3 id="115-testing-strategy">11.5 Testing Strategy</h3>
+<p>A pragmatic ladder:</p>
+<ol>
+<li><strong>Source freshness</strong> — alert if Fivetran or Kafka stops delivering. Cheapest, highest-value monitor.</li>
+<li><strong>Schema tests on sources</strong> — fail loudly if upstream changes shape unexpectedly.</li>
+<li><strong>Primary key uniqueness + not-null on key columns</strong> on every mart-layer model. Catches 80% of bugs.</li>
+<li><strong>Referential integrity</strong> between facts and dimensions.</li>
+<li><strong>Range / distribution checks</strong> on key metrics.</li>
+<li><strong>Reconciliation</strong> — sum of revenue in <code>fct_orders</code> equals sum in source. Often the only test that catches subtle bugs.</li>
+<li><strong>Anomaly detection</strong> — when explicit checks aren't enough.</li>
+</ol>
+<p>References: <a href="https://www.montecarlodata.com/blog-what-is-data-observability/">Monte Carlo — Five Pillars of Data Observability</a>, <a href="https://openlineage.io/">OpenLineage</a></p>
+<hr>
+<h2 id="phase-12-operations-governance">Phase 12: Operations &amp; Governance</h2>
+<p>The DE concerns that aren't about building pipelines but about running them well.</p>
+<h3 id="121-cost">12.1 Cost</h3>
+<p>In modern DE, your warehouse bill is your dominant infrastructure cost. Watch it.</p>
+<ul>
+<li><strong>Snowflake</strong>: per-second compute on virtual warehouses, plus storage. Right-size warehouses (smaller for ETL, larger for ad-hoc), set auto-suspend short (60s), use multi-cluster only where concurrency genuinely demands it.</li>
+<li><strong>BigQuery</strong>: per byte scanned (on-demand) or per slot-hour (capacity). On-demand makes <code>SELECT *</code> financially terrifying. Partition every large table; cluster on common filter columns. Use BI Engine for repeated dashboard queries.</li>
+<li><strong>Databricks</strong>: per-DBU consumption based on compute type, plus underlying cloud compute. Use job clusters (not interactive) for batch; pick the right photon-enabled compute for SQL.</li>
+<li><strong>General</strong>: monitor cost per query, cost per dbt model, cost per dashboard. Make this visible to model authors.</li>
+</ul>
+<p>See Phase 13.3 for concrete recipes.</p>
+<h3 id="122-pii-and-access-control">12.2 PII and Access Control</h3>
+<ul>
+<li><strong>Tag PII at ingest</strong> — every column containing personal data tagged in the catalog. Automate this where possible (column name heuristics + sample-data scanners).</li>
+<li><strong>Role-based access</strong> — analysts get role X, executives get role Y, marketing gets a redacted view. Use Snowflake masking policies / BigQuery column-level security / Databricks Unity Catalog column masks.</li>
+<li><strong>Row-level security</strong> — <code>region_manager</code> sees only their region. Same systems support this declaratively.</li>
+<li><strong>PII vault pattern</strong> — keep PII in a separate, restricted table; reference by surrogate key elsewhere. The analytics layer never sees raw PII.</li>
+</ul>
+<h3 id="123-schema-evolution">12.3 Schema Evolution</h3>
+<ul>
+<li><strong>Additive changes (new columns, widened types)</strong> — safe, usually backward-compatible.</li>
+<li><strong>Renames and drops</strong> — usually breaking. Communicate upfront, deprecate first.</li>
+<li><strong>Type narrowings</strong> — almost always breaking.</li>
+<li><strong>Use a schema registry</strong> for streaming. Use dbt model contracts or similar for batch.</li>
+<li><strong>Backfill plans</strong> — every schema change to a historical table needs a backfill plan or a compatibility shim. Don't ship a change you can't roll back.</li>
+</ul>
+<h3 id="124-catalogs">12.4 Catalogs</h3>
+<p>A <em>data catalog</em> is the inventory: every table, who owns it, what's in it, how to access it. Increasingly also the lineage and governance hub.</p>
+<ul>
+<li><strong>Cloud-native</strong> — AWS Glue, GCP Data Catalog / Dataplex, Azure Purview, Snowflake's native metadata.</li>
+<li><strong>Open</strong> — Apache Polaris (Snowflake-led Iceberg catalog), Unity Catalog (Databricks-led, now open-sourced), Apache Gravitino, OpenMetadata, DataHub.</li>
+<li><strong>Commercial</strong> — Atlan, Alation, Collibra, Castor (now Coalesce).</li>
+</ul>
+<p>For new builds in 2026, the lakehouse-aligned answer is <strong>Polaris</strong> or <strong>Unity Catalog</strong> depending on which way your stack leans, with <strong>OpenMetadata</strong> as the open-source pure-play.</p>
+<h3 id="125-right-to-be-forgotten-gdprccpa">12.5 Right-to-be-Forgotten (GDPR/CCPA)</h3>
+<p>When a user requests deletion, you must delete their data — across warehouse, lakehouse, backups, logs, derived tables.</p>
+<ul>
+<li><strong>Centralize identifiers</strong> — every PII record reachable via a single user ID.</li>
+<li><strong>Use formats that support deletes</strong> — Iceberg, Delta, and most warehouses do; raw Parquet does not (requires file rewrite).</li>
+<li><strong>Have a documented deletion runbook</strong> with verification.</li>
+<li><strong>Consider the PII vault pattern</strong> — deleting one row in the PII vault is much cheaper than rewriting every fact table.</li>
+</ul>
+<p>References: <a href="https://www.confluent.io/blog/handling-gdpr-log-forget/">The Data Engineer's Guide to GDPR</a>, <a href="https://www.databricks.com/product/unity-catalog">Unity Catalog architecture</a></p>
+<hr>
+<h2 id="phase-13-practical-recipes">Phase 13: Practical Recipes</h2>
+<p>Concrete, prescriptive sections for the applied tasks that come up every week.</p>
+<h3 id="131-a-real-dbt-project-layout">13.1 A Real dbt Project Layout</h3>
+<p>The convention dbt itself recommends, and that most mature teams converge on:</p>
+<pre><code class="language-text">my_dbt_project/
+├── dbt_project.yml             # Project config
+├── packages.yml                # External packages (dbt_utils, dbt_expectations, etc.)
+├── profiles.yml                # Connection (usually in ~/.dbt/, not in repo)
+├── models/
+│   ├── staging/                # 1:1 with source tables, lightweight cleanup
+│   │   ├── stripe/
+│   │   │   ├── _stripe__sources.yml      # Source declarations
+│   │   │   ├── _stripe__models.yml       # Model docs + tests
+│   │   │   ├── stg_stripe__charges.sql
+│   │   │   ├── stg_stripe__customers.sql
+│   │   │   └── stg_stripe__refunds.sql
+│   │   └── salesforce/
+│   │       ├── _salesforce__sources.yml
+│   │       └── stg_salesforce__opportunities.sql
+│   ├── intermediate/           # Reusable building blocks not exposed to consumers
+│   │   └── finance/
+│   │       └── int_finance__charges_with_refunds.sql
+│   └── marts/                  # Business-facing models, by domain
+│       ├── finance/
+│       │   ├── _finance__models.yml
+│       │   ├── dim_customers.sql
+│       │   ├── fct_revenue_daily.sql
+│       │   └── fct_subscriptions.sql
+│       └── product/
+│           ├── dim_users.sql
+│           └── fct_sessions.sql
+├── snapshots/
+│   └── customers_snapshot.sql
+├── seeds/
+│   └── country_codes.csv
+├── macros/
+│   ├── generate_schema_name.sql
+│   └── pivot_currency.sql
+├── tests/                      # Singular tests (not generic)
+│   └── assert_revenue_positive.sql
+├── analyses/                   # SQL used for ad-hoc analysis, not run as part of dbt
+└── README.md
+</code></pre>
+<p>The naming conventions that pay off:
+- <strong><code>stg_&amp;lt;source&amp;gt;__&amp;lt;table&amp;gt;</code></strong> — staging models, lightweight column renaming, casting, no business logic. One per source table.
+- <strong><code>int_&amp;lt;domain&amp;gt;__&amp;lt;purpose&amp;gt;</code></strong> — intermediate models. Used as building blocks; not consumed directly by dashboards.
+- <strong><code>dim_&amp;lt;noun&amp;gt;</code></strong> / <strong><code>fct_&amp;lt;noun&amp;gt;</code></strong> — mart-layer dimensional models. The interface to analysts.</p>
+<p>Folder structure principles:
+- <strong><code>staging/</code> is grouped by source system.</strong> One folder per source. Mirror the source structure.
+- <strong><code>intermediate/</code> and <code>marts/</code> are grouped by business domain</strong>, not by source. <code>finance/</code>, <code>marketing/</code>, <code>product/</code>.
+- <strong>Every model has docs and tests in a <code>.yml</code> next to it.</strong> Use one YAML per folder (<code>_finance__models.yml</code>) rather than per file — fewer files, easier to scan.</p>
+<p>A few <code>dbt_project.yml</code> choices that pay off:</p>
+<pre><code class="language-yaml">models:
+  my_project:
+    staging:
+      +materialized: view          # Cheap, always-fresh
+      +schema: staging
+    intermediate:
+      +materialized: ephemeral     # Inlined as CTEs
+      +schema: intermediate
+    marts:
+      +materialized: table         # Persisted for query performance
+      +schema: marts
+</code></pre>
+<ul>
+<li><strong>Staging as views</strong>: free to rebuild, always reflects source. Acceptable for source data that's already in the warehouse and doesn't need transformation.</li>
+<li><strong>Intermediate as ephemeral</strong>: only exists as CTEs in downstream models. Cuts table-bloat in the warehouse.</li>
+<li><strong>Marts as tables</strong>: explicit <code>CREATE TABLE</code>. Query performance for analysts. Use incremental for large fact tables.</li>
+</ul>
+<p>CI patterns worth adopting:
+- <strong><code>dbt build --select state:modified+</code></strong> — on every PR, run only changed models + downstream. Requires <code>state:</code> artifacts from production.
+- <strong>Slim CI</strong> — only run models touched by the PR; defer all <code>ref()</code>s to production. Avoids full project rebuilds for every PR.
+- <strong>Run dbt tests in CI</strong> — failing tests block merge. Annotate test failures back to the PR.</p>
+<h3 id="132-airflow-dag-patterns-and-anti-patterns">13.2 Airflow DAG Patterns and Anti-Patterns</h3>
+<p>The shapes you'll write again and again, and the ones that look right but burn you.</p>
+<p><strong>Pattern: daily idempotent batch</strong></p>
+<pre><code class="language-python">from airflow.decorators import dag, task
+from airflow.providers.amazon.aws.hooks.s3 import S3Hook
+from pendulum import datetime
+
+@dag(
+    schedule=&quot;0 2 * * *&quot;,        # 2 AM daily
+    start_date=datetime(2026, 1, 1),
+    catchup=False,                # Don't backfill on first deploy
+    max_active_runs=1,            # Never overlap
+    default_args={
+        &quot;retries&quot;: 3,
+        &quot;retry_delay&quot;: pendulum.duration(minutes=10),
+        &quot;retry_exponential_backoff&quot;: True,
+    },
+    tags=[&quot;finance&quot;, &quot;daily&quot;],
+)
+def daily_revenue():
+    @task
+    def extract(ds: str):
+        ...                       # ds = the logical date for this run
+
+    @task
+    def transform():
+        ...
+
+    @task
+    def load():
+        ...
+
+    extract() &gt;&gt; transform() &gt;&gt; load()
+
+daily_revenue()
+</code></pre>
+<p>The key choices:
+- <strong><code>catchup=False</code></strong> — when you first deploy a DAG with <code>start_date</code> in the past, do <em>not</em> automatically run every missed day. Manually trigger backfills if needed.
+- <strong><code>max_active_runs=1</code></strong> — protects against a slow run overlapping with the next scheduled run.
+- <strong>Use <code>ds</code> (logical date)</strong>, not <code>datetime.now()</code>. Idempotency requires that re-running yesterday's DAG produces yesterday's output.
+- <strong>Retries with exponential backoff</strong> — transient failures shouldn't page someone.</p>
+<p><strong>Pattern: dynamic task mapping</strong></p>
+<p>Process N partitions in parallel:</p>
+<pre><code class="language-python">@task
+def list_dates():
+    return [&quot;2026-05-01&quot;, &quot;2026-05-02&quot;, &quot;2026-05-03&quot;]
+
+@task
+def process(date: str):
+    ...
+
+dates = list_dates()
+process.expand(date=dates)
+</code></pre>
+<p>This generates one task per date at runtime. Much cleaner than the old <code>for x in [...]</code> Python loop generating tasks at parse time.</p>
+<p><strong>Pattern: cross-DAG dependency via datasets</strong></p>
+<pre><code class="language-python">from airflow.datasets import Dataset
+
+stripe_loaded = Dataset(&quot;s3://bucket/stripe/&quot;)
+
+# Producer DAG:
+@task(outlets=[stripe_loaded])
+def load_stripe():
+    ...
+
+# Consumer DAG:
+@dag(schedule=[stripe_loaded])
+def transform_stripe():
+    ...
+</code></pre>
+<p>Modern (Airflow 2.4+) replacement for <code>ExternalTaskSensor</code>. The consumer DAG fires when the producer publishes the dataset — no polling, no race conditions.</p>
+<p><strong>Anti-pattern: doing real work in the DAG file</strong></p>
+<pre><code class="language-python"># DON'T:
+import pandas as pd
+df = pd.read_csv(&quot;s3://bucket/big.csv&quot;)    # Runs on every DAG parse!
+@task
+def transform():
+    return df.transform(...)
+</code></pre>
+<p>The DAG file is <em>parsed</em> by the scheduler on every refresh (every 30s by default). Any code at module scope runs <em>every parse</em>. Connecting to databases, reading files, or anything I/O-bound in DAG-level code is a classic newbie mistake that brings the scheduler to its knees. Keep all work inside <code>@task</code> functions.</p>
+<p><strong>Anti-pattern: relying on XCom for data passing</strong></p>
+<pre><code class="language-python"># DON'T:
+@task
+def extract():
+    return pd.read_csv(...)        # 5 GB returned via XCom
+
+@task
+def transform(df):
+    ...
+</code></pre>
+<p>XCom is for <em>small</em> metadata (a date, a count, a path), not for moving data between tasks. Pass <em>references</em> (S3 paths, table names) through XCom; the actual data lives in object storage.</p>
+<p><strong>Anti-pattern: sensors with default poke interval</strong></p>
+<pre><code class="language-python"># DON'T:
+S3KeySensor(task_id=&quot;wait&quot;, bucket_key=&quot;s3://bucket/file.csv&quot;)
+# Default poke_interval=60s, holds a worker slot the entire time.
+</code></pre>
+<p>Use <code>mode="reschedule"</code> (the sensor releases the worker between polls) or <code>deferrable=True</code> (Airflow 2.2+, runs in the triggerer process — vastly more efficient). Or replace with an event-driven trigger (S3 → SNS → Airflow API).</p>
+<p><strong>Anti-pattern: time-zone confusion</strong></p>
+<p>DAG <code>start_date</code> and <code>schedule</code> are interpreted in the DAG's timezone (UTC by default). The <em>execution_date</em> / <em>logical_date</em> is the <em>start</em> of the interval, not the moment the DAG ran. A DAG with <code>schedule="0 2 * * *"</code> and a <code>logical_date</code> of <code>2026-05-01 02:00 UTC</code> actually runs at <code>2026-05-02 02:00 UTC</code> (the end of the interval). This is the single most common Airflow misunderstanding.</p>
+<p><strong>Pattern: structuring a large DAG suite</strong></p>
+<pre><code class="language-text">dags/
+├── finance/
+│   ├── revenue_daily.py
+│   └── billing_hourly.py
+├── product/
+│   └── sessions_daily.py
+└── common/
+    └── utils.py                   # Importable, not a DAG
+</code></pre>
+<p>Group DAGs by domain. Shared code in non-<code>dags/</code> modules (Airflow only scans <code>dags/</code> for DAG files).</p>
+<p>References: <a href="https://airflow.apache.org/docs/apache-airflow/stable/best-practices.html">Airflow best practices</a>, <a href="https://www.astronomer.io/docs/learn/dag-best-practices">Astronomer's DAG writing best practices</a></p>
+<h3 id="133-warehouse-cost-optimization-recipes">13.3 Warehouse Cost Optimization Recipes</h3>
+<p>Concrete patterns that have repeatedly cut warehouse spend by 30–70% in real production.</p>
+<p><strong>Snowflake</strong></p>
+<ul>
+<li><strong>Right-size warehouses, ruthlessly</strong>. A <code>LARGE</code> warehouse is 4× the cost of an <code>XSMALL</code>. Many workloads run identically fast on <code>XSMALL</code>. Start small, scale up only when you measure a benefit. The dbt + dashboard workload is typically fine on <code>SMALL</code>.</li>
+<li><strong>Auto-suspend at 60s.</strong> Default is 600s (10 minutes); you pay for idle time. 60s is the minimum and almost always right for dev/ETL warehouses. (Caches are warm-ish for ~10 minutes regardless.)</li>
+<li><strong>Separate warehouses by workload</strong>, not by team. Have a <code>WH_ELT_XS</code> for hourly ELT, <code>WH_BI_M</code> for BI tools (multi-cluster auto-scaling for concurrency), <code>WH_ADHOC_M</code> for analysts. This isolates spend and lets you size each correctly.</li>
+<li><strong>Use the result cache.</strong> Identical queries within 24h are served free from cache as long as underlying data hasn't changed. Avoid <code>CURRENT_TIMESTAMP()</code> in queries that don't need it.</li>
+<li><strong>Use clustering keys on huge tables.</strong> For tables &gt; 1 TB, define <code>CLUSTER BY (date, customer_id)</code> to keep micro-partitions sorted on common filter columns. Automatic clustering costs credits but saves dramatically more on query.</li>
+<li><strong>Materialized views for hot aggregations.</strong> Snowflake materialized views auto-refresh on data changes. Cheaper than re-aggregating on every dashboard load.</li>
+<li><strong>Search optimization service</strong> for high-selectivity point lookups on large tables. Niche but powerful where it applies.</li>
+</ul>
+<p><strong>BigQuery</strong></p>
+<ul>
+<li><strong>Partition every large table by date.</strong> Partitioned tables let queries prune to specific dates. A query against an unpartitioned 5 TB table costs 5 TB scanned; against a partitioned table filtered to one day, it's tens of MB.</li>
+<li><strong>Cluster on common filter columns.</strong> Up to 4 clustering columns. Effects compound with partitioning. <code>PARTITION BY DATE(event_ts) CLUSTER BY user_id, country</code> makes per-user lookups within a date cheap.</li>
+<li><strong>Never <code>SELECT *</code>.</strong> Column pruning is automatic; using it requires you to actually name columns. <code>SELECT *</code> on a 200-column table at $5/TB scanned will surprise you.</li>
+<li><strong>Use <code>_PARTITIONTIME</code> filters everywhere.</strong> <code>WHERE _PARTITIONTIME &gt;= '2026-05-01'</code> triggers partition pruning before any other filter.</li>
+<li><strong>Switch to capacity (slot reservations) past a certain spend.</strong> On-demand pricing ($5/TB) is great until you're spending ~$15K/month, at which point flat-rate slots start winning. Reserve a baseline, use on-demand for spikes.</li>
+<li><strong>BI Engine</strong> — in-memory cache for dashboard queries. Order of magnitude latency improvement; pay for reserved memory. Worth it for hot dashboards.</li>
+<li><strong>Materialized views</strong> auto-refresh on the underlying table. Trades incremental refresh cost for query cost; usually a win for repeated aggregations.</li>
+<li><strong>Authorized views as governance.</strong> Define a view that selects only some columns/rows; grant access to the view, not the underlying table.</li>
+</ul>
+<p><strong>Universal</strong></p>
+<ul>
+<li><strong>Make cost observable.</strong> Tag every query with its source (dbt model name, dashboard ID). Snowflake has <code>QUERY_TAG</code>; BigQuery has labels. Pipe usage data into the warehouse itself and dashboard it.</li>
+<li><strong>Cost per dbt model.</strong> dbt's <code>dbt-snowflake</code> and similar adapters emit cost metadata. Build a "expensive models" report. Have a process for tackling the top 5 each month.</li>
+<li><strong>Cost per dashboard.</strong> Looker, Mode, Hex, Tableau all expose query history. Find the dashboards burning $X/day and either materialize their queries or kill them.</li>
+<li><strong>Kill the long tail.</strong> In most warehouses, 10% of queries account for 90% of spend. Find them, fix them, save real money.</li>
+<li><strong>Cancel runaway queries automatically.</strong> Set warehouse-level statement timeouts (15 min for analytics, longer for batch). Set per-user / per-role quotas.</li>
+</ul>
+<p>References: <a href="https://docs.snowflake.com/en/user-guide/cost-optimize">Snowflake cost optimization</a>, <a href="https://cloud.google.com/bigquery/docs/best-practices-costs">BigQuery best practices</a></p>
+<hr>
+<h2 id="phase-14-anatomy-of-a-production-pipeline">Phase 14: Anatomy of a Production Pipeline</h2>
+<p>Walking through a realistic end-to-end pipeline so all the previous concepts land. Scenario: a B2C product with an OLTP Postgres backend, Stripe payments, and a clickstream — feeding analytics and a few operational use cases.</p>
+<h3 id="141-the-architecture-at-a-glance">14.1 The Architecture, at a Glance</h3>
+<pre><code class="language-text">   ┌──────────┐     ┌──────────┐    ┌──────────────┐
+   │ Postgres │     │  Stripe  │    │ Clickstream  │
+   │  (app)   │     │  (SaaS)  │    │    (web)     │
+   └────┬─────┘     └────┬─────┘    └──────┬───────┘
+        │                │                  │
+        │ Debezium       │ Fivetran/        │ Snowplow/
+        │ (CDC via WAL)  │ Airbyte          │ Segment
+        ▼                ▼                  ▼
+   ┌─────────────────────────────────────────────────┐
+   │  Kafka (or Confluent Cloud)                     │
+   │   topics: app.orders, app.users, stripe.charges │
+   └────────────────────────┬────────────────────────┘
+                            │
+                            │ Kafka Connect S3 sink
+                            ▼
+   ┌─────────────────────────────────────────────────┐
+   │  S3 (raw zone)                                   │
+   │   s3://lake/raw/app/orders/dt=2026-05-20/*.avro  │
+   └────────────────────────┬────────────────────────┘
+                            │
+                            │ Spark / Iceberg writer (hourly)
+                            ▼
+   ┌─────────────────────────────────────────────────┐
+   │  Iceberg tables (bronze layer)                   │
+   │   bronze.app__orders, bronze.stripe__charges    │
+   └────────────────────────┬────────────────────────┘
+                            │
+                            │ dbt (orchestrated by Dagster)
+                            ▼
+   ┌─────────────────────────────────────────────────┐
+   │  Snowflake (mart layer)                          │
+   │   marts.fct_orders, marts.dim_customers          │
+   └────────────────────────┬────────────────────────┘
+                            │
+                ┌───────────┼─────────────┐
+                ▼           ▼             ▼
+            ┌──────┐  ┌─────────┐   ┌──────────┐
+            │ BI   │  │ Reverse │   │  Feature │
+            │ tool │  │   ETL   │   │   store  │
+            └──────┘  └─────────┘   └──────────┘
+</code></pre>
+<h3 id="142-step-by-step-with-the-choices-called-out">14.2 Step by Step, with the Choices Called Out</h3>
+<p><strong>Sources</strong></p>
+<ul>
+<li><strong>Postgres</strong>: production OLTP DB. Captured via Debezium → Kafka. Choice: log-based CDC over query-based snapshots because deletes matter (refunds, account cancellations) and we don't want to load the OLTP DB.</li>
+<li><strong>Stripe</strong>: SaaS. Pulled via Fivetran (or Airbyte if cost matters). Choice: don't build the Stripe connector; the maintenance burden never ends. Pay the SaaS fee.</li>
+<li><strong>Clickstream</strong>: collected via Snowplow (self-hosted) or Segment (managed). Events land in Kafka. Choice: a real event collector with schemas, not a hand-rolled <code>/track</code> endpoint.</li>
+</ul>
+<p><strong>Ingestion to the lake (Kafka → S3)</strong></p>
+<ul>
+<li><strong>Kafka Connect S3 sink</strong> writes Avro to S3 in partitioned paths (<code>dt=YYYY-MM-DD/hour=HH</code>). Choice: Avro (with Schema Registry), not JSON, for compact payloads and schema enforcement.</li>
+<li><strong>Partitioning</strong>: by hour, not minute. Hourly partitions mean ~24 files per day per topic at modest volume; minute partitions mean 1440 — small-files territory.</li>
+<li><strong>Compaction</strong>: a daily Spark job repartitions yesterday's hourly Avro into a single optimized file per topic per day. Without this, query performance decays.</li>
+</ul>
+<p><strong>Raw zone (S3) → Bronze (Iceberg)</strong></p>
+<ul>
+<li><strong>Iceberg tables</strong> for each source topic, partitioned by <code>event_date</code>. Choice: Iceberg over raw Parquet because we want ACID, schema evolution, and deletes (for GDPR).</li>
+<li><strong>Hourly Spark job</strong> reads new Avro files from S3, writes Iceberg using append + de-duplication on event ID. CDC topics also handle deletes (writing tombstones into Iceberg).</li>
+<li><strong>Catalog</strong>: AWS Glue or Polaris. Tables are usable from Spark, Trino, Athena, and Snowflake's Iceberg integration.</li>
+</ul>
+<p><strong>Bronze → Silver → Gold (dbt, materialized in Snowflake)</strong></p>
+<ul>
+<li><strong>dbt project</strong> is layered staging → intermediate → marts as in Phase 13.1.</li>
+<li><strong>Staging models</strong> read from Iceberg (via Snowflake's external Iceberg tables) and produce clean, conformed tables in Snowflake. One staging model per Iceberg source table.</li>
+<li><strong>Intermediate models</strong> do joins and business logic that's reused across marts.</li>
+<li><strong>Marts</strong> are Kimball-style: <code>dim_customers</code>, <code>dim_products</code>, <code>fct_orders</code>, <code>fct_charges</code>, <code>fct_sessions</code>.</li>
+<li><strong>Choice: dbt → Snowflake for marts</strong>, not "dbt → Iceberg" or "Trino on Iceberg." Snowflake is what BI tools query well; Iceberg is what we want for raw retention and ad-hoc Trino/Spark access. We get both.</li>
+<li><strong>Slowly-changing dimensions</strong>: <code>dim_customers</code> is built from a dbt snapshot of the CDC stream, capturing every address change.</li>
+<li><strong>Tests</strong>: uniqueness on every primary key, not-null on every FK, accepted_values on enums, reconciliation tests on revenue totals.</li>
+</ul>
+<p><strong>Orchestration (Dagster)</strong></p>
+<ul>
+<li><strong>Dagster</strong> runs the whole pipeline as a graph of assets:</li>
+<li>Iceberg tables (one asset per topic, hourly partition).</li>
+<li>Snowflake staging models (one asset per dbt staging model).</li>
+<li>Mart models (one per mart, with explicit dependencies).</li>
+<li><strong>Schedules</strong>: bronze writers run hourly; dbt staging runs every 2 hours; marts run every 4 hours; daily aggregates run at 4 AM. Picked based on consumer freshness requirements, not "as fresh as possible."</li>
+<li><strong>Sensors</strong>: a sensor watches the raw S3 bucket; if hourly data fails to arrive within 2 hours of expected, page oncall.</li>
+<li><strong>Backfills</strong>: re-running an asset for a specific partition recomputes that partition only. Iceberg makes this cheap because the time-travel snapshot is what we rewrite against.</li>
+</ul>
+<p><strong>Quality</strong></p>
+<ul>
+<li><strong>Source freshness checks</strong>: Fivetran sync status, Debezium lag, Kafka topic last-offset age. Alert if any source goes stale.</li>
+<li><strong>dbt tests</strong>: run after every model build. Failures block downstream models.</li>
+<li><strong>Data observability tool</strong> (Monte Carlo or open-source equivalent) watches volume and distribution of mart-layer tables for anomalies.</li>
+<li><strong>Reconciliation</strong>: a daily job sums <code>fct_orders.amount</code> against Stripe's own reported daily total and alerts if they differ by more than 0.1%.</li>
+</ul>
+<p><strong>Serving</strong></p>
+<ul>
+<li><strong>BI tool</strong> (Looker/Mode) connects to Snowflake. Looker defines a semantic layer on top of marts; explores resolve to SQL against marts.</li>
+<li><strong>Reverse ETL</strong> (Hightouch) syncs computed customer segments and lifetime-value scores from <code>marts</code> back into Salesforce, Braze, and Intercom.</li>
+<li><strong>Feature store</strong> (Tecton or Feast): online features are read from a low-latency store fed from the same marts; offline features for training are read directly from marts.</li>
+</ul>
+<h3 id="143-the-operational-realities">14.3 The Operational Realities</h3>
+<ul>
+<li><strong>One pager-able pipeline</strong>: bronze writer. If it falls over, <em>everything</em> downstream is stale. Has alerts on freshness, lag, and error rate.</li>
+<li><strong>Cost monitoring</strong>: every dbt model is tagged with a domain (<code>finance</code>, <code>product</code>). A monthly cost-per-domain dashboard surfaces who's spending what. Owners are accountable.</li>
+<li><strong>Schema changes</strong>: source schema changes propagate as Schema Registry events. A consumer dashboard tracks which sinks have caught up; dbt model contracts at the mart boundary fail the build if breaking changes hit.</li>
+<li><strong>PII</strong>: customer email/name/address tagged at ingest. Snowflake masking policies redact for non-privileged roles. A monthly job verifies no PII column has escaped the mart-layer access controls.</li>
+<li><strong>GDPR</strong>: a deletion runbook exists. Triggered: writes a tombstone into Iceberg, propagates through bronze → silver → gold via <code>MERGE</code>, and a separate process rewrites old S3 raw files to drop the deleted user's rows. Verified before closing the ticket.</li>
+</ul>
+<h3 id="144-why-this-architecture">14.4 Why This Architecture</h3>
+<p>The decisions that shaped it:</p>
+<ol>
+<li><strong>Lakehouse on Iceberg</strong> for raw retention. Snowflake locks the data in (somewhat); Iceberg keeps the long tail of "we might want to use a different engine in 3 years" open.</li>
+<li><strong>Snowflake for marts</strong> because the BI tools and analysts work in SQL and ergonomically Snowflake is where they want to live.</li>
+<li><strong>Kafka as the spine</strong> for everything event-shaped. Buys decoupling, replay, multiple consumers.</li>
+<li><strong>dbt for transformations</strong> because SQL is the lingua franca and the version-controlled, tested SQL workflow is enormously productive.</li>
+<li><strong>Dagster for orchestration</strong> because the asset-based model matches how we think about the system.</li>
+<li><strong>Avro for streaming</strong>, <strong>Parquet for batch</strong>, <strong>Iceberg for tables</strong> — each format chosen for what it's best at.</li>
+</ol>
+<p>None of these are "the right answer in the abstract." They're the right answer for this scenario. The shape of the questions — <em>what's the freshness requirement, what's the BI tool, what does the team already know</em> — drives the answer.</p>
+<hr>
+<h2 id="mastery-checklist">Mastery Checklist</h2>
+<p>You're solid on data engineering when you can, without looking anything up:</p>
+<ul>
+<li>Explain OLTP vs. OLAP and pick storage / format / engine accordingly.</li>
+<li>Read a Parquet file's footer and explain why a query did or didn't prune partitions.</li>
+<li>Choose between Snowflake / BigQuery / Databricks / ClickHouse for a given workload and justify the choice.</li>
+<li>Explain when Iceberg or Delta beats raw Parquet (and when it doesn't).</li>
+<li>Pick between CDC, incremental snapshot, and full snapshot for a given source.</li>
+<li>Write a dbt incremental model with the right strategy and watermark, and explain why full refresh produces the same output.</li>
+<li>Implement SCD2 history with dbt snapshots.</li>
+<li>Read a Spark query plan and identify the expensive operation.</li>
+<li>Decide between Spark, warehouse SQL, DuckDB, and Polars for a given task.</li>
+<li>Choose between Airflow, Dagster, and Prefect and articulate the trade-offs.</li>
+<li>Write an idempotent Airflow DAG without time-zone bugs.</li>
+<li>Tag PII at ingest and propagate access controls through the mart layer.</li>
+<li>Estimate the warehouse cost of a query before running it, and reduce it by 10× with partitioning + clustering + column pruning.</li>
+<li>Design a deletion (GDPR) workflow across warehouse, lakehouse, and backups.</li>
+<li>Defend a Kimball star schema <em>and</em> know when to flatten into OBT instead.</li>
+<li>Read an OpenLineage event stream and trace a column from dashboard back to source.</li>
+</ul>
+<hr>
+<h2 id="recommended-reading-path">Recommended Reading Path</h2>
+<ol>
+<li><strong><a href="https://www.oreilly.com/library/view/fundamentals-of-data/9781098108298/">Fundamentals of Data Engineering</a></strong> (Reis &amp; Housley) — the standard text. Read end to end.</li>
+<li><strong><a href="https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/books/data-warehouse-dw-toolkit/">The Data Warehouse Toolkit</a></strong> (Kimball) — dimensional modeling. Old but timeless.</li>
+<li><strong><a href="https://dataintensive.net/">Designing Data-Intensive Applications</a></strong> (Kleppmann) — the substrate every DE stands on. Read at least chapters 1, 3, 6, 10, 11.</li>
+<li><strong><a href="https://www.oreilly.com/library/view/spark-the-definitive/9781491912201/">Spark: The Definitive Guide</a></strong> (Chambers &amp; Zaharia) — when you need to go deep on Spark.</li>
+<li><strong><a href="https://docs.getdbt.com/best-practices/how-we-structure/1-guide-overview">dbt's "How we structure our dbt projects"</a></strong> — the conventions that became industry standard.</li>
+<li><strong><a href="https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying">The Log: What every software engineer should know about real-time data's unifying abstraction</a></strong> (Jay Kreps) — the mental model for streaming.</li>
+<li><strong><a href="https://www.locallyoptimistic.com/">Locally Optimistic</a></strong>, <strong><a href="https://benn.substack.com/">Benn Stancil's "benn.substack"</a></strong>, <strong><a href="https://roundup.getdbt.com/">Tristan Handy's blog</a></strong> — the current discourse. Read selectively, but read.</li>
+</ol></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

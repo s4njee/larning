@@ -1,0 +1,2094 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: eBPF.">
+<title>eBPF - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#dd53c6; --accent2:#d74f86; --accent-weak:rgba(221,83,198,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#dd53c6; --accent2:#d74f86; --accent-weak:rgba(221,83,198,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">E</span><span>eBPF</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-what-ebpf-is-and-why-it-matters" data-target="part-1-what-ebpf-is-and-why-it-matters">Part 1 — What eBPF Is and Why It Matters</a></li><li class="toc-l3"><a href="#the-problem" data-target="the-problem">The Problem</a></li><li class="toc-l3"><a href="#the-solution" data-target="the-solution">The Solution</a></li><li class="toc-l3"><a href="#why-2026-is-the-ebpf-moment" data-target="why-2026-is-the-ebpf-moment">Why 2026 Is the eBPF Moment</a></li><li class="toc-l2"><a href="#part-2-the-architecture" data-target="part-2-the-architecture">Part 2 — The Architecture</a></li><li class="toc-l3"><a href="#the-big-picture" data-target="the-big-picture">The Big Picture</a></li><li class="toc-l3"><a href="#the-lifecycle-of-an-ebpf-program" data-target="the-lifecycle-of-an-ebpf-program">The Lifecycle of an eBPF Program</a></li><li class="toc-l3"><a href="#the-ebpf-instruction-set" data-target="the-ebpf-instruction-set">The eBPF Instruction Set</a></li><li class="toc-l3"><a href="#helper-functions" data-target="helper-functions">Helper Functions</a></li><li class="toc-l2"><a href="#part-3-program-types-and-hook-points" data-target="part-3-program-types-and-hook-points">Part 3 — Program Types and Hook Points</a></li><li class="toc-l3"><a href="#tracing-program-types" data-target="tracing-program-types">Tracing Program Types</a></li><li class="toc-l3"><a href="#networking-program-types" data-target="networking-program-types">Networking Program Types</a></li><li class="toc-l3"><a href="#security-program-types" data-target="security-program-types">Security Program Types</a></li><li class="toc-l3"><a href="#scheduling" data-target="scheduling">Scheduling</a></li><li class="toc-l2"><a href="#part-4-maps-sharing-state" data-target="part-4-maps-sharing-state">Part 4 — Maps: Sharing State</a></li><li class="toc-l3"><a href="#map-types" data-target="map-types">Map Types</a></li><li class="toc-l3"><a href="#per-cpu-maps-avoiding-lock-contention" data-target="per-cpu-maps-avoiding-lock-contention">Per-CPU Maps: Avoiding Lock Contention</a></li><li class="toc-l3"><a href="#ring-buffer-streaming-events-to-userspace" data-target="ring-buffer-streaming-events-to-userspace">Ring Buffer: Streaming Events to Userspace</a></li><li class="toc-l3"><a href="#tail-calls-chaining-programs" data-target="tail-calls-chaining-programs">Tail Calls: Chaining Programs</a></li><li class="toc-l2"><a href="#part-5-the-verifier-why-ebpf-is-safe" data-target="part-5-the-verifier-why-ebpf-is-safe">Part 5 — The Verifier: Why eBPF Is Safe</a></li><li class="toc-l3"><a href="#what-the-verifier-checks" data-target="what-the-verifier-checks">What the Verifier Checks</a></li><li class="toc-l3"><a href="#common-verifier-rejections" data-target="common-verifier-rejections">Common Verifier Rejections</a></li><li class="toc-l3"><a href="#the-verifier-is-the-bottleneck" data-target="the-verifier-is-the-bottleneck">The Verifier Is the Bottleneck</a></li><li class="toc-l2"><a href="#part-6-bpftrace-the-tracing-swiss-army-knife" data-target="part-6-bpftrace-the-tracing-swiss-army-knife">Part 6 — bpftrace: The Tracing Swiss Army Knife</a></li><li class="toc-l3"><a href="#one-liner-recipes" data-target="one-liner-recipes">One-Liner Recipes</a></li><li class="toc-l3"><a href="#bpftrace-language-basics" data-target="bpftrace-language-basics">bpftrace Language Basics</a></li><li class="toc-l2"><a href="#part-7-bcc-tools-the-pre-built-toolkit" data-target="part-7-bcc-tools-the-pre-built-toolkit">Part 7 — BCC Tools: The Pre-Built Toolkit</a></li><li class="toc-l3"><a href="#essential-bcc-tools" data-target="essential-bcc-tools">Essential BCC Tools</a></li><li class="toc-l3"><a href="#using-bcc-tools" data-target="using-bcc-tools">Using BCC Tools</a></li><li class="toc-l2"><a href="#part-8-writing-ebpf-programs" data-target="part-8-writing-ebpf-programs">Part 8 — Writing eBPF Programs</a></li><li class="toc-l3"><a href="#co-re-compile-once-run-everywhere" data-target="co-re-compile-once-run-everywhere">CO-RE: Compile Once, Run Everywhere</a></li><li class="toc-l3"><a href="#development-ecosystem-comparison" data-target="development-ecosystem-comparison">Development Ecosystem Comparison</a></li><li class="toc-l3"><a href="#libbpf-c-workflow" data-target="libbpf-c-workflow">libbpf (C) Workflow</a></li><li class="toc-l3"><a href="#ciliumebpf-go-workflow" data-target="ciliumebpf-go-workflow">cilium/ebpf (Go) Workflow</a></li><li class="toc-l3"><a href="#aya-rust-workflow" data-target="aya-rust-workflow">aya (Rust) Workflow</a></li><li class="toc-l3"><a href="#bpftool-the-inspector" data-target="bpftool-the-inspector">bpftool: The Inspector</a></li><li class="toc-l2"><a href="#part-9-networking-with-ebpf" data-target="part-9-networking-with-ebpf">Part 9 — Networking with eBPF</a></li><li class="toc-l3"><a href="#cilium-ebpf-native-kubernetes-networking" data-target="cilium-ebpf-native-kubernetes-networking">Cilium: eBPF-Native Kubernetes Networking</a></li><li class="toc-l3"><a href="#xdp-in-practice" data-target="xdp-in-practice">XDP in Practice</a></li><li class="toc-l2"><a href="#part-10-security-with-ebpf" data-target="part-10-security-with-ebpf">Part 10 — Security with eBPF</a></li><li class="toc-l3"><a href="#tetragon-runtime-security-enforcement" data-target="tetragon-runtime-security-enforcement">Tetragon: Runtime Security Enforcement</a></li><li class="toc-l3"><a href="#falco-behavioral-threat-detection" data-target="falco-behavioral-threat-detection">Falco: Behavioral Threat Detection</a></li><li class="toc-l2"><a href="#part-11-observability-with-ebpf" data-target="part-11-observability-with-ebpf">Part 11 — Observability with eBPF</a></li><li class="toc-l3"><a href="#grafana-beyla-auto-instrumented-application-metrics" data-target="grafana-beyla-auto-instrumented-application-metrics">Grafana Beyla: Auto-Instrumented Application Metrics</a></li><li class="toc-l3"><a href="#continuous-profiling-parca-and-pyroscope" data-target="continuous-profiling-parca-and-pyroscope">Continuous Profiling: Parca and Pyroscope</a></li><li class="toc-l3"><a href="#pixie-kubernetes-observability" data-target="pixie-kubernetes-observability">Pixie: Kubernetes Observability</a></li><li class="toc-l2"><a href="#part-12-sched_ext-custom-schedulers-in-ebpf" data-target="part-12-sched_ext-custom-schedulers-in-ebpf">Part 12 — sched_ext: Custom Schedulers in eBPF</a></li><li class="toc-l3"><a href="#why-custom-schedulers" data-target="why-custom-schedulers">Why Custom Schedulers?</a></li><li class="toc-l3"><a href="#how-sched_ext-works" data-target="how-sched_ext-works">How sched_ext Works</a></li><li class="toc-l3"><a href="#sched_ext-schedulers-in-2026" data-target="sched_ext-schedulers-in-2026">sched_ext Schedulers in 2026</a></li><li class="toc-l2"><a href="#part-13-ebpf-security-considerations" data-target="part-13-ebpf-security-considerations">Part 13 — eBPF Security Considerations</a></li><li class="toc-l3"><a href="#the-attack-surface" data-target="the-attack-surface">The Attack Surface</a></li><li class="toc-l3"><a href="#container-security" data-target="container-security">Container Security</a></li><li class="toc-l3"><a href="#restricting-ebpf" data-target="restricting-ebpf">Restricting eBPF</a></li><li class="toc-l3"><a href="#the-verifier-is-not-perfect" data-target="the-verifier-is-not-perfect">The Verifier Is Not Perfect</a></li><li class="toc-l2"><a href="#part-14-the-2026-ebpf-ecosystem" data-target="part-14-the-2026-ebpf-ecosystem">Part 14 — The 2026 eBPF Ecosystem</a></li><li class="toc-l3"><a href="#the-landscape-map" data-target="the-landscape-map">The Landscape Map</a></li><li class="toc-l3"><a href="#project-comparison" data-target="project-comparison">Project Comparison</a></li><li class="toc-l3"><a href="#getting-started-the-learning-path" data-target="getting-started-the-learning-path">Getting Started: The Learning Path</a></li><li class="toc-l3"><a href="#kernel-version-requirements" data-target="kernel-version-requirements">Kernel Version Requirements</a></li></ul></nav></aside>
+  <main><h1 id="ebpf">eBPF</h1>
+<p>A depth-first guide to eBPF — the technology that lets you run sandboxed programs inside the Linux kernel without modifying the kernel source or loading kernel modules. eBPF has quietly become the most transformative infrastructure technology of the last decade, powering the networking (Cilium), security (Tetragon, Falco), observability (Pixie, Grafana Beyla), and even the scheduler (sched_ext) of modern Linux systems. This guide explains what eBPF is, how it works at a mechanical level, how to write and use eBPF programs, and why in 2026 it is the foundational layer beneath most production Kubernetes clusters.</p>
+<p>Assumes you understand Linux fundamentals — processes, syscalls, file descriptors, the kernel/userspace boundary, basic networking. You don't need to have written any eBPF code before.</p>
+<p>Primary references: Liz Rice's <a href="https://www.oreilly.com/library/view/learning-ebpf/9781098135119/">Learning eBPF</a>, Brendan Gregg's <a href="https://www.brendangregg.com/bpf-performance-tools-book.html">BPF Performance Tools</a>, the <a href="https://ebpf.io">ebpf.io</a> documentation, and the <a href="https://www.kernel.org/doc/html/latest/bpf/">kernel documentation</a>.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1--what-ebpf-is-and-why-it-matters">Part 1 — What eBPF Is and Why It Matters</a></li>
+<li><a href="#part-2--the-architecture">Part 2 — The Architecture</a></li>
+<li><a href="#part-3--program-types-and-hook-points">Part 3 — Program Types and Hook Points</a></li>
+<li><a href="#part-4--maps-sharing-state">Part 4 — Maps: Sharing State</a></li>
+<li><a href="#part-5--the-verifier-why-ebpf-is-safe">Part 5 — The Verifier: Why eBPF Is Safe</a></li>
+<li><a href="#part-6--bpftrace-the-tracing-swiss-army-knife">Part 6 — bpftrace: The Tracing Swiss Army Knife</a></li>
+<li><a href="#part-7--bcc-tools-the-pre-built-toolkit">Part 7 — BCC Tools: The Pre-Built Toolkit</a></li>
+<li><a href="#part-8--writing-ebpf-programs">Part 8 — Writing eBPF Programs</a></li>
+<li><a href="#part-9--networking-with-ebpf">Part 9 — Networking with eBPF</a></li>
+<li><a href="#part-10--security-with-ebpf">Part 10 — Security with eBPF</a></li>
+<li><a href="#part-11--observability-with-ebpf">Part 11 — Observability with eBPF</a></li>
+<li><a href="#part-12--sched_ext-custom-schedulers-in-ebpf">Part 12 — sched_ext: Custom Schedulers in eBPF</a></li>
+<li><a href="#part-13--ebpf-security-considerations">Part 13 — eBPF Security Considerations</a></li>
+<li><a href="#part-14--the-2026-ebpf-ecosystem">Part 14 — The 2026 eBPF Ecosystem</a></li>
+</ol>
+<hr>
+<h2 id="part-1-what-ebpf-is-and-why-it-matters">Part 1 — What eBPF Is and Why It Matters</h2>
+<h3 id="the-problem">The Problem</h3>
+<p>The Linux kernel is the most performance-critical software on every server. Networking decisions, security enforcement, process scheduling, storage I/O — all of it runs in kernel space. But modifying the kernel is prohibitively difficult: changes require upstream review (months to years), kernel recompilation, and a reboot. Kernel modules can be loaded dynamically, but they run with full kernel privileges — a bug in a module crashes the entire system.</p>
+<p>The result: for decades, the kernel evolved slowly while application requirements evolved quickly. When Kubernetes needed per-pod network policies, the only option was iptables — a tool designed in 1998. When security teams needed syscall-level visibility, the only option was auditd — a tool that drops events under load. When SREs needed per-request latency tracing, they had to instrument application code.</p>
+<h3 id="the-solution">The Solution</h3>
+<p>eBPF lets you <strong>run custom programs inside the kernel</strong> — at specific hook points (syscalls, network events, scheduler decisions, filesystem operations) — with three guarantees that kernel modules cannot provide:</p>
+<ol>
+<li><strong>Safety.</strong> An in-kernel verifier statically analyzes every eBPF program before it runs, proving that it terminates, doesn't access invalid memory, and can't crash the kernel.</li>
+<li><strong>Performance.</strong> eBPF programs are JIT-compiled to native machine code and run in kernel context — no userspace/kernel boundary crossing per event.</li>
+<li><strong>No reboot.</strong> Programs are loaded and attached dynamically. Unload them and the kernel returns to its previous state.</li>
+</ol>
+<p>This is why eBPF is called "the JavaScript of the kernel" — not because of the language (it's typically written in C or Rust), but because of the model: a safe, sandboxed runtime embedded in a larger system, letting you extend it without modifying its source code.</p>
+<h3 id="why-2026-is-the-ebpf-moment">Why 2026 Is the eBPF Moment</h3>
+<p>eBPF existed since kernel 3.15 (2014), but critical capabilities arrived incrementally:</p>
+<table>
+<thead>
+<tr>
+<th>Kernel</th>
+<th>Year</th>
+<th>What Became Possible</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>3.15</td>
+<td>2014</td>
+<td>eBPF introduced (extended from classic BPF)</td>
+</tr>
+<tr>
+<td>4.1</td>
+<td>2015</td>
+<td>kprobes, tracepoints — tracing use cases</td>
+</tr>
+<tr>
+<td>4.8</td>
+<td>2016</td>
+<td>XDP — high-performance networking</td>
+</tr>
+<tr>
+<td>5.2</td>
+<td>2019</td>
+<td><code>BPF_PROG_TYPE_STRUCT_OPS</code> — plugging into kernel subsystems</td>
+</tr>
+<tr>
+<td>5.4</td>
+<td>2019</td>
+<td>BTF, CO-RE — portable programs across kernel versions</td>
+</tr>
+<tr>
+<td>5.8</td>
+<td>2020</td>
+<td><code>CAP_BPF</code> capability — fine-grained permissions</td>
+</tr>
+<tr>
+<td>5.13</td>
+<td>2021</td>
+<td>Bounded loops — practical general programming</td>
+</tr>
+<tr>
+<td>6.6</td>
+<td>2023</td>
+<td>EEVDF scheduler — foundation for sched_ext</td>
+</tr>
+<tr>
+<td>6.12</td>
+<td>2024</td>
+<td><code>sched_ext</code> — user-defined schedulers in eBPF</td>
+</tr>
+</tbody>
+</table>
+<p>By 2026, every major Linux distribution ships with BTF-enabled kernels, every major cloud provider defaults to Cilium (eBPF networking) for Kubernetes, and the tooling (bpftrace, BCC, libbpf) is mature and well-documented. eBPF has graduated from "interesting experiment" to "the way production infrastructure works."</p>
+<hr>
+<h2 id="part-2-the-architecture">Part 2 — The Architecture</h2>
+<h3 id="the-big-picture">The Big Picture</h3>
+<pre><code class="language-text">┌─────────────────────────────────────────────────────────────────────┐
+│                          User Space                                  │
+│                                                                      │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐               │
+│  │  bpftrace    │  │  Cilium      │  │  Your app    │               │
+│  │  (tracing)   │  │  (networking)│  │  (libbpf/Go) │               │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘               │
+│         │                 │                  │                       │
+│         │  bpf() syscall  │                  │                       │
+│─────────┼─────────────────┼──────────────────┼───────────────────────│
+│         ▼                 ▼                  ▼                       │
+│  ┌──────────────────────────────────────────────────────────────┐    │
+│  │                      Verifier                                │    │
+│  │  Static analysis: proves safety, terminates, memory-safe    │    │
+│  └──────────────────────────┬───────────────────────────────────┘    │
+│                             │ (pass)                                │
+│                             ▼                                       │
+│  ┌──────────────────────────────────────────────────────────────┐    │
+│  │                    JIT Compiler                              │    │
+│  │  eBPF bytecode → native x86/ARM machine code                │    │
+│  └──────────────────────────┬───────────────────────────────────┘    │
+│                             │                                       │
+│                             ▼                                       │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐           │
+│  │ kprobe   │  │ XDP      │  │ TC       │  │ sched_ext│   ...     │
+│  │ hook     │  │ hook     │  │ hook     │  │ hook     │           │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘           │
+│                                                                      │
+│                    ┌──────────────────────┐                          │
+│                    │       Maps           │  ← shared state         │
+│                    │  (hash, array, ring) │    between programs     │
+│                    └──────────────────────┘    and userspace        │
+│                                                                      │
+│                          Kernel Space                                │
+└─────────────────────────────────────────────────────────────────────┘
+</code></pre>
+<h3 id="the-lifecycle-of-an-ebpf-program">The Lifecycle of an eBPF Program</h3>
+<ol>
+<li><strong>Write</strong> the program (in C, Rust, or a high-level DSL like bpftrace).</li>
+<li><strong>Compile</strong> to eBPF bytecode (an architecture-independent instruction set, like JVM bytecode).</li>
+<li><strong>Load</strong> into the kernel via the <code>bpf()</code> syscall. The <strong>verifier</strong> analyzes the program.</li>
+<li>If the verifier accepts it, the <strong>JIT compiler</strong> translates the bytecode to native machine code (x86, ARM, etc.).</li>
+<li><strong>Attach</strong> the program to a <strong>hook point</strong> — a specific kernel event (syscall entry, packet arrival, function call).</li>
+<li>When the event fires, the eBPF program executes <strong>in kernel context</strong> — with access to kernel data structures, but sandboxed by the verifier's constraints.</li>
+<li>The program communicates results to userspace via <strong>maps</strong> (shared data structures) or <strong>ring buffers</strong> (event streams).</li>
+</ol>
+<h3 id="the-ebpf-instruction-set">The eBPF Instruction Set</h3>
+<p>eBPF has its own instruction set architecture (ISA): 11 registers (r0-r10), 64-bit operations, and a restricted set of instructions. It resembles a simplified RISC ISA. You almost never write eBPF assembly directly — you write C and compile with Clang/LLVM, which has a native eBPF backend.</p>
+<pre><code class="language-text">r0:       return value (also used for helper function return values)
+r1-r5:    function arguments (used for helper calls)
+r6-r9:    callee-saved registers (preserved across function calls)
+r10:      read-only frame pointer (stack access)
+
+Stack:    512 bytes maximum (per program)
+</code></pre>
+<p>The 512-byte stack limit is a hard constraint — it prevents kernel stack overflow. Programs that need more storage use maps.</p>
+<h3 id="helper-functions">Helper Functions</h3>
+<p>eBPF programs can't call arbitrary kernel functions. Instead, they call <strong>helper functions</strong> — a curated, stable API of kernel operations:</p>
+<pre><code class="language-c">// examples of BPF helper functions
+bpf_map_lookup_elem()        // look up a value in a map
+bpf_map_update_elem()        // insert/update a value in a map
+bpf_get_current_pid_tgid()   // get the current process PID
+bpf_get_current_comm()       // get the current process name
+bpf_ktime_get_ns()           // get current time in nanoseconds
+bpf_probe_read_kernel()      // safely read kernel memory
+bpf_probe_read_user()        // safely read userspace memory
+bpf_trace_printk()           // debug printing (trace_pipe)
+bpf_ringbuf_output()         // send event to userspace via ring buffer
+bpf_redirect()               // redirect a network packet
+bpf_skb_store_bytes()        // modify packet data
+bpf_get_stackid()            // capture a stack trace
+bpf_send_signal()            // send a signal to the current process
+</code></pre>
+<p>Each program type has access to a subset of helpers — an XDP program can call <code>bpf_redirect()</code> but not <code>bpf_send_signal()</code>, and a tracing program can call <code>bpf_send_signal()</code> but not <code>bpf_redirect()</code>.</p>
+<hr>
+<h2 id="part-3-program-types-and-hook-points">Part 3 — Program Types and Hook Points</h2>
+<p>Each eBPF program type corresponds to a specific place in the kernel where it can be attached. The program type determines what context data is available, which helper functions can be called, and what actions the program can take.</p>
+<h3 id="tracing-program-types">Tracing Program Types</h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Hook Point</th>
+<th>Use Case</th>
+<th>Stability</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>kprobe</strong></td>
+<td>Entry of any kernel function</td>
+<td>Dynamic tracing — "what happens when the kernel calls <code>tcp_sendmsg</code>?"</td>
+<td><strong>Unstable</strong> — kernel functions can change between versions</td>
+</tr>
+<tr>
+<td><strong>kretprobe</strong></td>
+<td>Return of any kernel function</td>
+<td>Measure function latency, inspect return values</td>
+<td>Unstable</td>
+</tr>
+<tr>
+<td><strong>tracepoint</strong></td>
+<td>Predefined stable trace points in the kernel</td>
+<td>"Trace all <code>sched:sched_switch</code> events"</td>
+<td><strong>Stable</strong> — maintained as a kernel ABI</td>
+</tr>
+<tr>
+<td><strong>raw_tracepoint</strong></td>
+<td>Same as tracepoint but with raw arguments (faster)</td>
+<td>High-performance tracing</td>
+<td>Stable</td>
+</tr>
+<tr>
+<td><strong>fentry/fexit</strong></td>
+<td>Function entry/exit (faster than kprobe, kernel 5.5+)</td>
+<td>Modern replacement for kprobe/kretprobe</td>
+<td>Unstable (but faster)</td>
+</tr>
+<tr>
+<td><strong>uprobe/uretprobe</strong></td>
+<td>Entry/return of any <strong>userspace</strong> function</td>
+<td>Trace application code without modifying it</td>
+<td>Application-dependent</td>
+</tr>
+<tr>
+<td><strong>perf_event</strong></td>
+<td>Hardware/software performance counters</td>
+<td>CPU profiling, cache miss counting</td>
+<td>Stable</td>
+</tr>
+<tr>
+<td><strong>usdt</strong></td>
+<td>User Statically Defined Tracepoints</td>
+<td>Application-defined trace points (like DTrace probes)</td>
+<td>Application-defined</td>
+</tr>
+</tbody>
+</table>
+<p><strong>kprobes vs. tracepoints:</strong> kprobes can attach to <em>any</em> kernel function (maximum flexibility), but the function signature can change between kernel versions (fragile). Tracepoints are explicitly defined stable interfaces (fewer hook points, but guaranteed stable). <strong>Prefer tracepoints when available; use kprobes when you need to trace a specific internal function.</strong></p>
+<p><strong>fentry/fexit</strong> (kernel 5.5+) are the modern replacement for kprobes. They're faster (no <code>int3</code> breakpoint instruction), have direct access to function arguments as typed parameters, and work better with CO-RE. Use them when your kernel supports them.</p>
+<h3 id="networking-program-types">Networking Program Types</h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Hook Point</th>
+<th>Use Case</th>
+<th>Performance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>XDP</strong></td>
+<td>Network driver (before <code>sk_buff</code> allocation)</td>
+<td>Packet filtering, DDoS mitigation, load balancing</td>
+<td><strong>Fastest</strong> — 10M+ pps per core</td>
+</tr>
+<tr>
+<td><strong>TC</strong> (Traffic Control)</td>
+<td>Kernel networking stack (ingress/egress)</td>
+<td>Packet manipulation, policy enforcement, NAT</td>
+<td>Fast — after <code>sk_buff</code> is allocated, full packet access</td>
+</tr>
+<tr>
+<td><strong>socket filter</strong></td>
+<td>Socket layer</td>
+<td>Per-socket packet filtering</td>
+<td>Moderate</td>
+</tr>
+<tr>
+<td><strong>sk_msg</strong></td>
+<td>Socket message redirect</td>
+<td>L7 proxy, transparent redirection</td>
+<td>Moderate</td>
+</tr>
+<tr>
+<td><strong>cgroup/sock</strong></td>
+<td>cgroup socket operations</td>
+<td>Per-cgroup networking policy</td>
+<td>Moderate</td>
+</tr>
+<tr>
+<td><strong>cgroup/skb</strong></td>
+<td>cgroup packet filtering</td>
+<td>Container network policy</td>
+<td>Moderate</td>
+</tr>
+<tr>
+<td><strong>lwt</strong> (Lightweight Tunnel)</td>
+<td>Routing layer</td>
+<td>Packet encapsulation/decapsulation</td>
+<td>Moderate</td>
+</tr>
+</tbody>
+</table>
+<p><strong>XDP</strong> deserves special attention. It runs at the <em>earliest possible point</em> in the network stack — in the network driver, before the kernel even allocates the <code>sk_buff</code> data structure that normally represents a packet. This means:</p>
+<pre><code class="language-text">Without XDP:
+  NIC → driver → alloc sk_buff → GRO → netfilter → routing → transport → socket → app
+                  ↑ expensive per-packet overhead
+
+With XDP:
+  NIC → driver → XDP program → DROP (never enters the stack)
+                             → PASS (continue normal processing)
+                             → TX (reflect back out the NIC)
+                             → REDIRECT (forward to another NIC or CPU)
+</code></pre>
+<p>XDP can drop malicious packets at <strong>10+ million packets per second per core</strong> — compared to iptables' ~1-2 million. This is why Cloudflare, Meta, and major CDNs use XDP for DDoS mitigation.</p>
+<p>XDP has three execution modes:
+- <strong>Native</strong> (driver mode): runs in the NIC driver. Fastest. Requires driver support.
+- <strong>Offloaded</strong>: runs on the NIC hardware itself (SmartNICs like Netronome). Fastest possible.
+- <strong>Generic</strong> (skb mode): runs later in the stack. Slowest, but works with any NIC. For development/testing.</p>
+<h3 id="security-program-types">Security Program Types</h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Hook Point</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>LSM</strong> (Linux Security Module)</td>
+<td>Security hook points (file_open, bprm_check, etc.)</td>
+<td>Runtime security policy enforcement</td>
+</tr>
+<tr>
+<td><strong>cgroup</strong></td>
+<td>cgroup events</td>
+<td>Per-container policy (device access, sysctl, socket)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="scheduling">Scheduling</h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Hook Point</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>sched_ext</strong></td>
+<td>Scheduler operations (enqueue, dequeue, dispatch)</td>
+<td>Custom scheduling policies (kernel 6.12+)</td>
+</tr>
+<tr>
+<td><strong>struct_ops</strong></td>
+<td>Kernel subsystem operation structures</td>
+<td>Plugging into TCP congestion control, scheduling, etc.</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="part-4-maps-sharing-state">Part 4 — Maps: Sharing State</h2>
+<p>eBPF programs are event-driven — they fire, run, and return. To persist data across invocations or share data with userspace, they use <strong>maps</strong>: key-value data structures that live in the kernel and are accessible from both eBPF programs and userspace applications.</p>
+<h3 id="map-types">Map Types</h3>
+<table>
+<thead>
+<tr>
+<th>Map Type</th>
+<th>Description</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>BPF_MAP_TYPE_HASH</code></strong></td>
+<td>Key-value hash table</td>
+<td>Per-IP counters, connection tracking, flow tables</td>
+</tr>
+<tr>
+<td><strong><code>BPF_MAP_TYPE_ARRAY</code></strong></td>
+<td>Fixed-size array indexed by integer</td>
+<td>Configuration, per-CPU statistics, lookup tables</td>
+</tr>
+<tr>
+<td><strong><code>BPF_MAP_TYPE_PERCPU_HASH</code></strong></td>
+<td>Per-CPU hash table (no locking needed)</td>
+<td>High-throughput counters without contention</td>
+</tr>
+<tr>
+<td><strong><code>BPF_MAP_TYPE_PERCPU_ARRAY</code></strong></td>
+<td>Per-CPU array</td>
+<td>Per-CPU statistics</td>
+</tr>
+<tr>
+<td><strong><code>BPF_MAP_TYPE_LRU_HASH</code></strong></td>
+<td>Hash table with LRU eviction</td>
+<td>Caches that shouldn't grow unbounded</td>
+</tr>
+<tr>
+<td><strong><code>BPF_MAP_TYPE_RINGBUF</code></strong></td>
+<td>Lock-free MPSC ring buffer</td>
+<td>Streaming events to userspace (preferred over perf_event_array)</td>
+</tr>
+<tr>
+<td><strong><code>BPF_MAP_TYPE_PERF_EVENT_ARRAY</code></strong></td>
+<td>Per-CPU event buffers</td>
+<td>Legacy event streaming (use ringbuf for new code)</td>
+</tr>
+<tr>
+<td><strong><code>BPF_MAP_TYPE_STACK_TRACE</code></strong></td>
+<td>Stack trace storage</td>
+<td>Profiling, flame graphs</td>
+</tr>
+<tr>
+<td><strong><code>BPF_MAP_TYPE_PROG_ARRAY</code></strong></td>
+<td>Array of eBPF program file descriptors</td>
+<td>Tail calls (chaining programs together)</td>
+</tr>
+<tr>
+<td><strong><code>BPF_MAP_TYPE_MAP_OF_MAPS</code></strong></td>
+<td>Map containing references to other maps</td>
+<td>Dynamic map management, per-CPU map selection</td>
+</tr>
+<tr>
+<td><strong><code>BPF_MAP_TYPE_BLOOM_FILTER</code></strong></td>
+<td>Probabilistic membership test</td>
+<td>Fast "is this IP in the blocklist?" checks</td>
+</tr>
+<tr>
+<td><strong><code>BPF_MAP_TYPE_LPM_TRIE</code></strong></td>
+<td>Longest prefix match trie</td>
+<td>IP routing, CIDR matching</td>
+</tr>
+</tbody>
+</table>
+<h3 id="per-cpu-maps-avoiding-lock-contention">Per-CPU Maps: Avoiding Lock Contention</h3>
+<p>On a 128-core server, a regular <code>BPF_MAP_TYPE_HASH</code> that's updated on every packet would have severe lock contention. <strong>Per-CPU maps</strong> (<code>PERCPU_HASH</code>, <code>PERCPU_ARRAY</code>) maintain separate copies for each CPU core — no locks needed for updates, and userspace aggregates the per-CPU values when reading.</p>
+<pre><code class="language-c">// eBPF side: update per-CPU counter (no locking)
+struct {
+    __uint(type, BPF_MAP_TYPE_PERCPU_HASH);
+    __type(key, __u32);      // source IP
+    __type(value, __u64);    // packet count
+    __uint(max_entries, 65536);
+} packet_count SEC(&quot;.maps&quot;);
+
+SEC(&quot;xdp&quot;)
+int count_packets(struct xdp_md *ctx) {
+    __u32 src_ip = /* extract from packet */;
+    __u64 *count = bpf_map_lookup_elem(&amp;packet_count, &amp;src_ip);
+    if (count) {
+        (*count)++;
+    } else {
+        __u64 init = 1;
+        bpf_map_update_elem(&amp;packet_count, &amp;src_ip, &amp;init, BPF_ANY);
+    }
+    return XDP_PASS;
+}
+</code></pre>
+<h3 id="ring-buffer-streaming-events-to-userspace">Ring Buffer: Streaming Events to Userspace</h3>
+<p>The <strong>ring buffer</strong> (<code>BPF_MAP_TYPE_RINGBUF</code>, kernel 5.8+) is the modern way to send events from eBPF programs to userspace. It's a multi-producer, single-consumer, lock-free ring buffer:</p>
+<pre><code class="language-c">// eBPF side: send event to userspace
+struct {
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 256 * 1024);  // 256 KB buffer
+} events SEC(&quot;.maps&quot;);
+
+struct event {
+    __u32 pid;
+    __u8 comm[16];
+    __u8 filename[256];
+};
+
+SEC(&quot;tracepoint/syscalls/sys_enter_openat&quot;)
+int trace_open(struct trace_event_raw_sys_enter *ctx) {
+    struct event *e = bpf_ringbuf_reserve(&amp;events, sizeof(*e), 0);
+    if (!e) return 0;  // buffer full, drop event
+
+    e-&gt;pid = bpf_get_current_pid_tgid() &gt;&gt; 32;
+    bpf_get_current_comm(&amp;e-&gt;comm, sizeof(e-&gt;comm));
+    bpf_probe_read_user_str(&amp;e-&gt;filename, sizeof(e-&gt;filename),
+                            (void *)ctx-&gt;args[1]);
+
+    bpf_ringbuf_submit(e, 0);
+    return 0;
+}
+</code></pre>
+<p><strong>Ring buffer vs. perf event array:</strong> Ring buffer is newer, has better performance (shared across CPUs, no per-CPU wakeups), supports variable-length events, and has simpler userspace consumption. Use ring buffer for all new code.</p>
+<h3 id="tail-calls-chaining-programs">Tail Calls: Chaining Programs</h3>
+<p>A single eBPF program has instruction limits. <strong>Tail calls</strong> let one eBPF program jump to another (up to 33 levels deep), enabling complex logic to be split across programs:</p>
+<pre><code class="language-c">struct {
+    __uint(type, BPF_MAP_TYPE_PROG_ARRAY);
+    __uint(max_entries, 4);
+    __type(key, __u32);
+    __type(value, __u32);
+} jmp_table SEC(&quot;.maps&quot;);
+
+SEC(&quot;xdp&quot;)
+int dispatcher(struct xdp_md *ctx) {
+    __u32 protocol = /* determine protocol */;
+    bpf_tail_call(ctx, &amp;jmp_table, protocol);  // jump to protocol-specific handler
+    return XDP_PASS;  // fallback if tail call fails
+}
+</code></pre>
+<hr>
+<h2 id="part-5-the-verifier-why-ebpf-is-safe">Part 5 — The Verifier: Why eBPF Is Safe</h2>
+<p>The verifier is what makes eBPF fundamentally different from kernel modules. Before any program runs, the verifier performs static analysis to <strong>prove</strong> that the program is safe. If it can't prove safety, the program is rejected — it never runs.</p>
+<h3 id="what-the-verifier-checks">What the Verifier Checks</h3>
+<ol>
+<li>
+<p><strong>Termination.</strong> The program must terminate. All loops must have provably bounded iteration counts. (Unbounded loops were completely forbidden before kernel 5.13; now they're allowed if the verifier can prove they're bounded.)</p>
+</li>
+<li>
+<p><strong>Memory safety.</strong> Every pointer dereference is validated:
+   - Map lookups return <code>NULL</code> if the key doesn't exist — the program must check for <code>NULL</code> before dereferencing.
+   - Stack accesses must be within the 512-byte stack.
+   - Context accesses (packet data, tracepoint arguments) must be within bounds.
+   - Kernel memory reads must use <code>bpf_probe_read_kernel()</code> (not raw pointer dereference).</p>
+</li>
+<li>
+<p><strong>No invalid memory access.</strong> The verifier tracks the type and state of every register through every possible execution path. It knows whether a register holds a pointer, a scalar, a map value, or an uninitialized value.</p>
+</li>
+<li>
+<p><strong>Correct helper usage.</strong> Each program type can only call its allowed subset of helper functions.</p>
+</li>
+<li>
+<p><strong>Instruction limits.</strong> A program can have up to 1,000,000 verified instructions (the verifier tracks cumulative instructions across all paths, not the program size).</p>
+</li>
+</ol>
+<h3 id="common-verifier-rejections">Common Verifier Rejections</h3>
+<pre><code class="language-c">// REJECTED: unvalidated map lookup
+void *val = bpf_map_lookup_elem(&amp;my_map, &amp;key);
+*val = 42;  // ERROR: val might be NULL
+
+// FIX: check for NULL
+void *val = bpf_map_lookup_elem(&amp;my_map, &amp;key);
+if (val) {
+    *(__u64 *)val = 42;  // OK: verifier knows val is non-NULL here
+}
+
+// REJECTED: unbounded loop
+for (int i = 0; i &lt; len; i++) {  // ERROR: len is unknown at verify time
+    // ...
+}
+
+// FIX: bounded loop
+for (int i = 0; i &lt; 256 &amp;&amp; i &lt; len; i++) {  // OK: bounded by 256
+    // ...
+}
+
+// REJECTED: out-of-bounds packet access
+void *data = (void *)(long)ctx-&gt;data;
+__u8 byte = *((__u8 *)data + 100);  // ERROR: might be beyond packet end
+
+// FIX: bounds check
+void *data = (void *)(long)ctx-&gt;data;
+void *data_end = (void *)(long)ctx-&gt;data_end;
+if (data + 101 &gt; data_end) return XDP_DROP;  // bounds check
+__u8 byte = *((__u8 *)data + 100);  // OK: verifier knows it's in bounds
+</code></pre>
+<h3 id="the-verifier-is-the-bottleneck">The Verifier Is the Bottleneck</h3>
+<p>For complex programs, satisfying the verifier is the hardest part of eBPF development. You'll restructure working code to help the verifier prove properties it can't infer. This is the eBPF equivalent of "fighting the borrow checker" in Rust — frustrating, but the constraints are what make the system safe.</p>
+<hr>
+<h2 id="part-6-bpftrace-the-tracing-swiss-army-knife">Part 6 — bpftrace: The Tracing Swiss Army Knife</h2>
+<p><code>bpftrace</code> is a high-level tracing language for eBPF — think <code>awk</code> for kernel events. It's the fastest way to answer "what is the kernel doing right now?" in production.</p>
+<h3 id="one-liner-recipes">One-Liner Recipes</h3>
+<pre><code class="language-bash"># who is opening files?
+bpftrace -e 'tracepoint:syscalls:sys_enter_openat {
+    printf(&quot;%d %s %s\n&quot;, pid, comm, str(args.filename));
+}'
+
+# how long do read() calls take? (histogram in microseconds)
+bpftrace -e 'tracepoint:syscalls:sys_enter_read { @start[tid] = nsecs; }
+tracepoint:syscalls:sys_exit_read /@start[tid]/ {
+    @us = hist((nsecs - @start[tid]) / 1000);
+    delete(@start[tid]);
+}'
+
+# count syscalls by process name
+bpftrace -e 'tracepoint:raw_syscalls:sys_enter { @[comm] = count(); }'
+
+# trace new process executions (like execsnoop)
+bpftrace -e 'tracepoint:syscalls:sys_enter_execve {
+    printf(&quot;%d %s → %s\n&quot;, pid, comm, str(args.filename));
+}'
+
+# trace TCP connections (outgoing)
+bpftrace -e 'kprobe:tcp_connect {
+    @[comm, pid] = count();
+}'
+
+# trace TCP retransmissions
+bpftrace -e 'kprobe:tcp_retransmit_skb {
+    @retransmits[comm, pid] = count();
+}'
+
+# block I/O latency histogram
+bpftrace -e 'tracepoint:block:block_rq_issue {
+    @start[args.dev, args.sector] = nsecs;
+}
+tracepoint:block:block_rq_complete /@start[args.dev, args.sector]/ {
+    @usecs = hist((nsecs - @start[args.dev, args.sector]) / 1000);
+    delete(@start[args.dev, args.sector]);
+}'
+
+# page cache hit/miss ratio
+bpftrace -e 'kprobe:filemap_get_pages { @misses = count(); }
+kretprobe:filemap_get_pages /retval &gt; 0/ { @hits = count(); }'
+
+# which processes are allocating memory? (malloc in libc)
+bpftrace -e 'uprobe:/lib/x86_64-linux-gnu/libc.so.6:malloc {
+    @bytes[comm] = hist(arg0);
+}'
+
+# scheduler run queue latency (how long tasks wait before getting CPU)
+bpftrace -e 'tracepoint:sched:sched_wakeup { @qtime[args.pid] = nsecs; }
+tracepoint:sched:sched_switch /@qtime[args.next_pid]/ {
+    @runq_us = hist((nsecs - @qtime[args.next_pid]) / 1000);
+    delete(@qtime[args.next_pid]);
+}'
+
+# trace why a process is sleeping (off-CPU analysis)
+bpftrace -e 'tracepoint:sched:sched_switch /args.prev_pid == 12345/ {
+    printf(&quot;off-CPU: %s\n&quot;, kstack);
+}'
+
+# DNS query sniffing (trace DNS lookups)
+bpftrace -e 'uprobe:/lib/x86_64-linux-gnu/libc.so.6:getaddrinfo {
+    printf(&quot;%s → DNS: %s\n&quot;, comm, str(arg0));
+}'
+</code></pre>
+<h3 id="bpftrace-language-basics">bpftrace Language Basics</h3>
+<pre><code class="language-text">probes /filter/ { actions }
+
+probes:
+  tracepoint:category:event        stable kernel trace points
+  kprobe:function_name             any kernel function entry
+  kretprobe:function_name          any kernel function return
+  uprobe:binary:function           userspace function entry
+  usdt:binary:provider:probe       userspace static trace points
+  profile:hz:99                    CPU sampling at 99 Hz
+  interval:s:5                     run every 5 seconds
+  BEGIN                            run once at startup
+  END                              run once at exit
+
+variables:
+  @name          global map variable (persists across events)
+  @name[key]     global associative array
+  $name          scratch variable (per-event)
+
+built-in variables:
+  pid, tid       process/thread ID
+  comm           process name
+  nsecs          nanosecond timestamp
+  kstack, ustack kernel/user stack trace
+  args           tracepoint arguments
+  retval         return value (kretprobe/uretprobe)
+  arg0-arg5      function arguments (kprobe/uprobe)
+
+aggregation functions:
+  count()        count events
+  sum(x)         sum values
+  avg(x)         average
+  min(x), max(x) min/max
+  hist(x)        power-of-2 histogram
+  lhist(x, min, max, step)  linear histogram
+  stats(x)       count, average, total
+</code></pre>
+<hr>
+<h2 id="part-7-bcc-tools-the-pre-built-toolkit">Part 7 — BCC Tools: The Pre-Built Toolkit</h2>
+<p>BCC (BPF Compiler Collection) provides <strong>100+ ready-made eBPF tools</strong> — the "top" and "vmstat" of the eBPF era. These are production-ready, battle-tested, and installed on most Linux distributions.</p>
+<h3 id="essential-bcc-tools">Essential BCC Tools</h3>
+<p><strong>Process and CPU:</strong></p>
+<pre><code class="language-bash">execsnoop          # trace new process executions — every exec() on the system
+                   # output: PID PPID ARGS
+                   # &quot;what just ran on this machine?&quot;
+
+runqlat            # scheduler run queue latency histogram
+                   # &quot;how long are tasks waiting for CPU?&quot;
+
+cpudist            # on-CPU time distribution per process
+                   # &quot;are my tasks getting short or long time slices?&quot;
+
+offcputime         # off-CPU time with stack traces
+                   # &quot;where is my process sleeping/blocked?&quot;
+                   # essential for off-CPU flame graphs
+
+exitsnoop          # trace process exits with exit code
+                   # &quot;is something crashing silently?&quot;
+</code></pre>
+<p><strong>Disk I/O:</strong></p>
+<pre><code class="language-bash">biolatency         # block I/O latency histogram
+                   # &quot;what's my real disk latency distribution?&quot;
+
+biosnoop           # trace individual block I/O requests
+                   # &quot;which files are causing slow I/O?&quot;
+
+biotop             # top-like for block I/O by process
+                   # &quot;who is hammering the disk?&quot;
+
+fileslower 10      # show file I/O operations slower than 10ms
+                   # &quot;which reads/writes are slow?&quot;
+
+cachestat          # page cache hit/miss statistics per second
+                   # &quot;is my cache working?&quot;
+
+filetop            # top-like for file reads/writes by process
+</code></pre>
+<p><strong>Networking:</strong></p>
+<pre><code class="language-bash">tcpconnect         # trace outgoing TCP connections
+                   # &quot;what is my process connecting to?&quot;
+
+tcpaccept          # trace incoming TCP connections
+                   # &quot;who is connecting to my server?&quot;
+
+tcplife            # trace TCP session lifetimes with bytes transferred
+                   # &quot;how long do connections last? how much data?&quot;
+
+tcpretrans         # trace TCP retransmissions
+                   # &quot;is the network lossy?&quot;
+
+tcpdrop            # trace dropped TCP packets with reason
+                   # &quot;why is the kernel dropping packets?&quot;
+</code></pre>
+<p><strong>Memory:</strong></p>
+<pre><code class="language-bash">memleak            # detect memory leaks (track allocations/frees, show unfreed)
+                   # &quot;is my process leaking memory?&quot;
+
+oomkill            # trace OOM killer events
+                   # &quot;which process was killed and why?&quot;
+
+shmsnoop           # trace System V shared memory operations
+</code></pre>
+<p><strong>Filesystem:</strong></p>
+<pre><code class="language-bash">opensnoop          # trace file opens system-wide
+                   # &quot;what files is this process touching?&quot;
+
+filelife           # trace file creation and deletion with age
+                   # &quot;are temp files accumulating?&quot;
+
+ext4slower 10      # trace ext4 operations slower than 10ms
+</code></pre>
+<p><strong>Security:</strong></p>
+<pre><code class="language-bash">capable            # trace capability checks
+                   # &quot;what capabilities is this process requesting?&quot;
+
+bashreadline       # trace bash commands (readline input)
+                   # &quot;what commands are users running?&quot;
+</code></pre>
+<h3 id="using-bcc-tools">Using BCC Tools</h3>
+<pre><code class="language-bash"># install on Ubuntu/Debian
+apt install bpfcc-tools
+
+# tools are named with -bpfcc suffix on some distros
+biolatency-bpfcc
+execsnoop-bpfcc
+
+# or install from pip
+pip install bcc
+
+# common usage patterns:
+biolatency -D              # show histogram per disk
+tcplife -t -T -L 80       # trace connections to port 80 with timestamps
+opensnoop -p 12345         # filter by PID
+execsnoop -x               # show only failed executions
+memleak -p 12345 -a 30     # track allocations for PID 12345, report every 30s
+</code></pre>
+<hr>
+<h2 id="part-8-writing-ebpf-programs">Part 8 — Writing eBPF Programs</h2>
+<p>When bpftrace and BCC tools aren't enough, you write your own eBPF programs. The modern approach is <strong>libbpf + CO-RE</strong> (C), <strong>cilium/ebpf</strong> (Go), or <strong>aya</strong> (Rust).</p>
+<h3 id="co-re-compile-once-run-everywhere">CO-RE: Compile Once, Run Everywhere</h3>
+<p>The historic pain of eBPF development: your program accesses kernel data structures by offset. Different kernel versions have different struct layouts. Your program compiled against kernel 5.15 headers breaks on kernel 6.1 because a struct field moved.</p>
+<p><strong>CO-RE</strong> (Compile Once – Run Everywhere) solves this with <strong>BTF (BPF Type Format)</strong>: compact type information embedded in the kernel binary. At load time, the eBPF loader reads the target kernel's BTF and <em>relocates</em> your program's struct accesses to the correct offsets. You compile once, and the program works on any kernel with BTF support.</p>
+<pre><code class="language-bash"># check if your kernel has BTF
+ls /sys/kernel/btf/vmlinux     # if this file exists, BTF is available
+
+# generate a header with ALL kernel types (for development)
+bpftool btf dump file /sys/kernel/btf/vmlinux format c &gt; vmlinux.h
+</code></pre>
+<h3 id="development-ecosystem-comparison">Development Ecosystem Comparison</h3>
+<table>
+<thead>
+<tr>
+<th>Ecosystem</th>
+<th>Language</th>
+<th>eBPF Code</th>
+<th>Userspace Code</th>
+<th>Best For</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>libbpf</strong></td>
+<td>C</td>
+<td>C</td>
+<td>C</td>
+<td>Maximum control, upstream kernel development</td>
+</tr>
+<tr>
+<td><strong>cilium/ebpf</strong></td>
+<td>Go</td>
+<td>C</td>
+<td>Go</td>
+<td>Production Go services, Kubernetes operators</td>
+</tr>
+<tr>
+<td><strong>aya</strong></td>
+<td>Rust</td>
+<td>Rust</td>
+<td>Rust</td>
+<td>Memory-safe development, Rust-native teams</td>
+</tr>
+<tr>
+<td><strong>bcc</strong></td>
+<td>Python</td>
+<td>C (embedded in Python strings)</td>
+<td>Python</td>
+<td>Prototyping, one-off scripts</td>
+</tr>
+</tbody>
+</table>
+<h3 id="libbpf-c-workflow">libbpf (C) Workflow</h3>
+<pre><code class="language-bash"># 1. Write the eBPF program (kern.bpf.c)
+# 2. Write the userspace loader (main.c)
+# 3. Compile:
+clang -g -O2 -target bpf -D__TARGET_ARCH_x86 -c kern.bpf.c -o kern.bpf.o
+# 4. Generate skeleton header:
+bpftool gen skeleton kern.bpf.o &gt; kern.skel.h
+# 5. Compile userspace:
+gcc -o loader main.c -lbpf -lelf -lz
+</code></pre>
+<h3 id="ciliumebpf-go-workflow">cilium/ebpf (Go) Workflow</h3>
+<pre><code class="language-bash"># 1. Write the eBPF program in C (program.c)
+# 2. Add a go:generate directive to your Go file:
+#    //go:generate go run github.com/cilium/ebpf/cmd/bpf2go -target amd64 counter program.c
+
+# 3. Run the generator:
+go generate ./...
+# This compiles program.c to eBPF bytecode and generates Go types
+# for all maps and programs defined in the C code.
+
+# 4. Use the generated types in your Go code:
+</code></pre>
+<pre><code class="language-go">package main
+
+import (
+    &quot;log&quot;
+    &quot;github.com/cilium/ebpf/link&quot;
+)
+
+func main() {
+    // Load the compiled eBPF objects
+    objs := counterObjects{}
+    if err := loadCounterObjects(&amp;objs, nil); err != nil {
+        log.Fatal(err)
+    }
+    defer objs.Close()
+
+    // Attach to a tracepoint
+    tp, err := link.Tracepoint(&quot;syscalls&quot;, &quot;sys_enter_execve&quot;, objs.TraceExec, nil)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer tp.Close()
+
+    // Read from maps
+    var count uint64
+    objs.ExecCount.Lookup(uint32(0), &amp;count)
+    log.Printf(&quot;exec count: %d&quot;, count)
+}
+</code></pre>
+<h3 id="aya-rust-workflow">aya (Rust) Workflow</h3>
+<pre><code class="language-bash"># 1. Install prerequisites
+cargo install bpf-linker
+cargo install cargo-generate
+
+# 2. Scaffold a new project
+cargo generate https://github.com/aya-rs/aya-template
+
+# 3. Write eBPF code in Rust (in the -ebpf crate)
+# 4. Write userspace code in Rust (in the main crate)
+# 5. Build and run:
+cargo xtask build-ebpf
+cargo build
+sudo cargo xtask run
+</code></pre>
+<pre><code class="language-rust">// eBPF side (Rust)
+#![no_std]
+#![no_main]
+use aya_ebpf::{macros::tracepoint, programs::TracePointContext};
+
+#[tracepoint]
+pub fn trace_exec(ctx: TracePointContext) -&gt; u32 {
+    // handle the event
+    0
+}
+</code></pre>
+<h3 id="bpftool-the-inspector">bpftool: The Inspector</h3>
+<p><code>bpftool</code> is the command-line tool for inspecting eBPF state on a running system:</p>
+<pre><code class="language-bash"># list loaded eBPF programs
+bpftool prog list
+# 42: xdp  name xdp_filter  tag abc123  gpl
+#     loaded_at 2026-01-01T00:00:00+0000  uid 0
+#     xlated 1234B  jited 890B  memlock 4096B
+
+# list all maps
+bpftool map list
+
+# dump map contents
+bpftool map dump id 5
+
+# show program bytecode
+bpftool prog dump xlated id 42
+
+# show JIT-compiled native code
+bpftool prog dump jited id 42
+
+# show BTF information
+bpftool btf list
+
+# pin a program to a persistent path
+bpftool prog pin id 42 /sys/fs/bpf/my_program
+
+# attach XDP to an interface
+bpftool net attach xdp id 42 dev eth0
+</code></pre>
+<hr>
+<h2 id="part-9-networking-with-ebpf">Part 9 — Networking with eBPF</h2>
+<h3 id="cilium-ebpf-native-kubernetes-networking">Cilium: eBPF-Native Kubernetes Networking</h3>
+<p>Cilium is the dominant Kubernetes CNI (Container Network Interface) in 2026, used by AWS EKS, Google GKE, and most enterprise clusters. It replaces the entire <code>kube-proxy</code> component with eBPF programs.</p>
+<p><strong>What Cilium replaces:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Before (iptables)</th>
+<th>After (Cilium/eBPF)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Service load balancing</strong></td>
+<td>iptables DNAT rules — O(n) per packet, one rule per backend</td>
+<td>eBPF hash lookup — O(1) per packet</td>
+</tr>
+<tr>
+<td><strong>Network policy</strong></td>
+<td>iptables rules per pod pair</td>
+<td>eBPF map lookup per connection</td>
+</tr>
+<tr>
+<td><strong>NAT</strong></td>
+<td>conntrack + iptables MASQUERADE</td>
+<td>eBPF CT map + NAT map</td>
+</tr>
+<tr>
+<td><strong>Performance at scale</strong></td>
+<td>Degrades badly above ~5,000 Services</td>
+<td>Handles 100,000+ Services</td>
+</tr>
+</tbody>
+</table>
+<p><strong>How it works:</strong> Cilium compiles and loads eBPF programs onto every node. These programs attach to TC hooks on each pod's veth interface. When a pod sends a packet to a Kubernetes Service, the eBPF program:</p>
+<ol>
+<li>Looks up the Service VIP in a BPF hash map.</li>
+<li>Selects a backend pod (consistent hashing, maglev, random, etc.).</li>
+<li>Rewrites the packet's destination IP to the backend pod's IP.</li>
+<li>Forwards the packet directly — bypassing netfilter, iptables, and conntrack entirely.</li>
+</ol>
+<p>This is O(1) per packet regardless of how many Services or Endpoints exist in the cluster.</p>
+<p><strong>Hubble: eBPF-Powered Observability</strong></p>
+<p>Hubble is Cilium's observability layer. Because eBPF programs see every packet, Cilium provides <strong>deep network visibility without any application instrumentation</strong>:</p>
+<pre><code class="language-bash"># observe live traffic (like tcpdump but with Kubernetes context)
+hubble observe --namespace production
+
+# show HTTP requests with latency
+hubble observe --protocol http -t l7
+
+# show dropped packets with reason
+hubble observe --verdict DROPPED
+
+# show DNS queries
+hubble observe --protocol dns
+
+# flow logs include:
+# - source/destination pod, namespace, labels
+# - L3/L4 protocol info
+# - L7 HTTP/gRPC/DNS/Kafka details
+# - policy verdict (forwarded, dropped, reason)
+# - latency
+</code></pre>
+<p>This is "free" observability — no sidecars, no agents, no code changes. The eBPF programs that Cilium already runs for networking also emit events to Hubble.</p>
+<h3 id="xdp-in-practice">XDP in Practice</h3>
+<pre><code class="language-c">// Simple XDP firewall: drop packets from a blocklist
+struct {
+    __uint(type, BPF_MAP_TYPE_HASH);
+    __type(key, __u32);      // IPv4 address
+    __type(value, __u8);     // dummy (presence = blocked)
+    __uint(max_entries, 10000);
+} blocklist SEC(&quot;.maps&quot;);
+
+SEC(&quot;xdp&quot;)
+int xdp_firewall(struct xdp_md *ctx) {
+    void *data = (void *)(long)ctx-&gt;data;
+    void *data_end = (void *)(long)ctx-&gt;data_end;
+
+    // parse Ethernet header
+    struct ethhdr *eth = data;
+    if ((void *)(eth + 1) &gt; data_end) return XDP_DROP;
+    if (eth-&gt;h_proto != htons(ETH_P_IP)) return XDP_PASS;
+
+    // parse IP header
+    struct iphdr *ip = (void *)(eth + 1);
+    if ((void *)(ip + 1) &gt; data_end) return XDP_DROP;
+
+    // check blocklist
+    __u32 src_ip = ip-&gt;saddr;
+    if (bpf_map_lookup_elem(&amp;blocklist, &amp;src_ip)) {
+        return XDP_DROP;  // blocked
+    }
+
+    return XDP_PASS;
+}
+</code></pre>
+<pre><code class="language-bash"># attach XDP program to an interface
+ip link set dev eth0 xdp obj firewall.o sec xdp
+
+# detach
+ip link set dev eth0 xdp off
+
+# check XDP status
+ip link show eth0
+# eth0: ... xdp/id:42 ...
+</code></pre>
+<hr>
+<h2 id="part-10-security-with-ebpf">Part 10 — Security with eBPF</h2>
+<h3 id="tetragon-runtime-security-enforcement">Tetragon: Runtime Security Enforcement</h3>
+<p>Tetragon (by Isovalent/Cilium) is an eBPF-based security tool that doesn't just <em>detect</em> threats — it <strong>enforces policy in the kernel</strong>. Unlike traditional security tools that stream events to userspace for analysis (introducing latency), Tetragon's eBPF programs make decisions and take action directly in the kernel.</p>
+<p><strong>Capabilities:</strong>
+- <strong>Detect and kill</strong> processes that attempt privilege escalation.
+- <strong>Block</strong> unauthorized file access at the kernel level.
+- <strong>Prevent</strong> namespace escapes from containers.
+- <strong>Enforce</strong> network policies beyond what Kubernetes NetworkPolicy supports.</p>
+<pre><code class="language-yaml"># Tetragon TracingPolicy: detect and kill any process writing to /etc/shadow
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: block-shadow-writes
+spec:
+  kprobes:
+  - call: &quot;security_file_permission&quot;
+    syscall: false
+    args:
+    - index: 0
+      type: &quot;file&quot;
+    selectors:
+    - matchArgs:
+      - index: 0
+        operator: &quot;Equal&quot;
+        values:
+        - &quot;/etc/shadow&quot;
+      matchActions:
+      - action: Sigkill   # kill the process immediately
+</code></pre>
+<p><strong>Tetragon vs. Falco:</strong></p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Tetragon</th>
+<th>Falco</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Action</strong></td>
+<td>Enforcement — can kill processes, deny operations</td>
+<td>Detection — alerts and logs</td>
+</tr>
+<tr>
+<td><strong>Where</strong></td>
+<td>In-kernel (eBPF)</td>
+<td>Kernel events → userspace rule engine</td>
+</tr>
+<tr>
+<td><strong>Overhead</strong></td>
+<td>Lower (filtering happens in kernel)</td>
+<td>Higher (all events streamed to userspace)</td>
+</tr>
+<tr>
+<td><strong>Flexibility</strong></td>
+<td>Focused on enforcement</td>
+<td>Broad rule language, MITRE ATT&amp;CK alignment</td>
+</tr>
+<tr>
+<td><strong>Best for</strong></td>
+<td>Blocking known-bad behavior</td>
+<td>Detecting anomalies, compliance, audit</td>
+</tr>
+</tbody>
+</table>
+<p>In practice, many organizations run <strong>both</strong>: Tetragon for enforcement (block the exploit) and Falco for detection (alert on anomalies).</p>
+<h3 id="falco-behavioral-threat-detection">Falco: Behavioral Threat Detection</h3>
+<p>Falco uses eBPF (or a kernel module) to stream syscall events to a userspace rule engine. Rules are written in a YAML-based DSL:</p>
+<pre><code class="language-yaml"># alert when a shell is spawned inside a container
+- rule: Shell in Container
+  desc: A shell was spawned in a container
+  condition: &gt;
+    spawned_process and
+    container and
+    proc.name in (bash, sh, zsh, dash)
+  output: &gt;
+    Shell spawned in container
+    (user=%user.name container=%container.name
+     shell=%proc.name parent=%proc.pname)
+  priority: WARNING
+
+# alert when sensitive files are read
+- rule: Read Sensitive File
+  desc: A sensitive file was read
+  condition: &gt;
+    open_read and
+    fd.name in (/etc/shadow, /etc/sudoers)
+  output: &gt;
+    Sensitive file read (file=%fd.name process=%proc.name user=%user.name)
+  priority: ERROR
+</code></pre>
+<hr>
+<h2 id="part-11-observability-with-ebpf">Part 11 — Observability with eBPF</h2>
+<p>eBPF enables <strong>zero-instrumentation observability</strong> — deep telemetry without modifying application code or adding sidecars.</p>
+<h3 id="grafana-beyla-auto-instrumented-application-metrics">Grafana Beyla: Auto-Instrumented Application Metrics</h3>
+<p>Beyla uses eBPF (uprobes and kprobes) to automatically detect and instrument HTTP, gRPC, SQL, and Redis traffic for any application — regardless of language or framework:</p>
+<pre><code class="language-bash"># run Beyla alongside your application
+BEYLA_OPEN_PORT=8080 beyla
+
+# Beyla automatically:
+# - detects HTTP/gRPC traffic on port 8080
+# - generates RED metrics (Rate, Errors, Duration) per endpoint
+# - exports to Prometheus / OpenTelemetry
+# - no code changes, no SDK, no sidecar
+</code></pre>
+<p>This works because eBPF can trace the kernel's TCP/socket layer — it sees every <code>read()</code> and <code>write()</code> on every socket, and Beyla's eBPF programs parse the application-layer protocol (HTTP, gRPC) from the raw bytes.</p>
+<h3 id="continuous-profiling-parca-and-pyroscope">Continuous Profiling: Parca and Pyroscope</h3>
+<p>eBPF-based continuous profiling captures CPU flame graphs for every process, all the time, with &lt;1% overhead:</p>
+<pre><code class="language-bash"># Parca agent: continuously profile all processes on the node
+parca-agent --remote-store-address=parca-server:7070
+
+# captures stack traces via perf_event eBPF programs
+# sends flame graph data to the Parca server
+# you can see what any process was doing at any point in time
+</code></pre>
+<p>This replaces ad-hoc profiling ("reproduce the problem and run perf record") with always-on profiling. When an incident occurs, the data is already captured.</p>
+<h3 id="pixie-kubernetes-observability">Pixie: Kubernetes Observability</h3>
+<p>Pixie (by New Relic, CNCF project) uses eBPF to provide instant Kubernetes observability:</p>
+<ul>
+<li><strong>HTTP/gRPC golden signals</strong> per service — no instrumentation.</li>
+<li><strong>Full request/response capture</strong> — see the actual HTTP bodies flowing between services.</li>
+<li><strong>Distributed tracing</strong> — correlate requests across services using connection tracking.</li>
+<li><strong>Continuous CPU profiling</strong> — flame graphs for every pod.</li>
+<li><strong>In-cluster data processing</strong> — data stays in the cluster (privacy-friendly).</li>
+</ul>
+<hr>
+<h2 id="part-12-sched_ext-custom-schedulers-in-ebpf">Part 12 — sched_ext: Custom Schedulers in eBPF</h2>
+<p><code>sched_ext</code> (kernel 6.12+, 2024) is arguably the most exciting eBPF development: it lets you write <strong>custom CPU schedulers</strong> as eBPF programs that can be loaded and replaced at runtime, without recompiling the kernel.</p>
+<h3 id="why-custom-schedulers">Why Custom Schedulers?</h3>
+<p>The kernel's default scheduler (EEVDF, which replaced CFS in kernel 6.6) is a general-purpose scheduler optimized for fairness. But "fair" isn't always "optimal":</p>
+<ul>
+<li><strong>Gaming:</strong> you want maximum responsiveness for the foreground game, starving background tasks if necessary.</li>
+<li><strong>Databases:</strong> you want the query thread to run uninterrupted on a specific core, with zero scheduler preemptions.</li>
+<li><strong>AI training:</strong> you want to co-schedule related GPU data-prep threads to maximize cache locality.</li>
+<li><strong>Hyperscalers (Meta, Google):</strong> you want to A/B test scheduling policies on live traffic without rebooting fleet servers.</li>
+</ul>
+<h3 id="how-sched_ext-works">How sched_ext Works</h3>
+<p>You implement a set of callbacks (enqueue, dequeue, dispatch, pick_next_task, etc.) as eBPF programs. The kernel calls your eBPF scheduler instead of the default one:</p>
+<pre><code class="language-c">// simplified sched_ext scheduler
+SEC(&quot;struct_ops&quot;)
+void BPF_PROG(enqueue, struct task_struct *p, u64 enq_flags) {
+    // custom logic: decide where to place the task
+    scx_bpf_dispatch(p, SCX_DSQ_GLOBAL, /* slice_ns */ 5000000, enq_flags);
+}
+
+SEC(&quot;struct_ops&quot;)
+void BPF_PROG(dispatch, s32 cpu, struct task_struct *prev) {
+    // custom logic: pick the next task for this CPU
+    scx_bpf_consume(SCX_DSQ_GLOBAL);
+}
+
+SEC(&quot;.struct_ops.link&quot;)
+struct sched_ext_ops my_scheduler = {
+    .enqueue = (void *)enqueue,
+    .dispatch = (void *)dispatch,
+    .name = &quot;my_custom_scheduler&quot;,
+};
+</code></pre>
+<pre><code class="language-bash"># load the custom scheduler
+sudo scx_loader my_scheduler.bpf.o
+
+# unload and revert to the default scheduler
+sudo scx_loader --unload
+</code></pre>
+<p><strong>Key point:</strong> if your eBPF scheduler crashes or has a bug, the kernel automatically reverts to the default scheduler. The system stays running. This makes it safe to experiment with scheduling policies in production.</p>
+<h3 id="sched_ext-schedulers-in-2026">sched_ext Schedulers in 2026</h3>
+<table>
+<thead>
+<tr>
+<th>Scheduler</th>
+<th>Focus</th>
+<th>Who</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>scx_rusty</strong></td>
+<td>Work-conserving, NUMA-aware</td>
+<td>General-purpose improvement over default</td>
+</tr>
+<tr>
+<td><strong>scx_lavd</strong></td>
+<td>Latency-critical, value-directed</td>
+<td>Gaming, interactive workloads</td>
+</tr>
+<tr>
+<td><strong>scx_bpfland</strong></td>
+<td>Power-efficient scheduling</td>
+<td>Laptop/mobile power saving</td>
+</tr>
+<tr>
+<td><strong>scx_central</strong></td>
+<td>Centralized decision making</td>
+<td>Research, specialized workloads</td>
+</tr>
+<tr>
+<td><strong>Custom</strong></td>
+<td>Whatever you need</td>
+<td>Meta, Google, game studios</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="part-13-ebpf-security-considerations">Part 13 — eBPF Security Considerations</h2>
+<p>eBPF runs inside the kernel. This power comes with security implications that you must understand.</p>
+<h3 id="the-attack-surface">The Attack Surface</h3>
+<ol>
+<li>
+<p><strong>Verifier vulnerabilities.</strong> The verifier is complex (~20,000 lines of code). Bugs in the verifier have allowed crafted eBPF programs to bypass safety checks, leading to privilege escalation. CVEs against the verifier are published regularly (including in 2026). <strong>Mitigation:</strong> keep your kernel patched.</p>
+</li>
+<li>
+<p><strong>Privileged access.</strong> Loading eBPF programs requires capabilities — at minimum <code>CAP_BPF</code> (kernel 5.8+), and many program types require additional capabilities:
+   - <code>CAP_BPF</code> — load and attach most program types
+   - <code>CAP_PERFMON</code> — access performance monitoring (needed for kprobes, perf events)
+   - <code>CAP_NET_ADMIN</code> — XDP, TC, socket programs
+   - <code>CAP_SYS_ADMIN</code> — some advanced operations (avoid granting this)</p>
+</li>
+<li>
+<p><strong>Information leakage.</strong> eBPF programs can read kernel memory (via <code>bpf_probe_read_kernel</code>) and access process data. A malicious eBPF program could exfiltrate sensitive data.</p>
+</li>
+</ol>
+<h3 id="container-security">Container Security</h3>
+<p>By default, containers <strong>cannot</strong> load eBPF programs (they lack the required capabilities). This is the correct default. Security and monitoring tools that need eBPF (Cilium, Falco, Tetragon) run as <strong>privileged DaemonSets</strong> or with specific capabilities — and they are the <em>infrastructure</em>, not the workload.</p>
+<p><strong>Rules:</strong>
+- Application containers should never have <code>CAP_BPF</code> or <code>CAP_SYS_ADMIN</code>.
+- eBPF-based tools run as node-level infrastructure (DaemonSets), not per-pod sidecars.
+- Some organizations disable <code>bpf()</code> for unprivileged users entirely: <code>sysctl kernel.unprivileged_bpf_disabled=1</code>.</p>
+<h3 id="restricting-ebpf">Restricting eBPF</h3>
+<pre><code class="language-bash"># disable unprivileged eBPF (recommended for production)
+sysctl -w kernel.unprivileged_bpf_disabled=1
+
+# optionally disable io_uring (related kernel attack surface)
+sysctl -w kernel.io_uring_disabled=2
+
+# audit eBPF program loads
+bpftool prog list      # who has loaded what?
+</code></pre>
+<h3 id="the-verifier-is-not-perfect">The Verifier Is Not Perfect</h3>
+<p>The verifier is a best-effort safety system, not a formal proof. Known limitations:
+- Complex control flow can exceed the verifier's analysis budget (1M instructions), forcing you to simplify your program.
+- Side channels (timing attacks via eBPF programs) have been demonstrated.
+- The verification process itself is complex enough to have bugs.</p>
+<p>The practical stance: eBPF is vastly safer than kernel modules (which have zero verification), but it is not a perfect security boundary. Treat eBPF program loading as a privileged operation.</p>
+<hr>
+<h2 id="part-14-the-2026-ebpf-ecosystem">Part 14 — The 2026 eBPF Ecosystem</h2>
+<h3 id="the-landscape-map">The Landscape Map</h3>
+<pre><code class="language-text">                     ┌─────────────────────────────────┐
+                     │         Applications             │
+                     │  (your services, Kubernetes)     │
+                     └───────────────┬─────────────────┘
+                                     │
+         ┌───────────────────────────┼───────────────────────────┐
+         │                           │                           │
+    ┌────▼────┐               ┌──────▼──────┐            ┌──────▼──────┐
+    │Networking│               │  Security    │            │Observability│
+    │         │               │              │            │             │
+    │ Cilium  │               │  Tetragon    │            │ Hubble      │
+    │ + Hubble│               │  Falco       │            │ Beyla       │
+    │         │               │  KubeArmor   │            │ Pixie       │
+    │ XDP     │               │              │            │ Parca       │
+    │ TC      │               │  LSM hooks   │            │ Pyroscope   │
+    └────┬────┘               └──────┬───────┘            └──────┬──────┘
+         │                           │                           │
+         └───────────────────────────┼───────────────────────────┘
+                                     │
+                     ┌───────────────▼─────────────────┐
+                     │          eBPF Runtime            │
+                     │  Verifier → JIT → Hook Points   │
+                     │  Maps, Helpers, BTF, CO-RE       │
+                     └───────────────┬─────────────────┘
+                                     │
+                     ┌───────────────▼─────────────────┐
+                     │         Linux Kernel             │
+                     └─────────────────────────────────┘
+</code></pre>
+<h3 id="project-comparison">Project Comparison</h3>
+<table>
+<thead>
+<tr>
+<th>Project</th>
+<th>Category</th>
+<th>What It Does</th>
+<th>How It Uses eBPF</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Cilium</strong></td>
+<td>Networking</td>
+<td>Kubernetes CNI, Service load balancing, Network Policy, Service Mesh</td>
+<td>XDP + TC programs on every pod's veth interface</td>
+</tr>
+<tr>
+<td><strong>Hubble</strong></td>
+<td>Observability</td>
+<td>Network flow visibility, L7 protocol inspection</td>
+<td>Reads events from Cilium's eBPF data path</td>
+</tr>
+<tr>
+<td><strong>Tetragon</strong></td>
+<td>Security</td>
+<td>Runtime policy enforcement (kill processes, deny file access)</td>
+<td>kprobes + LSM hooks with in-kernel enforcement</td>
+</tr>
+<tr>
+<td><strong>Falco</strong></td>
+<td>Security</td>
+<td>Behavioral threat detection, compliance auditing</td>
+<td>Syscall tracing via tracepoints/kprobes</td>
+</tr>
+<tr>
+<td><strong>Grafana Beyla</strong></td>
+<td>Observability</td>
+<td>Auto-instrumented HTTP/gRPC/SQL metrics</td>
+<td>uprobes on application libraries + kprobes on socket ops</td>
+</tr>
+<tr>
+<td><strong>Pixie</strong></td>
+<td>Observability</td>
+<td>Full Kubernetes observability (traces, metrics, logs)</td>
+<td>kprobes + uprobes for protocol parsing</td>
+</tr>
+<tr>
+<td><strong>Parca</strong></td>
+<td>Profiling</td>
+<td>Continuous CPU profiling</td>
+<td>perf_event eBPF programs for stack sampling</td>
+</tr>
+<tr>
+<td><strong>Pyroscope</strong></td>
+<td>Profiling</td>
+<td>Continuous CPU/memory profiling</td>
+<td>perf_event eBPF programs</td>
+</tr>
+<tr>
+<td><strong>KubeArmor</strong></td>
+<td>Security</td>
+<td>Container runtime security</td>
+<td>LSM hooks + syscall monitoring</td>
+</tr>
+<tr>
+<td><strong>Katran</strong></td>
+<td>Networking</td>
+<td>L4 load balancer (Meta's open-source)</td>
+<td>XDP for packet steering</td>
+</tr>
+<tr>
+<td><strong>sched_ext</strong></td>
+<td>Scheduling</td>
+<td>Custom CPU schedulers</td>
+<td>struct_ops eBPF programs replacing scheduler callbacks</td>
+</tr>
+<tr>
+<td><strong>bpftrace</strong></td>
+<td>Tracing</td>
+<td>Ad-hoc kernel and application tracing</td>
+<td>kprobes, tracepoints, uprobes</td>
+</tr>
+<tr>
+<td><strong>BCC</strong></td>
+<td>Tracing</td>
+<td>Pre-built tracing tools</td>
+<td>kprobes, tracepoints, uprobes</td>
+</tr>
+</tbody>
+</table>
+<h3 id="getting-started-the-learning-path">Getting Started: The Learning Path</h3>
+<pre><code class="language-text">Level 0: Use the tools
+├── Install bpftrace, run one-liners on a test system
+├── Install BCC tools, run biolatency, execsnoop, tcplife
+└── Deploy Cilium on a test Kubernetes cluster, explore Hubble
+
+Level 1: Understand the internals
+├── Read &quot;Learning eBPF&quot; by Liz Rice (the best introduction)
+├── Read &quot;BPF Performance Tools&quot; by Brendan Gregg (the reference)
+├── Understand program types, maps, the verifier
+└── Write a simple kprobe/tracepoint program with bpftrace
+
+Level 2: Write programs
+├── Choose your ecosystem: libbpf (C), cilium/ebpf (Go), or aya (Rust)
+├── Write a CO-RE program that works across kernel versions
+├── Understand BTF, ring buffers, per-CPU maps
+└── Build a custom tracing tool for your application
+
+Level 3: Production deployment
+├── Deploy Cilium + Hubble for networking and observability
+├── Deploy Tetragon or Falco for runtime security
+├── Deploy Beyla or Pixie for auto-instrumented metrics
+├── Write custom eBPF programs for your specific needs
+└── Contribute to upstream eBPF ecosystem
+</code></pre>
+<h3 id="kernel-version-requirements">Kernel Version Requirements</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Minimum Kernel</th>
+<th>Recommended</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Basic eBPF (maps, helpers)</td>
+<td>4.1</td>
+<td>5.4+</td>
+</tr>
+<tr>
+<td>BTF / CO-RE</td>
+<td>5.4</td>
+<td>5.8+</td>
+</tr>
+<tr>
+<td><code>CAP_BPF</code> (fine-grained permissions)</td>
+<td>5.8</td>
+<td>5.8+</td>
+</tr>
+<tr>
+<td>Ring buffer</td>
+<td>5.8</td>
+<td>5.8+</td>
+</tr>
+<tr>
+<td>Bounded loops</td>
+<td>5.13</td>
+<td>5.13+</td>
+</tr>
+<tr>
+<td>fentry/fexit</td>
+<td>5.5</td>
+<td>5.5+</td>
+</tr>
+<tr>
+<td>LSM hooks</td>
+<td>5.7</td>
+<td>5.7+</td>
+</tr>
+<tr>
+<td>sched_ext</td>
+<td>6.12</td>
+<td>6.12+</td>
+</tr>
+<tr>
+<td><strong>Production baseline</strong></td>
+<td>—</td>
+<td><strong>5.15+ LTS or 6.x</strong></td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-bash"># check your kernel's eBPF capabilities
+bpftool feature probe kernel
+
+# check specific feature support
+bpftool feature probe kernel | grep map_type
+bpftool feature probe kernel | grep program_type
+bpftool feature probe kernel | grep helper
+</code></pre>
+<hr>
+<p>If you remember one thing from this guide: <strong>eBPF is the mechanism that lets you run safe, sandboxed, JIT-compiled programs inside the Linux kernel at specific hook points — without modifying the kernel or rebooting. In 2026, it is the foundational technology beneath Kubernetes networking (Cilium replaces iptables/kube-proxy with O(1) eBPF lookups), runtime security (Tetragon enforces policy in-kernel, Falco detects threats), zero-instrumentation observability (Hubble, Beyla, Pixie provide metrics and traces without code changes), and custom scheduling (sched_ext lets you hot-swap CPU schedulers at runtime). The tools are mature, the ecosystem is production-ready, and every major cloud provider has adopted it. If you operate Linux infrastructure, eBPF is no longer optional knowledge — it's the substrate your stack runs on.</strong></p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

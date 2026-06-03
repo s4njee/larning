@@ -1,0 +1,2250 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Git Deep Dive.">
+<title>Git Deep Dive - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#eaa45f; --accent2:#e5dc59; --accent-weak:rgba(234,164,95,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#eaa45f; --accent2:#e5dc59; --accent-weak:rgba(234,164,95,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">G</span><span>Git Deep Dive</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#1-the-object-model" data-target="1-the-object-model">1. The Object Model</a></li><li class="toc-l3"><a href="#blobs-file-contents" data-target="blobs-file-contents">Blobs — File Contents</a></li><li class="toc-l3"><a href="#trees-directories" data-target="trees-directories">Trees — Directories</a></li><li class="toc-l3"><a href="#commits-snapshots" data-target="commits-snapshots">Commits — Snapshots</a></li><li class="toc-l3"><a href="#tags-named-objects" data-target="tags-named-objects">Tags — Named Objects</a></li><li class="toc-l3"><a href="#the-whole-picture" data-target="the-whole-picture">The Whole Picture</a></li><li class="toc-l3"><a href="#why-this-matters" data-target="why-this-matters">Why This Matters</a></li><li class="toc-l2"><a href="#2-refs-head-the-ref-log" data-target="2-refs-head-the-ref-log">2. Refs, HEAD &amp; the Ref Log</a></li><li class="toc-l3"><a href="#refs-are-just-pointers" data-target="refs-are-just-pointers">Refs Are Just Pointers</a></li><li class="toc-l3"><a href="#head" data-target="head">HEAD</a></li><li class="toc-l3"><a href="#ref-syntax" data-target="ref-syntax">Ref Syntax</a></li><li class="toc-l3"><a href="#detached-head" data-target="detached-head">Detached HEAD</a></li><li class="toc-l2"><a href="#3-the-index-staging-area" data-target="3-the-index-staging-area">3. The Index (Staging Area)</a></li><li class="toc-l3"><a href="#three-trees-model" data-target="three-trees-model">Three Trees Model</a></li><li class="toc-l3"><a href="#staging-granularly" data-target="staging-granularly">Staging Granularly</a></li><li class="toc-l3"><a href="#unstaging" data-target="unstaging">Unstaging</a></li><li class="toc-l3"><a href="#the-index-and-merge-conflicts" data-target="the-index-and-merge-conflicts">The Index and Merge Conflicts</a></li><li class="toc-l2"><a href="#4-commits-in-depth" data-target="4-commits-in-depth">4. Commits in Depth</a></li><li class="toc-l3"><a href="#anatomy-of-a-commit" data-target="anatomy-of-a-commit">Anatomy of a Commit</a></li><li class="toc-l3"><a href="#writing-good-commit-messages" data-target="writing-good-commit-messages">Writing Good Commit Messages</a></li><li class="toc-l3"><a href="#empty-commits" data-target="empty-commits">Empty Commits</a></li><li class="toc-l3"><a href="#signing-commits" data-target="signing-commits">Signing Commits</a></li><li class="toc-l2"><a href="#5-branching-merging" data-target="5-branching-merging">5. Branching &amp; Merging</a></li><li class="toc-l3"><a href="#branch-operations" data-target="branch-operations">Branch Operations</a></li><li class="toc-l3"><a href="#merge-strategies" data-target="merge-strategies">Merge Strategies</a></li><li class="toc-l3"><a href="#merge-conflicts" data-target="merge-conflicts">Merge Conflicts</a></li><li class="toc-l3"><a href="#merge-tools" data-target="merge-tools">Merge Tools</a></li><li class="toc-l3"><a href="#squash-merge" data-target="squash-merge">Squash Merge</a></li><li class="toc-l2"><a href="#6-rebasing" data-target="6-rebasing">6. Rebasing</a></li><li class="toc-l3"><a href="#why-rebase" data-target="why-rebase">Why Rebase</a></li><li class="toc-l3"><a href="#when-not-to-rebase" data-target="when-not-to-rebase">When NOT to Rebase</a></li><li class="toc-l3"><a href="#handling-rebase-conflicts" data-target="handling-rebase-conflicts">Handling Rebase Conflicts</a></li><li class="toc-l3"><a href="#rebase-onto" data-target="rebase-onto">Rebase onto</a></li><li class="toc-l2"><a href="#7-cherry-pick" data-target="7-cherry-pick">7. Cherry-Pick</a></li><li class="toc-l3"><a href="#when-to-cherry-pick" data-target="when-to-cherry-pick">When to Cherry-Pick</a></li><li class="toc-l3"><a href="#when-not-to-cherry-pick" data-target="when-not-to-cherry-pick">When NOT to Cherry-Pick</a></li><li class="toc-l2"><a href="#8-reset-restore-revert" data-target="8-reset-restore-revert">8. Reset, Restore &amp; Revert</a></li><li class="toc-l3"><a href="#git-reset-move-the-branch-pointer" data-target="git-reset-move-the-branch-pointer">git reset — Move the Branch Pointer</a></li><li class="toc-l3"><a href="#git-restore-restore-file-contents" data-target="git-restore-restore-file-contents">git restore — Restore File Contents</a></li><li class="toc-l3"><a href="#git-revert-undo-a-commit-safely" data-target="git-revert-undo-a-commit-safely">git revert — Undo a Commit Safely</a></li><li class="toc-l3"><a href="#when-to-use-which" data-target="when-to-use-which">When to Use Which</a></li><li class="toc-l2"><a href="#9-stash" data-target="9-stash">9. Stash</a></li><li class="toc-l3"><a href="#retrieving-stashes" data-target="retrieving-stashes">Retrieving Stashes</a></li><li class="toc-l3"><a href="#stash-cleanup" data-target="stash-cleanup">Stash Cleanup</a></li><li class="toc-l3"><a href="#stash-to-a-branch" data-target="stash-to-a-branch">Stash to a Branch</a></li><li class="toc-l3"><a href="#practical-pattern-quick-context-switch" data-target="practical-pattern-quick-context-switch">Practical Pattern: Quick Context Switch</a></li><li class="toc-l2"><a href="#10-the-reflog-your-safety-net" data-target="10-the-reflog-your-safety-net">10. The Reflog — Your Safety Net</a></li><li class="toc-l3"><a href="#recovery-examples" data-target="recovery-examples">Recovery Examples</a></li><li class="toc-l3"><a href="#reflog-expiration" data-target="reflog-expiration">Reflog Expiration</a></li><li class="toc-l2"><a href="#11-interactive-rebase" data-target="11-interactive-rebase">11. Interactive Rebase</a></li><li class="toc-l3"><a href="#commands" data-target="commands">Commands</a></li><li class="toc-l3"><a href="#practical-clean-up-before-a-pr" data-target="practical-clean-up-before-a-pr">Practical: Clean Up Before a PR</a></li><li class="toc-l3"><a href="#splitting-a-commit" data-target="splitting-a-commit">Splitting a Commit</a></li><li class="toc-l3"><a href="#autosquash" data-target="autosquash">Autosquash</a></li><li class="toc-l2"><a href="#12-worktrees" data-target="12-worktrees">12. Worktrees</a></li><li class="toc-l3"><a href="#when-to-use-worktrees" data-target="when-to-use-worktrees">When to Use Worktrees</a></li><li class="toc-l3"><a href="#worktrees-vs-stash" data-target="worktrees-vs-stash">Worktrees vs Stash</a></li><li class="toc-l2"><a href="#13-remotes-fetch-vs-pull" data-target="13-remotes-fetch-vs-pull">13. Remotes &amp; Fetch vs Pull</a></li><li class="toc-l3"><a href="#remote-tracking-branches" data-target="remote-tracking-branches">Remote Tracking Branches</a></li><li class="toc-l3"><a href="#fetch-vs-pull" data-target="fetch-vs-pull">Fetch vs Pull</a></li><li class="toc-l3"><a href="#remote-management" data-target="remote-management">Remote Management</a></li><li class="toc-l3"><a href="#push" data-target="push">Push</a></li><li class="toc-l3"><a href="#force-push-when-and-how" data-target="force-push-when-and-how">Force Push — When and How</a></li><li class="toc-l3"><a href="#upstream-tracking" data-target="upstream-tracking">Upstream Tracking</a></li><li class="toc-l2"><a href="#14-tags" data-target="14-tags">14. Tags</a></li><li class="toc-l3"><a href="#lightweight-vs-annotated" data-target="lightweight-vs-annotated">Lightweight vs Annotated</a></li><li class="toc-l3"><a href="#tag-operations" data-target="tag-operations">Tag Operations</a></li><li class="toc-l3"><a href="#semantic-versioning-with-tags" data-target="semantic-versioning-with-tags">Semantic Versioning with Tags</a></li><li class="toc-l2"><a href="#15-diff-log-blame" data-target="15-diff-log-blame">15. Diff, Log &amp; Blame</a></li><li class="toc-l3"><a href="#git-diff" data-target="git-diff">git diff</a></li><li class="toc-l3"><a href="#two-dot-vs-three-dot" data-target="two-dot-vs-three-dot">Two-Dot vs Three-Dot</a></li><li class="toc-l3"><a href="#git-log" data-target="git-log">git log</a></li><li class="toc-l3"><a href="#git-blame" data-target="git-blame">git blame</a></li><li class="toc-l3"><a href="#git-shortlog" data-target="git-shortlog">git shortlog</a></li><li class="toc-l2"><a href="#16-bisect" data-target="16-bisect">16. Bisect</a></li><li class="toc-l3"><a href="#automated-bisect" data-target="automated-bisect">Automated Bisect</a></li><li class="toc-l3"><a href="#skip" data-target="skip">Skip</a></li><li class="toc-l2"><a href="#17-hooks" data-target="17-hooks">17. Hooks</a></li><li class="toc-l3"><a href="#common-hooks" data-target="common-hooks">Common Hooks</a></li><li class="toc-l3"><a href="#setting-up-hooks" data-target="setting-up-hooks">Setting Up Hooks</a></li><li class="toc-l3"><a href="#sharing-hooks-with-the-team" data-target="sharing-hooks-with-the-team">Sharing Hooks with the Team</a></li><li class="toc-l3"><a href="#bypassing-hooks" data-target="bypassing-hooks">Bypassing Hooks</a></li><li class="toc-l2"><a href="#18-submodules-subtrees" data-target="18-submodules-subtrees">18. Submodules &amp; Subtrees</a></li><li class="toc-l3"><a href="#submodules" data-target="submodules">Submodules</a></li><li class="toc-l3"><a href="#subtrees" data-target="subtrees">Subtrees</a></li><li class="toc-l2"><a href="#19-rewriting-history" data-target="19-rewriting-history">19. Rewriting History</a></li><li class="toc-l3"><a href="#amending-the-last-commit" data-target="amending-the-last-commit">Amending the Last Commit</a></li><li class="toc-l3"><a href="#filter-repo-replacing-filter-branch" data-target="filter-repo-replacing-filter-branch">Filter-Repo (Replacing filter-branch)</a></li><li class="toc-l3"><a href="#removing-sensitive-data" data-target="removing-sensitive-data">Removing Sensitive Data</a></li><li class="toc-l2"><a href="#20-configuration-that-matters" data-target="20-configuration-that-matters">20. Configuration That Matters</a></li><li class="toc-l3"><a href="#configuration-levels" data-target="configuration-levels">Configuration Levels</a></li><li class="toc-l3"><a href="#essential-settings" data-target="essential-settings">Essential Settings</a></li><li class="toc-l3"><a href="#rerere-reuse-recorded-resolution" data-target="rerere-reuse-recorded-resolution">rerere — Reuse Recorded Resolution</a></li><li class="toc-l3"><a href="#useful-aliases" data-target="useful-aliases">Useful Aliases</a></li><li class="toc-l3"><a href="#conditional-includes" data-target="conditional-includes">Conditional Includes</a></li><li class="toc-l3"><a href="#gitattributes" data-target="gitattributes">.gitattributes</a></li><li class="toc-l2"><a href="#21-recovery-recipes" data-target="21-recovery-recipes">21. Recovery Recipes</a></li><li class="toc-l3"><a href="#i-committed-to-the-wrong-branch" data-target="i-committed-to-the-wrong-branch">"I committed to the wrong branch"</a></li><li class="toc-l3"><a href="#i-need-to-undo-a-push" data-target="i-need-to-undo-a-push">"I need to undo a push"</a></li><li class="toc-l3"><a href="#i-deleted-a-branch-i-need" data-target="i-deleted-a-branch-i-need">"I deleted a branch I need"</a></li><li class="toc-l3"><a href="#i-messed-up-a-rebase" data-target="i-messed-up-a-rebase">"I messed up a rebase"</a></li><li class="toc-l3"><a href="#i-committed-a-huge-file-and-cant-push" data-target="i-committed-a-huge-file-and-cant-push">"I committed a huge file and can't push"</a></li><li class="toc-l3"><a href="#i-have-merge-conflicts-i-cant-resolve" data-target="i-have-merge-conflicts-i-cant-resolve">"I have merge conflicts I can't resolve"</a></li><li class="toc-l3"><a href="#i-accidentally-ran-git-reset-hard" data-target="i-accidentally-ran-git-reset-hard">"I accidentally ran git reset --hard"</a></li><li class="toc-l3"><a href="#my-working-tree-is-a-mess-and-i-want-to-start-clean" data-target="my-working-tree-is-a-mess-and-i-want-to-start-clean">"My working tree is a mess and I want to start clean"</a></li><li class="toc-l3"><a href="#i-need-the-version-of-a-file-from-another-branch" data-target="i-need-the-version-of-a-file-from-another-branch">"I need the version of a file from another branch"</a></li><li class="toc-l3"><a href="#i-want-to-find-when-a-bug-was-introduced" data-target="i-want-to-find-when-a-bug-was-introduced">"I want to find when a bug was introduced"</a></li><li class="toc-l2"><a href="#22-common-mistakes" data-target="22-common-mistakes">22. Common Mistakes</a></li><li class="toc-l3"><a href="#1-committing-secrets" data-target="1-committing-secrets">1. Committing Secrets</a></li><li class="toc-l3"><a href="#2-working-directly-on-main" data-target="2-working-directly-on-main">2. Working Directly on Main</a></li><li class="toc-l3"><a href="#3-giant-commits" data-target="3-giant-commits">3. Giant Commits</a></li><li class="toc-l3"><a href="#4-meaningless-commit-messages" data-target="4-meaningless-commit-messages">4. Meaningless Commit Messages</a></li><li class="toc-l3"><a href="#5-never-fetching" data-target="5-never-fetching">5. Never Fetching</a></li><li class="toc-l3"><a href="#6-using-git-pull-without-thinking" data-target="6-using-git-pull-without-thinking">6. Using git pull Without Thinking</a></li><li class="toc-l3"><a href="#7-force-pushing-without-force-with-lease" data-target="7-force-pushing-without-force-with-lease">7. Force-Pushing Without --force-with-lease</a></li><li class="toc-l3"><a href="#8-not-using-gitignore" data-target="8-not-using-gitignore">8. Not Using .gitignore</a></li><li class="toc-l3"><a href="#9-confusing-reset-restore-and-revert" data-target="9-confusing-reset-restore-and-revert">9. Confusing reset, restore, and revert</a></li><li class="toc-l3"><a href="#10-not-knowing-about-the-reflog" data-target="10-not-knowing-about-the-reflog">10. Not Knowing About the Reflog</a></li><li class="toc-l2"><a href="#quick-reference" data-target="quick-reference">Quick Reference</a></li><li class="toc-l3"><a href="#the-daily-workflow" data-target="the-daily-workflow">The Daily Workflow</a></li><li class="toc-l3"><a href="#undo-cheat-sheet" data-target="undo-cheat-sheet">Undo Cheat Sheet</a></li><li class="toc-l3"><a href="#object-model-cheat-sheet" data-target="object-model-cheat-sheet">Object Model Cheat Sheet</a></li></ul></nav></aside>
+  <main><h1 id="git-deep-dive">Git Deep Dive</h1>
+<p>A practical guide to Git focused on understanding the internals well enough to use the tool fluently and recover from anything. Assumes you can commit, push, pull, and branch. Skips the tutorial-level material and goes straight to the machinery, the workflows that matter, and the recovery techniques that save your work.</p>
+<p>Primary references: <a href="https://git-scm.com/book/en/v2">Pro Git (free book)</a>, <a href="https://git-scm.com/docs">Git Reference</a>, <a href="https://git-scm.com/book/en/v2/Git-Internals-Plumbing-and-Porcelain">Git Internals</a></p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#1-the-object-model">The Object Model</a></li>
+<li><a href="#2-refs-head--the-ref-log">Refs, HEAD &amp; the Ref Log</a></li>
+<li><a href="#3-the-index-staging-area">The Index (Staging Area)</a></li>
+<li><a href="#4-commits-in-depth">Commits in Depth</a></li>
+<li><a href="#5-branching--merging">Branching &amp; Merging</a></li>
+<li><a href="#6-rebasing">Rebasing</a></li>
+<li><a href="#7-cherry-pick">Cherry-Pick</a></li>
+<li><a href="#8-reset-restore--revert">Reset, Restore &amp; Revert</a></li>
+<li><a href="#9-stash">Stash</a></li>
+<li><a href="#10-the-reflog--your-safety-net">The Reflog — Your Safety Net</a></li>
+<li><a href="#11-interactive-rebase">Interactive Rebase</a></li>
+<li><a href="#12-worktrees">Worktrees</a></li>
+<li><a href="#13-remotes--fetch-vs-pull">Remotes &amp; Fetch vs Pull</a></li>
+<li><a href="#14-tags">Tags</a></li>
+<li><a href="#15-diff-log--blame">Diff, Log &amp; Blame</a></li>
+<li><a href="#16-bisect">Bisect</a></li>
+<li><a href="#17-hooks">Hooks</a></li>
+<li><a href="#18-submodules--subtrees">Submodules &amp; Subtrees</a></li>
+<li><a href="#19-rewriting-history">Rewriting History</a></li>
+<li><a href="#20-configuration-that-matters">Configuration That Matters</a></li>
+<li><a href="#21-recovery-recipes">Recovery Recipes</a></li>
+<li><a href="#22-common-mistakes">Common Mistakes</a></li>
+</ol>
+<hr>
+<h2 id="1-the-object-model">1. The Object Model</h2>
+<p>Reference: <a href="https://git-scm.com/book/en/v2/Git-Internals-Git-Objects">Git Objects</a></p>
+<p>Git is a content-addressable filesystem. Everything is stored as objects in <code>.git/objects/</code>, identified by their SHA-1 hash. There are four object types:</p>
+<h3 id="blobs-file-contents">Blobs — File Contents</h3>
+<p>A blob stores the contents of a single file. It has no filename, no permissions — just raw content.</p>
+<pre><code class="language-bash"># see the hash of a file's current contents
+git hash-object README.md
+
+# see the contents of a blob
+git cat-file -p &lt;hash&gt;
+</code></pre>
+<p>Two files with identical contents share the same blob, even across commits and branches. Git deduplicates automatically.</p>
+<h3 id="trees-directories">Trees — Directories</h3>
+<p>A tree maps filenames to blobs (files) and other trees (subdirectories):</p>
+<pre><code class="language-bash">git cat-file -p HEAD^{tree}
+# 100644 blob a1b2c3...   README.md
+# 100644 blob d4e5f6...   main.py
+# 040000 tree 7a8b9c...   src/
+</code></pre>
+<p>The <code>100644</code> is the file mode (regular file). <code>040000</code> is a directory. <code>100755</code> is executable.</p>
+<h3 id="commits-snapshots">Commits — Snapshots</h3>
+<p>A commit points to a tree (the root directory at that moment), one or more parent commits, and metadata:</p>
+<pre><code class="language-bash">git cat-file -p HEAD
+# tree 4b825dc...
+# parent 8a7b6c5...
+# author Alice &lt;alice@example.com&gt; 1700000000 -0500
+# committer Alice &lt;alice@example.com&gt; 1700000000 -0500
+#
+# Fix the login bug
+</code></pre>
+<p>A commit is a snapshot of the entire repository, not a diff. Git reconstructs diffs by comparing the trees of two commits.</p>
+<h3 id="tags-named-objects">Tags — Named Objects</h3>
+<p>An annotated tag is an object that points to a commit with a message, tagger, and optional GPG signature. Lightweight tags are just refs (see Section 2).</p>
+<h3 id="the-whole-picture">The Whole Picture</h3>
+<pre><code class="language-text">commit ──→ tree ──→ blob (file contents)
+  │          │
+  │          └──→ tree (subdirectory) ──→ blob
+  │
+  └──→ parent commit ──→ tree ──→ ...
+</code></pre>
+<p>Every commit captures the full state of the repository through its tree. Branches, tags, and HEAD are just pointers to commits.</p>
+<h3 id="why-this-matters">Why This Matters</h3>
+<ul>
+<li><strong>Nothing is ever truly lost</strong> until garbage collection runs. If you know a commit's hash, you can get it back.</li>
+<li><strong>Git is fast</strong> because comparing two snapshots is just comparing tree hashes — if the hash is the same, the entire subtree is identical, no need to recurse.</li>
+<li><strong>Branches are cheap</strong> — creating a branch is writing 41 bytes to a file (the hash).</li>
+<li><strong>Understanding the object model makes every other Git concept obvious.</strong> A merge is just a commit with two parents. A rebase is copying commits to new parents. A reset is moving a pointer.</li>
+</ul>
+<hr>
+<h2 id="2-refs-head-the-ref-log">2. Refs, HEAD &amp; the Ref Log</h2>
+<p>Reference: <a href="https://git-scm.com/book/en/v2/Git-Internals-Git-References">Git References</a></p>
+<h3 id="refs-are-just-pointers">Refs Are Just Pointers</h3>
+<p>A ref is a file containing a commit hash:</p>
+<pre><code class="language-bash">cat .git/refs/heads/main
+# 8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b
+
+cat .git/refs/tags/v1.0.0
+# 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b
+</code></pre>
+<p>That's all a branch is — a file containing 40 hex characters. Creating a branch is writing a new file. Deleting a branch is removing it. Moving a branch is changing the hash in the file.</p>
+<h3 id="head">HEAD</h3>
+<p><code>HEAD</code> is a special ref that points to the current branch (or directly to a commit in detached state):</p>
+<pre><code class="language-bash">cat .git/HEAD
+# ref: refs/heads/main    ← normal: HEAD points to a branch
+
+# or in detached HEAD state:
+# 8a7b6c5d4e3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b
+</code></pre>
+<p>When you commit, Git:
+1. Creates a new commit object whose parent is the commit HEAD currently points to
+2. Updates the branch ref that HEAD points to → the new commit</p>
+<p>This is why committing on a detached HEAD doesn't update any branch.</p>
+<h3 id="ref-syntax">Ref Syntax</h3>
+<p>Git has a rich syntax for referring to commits relative to refs:</p>
+<table>
+<thead>
+<tr>
+<th>Syntax</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>HEAD</code></td>
+<td>Current commit</td>
+</tr>
+<tr>
+<td><code>HEAD~1</code> or <code>HEAD~</code></td>
+<td>Parent of HEAD</td>
+</tr>
+<tr>
+<td><code>HEAD~3</code></td>
+<td>Great-grandparent of HEAD (3 commits back)</td>
+</tr>
+<tr>
+<td><code>HEAD^</code></td>
+<td>First parent (same as <code>HEAD~1</code> for non-merge commits)</td>
+</tr>
+<tr>
+<td><code>HEAD^2</code></td>
+<td>Second parent (the merged branch's tip)</td>
+</tr>
+<tr>
+<td><code>main</code></td>
+<td>Tip of the main branch</td>
+</tr>
+<tr>
+<td><code>origin/main</code></td>
+<td>Last known tip of main on the remote</td>
+</tr>
+<tr>
+<td><code>HEAD@{2}</code></td>
+<td>Where HEAD was 2 moves ago (reflog)</td>
+</tr>
+<tr>
+<td><code>main@{yesterday}</code></td>
+<td>Where main pointed yesterday</td>
+</tr>
+<tr>
+<td><code>@{-1}</code></td>
+<td>The branch you were on before the last checkout</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-bash"># these are all equivalent ways to see a commit
+git show HEAD~1
+git show main~1
+git show abc1234
+</code></pre>
+<h3 id="detached-head">Detached HEAD</h3>
+<p>You're in detached HEAD state when HEAD points directly to a commit instead of a branch:</p>
+<pre><code class="language-bash"># these put you in detached HEAD
+git checkout abc1234
+git checkout v1.0.0
+git checkout origin/main
+</code></pre>
+<p>Any commits you make won't be on a branch. If you switch away, they become unreachable (but recoverable via the reflog). To keep them, create a branch:</p>
+<pre><code class="language-bash">git checkout -b my-branch
+</code></pre>
+<hr>
+<h2 id="3-the-index-staging-area">3. The Index (Staging Area)</h2>
+<p>Reference: <a href="https://git-scm.com/book/en/v2/Git-Basics-Recording-Changes-to-the-Repository">Git Staging Area</a></p>
+<p>The index is the staging area between your working tree and the next commit. It's a binary file at <code>.git/index</code> that contains the list of files, their modes, sizes, timestamps, and blob hashes.</p>
+<h3 id="three-trees-model">Three Trees Model</h3>
+<p>Git operates on three trees simultaneously:</p>
+<pre><code class="language-text">Working Tree          Index (Stage)          HEAD (Last Commit)
+────────────          ─────────────          ──────────────────
+your actual files     what the next          what the last
+on disk               commit will contain    commit contained
+</code></pre>
+<pre><code class="language-bash"># see the difference between working tree and index
+git diff
+
+# see the difference between index and HEAD
+git diff --staged   # (or --cached, same thing)
+
+# see the difference between working tree and HEAD
+git diff HEAD
+</code></pre>
+<h3 id="staging-granularly">Staging Granularly</h3>
+<pre><code class="language-bash"># stage everything in a file
+git add file.py
+
+# stage hunks interactively
+git add -p file.py
+# y = stage this hunk
+# n = skip
+# s = split into smaller hunks
+# e = manually edit the hunk
+
+# stage parts of a new (untracked) file
+git add -N file.py   # track the file but don't stage content
+git add -p file.py   # now -p works on the new file
+</code></pre>
+<p><code>git add -p</code> is the single most useful Git feature for clean commits. It lets you commit logically related changes even when you've made multiple unrelated edits to the same file.</p>
+<h3 id="unstaging">Unstaging</h3>
+<pre><code class="language-bash"># unstage a file (keep changes in working tree)
+git restore --staged file.py
+
+# unstage everything
+git restore --staged .
+
+# the old way (still works)
+git reset HEAD file.py
+</code></pre>
+<h3 id="the-index-and-merge-conflicts">The Index and Merge Conflicts</h3>
+<p>During a conflict, the index holds three versions of each conflicted file:</p>
+<table>
+<thead>
+<tr>
+<th>Stage</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stage 1</td>
+<td>Common ancestor (base)</td>
+</tr>
+<tr>
+<td>Stage 2</td>
+<td>Ours (current branch)</td>
+</tr>
+<tr>
+<td>Stage 3</td>
+<td>Theirs (incoming branch)</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-bash"># see all stages during a conflict
+git ls-files -u
+# 100644 abc1234 1  file.py    ← base
+# 100644 def5678 2  file.py    ← ours
+# 100644 9ab0cde 3  file.py    ← theirs
+
+# check out a specific side
+git checkout --ours file.py
+git checkout --theirs file.py
+</code></pre>
+<p>When you <code>git add</code> a conflicted file, the three stages collapse into stage 0 (resolved).</p>
+<hr>
+<h2 id="4-commits-in-depth">4. Commits in Depth</h2>
+<h3 id="anatomy-of-a-commit">Anatomy of a Commit</h3>
+<p>Every commit contains exactly:
+- A pointer to a tree (snapshot of the repository)
+- Zero or more parent pointers (zero for the initial commit, one for normal commits, two+ for merges)
+- Author (who wrote the change) — name, email, timestamp
+- Committer (who applied the change) — name, email, timestamp
+- Message</p>
+<p>Author and committer differ when patches are emailed (author is the writer, committer is the applier) or after a rebase (author is preserved, committer changes).</p>
+<h3 id="writing-good-commit-messages">Writing Good Commit Messages</h3>
+<pre><code class="language-text">Short summary line (50 chars or less)
+
+Longer explanation of WHY this change was made. Wrap at 72 characters.
+Explain the problem this solves, not what the code does (the diff
+shows that). Reference issues if relevant.
+
+Fixes #42
+</code></pre>
+<p>The 50/72 convention exists because <code>git log --oneline</code>, GitHub, and many tools truncate or wrap at these widths.</p>
+<h3 id="empty-commits">Empty Commits</h3>
+<pre><code class="language-bash"># create a commit with no file changes (useful for triggering CI)
+git commit --allow-empty -m &quot;Trigger rebuild&quot;
+</code></pre>
+<h3 id="signing-commits">Signing Commits</h3>
+<pre><code class="language-bash"># configure GPG signing
+git config --global commit.gpgsign true
+git config --global user.signingkey &lt;key-id&gt;
+
+# or use SSH signing (simpler, works with GitHub)
+git config --global gpg.format ssh
+git config --global user.signingkey ~/.ssh/id_ed25519.pub
+
+# verify a commit's signature
+git verify-commit HEAD
+git log --show-signature
+</code></pre>
+<hr>
+<h2 id="5-branching-merging">5. Branching &amp; Merging</h2>
+<p>Reference: <a href="https://git-scm.com/book/en/v2/Git-Branching-Basic-Branching-and-Merging">Branching and Merging</a></p>
+<h3 id="branch-operations">Branch Operations</h3>
+<pre><code class="language-bash"># create a branch
+git branch feature
+
+# create and switch to it
+git switch -c feature
+git checkout -b feature     # older equivalent
+
+# switch branches
+git switch main
+git checkout main           # older equivalent
+
+# rename a branch
+git branch -m old-name new-name
+
+# delete a merged branch
+git branch -d feature
+
+# delete an unmerged branch (force)
+git branch -D feature
+
+# list branches
+git branch          # local
+git branch -r       # remote-tracking
+git branch -a       # all
+git branch -v       # with last commit
+git branch --merged # branches merged into current
+</code></pre>
+<h3 id="merge-strategies">Merge Strategies</h3>
+<p>When you run <code>git merge feature</code>, Git chooses a strategy:</p>
+<p><strong>Fast-Forward</strong> — when the current branch hasn't diverged:</p>
+<pre><code class="language-text">Before:  main ──A──B     feature ──C──D
+After:   main ──A──B──C──D
+</code></pre>
+<p>No merge commit. The branch pointer just moves forward. The history is linear.</p>
+<pre><code class="language-bash"># force a merge commit even if fast-forward is possible
+git merge --no-ff feature
+
+# only merge if fast-forward is possible
+git merge --ff-only feature
+</code></pre>
+<p><strong>Three-Way Merge</strong> — when both branches have new commits:</p>
+<pre><code class="language-text">Before:  main ──A──B──E
+                  \
+         feature   C──D
+
+After:   main ──A──B──E──M    (M is the merge commit)
+                  \      /
+         feature   C──D
+</code></pre>
+<p>Git finds the common ancestor (A), then combines the changes from both branches.</p>
+<p><strong>Recursive</strong> (default for two-way merges) handles the case where the common ancestor itself has multiple merge bases by recursively merging the bases.</p>
+<h3 id="merge-conflicts">Merge Conflicts</h3>
+<p>A conflict happens when both branches modified the same lines:</p>
+<pre><code class="language-text">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+our version of the code
+=======
+their version of the code
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; feature
+</code></pre>
+<p>Resolution workflow:</p>
+<pre><code class="language-bash"># 1. see which files are conflicted
+git status
+
+# 2. edit each conflicted file — remove the markers, keep the right code
+
+# 3. mark as resolved
+git add resolved-file.py
+
+# 4. complete the merge
+git commit
+
+# or abort the whole merge
+git merge --abort
+</code></pre>
+<h3 id="merge-tools">Merge Tools</h3>
+<pre><code class="language-bash"># use a visual merge tool
+git mergetool
+
+# configure a default tool
+git config --global merge.tool vimdiff
+# or: meld, kdiff3, opendiff, vscode
+</code></pre>
+<h3 id="squash-merge">Squash Merge</h3>
+<p>Collapse an entire branch into a single commit on the target branch:</p>
+<pre><code class="language-bash">git merge --squash feature
+git commit -m &quot;Add feature X&quot;
+</code></pre>
+<p>The feature branch's individual commits don't appear in the target branch's history. Useful for keeping a clean main history from messy feature branches.</p>
+<p><strong>Trade-off</strong>: you lose the granular commit history. The feature branch technically isn't "merged" in Git's eyes (<code>git branch --merged</code> won't list it), so you need to delete it manually.</p>
+<hr>
+<h2 id="6-rebasing">6. Rebasing</h2>
+<p>Reference: <a href="https://git-scm.com/book/en/v2/Git-Branching-Rebasing">Git Rebasing</a></p>
+<p>Rebase replays commits from one branch onto another, creating new commits with new hashes but the same changes:</p>
+<pre><code class="language-text">Before:  main ──A──B──E
+                  \
+         feature   C──D
+
+After:   main ──A──B──E
+                       \
+         feature        C'──D'   (C' and D' are new commits)
+</code></pre>
+<pre><code class="language-bash"># rebase feature onto the tip of main
+git switch feature
+git rebase main
+
+# or, equivalently
+git rebase main feature
+</code></pre>
+<h3 id="why-rebase">Why Rebase</h3>
+<ul>
+<li><strong>Linear history</strong>: the feature branch's commits appear as if they were written after main's latest commit. No merge commits.</li>
+<li><strong>Easier code review</strong>: each commit in a PR applies cleanly on top of the base branch.</li>
+<li><strong>Cleaner <code>git log</code></strong>: one straight line instead of a tangle of merge commits.</li>
+</ul>
+<h3 id="when-not-to-rebase">When NOT to Rebase</h3>
+<p><strong>Never rebase commits that have been pushed and shared.</strong> Rebasing rewrites history — it creates new commits with different hashes. If someone else has the old commits, their history diverges from yours.</p>
+<p>The rule: <strong>rebase local commits before pushing. Merge after pushing.</strong></p>
+<h3 id="handling-rebase-conflicts">Handling Rebase Conflicts</h3>
+<pre><code class="language-bash">git rebase main
+# CONFLICT in file.py
+
+# 1. resolve the conflict in file.py
+# 2. stage the resolution
+git add file.py
+
+# 3. continue rebasing
+git rebase --continue
+
+# or abort and go back to where you were
+git rebase --abort
+
+# or skip this commit entirely
+git rebase --skip
+</code></pre>
+<p>During a rebase, you might resolve the same conflict multiple times if multiple commits touch the same lines. <code>git rerere</code> (Section 20) can automate this.</p>
+<h3 id="rebase-onto">Rebase onto</h3>
+<p>Transplant a branch from one base to another:</p>
+<pre><code class="language-bash"># move feature from branching off develop to branching off main
+git rebase --onto main develop feature
+</code></pre>
+<pre><code class="language-text">Before:  main ──A──B
+                  \
+         develop   C──D
+                        \
+         feature         E──F
+
+After:   main ──A──B──E'──F'    (feature is now based on main)
+         develop ──C──D          (unchanged)
+</code></pre>
+<hr>
+<h2 id="7-cherry-pick">7. Cherry-Pick</h2>
+<p>Reference: <a href="https://git-scm.com/docs/git-cherry-pick">git-cherry-pick</a></p>
+<p>Cherry-pick applies the changes from a specific commit onto the current branch:</p>
+<pre><code class="language-bash"># apply a single commit
+git cherry-pick abc1234
+
+# apply multiple commits
+git cherry-pick abc1234 def5678
+
+# apply a range (exclusive start, inclusive end)
+git cherry-pick abc1234..def5678
+
+# apply without committing (stage the changes)
+git cherry-pick --no-commit abc1234
+</code></pre>
+<h3 id="when-to-cherry-pick">When to Cherry-Pick</h3>
+<ul>
+<li><strong>Hotfixes</strong>: apply a fix from a development branch to a release branch</li>
+<li><strong>Backports</strong>: bring a specific feature commit back to an older version</li>
+<li><strong>Selective merges</strong>: when you want one commit from a branch but not the rest</li>
+</ul>
+<h3 id="when-not-to-cherry-pick">When NOT to Cherry-Pick</h3>
+<ul>
+<li>When a regular merge or rebase would work — cherry-pick creates duplicate commits (same change, different hashes). If both branches are later merged, you get the same change applied twice (Git usually handles this cleanly, but not always).</li>
+</ul>
+<hr>
+<h2 id="8-reset-restore-revert">8. Reset, Restore &amp; Revert</h2>
+<p>These three commands sound similar but do fundamentally different things.</p>
+<h3 id="git-reset-move-the-branch-pointer"><code>git reset</code> — Move the Branch Pointer</h3>
+<p>Reference: <a href="https://git-scm.com/docs/git-reset">git-reset</a></p>
+<p><code>reset</code> moves the current branch pointer to a different commit. The three modes control what happens to the index and working tree:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Branch pointer</th>
+<th>Index (staging)</th>
+<th>Working tree</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--soft</code></td>
+<td>Moves</td>
+<td>Unchanged</td>
+<td>Unchanged</td>
+</tr>
+<tr>
+<td><code>--mixed</code> (default)</td>
+<td>Moves</td>
+<td>Reset to match commit</td>
+<td>Unchanged</td>
+</tr>
+<tr>
+<td><code>--hard</code></td>
+<td>Moves</td>
+<td>Reset to match commit</td>
+<td>Reset to match commit</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-bash"># undo the last commit but keep changes staged
+git reset --soft HEAD~1
+
+# undo the last commit and unstage changes (keep in working tree)
+git reset HEAD~1
+
+# undo the last commit and discard all changes (destructive!)
+git reset --hard HEAD~1
+
+# unstage a file (doesn't touch working tree)
+git reset HEAD file.py
+</code></pre>
+<p><strong><code>--soft</code></strong> is useful when you want to redo a commit (wrong message, forgot a file, want to squash several commits into one).</p>
+<p><strong><code>--hard</code></strong> is destructive — uncommitted changes are gone (but committed changes are recoverable via the reflog).</p>
+<h3 id="git-restore-restore-file-contents"><code>git restore</code> — Restore File Contents</h3>
+<p>Reference: <a href="https://git-scm.com/docs/git-restore">git-restore</a></p>
+<p><code>restore</code> operates on files, not branches. It's the modern replacement for the file-targeting uses of <code>git checkout</code>:</p>
+<pre><code class="language-bash"># discard working tree changes (restore from index)
+git restore file.py
+
+# discard changes to all tracked files
+git restore .
+
+# restore from a specific commit
+git restore --source HEAD~3 file.py
+
+# unstage a file (restore index from HEAD)
+git restore --staged file.py
+
+# restore both index and working tree from a commit
+git restore --source HEAD~1 --staged --worktree file.py
+</code></pre>
+<h3 id="git-revert-undo-a-commit-safely"><code>git revert</code> — Undo a Commit Safely</h3>
+<p>Reference: <a href="https://git-scm.com/docs/git-revert">git-revert</a></p>
+<p><code>revert</code> creates a <strong>new commit</strong> that undoes the changes of a previous commit. It doesn't rewrite history — safe for shared branches:</p>
+<pre><code class="language-bash"># revert a single commit
+git revert abc1234
+
+# revert without auto-committing
+git revert --no-commit abc1234
+
+# revert a merge commit (must specify which parent to keep)
+git revert -m 1 &lt;merge-commit&gt;
+# -m 1 = keep the first parent (the branch you merged INTO)
+# -m 2 = keep the second parent (the branch you merged FROM)
+</code></pre>
+<h3 id="when-to-use-which">When to Use Which</h3>
+<table>
+<thead>
+<tr>
+<th>Situation</th>
+<th>Command</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Undo last commit, redo it differently</td>
+<td><code>git reset --soft HEAD~1</code></td>
+</tr>
+<tr>
+<td>Completely discard last N commits (local only)</td>
+<td><code>git reset --hard HEAD~N</code></td>
+</tr>
+<tr>
+<td>Undo a commit on a shared branch</td>
+<td><code>git revert &amp;lt;hash&amp;gt;</code></td>
+</tr>
+<tr>
+<td>Discard uncommitted changes to a file</td>
+<td><code>git restore file.py</code></td>
+</tr>
+<tr>
+<td>Unstage a file</td>
+<td><code>git restore --staged file.py</code></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="9-stash">9. Stash</h2>
+<p>Reference: <a href="https://git-scm.com/docs/git-stash">git-stash</a></p>
+<p>Stash temporarily shelves uncommitted changes so you can work on something else:</p>
+<pre><code class="language-bash"># stash everything (tracked files with changes)
+git stash
+
+# stash with a description
+git stash push -m &quot;work in progress on login flow&quot;
+
+# stash including untracked files
+git stash -u
+
+# stash including untracked AND ignored files
+git stash -a
+
+# stash specific files
+git stash push -m &quot;partial work&quot; file1.py file2.py
+
+# stash interactively (by hunk)
+git stash push -p
+</code></pre>
+<h3 id="retrieving-stashes">Retrieving Stashes</h3>
+<pre><code class="language-bash"># list stashes
+git stash list
+# stash@{0}: On main: work in progress on login flow
+# stash@{1}: WIP on feature: abc1234 Fix header
+
+# apply the most recent stash (keep it in the stash list)
+git stash apply
+
+# apply and remove from list
+git stash pop
+
+# apply a specific stash
+git stash apply stash@{2}
+
+# see what's in a stash
+git stash show stash@{0}       # summary
+git stash show -p stash@{0}    # full diff
+</code></pre>
+<h3 id="stash-cleanup">Stash Cleanup</h3>
+<pre><code class="language-bash"># drop a specific stash
+git stash drop stash@{1}
+
+# clear all stashes
+git stash clear
+</code></pre>
+<h3 id="stash-to-a-branch">Stash to a Branch</h3>
+<p>If a stash conflicts with the current state, apply it to a new branch:</p>
+<pre><code class="language-bash">git stash branch new-feature stash@{0}
+# creates the branch, checks out the commit from when you stashed,
+# applies the stash, and drops it
+</code></pre>
+<h3 id="practical-pattern-quick-context-switch">Practical Pattern: Quick Context Switch</h3>
+<pre><code class="language-bash"># you're mid-work on feature, need to fix a bug on main
+git stash push -m &quot;feature WIP&quot;
+git switch main
+# ... fix the bug, commit ...
+git switch feature
+git stash pop
+</code></pre>
+<hr>
+<h2 id="10-the-reflog-your-safety-net">10. The Reflog — Your Safety Net</h2>
+<p>Reference: <a href="https://git-scm.com/docs/git-reflog">git-reflog</a></p>
+<p>The reflog records every time HEAD or a branch ref moves. It's local to your machine and is the primary recovery mechanism for "I lost my commits."</p>
+<pre><code class="language-bash"># see HEAD's movement history
+git reflog
+# abc1234 HEAD@{0}: commit: Add login page
+# def5678 HEAD@{1}: checkout: moving from main to feature
+# 9ab0cde HEAD@{2}: reset: moving to HEAD~3
+# 1234567 HEAD@{3}: commit: The commit you &quot;lost&quot;
+
+# see a specific branch's reflog
+git reflog show main
+
+# see reflog with timestamps
+git reflog --date=relative
+</code></pre>
+<h3 id="recovery-examples">Recovery Examples</h3>
+<pre><code class="language-bash"># you ran git reset --hard and lost commits
+git reflog
+# find the commit hash from before the reset
+git reset --hard HEAD@{3}   # go back to that state
+
+# you deleted a branch
+git reflog
+# find the commit hash that was the branch tip
+git branch recovered-branch abc1234
+
+# you rebased and want the pre-rebase version
+git reflog
+# the entry before the rebase shows where the branch was
+git reset --hard HEAD@{5}
+</code></pre>
+<h3 id="reflog-expiration">Reflog Expiration</h3>
+<p>Reflog entries expire after 90 days by default (30 days for unreachable commits). Until then, nothing is truly lost:</p>
+<pre><code class="language-bash"># check expiration settings
+git config gc.reflogExpire          # default: 90 days
+git config gc.reflogExpireUnreachable  # default: 30 days
+</code></pre>
+<hr>
+<h2 id="11-interactive-rebase">11. Interactive Rebase</h2>
+<p>Reference: <a href="https://git-scm.com/book/en/v2/Git-Tools-Rewriting-History">Rewriting History</a></p>
+<p>Interactive rebase lets you edit, reorder, squash, split, and drop commits before pushing:</p>
+<pre><code class="language-bash"># rebase the last 5 commits interactively
+git rebase -i HEAD~5
+
+# rebase everything since branching from main
+git rebase -i main
+</code></pre>
+<p>This opens an editor with a list of commits:</p>
+<pre><code class="language-text">pick abc1234 Add user model
+pick def5678 Fix typo in user model
+pick 9ab0cde Add user controller
+pick 1234567 WIP debugging
+pick fedcba9 Add user tests
+</code></pre>
+<h3 id="commands">Commands</h3>
+<table>
+<thead>
+<tr>
+<th>Command</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pick</code></td>
+<td>Keep the commit as-is</td>
+</tr>
+<tr>
+<td><code>reword</code></td>
+<td>Keep the commit, edit the message</td>
+</tr>
+<tr>
+<td><code>edit</code></td>
+<td>Stop at this commit so you can amend it</td>
+</tr>
+<tr>
+<td><code>squash</code></td>
+<td>Meld into previous commit, combine messages</td>
+</tr>
+<tr>
+<td><code>fixup</code></td>
+<td>Meld into previous commit, discard this message</td>
+</tr>
+<tr>
+<td><code>drop</code></td>
+<td>Delete this commit entirely</td>
+</tr>
+</tbody>
+</table>
+<h3 id="practical-clean-up-before-a-pr">Practical: Clean Up Before a PR</h3>
+<pre><code class="language-text"># original (messy development history)
+pick abc1234 Add user model
+pick def5678 Fix typo in user model
+pick 9ab0cde Add user controller
+pick 1234567 WIP debugging
+pick fedcba9 Add user tests
+
+# cleaned up
+pick abc1234 Add user model
+fixup def5678 Fix typo in user model       ← fold typo fix into the original
+pick 9ab0cde Add user controller
+drop 1234567 WIP debugging                 ← remove debugging commit
+pick fedcba9 Add user tests
+</code></pre>
+<p>Result: three clean, logical commits instead of five messy ones.</p>
+<h3 id="splitting-a-commit">Splitting a Commit</h3>
+<p>Use <code>edit</code> to stop at a commit, then split it:</p>
+<pre><code class="language-bash">git rebase -i HEAD~3
+# mark the target commit as &quot;edit&quot;
+
+# when rebase stops at that commit:
+git reset HEAD~1          # undo the commit, keep changes in working tree
+git add model.py
+git commit -m &quot;Add user model&quot;
+git add controller.py
+git commit -m &quot;Add user controller&quot;
+git rebase --continue
+</code></pre>
+<h3 id="autosquash">Autosquash</h3>
+<p>Name your fixup commits with <code>fixup!</code> or <code>squash!</code> prefix, and <code>--autosquash</code> reorders them automatically:</p>
+<pre><code class="language-bash"># make a fixup commit that targets &quot;Add user model&quot;
+git commit --fixup abc1234
+
+# or with a message
+git commit --squash abc1234
+
+# rebase with autosquash — fixup commits are moved next to their targets
+git rebase -i --autosquash main
+</code></pre>
+<pre><code class="language-bash"># enable autosquash by default
+git config --global rebase.autosquash true
+</code></pre>
+<hr>
+<h2 id="12-worktrees">12. Worktrees</h2>
+<p>Reference: <a href="https://git-scm.com/docs/git-worktree">git-worktree</a></p>
+<p>Worktrees let you check out multiple branches simultaneously in separate directories, sharing a single <code>.git</code> repository:</p>
+<pre><code class="language-bash"># create a worktree for a branch
+git worktree add ../hotfix-branch hotfix/urgent
+
+# create a worktree with a new branch
+git worktree add -b feature/new-thing ../new-thing main
+
+# list worktrees
+git worktree list
+
+# remove a worktree
+git worktree remove ../hotfix-branch
+</code></pre>
+<h3 id="when-to-use-worktrees">When to Use Worktrees</h3>
+<ul>
+<li><strong>Reviewing a PR while mid-work</strong>: don't stash — open the PR branch in a separate directory</li>
+<li><strong>Running tests on one branch while developing on another</strong></li>
+<li><strong>Comparing behavior across branches</strong> side by side</li>
+<li><strong>Long-running builds</strong>: start a build in one worktree, continue coding in another</li>
+</ul>
+<h3 id="worktrees-vs-stash">Worktrees vs Stash</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Worktree</th>
+<th>Stash</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Context switch cost</td>
+<td>None — both branches open</td>
+<td>Must stash, switch, then pop</td>
+</tr>
+<tr>
+<td>Disk usage</td>
+<td>Duplicate working tree</td>
+<td>None</td>
+</tr>
+<tr>
+<td>Parallel work</td>
+<td>Yes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>IDE support</td>
+<td>Open as separate project</td>
+<td>N/A</td>
+</tr>
+</tbody>
+</table>
+<p>Worktrees are strictly better for anything more than a 30-second context switch.</p>
+<hr>
+<h2 id="13-remotes-fetch-vs-pull">13. Remotes &amp; Fetch vs Pull</h2>
+<p>Reference: <a href="https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes">Working with Remotes</a></p>
+<h3 id="remote-tracking-branches">Remote Tracking Branches</h3>
+<p>When you clone a repo, Git creates <strong>remote-tracking branches</strong> — read-only refs like <code>origin/main</code> that represent the state of branches on the remote as of the last fetch:</p>
+<pre><code class="language-bash"># see remote-tracking branches
+git branch -r
+# origin/main
+# origin/feature-a
+# origin/feature-b
+
+# see what a remote-tracking branch points to
+git log origin/main --oneline -5
+</code></pre>
+<p>These only update when you <code>fetch</code> or <code>pull</code>. They're not live connections.</p>
+<h3 id="fetch-vs-pull">Fetch vs Pull</h3>
+<pre><code class="language-bash"># fetch: download new commits from remote, update remote-tracking branches
+# does NOT touch your working tree or local branches
+git fetch origin
+
+# pull: fetch + merge (or rebase) into current branch
+git pull origin main
+# equivalent to:
+git fetch origin
+git merge origin/main
+
+# pull with rebase instead of merge
+git pull --rebase origin main
+# equivalent to:
+git fetch origin
+git rebase origin/main
+</code></pre>
+<p><strong>Fetch is always safe.</strong> It never modifies your local branches or working tree. Pull can cause merge conflicts.</p>
+<h3 id="remote-management">Remote Management</h3>
+<pre><code class="language-bash"># list remotes
+git remote -v
+
+# add a remote
+git remote add upstream https://github.com/original/repo.git
+
+# remove a remote
+git remote remove upstream
+
+# rename a remote
+git remote rename origin old-origin
+
+# prune remote-tracking branches for deleted remote branches
+git fetch --prune
+# or configure automatic pruning
+git config --global fetch.prune true
+</code></pre>
+<h3 id="push">Push</h3>
+<pre><code class="language-bash"># push current branch
+git push
+
+# push and set upstream tracking
+git push -u origin feature
+
+# push a specific branch
+git push origin feature
+
+# push all branches
+git push --all
+
+# push tags
+git push --tags
+git push origin v1.0.0
+
+# delete a remote branch
+git push origin --delete feature
+</code></pre>
+<h3 id="force-push-when-and-how">Force Push — When and How</h3>
+<pre><code class="language-bash"># force push (dangerous — overwrites remote history)
+git push --force
+
+# force push with lease (safer — fails if remote has commits you haven't seen)
+git push --force-with-lease
+</code></pre>
+<p><code>--force-with-lease</code> checks that the remote branch still points where your remote-tracking branch says it does. If someone else pushed in the meantime, it fails instead of silently overwriting their work.</p>
+<p><strong>Use <code>--force-with-lease</code> instead of <code>--force</code> whenever you must force-push</strong> (e.g., after an interactive rebase on a feature branch).</p>
+<h3 id="upstream-tracking">Upstream Tracking</h3>
+<pre><code class="language-bash"># see tracking configuration
+git branch -vv
+# * feature  abc1234 [origin/feature: ahead 2] Latest commit
+#   main     def5678 [origin/main] Up to date
+
+# set upstream for existing branch
+git branch --set-upstream-to=origin/feature
+
+# push and set upstream at the same time
+git push -u origin feature
+</code></pre>
+<hr>
+<h2 id="14-tags">14. Tags</h2>
+<p>Reference: <a href="https://git-scm.com/book/en/v2/Git-Basics-Tagging">Git Tagging</a></p>
+<h3 id="lightweight-vs-annotated">Lightweight vs Annotated</h3>
+<pre><code class="language-bash"># lightweight — just a pointer to a commit (like a branch that doesn't move)
+git tag v1.0.0
+
+# annotated — a full object with tagger, date, message, optional signature
+git tag -a v1.0.0 -m &quot;Release 1.0.0&quot;
+
+# see tag details
+git show v1.0.0
+</code></pre>
+<p>Use annotated tags for releases (they have metadata). Use lightweight tags for temporary markers.</p>
+<h3 id="tag-operations">Tag Operations</h3>
+<pre><code class="language-bash"># list tags
+git tag
+git tag -l &quot;v1.*&quot;       # filter
+
+# tag a past commit
+git tag -a v0.9.0 abc1234 -m &quot;Pre-release&quot;
+
+# push tags (tags aren't pushed by default)
+git push origin v1.0.0     # one tag
+git push --tags             # all tags
+
+# delete a tag
+git tag -d v1.0.0                  # local
+git push origin --delete v1.0.0    # remote
+
+# checkout a tag (detached HEAD)
+git checkout v1.0.0
+</code></pre>
+<h3 id="semantic-versioning-with-tags">Semantic Versioning with Tags</h3>
+<pre><code class="language-bash"># list tags sorted by version
+git tag --sort=-v:refname
+
+# find the most recent tag reachable from HEAD
+git describe --tags
+# v1.2.3-14-gabc1234
+# = 14 commits after v1.2.3, at commit abc1234
+</code></pre>
+<hr>
+<h2 id="15-diff-log-blame">15. Diff, Log &amp; Blame</h2>
+<h3 id="git-diff"><code>git diff</code></h3>
+<pre><code class="language-bash"># working tree vs index (unstaged changes)
+git diff
+
+# index vs HEAD (staged changes)
+git diff --staged
+
+# working tree vs HEAD (all uncommitted changes)
+git diff HEAD
+
+# between two commits
+git diff abc1234 def5678
+
+# between two branches
+git diff main..feature
+git diff main...feature    # changes since they diverged (three-dot)
+
+# just file names
+git diff --name-only
+git diff --name-status     # with A/M/D status
+
+# specific file
+git diff HEAD~3 -- file.py
+
+# word-level diff (useful for prose)
+git diff --word-diff
+
+# stat summary
+git diff --stat
+</code></pre>
+<h3 id="two-dot-vs-three-dot">Two-Dot vs Three-Dot</h3>
+<pre><code class="language-bash"># two-dot: diff between the tips of two branches
+git diff main..feature
+# shows ALL differences between the two snapshots
+
+# three-dot: changes on feature since it diverged from main
+git diff main...feature
+# shows only what feature added — excludes changes on main
+
+# for git log, the meaning is reversed:
+git log main..feature     # commits on feature but not on main
+git log main...feature    # commits on either but not both
+</code></pre>
+<h3 id="git-log"><code>git log</code></h3>
+<pre><code class="language-bash"># compact one-line format
+git log --oneline
+
+# with graph
+git log --oneline --graph --all
+
+# show files changed per commit
+git log --stat
+
+# show full diff per commit
+git log -p
+
+# filter by author
+git log --author=&quot;Alice&quot;
+
+# filter by date
+git log --since=&quot;2024-01-01&quot; --until=&quot;2024-06-01&quot;
+
+# filter by message content
+git log --grep=&quot;login&quot;
+
+# filter by code changes (pickaxe — find commits that add/remove a string)
+git log -S &quot;function_name&quot;
+
+# filter by code changes (regex)
+git log -G &quot;def.*login&quot;
+
+# filter by file
+git log -- src/auth.py
+
+# commits on feature that aren't on main
+git log main..feature
+
+# pretty format
+git log --pretty=format:&quot;%h %an %ar %s&quot;
+
+# show merge commit parents
+git log --first-parent     # only follow the first parent (mainline)
+</code></pre>
+<h3 id="git-blame"><code>git blame</code></h3>
+<pre><code class="language-bash"># who changed each line and when
+git blame file.py
+
+# blame a specific range of lines
+git blame -L 10,20 file.py
+
+# ignore whitespace changes
+git blame -w file.py
+
+# detect lines moved from other files
+git blame -C file.py
+
+# detect lines moved from other files in the same commit
+git blame -C -C file.py
+
+# detect lines moved from any commit
+git blame -C -C -C file.py
+
+# show blame at a specific commit (before that commit's changes)
+git blame abc1234^ -- file.py
+</code></pre>
+<h3 id="git-shortlog"><code>git shortlog</code></h3>
+<pre><code class="language-bash"># commits per author (useful for release notes)
+git shortlog -sn
+#   142  Alice
+#    89  Bob
+#    23  Carol
+
+# commits per author since a tag
+git shortlog v1.0.0..HEAD
+</code></pre>
+<hr>
+<h2 id="16-bisect">16. Bisect</h2>
+<p>Reference: <a href="https://git-scm.com/docs/git-bisect">git-bisect</a></p>
+<p>Binary search through history to find which commit introduced a bug:</p>
+<pre><code class="language-bash"># start bisect
+git bisect start
+
+# mark the current commit as bad (has the bug)
+git bisect bad
+
+# mark a known good commit
+git bisect good v1.0.0
+
+# Git checks out the midpoint — test it, then:
+git bisect good    # if this commit doesn't have the bug
+git bisect bad     # if this commit has the bug
+
+# Git narrows the range and checks out another midpoint
+# repeat until Git identifies the exact commit
+
+# done — go back to where you were
+git bisect reset
+</code></pre>
+<h3 id="automated-bisect">Automated Bisect</h3>
+<p>If you can write a script that returns 0 for good and non-zero for bad:</p>
+<pre><code class="language-bash">git bisect start HEAD v1.0.0
+git bisect run ./test-for-bug.sh
+</code></pre>
+<pre><code class="language-bash"># example: bisect to find which commit broke a test
+git bisect start HEAD v1.0.0
+git bisect run python -m pytest tests/test_login.py -x
+</code></pre>
+<p>Git runs the script at each midpoint automatically. For N commits, it finds the culprit in ~log₂(N) steps (1000 commits → ~10 tests).</p>
+<h3 id="skip">Skip</h3>
+<p>If a commit can't be tested (doesn't build, for example):</p>
+<pre><code class="language-bash">git bisect skip
+</code></pre>
+<hr>
+<h2 id="17-hooks">17. Hooks</h2>
+<p>Reference: <a href="https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks">Git Hooks</a></p>
+<p>Hooks are scripts that run at specific points in Git's workflow. They live in <code>.git/hooks/</code> (local, not committed) or can be shared via a hooks directory.</p>
+<h3 id="common-hooks">Common Hooks</h3>
+<table>
+<thead>
+<tr>
+<th>Hook</th>
+<th>When it runs</th>
+<th>Common use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>pre-commit</code></td>
+<td>Before a commit is created</td>
+<td>Linting, formatting, running fast tests</td>
+</tr>
+<tr>
+<td><code>commit-msg</code></td>
+<td>After message is entered</td>
+<td>Enforce message format (e.g., conventional commits)</td>
+</tr>
+<tr>
+<td><code>prepare-commit-msg</code></td>
+<td>Before editor opens</td>
+<td>Pre-fill commit message template</td>
+</tr>
+<tr>
+<td><code>pre-push</code></td>
+<td>Before push</td>
+<td>Run full test suite</td>
+</tr>
+<tr>
+<td><code>post-merge</code></td>
+<td>After a merge completes</td>
+<td>Install dependencies, run migrations</td>
+</tr>
+<tr>
+<td><code>post-checkout</code></td>
+<td>After checkout/switch</td>
+<td>Install dependencies for the new branch</td>
+</tr>
+<tr>
+<td><code>pre-rebase</code></td>
+<td>Before rebase starts</td>
+<td>Prevent rebasing published branches</td>
+</tr>
+</tbody>
+</table>
+<h3 id="setting-up-hooks">Setting Up Hooks</h3>
+<pre><code class="language-bash"># hooks are just executable scripts
+cat &gt; .git/hooks/pre-commit &lt;&lt; 'EOF'
+#!/bin/sh
+npm run lint --quiet
+EOF
+chmod +x .git/hooks/pre-commit
+</code></pre>
+<h3 id="sharing-hooks-with-the-team">Sharing Hooks with the Team</h3>
+<p>Hooks in <code>.git/hooks/</code> aren't committed. To share them:</p>
+<pre><code class="language-bash"># option 1: configure a shared hooks directory
+mkdir .githooks
+# put hooks in .githooks/
+git config core.hooksPath .githooks
+# commit .githooks/ to the repo
+
+# option 2: use a tool
+# husky (Node.js) — most popular
+npx husky init
+
+# pre-commit (Python) — language-agnostic
+pip install pre-commit
+# configure .pre-commit-config.yaml
+pre-commit install
+</code></pre>
+<h3 id="bypassing-hooks">Bypassing Hooks</h3>
+<pre><code class="language-bash"># skip pre-commit and commit-msg hooks
+git commit --no-verify
+
+# skip pre-push hooks
+git push --no-verify
+</code></pre>
+<p>Useful for emergencies, but if you're bypassing hooks regularly, the hooks are either too slow or too aggressive.</p>
+<hr>
+<h2 id="18-submodules-subtrees">18. Submodules &amp; Subtrees</h2>
+<h3 id="submodules">Submodules</h3>
+<p>Reference: <a href="https://git-scm.com/book/en/v2/Git-Tools-Submodules">Git Submodules</a></p>
+<p>Submodules embed one Git repository inside another at a pinned commit:</p>
+<pre><code class="language-bash"># add a submodule
+git submodule add https://github.com/lib/library.git vendor/library
+
+# clone a repo that has submodules
+git clone --recurse-submodules https://github.com/myorg/myapp.git
+
+# or initialize after cloning
+git submodule update --init --recursive
+
+# update submodule to latest remote commit
+cd vendor/library
+git pull
+cd ../..
+git add vendor/library
+git commit -m &quot;Update library submodule&quot;
+
+# update all submodules
+git submodule update --remote
+</code></pre>
+<p><strong>How it works</strong>: Git stores two things — a <code>.gitmodules</code> file (URL and path) and a tree entry pointing to the submodule's exact commit hash. The submodule's repository is cloned into the path but is an independent Git repo.</p>
+<p><strong>Pain points</strong>:
+- Everyone must run <code>git submodule update --init</code> after cloning
+- Detached HEAD inside submodules catches people off guard
+- Forgetting to push the submodule before pushing the parent leaves a broken reference
+- Merge conflicts on submodule pointers are confusing</p>
+<h3 id="subtrees">Subtrees</h3>
+<p>Subtrees merge an external repository's history into your repository as a subdirectory:</p>
+<pre><code class="language-bash"># add a subtree
+git subtree add --prefix=vendor/library https://github.com/lib/library.git main --squash
+
+# pull updates
+git subtree pull --prefix=vendor/library https://github.com/lib/library.git main --squash
+
+# push changes back upstream
+git subtree push --prefix=vendor/library https://github.com/lib/library.git main
+</code></pre>
+<p><strong>Trade-offs vs submodules</strong>:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Submodules</th>
+<th>Subtrees</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Clone works out of the box</td>
+<td>No (need <code>--recurse-submodules</code>)</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>External repo's history</td>
+<td>Separate</td>
+<td>Merged into yours</td>
+</tr>
+<tr>
+<td>Update workflow</td>
+<td><code>submodule update</code></td>
+<td><code>subtree pull</code></td>
+</tr>
+<tr>
+<td>Push changes upstream</td>
+<td>Normal push from submodule dir</td>
+<td><code>subtree push</code></td>
+</tr>
+<tr>
+<td>Complexity for contributors</td>
+<td>Higher</td>
+<td>Lower</td>
+</tr>
+</tbody>
+</table>
+<p>Subtrees are simpler for most cases. Submodules are better when you need the external project to remain a distinct repository (e.g., you're developing it independently).</p>
+<hr>
+<h2 id="19-rewriting-history">19. Rewriting History</h2>
+<h3 id="amending-the-last-commit">Amending the Last Commit</h3>
+<pre><code class="language-bash"># change the message
+git commit --amend -m &quot;Better message&quot;
+
+# add forgotten files to the last commit
+git add forgotten-file.py
+git commit --amend --no-edit
+
+# change the author
+git commit --amend --author=&quot;Alice &lt;alice@example.com&gt;&quot;
+</code></pre>
+<p><code>--amend</code> replaces the last commit with a new one (new hash). Don't amend commits that have been pushed and shared.</p>
+<h3 id="filter-repo-replacing-filter-branch">Filter-Repo (Replacing filter-branch)</h3>
+<p><a href="https://github.com/newren/git-filter-repo">git-filter-repo</a> is the modern tool for bulk history rewriting:</p>
+<pre><code class="language-bash"># install
+pip install git-filter-repo
+
+# remove a file from ALL history (accidentally committed secrets)
+git filter-repo --invert-paths --path secrets.env
+
+# remove a directory from all history
+git filter-repo --invert-paths --path old-vendor/
+
+# change author email across all history
+git filter-repo --email-callback '
+    return email.replace(b&quot;old@example.com&quot;, b&quot;new@example.com&quot;)
+'
+
+# extract a subdirectory into its own repo
+git filter-repo --subdirectory-filter src/lib/
+</code></pre>
+<p><strong><code>git filter-branch</code> is deprecated.</strong> Use <code>git-filter-repo</code> instead — it's faster, safer, and handles edge cases correctly.</p>
+<h3 id="removing-sensitive-data">Removing Sensitive Data</h3>
+<p>If you accidentally commit a secret:</p>
+<pre><code class="language-bash"># 1. rotate the secret immediately — it's in the reflog, push history, forks, CI logs
+
+# 2. remove from history
+git filter-repo --invert-paths --path .env
+
+# 3. force-push all branches
+git push --force --all
+
+# 4. force-push all tags
+git push --force --tags
+
+# 5. ask GitHub/GitLab to garbage-collect (contact support for cached views)
+</code></pre>
+<p>The secret must be considered compromised regardless of history rewriting — anyone who cloned or forked the repo before the rewrite has it.</p>
+<hr>
+<h2 id="20-configuration-that-matters">20. Configuration That Matters</h2>
+<p>Reference: <a href="https://git-scm.com/docs/git-config">Git Configuration</a></p>
+<h3 id="configuration-levels">Configuration Levels</h3>
+<pre><code class="language-bash"># system — all users on this machine
+git config --system
+
+# global — this user, all repos
+git config --global
+
+# local — this repo only (default)
+git config --local
+
+# worktree — this worktree only
+git config --worktree
+</code></pre>
+<p>Priority: worktree &gt; local &gt; global &gt; system.</p>
+<h3 id="essential-settings">Essential Settings</h3>
+<pre><code class="language-bash"># identity
+git config --global user.name &quot;Your Name&quot;
+git config --global user.email &quot;you@example.com&quot;
+
+# default branch name
+git config --global init.defaultBranch main
+
+# auto-prune deleted remote branches on fetch
+git config --global fetch.prune true
+
+# rebase on pull instead of merge
+git config --global pull.rebase true
+
+# auto-setup rebase for new branches that track a remote
+git config --global branch.autoSetupRebase always
+
+# enable rerere (reuse recorded resolution)
+git config --global rerere.enabled true
+
+# autosquash in interactive rebase
+git config --global rebase.autoSquash true
+
+# better diff algorithm
+git config --global diff.algorithm histogram
+
+# show original (base) in merge conflicts
+git config --global merge.conflictStyle zdiff3
+
+# sort branches by most recently committed
+git config --global branch.sort -committerdate
+
+# sort tags by version number
+git config --global tag.sort -v:refname
+
+# push only the current branch by default
+git config --global push.default current
+
+# auto-create remote tracking branch on push
+git config --global push.autoSetupRemote true
+
+# colored output
+git config --global color.ui auto
+</code></pre>
+<h3 id="rerere-reuse-recorded-resolution"><code>rerere</code> — Reuse Recorded Resolution</h3>
+<p>When you resolve a merge conflict, <code>rerere</code> records the resolution. If the same conflict appears again (e.g., during a repeated rebase), Git applies the same resolution automatically:</p>
+<pre><code class="language-bash">git config --global rerere.enabled true
+</code></pre>
+<p>This is invaluable when rebasing long-lived branches — you resolve each conflict once and Git remembers.</p>
+<h3 id="useful-aliases">Useful Aliases</h3>
+<pre><code class="language-bash">git config --global alias.st &quot;status -sb&quot;
+git config --global alias.lg &quot;log --oneline --graph --all --decorate&quot;
+git config --global alias.last &quot;log -1 HEAD --stat&quot;
+git config --global alias.unstage &quot;restore --staged&quot;
+git config --global alias.amend &quot;commit --amend --no-edit&quot;
+git config --global alias.wip &quot;commit -am 'WIP'&quot;
+git config --global alias.undo &quot;reset --soft HEAD~1&quot;
+git config --global alias.branches &quot;branch --sort=-committerdate --format='%(refname:short) %(committerdate:relative) %(subject)'&quot;
+</code></pre>
+<h3 id="conditional-includes">Conditional Includes</h3>
+<p>Use different configs for different directories (e.g., work vs personal):</p>
+<pre><code class="language-ini"># ~/.gitconfig
+[includeIf &quot;gitdir:~/work/&quot;]
+    path = ~/.gitconfig-work
+
+[includeIf &quot;gitdir:~/personal/&quot;]
+    path = ~/.gitconfig-personal
+</code></pre>
+<pre><code class="language-ini"># ~/.gitconfig-work
+[user]
+    email = you@company.com
+    signingkey = ~/.ssh/work_ed25519.pub
+</code></pre>
+<h3 id="gitattributes"><code>.gitattributes</code></h3>
+<p>Control how Git handles specific files:</p>
+<pre><code class="language-text"># normalize line endings
+* text=auto
+
+# force LF for scripts
+*.sh text eol=lf
+
+# binary files — don't try to diff or merge
+*.png binary
+*.jpg binary
+*.zip binary
+
+# use a custom diff driver for lockfiles
+package-lock.json -diff
+yarn.lock -diff
+</code></pre>
+<hr>
+<h2 id="21-recovery-recipes">21. Recovery Recipes</h2>
+<h3 id="i-committed-to-the-wrong-branch">"I committed to the wrong branch"</h3>
+<pre><code class="language-bash"># move the last commit to the correct branch
+git switch correct-branch
+git cherry-pick wrong-branch
+git switch wrong-branch
+git reset --hard HEAD~1
+</code></pre>
+<h3 id="i-need-to-undo-a-push">"I need to undo a push"</h3>
+<pre><code class="language-bash"># safe: revert the commit (creates a new commit)
+git revert &lt;hash&gt;
+git push
+
+# nuclear: rewrite history (force-push)
+git reset --hard HEAD~1
+git push --force-with-lease
+</code></pre>
+<h3 id="i-deleted-a-branch-i-need">"I deleted a branch I need"</h3>
+<pre><code class="language-bash">git reflog
+# find the commit that was the branch tip
+git branch recovered &lt;hash&gt;
+</code></pre>
+<h3 id="i-messed-up-a-rebase">"I messed up a rebase"</h3>
+<pre><code class="language-bash"># find the pre-rebase state
+git reflog
+# look for the entry before &quot;rebase (start)&quot;
+git reset --hard HEAD@{N}
+</code></pre>
+<h3 id="i-committed-a-huge-file-and-cant-push">"I committed a huge file and can't push"</h3>
+<pre><code class="language-bash"># if it was the last commit
+git reset --soft HEAD~1
+# remove the file, re-commit
+
+# if it's buried in history
+git filter-repo --invert-paths --path huge-file.bin
+</code></pre>
+<h3 id="i-have-merge-conflicts-i-cant-resolve">"I have merge conflicts I can't resolve"</h3>
+<pre><code class="language-bash"># abort and start over
+git merge --abort
+# or
+git rebase --abort
+
+# accept one side entirely
+git checkout --ours .
+git add .
+# or
+git checkout --theirs .
+git add .
+</code></pre>
+<h3 id="i-accidentally-ran-git-reset-hard">"I accidentally ran git reset --hard"</h3>
+<pre><code class="language-bash"># your commits are still in the reflog for 30+ days
+git reflog
+git reset --hard &lt;hash-from-reflog&gt;
+</code></pre>
+<h3 id="my-working-tree-is-a-mess-and-i-want-to-start-clean">"My working tree is a mess and I want to start clean"</h3>
+<pre><code class="language-bash"># discard all uncommitted changes to tracked files
+git restore .
+
+# also remove untracked files
+git clean -fd
+
+# also remove ignored files (like node_modules, build artifacts)
+git clean -fdx
+
+# dry run first to see what would be removed
+git clean -fdn
+</code></pre>
+<h3 id="i-need-the-version-of-a-file-from-another-branch">"I need the version of a file from another branch"</h3>
+<pre><code class="language-bash">git restore --source other-branch -- path/to/file.py
+</code></pre>
+<h3 id="i-want-to-find-when-a-bug-was-introduced">"I want to find when a bug was introduced"</h3>
+<pre><code class="language-bash">git bisect start
+git bisect bad HEAD
+git bisect good v1.0.0
+git bisect run ./test.sh
+git bisect reset
+</code></pre>
+<hr>
+<h2 id="22-common-mistakes">22. Common Mistakes</h2>
+<h3 id="1-committing-secrets">1. Committing Secrets</h3>
+<p>Secrets in Git history are compromised forever, even after rewriting history (forks, caches, reflog on other machines). Use <code>.gitignore</code> for <code>.env</code> files and secret management tools for credentials.</p>
+<h3 id="2-working-directly-on-main">2. Working Directly on Main</h3>
+<p>Always branch. Even for "quick fixes." The cost of creating a branch is one command and 41 bytes. The cost of an accidental force-push to main is much higher.</p>
+<h3 id="3-giant-commits">3. Giant Commits</h3>
+<p>Commits should be atomic — one logical change per commit. A commit that adds a feature, fixes a bug, and reformats three files is impossible to revert or cherry-pick partially. Use <code>git add -p</code> to stage surgically.</p>
+<h3 id="4-meaningless-commit-messages">4. Meaningless Commit Messages</h3>
+<p><code>"fix"</code>, <code>"update"</code>, <code>"stuff"</code>, <code>"WIP"</code> — these tell you nothing 6 months later. At minimum, say what changed and why. Interactive rebase lets you clean up WIP commits before pushing.</p>
+<h3 id="5-never-fetching">5. Never Fetching</h3>
+<p>If you don't <code>git fetch</code> regularly, your remote-tracking branches are stale. You're making decisions based on outdated information about what's on the remote.</p>
+<h3 id="6-using-git-pull-without-thinking">6. Using <code>git pull</code> Without Thinking</h3>
+<p><code>git pull</code> is fetch + merge. If the remote has diverged, you get a merge commit that may not be what you want. Use <code>git pull --rebase</code> or configure <code>pull.rebase true</code> to default to rebasing.</p>
+<h3 id="7-force-pushing-without-force-with-lease">7. Force-Pushing Without <code>--force-with-lease</code></h3>
+<p><code>--force</code> blindly overwrites the remote. <code>--force-with-lease</code> checks that nobody pushed since your last fetch. Always use the lease variant.</p>
+<h3 id="8-not-using-gitignore">8. Not Using <code>.gitignore</code></h3>
+<p>Every project should have a <code>.gitignore</code> from the start. At minimum:</p>
+<pre><code class="language-text"># OS
+.DS_Store
+Thumbs.db
+
+# editors
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# dependencies
+node_modules/
+venv/
+.venv/
+__pycache__/
+
+# environment
+.env
+.env.local
+
+# build output
+dist/
+build/
+*.o
+*.pyc
+</code></pre>
+<p>GitHub maintains a <a href="https://github.com/github/gitignore">collection of templates</a>.</p>
+<h3 id="9-confusing-reset-restore-and-revert">9. Confusing <code>reset</code>, <code>restore</code>, and <code>revert</code></h3>
+<ul>
+<li><code>reset</code> moves the branch pointer (operates on commits)</li>
+<li><code>restore</code> restores file contents (operates on files)</li>
+<li><code>revert</code> creates an undo commit (safe for shared history)</li>
+</ul>
+<p>See <a href="#8-reset-restore--revert">Section 8</a>.</p>
+<h3 id="10-not-knowing-about-the-reflog">10. Not Knowing About the Reflog</h3>
+<p>The reflog is the reason "I lost my work" is almost never true in Git. Before panicking, check <code>git reflog</code>. Your commits are there.</p>
+<hr>
+<h2 id="quick-reference">Quick Reference</h2>
+<h3 id="the-daily-workflow">The Daily Workflow</h3>
+<pre><code class="language-bash">git switch -c feature/thing main    # branch from main
+# ... make changes ...
+git add -p                          # stage hunks selectively
+git commit                          # commit with a good message
+# ... more changes and commits ...
+git fetch origin                    # update remote-tracking branches
+git rebase origin/main              # rebase onto latest main
+git push -u origin feature/thing    # push and set upstream
+# open PR, get review, merge
+git switch main
+git pull
+git branch -d feature/thing        # clean up
+</code></pre>
+<h3 id="undo-cheat-sheet">Undo Cheat Sheet</h3>
+<table>
+<thead>
+<tr>
+<th>What happened</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Staged a file by mistake</td>
+<td><code>git restore --staged file</code></td>
+</tr>
+<tr>
+<td>Edited a file, want to discard</td>
+<td><code>git restore file</code></td>
+</tr>
+<tr>
+<td>Committed too early</td>
+<td><code>git reset --soft HEAD~1</code></td>
+</tr>
+<tr>
+<td>Committed the wrong thing entirely</td>
+<td><code>git reset --hard HEAD~1</code></td>
+</tr>
+<tr>
+<td>Pushed a bad commit</td>
+<td><code>git revert &amp;lt;hash&amp;gt;</code> then push</td>
+</tr>
+<tr>
+<td>Lost a commit/branch</td>
+<td><code>git reflog</code> → find hash → recover</td>
+</tr>
+<tr>
+<td>Messed up a rebase</td>
+<td><code>git reflog</code> → <code>git reset --hard HEAD@{N}</code></td>
+</tr>
+<tr>
+<td>Merge gone wrong</td>
+<td><code>git merge --abort</code></td>
+</tr>
+<tr>
+<td>Rebase gone wrong</td>
+<td><code>git rebase --abort</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="object-model-cheat-sheet">Object Model Cheat Sheet</h3>
+<pre><code class="language-text">ref (branch/tag)  →  commit  →  tree  →  blob
+      name              │         dir     file contents
+                        │
+                        └→  parent commit(s)
+</code></pre>
+<p>Everything is a hash. Branches are movable pointers. Tags are fixed pointers. HEAD points to the current branch (or commit if detached). The reflog records every pointer movement.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>
