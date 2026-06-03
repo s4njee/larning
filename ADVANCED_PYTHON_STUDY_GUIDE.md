@@ -1047,7 +1047,7 @@ with cursor.copy("COPY t (a, b) FROM STDIN") as copy:
         copy.write_row(row)
 ```
 
-`executemany` batches into fewer round-trips; `COPY` (Postgres) or `LOAD DATA` (MySQL) is a streaming binary protocol — 10–100× faster for bulk loads. See the [Postgres guide](POSTGRES_STUDY_GUIDE.md) and the [Asyncio guide](ASYNCIO_STUDY_GUIDE.md) (which covers `asyncpg` + `COPY` in an async pipeline).
+`executemany` batches into fewer round-trips; `COPY` (Postgres) or `LOAD DATA` (MySQL) is a streaming binary protocol — 10–100× faster for bulk loads. See the [Postgres guide](POSTGRES.md) and the [Asyncio guide](ASYNCIO_STUDY_GUIDE.md) (which covers `asyncpg` + `COPY` in an async pipeline).
 
 ### Recipe 3: Process a Large File Without Loading It
 

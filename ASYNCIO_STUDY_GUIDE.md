@@ -966,7 +966,7 @@ async with pool.acquire() as conn:
         await conn.execute("UPDATE balance SET total = total + $1", 100)
 ```
 
-The parameter style is positional `$1, $2`. As always, pass parameters as arguments — never build SQL with f-strings or `%` formatting, which opens SQL injection (see the [Postgres](POSTGRES_STUDY_GUIDE.md) guide for query-level depth).
+The parameter style is positional `$1, $2`. As always, pass parameters as arguments — never build SQL with f-strings or `%` formatting, which opens SQL injection (see the [Postgres](POSTGRES.md) guide for query-level depth).
 
 References: [asyncpg documentation](https://magicstack.github.io/asyncpg/current/), [asyncpg usage](https://magicstack.github.io/asyncpg/current/usage.html), [Connection pools](https://magicstack.github.io/asyncpg/current/api/index.html#connection-pools).
 
@@ -1031,7 +1031,7 @@ async def run_independent(pool, queries):
     return await asyncio.gather(*(one(q) for q in queries))
 ```
 
-The hierarchy of fixes: **first, eliminate the N queries** with a set-based query (`= ANY($1)`, a join, an aggregate) — fewer round trips beats more concurrency every time, and it's where the [Postgres](POSTGRES_STUDY_GUIDE.md) guide's set-based thinking pays off. **Only if the queries are genuinely independent** should you fan them out — and then each needs its *own* connection from the pool (you can't run two queries concurrently on one connection), which means your real concurrency ceiling is the pool's `max_size`.
+The hierarchy of fixes: **first, eliminate the N queries** with a set-based query (`= ANY($1)`, a join, an aggregate) — fewer round trips beats more concurrency every time, and it's where the [Postgres](POSTGRES.md) guide's set-based thinking pays off. **Only if the queries are genuinely independent** should you fan them out — and then each needs its *own* connection from the pool (you can't run two queries concurrently on one connection), which means your real concurrency ceiling is the pool's `max_size`.
 
 ### 9.4 Pool Sizing — The Lever That Cuts Both Ways
 

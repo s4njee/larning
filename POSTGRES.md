@@ -1,8 +1,32 @@
 # PostgreSQL Feature Reference
 
-A reference-style tour of PostgreSQL features. Each entry gives a short description of what the feature is and when you'd reach for it, followed by concrete examples. Read it like API docs: scan the headings, dive into what's relevant, move on. Assumes familiarity with basic SQL.
+A reference-style tour of PostgreSQL features and the SQL you write against them. Each entry gives a short description of what the feature is and when you'd reach for it, followed by concrete, runnable examples. Read it like API docs: scan the headings, dive into what's relevant, move on. Assumes familiarity with basic SQL.
+
+This is the **fundamentals + feature reference** part of a three-guide set. Its companions are the [Advanced PostgreSQL Study Guide](ADVANCED_POSTGRES.md) — the *engine*: MVCC internals, the query planner, `EXPLAIN`, indexing strategy, VACUUM/wraparound, locking at scale, connection pooling, the performance tuning ladder, replication/HA, backup/PITR, observability, and production pitfalls — and [PostgreSQL Extensions in Production](POSTGRES_EXTENSIONS.md), an opinionated tour of the ecosystem (PostGIS, pgvector, TimescaleDB, Citus, pg_cron, and more) with production verdicts and managed-service availability. When a topic here has a deeper treatment elsewhere, you'll see a → pointer.
 
 Tested against PostgreSQL 16/17. Most features work on 13+ unless noted.
+
+---
+
+## How to Use This Pair
+
+- **Learning Postgres?** Read this guide's [Mental Model](#mental-model) first, then work top-to-bottom; each section has a short **Practice** prompt. Move to the [Advanced guide](ADVANCED_POSTGRES.md) once the SQL feels natural.
+- **Looking something up?** Scan the table of contents and jump. This file is the "how do I write X" catalog; the Advanced guide is the "why is X slow / how does X work underneath" companion.
+- **Tuning or operating a database?** You're mostly in the [Advanced guide](ADVANCED_POSTGRES.md) — performance, vacuum, replication, and ops live there.
+
+---
+
+## Mental Model
+
+Two design choices explain almost everything about how Postgres behaves. Hold these and the rest of the system is consistent rather than arbitrary (the [Advanced guide](ADVANCED_POSTGRES.md) builds its whole arc on them):
+
+- **Process-per-connection.** A `postmaster` forks one OS backend process per client connection — real memory and file-descriptor cost each, which is why connection pooling (PgBouncer) matters at scale. Background workers (`autovacuum`, `checkpointer`, `bgwriter`, `wal writer`) do the housekeeping.
+- **Shared buffers + OS cache.** Data lives in 8 KB pages cached in `shared_buffers` (typically ~25% of RAM); the OS page cache holds the rest. Dirty pages are flushed by checkpoints.
+- **MVCC (Multi-Version Concurrency Control).** Postgres never updates a row in place — it writes a *new version* and marks the old one dead (hidden `xmin`/`xmax` columns). So **readers never block writers and writers never block readers**, tables accumulate dead rows (*bloat*), and `VACUUM` exists to reclaim them. → [Storage & MVCC Engine](ADVANCED_POSTGRES.md#1-the-storage--mvcc-engine)
+- **WAL (Write-Ahead Log).** Every change is written to the WAL before the data file, which is what makes crash recovery, replication, and point-in-time recovery all work. → [WAL & Durability](ADVANCED_POSTGRES.md#2-wal-checkpoints--durability)
+- **System catalogs.** Postgres stores metadata about itself in `pg_catalog` (`pg_class`, `pg_index`, `pg_stat_*`, …); the portable `information_schema` is a thin standard view over it.
+
+**Practice:** Install Postgres locally, connect with `psql`, and explore `pg_stat_activity`, `pg_class`, and `pg_indexes`. Run `ps aux | grep postgres` to see the process model, and `EXPLAIN` on any query to preview the planner.
 
 ---
 
@@ -36,14 +60,10 @@ Tested against PostgreSQL 16/17. Most features work on 13+ unless noted.
 - [Sequences](#sequences)
 - [COPY & Bulk Loading](#copy--bulk-loading)
 - [Foreign Data Wrappers](#foreign-data-wrappers)
-- [Logical & Physical Replication](#logical--physical-replication)
-- [WAL & Recovery](#wal--recovery)
 - [Extensions](#extensions)
-- [EXPLAIN & Query Plans](#explain--query-plans)
-- [Statistics & the Planner](#statistics--the-planner)
-- [VACUUM & Autovacuum](#vacuum--autovacuum)
 - [psql Essentials](#psql-essentials)
-- [Configuration Knobs](#configuration-knobs)
+
+**In the [Advanced guide](ADVANCED_POSTGRES.md):** EXPLAIN & query plans · the planner & statistics · indexing strategy & internals · VACUUM, autovacuum & wraparound · WAL, checkpoints & durability · locking at scale · connection pooling · the performance tuning ladder · partitioning at scale · replication & HA · backup & PITR · observability · production pitfalls · benchmarking.
 
 ---
 
@@ -1726,79 +1746,6 @@ Predicates and joins are pushed to the remote when possible — check `EXPLAIN`.
 
 ---
 
-## Logical & Physical Replication
-
-### Physical (streaming) replication
-
-Byte-for-byte copy of WAL. Entire cluster, hot standby that can serve reads.
-
-```sql
--- On primary
-ALTER SYSTEM SET wal_level = 'replica';
-ALTER SYSTEM SET max_wal_senders = 10;
-CREATE USER repl REPLICATION LOGIN PASSWORD '...';
-```
-
-Set up the standby with `pg_basebackup -h primary -U repl -D /data -R`. `-R` writes `standby.signal` and `primary_conninfo`.
-
-### Logical replication
-
-Publish/subscribe on a per-table basis. Different major versions OK; good for zero-downtime upgrades and heterogeneous replicas.
-
-```sql
--- Primary: set wal_level = 'logical', then
-CREATE PUBLICATION pub_all FOR ALL TABLES;
-CREATE PUBLICATION pub_orders FOR TABLE orders, line_items;
-
--- Subscriber
-CREATE SUBSCRIPTION sub_all
-  CONNECTION 'host=primary dbname=app user=repl password=...'
-  PUBLICATION pub_all;
-```
-
-Initial data is copied via `COPY`, then streaming begins. DDL is not replicated — you apply schema changes to subscribers yourself.
-
----
-
-## WAL & Recovery
-
-### Roles of WAL
-
-Every change hits WAL first. WAL drives crash recovery, PITR, replication.
-
-### archive_mode + archive_command
-
-Continuous archiving for PITR.
-
-```conf
-wal_level        = 'replica'
-archive_mode     = 'on'
-archive_command  = 'test ! -f /archive/%f && cp %p /archive/%f'
-```
-
-### pg_basebackup
-
-Physical backup of the entire cluster, usable as a restore point or to spin up a replica.
-
-```bash
-pg_basebackup -D /backups/$(date +%F) -F tar -z -P -U repl -h primary
-```
-
-### Point-in-time recovery
-
-Restore a base backup, add archived WAL, set `recovery_target_time`, and start the server.
-
-```conf
-restore_command      = 'cp /archive/%f %p'
-recovery_target_time = '2026-04-22 11:45:00-07'
-```
-
-### Checkpoints
-
-Flush dirty buffers to data files and rotate WAL. Tune via `checkpoint_timeout` and `max_wal_size`. Spikes in `pg_stat_bgwriter.checkpoints_req` signal undersized settings.
-
----
-
 ## Extensions
 
 Managed plugins; installed via `CREATE EXTENSION`.
@@ -1854,129 +1801,6 @@ CREATE EXTENSION pg_cron;
 SELECT cron.schedule('nightly-cleanup', '0 3 * * *',
   $$DELETE FROM sessions WHERE expires_at < now()$$);
 ```
-
----
-
-## EXPLAIN & Query Plans
-
-### Basic EXPLAIN
-
-```sql
-EXPLAIN SELECT * FROM orders WHERE customer_id = 42;
-```
-
-### EXPLAIN ANALYZE
-
-Actually runs the query and returns real timings. Use `BUFFERS` to see I/O, `SETTINGS` for planner-relevant config.
-
-```sql
-EXPLAIN (ANALYZE, BUFFERS, SETTINGS, VERBOSE)
-SELECT c.name, count(*)
-FROM customers c JOIN orders o USING (customer_id)
-WHERE o.created_at > now() - interval '30 days'
-GROUP BY c.name;
-```
-
-### Formats
-
-`FORMAT JSON|XML|YAML|TEXT`. JSON is great for tooling.
-
-```sql
-EXPLAIN (ANALYZE, FORMAT JSON) SELECT ...;
-```
-
-### What to look for
-
-- **Seq Scan** on a big table with a selective predicate → missing index.
-- **Index Scan** vs **Index Only Scan** → the latter skips the heap; check `VACUUM` freshness.
-- **Rows estimated vs actual** drifting by 10× → stale statistics; `ANALYZE`.
-- **Sort** spilling to disk → bump `work_mem`.
-- **Nested Loop** over large inner set → planner expected few rows; check stats.
-- **Hash Join** with `Buckets × Batches` > 1 → work_mem too small.
-
-### Force decisions for debugging
-
-```sql
-SET enable_seqscan = off;       -- session only; *diagnostic*, not production
-SET enable_nestloop = off;
-EXPLAIN ANALYZE ...;
-```
-
----
-
-## Statistics & the Planner
-
-### ANALYZE
-
-Refreshes per-column statistics (`pg_statistic`). Autovacuum also runs it periodically.
-
-```sql
-ANALYZE;
-ANALYZE orders;
-ANALYZE orders (customer_id, status);
-```
-
-### CREATE STATISTICS
-
-Multi-column dependency / n-distinct / MCV stats. Critical when columns are correlated and the planner undercounts.
-
-```sql
-CREATE STATISTICS orders_corr (dependencies, ndistinct, mcv)
-  ON customer_id, status FROM orders;
-ANALYZE orders;
-```
-
-### default_statistics_target
-
-Raises the histogram/MCV resolution per column. Default 100; bump to 500–1000 for problem columns.
-
-```sql
-ALTER TABLE orders ALTER COLUMN created_at SET STATISTICS 1000;
-ANALYZE orders;
-```
-
----
-
-## VACUUM & Autovacuum
-
-MVCC leaves dead row versions behind. `VACUUM` marks space reusable; `VACUUM FULL` rewrites the table (blocking). Autovacuum handles routine work automatically.
-
-```sql
-VACUUM (VERBOSE, ANALYZE) orders;     -- regular maintenance
-VACUUM FREEZE orders;                 -- accelerate freezing (wraparound guard)
-VACUUM FULL orders;                   -- rewrite; blocks; use pg_repack instead
-```
-
-### Bloat inspection
-
-```sql
-SELECT relname,
-       n_live_tup,
-       n_dead_tup,
-       round(100.0 * n_dead_tup / nullif(n_live_tup + n_dead_tup, 0), 2) AS dead_pct
-FROM pg_stat_user_tables
-ORDER BY n_dead_tup DESC LIMIT 20;
-```
-
-### Per-table autovacuum tuning
-
-```sql
-ALTER TABLE events SET (
-  autovacuum_vacuum_scale_factor = 0.02,
-  autovacuum_analyze_scale_factor = 0.01,
-  autovacuum_vacuum_cost_limit = 2000
-);
-```
-
-### Transaction ID wraparound
-
-Long-running transactions prevent vacuum from freezing old rows. Watch `datfrozenxid`:
-
-```sql
-SELECT datname, age(datfrozenxid) FROM pg_database ORDER BY 2 DESC;
-```
-
-If age approaches ~2 billion, it's an emergency. Kill long transactions and let autovacuum catch up.
 
 ---
 
@@ -2040,54 +1864,14 @@ SELECT * FROM users WHERE id = :user_id;
 
 ---
 
-## Configuration Knobs
+## Next Steps & Further Reading
 
-Shown per category with starting points for a mid-sized OLTP box (32 GB RAM). Always benchmark before committing.
+You've covered the SQL surface area. To understand *why* queries are fast or slow and how to run Postgres in production, continue to the companion:
 
-### Memory
-
-| Setting            | Guidance                                     |
-|--------------------|----------------------------------------------|
-| `shared_buffers`   | 25% of RAM (`8GB`)                           |
-| `effective_cache_size` | 50–75% of RAM (`24GB`) — planner hint    |
-| `work_mem`         | Per sort/hash op. `16–64MB` typical; raise for reporting queries |
-| `maintenance_work_mem` | `1–2GB` for index builds / VACUUM       |
-
-### WAL & checkpoints
-
-| Setting                | Guidance                      |
-|------------------------|-------------------------------|
-| `wal_compression`      | `on`                          |
-| `max_wal_size`         | `8–16GB`                      |
-| `checkpoint_timeout`   | `15min`                       |
-| `checkpoint_completion_target` | `0.9`                 |
-
-### Connections
-
-| Setting         | Guidance                              |
-|-----------------|---------------------------------------|
-| `max_connections` | keep modest (100–300); use PgBouncer for more |
-| `statement_timeout` | set at app role, not globally (e.g. `30s`)  |
-| `idle_in_transaction_session_timeout` | `60s`       |
-
-### Runtime reconfiguration
-
-```sql
-ALTER SYSTEM SET work_mem = '32MB';    -- writes to postgresql.auto.conf
-SELECT pg_reload_conf();               -- for SIGHUP-level settings
--- Some settings require full restart; check pg_settings.context
-```
-
-```sql
-SELECT name, setting, unit, context FROM pg_settings WHERE name LIKE '%mem%';
-```
-
----
-
-## Further Reading
+**→ [Advanced PostgreSQL Study Guide](ADVANCED_POSTGRES.md)** — MVCC internals & bloat, WAL & checkpoints, VACUUM/wraparound, the query planner & statistics, reading `EXPLAIN`, indexing strategy, locking at scale, connection pooling, the performance tuning ladder, partitioning, replication & HA, backup/PITR, observability, production pitfalls, benchmarking, and worked recipes.
 
 - Official docs: https://www.postgresql.org/docs/current/
 - Postgres Wiki (tuning, FAQs): https://wiki.postgresql.org/
 - `pgexercises` for hands-on SQL: https://pgexercises.com/
 - `explain.dalibo.com` for plan visualization
-- `pg_stat_statements` + `auto_explain` should be running on every non-trivial database
+- `pg_stat_statements` + `auto_explain` should be running on every non-trivial database (→ [Observability](ADVANCED_POSTGRES.md#13-observability))

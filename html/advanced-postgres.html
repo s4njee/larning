@@ -1,0 +1,1423 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Advanced PostgreSQL Study Guide.">
+<title>Advanced PostgreSQL Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#336791; --accent2:#336791; --accent-weak:rgba(51,103,145,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#336791; --accent2:#336791; --accent-weak:rgba(51,103,145,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">A</span><span>Advanced PostgreSQL Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#1-the-storage-mvcc-engine" data-target="1-the-storage-mvcc-engine">1. The Storage &amp; MVCC Engine</a></li><li class="toc-l3"><a href="#pages-and-tuples" data-target="pages-and-tuples">Pages and tuples</a></li><li class="toc-l3"><a href="#mvcc-an-update-is-an-insert-a-tombstone" data-target="mvcc-an-update-is-an-insert-a-tombstone">MVCC: an UPDATE is an INSERT + a tombstone</a></li><li class="toc-l3"><a href="#hot-updates-the-optimization-that-fights-bloat" data-target="hot-updates-the-optimization-that-fights-bloat">HOT updates — the optimization that fights bloat</a></li><li class="toc-l3"><a href="#toast-how-big-values-are-stored" data-target="toast-how-big-values-are-stored">TOAST — how big values are stored</a></li><li class="toc-l3"><a href="#the-visibility-map-and-free-space-map" data-target="the-visibility-map-and-free-space-map">The Visibility Map and Free Space Map</a></li><li class="toc-l3"><a href="#practice" data-target="practice">Practice</a></li><li class="toc-l2"><a href="#2-wal-checkpoints-durability" data-target="2-wal-checkpoints-durability">2. WAL, Checkpoints &amp; Durability</a></li><li class="toc-l3"><a href="#the-write-path" data-target="the-write-path">The write path</a></li><li class="toc-l3"><a href="#durability-knobs" data-target="durability-knobs">Durability knobs</a></li><li class="toc-l3"><a href="#full-page-writes" data-target="full-page-writes">Full-page writes</a></li><li class="toc-l3"><a href="#checkpoint-tuning" data-target="checkpoint-tuning">Checkpoint tuning</a></li><li class="toc-l3"><a href="#practice_1" data-target="practice_1">Practice</a></li><li class="toc-l2"><a href="#3-vacuum-autovacuum-wraparound" data-target="3-vacuum-autovacuum-wraparound">3. VACUUM, Autovacuum &amp; Wraparound</a></li><li class="toc-l3"><a href="#what-vacuum-actually-does" data-target="what-vacuum-actually-does">What VACUUM actually does</a></li><li class="toc-l3"><a href="#tuning-autovacuum" data-target="tuning-autovacuum">Tuning autovacuum</a></li><li class="toc-l3"><a href="#transaction-id-wraparound-the-emergency-that-takes-down-databases" data-target="transaction-id-wraparound-the-emergency-that-takes-down-databases">Transaction-ID wraparound — the emergency that takes down databases</a></li><li class="toc-l3"><a href="#practice_2" data-target="practice_2">Practice</a></li><li class="toc-l2"><a href="#4-the-query-planner-statistics" data-target="4-the-query-planner-statistics">4. The Query Planner &amp; Statistics</a></li><li class="toc-l3"><a href="#where-estimates-come-from" data-target="where-estimates-come-from">Where estimates come from</a></li><li class="toc-l3"><a href="#the-cost-constants" data-target="the-cost-constants">The cost constants</a></li><li class="toc-l3"><a href="#correlated-columns-the-classic-misestimate" data-target="correlated-columns-the-classic-misestimate">Correlated columns — the classic misestimate</a></li><li class="toc-l3"><a href="#join-planning" data-target="join-planning">Join planning</a></li><li class="toc-l3"><a href="#practice_3" data-target="practice_3">Practice</a></li><li class="toc-l2"><a href="#5-reading-explain-like-a-pro" data-target="5-reading-explain-like-a-pro">5. Reading EXPLAIN Like a Pro</a></li><li class="toc-l3"><a href="#how-to-read-a-plan" data-target="how-to-read-a-plan">How to read a plan</a></li><li class="toc-l3"><a href="#scan-nodes" data-target="scan-nodes">Scan nodes</a></li><li class="toc-l3"><a href="#join-strategies" data-target="join-strategies">Join strategies</a></li><li class="toc-l3"><a href="#red-flags-and-their-fixes" data-target="red-flags-and-their-fixes">Red flags and their fixes</a></li><li class="toc-l3"><a href="#diagnostic-only-plan-forcing" data-target="diagnostic-only-plan-forcing">Diagnostic-only plan forcing</a></li><li class="toc-l3"><a href="#auto_explain-capture-slow-plans-in-production" data-target="auto_explain-capture-slow-plans-in-production">auto_explain — capture slow plans in production</a></li><li class="toc-l3"><a href="#practice_4" data-target="practice_4">Practice</a></li><li class="toc-l2"><a href="#6-index-internals-strategy" data-target="6-index-internals-strategy">6. Index Internals &amp; Strategy</a></li><li class="toc-l3"><a href="#b-tree-the-default-and-90-of-what-you-need" data-target="b-tree-the-default-and-90-of-what-you-need">B-tree (the default, and ~90% of what you need)</a></li><li class="toc-l3"><a href="#index-only-scans-covering-indexes" data-target="index-only-scans-covering-indexes">Index-only scans &amp; covering indexes</a></li><li class="toc-l3"><a href="#partial-expression-indexes-smaller-sharper" data-target="partial-expression-indexes-smaller-sharper">Partial &amp; expression indexes — smaller, sharper</a></li><li class="toc-l3"><a href="#the-specialized-types-when-b-tree-wont-do" data-target="the-specialized-types-when-b-tree-wont-do">The specialized types — when B-tree won't do</a></li><li class="toc-l3"><a href="#building-and-maintaining-indexes-safely" data-target="building-and-maintaining-indexes-safely">Building and maintaining indexes safely</a></li><li class="toc-l3"><a href="#finding-waste" data-target="finding-waste">Finding waste</a></li><li class="toc-l3"><a href="#practice_5" data-target="practice_5">Practice</a></li><li class="toc-l2"><a href="#7-locking-concurrency-at-scale" data-target="7-locking-concurrency-at-scale">7. Locking &amp; Concurrency at Scale</a></li><li class="toc-l3"><a href="#row-locks" data-target="row-locks">Row locks</a></li><li class="toc-l3"><a href="#table-locks-and-the-ddl-trap" data-target="table-locks-and-the-ddl-trap">Table locks and the DDL trap</a></li><li class="toc-l3"><a href="#deadlocks" data-target="deadlocks">Deadlocks</a></li><li class="toc-l3"><a href="#inspecting-blocking" data-target="inspecting-blocking">Inspecting blocking</a></li><li class="toc-l3"><a href="#serializable-snapshot-isolation-ssi" data-target="serializable-snapshot-isolation-ssi">Serializable Snapshot Isolation (SSI)</a></li><li class="toc-l3"><a href="#advisory-locks" data-target="advisory-locks">Advisory locks</a></li><li class="toc-l3"><a href="#practice_6" data-target="practice_6">Practice</a></li><li class="toc-l2"><a href="#8-connections-pooling" data-target="8-connections-pooling">8. Connections &amp; Pooling</a></li><li class="toc-l3"><a href="#the-math" data-target="the-math">The math</a></li><li class="toc-l3"><a href="#pgbouncer-pooling-modes" data-target="pgbouncer-pooling-modes">PgBouncer pooling modes</a></li><li class="toc-l3"><a href="#built-in-alternative" data-target="built-in-alternative">Built-in alternative</a></li><li class="toc-l3"><a href="#practice_7" data-target="practice_7">Practice</a></li><li class="toc-l2"><a href="#9-the-performance-tuning-ladder" data-target="9-the-performance-tuning-ladder">9. The Performance Tuning Ladder</a></li><li class="toc-l3"><a href="#the-memory-four" data-target="the-memory-four">The memory four</a></li><li class="toc-l3"><a href="#parallel-query" data-target="parallel-query">Parallel query</a></li><li class="toc-l3"><a href="#practice_8" data-target="practice_8">Practice</a></li><li class="toc-l2"><a href="#10-partitioning-at-scale" data-target="10-partitioning-at-scale">10. Partitioning at Scale</a></li><li class="toc-l3"><a href="#when-it-actually-helps" data-target="when-it-actually-helps">When it actually helps</a></li><li class="toc-l3"><a href="#pruning-partition-wise-joinsaggregates" data-target="pruning-partition-wise-joinsaggregates">Pruning, partition-wise joins/aggregates</a></li><li class="toc-l3"><a href="#operating-it" data-target="operating-it">Operating it</a></li><li class="toc-l3"><a href="#pitfalls" data-target="pitfalls">Pitfalls</a></li><li class="toc-l3"><a href="#practice_9" data-target="practice_9">Practice</a></li><li class="toc-l2"><a href="#11-replication-high-availability" data-target="11-replication-high-availability">11. Replication &amp; High Availability</a></li><li class="toc-l3"><a href="#physical-streaming-replication" data-target="physical-streaming-replication">Physical (streaming) replication</a></li><li class="toc-l3"><a href="#sync-vs-async" data-target="sync-vs-async">Sync vs async</a></li><li class="toc-l3"><a href="#logical-replication" data-target="logical-replication">Logical replication</a></li><li class="toc-l3"><a href="#automatic-failover" data-target="automatic-failover">Automatic failover</a></li><li class="toc-l3"><a href="#practice_10" data-target="practice_10">Practice</a></li><li class="toc-l2"><a href="#12-backup-pitr-disaster-recovery" data-target="12-backup-pitr-disaster-recovery">12. Backup, PITR &amp; Disaster Recovery</a></li><li class="toc-l3"><a href="#pg_dump" data-target="pg_dump">pg_dump</a></li><li class="toc-l3"><a href="#continuous-archiving-pitr" data-target="continuous-archiving-pitr">Continuous archiving + PITR</a></li><li class="toc-l3"><a href="#rporto-framing" data-target="rporto-framing">RPO/RTO framing</a></li><li class="toc-l3"><a href="#practice_11" data-target="practice_11">Practice</a></li><li class="toc-l2"><a href="#13-observability" data-target="13-observability">13. Observability</a></li><li class="toc-l3"><a href="#pg_stat_statements-your-1-tool" data-target="pg_stat_statements-your-1-tool">pg_stat_statements — your #1 tool</a></li><li class="toc-l3"><a href="#pg_stat_activity-whats-happening-right-now" data-target="pg_stat_activity-whats-happening-right-now">pg_stat_activity — what's happening right now</a></li><li class="toc-l3"><a href="#bloat-dead-tuples" data-target="bloat-dead-tuples">Bloat &amp; dead tuples</a></li><li class="toc-l3"><a href="#logging" data-target="logging">Logging</a></li><li class="toc-l3"><a href="#practice_12" data-target="practice_12">Practice</a></li><li class="toc-l2"><a href="#14-production-patterns-pitfalls" data-target="14-production-patterns-pitfalls">14. Production Patterns &amp; Pitfalls</a></li><li class="toc-l2"><a href="#15-benchmarking" data-target="15-benchmarking">15. Benchmarking</a></li><li class="toc-l3"><a href="#practice_13" data-target="practice_13">Practice</a></li><li class="toc-l2"><a href="#16-worked-performance-recipes" data-target="16-worked-performance-recipes">16. Worked Performance Recipes</a></li><li class="toc-l3"><a href="#recipe-1-turn-a-seq-scan-into-an-index-only-scan" data-target="recipe-1-turn-a-seq-scan-into-an-index-only-scan">Recipe 1 — Turn a Seq Scan into an Index Only Scan</a></li><li class="toc-l3"><a href="#recipe-2-kill-table-bloat-without-downtime" data-target="recipe-2-kill-table-bloat-without-downtime">Recipe 2 — Kill table bloat without downtime</a></li><li class="toc-l3"><a href="#recipe-3-a-reliable-job-queue" data-target="recipe-3-a-reliable-job-queue">Recipe 3 — A reliable job queue</a></li><li class="toc-l3"><a href="#recipe-4-keyset-pagination-constant-time-at-any-depth" data-target="recipe-4-keyset-pagination-constant-time-at-any-depth">Recipe 4 — Keyset pagination (constant time at any depth)</a></li><li class="toc-l3"><a href="#recipe-5-fast-bulk-load" data-target="recipe-5-fast-bulk-load">Recipe 5 — Fast bulk load</a></li><li class="toc-l3"><a href="#recipe-6-tame-autovacuum-on-a-hot-table" data-target="recipe-6-tame-autovacuum-on-a-hot-table">Recipe 6 — Tame autovacuum on a hot table</a></li><li class="toc-l3"><a href="#recipe-7-safe-online-schema-migration" data-target="recipe-7-safe-online-schema-migration">Recipe 7 — Safe online schema migration</a></li><li class="toc-l2"><a href="#17-decision-trees" data-target="17-decision-trees">17. Decision Trees</a></li><li class="toc-l3"><a href="#which-index" data-target="which-index">Which index?</a></li><li class="toc-l3"><a href="#which-isolation-level" data-target="which-isolation-level">Which isolation level?</a></li><li class="toc-l3"><a href="#partition-or-not" data-target="partition-or-not">Partition or not?</a></li><li class="toc-l3"><a href="#pooling-mode" data-target="pooling-mode">Pooling mode?</a></li><li class="toc-l3"><a href="#scaling-reads" data-target="scaling-reads">Scaling reads?</a></li><li class="toc-l2"><a href="#further-reading" data-target="further-reading">Further Reading</a></li></ul></nav></aside>
+  <main><h1 id="advanced-postgresql-study-guide">Advanced PostgreSQL Study Guide</h1>
+<p>This guide is a depth-first treatment of the PostgreSQL engine and high-performance Postgres for engineers who already write SQL and want to understand — and control — what happens beneath their queries. It is one of a three-guide set: the <a href="postgres.html">PostgreSQL Feature Reference</a> covers the surface area (types, DDL, query features, the SQL you write), this guide covers the machine that runs it, and <a href="postgres-extensions.html">PostgreSQL Extensions in Production</a> covers the ecosystem (PostGIS, pgvector, TimescaleDB, Citus, and which extensions are worth running in production).</p>
+<p>Its thesis, the throughline for everything below: <strong>almost every Postgres performance and operations problem is a consequence of two design choices — MVCC (every write creates a new row version) and WAL (every change is logged before it is applied).</strong> MVCC is why readers never block writers, why tables bloat, why <code>VACUUM</code> exists, and why transaction IDs can wrap around. WAL is why crash recovery, replication, and point-in-time recovery all work the same way. Internalize those two and the rest — the planner's row estimates, lock contention, autovacuum tuning, checkpoint spikes, replication lag — stops being a grab bag of unrelated knobs and becomes a single coherent system.</p>
+<p>Tested against PostgreSQL 16/17; most material applies to 13+, with version notes where it matters.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#1-the-storage--mvcc-engine">The Storage &amp; MVCC Engine</a></li>
+<li><a href="#2-wal-checkpoints--durability">WAL, Checkpoints &amp; Durability</a></li>
+<li><a href="#3-vacuum-autovacuum--wraparound">VACUUM, Autovacuum &amp; Wraparound</a></li>
+<li><a href="#4-the-query-planner--statistics">The Query Planner &amp; Statistics</a></li>
+<li><a href="#5-reading-explain-like-a-pro">Reading EXPLAIN Like a Pro</a></li>
+<li><a href="#6-index-internals--strategy">Index Internals &amp; Strategy</a></li>
+<li><a href="#7-locking--concurrency-at-scale">Locking &amp; Concurrency at Scale</a></li>
+<li><a href="#8-connections--pooling">Connections &amp; Pooling</a></li>
+<li><a href="#9-the-performance-tuning-ladder">The Performance Tuning Ladder</a></li>
+<li><a href="#10-partitioning-at-scale">Partitioning at Scale</a></li>
+<li><a href="#11-replication--high-availability">Replication &amp; High Availability</a></li>
+<li><a href="#12-backup-pitr--disaster-recovery">Backup, PITR &amp; Disaster Recovery</a></li>
+<li><a href="#13-observability">Observability</a></li>
+<li><a href="#14-production-patterns--pitfalls">Production Patterns &amp; Pitfalls</a></li>
+<li><a href="#15-benchmarking">Benchmarking</a></li>
+<li><a href="#16-worked-performance-recipes">Worked Performance Recipes</a></li>
+<li><a href="#17-decision-trees">Decision Trees</a></li>
+</ol>
+<hr>
+<h2 id="1-the-storage-mvcc-engine">1. The Storage &amp; MVCC Engine</h2>
+<p>Everything starts with how a row physically lives on disk.</p>
+<h3 id="pages-and-tuples">Pages and tuples</h3>
+<p>A table (the "heap") is an array of fixed-size <strong>8 KB pages</strong>. Each page holds a header, an array of item pointers, and the tuples (rows) themselves growing from the end. Every tuple carries a 23-byte header before its user data, and the header is where MVCC lives:</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>xmin</code></td>
+<td>Transaction ID that <strong>inserted</strong> this row version</td>
+</tr>
+<tr>
+<td><code>xmax</code></td>
+<td>Transaction ID that <strong>deleted/updated</strong> it (0 if live)</td>
+</tr>
+<tr>
+<td><code>ctid</code></td>
+<td>Physical location <code>(page, item)</code> of this version</td>
+</tr>
+<tr>
+<td><code>t_infomask</code></td>
+<td>Hint bits (committed/aborted/frozen)</td>
+</tr>
+</tbody>
+</table>
+<p>You can see these hidden system columns directly:</p>
+<pre><code class="language-sql">SELECT ctid, xmin, xmax, * FROM accounts WHERE id = 1;
+-- Update it, then re-run: ctid and xmin change — it's a NEW physical row.
+</code></pre>
+<h3 id="mvcc-an-update-is-an-insert-a-tombstone">MVCC: an UPDATE is an INSERT + a tombstone</h3>
+<p>Postgres never modifies a row in place. An <code>UPDATE</code> writes a <strong>new tuple version</strong> and sets the old version's <code>xmax</code> to the current transaction. A <code>DELETE</code> just sets <code>xmax</code>. The old versions stay on the page until <code>VACUUM</code> reclaims them. Consequences that define day-to-day Postgres:</p>
+<ul>
+<li><strong>Readers never block writers, writers never block readers.</strong> Each transaction sees the versions visible to its <em>snapshot</em> (a set of xmin/xmax it compares against). This is MVCC's core promise.</li>
+<li><strong>Tables bloat.</strong> Dead versions accumulate; the heap grows even if the live row count is flat. Bloat is not a bug — it's the cost of lock-free reads.</li>
+<li><strong>Indexes point at versions, not rows.</strong> Every index normally needs an entry for every tuple version (mitigated by HOT, below).</li>
+</ul>
+<h3 id="hot-updates-the-optimization-that-fights-bloat">HOT updates — the optimization that fights bloat</h3>
+<p>A <strong>Heap-Only Tuple (HOT)</strong> update happens when (a) no <em>indexed</em> column changed and (b) there's free space on the same page. The new version is chained to the old via <code>ctid</code> on the same page, and <strong>no new index entries are created</strong>. This is the single biggest lever for update-heavy tables.</p>
+<p>You buy room for HOT updates with <strong>FILLFACTOR</strong> — leave slack on each page so updates stay local:</p>
+<pre><code class="language-sql">-- Hot, frequently-updated table: leave 15% of each page free for in-page new versions
+ALTER TABLE sessions SET (fillfactor = 85);
+-- Existing data needs a rewrite to take effect:
+VACUUM FULL sessions;   -- or pg_repack to avoid the lock
+
+-- Verify HOT is working: n_tup_hot_upd should track n_tup_upd
+SELECT relname, n_tup_upd, n_tup_hot_upd,
+       round(100.0 * n_tup_hot_upd / nullif(n_tup_upd,0), 1) AS hot_pct
+FROM pg_stat_user_tables WHERE relname = 'sessions';
+</code></pre>
+<blockquote>
+<p>Practical rule: if a hot table has a low HOT-update ratio, find the index on a frequently-updated column and ask whether you actually need it. One unnecessary index on a churning column can double your write amplification.</p>
+</blockquote>
+<h3 id="toast-how-big-values-are-stored">TOAST — how big values are stored</h3>
+<p>Any value that won't fit comfortably in a page (roughly &gt; 2 KB) is compressed and/or pushed out-of-line into a hidden <strong>TOAST</strong> table, leaving a small pointer in the main tuple. This is automatic and per-column-tunable:</p>
+<pre><code class="language-sql">ALTER TABLE docs ALTER COLUMN body SET STORAGE EXTERNAL;  -- store out-of-line, skip compression (faster substring)
+ALTER TABLE docs ALTER COLUMN body SET COMPRESSION lz4;   -- PG14+: lz4 is much faster than default pglz
+</code></pre>
+<p>Why you care: a wide <code>jsonb</code>/<code>text</code> column you rarely read costs little when not selected (TOAST is fetched lazily), but <code>SELECT *</code> on a TOAST-heavy table forces detoasting on every row. It's a concrete reason to avoid <code>SELECT *</code>.</p>
+<h3 id="the-visibility-map-and-free-space-map">The Visibility Map and Free Space Map</h3>
+<p>Two side structures per table drive performance:</p>
+<ul>
+<li><strong>Visibility Map (VM):</strong> one bit per page meaning "all tuples here are visible to everyone." It powers <strong>index-only scans</strong> (skip the heap) and lets <code>VACUUM</code> skip already-clean pages.</li>
+<li><strong>Free Space Map (FSM):</strong> tracks reusable space so inserts/HOT-updates find a home.</li>
+</ul>
+<p>A stale VM (because <code>VACUUM</code> hasn't run) silently turns fast index-only scans back into heap-fetching index scans. This is the hidden link between vacuuming and read performance.</p>
+<h3 id="practice">Practice</h3>
+<ul>
+<li>Insert a row, capture its <code>ctid</code>, <code>UPDATE</code> a non-indexed column, and confirm the <code>ctid</code> changes but <code>n_tup_hot_upd</code> increments.</li>
+<li>Add an index to that column, repeat, and watch the HOT ratio collapse.</li>
+<li>Find your most-bloated tables with the bloat query in <a href="#13-observability">§13</a> and correlate with HOT ratios.</li>
+</ul>
+<hr>
+<h2 id="2-wal-checkpoints-durability">2. WAL, Checkpoints &amp; Durability</h2>
+<p>The <strong>Write-Ahead Log</strong> is the second pillar. Every change is written to WAL <em>before</em> the data page is modified, so a crash can always be replayed forward. The same log powers replication and PITR.</p>
+<h3 id="the-write-path">The write path</h3>
+<pre><code class="language-text">Change → WAL record in wal_buffers → flushed to pg_wal/ on COMMIT (fsync)
+       → data page modified in shared_buffers (dirty)
+       → later flushed to the data file by a CHECKPOINT (or bgwriter)
+</code></pre>
+<p>The data files lag WAL. On crash recovery, Postgres replays WAL from the last checkpoint forward. This is why a <code>COMMIT</code> only needs to fsync the (sequential, cheap) WAL, not the (scattered, expensive) data pages.</p>
+<h3 id="durability-knobs">Durability knobs</h3>
+<pre><code class="language-sql">-- The big one. 'on' = fsync WAL at commit (durable). Per-transaction tunable.
+SET synchronous_commit = on;        -- off = fast but lose last ~few hundred ms on crash (NOT corruption)
+</code></pre>
+<table>
+<thead>
+<tr>
+<th><code>synchronous_commit</code></th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>on</code></td>
+<td>Commit waits for local WAL flush (and sync standby if configured) — default</td>
+</tr>
+<tr>
+<td><code>off</code></td>
+<td>Returns before WAL flush; a crash loses recent commits but <strong>never corrupts</strong></td>
+</tr>
+<tr>
+<td><code>local</code></td>
+<td>Local flush only, ignore standbys</td>
+</tr>
+<tr>
+<td><code>remote_write</code> / <code>remote_apply</code></td>
+<td>Wait for standby to receive / replay (see <a href="#11-replication--high-availability">§11</a>)</td>
+</tr>
+</tbody>
+</table>
+<p>Setting <code>synchronous_commit = off</code> for a bulk-import or a tolerate-loss workload is one of the highest-ROI single-line speedups Postgres offers.</p>
+<h3 id="full-page-writes">Full-page writes</h3>
+<p>The first change to a page after a checkpoint logs the <strong>entire page</strong> to WAL (protection against torn pages on crash). This is why WAL volume spikes right after each checkpoint and why <strong><code>wal_compression</code></strong> matters:</p>
+<pre><code class="language-sql">ALTER SYSTEM SET wal_compression = lz4;   -- PG15+ supports lz4/zstd; shrinks full-page images
+</code></pre>
+<h3 id="checkpoint-tuning">Checkpoint tuning</h3>
+<p>A checkpoint flushes all dirty buffers and lets old WAL be recycled. Too-frequent checkpoints mean repeated full-page-write storms; too-rare means long crash recovery and big WAL.</p>
+<pre><code class="language-conf">checkpoint_timeout = 15min            # default 5min — longer = fewer FPW storms
+max_wal_size = 16GB                   # let WAL grow between timed checkpoints
+checkpoint_completion_target = 0.9    # spread the flush over 90% of the interval (default since PG14)
+</code></pre>
+<p>Diagnose pressure: if checkpoints are happening because WAL filled up (not on the timer), they're too aggressive.</p>
+<pre><code class="language-sql">-- PG17+ exposes this in pg_stat_checkpointer; earlier in pg_stat_bgwriter
+SELECT num_timed, num_requested FROM pg_stat_checkpointer;
+-- num_requested &gt;&gt; num_timed  →  raise max_wal_size
+</code></pre>
+<h3 id="practice_1">Practice</h3>
+<ul>
+<li>Run a write-heavy <code>pgbench</code> (see <a href="#15-benchmarking">§15</a>) with <code>synchronous_commit</code> on vs off and measure TPS.</li>
+<li>Watch <code>pg_current_wal_lsn()</code> grow during a bulk load; compute MB of WAL per million rows.</li>
+<li>Lower <code>checkpoint_timeout</code> to <code>30s</code>, run a load, and observe <code>num_requested</code> climb.</li>
+</ul>
+<hr>
+<h2 id="3-vacuum-autovacuum-wraparound">3. VACUUM, Autovacuum &amp; Wraparound</h2>
+<p>MVCC's bill comes due here. <code>VACUUM</code> reclaims dead tuples, updates the VM/FSM, refreshes statistics (with <code>ANALYZE</code>), and — critically — <strong>freezes</strong> old rows to prevent transaction-ID wraparound.</p>
+<h3 id="what-vacuum-actually-does">What VACUUM actually does</h3>
+<pre><code class="language-sql">VACUUM (VERBOSE, ANALYZE) orders;   -- reclaim dead space + refresh stats (non-blocking)
+VACUUM FREEZE orders;               -- aggressively freeze old tuples
+VACUUM FULL orders;                 -- rewrite the whole table compactly — ACCESS EXCLUSIVE lock, AVOID
+</code></pre>
+<p><code>VACUUM</code> does <strong>not</strong> return disk to the OS (it marks space reusable inside the table). Only <code>VACUUM FULL</code> or <code>pg_repack</code> shrink the file. Use <strong><code>pg_repack</code></strong> in production — it rebuilds the table without the long exclusive lock:</p>
+<pre><code class="language-bash">pg_repack -d app -t orders   # online rebuild, brief lock only at swap
+</code></pre>
+<h3 id="tuning-autovacuum">Tuning autovacuum</h3>
+<p>Autovacuum is gated by <em>scale factors</em> — fractions of the table that must change before it triggers. The defaults (20% for vacuum) are far too lazy for large hot tables: a 100 M-row table waits for 20 M dead rows before vacuuming. Override per-table:</p>
+<pre><code class="language-sql">ALTER TABLE events SET (
+  autovacuum_vacuum_scale_factor = 0.02,    -- vacuum at 2% dead, not 20%
+  autovacuum_analyze_scale_factor = 0.01,
+  autovacuum_vacuum_cost_limit = 2000,      -- let it work faster (default 200 is throttled)
+  autovacuum_vacuum_insert_scale_factor = 0.05  -- PG13+: vacuum insert-only tables too
+);
+</code></pre>
+<p>The cost-limit/cost-delay system deliberately throttles autovacuum to spare I/O. On modern SSDs that throttle is usually the <em>problem</em>, not the protection — raise <code>autovacuum_vacuum_cost_limit</code> (or globally <code>vacuum_cost_limit</code>) so vacuum keeps up with churn.</p>
+<h3 id="transaction-id-wraparound-the-emergency-that-takes-down-databases">Transaction-ID wraparound — the emergency that takes down databases</h3>
+<p>Transaction IDs are 32-bit and <strong>wrap around at ~4 billion</strong>. Postgres keeps the past visible by <em>freezing</em> tuples older than <code>vacuum_freeze_min_age</code>, marking them "always visible." If autovacuum can't freeze fast enough — usually because a <strong>long-running transaction</strong> or an <strong>abandoned replication slot</strong> holds back the horizon — the database approaches wraparound and will <strong>shut down to protect data</strong> before it corrupts.</p>
+<pre><code class="language-sql">-- Watch the oldest unfrozen XID age per database. 200M = autovacuum_freeze_max_age default kicks in.
+SELECT datname, age(datfrozenxid) AS xid_age
+FROM pg_database ORDER BY xid_age DESC;
+
+-- Find what's holding back the horizon:
+SELECT pid, state, age(backend_xmin) AS xmin_age, query
+FROM pg_stat_activity WHERE backend_xmin IS NOT NULL ORDER BY xmin_age DESC;
+
+SELECT slot_name, age(xmin) FROM pg_replication_slots ORDER BY 2 DESC;
+</code></pre>
+<p>If <code>xid_age</code> heads toward ~2 billion: kill the long transactions, drop dead replication slots, and let aggressive autovacuum freeze catch up. <strong>The three usual culprits are idle-in-transaction connections, a leaked replication slot, and autovacuum throttled too hard.</strong></p>
+<h3 id="practice_2">Practice</h3>
+<ul>
+<li>Create a churning table, watch <code>n_dead_tup</code> climb, and tune scale factors so autovacuum keeps it near zero.</li>
+<li>Open a transaction with <code>BEGIN; SELECT 1;</code> and leave it; watch <code>backend_xmin</code> age freeze on another session's table.</li>
+<li>Simulate wraparound pressure by setting a tiny <code>autovacuum_freeze_max_age</code> on a test instance.</li>
+</ul>
+<hr>
+<h2 id="4-the-query-planner-statistics">4. The Query Planner &amp; Statistics</h2>
+<p>Postgres is a <strong>cost-based</strong> optimizer: for each query it enumerates plans, estimates each plan's cost from table statistics, and picks the cheapest. When it chooses badly, the cause is almost always <strong>bad row estimates</strong>, not a "dumb planner."</p>
+<h3 id="where-estimates-come-from">Where estimates come from</h3>
+<p><code>ANALYZE</code> samples each table and stores per-column stats in <code>pg_statistic</code> (readable via <code>pg_stats</code>): the fraction of nulls, the most-common values (MCVs) and their frequencies, and a histogram of the rest. The planner combines these to guess how many rows a predicate returns — the <strong>selectivity</strong>.</p>
+<pre><code class="language-sql">SELECT attname, n_distinct, most_common_vals, histogram_bounds
+FROM pg_stats WHERE tablename = 'orders' AND attname = 'status';
+</code></pre>
+<h3 id="the-cost-constants">The cost constants</h3>
+<p>Costs are in arbitrary units anchored to <code>seq_page_cost = 1.0</code>. The one you will almost always change:</p>
+<pre><code class="language-sql">-- Default random_page_cost = 4.0 assumes spinning disks. On SSD/NVMe, set it near seq cost
+-- so the planner stops over-penalizing index scans:
+ALTER SYSTEM SET random_page_cost = 1.1;
+ALTER SYSTEM SET effective_cache_size = '24GB';  -- tell the planner how much OS cache exists (planner hint only)
+</code></pre>
+<p><code>effective_cache_size</code> doesn't allocate anything — it tells the planner how likely an index page is to be cached, which tips it toward index plans on large tables.</p>
+<h3 id="correlated-columns-the-classic-misestimate">Correlated columns — the classic misestimate</h3>
+<p>The planner assumes columns are independent. When they aren't (<code>city</code> and <code>postal_code</code>, <code>status</code> and <code>shipped_at</code>), it multiplies selectivities and badly undercounts, producing nested-loop plans that explode. Fix with <strong>extended statistics</strong>:</p>
+<pre><code class="language-sql">CREATE STATISTICS orders_corr (dependencies, ndistinct, mcv)
+  ON customer_id, status FROM orders;
+ANALYZE orders;
+</code></pre>
+<p>For a single skewed/important column, raise its resolution:</p>
+<pre><code class="language-sql">ALTER TABLE orders ALTER COLUMN created_at SET STATISTICS 1000;  -- more histogram buckets (default 100)
+ANALYZE orders;
+</code></pre>
+<h3 id="join-planning">Join planning</h3>
+<p>Postgres picks both the <strong>join algorithm</strong> (§5) and the <strong>join order</strong>. With many tables the search space explodes, so above <code>geqo_threshold</code> (default 12) it switches to a genetic optimizer. <code>join_collapse_limit</code> / <code>from_collapse_limit</code> (default 8) bound how much it reorders; raising them can find better plans for big star-schema joins at the cost of planning time.</p>
+<h3 id="practice_3">Practice</h3>
+<ul>
+<li>Find a query where <code>EXPLAIN ANALYZE</code> shows estimated rows off from actual by &gt;10×; fix it with <code>ANALYZE</code> or extended statistics and re-check.</li>
+<li>Flip <code>random_page_cost</code> between 4.0 and 1.1 on a large indexed table and watch the plan switch between seq and index scan.</li>
+</ul>
+<hr>
+<h2 id="5-reading-explain-like-a-pro">5. Reading EXPLAIN Like a Pro</h2>
+<p><code>EXPLAIN</code> is the single most important Postgres skill. <code>EXPLAIN</code> shows the plan + estimates; <strong><code>EXPLAIN ANALYZE</code> actually runs it</strong> and shows real timings and row counts.</p>
+<pre><code class="language-sql">EXPLAIN (ANALYZE, BUFFERS, SETTINGS, VERBOSE)
+SELECT c.name, count(*)
+FROM customers c JOIN orders o USING (customer_id)
+WHERE o.created_at &gt; now() - interval '30 days'
+GROUP BY c.name;
+</code></pre>
+<p>Always add <strong><code>BUFFERS</code></strong> — it shows shared (cached) vs read (from disk) blocks, which tells you whether you're CPU- or I/O-bound.</p>
+<h3 id="how-to-read-a-plan">How to read a plan</h3>
+<p>Read <strong>inside-out, bottom-up</strong>. Each node shows <code>cost=startup..total rows=estimate width=bytes</code> and, with ANALYZE, <code>actual time=... rows=... loops=...</code>. The two numbers to compare obsessively: <strong>estimated vs actual rows</strong>. A large gap is the root cause of most bad plans.</p>
+<h3 id="scan-nodes">Scan nodes</h3>
+<table>
+<thead>
+<tr>
+<th>Node</th>
+<th>When it's right</th>
+<th>When it's a smell</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Seq Scan</strong></td>
+<td>Reading most of a table</td>
+<td>On a big table with a selective <code>WHERE</code> → missing/unused index</td>
+</tr>
+<tr>
+<td><strong>Index Scan</strong></td>
+<td>Selective predicate</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Index Only Scan</strong></td>
+<td>Query covered by the index + fresh VM</td>
+<td>Reverts to heap fetches if VACUUM is stale (<code>Heap Fetches:</code> high)</td>
+</tr>
+<tr>
+<td><strong>Bitmap Heap Scan</strong></td>
+<td>Medium selectivity; combines indexes</td>
+<td>—</td>
+</tr>
+</tbody>
+</table>
+<h3 id="join-strategies">Join strategies</h3>
+<table>
+<thead>
+<tr>
+<th>Join</th>
+<th>How it works</th>
+<th>Best when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Nested Loop</strong></td>
+<td>For each outer row, probe inner</td>
+<td>Outer side tiny, inner indexed</td>
+</tr>
+<tr>
+<td><strong>Hash Join</strong></td>
+<td>Build hash of one side, probe with other</td>
+<td>Large unsorted sets, equality join</td>
+</tr>
+<tr>
+<td><strong>Merge Join</strong></td>
+<td>Sort both, merge</td>
+<td>Both inputs already sorted / huge</td>
+</tr>
+</tbody>
+</table>
+<p>A <strong>Nested Loop over a large inner set</strong> is the canonical "planner thought there'd be 3 rows, there were 30,000" disaster — fix the estimate (§4), don't just disable nestloop.</p>
+<h3 id="red-flags-and-their-fixes">Red flags and their fixes</h3>
+<ul>
+<li><strong><code>Rows Removed by Filter:</code> huge</strong> → the index isn't selective enough; add a partial or better composite index.</li>
+<li><strong>Sort spilling: <code>Sort Method: external merge Disk: …</code></strong> → raise <code>work_mem</code>.</li>
+<li><strong><code>Heap Fetches:</code> high on an Index Only Scan</strong> → VACUUM the table to refresh the visibility map.</li>
+<li><strong>Hash Join <code>Batches: &gt;1</code></strong> → hash didn't fit in <code>work_mem</code>; raise it (or <code>hash_mem_multiplier</code>).</li>
+<li><strong><code>Buffers: read=</code> large, <code>hit=</code> small</strong> → cold cache / I/O-bound; the data isn't resident.</li>
+</ul>
+<h3 id="diagnostic-only-plan-forcing">Diagnostic-only plan forcing</h3>
+<pre><code class="language-sql">SET enable_seqscan = off;   -- session only — a DIAGNOSTIC to see the alternative cost, never a prod fix
+EXPLAIN ANALYZE SELECT ...;
+RESET enable_seqscan;
+</code></pre>
+<h3 id="auto_explain-capture-slow-plans-in-production">auto_explain — capture slow plans in production</h3>
+<pre><code class="language-conf">shared_preload_libraries = 'auto_explain'
+auto_explain.log_min_duration = '500ms'
+auto_explain.log_analyze = on
+auto_explain.log_buffers = on
+</code></pre>
+<h3 id="practice_4">Practice</h3>
+<ul>
+<li>Take a slow query and iterate: read the plan, find the biggest est-vs-actual gap or the most expensive node, fix it, re-run. Repeat until the plan is clean.</li>
+<li>Paste a JSON plan (<code>FORMAT JSON</code>) into <code>explain.dalibo.com</code> and read the visual tree.</li>
+</ul>
+<hr>
+<h2 id="6-index-internals-strategy">6. Index Internals &amp; Strategy</h2>
+<p>Indexes are the highest-leverage performance tool and the most over- and under-applied. Pick the <em>type</em> by the query shape.</p>
+<h3 id="b-tree-the-default-and-90-of-what-you-need">B-tree (the default, and ~90% of what you need)</h3>
+<p>A balanced tree of sorted keys; serves equality, ranges, sorting, and <code>LIKE 'prefix%'</code>. Default FILLFACTOR 90 (leaves slack for in-page inserts).</p>
+<p><strong>Composite column order is the #1 mistake.</strong> Put equality columns first, then the range/sort column. An index on <code>(customer_id, created_at)</code> serves <code>WHERE customer_id = ? ORDER BY created_at</code> perfectly; <code>(created_at, customer_id)</code> does not.</p>
+<pre><code class="language-sql">CREATE INDEX ON orders (customer_id, created_at DESC);   -- equality then range/sort
+</code></pre>
+<h3 id="index-only-scans-covering-indexes">Index-only scans &amp; covering indexes</h3>
+<p>If every column the query needs is in the index, Postgres skips the heap entirely (given a fresh VM). <code>INCLUDE</code> adds payload columns to leaf pages without making them part of the key:</p>
+<pre><code class="language-sql">CREATE INDEX ON orders (customer_id) INCLUDE (total, status);
+-- SELECT total, status FROM orders WHERE customer_id = 42  →  Index Only Scan
+</code></pre>
+<h3 id="partial-expression-indexes-smaller-sharper">Partial &amp; expression indexes — smaller, sharper</h3>
+<pre><code class="language-sql">-- Index only the hot subset: tiny index, ignores 99% soft-deleted rows
+CREATE INDEX ON users (email) WHERE deleted_at IS NULL;
+-- Index a computed value so the matching query can use it
+CREATE INDEX ON users (lower(email));   -- WHERE lower(email) = ...
+</code></pre>
+<h3 id="the-specialized-types-when-b-tree-wont-do">The specialized types — when B-tree won't do</h3>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Use for</th>
+<th>Example</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>GIN</strong></td>
+<td>Multi-value columns: <code>jsonb</code>, arrays, full-text</td>
+<td><code>USING GIN (data jsonb_path_ops)</code></td>
+</tr>
+<tr>
+<td><strong>GiST</strong></td>
+<td>Ranges, geometry, fuzzy (<code>pg_trgm</code>), nearest-neighbor</td>
+<td><code>USING GIST (during)</code> exclusion</td>
+</tr>
+<tr>
+<td><strong>BRIN</strong></td>
+<td>Huge tables physically ordered by the column (time-series)</td>
+<td><code>USING BRIN (created_at)</code> — tiny index</td>
+</tr>
+<tr>
+<td><strong>SP-GiST</strong></td>
+<td>Non-balanced data: IP prefixes, phone numbers</td>
+<td><code>USING SPGIST (ip inet_ops)</code></td>
+</tr>
+<tr>
+<td><strong>Hash</strong></td>
+<td>Equality-only on wide keys</td>
+<td><code>USING HASH (token)</code></td>
+</tr>
+<tr>
+<td><strong>HNSW/IVFFlat</strong></td>
+<td>Vector similarity (pgvector)</td>
+<td><code>USING hnsw (embedding vector_cosine_ops)</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong>BRIN is the secret weapon for append-only time-series</strong>: a BRIN index on a billion-row events table can be a few hundred KB (vs. tens of GB for B-tree) because it only stores min/max per block range — and it works precisely <em>because</em> the table is physically ordered by time.</p>
+<h3 id="building-and-maintaining-indexes-safely">Building and maintaining indexes safely</h3>
+<pre><code class="language-sql">CREATE INDEX CONCURRENTLY ON big_table (col);   -- no write lock; 2 passes, slower wall-clock
+REINDEX INDEX CONCURRENTLY some_idx;            -- rebuild a bloated index online (PG12+)
+</code></pre>
+<p><code>CONCURRENTLY</code> can't run in a transaction block and leaves an <code>INVALID</code> index if it fails — drop and retry. Indexes bloat too; a B-tree on a churning table eventually needs a concurrent reindex.</p>
+<h3 id="finding-waste">Finding waste</h3>
+<pre><code class="language-sql">-- Unused indexes (idx_scan = 0) are pure write-amplification + bloat; drop them
+SELECT relname, indexrelname, idx_scan, pg_size_pretty(pg_relation_size(indexrelid))
+FROM pg_stat_user_indexes WHERE idx_scan = 0 ORDER BY pg_relation_size(indexrelid) DESC;
+</code></pre>
+<h3 id="practice_5">Practice</h3>
+<ul>
+<li>Build <code>(a, b)</code> and <code>(b, a)</code> on the same table and prove which serves <code>WHERE a=? ORDER BY b</code>.</li>
+<li>Replace a B-tree on a time column of a large append-only table with BRIN; compare index sizes and plan.</li>
+<li>Audit a real database for unused indexes and estimate the write savings of dropping them.</li>
+</ul>
+<hr>
+<h2 id="7-locking-concurrency-at-scale">7. Locking &amp; Concurrency at Scale</h2>
+<p>MVCC means reads don't lock, but writes and DDL do. Understanding the lock hierarchy keeps you out of production incidents.</p>
+<h3 id="row-locks">Row locks</h3>
+<pre><code class="language-sql">SELECT * FROM orders WHERE id = 42 FOR UPDATE;          -- strong: blocks other writers
+SELECT ... FOR UPDATE SKIP LOCKED;                       -- skip locked rows — the queue-worker pattern
+SELECT ... FOR UPDATE NOWAIT;                            -- fail instead of waiting
+SELECT ... FOR NO KEY UPDATE / FOR SHARE / FOR KEY SHARE; -- progressively weaker
+</code></pre>
+<h3 id="table-locks-and-the-ddl-trap">Table locks and the DDL trap</h3>
+<p>Every statement takes a table lock; the danger is the strong ones. <code>ALTER TABLE</code>, <code>VACUUM FULL</code>, and a non-concurrent <code>CREATE INDEX</code> take <strong>ACCESS EXCLUSIVE</strong>, which blocks <em>everything</em> — and worse, it <strong>queues behind running queries and then blocks every new query behind it</strong>. A migration that waits 30 s for a slow <code>SELECT</code> can stall the whole application.</p>
+<p>Always bound migration locks:</p>
+<pre><code class="language-sql">SET lock_timeout = '2s';                 -- give up rather than pile up a queue
+ALTER TABLE orders ADD COLUMN note text; -- fast (metadata-only since PG11 for constant defaults)
+</code></pre>
+<h3 id="deadlocks">Deadlocks</h3>
+<p>Two transactions lock the same rows in opposite order. Postgres detects the cycle and kills one (<code>deadlock_timeout</code>, default 1 s). The fix is <strong>always lock in a consistent order</strong> (e.g., sort IDs before locking).</p>
+<h3 id="inspecting-blocking">Inspecting blocking</h3>
+<pre><code class="language-sql">SELECT blocked.pid AS blocked, blocked.query AS blocked_q,
+       blocker.pid AS blocker, blocker.query AS blocker_q
+FROM pg_stat_activity blocked
+JOIN pg_stat_activity blocker
+  ON blocker.pid = ANY(pg_blocking_pids(blocked.pid));
+</code></pre>
+<h3 id="serializable-snapshot-isolation-ssi">Serializable Snapshot Isolation (SSI)</h3>
+<p><code>SERIALIZABLE</code> gives you true serializability by tracking read/write dependencies and aborting transactions that would create an anomaly with <code>40001</code>. The contract: <strong>you must retry <code>40001</code> (and <code>40P01</code> deadlock) errors.</strong> Write your data layer to catch those SQLSTATEs and replay the whole transaction — never patch around them.</p>
+<h3 id="advisory-locks">Advisory locks</h3>
+<p>Application-defined locks Postgres doesn't interpret — perfect for "only one worker runs this job":</p>
+<pre><code class="language-sql">SELECT pg_try_advisory_lock(hashtext('nightly-rollup'));  -- false if someone else holds it
+</code></pre>
+<h3 id="practice_6">Practice</h3>
+<ul>
+<li>Build a queue table and drain it from 10 workers using <code>FOR UPDATE SKIP LOCKED</code>; prove no row is processed twice.</li>
+<li>Reproduce a deadlock with two psql sessions, read the server log's deadlock report.</li>
+<li>Write a retry wrapper for <code>40001</code> and test it under <code>SERIALIZABLE</code>.</li>
+</ul>
+<hr>
+<h2 id="8-connections-pooling">8. Connections &amp; Pooling</h2>
+<p>Postgres forks <strong>one OS process per connection</strong>, each consuming memory and a snapshot slot. This is why "just raise <code>max_connections</code>" backfires: thousands of mostly-idle backends thrash the scheduler and inflate snapshot costs.</p>
+<h3 id="the-math">The math</h3>
+<p>Active connections should roughly track your core count for CPU-bound work; the rest is concurrency you <em>queue</em>, not <em>run</em>. A common starting point: <code>max_connections</code> modest (100–300) at the server, and a <strong>pooler</strong> in front for everything else.</p>
+<h3 id="pgbouncer-pooling-modes">PgBouncer pooling modes</h3>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>A client connection holds a server connection…</th>
+<th>Trade-off</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>session</strong></td>
+<td>for the whole client session</td>
+<td>Safe, but barely better than no pool</td>
+</tr>
+<tr>
+<td><strong>transaction</strong></td>
+<td>only during a transaction</td>
+<td><strong>The default choice</strong> — huge fan-in</td>
+</tr>
+<tr>
+<td><strong>statement</strong></td>
+<td>per statement</td>
+<td>Most aggressive; forbids multi-statement txns</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Transaction pooling</strong> lets 5,000 app connections share 50 server connections — but it breaks anything that relies on session state across transactions: session-level <code>SET</code>, session advisory locks, <code>LISTEN/NOTIFY</code>, and server-side prepared statements (unless you configure <code>max_prepared_statements</code> / use protocol-level prepares). Know this before you turn it on.</p>
+<pre><code class="language-ini"># pgbouncer.ini
+[databases]
+app = host=127.0.0.1 dbname=app
+[pgbouncer]
+pool_mode = transaction
+max_client_conn = 5000
+default_pool_size = 50
+</code></pre>
+<h3 id="built-in-alternative">Built-in alternative</h3>
+<p>PG-native connection pooling is improving, but PgBouncer (or pgcat) remains the standard. Many managed providers bundle one — know which mode they default to.</p>
+<h3 id="practice_7">Practice</h3>
+<ul>
+<li>Run <code>pgbench</code> with 500 clients directly vs. through PgBouncer transaction pooling at <code>default_pool_size=50</code>; compare TPS and latency.</li>
+<li>Break something on purpose: hold a session advisory lock across transactions under transaction pooling and watch it misbehave.</li>
+</ul>
+<hr>
+<h2 id="9-the-performance-tuning-ladder">9. The Performance Tuning Ladder</h2>
+<p>Climb in order — each rung assumes the ones below are done. The biggest wins are almost always <strong>the right index</strong> and <strong>fixing a bad row estimate</strong>, not config.</p>
+<ol>
+<li><strong>Schema &amp; query</strong> — right data types, no <code>SELECT *</code>, keyset not OFFSET pagination, batch writes.</li>
+<li><strong>Indexes</strong> — the right type and composite order (§6).</li>
+<li><strong>Statistics</strong> — <code>ANALYZE</code>, extended stats for correlated columns (§4).</li>
+<li><strong>Memory</strong> — the four settings below.</li>
+<li><strong>Planner constants</strong> — <code>random_page_cost</code>, <code>effective_cache_size</code> for your storage (§4).</li>
+<li><strong>Parallelism</strong> — let big scans use multiple workers.</li>
+<li><strong>Vacuum/checkpoint</strong> — keep bloat and FPW storms in check (§2–§3).</li>
+<li><strong>Connection pooling</strong> — stop drowning in backends (§8).</li>
+<li><strong>Replication / read replicas</strong> — scale reads out (§11).</li>
+<li><strong>Extensions / partitioning / hardware</strong> — pg_partman, BRIN, faster disks.</li>
+</ol>
+<h3 id="the-memory-four">The memory four</h3>
+<pre><code class="language-conf">shared_buffers = 8GB             # ~25% of RAM. Postgres's own page cache.
+effective_cache_size = 24GB      # ~50-75% of RAM. Planner hint, allocates nothing.
+work_mem = 32MB                  # PER sort/hash NODE, PER connection. The dangerous one.
+maintenance_work_mem = 2GB       # index builds, VACUUM
+</code></pre>
+<p><strong><code>work_mem</code> is per-node, not per-query, not per-server.</strong> A query with 3 sorts across 100 connections can use <code>300 × work_mem</code>. Set it modestly globally and raise it locally for known reporting queries:</p>
+<pre><code class="language-sql">SET LOCAL work_mem = '256MB';   -- inside the transaction running the big analytical query only
+</code></pre>
+<h3 id="parallel-query">Parallel query</h3>
+<pre><code class="language-conf">max_parallel_workers_per_gather = 4   # default 2; a big seq scan/aggregate can use N workers
+max_parallel_workers = 8
+</code></pre>
+<h3 id="practice_8">Practice</h3>
+<ul>
+<li>Take a reporting query that spills to disk (<code>external merge</code> in EXPLAIN), raise <code>work_mem</code> locally until it's in-memory, and measure the speedup.</li>
+<li>Set <code>random_page_cost</code> correctly for your disk and re-plan your slowest query.</li>
+</ul>
+<hr>
+<h2 id="10-partitioning-at-scale">10. Partitioning at Scale</h2>
+<p>Declarative partitioning (PG10+) splits one logical table into physical partitions. It's not a speed-up by itself — it's a tool for <strong>manageability</strong> (drop old data instantly) and <strong>pruning</strong> (skip irrelevant partitions).</p>
+<h3 id="when-it-actually-helps">When it actually helps</h3>
+<ul>
+<li>The table is large <em>and</em> most queries filter on the partition key (usually time).</li>
+<li>You age data out: dropping a partition is instant; <code>DELETE</code>-ing millions of rows is not.</li>
+<li>Bulk-load/detach workflows: build a partition offline, <code>ATTACH</code> it in one fast metadata op.</li>
+</ul>
+<h3 id="pruning-partition-wise-joinsaggregates">Pruning, partition-wise joins/aggregates</h3>
+<pre><code class="language-sql">-- Pruning: the planner skips partitions that can't match (planning AND execution time)
+EXPLAIN SELECT count(*) FROM events WHERE created_at &gt;= date '2026-05-01';
+
+-- Let joins/aggregates run partition-by-partition (often a big win):
+SET enable_partitionwise_join = on;
+SET enable_partitionwise_aggregate = on;
+</code></pre>
+<h3 id="operating-it">Operating it</h3>
+<pre><code class="language-sql">-- Online detach (PG14+) doesn't block readers
+ALTER TABLE events DETACH PARTITION events_2026_01 CONCURRENTLY;
+</code></pre>
+<p>Automate creation/retention with <strong>pg_partman</strong> + <strong>pg_cron</strong> rather than hand-rolling monthly DDL. Combine time-range partitioning with a <strong>BRIN</strong> index on the time column for a tiny, fast time-series store.</p>
+<h3 id="pitfalls">Pitfalls</h3>
+<ul>
+<li>The partition key must be part of every unique constraint/PK — you can't enforce global uniqueness on a non-key column.</li>
+<li>Too many partitions (thousands) inflate planning time; keep counts reasonable.</li>
+<li>Cross-partition queries that <em>don't</em> filter on the key scan everything — partitioning then only hurts.</li>
+</ul>
+<h3 id="practice_9">Practice</h3>
+<ul>
+<li>Convert a large append-only table to monthly range partitions; prove pruning with EXPLAIN.</li>
+<li>Set up pg_partman to pre-create next month's partition and drop partitions older than 12 months.</li>
+</ul>
+<hr>
+<h2 id="11-replication-high-availability">11. Replication &amp; High Availability</h2>
+<p>All replication is WAL shipping; the question is <em>how</em> the WAL is applied.</p>
+<h3 id="physical-streaming-replication">Physical (streaming) replication</h3>
+<p>A byte-for-byte standby replays the primary's WAL stream. Standbys can serve <strong>read-only</strong> queries (read scaling) and become the new primary on failover. Use a <strong>replication slot</strong> so the primary retains WAL the standby still needs:</p>
+<pre><code class="language-sql">-- Primary
+ALTER SYSTEM SET wal_level = 'replica';
+ALTER SYSTEM SET max_wal_senders = 10;
+SELECT pg_create_physical_replication_slot('standby1');
+CREATE ROLE repl WITH REPLICATION LOGIN PASSWORD '...';
+</code></pre>
+<pre><code class="language-bash"># Standby: clone the primary and wire up streaming (-R writes standby.signal + primary_conninfo)
+pg_basebackup -h primary -U repl -D /var/lib/pgsql/data -R -C -S standby1 -P
+</code></pre>
+<blockquote>
+<p>Warning: a replication slot for a standby that goes away <strong>pins WAL forever</strong> — <code>pg_wal/</code> fills the disk and the primary stops. Monitor and drop orphaned slots. This is also a top cause of wraparound (§3).</p>
+</blockquote>
+<h3 id="sync-vs-async">Sync vs async</h3>
+<pre><code class="language-conf"># Make a named standby synchronous: commits wait for it to confirm
+synchronous_standby_names = 'ANY 1 (standby1, standby2)'
+synchronous_commit = remote_apply   # strongest: standby has REPLAYED it before COMMIT returns
+</code></pre>
+<p>Async (default) is fast but can lose the last few transactions on primary failure (non-zero RPO). Sync gives RPO=0 at the cost of commit latency tied to the standby. <code>remote_apply</code> even guarantees a read on the standby sees the just-committed write.</p>
+<h3 id="logical-replication">Logical replication</h3>
+<p>Publish/subscribe per-table; decodes WAL into row changes. Works across major versions and selectively — making it the tool for <strong>near-zero-downtime major upgrades</strong> and selective/heterogeneous replicas:</p>
+<pre><code class="language-sql">-- Primary (wal_level = logical)
+CREATE PUBLICATION pub_orders FOR TABLE orders, line_items;
+-- Subscriber
+CREATE SUBSCRIPTION sub_orders
+  CONNECTION 'host=primary dbname=app user=repl password=...'
+  PUBLICATION pub_orders;
+</code></pre>
+<p>Caveats: DDL is <strong>not</strong> replicated (apply schema changes yourself), and large transactions can lag. </p>
+<h3 id="automatic-failover">Automatic failover</h3>
+<p>Core Postgres ships the <em>parts</em>, not an orchestrator. For automated promotion you run <strong>Patroni</strong> (+ etcd/Consul) or a managed service. The job: detect primary failure, promote a standby, and repoint clients (via a VIP, HAProxy, or service discovery) — fast enough to meet your RTO, without split-brain.</p>
+<h3 id="practice_10">Practice</h3>
+<ul>
+<li>Stand up one primary + one streaming standby with a slot; run read queries on the standby and watch replay lag (<code>pg_stat_replication</code>).</li>
+<li>Flip a standby to <code>remote_apply</code> sync and measure the commit-latency cost.</li>
+<li>Do a logical-replication "upgrade": replicate from a 16 to a 17 instance and cut over.</li>
+</ul>
+<hr>
+<h2 id="12-backup-pitr-disaster-recovery">12. Backup, PITR &amp; Disaster Recovery</h2>
+<p>Two fundamentally different things, often confused:</p>
+<ul>
+<li><strong>Logical backup</strong> (<code>pg_dump</code>/<code>pg_dumpall</code>): a portable, version-independent SQL/archive snapshot. Great for single databases, migrations, and selective restore. Slow to restore at scale; not point-in-time.</li>
+<li><strong>Physical backup + WAL archiving</strong>: a base copy of the cluster plus the continuous WAL stream, enabling <strong>Point-In-Time Recovery</strong> to any moment.</li>
+</ul>
+<h3 id="pg_dump">pg_dump</h3>
+<pre><code class="language-bash">pg_dump -Fc -d app -f app.dump          # custom format (compressed, parallel-restorable)
+pg_restore -d app_restored -j 8 app.dump # parallel restore
+</code></pre>
+<h3 id="continuous-archiving-pitr">Continuous archiving + PITR</h3>
+<pre><code class="language-conf">wal_level = replica
+archive_mode = on
+archive_command = 'test ! -f /archive/%f &amp;&amp; cp %p /archive/%f'   # ship each WAL segment
+</code></pre>
+<pre><code class="language-bash">pg_basebackup -D /backups/base-$(date +%F) -Ft -z -P   # the base backup
+</code></pre>
+<p>Restore = base backup + replay WAL up to a target:</p>
+<pre><code class="language-conf">restore_command = 'cp /archive/%f %p'
+recovery_target_time = '2026-04-22 11:45:00-07'   # &quot;the moment before the bad DELETE&quot;
+</code></pre>
+<p>In production, don't hand-roll this — use <strong>pgBackRest</strong> or <strong>Barman</strong>: they do parallel, compressed, incremental backups, manage retention, and verify restores. An untested backup is not a backup.</p>
+<h3 id="rporto-framing">RPO/RTO framing</h3>
+<ul>
+<li><strong>RPO</strong> (how much data you can lose) is set by your WAL-archiving cadence and sync-replication choice.</li>
+<li><strong>RTO</strong> (how long to recover) is set by base-backup size + WAL replay speed + failover automation.</li>
+</ul>
+<h3 id="practice_11">Practice</h3>
+<ul>
+<li>Take a base backup, archive WAL, intentionally <code>DROP TABLE</code>, then PITR to one second before the drop.</li>
+<li>Configure pgBackRest with a weekly full + daily incremental and run a verified restore into a scratch instance.</li>
+</ul>
+<hr>
+<h2 id="13-observability">13. Observability</h2>
+<p>You cannot tune what you cannot see. Three extensions/views carry most of the weight.</p>
+<h3 id="pg_stat_statements-your-1-tool">pg_stat_statements — your #1 tool</h3>
+<p>Aggregates normalized query stats. Find the queries that actually cost you (by <em>total</em> time, not per-call):</p>
+<pre><code class="language-sql">CREATE EXTENSION IF NOT EXISTS pg_stat_statements;  -- + shared_preload_libraries
+
+SELECT query, calls, round(total_exec_time) AS total_ms,
+       round(mean_exec_time, 2) AS mean_ms, rows
+FROM pg_stat_statements
+ORDER BY total_exec_time DESC LIMIT 20;
+</code></pre>
+<h3 id="pg_stat_activity-whats-happening-right-now">pg_stat_activity — what's happening right now</h3>
+<pre><code class="language-sql">SELECT pid, state, wait_event_type, wait_event,
+       now() - query_start AS runtime, query
+FROM pg_stat_activity
+WHERE state &lt;&gt; 'idle'
+ORDER BY runtime DESC;
+</code></pre>
+<p><strong>Wait events</strong> are the key column: <code>Lock</code> (blocked on a lock), <code>LWLock</code>/<code>BufferPin</code> (internal contention), <code>IO:DataFileRead</code> (disk-bound), <code>Client:ClientRead</code> (waiting on the app — often idle-in-transaction). On PG16+, <strong><code>pg_stat_io</code></strong> gives a per-backend-type read/write/extend breakdown that finally makes I/O attribution easy.</p>
+<h3 id="bloat-dead-tuples">Bloat &amp; dead tuples</h3>
+<pre><code class="language-sql">SELECT relname, n_live_tup, n_dead_tup,
+       round(100.0 * n_dead_tup / nullif(n_live_tup + n_dead_tup, 0), 1) AS dead_pct,
+       last_autovacuum
+FROM pg_stat_user_tables ORDER BY n_dead_tup DESC LIMIT 20;
+</code></pre>
+<h3 id="logging">Logging</h3>
+<pre><code class="language-conf">log_min_duration_statement = '500ms'   # log every statement slower than this
+log_lock_waits = on                    # log when a statement waits &gt; deadlock_timeout for a lock
+log_autovacuum_min_duration = 0        # see every autovacuum — invaluable for tuning
+</code></pre>
+<p>Pipe metrics into Prometheus (<code>postgres_exporter</code>) + Grafana, or use pgwatch2/pganalyze. The minimum viable setup: <code>pg_stat_statements</code> + <code>auto_explain</code> + <code>log_lock_waits</code> on every non-trivial database.</p>
+<h3 id="practice_12">Practice</h3>
+<ul>
+<li>Turn on <code>pg_stat_statements</code>, run your app's load, and identify the top-3 queries by total time.</li>
+<li>Catch an idle-in-transaction connection via <code>wait_event = ClientRead</code> + long <code>runtime</code>.</li>
+</ul>
+<hr>
+<h2 id="14-production-patterns-pitfalls">14. Production Patterns &amp; Pitfalls</h2>
+<p>The greatest hits — most production Postgres incidents are one of these.</p>
+<ul>
+<li><strong>Idle-in-transaction connections.</strong> A connection that <code>BEGIN</code>s and sits holds back the xmin horizon, blocking vacuum and risking wraparound, and may hold locks. Set <code>idle_in_transaction_session_timeout = '60s'</code>.</li>
+<li><strong>Unindexed foreign keys.</strong> Postgres does <strong>not</strong> auto-index the referencing side of an FK. Without it, deleting/updating a parent row does a seq scan of the child and takes strong locks. Index every FK column.</li>
+<li><strong><code>OFFSET</code> pagination.</strong> <code>OFFSET 100000 LIMIT 20</code> reads and discards 100,000 rows every time. Use <strong>keyset pagination</strong>: <code>WHERE id &gt; :last ORDER BY id LIMIT 20</code>.</li>
+<li><strong><code>SELECT *</code></strong> forces detoasting of big columns and breaks index-only scans. Select what you need.</li>
+<li><strong><code>count(*)</code> is not free.</strong> Postgres has no stored row count (MVCC — the count is per-snapshot). For exact counts it scans; for an estimate use <code>pg_class.reltuples</code> or a maintained counter.</li>
+<li><strong>Schema migrations that lock.</strong> <code>ALTER TABLE</code> takes ACCESS EXCLUSIVE and queues behind/ahead of traffic. Use <code>lock_timeout</code>, <code>ADD COLUMN</code> with constant defaults (fast since PG11), <code>NOT VALID</code> + <code>VALIDATE</code> for constraints, and <code>CREATE INDEX CONCURRENTLY</code>.</li>
+<li><strong>Adding an enum value in a migration</strong> historically caused issues mid-transaction; prefer a lookup table or <code>CHECK</code> constraint when values change often.</li>
+<li><strong>Too many connections.</strong> Each is a process; thousands thrash. Pool (§8).</li>
+<li><strong>N+1 queries.</strong> The app, not Postgres — but it shows up as thousands of identical fast queries in <code>pg_stat_statements</code>. Batch with <code>IN</code>, <code>= ANY($1)</code>, or a join.</li>
+<li><strong>Trusting a CTE as a fence.</strong> Since PG12 plain CTEs are inlined; if you relied on the old fence behavior, mark it <code>MATERIALIZED</code>.</li>
+<li><strong>Long-running analytics on the primary</strong> holding back vacuum — run them on a read replica or <code>SET TRANSACTION SNAPSHOT</code> carefully.</li>
+</ul>
+<hr>
+<h2 id="15-benchmarking">15. Benchmarking</h2>
+<p>Measure, don't guess. <strong><code>pgbench</code></strong> ships with Postgres.</p>
+<pre><code class="language-bash">pgbench -i -s 100 app          # initialize, scale factor 100 (~10M rows)
+pgbench -c 32 -j 4 -T 60 app   # 32 clients, 4 threads, 60s — reports TPS + latency
+pgbench -c 32 -j 4 -T 60 -f custom.sql app   # your own workload
+</code></pre>
+<pre><code class="language-sql">-- custom.sql — model your real access pattern, not the default TPC-B-ish one
+\set id random(1, 100000)
+SELECT * FROM orders WHERE customer_id = :id ORDER BY created_at DESC LIMIT 20;
+</code></pre>
+<p>Methodology that matters: warm the cache first, run long enough to cross a checkpoint, change <strong>one variable at a time</strong>, and compare medians across repeated runs. Benchmark on hardware that resembles production — <code>work_mem</code> and <code>random_page_cost</code> conclusions don't transfer from a laptop to NVMe servers.</p>
+<h3 id="practice_13">Practice</h3>
+<ul>
+<li>Benchmark <code>synchronous_commit</code> on vs off, and direct vs pooled connections, on the same workload.</li>
+<li>Write a custom script matching your hottest endpoint and use it to validate an index change end-to-end.</li>
+</ul>
+<hr>
+<h2 id="16-worked-performance-recipes">16. Worked Performance Recipes</h2>
+<h3 id="recipe-1-turn-a-seq-scan-into-an-index-only-scan">Recipe 1 — Turn a Seq Scan into an Index Only Scan</h3>
+<pre><code class="language-sql">EXPLAIN (ANALYZE, BUFFERS) SELECT status, total FROM orders WHERE customer_id = 42;
+--&gt; Seq Scan ... Rows Removed by Filter: 4_000_000
+CREATE INDEX ON orders (customer_id) INCLUDE (status, total);
+VACUUM orders;   -- refresh the visibility map so it's an Index ONLY scan
+-- re-run → Index Only Scan, Heap Fetches: 0
+</code></pre>
+<h3 id="recipe-2-kill-table-bloat-without-downtime">Recipe 2 — Kill table bloat without downtime</h3>
+<pre><code class="language-sql">SELECT relname, n_dead_tup FROM pg_stat_user_tables WHERE relname='events';
+-- VACUUM FULL would lock; use pg_repack instead:
+</code></pre>
+<pre><code class="language-bash">pg_repack -d app -t events   # rebuilds online, brief lock only at the swap
+</code></pre>
+<h3 id="recipe-3-a-reliable-job-queue">Recipe 3 — A reliable job queue</h3>
+<pre><code class="language-sql">CREATE TABLE jobs (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  state text NOT NULL DEFAULT 'queued',
+  run_after timestamptz NOT NULL DEFAULT now(),
+  payload jsonb
+);
+CREATE INDEX ON jobs (run_after) WHERE state = 'queued';   -- partial index = tiny + hot
+
+-- Each worker claims one job atomically, never colliding:
+WITH next AS (
+  SELECT id FROM jobs
+  WHERE state = 'queued' AND run_after &lt;= now()
+  ORDER BY run_after
+  FOR UPDATE SKIP LOCKED
+  LIMIT 1
+)
+UPDATE jobs j SET state = 'running'
+FROM next WHERE j.id = next.id
+RETURNING j.*;
+</code></pre>
+<h3 id="recipe-4-keyset-pagination-constant-time-at-any-depth">Recipe 4 — Keyset pagination (constant time at any depth)</h3>
+<pre><code class="language-sql">-- Page 1
+SELECT * FROM orders ORDER BY created_at DESC, id DESC LIMIT 20;
+-- Page N: pass the last row's (created_at, id) back as the cursor
+SELECT * FROM orders
+WHERE (created_at, id) &lt; (:last_created_at, :last_id)
+ORDER BY created_at DESC, id DESC LIMIT 20;
+</code></pre>
+<h3 id="recipe-5-fast-bulk-load">Recipe 5 — Fast bulk load</h3>
+<pre><code class="language-sql">BEGIN;
+SET LOCAL synchronous_commit = off;
+SET LOCAL maintenance_work_mem = '2GB';
+CREATE UNLOGGED TABLE staging (LIKE orders INCLUDING DEFAULTS);
+\copy staging FROM 'orders.csv' CSV HEADER
+-- drop/disable indexes on target first, then:
+INSERT INTO orders SELECT * FROM staging;
+COMMIT;
+-- recreate indexes CONCURRENTLY, then ANALYZE orders;
+</code></pre>
+<h3 id="recipe-6-tame-autovacuum-on-a-hot-table">Recipe 6 — Tame autovacuum on a hot table</h3>
+<pre><code class="language-sql">ALTER TABLE sessions SET (
+  fillfactor = 85,                          -- enable HOT updates
+  autovacuum_vacuum_scale_factor = 0.01,    -- vacuum aggressively
+  autovacuum_vacuum_cost_limit = 4000
+);
+-- verify: hot_pct high, n_dead_tup low, last_autovacuum recent
+</code></pre>
+<h3 id="recipe-7-safe-online-schema-migration">Recipe 7 — Safe online schema migration</h3>
+<pre><code class="language-sql">SET lock_timeout = '3s';                                          -- never queue behind traffic
+ALTER TABLE orders ADD COLUMN region text;                        -- fast metadata-only
+ALTER TABLE orders ADD CONSTRAINT orders_region_chk
+  CHECK (region IS NOT NULL) NOT VALID;                           -- don't scan now
+ALTER TABLE orders VALIDATE CONSTRAINT orders_region_chk;         -- scan without blocking writes
+CREATE INDEX CONCURRENTLY ON orders (region);                     -- no write lock
+</code></pre>
+<hr>
+<h2 id="17-decision-trees">17. Decision Trees</h2>
+<h3 id="which-index">Which index?</h3>
+<pre><code class="language-text">Equality/range/sort on a scalar?              → B-tree (default)
+Only need columns in the index?               → add INCLUDE (covering) → Index Only Scan
+Querying a hot subset only?                   → Partial index (WHERE ...)
+Querying a computed value?                    → Expression index
+jsonb / array / full-text?                    → GIN (jsonb_path_ops if only @&gt;)
+Range overlap / geometry / fuzzy (pg_trgm)?   → GiST
+Huge append-only table ordered by the column? → BRIN (tiny, time-series)
+Vector similarity (embeddings)?               → HNSW (pgvector)
+</code></pre>
+<h3 id="which-isolation-level">Which isolation level?</h3>
+<pre><code class="language-text">Default app traffic?                          → Read Committed
+Multi-statement consistent read (reports)?    → Repeatable Read
+Money/inventory invariants across rows?       → Serializable (and RETRY 40001)
+</code></pre>
+<h3 id="partition-or-not">Partition or not?</h3>
+<pre><code class="language-text">Table large AND queries filter on a time/key column AND you age data out? → Partition (range, + BRIN, + pg_partman)
+Otherwise                                                                 → One table + good indexes
+</code></pre>
+<h3 id="pooling-mode">Pooling mode?</h3>
+<pre><code class="language-text">Need session state (LISTEN/NOTIFY, session SET, advisory session locks)? → session pooling
+Plain request/response web app?                                          → transaction pooling (default win)
+</code></pre>
+<h3 id="scaling-reads">Scaling reads?</h3>
+<pre><code class="language-text">Read-heavy, can tolerate ms of lag?           → async streaming read replica(s)
+Must read-your-writes on the replica?         → synchronous_commit = remote_apply
+Different major version / selective tables?   → logical replication
+</code></pre>
+<hr>
+<h2 id="further-reading">Further Reading</h2>
+<ul>
+<li>Official docs: https://www.postgresql.org/docs/current/ (the internals chapters are excellent)</li>
+<li><em>PostgreSQL 14 Internals</em> (Egor Rogov) — the definitive deep dive on MVCC, vacuum, and the planner</li>
+<li><code>explain.dalibo.com</code> — visual plan analysis</li>
+<li><code>pgBackRest</code> / <code>Patroni</code> / <code>pg_partman</code> / <code>pg_repack</code> docs — the production operator's toolkit</li>
+<li>Companion: the <a href="postgres.html">PostgreSQL Feature Reference</a> for the SQL surface area</li>
+</ul></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

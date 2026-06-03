@@ -51,7 +51,8 @@ GUIDES = [
     ("VIM_STUDY_GUIDE.md", "html/vim-study-guide.html", {"auto": True}),
     ("DATA_ENGINEERING_STUDY_GUIDE.md", "html/data-engineering-study-guide.html", {"auto": True}),
     ("POSTGRES.md", "html/postgres.html", {"accent": "#336791"}),
-    ("POSTGRES_STUDY_GUIDE.md", "html/postgres-study-guide.html", {"accent": "#336791"}),
+    ("ADVANCED_POSTGRES.md", "html/advanced-postgres.html", {"accent": "#336791"}),
+    ("POSTGRES_EXTENSIONS.md", "html/postgres-extensions.html", {"accent": "#336791"}),
     ("REDIS_STUDY_GUIDE.md", "html/redis-study-guide.html", {"accent": "#ff4438"}),
     ("AI_AGENTS_STUDY_GUIDE.md", "html/ai-agents-study-guide.html", {"auto": True}),
     ("AUTH_STUDY_GUIDE.md", "html/auth-study-guide.html", {"auto": True}),
@@ -99,7 +100,8 @@ CATEGORIES = [
     ]),
     ("Data and messaging", [
         "data-engineering-study-guide.html", "postgres.html",
-        "postgres-study-guide.html", "redis-study-guide.html",
+        "advanced-postgres.html", "postgres-extensions.html",
+        "redis-study-guide.html",
     ]),
     ("Architecture, security, and AI", [
         "ai-agents-study-guide.html", "auth-study-guide.html",

@@ -44,7 +44,7 @@ These have no clean web or backend analogue, and they are the real content of th
 1. **Your code runs on the user's machine, not your server.** This is the deepest shift. You don't control the OS, the hardware, the other software, the antivirus, or *when the user updates*. There is no "deploy" button that atomically replaces the running version for everyone. You ship a binary and lose control of it. Everything about distribution (Part 8) and auto-updates (Part 9) exists because of this one fact.
 2. **The app is long-lived and stateful, not request-scoped.** A web request is born, serves a response, and dies — statelessness is a virtue you've been taught to cultivate. A desktop app *opens*, lives for hours or days holding in-memory state, manages windows, responds to the OS sleeping and waking, and *quits*. You think in terms of an application *lifecycle* and *event loop over the app's whole lifetime*, not per-request handlers.
 3. **You own the whole window, and the OS has opinions.** There's no browser chrome handed to you — you decide whether there's a title bar, a menu, a tray icon, what the close button does. And each OS (Windows, macOS, Linux) has different, strongly-held conventions you must respect (Part 5). "Cross-platform" means *three platforms' worth of native behavior*, not one.
-4. **Local-first data.** No central Postgres that every client shares. Data lives on the user's disk — files, a local SQLite database, app preferences — and *maybe* syncs to a server. Your data-modeling instincts from the [Postgres guide](POSTGRES_STUDY_GUIDE.md) transfer, but the deployment target is "a few hundred MB on a laptop," not "a managed cluster."
+4. **Local-first data.** No central Postgres that every client shares. Data lives on the user's disk — files, a local SQLite database, app preferences — and *maybe* syncs to a server. Your data-modeling instincts from the [Postgres guide](POSTGRES.md) transfer, but the deployment target is "a few hundred MB on a laptop," not "a managed cluster."
 5. **Shipping is hard in a way web shipping is not.** Web deploy is `git push` and a CI pipeline. Desktop "deploy" is: build a native installer for each OS, **cryptographically sign it** (or the OS refuses to run it), get macOS to **notarize** it, host it somewhere, and build an **auto-update** mechanism so users actually get your fixes. This is the part that shocks every web developer, and Part 8 is devoted to it.
 
 ### Why Electron Is the Right First GUI Framework for You
@@ -423,7 +423,7 @@ If you remember one thing from Part 5: **native integration (menus, tray, dialog
 
 ## Part 6 — Data Files & Storage
 
-A web app's data lives in a database you control on a server. A desktop app's data lives on the user's disk, and *you* are responsible for where it goes, how it's structured, and what happens when the app updates. Your SQL and data-modeling skills transfer (the [Postgres guide](POSTGRES_STUDY_GUIDE.md) applies), but the deployment target and the access model are new.
+A web app's data lives in a database you control on a server. A desktop app's data lives on the user's disk, and *you* are responsible for where it goes, how it's structured, and what happens when the app updates. Your SQL and data-modeling skills transfer (the [Postgres guide](POSTGRES.md) applies), but the deployment target and the access model are new.
 
 ### Where Data Goes: `app.getPath`
 
@@ -453,7 +453,7 @@ app.getPath("logs");       // log dir
 | Large blobs (images, attachments) | files under `userData` | store paths in your DB, blobs on disk |
 | Renderer-local, web-style storage | `IndexedDB` / `localStorage` | fine for UI state; not your source of truth |
 
-**For anything beyond preferences, reach for SQLite via `better-sqlite3`.** This is where your database skills pay off directly: it's real SQL — tables, indexes, transactions, joins, `WHERE` clauses — just running locally against a file instead of a server. Everything you know from the [Postgres guide](POSTGRES_STUDY_GUIDE.md) about schema design, indexing, and queries applies (with SQLite's smaller feature set). `better-sqlite3` is *synchronous*, which is unusual but correct here: it's so fast for local single-user access that synchronous calls in the main process are fine, and the API is simpler for it.
+**For anything beyond preferences, reach for SQLite via `better-sqlite3`.** This is where your database skills pay off directly: it's real SQL — tables, indexes, transactions, joins, `WHERE` clauses — just running locally against a file instead of a server. Everything you know from the [Postgres guide](POSTGRES.md) about schema design, indexing, and queries applies (with SQLite's smaller feature set). `better-sqlite3` is *synchronous*, which is unusual but correct here: it's so fast for local single-user access that synchronous calls in the main process are fine, and the API is simpler for it.
 
 ```javascript
 // main process — a local SQLite database

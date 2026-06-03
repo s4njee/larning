@@ -505,7 +505,7 @@ jobs:
       - run: ./run-integration-tests.sh       # connects to localhost:5432 and localhost:6379
 ```
 
-The health checks are not optional in practice: without them, your tests can start before the database accepts connections and fail intermittently — one of the most common flaky-CI causes. For what to actually exercise behind these connections, see the [Postgres guide](POSTGRES_STUDY_GUIDE.md) and [Redis guide](REDIS_STUDY_GUIDE.md).
+The health checks are not optional in practice: without them, your tests can start before the database accepts connections and fail intermittently — one of the most common flaky-CI causes. For what to actually exercise behind these connections, see the [Postgres guide](POSTGRES.md) and [Redis guide](REDIS_STUDY_GUIDE.md).
 
 ---
 

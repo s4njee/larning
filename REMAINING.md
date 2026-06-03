@@ -33,7 +33,7 @@ As engineering in 2026 matures, two forces dominate: **Agentic AI systems** have
 ---
 
 ### 2. Architecture & Distributed Data Systems
-*While the [Distributed Systems](DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md) and [Postgres](POSTGRES_STUDY_GUIDE.md) guides lay the groundwork, the following specialized guides represent massive production load-bearers.*
+*While the [Distributed Systems](DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md) and [Postgres](POSTGRES.md) guides lay the groundwork, the following specialized guides represent massive production load-bearers.*
 
 *   **Kafka & Real-Time Event Streaming**
     *   **Why it matters in 2026:** Event streaming is the backbone of microservices, real-time analytics, and agent event loops.

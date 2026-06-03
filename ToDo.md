@@ -134,7 +134,7 @@ Naming convention: `SOME_GUIDE.md` → `html/some-guide.html` (lowercase, hyphen
 ### Data & messaging
 - [x] `DATA_ENGINEERING_STUDY_GUIDE.md` → `data-engineering-study-guide.html`
 - [x] `POSTGRES.md` → `postgres.html`
-- [x] `POSTGRES_STUDY_GUIDE.md` → `postgres-study-guide.html`
+- [x] `ADVANCED_POSTGRES.md` → `advanced-postgres.html`  *(POSTGRES_STUDY_GUIDE.md was consolidated into the POSTGRES.md + ADVANCED_POSTGRES.md pair)*
 - [x] `REDIS_STUDY_GUIDE.md` → `redis-study-guide.html`
 
 ### Architecture, security & AI

@@ -1006,7 +1006,7 @@ asyncio.run(main())
         await conn.execute(&quot;INSERT INTO ledger(amount) VALUES($1)&quot;, 100)
         await conn.execute(&quot;UPDATE balance SET total = total + $1&quot;, 100)
 </code></pre>
-<p>The parameter style is positional <code>$1, $2</code>. As always, pass parameters as arguments — never build SQL with f-strings or <code>%</code> formatting, which opens SQL injection (see the <a href="postgres-study-guide.html">Postgres</a> guide for query-level depth).</p>
+<p>The parameter style is positional <code>$1, $2</code>. As always, pass parameters as arguments — never build SQL with f-strings or <code>%</code> formatting, which opens SQL injection (see the <a href="postgres.html">Postgres</a> guide for query-level depth).</p>
 <p>References: <a href="https://magicstack.github.io/asyncpg/current/">asyncpg documentation</a>, <a href="https://magicstack.github.io/asyncpg/current/usage.html">asyncpg usage</a>, <a href="https://magicstack.github.io/asyncpg/current/api/index.html#connection-pools">Connection pools</a>.</p>
 <h3 id="92-aiopg-the-compatibility-choice">9.2 aiopg — The Compatibility Choice</h3>
 <p><a href="https://aiopg.readthedocs.io/"><code>aiopg</code></a> takes the other approach: it wraps <code>psycopg2</code>, driving libpq in its asynchronous (non-blocking) mode. Its API mirrors psycopg2's cursor model, and it offers <code>aiopg.sa</code> for SQLAlchemy Core integration.</p>
@@ -1056,7 +1056,7 @@ async def run_independent(pool, queries):
         # NB: bounded by pool max_size — that's your concurrency cap
     return await asyncio.gather(*(one(q) for q in queries))
 </code></pre>
-<p>The hierarchy of fixes: <strong>first, eliminate the N queries</strong> with a set-based query (<code>= ANY($1)</code>, a join, an aggregate) — fewer round trips beats more concurrency every time, and it's where the <a href="postgres-study-guide.html">Postgres</a> guide's set-based thinking pays off. <strong>Only if the queries are genuinely independent</strong> should you fan them out — and then each needs its <em>own</em> connection from the pool (you can't run two queries concurrently on one connection), which means your real concurrency ceiling is the pool's <code>max_size</code>.</p>
+<p>The hierarchy of fixes: <strong>first, eliminate the N queries</strong> with a set-based query (<code>= ANY($1)</code>, a join, an aggregate) — fewer round trips beats more concurrency every time, and it's where the <a href="postgres.html">Postgres</a> guide's set-based thinking pays off. <strong>Only if the queries are genuinely independent</strong> should you fan them out — and then each needs its <em>own</em> connection from the pool (you can't run two queries concurrently on one connection), which means your real concurrency ceiling is the pool's <code>max_size</code>.</p>
 <h3 id="94-pool-sizing-the-lever-that-cuts-both-ways">9.4 Pool Sizing — The Lever That Cuts Both Ways</h3>
 <p>The pool's <code>max_size</code> is one of the most consequential numbers in an async service, and bigger is <strong>not</strong> better. Every pooled connection is a real Postgres backend <strong>process</strong> on the server (Postgres forks per connection). A few thousand connections will exhaust Postgres's memory and scheduler long before they help you.</p>
 <p>Practical guidance:</p>

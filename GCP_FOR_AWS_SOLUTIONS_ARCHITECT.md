@@ -21,6 +21,77 @@ This guide is updated to reflect the Google Cloud architecture and services land
 - A major networking difference: AWS VPCs are regional (subnets are AZ-bound); **GCP VPCs are global** (subnets are regional).
 - **Amazon CloudWatch** maps across the **Google Cloud Operations Suite** (formerly Stackdriver), including Cloud Logging, Cloud Monitoring, Cloud Trace, and Profiler.
 
+### AWS → GCP Service Translation Map
+
+Internalize this before the sections. Mappings are directional — GCP frequently differs in scope (global vs. regional), consistency model, or billing dimension.
+
+| AWS | GCP | The difference that matters |
+|---|---|---|
+| Account / OU / Organization | Project / Folder / Organization | Projects are lightweight; create many, share one billing account |
+| IAM (policy on principal) | IAM (policy bound to *resource*) | Identities live in a directory; no in-cloud "IAM users" |
+| EC2 instance role | Service account (identity *and* resource) | `actAs` / `roles/iam.serviceAccountUser` matters |
+| STS AssumeRole / IRSA | Workload Identity Federation / GKE Workload Identity | Keyless federation for AWS, GitHub, GKE |
+| VPC (regional) | VPC (**global**) | One VPC spans all regions; subnets are regional |
+| Security Group + NACL | VPC firewall rules (tag/SA-targeted) | Rules target instances by network tag or service account |
+| Route 53 latency + ALB | Global External Application Load Balancer | One anycast IP, global, closest healthy backend |
+| CloudFront | Cloud CDN | Enabled on the load balancer backend |
+| PrivateLink | Private Service Connect (PSC) | — |
+| Transit Gateway | Network Connectivity Center | Hub-and-spoke |
+| EC2 / ASG | Compute Engine / Managed Instance Groups | MIGs can be *regional* (multi-zone) by default |
+| Spot Instances | Spot VMs | Fixed discount, no bidding, no 24h cap |
+| S3 | Cloud Storage (GCS) | Regional / dual-region / multi-region buckets |
+| Glacier | GCS Archive class | Millisecond retrieval (same API), not hours |
+| EBS / EFS | Persistent Disk / Filestore | Regional PD = synchronous cross-zone replication |
+| RDS / Aurora | Cloud SQL / AlloyDB | AlloyDB ≈ Aurora-Postgres |
+| (no equivalent) | Cloud Spanner | Global, strongly consistent, horizontal SQL (TrueTime) |
+| DynamoDB | Firestore / Bigtable | Firestore = serverless doc; Bigtable = wide-column at scale |
+| ElastiCache | Memorystore | Redis/Memcached |
+| Lambda | Cloud Functions (2nd gen) / Cloud Run | 2nd gen runs on Cloud Run; concurrency per instance |
+| ECS/Fargate | Cloud Run | Serverless containers, scale-to-zero |
+| EKS | GKE (Standard / Autopilot) | Autopilot bills per-pod, Google runs nodes |
+| ECR | Artifact Registry | — |
+| Step Functions | Workflows | YAML/JSON state machine |
+| SQS + SNS | Pub/Sub | One service covers both queue + fan-out |
+| Kinesis | Pub/Sub Lite / Pub/Sub | — |
+| EventBridge | Eventarc | — |
+| Redshift + Athena | BigQuery | Serverless, separates compute/storage |
+| Glue | Dataflow (Apache Beam) | Unified batch + stream |
+| EMR | Dataproc | Managed Spark/Hadoop |
+| SageMaker / Bedrock | Vertex AI (incl. Gemini) | — |
+| KMS / Secrets Manager | Cloud KMS / Secret Manager | — |
+| WAF + Shield | Cloud Armor | On the global load balancer edge |
+| GuardDuty + Security Hub | Security Command Center | — |
+| (no equivalent) | VPC Service Controls | Data-exfiltration perimeter around managed services |
+| CloudFormation / CDK | Terraform (de facto) / Deployment Manager | Google co-maintains the TF provider |
+| Organizations SCP | Organization Policy Service | Restricts *what* can be done |
+
+### CLI & IaC Quickstart
+
+Examples use the `gcloud` CLI (the `aws` CLI analog) and **Terraform**, the de facto IaC standard on GCP.
+
+```bash
+gcloud auth login
+gcloud projects create my-app-prod --folder=<folder-id>
+gcloud config set project my-app-prod
+gcloud services enable run.googleapis.com compute.googleapis.com   # APIs are off by default — enable per project
+gcloud config set compute/region us-central1
+```
+
+```hcl
+# main.tf — the Google provider is the standard way to manage GCP
+provider "google" {
+  project = "my-app-prod"
+  region  = "us-central1"
+}
+resource "google_storage_bucket" "assets" {
+  name                        = "my-app-prod-assets"
+  location                    = "US"          # multi-region
+  uniform_bucket_level_access = true
+}
+```
+
+> Unlike AWS, GCP **APIs are disabled per project until you enable them** (`gcloud services enable`). A "permission denied / API not enabled" error on a brand-new project is almost always this.
+
 ---
 
 ## Table of Contents
@@ -65,6 +136,22 @@ This guide is updated to reflect the Google Cloud architecture and services land
 - In GCP, **tags** are key-value pairs managed at the resource level, but GCP also has **labels** (used for querying and filtering) and **tags** (which are managed via Resource Manager and can be used to conditionally apply IAM policies or firewalls).
 - Regions and zones exist similarly, but GCP also defines **multi-regions** (geographic areas containing multiple regions, like `us`) which are utilized by storage and database services for out-of-the-box geo-replication.
 
+### Hands-On
+
+```bash
+# The hierarchy: organization → folder → project. Projects are cheap; make many.
+gcloud resource-manager folders create --display-name="workloads" --organization=<org-id>
+gcloud projects create app-prod --folder=<folder-id>
+gcloud projects create app-staging --folder=<folder-id>
+
+# Link a billing account (projects are the billing + isolation unit)
+gcloud billing projects link app-prod --billing-account=<billing-id>
+# Enable only the APIs this project needs
+gcloud services enable compute.googleapis.com run.googleapis.com --project=app-prod
+```
+
+> Mental shift from AWS: an AWS account is a heavy boundary, so teams ration them. A GCP **project** is lightweight — the idiom is *many* projects (often per service × per environment) under shared folders and one billing account, interconnected via Shared VPC.
+
 ### Start With These Docs
 
 - [GCP Resource Hierarchy Overview](https://cloud.google.com/resource-manager/docs/cloud-platform-resource-hierarchy)
@@ -101,6 +188,35 @@ This guide is updated to reflect the Google Cloud architecture and services land
 - GCP supports **IAM Conditions**, allowing you to grant access only when specific conditions are met (e.g., specific times of day, IP ranges, or resource naming prefixes).
 - A GCP **Service Account** is both an identity (a principal that can be granted roles) and a resource (which other users can be granted permission to use, via the `Service Account User` role).
 - GCP uses **Workload Identity Federation** to allow external workloads (like AWS EC2 or GitHub Actions) to impersonate a GCP Service Account without using long-lived security keys.
+
+### AWS → GCP at a Glance
+
+| AWS | GCP |
+|---|---|
+| IAM users | Identities in Cloud Identity / Workspace / federated IdP |
+| IAM policy on principal | IAM policy **bound to a resource** |
+| IAM role | Predefined / custom role (a bag of permissions) |
+| EC2 instance profile | Service account attached to the VM |
+| IRSA (EKS) | GKE Workload Identity |
+| STS AssumeRole (cross-account) | Workload Identity Federation |
+| SCP | Organization Policy |
+
+### Hands-On
+
+```bash
+# A service account = both an identity and a resource. Bind a role at a scope.
+gcloud iam service-accounts create app-sa --display-name="App runtime"
+gcloud projects add-iam-policy-binding app-prod \
+  --member="serviceAccount:app-sa@app-prod.iam.gserviceaccount.com" \
+  --role="roles/storage.objectViewer"
+
+# Grant access only on ONE bucket (least privilege) instead of project-wide:
+gcloud storage buckets add-iam-policy-binding gs://app-prod-assets \
+  --member="serviceAccount:app-sa@app-prod.iam.gserviceaccount.com" \
+  --role="roles/storage.objectViewer"
+```
+
+> Two gotchas for AWS architects: (1) policies attach to the **resource**, and a member can be a user, group, or service account; (2) granting someone `roles/iam.serviceAccountUser` on a service account lets them *act as* it — treat that like handing over an IAM role's permissions.
 
 ### Start With These Docs
 
@@ -148,6 +264,37 @@ This guide is updated to reflect the Google Cloud architecture and services land
 - **Cloud Load Balancing** is software-defined and global. A single Anycast external IP address can load balance traffic across multiple regions worldwide, automatically routing users to the closest healthy backend. This acts like AWS Route 53 latency routing combined with an ALB, but simplified into one global service.
 - **Private Service Connect (PSC)** allows private consumption of services across different VPC networks and projects, acting as the equivalent to AWS PrivateLink.
 
+### AWS → GCP at a Glance
+
+| AWS | GCP |
+|---|---|
+| VPC (regional) | VPC (**global**) |
+| Subnet (AZ-bound) | Subnet (regional, spans zones) |
+| Security Group + NACL | VPC firewall rules (tag/SA-targeted) |
+| Route table | Routes / Cloud Router |
+| NAT Gateway | Cloud NAT |
+| ALB + Route 53 latency | Global External Application Load Balancer |
+| NLB | Regional/Network Load Balancer |
+| CloudFront | Cloud CDN (on the LB backend) |
+| PrivateLink | Private Service Connect |
+| Transit Gateway | Network Connectivity Center |
+| Direct Connect | Cloud Interconnect |
+
+### Hands-On
+
+```bash
+# A global VPC, a regional subnet, and a firewall rule scoped by network tag (not CIDR alone)
+gcloud compute networks create vpc-prod --subnet-mode=custom
+gcloud compute networks subnets create snet-us \
+  --network=vpc-prod --region=us-central1 --range=10.10.0.0/20
+gcloud compute firewall-rules create allow-https \
+  --network=vpc-prod --allow=tcp:443 --direction=INGRESS --target-tags=web
+# Only instances tagged "web" get the rule:
+#   gcloud compute instances create ... --tags=web
+```
+
+> The headline difference: **one VPC is global**. Instances in `us-central1` and `europe-west1` in the same VPC talk over Google's backbone with no peering or gateway. A single global load balancer with one anycast IP then routes each user to the closest healthy backend — collapsing Route 53 latency routing + regional ALBs into one resource.
+
 ### Start With These Docs
 
 - [GCP VPC Network Overview](https://cloud.google.com/vpc/docs/vpc)
@@ -191,6 +338,34 @@ This guide is updated to reflect the Google Cloud architecture and services land
 - GCP **Spot VMs** have no bidding mechanism. They offer a fixed discount (up to 91% off standard rates) and can be reclaimed by GCP with a 30-second warning. Unlike legacy preemptible VMs, Spot VMs do not have a 24-hour maximum runtime limit.
 - **Sole-Tenant Nodes** provide physical isolation on dedicated hardware servers, useful for compliance, licensing (BYOL), and performance predictability.
 
+### AWS → GCP at a Glance
+
+| AWS | GCP |
+|---|---|
+| EC2 instance | Compute Engine instance |
+| Fixed instance types | Predefined **or custom** machine types |
+| AMI | Custom / machine image |
+| Launch Template | Instance template |
+| Auto Scaling Group | Managed Instance Group (often **regional**) |
+| Spot Instance | Spot VM (fixed discount, no bid, no 24h cap) |
+| EC2 Key Pairs (static SSH) | OS Login (SSH tied to IAM) |
+| Dedicated Hosts | Sole-Tenant Nodes |
+| EBS / instance store | Persistent Disk / Local SSD |
+
+### Hands-On
+
+```bash
+# Regional MIG (spans zones automatically) + autoscaling + autohealing — the ASG analog
+gcloud compute instance-templates create web-tmpl \
+  --machine-type=e2-standard-2 --tags=web --image-family=debian-12 --image-project=debian-cloud
+gcloud compute instance-groups managed create web-mig \
+  --template=web-tmpl --size=2 --region=us-central1     # regional = multi-zone HA out of the box
+gcloud compute instance-groups managed set-autoscaling web-mig --region=us-central1 \
+  --max-num-replicas=10 --min-num-replicas=2 --target-cpu-utilization=0.7
+```
+
+> Two AWS-architect surprises: **custom machine types** let you size CPU/RAM exactly instead of jumping instance families, and a **regional MIG** spreads instances across zones automatically (no manual multi-AZ subnet wiring). SSH is via **OS Login** (IAM-driven, ephemeral keys), not static key pairs.
+
 ### Start With These Docs
 
 - [GCP Compute Engine Documentation](https://cloud.google.com/compute/docs)
@@ -230,6 +405,35 @@ This guide is updated to reflect the Google Cloud architecture and services land
 - **Persistent Disk (PD)** is network-attached storage. Unlike EBS, a GCP PD can be attached to multiple VMs simultaneously in read-only mode, and Regional PDs offer active-active synchronous replication across two zones in a region.
 - **Filestore** is a managed NFS server for file sharing, equivalent to AWS EFS.
 
+### AWS → GCP at a Glance
+
+| AWS | GCP | Notes |
+|---|---|---|
+| S3 | Cloud Storage (GCS) | Regional / dual-region / multi-region |
+| S3 IA | Nearline / Coldline | Same API, same low latency |
+| Glacier / Deep Archive | Archive class | **Milliseconds** to retrieve, not hours |
+| EBS | Persistent Disk | Regional PD = sync replication across 2 zones |
+| Instance store | Local SSD | Ephemeral |
+| EFS | Filestore | Managed NFS |
+| S3 Object Lock (WORM) | Bucket Lock | — |
+
+### Hands-On
+
+```bash
+# A bucket with uniform access + a lifecycle rule (tier to Coldline at 30d, delete at 365d)
+gcloud storage buckets create gs://app-prod-assets --location=US --uniform-bucket-level-access
+cat > lifecycle.json <<'JSON'
+{ "rule": [
+  { "action": {"type":"SetStorageClass","storageClass":"COLDLINE"}, "condition": {"age":30} },
+  { "action": {"type":"Delete"}, "condition": {"age":365} }
+]}
+JSON
+gcloud storage buckets update gs://app-prod-assets --lifecycle-file=lifecycle.json
+gcloud storage cp ./report.pdf gs://app-prod-assets/   # gcloud storage ≈ aws s3
+```
+
+> Key contrast with AWS: **all GCS storage classes share one API and millisecond latency** — fetching from `Archive` is instant (you pay a retrieval fee), unlike Glacier's hours-long restores. Redundancy is chosen by bucket *location* (regional vs. dual/multi-region), and a **Regional Persistent Disk** gives you synchronous block-storage replication across two zones for instant failover — something EBS doesn't offer natively.
+
 ### Start With These Docs
 
 - [Cloud Storage Documentation](https://cloud.google.com/storage/docs)
@@ -265,6 +469,35 @@ This guide is updated to reflect the Google Cloud architecture and services land
 - **Cloud Spanner** is GCP’s premier database offering: a fully managed, enterprise-grade, **globally distributed, strongly consistent** relational database. It scales horizontally to thousands of nodes while maintaining ACID transactions across continents, using atomic clocks and GPS receivers (TrueTime) to coordinate transactions. There is no direct equivalent in AWS.
 - **Bare Metal Solution** provides dedicated hardware to run legacy workloads (like Oracle databases) with low latency access to GCP services.
 
+### AWS → GCP at a Glance
+
+| AWS | GCP | When |
+|---|---|---|
+| RDS (MySQL/Postgres/SQL Server) | Cloud SQL | Standard managed relational |
+| Aurora PostgreSQL | AlloyDB for PostgreSQL | High-performance Postgres, compute/storage split |
+| (no equivalent) | Cloud Spanner | Global, strongly consistent, horizontal SQL |
+| Oracle on RDS / on EC2 | Bare Metal Solution | Legacy/licensed engines |
+
+### Hands-On
+
+```bash
+# Cloud SQL Postgres with HA (regional, synchronous standby in another zone = Multi-AZ analog)
+gcloud sql instances create pg-app-prod --database-version=POSTGRES_16 \
+  --tier=db-custom-2-8192 --region=us-central1 --availability-type=REGIONAL
+gcloud sql databases create appdb --instance=pg-app-prod
+```
+
+```hcl
+# Cloud Spanner: provision once, scale horizontally to thousands of nodes, ACID across regions
+resource "google_spanner_instance" "main" {
+  config       = "regional-us-central1"   # or a multi-region config for global writes
+  display_name = "app-prod"
+  processing_units = 1000                  # 1000 PU = 1 node; scale by PU
+}
+```
+
+> The standout with no AWS analog is **Cloud Spanner**: globally distributed, externally consistent SQL using TrueTime (atomic clocks + GPS) to order transactions across continents. Reach for it when you need horizontal write scale *and* strong consistency — a combination RDS/Aurora can't give you. For most apps, **Cloud SQL** (≈ RDS) or **AlloyDB** (≈ Aurora-Postgres) is the right, cheaper answer.
+
 ### Start With These Docs
 
 - [Cloud SQL Overview](https://cloud.google.com/sql/docs)
@@ -299,6 +532,33 @@ This guide is updated to reflect the Google Cloud architecture and services land
 - **Cloud Bigtable** is GCP's high-performance, low-latency NoSQL database designed for large analytical and operational workloads (billions of rows, petabytes of data). It is the same engine that powers Google Search and Maps, and maps to AWS Keyspaces or wide-column DynamoDB patterns.
 - **Memorystore** is a fully managed in-memory cache service compatible with Redis and Memcached, matching AWS ElastiCache.
 - **Vertex AI Search** provides out-of-the-box semantic search, retrieval-augmented generation (RAG), and enterprise search capabilities.
+
+### AWS → GCP at a Glance
+
+| AWS | GCP |
+|---|---|
+| DynamoDB (serverless doc) | Firestore (Native mode) |
+| DynamoDB (high-throughput wide-column) | Cloud Bigtable |
+| DocumentDB | Firestore |
+| Keyspaces (Cassandra) | Bigtable (wide-column patterns) |
+| ElastiCache (Redis/Memcached) | Memorystore |
+| OpenSearch / Kendra (semantic) | Vertex AI Search |
+
+### Hands-On
+
+```bash
+# Firestore (serverless document DB; pick Native mode for apps, Datastore mode for backend scale)
+gcloud firestore databases create --location=nam5 --type=firestore-native
+
+# Bigtable for billions-of-rows / low-latency wide-column workloads — row key design is everything
+gcloud bigtable instances create app-bt --display-name="App Bigtable" \
+  --cluster-config=id=app-bt-c1,zone=us-central1-b,nodes=3
+
+# Memorystore (managed Redis) = ElastiCache
+gcloud redis instances create app-cache --size=1 --region=us-central1 --tier=STANDARD_HA
+```
+
+> Like DynamoDB, the hard part is the **key design**: in Bigtable a sequential/monotonic row key creates a hotspot that caps throughput (the same lesson as a bad DynamoDB partition key — field-promote or hash to spread writes). Firestore is the closer drop-in for DynamoDB-style serverless document access with real-time listeners.
 
 ### Start With These Docs
 
@@ -337,6 +597,34 @@ This guide is updated to reflect the Google Cloud architecture and services land
 - **Cloud Run** is GCP's premier container abstraction: a serverless compute platform that runs stateless containers, scaling them from zero to thousands of instances automatically. It handles all HTTPS routing, TLS certificates, and scales based on concurrent requests. It is the GCP equivalent of running AWS ECS with Fargate, but with far less configuration overhead.
 - **Artifact Registry** is the evolution of Container Registry, supporting Docker images, Maven, npm, Python packages, and Helm charts, equivalent to AWS ECR.
 
+### AWS → GCP at a Glance
+
+| AWS | GCP | Reach for it when |
+|---|---|---|
+| ECR | Artifact Registry | Always (image/package storage) |
+| ECS on Fargate | Cloud Run | Serverless containers, scale-to-zero |
+| EKS | GKE Standard | Full K8s, you manage nodes |
+| EKS + Fargate | GKE Autopilot | K8s API, Google manages/bills per-pod |
+| App Mesh | Cloud Service Mesh | Service mesh |
+| EKS Anywhere / multi-cloud | GKE Enterprise (Anthos) + Fleets | Hybrid/multi-cloud K8s |
+
+### Hands-On
+
+```bash
+# Build → push → deploy a serverless container with scale-to-zero (≈ ECS/Fargate, far less config)
+gcloud artifacts repositories create app --repository-format=docker --location=us-central1
+gcloud builds submit --tag us-central1-docker.pkg.dev/app-prod/app/api:v1 .
+gcloud run deploy api --image=us-central1-docker.pkg.dev/app-prod/app/api:v1 \
+  --region=us-central1 --allow-unauthenticated --concurrency=80 --min-instances=0 --max-instances=20
+```
+
+```bash
+# GKE Autopilot: you submit pod specs, Google provisions/scales/bills the nodes for you
+gcloud container clusters create-auto app-cluster --region=us-central1
+```
+
+> Default to **Cloud Run** for stateless request/response or event-driven containers (note `--concurrency=80`: one instance serves many requests, unlike Lambda's 1-per-instance). Choose **GKE Autopilot** when you need the Kubernetes API but not node management; **GKE Standard** when you need full control of the node pool.
+
 ### Start With These Docs
 
 - [Google Kubernetes Engine (GKE) Documentation](https://cloud.google.com/kubernetes-engine/docs)
@@ -371,6 +659,48 @@ This guide is updated to reflect the Google Cloud architecture and services land
 - For complex API gateways, GCP offers **Apigee** (an enterprise-grade API management platform) alongside the simpler **API Gateway** (for securing and managing simple Cloud Run and Cloud Functions endpoints).
 - **Workflows** is Google's serverless state machine and orchestration engine, equivalent to AWS Step Functions, utilizing YAML or JSON to define steps, retries, and error handling.
 
+### AWS → GCP at a Glance
+
+| AWS | GCP |
+|---|---|
+| Lambda | Cloud Functions (2nd gen) or Cloud Run |
+| Lambda (provisioned concurrency) | `--min-instances` on Cloud Run/Functions |
+| API Gateway (simple) | API Gateway |
+| API Gateway (enterprise) | Apigee |
+| Step Functions | Workflows |
+
+### Hands-On
+
+```yaml
+# workflow.yaml — a Workflows definition (≈ Step Functions): call a service, branch, store result
+main:
+  steps:
+    - reserve:
+        call: http.post
+        args:
+          url: https://api-xyz.run.app/reserve
+          body: { item: "sku-1" }
+        result: r
+    - decide:
+        switch:
+          - condition: ${r.body.ok}
+            next: confirm
+        next: fail
+    - confirm:
+        call: http.post
+        args: { url: https://api-xyz.run.app/confirm, body: "${r.body}" }
+        next: end
+    - fail:
+        raise: "reservation failed"
+```
+
+```bash
+gcloud workflows deploy order-flow --source=workflow.yaml --location=us-central1
+gcloud workflows run order-flow --location=us-central1
+```
+
+> Note the **Cloud Functions 2nd gen** difference from Lambda: it runs on Cloud Run, so one instance can handle **concurrent** requests (not 1-invocation-per-instance), supports up to 32 GB RAM and long timeouts, and warms via `--min-instances` instead of provisioned concurrency.
+
 ### Start With These Docs
 
 - [Cloud Functions (2nd gen) Overview](https://cloud.google.com/functions/docs/2nd-gen/overview)
@@ -402,6 +732,36 @@ This guide is updated to reflect the Google Cloud architecture and services land
 - **Pub/Sub** is a global, horizontal, real-time messaging service that combines the use cases of both AWS SQS (queuing) and SNS (pub/sub). Publishers send messages to a topic, and subscribers pull or receive push messages from subscriptions. There is no infrastructure to provision or scale.
 - **Pub/Sub Lite** is a lower-cost, zonal alternative to Pub/Sub designed for high-volume log ingestion where ordering and partition management can be handled by the client (similar to AWS Kinesis).
 - **Eventarc** allows you to route events from Google Cloud services, custom sources, and SaaS apps directly to Cloud Run, Cloud Functions, or GKE, acting as the direct equivalent of AWS EventBridge.
+
+### AWS → GCP at a Glance
+
+| AWS | GCP |
+|---|---|
+| SQS **and** SNS | Pub/Sub (one service does both) |
+| Kinesis Data Streams | Pub/Sub Lite (or Pub/Sub) |
+| EventBridge | Eventarc |
+| SQS DLQ | Pub/Sub dead-letter topic |
+| SNS ordered topics | Pub/Sub message ordering keys |
+
+### Hands-On
+
+```bash
+# Pub/Sub: a topic + a push subscription to Cloud Run + a pull subscription, with a DLQ
+gcloud pubsub topics create orders
+gcloud pubsub topics create orders-dead
+gcloud pubsub subscriptions create orders-push \
+  --topic=orders --push-endpoint=https://api-xyz.run.app/events \
+  --dead-letter-topic=orders-dead --max-delivery-attempts=5
+gcloud pubsub subscriptions create orders-pull --topic=orders --enable-message-ordering
+
+# Eventarc: trigger a Cloud Run service whenever an object is finalized in a bucket (≈ EventBridge)
+gcloud eventarc triggers create gcs-trigger \
+  --destination-run-service=api --destination-run-region=us-central1 \
+  --event-filters="type=google.cloud.storage.object.v1.finalized" \
+  --event-filters="bucket=app-prod-assets" --location=us-central1
+```
+
+> The big simplification: **Pub/Sub is one service that covers both SQS-style queuing and SNS-style fan-out** — multiple subscriptions on a topic each get their own copy. Use **Eventarc** for "react to a GCP/SaaS event," and **Pub/Sub Lite** only for cost-sensitive, partition-managed Kinesis-like ingest.
 
 ### Start With These Docs
 
@@ -440,6 +800,36 @@ This guide is updated to reflect the Google Cloud architecture and services land
 - **Dataflow** is a managed service for executing Apache Beam pipelines for unified stream and batch data processing, equivalent to AWS Glue/Kinesis Analytics.
 - **Dataproc** is a managed Spark and Hadoop service, comparable to AWS EMR.
 - **Vertex AI** is GCP's end-to-end machine learning platform. It unifies ML models, feature stores, pipelines, training, and model deployment (comparable to AWS SageMaker). In 2026, it serves as the central hub for deploying foundation models (like Gemini) via APIs and fine-tuning.
+
+### AWS → GCP at a Glance
+
+| AWS | GCP |
+|---|---|
+| Redshift **+** Athena | BigQuery (warehouse + ad-hoc, serverless) |
+| Glue | Dataflow (Apache Beam) |
+| EMR | Dataproc (managed Spark/Hadoop) |
+| Kinesis Data Analytics | Dataflow streaming |
+| Data lake on S3 + Athena | BigLake / BigQuery external tables |
+| Multi-cloud query | BigQuery Omni (query S3/Blob in place) |
+| SageMaker / Bedrock | Vertex AI (incl. Gemini) |
+
+### Hands-On
+
+```sql
+-- BigQuery: serverless warehouse, separates compute/storage. Partition + cluster to cut cost.
+-- (cost ≈ bytes scanned; partitioning prunes the scan, like Athena partitions)
+SELECT region, DATE_TRUNC(order_ts, MONTH) AS m, SUM(amount) AS total
+FROM `app-prod.sales.orders`
+WHERE order_ts >= '2026-01-01'        -- prunes partitions
+GROUP BY region, m;
+```
+
+```bash
+# Run it; --dry-run reports bytes that WOULD be scanned (cost estimate) before you pay
+bq query --use_legacy_sql=false --dry_run 'SELECT * FROM `app-prod.sales.orders`'
+```
+
+> **BigQuery** is the crown jewel and collapses Redshift (warehouse) + Athena (ad-hoc SQL) into one serverless engine billed by bytes scanned. The single most important cost lever for AWS architects: **partition and cluster tables** so queries prune scans — the BigQuery equivalent of partitioning S3 data for Athena. **BigQuery Omni** can even query data sitting in S3/Blob without copying it.
 
 ### Start With These Docs
 
@@ -480,6 +870,34 @@ This guide is updated to reflect the Google Cloud architecture and services land
 - **Cloud Trace** and **Cloud Profiler** provide out-of-the-box distributed tracing and continuous application profiling to optimize code execution latency and memory usage.
 - **Error Reporting** automatically aggregates runtime exceptions from your applications, groups them, and alerts you when new bugs occur.
 
+### AWS → GCP at a Glance
+
+| AWS | GCP |
+|---|---|
+| CloudWatch Metrics/Alarms | Cloud Monitoring |
+| CloudWatch Logs | Cloud Logging |
+| CloudWatch Logs Insights | Logging query language |
+| X-Ray | Cloud Trace |
+| CloudTrail | Cloud Audit Logs (in Cloud Logging) |
+| (CodeGuru Profiler) | Cloud Profiler |
+| Systems Manager | VM Manager |
+
+### Hands-On
+
+```bash
+# Logging query (≈ Logs Insights): errors for one Cloud Run service in the last hour
+gcloud logging read \
+  'resource.type="cloud_run_revision" AND resource.labels.service_name="api" AND severity>=ERROR' \
+  --freshness=1h --limit=50
+
+# Export logs to BigQuery for long-term retention + SQL analysis (the Log Sink pattern)
+gcloud logging sinks create app-logs-bq \
+  bigquery.googleapis.com/projects/app-prod/datasets/app_logs \
+  --log-filter='resource.type="cloud_run_revision"'
+```
+
+> A core GCP ops pattern with no single AWS equivalent: **Log Sinks / Log Router** route logs at ingestion to BigQuery (SQL analysis), Pub/Sub (stream to a SIEM), or GCS (cheap archive). **Cloud Audit Logs** (your CloudTrail) live *inside* Cloud Logging rather than a separate service.
+
 ### Start With These Docs
 
 - [Google Cloud Operations Suite Overview](https://cloud.google.com/products/operations)
@@ -519,6 +937,36 @@ This guide is updated to reflect the Google Cloud architecture and services land
 - **Security Command Center (SCC)** provides security posture management, vulnerability detection, and threat monitoring (similar to AWS Security Hub + GuardDuty).
 - **VPC Service Controls (VPC SC)** is a unique GCP security feature. It allows you to define a security perimeter around Google-managed resources (like Cloud Storage, BigQuery) to prevent data exfiltration. Using ingress/egress rules and Access Levels, it ensures data cannot leave your designated projects even if a user has valid IAM credentials.
 
+### AWS → GCP at a Glance
+
+| AWS | GCP |
+|---|---|
+| KMS | Cloud KMS |
+| CloudHSM | Cloud HSM / Cloud KMS HSM keys |
+| Secrets Manager | Secret Manager |
+| WAF + Shield | Cloud Armor |
+| GuardDuty + Security Hub | Security Command Center |
+| (no equivalent) | VPC Service Controls (exfiltration perimeter) |
+| Verified Access / Client VPN | Identity-Aware Proxy (IAP) |
+
+### Hands-On
+
+```bash
+# Secret Manager: store, version, and grant access to a secret (≈ Secrets Manager)
+echo -n 's3cr3t' | gcloud secrets create db-password --data-file=-
+gcloud secrets add-iam-policy-binding db-password \
+  --member="serviceAccount:app-sa@app-prod.iam.gserviceaccount.com" --role="roles/secretmanager.secretAccessor"
+
+# Cloud Armor: a security policy that blocks a region and enables the OWASP/SQLi preconfigured rule
+gcloud compute security-policies create app-armor
+gcloud compute security-policies rules create 1000 --security-policy=app-armor \
+  --expression="origin.region_code == 'CN'" --action=deny-403
+gcloud compute security-policies rules create 2000 --security-policy=app-armor \
+  --expression="evaluatePreconfiguredExpr('sqli-v33-stable')" --action=deny-403
+```
+
+> Two GCP-specific tools worth real study: **IAP** (BeyondCorp) gives identity-aware access to internal apps and SSH/RDP without a VPN, and **VPC Service Controls** draws an exfiltration perimeter around managed services (BigQuery, GCS) so data can't leave even with valid IAM creds — there's no direct AWS analog for the latter.
+
 ### Start With These Docs
 
 - [GCP Security Documentation](https://cloud.google.com/security)
@@ -556,6 +1004,33 @@ This guide is updated to reflect the Google Cloud architecture and services land
 - **Recommender** is an active intelligence engine that automatically analyzes your resource usage to suggest VM sizing optimizations, detect idle disks, identify insecure IAM permissions, and find cost savings.
 - **Resource Quotas** are strictly enforced limits to prevent resource exfiltration and cost overruns. You must request quota increases via the console for large deployments.
 
+### AWS → GCP at a Glance
+
+| AWS | GCP |
+|---|---|
+| Organizations SCP | Organization Policy Service |
+| Control Tower | (Org Policies + landing-zone blueprints) |
+| Config | Org Policy + Security Command Center |
+| Trusted Advisor | Recommender |
+| Cost Explorer / Budgets | Cloud Billing reports / Budgets |
+| (compliance regimes) | Assured Workloads |
+
+### Hands-On
+
+```bash
+# Org Policy guardrail: restrict which regions resources may be created in (≈ an SCP)
+gcloud resource-manager org-policies allow gcp.resourceLocations \
+  in:us-central1-locations in:us-east1-locations \
+  --organization=<org-id>
+
+# Budget that publishes to a Pub/Sub topic at thresholds (wire it to a Slack webhook Function)
+gcloud billing budgets create --billing-account=<billing-id> --display-name="prod-monthly" \
+  --budget-amount=5000 --threshold-rule=percent=0.8 \
+  --all-updates-rule-pubsub-topic=projects/app-prod/topics/budget-alerts
+```
+
+> Like SCPs, **Organization Policies restrict *what* can be done** (no external IPs, allowed regions, enforced CMEK) independent of IAM's *who*. **Recommender** is an active engine that flags idle disks, oversized VMs, and over-broad IAM grants — treat it as continuously-running Trusted Advisor.
+
 ### Start With These Docs
 
 - [GCP Organization Policy Service](https://cloud.google.com/resource-manager/docs/organization-policy/overview)
@@ -592,6 +1067,49 @@ This guide is updated to reflect the Google Cloud architecture and services land
 - **Cloud Deploy** handles managed continuous delivery to target environments like GKE, Cloud Run, and Anthos, providing built-in release gates, approvals, and canary rollouts.
 - **Backup and DR Service** provides centralized management of application, database, and VM backup states, matching AWS Backup.
 
+### AWS → GCP at a Glance
+
+| AWS | GCP |
+|---|---|
+| CloudFormation / CDK | Terraform (de facto) / Deployment Manager |
+| CodeBuild | Cloud Build |
+| CodePipeline / CodeDeploy | Cloud Deploy |
+| Migration Hub | Migrate to Virtual Machines |
+| DMS | Database Migration Service |
+| AWS Backup | Backup and DR Service |
+| Elastic Disaster Recovery | (DR via Backup and DR + replication) |
+
+### Hands-On
+
+```hcl
+# Terraform deploying a Cloud Run service + its least-privilege service account
+resource "google_service_account" "api" { account_id = "api-sa" }
+
+resource "google_cloud_run_v2_service" "api" {
+  name     = "api"
+  location = "us-central1"
+  template {
+    service_account = google_service_account.api.email
+    containers { image = "us-central1-docker.pkg.dev/app-prod/app/api:v1" }
+    scaling { min_instance_count = 0, max_instance_count = 20 }
+  }
+}
+```
+
+```yaml
+# cloudbuild.yaml — build → push → deploy on git push (≈ CodeBuild + CodeDeploy)
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ['build','-t','us-central1-docker.pkg.dev/$PROJECT_ID/app/api:$SHORT_SHA','.']
+  - name: gcr.io/cloud-builders/docker
+    args: ['push','us-central1-docker.pkg.dev/$PROJECT_ID/app/api:$SHORT_SHA']
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args: ['run','deploy','api','--image','us-central1-docker.pkg.dev/$PROJECT_ID/app/api:$SHORT_SHA','--region','us-central1']
+```
+
+> **Terraform is the de facto IaC standard on GCP** (Google co-maintains the provider) — most teams pick it over the first-party Deployment Manager. Prefer **Workload Identity Federation** for CI (GitHub Actions impersonating a service account) over downloading a service-account key file, which is the GCP long-lived-credential footgun.
+
 ### Start With These Docs
 
 - [Terraform on Google Cloud](https://cloud.google.com/docs/terraform)
@@ -604,3 +1122,55 @@ This guide is updated to reflect the Google Cloud architecture and services land
 - Write a Terraform configuration that deploys a Cloud Run service, its corresponding service account, and a Cloud Storage bucket, adhering to least-privilege IAM permissions.
 - Create a Cloud Build configuration file (`cloudbuild.yaml`) that triggers on a git push, builds a container image, pushes it to Artifact Registry, and deploys it to Cloud Run.
 - Design a backup and restore schedule for a multi-region database setup using Backup and DR Service.
+
+---
+
+## Common Pitfalls for AWS Architects Moving to GCP
+
+- **"API not enabled" on a new project.** GCP disables service APIs per project by default. `gcloud services enable <api>` before you use anything.
+- **Thinking of projects like accounts.** Projects are cheap and disposable — design for many of them under folders + one billing account, not one mega-project.
+- **Assuming the VPC is regional.** It's **global**; subnets are regional. You don't peer to cross regions inside one VPC, and one global load balancer fronts them all.
+- **Firewalling by CIDR only.** GCP firewall rules target instances by **network tag or service account** — far more powerful than IP ranges; use them.
+- **Ignoring service-account `actAs`.** Granting `roles/iam.serviceAccountUser` lets a principal *become* that identity. Audit it like you'd audit `iam:PassRole`.
+- **Downloading service-account key files.** They're long-lived credentials. Use Workload Identity Federation (CI) or attached service accounts (workloads) instead.
+- **Bigtable/Firestore hot keys.** A monotonic row key (timestamps, sequential IDs) creates a hotspot that caps throughput — the same lesson as a bad DynamoDB partition key.
+- **Unpartitioned BigQuery tables.** Cost ≈ bytes scanned. Without partitioning/clustering, every query scans the whole table. `--dry_run` before you run.
+- **Reaching for Spanner by reflex.** It's globally consistent and powerful but expensive; most apps want Cloud SQL or AlloyDB. Use Spanner when you genuinely need horizontal write scale *and* strong consistency.
+- **Over-mapping to GKE.** Cloud Run handles most ECS/Fargate workloads with far less to operate; pick GKE when you truly need Kubernetes.
+
+---
+
+## Quick Reference: AWS → GCP
+
+| Need | AWS | GCP |
+|------|-----|-----|
+| Account boundary | Account | Project |
+| Org hierarchy | Organizations / OUs | Organization / Folders |
+| Identity + authz | IAM | Cloud Identity + IAM (resource-bound) |
+| Workload identity | Instance profile / IRSA | Service account / Workload Identity Federation |
+| Virtual network | VPC (regional) | VPC (global) |
+| Firewalling | Security Group + NACL | VPC firewall rules (tag/SA-targeted) |
+| Global LB / CDN | Route 53 + ALB + CloudFront | Global External ALB + Cloud CDN |
+| Object storage | S3 | Cloud Storage |
+| Managed relational | RDS / Aurora | Cloud SQL / AlloyDB |
+| Global consistent SQL | (none) | Cloud Spanner |
+| Managed NoSQL | DynamoDB | Firestore / Bigtable |
+| Cache | ElastiCache | Memorystore |
+| Functions | Lambda | Cloud Functions (2nd gen) |
+| Serverless containers | ECS/Fargate | Cloud Run |
+| Managed Kubernetes | EKS | GKE (Autopilot / Standard) |
+| Orchestration | Step Functions | Workflows |
+| Queue + pub/sub | SQS + SNS | Pub/Sub |
+| Event routing | EventBridge | Eventarc |
+| Streaming | Kinesis / MSK | Pub/Sub (Lite) / Dataflow |
+| Data warehouse | Redshift + Athena | BigQuery |
+| ETL / Spark | Glue / EMR | Dataflow / Dataproc |
+| ML platform | SageMaker / Bedrock | Vertex AI (Gemini) |
+| Secrets / keys | KMS + Secrets Manager | Cloud KMS + Secret Manager |
+| WAF / DDoS | WAF + Shield | Cloud Armor |
+| Security posture | GuardDuty + Security Hub | Security Command Center |
+| Exfiltration perimeter | (none) | VPC Service Controls |
+| Zero-trust app access | Verified Access | Identity-Aware Proxy |
+| IaC | CloudFormation / CDK | Terraform / Deployment Manager |
+| Governance | SCP / Control Tower | Organization Policy |
+| Observability | CloudWatch / X-Ray / CloudTrail | Cloud Monitoring / Trace / Audit Logs |
