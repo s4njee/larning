@@ -663,7 +663,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: ./run-integration-tests.sh       # connects to localhost:5432 and localhost:6379
 </code></pre>
-<p>The health checks are not optional in practice: without them, your tests can start before the database accepts connections and fail intermittently — one of the most common flaky-CI causes. For what to actually exercise behind these connections, see the <a href="POSTGRES_STUDY_GUIDE.md">Postgres guide</a> and <a href="REDIS_STUDY_GUIDE.md">Redis guide</a>.</p>
+<p>The health checks are not optional in practice: without them, your tests can start before the database accepts connections and fail intermittently — one of the most common flaky-CI causes. For what to actually exercise behind these connections, see the <a href="postgres-study-guide.html">Postgres guide</a> and <a href="redis-study-guide.html">Redis guide</a>.</p>
 <hr>
 <h2 id="part-4-composition-reuse">Part 4 — Composition &amp; Reuse</h2>
 <p>Once you have more than a couple of workflows, copy-paste sets in: the same build job, the same setup steps, pasted everywhere and drifting out of sync. Actions offers reuse at three granularities — <strong>composite actions</strong> (a bundle of steps), <strong>reusable workflows</strong> (whole jobs), and <strong>custom actions</strong> (a distributable unit, <a href="#part-5--writing-custom-actions">Part 5</a>). This part covers the first two and exactly when to use which.</p>
@@ -969,7 +969,7 @@ echo &quot;result=ok&quot; &gt;&gt; &quot;$GITHUB_OUTPUT&quot;  # outputs go to 
 <p>For anything beyond static secrets, prefer <strong>OIDC</strong> (next) or fetch from an external secret manager at runtime.</p>
 <h3 id="oidc-to-cloud-no-stored-credentials">OIDC to Cloud (No Stored Credentials)</h3>
 <p>The single biggest security upgrade for a deploy pipeline: stop storing long-lived cloud keys as secrets. With <a href="https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/about-security-hardening-with-openid-connect">OpenID Connect</a>, the workflow requests a short-lived, signed <strong>OIDC token</strong> from GitHub that describes the run (repo, branch, environment); your cloud is configured to <em>trust GitHub's OIDC provider</em> and exchange that token for short-lived credentials. Nothing long-lived is stored anywhere.</p>
-<p>The trust is scoped by the token's claims — above all <code>sub</code> (subject), which encodes values like <code>repo:ORG/REPO:ref:refs/heads/main</code> or <code>repo:ORG/REPO:environment:production</code>. You write a condition that matches exactly the runs you trust. (For the JWT and token-signing background, see the <a href="CRYPTO_FUNDAMENTALS.md">Cryptography guide</a>.)</p>
+<p>The trust is scoped by the token's claims — above all <code>sub</code> (subject), which encodes values like <code>repo:ORG/REPO:ref:refs/heads/main</code> or <code>repo:ORG/REPO:environment:production</code>. You write a condition that matches exactly the runs you trust. (For the JWT and token-signing background, see the <a href="crypto-fundamentals.html">Cryptography guide</a>.)</p>
 <p><strong>AWS, end to end.</strong> First, an IAM role whose trust policy accepts GitHub's OIDC tokens for your repo's <code>main</code> branch:</p>
 <pre><code class="language-json">{
   &quot;Version&quot;: &quot;2012-10-17&quot;,
@@ -1010,9 +1010,9 @@ jobs:
 </code></pre>
 <p>The same pattern covers the other clouds — only the trust setup and the auth action change:</p>
 <ul>
-<li><strong>Azure</strong> — <code>azure/login</code> with a federated credential on an app registration (see the <a href="AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md">Azure guide</a>).</li>
+<li><strong>Azure</strong> — <code>azure/login</code> with a federated credential on an app registration (see the <a href="azure-for-aws-solutions-architect.html">Azure guide</a>).</li>
 <li><strong>GCP</strong> — Workload Identity Federation, exchanging the token via <code>google-github-actions/auth</code>.</li>
-<li><strong>Cloudflare</strong> — scoped API tokens, or OIDC where supported (see the <a href="CLOUDFLARE_STUDY_GUIDE.md">Cloudflare guide</a>).</li>
+<li><strong>Cloudflare</strong> — scoped API tokens, or OIDC where supported (see the <a href="cloudflare-study-guide.html">Cloudflare guide</a>).</li>
 <li><strong>HashiCorp Vault</strong> — Vault's JWT auth method validates the same GitHub OIDC token and returns a short-lived Vault token.</li>
 </ul>
 <h3 id="deployment-patterns">Deployment Patterns</h3>
@@ -1020,7 +1020,7 @@ jobs:
 <ul>
 <li><strong>Container image</strong> → build and push to a registry (next section), then tell your platform to roll it out.</li>
 <li><strong>Static site</strong> → upload to object storage, a CDN, or Pages.</li>
-<li><strong>Kubernetes</strong> → <code>kubectl apply</code> or a GitOps nudge, authenticating to the cluster's cloud via OIDC. See the <a href="k8s/KUBERNETES_STUDY_GUIDE.md">Kubernetes guide</a>.</li>
+<li><strong>Kubernetes</strong> → <code>kubectl apply</code> or a GitOps nudge, authenticating to the cluster's cloud via OIDC. See the <a href="kubernetes-study-guide.html">Kubernetes guide</a>.</li>
 </ul>
 <p>Two cross-cutting concerns: gate production behind an <code>environment:</code> with a required reviewer, and use <code>concurrency:</code> so two deploys can't race (detailed in <a href="#part-8--operations-at-scale">Part 8</a>):</p>
 <pre><code class="language-yaml">concurrency:
@@ -1205,7 +1205,7 @@ runnerScaleSetName: linux-arc           # this name becomes the runs-on label
   build:
     runs-on: linux-arc   # the scale-set name is what you target
 </code></pre>
-<p>Pods are created on demand and torn down afterward, so you pay only for what runs; this pairs naturally with cluster autoscaling — see the <a href="k8s/KUBERNETES_STUDY_GUIDE.md">Kubernetes guide</a>. If you'd rather not operate ARC, GitHub also sells <strong>larger hosted runners</strong> (more CPU/RAM, optional static IPs) and <strong>runner groups</strong> for access control — the simpler, paid path.</p>
+<p>Pods are created on demand and torn down afterward, so you pay only for what runs; this pairs naturally with cluster autoscaling — see the <a href="kubernetes-study-guide.html">Kubernetes guide</a>. If you'd rather not operate ARC, GitHub also sells <strong>larger hosted runners</strong> (more CPU/RAM, optional static IPs) and <strong>runner groups</strong> for access control — the simpler, paid path.</p>
 <h3 id="concurrency-control">Concurrency Control</h3>
 <p>By default every trigger starts a run, so pushes pile up and deploys can race. <code>concurrency:</code> groups runs so only one per group is active at a time (<a href="https://docs.github.com/en/actions/using-jobs/using-concurrency">concurrency docs</a>):</p>
 <pre><code class="language-yaml"># CI: when newer commits arrive on the same branch/PR, cancel the superseded run
@@ -1231,7 +1231,7 @@ concurrency:
 <li><strong>Re-run</strong> the whole workflow, or just the failed jobs, from the UI — handy for flaky external dependencies.</li>
 <li><strong>Step debug logging:</strong> set the repository secret/variable <code>ACTIONS_STEP_DEBUG</code> to <code>true</code> for verbose runner logs (<a href="https://docs.github.com/en/actions/monitoring-and-troubleshooting-workflows/enabling-debug-logging">enabling debug logging</a>).</li>
 <li><strong>Interactive SSH:</strong> drop <a href="https://github.com/mxschmitt/action-tmate"><code>mxschmitt/action-tmate</code></a> into a workflow to open an SSH session into the live runner and poke around — invaluable for "works locally, fails in CI."</li>
-<li><strong>Run locally with <a href="https://github.com/nektos/act"><code>act</code></a>:</strong> it executes workflows on your machine in Docker containers. Fidelity isn't perfect (it approximates the hosted images), but the feedback loop beats push-and-wait. Requires Docker — see the <a href="DOCKER_STUDY_GUIDE.md">Docker guide</a>.</li>
+<li><strong>Run locally with <a href="https://github.com/nektos/act"><code>act</code></a>:</strong> it executes workflows on your machine in Docker containers. Fidelity isn't perfect (it approximates the hosted images), but the feedback loop beats push-and-wait. Requires Docker — see the <a href="docker-study-guide.html">Docker guide</a>.</li>
 </ul>
 <hr>
 <h2 id="part-9-comparison-to-alternatives">Part 9 — Comparison to Alternatives</h2>

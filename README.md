@@ -2,6 +2,16 @@
 
 This repository collects practical study guides for cloud, frontend, systems, and security topics. Each guide is written to be usable on its own, with the goal of helping you learn the subject by connecting concepts to real-world workflows and examples.
 
+## Website
+
+The generated self-contained website lives in `html/`, with `html/index.html` as the table of contents. GitHub Pages is deployed from that folder by `.github/workflows/pages.yml`, and the workflow rebuilds every guide before publishing so the index is not stale.
+
+To rebuild locally:
+
+```bash
+python3 build_all_guides.py
+```
+
 ## Guides
 
 ### Advanced Go
@@ -49,6 +59,11 @@ This guide helps AWS-minded architects map familiar ideas to Azure services, ter
 
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md)
 
+### GCP for AWS Solutions Architect
+This guide helps AWS-minded architects map familiar ideas to Google Cloud Platform (GCP) services, resource hierarchies, global networking, and design patterns. It is especially useful if you already think in AWS primitives and want a fast, practical translation into GCP.
+
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md)
+
 ### Caddy
 This guide is a depth-first treatment of the Caddy web server for engineers running real services: the architecture (single binary, Go module system), the Caddyfile language (site blocks, directives, matchers, snippets), automatic HTTPS (ACME, Let's Encrypt, internal CA, on-demand TLS, wildcard certificates), reverse proxying (load balancing, health checks, WebSockets, dynamic upstreams), static file serving (compression, SPA fallback), request handling (headers, redirects, rewrites, templates), authentication (basic auth, forward auth with Authelia/OAuth2 Proxy), the JSON config and admin API for dynamic reconfiguration, logging and observability (structured logs, Prometheus metrics, OpenTelemetry tracing), and production operations (systemd, Docker, Kubernetes, certificate storage, graceful reloads). It closes with an honest comparison to Nginx, Apache, Traefik, HAProxy, and Envoy, followed by seven copy-paste recipes and an end-to-end walkthrough of a multi-service production deployment.
 
@@ -60,7 +75,7 @@ This guide explains Cloudflare from a builder's point of view, focusing on the t
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/CLOUDFLARE_STUDY_GUIDE.md)
 
 ### C++26 & Modern C++
-This guide is a depth-first treatment of the C++26 standard and the paradigms that define modern C++ in 2026 — for engineers who know C++ (any vintage) and want to understand what changed, what to adopt, and what to abandon. It starts with the C++ timeline (C++98 through C++26, what arrived when, and the note that pattern matching slipped *past* C++26), the paradigm shift (RAII as the non-negotiable foundation, value semantics over pointer semantics, the Rule of Zero, move semantics and when NOT to use `std::move`, `constexpr`/`consteval`/`constinit`, concepts as constrained generics, ranges as composable lazy pipelines, sum types via `std::optional`/`variant`/`expected`, and deducing `this` for collapsing const/ref overloads and recursive lambdas). It then goes deep on the three headline C++26 features: static reflection (the `^^` operator, `[: :]` splicer, `std::meta` namespace, with worked examples — enum-to-string, automatic JSON serialization, and struct-of-arrays transformation), contracts (preconditions, postconditions, `contract_assert`, evaluation semantics — ignore/observe/enforce/quick_enforce, and when contracts vs exceptions vs `expected`), and `std::execution` (senders, receivers, schedulers, composable async pipelines, `when_all` fan-out, `transfer` between execution contexts, structured concurrency). Crucially it also covers the *everyday* modern concurrency toolkit that precedes `std::execution` — `std::jthread` and `stop_token` as the correct default thread type (the `unique_ptr` of threads), plus the C++20 primitives (`latch`, `barrier`, `counting_semaphore`, `atomic_ref`) — and coroutines as their own paradigm (`co_await`/`co_yield`, `std::generator`). It covers C++26 language improvements (parameter pack indexing, the `_` placeholder, structured bindings as packs and in conditions, `= delete("reason")`, erroneous behavior for uninitialized reads, `if consteval`), library additions (`std::inplace_vector` for no-heap dynamic arrays, `std::hive` for pointer-stable object pools, `std::hazard_pointer` for lock-free reclamation, `std::simd` for portable vectorization, `std::linalg` for standard BLAS, `<debugging>`), the honest state of C++ safety in 2026 (what contracts and tooling provide, what C++ still lacks vs Rust, the rejected Safe C++ proposal and the Profiles direction, and the pragmatic response — sanitizers, static analysis, fuzzing, and when to choose Rust), tooling and build systems (compiler support matrix, CMake/Meson/Bazel, vcpkg/Conan, the minimum CI pipeline, modules), and an old-way-vs-new-way reference table. Each part closes with a takeaway, and it cross-links to the Rust, Advanced Go, Python Concurrency, ESP32, and GitHub Actions guides.
+This guide is a depth-first treatment of the C++26 standard and the paradigms that define modern C++ in 2026 — for engineers who know C++ (any vintage) and want to understand what changed, what to adopt, and what to abandon. It starts with the C++ timeline, then covers the modern paradigm shift: RAII, value semantics, Rule of Zero, move semantics, compile-time programming, concepts, ranges, sum types via `std::optional`/`variant`/`expected`, and deducing `this`. It goes deep on the three headline C++26 features: static reflection, contracts, and `std::execution`, while also covering the everyday concurrency toolkit (`std::jthread`, `stop_token`, C++20 synchronization primitives, and coroutines), C++26 language and library additions, and the honest state of C++ safety compared with Rust. The expanded practical sections are intentionally opinionated: project layout, house style, ownership/lifetime policy, API design, error handling, structured concurrency, testing and quality gates, performance defaults, banned/blessed idioms, code review, dependency management, ABI reality, and a staged modernization strategy for enterprise codebases. It closes with an old-way-vs-new-way reference table, and cross-links to the Rust, Advanced Go, Python Concurrency, ESP32, and GitHub Actions guides.
 
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/CPP26_STUDY_GUIDE.md)
 
@@ -128,6 +143,11 @@ This guide is a depth-first, pattern-first treatment of GitHub Actions for engin
 This guide helps Python developers understand Go through comparison rather than jargon. It focuses on the language features, concurrency model, packaging, and standard library patterns that make Go feel different but approachable.
 
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/GOLANG_FOR_PYTHON_DEVS.md)
+
+### iOS Development
+This guide is a depth-first treatment of iOS development in 2026 — for engineers who can program but have never shipped an iOS app, or who learned iOS years ago and need to understand the modern landscape. It starts with Swift the language (value types vs reference types and why structs are the default, optionals and safe unwrapping patterns, enums as algebraic data types with associated values and exhaustive pattern matching, protocols and protocol-oriented programming with `some` vs `any`, closures and trailing closure syntax, generics, error handling with typed throws, and property wrappers), then SwiftUI (declarative views as structs, the layout system — VStack/HStack/ZStack/LazyVStack/Grid/Spacer, Lists with swipe actions and pull-to-refresh, modifier chaining and why order matters, SF Symbols), state management in depth (the `@State`/`@Binding`/`@Observable`/`@Environment`/`@AppStorage` decision table, why `@Observable` replaced `ObservableObject` with granular property tracking, injecting shared services via environment), navigation (`NavigationStack` with type-safe `navigationDestination`, programmatic routing with a Router pattern using `NavigationPath` and route enums, tabs, sheets with `presentationDetents`), Swift 6 concurrency (async/await, structured concurrency with TaskGroup and `async let`, actors for thread-safe shared state, `@MainActor` for UI safety, `Sendable` protocol and region-based isolation, task cancellation), architecture (MVVM with Repository layer as the 2026 default, feature-based project structure, the path to modularization via Swift Package Manager), data persistence (SwiftData with `@Model` and `@Query` macros, auto-saving, relationships, when to use Core Data instead, Keychain for secrets), networking (URLSession with async/await, a typed APIClient pattern, `AsyncImage` for remote images), platform APIs (push notifications and APNs token registration, background tasks with BGTaskScheduler, biometric auth with LocalAuthentication, WidgetKit), UIKit interop (`UIViewRepresentable` and `UIHostingController` for bridging), testing (Swift Testing framework with `@Test` and `#expect`, snapshot testing, UI testing with XCUIApplication), tooling (Xcode shortcuts, SwiftUI previews and `_printChanges()` debugging, Instruments profiling, Swift Package Manager), and distribution (certificates and provisioning, TestFlight beta distribution, App Store submission checklist, the yearly WWDC cycle).
+
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/IOS_DEVELOPMENT_STUDY_GUIDE.md)
 
 ### Kali Linux
 This guide is a detailed, lab-first introduction to Kali Linux and the major pentesting tool families it ships with. It organizes the distribution by workflow so you can learn the tools as part of a real assessment process instead of as a random list of commands.
@@ -214,10 +234,20 @@ This guide explains SvelteKit as a modern app framework with a lightweight, ergo
 
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/SVELTEKIT_STUDY_GUIDE.md)
 
+### Swift
+This guide is a depth-first treatment of the Swift programming language in 2026. It covers the type system, memory management (ARC), optionals, closures, enums and pattern matching, protocols, generics, collections, strings, error handling, Swift 6 concurrency, macros, result builders, ownership, and noncopyable types.
+
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/SWIFT_STUDY_GUIDE.md)
+
 ### Terraform
 This guide treats Terraform as an infrastructure workflow tool, not just a syntax exercise. It emphasizes how providers, state, modules, plans, and applies fit into a safe and repeatable provisioning process.
 
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/TERRAFORM_STUDY_GUIDE.md)
+
+### Testing
+This guide is a comprehensive, cross-language treatment of software testing for working engineers. It covers the mental model of tests as executable confidence, the practical test portfolio (unit, integration, component, contract, E2E, property, fuzz, performance, security, accessibility, and exploratory testing), and the mechanics of writing durable tests in Python, Node.js, and Go. It then goes deep on enterprise testing strategy: shift-left and shift-right, test ownership, CI/CD gates, flaky-test management, test data and environments, contract testing between services, non-deterministic systems, legacy-code characterization, and checklists for adding tests to real production work.
+
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/TESTING_STUDY_GUIDE.md)
 
 ### TypeScript
 This guide is a deep dive into the TypeScript type system for developers already fluent in modern JavaScript. Starting from the mental model that types are sets, it builds through annotations and inference, unions and intersections, literal types and narrowing, type guards and control-flow analysis, generics, the utility types, and the advanced machinery — conditional types, mapped types, template literal types, and the `infer` keyword.
@@ -233,6 +263,11 @@ This guide is a depth-first treatment of Vim built around one idea: modal editin
 This guide introduces Vue through the lens of practical app building, focusing on the parts most developers reach for every day. It covers component structure, reactivity, templates, and the broader ecosystem so the framework feels organized rather than fragmented.
 
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/VUE_STUDY_GUIDE.md)
+
+### WebGPU
+This guide is a depth-first introduction to WebGPU, the modern explicit GPU API for the web. It explains what WebGPU is, why it exists, how it maps to modern graphics APIs, and how it compares with WebGL across state management, shaders, resources, compute, performance, compatibility, and developer experience. It then gives a practical primer on using WebGPU: adapters and devices, canvas configuration, buffers, textures, bind groups, render pipelines, WGSL, drawing a triangle, uniforms, render loops, compute shaders, debugging, performance practices, migration from WebGL, and when to use WebGPU, WebGL, or neither.
+
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/WEBGPU_STUDY_GUIDE.md)
 
 ### WebSockets
 This guide is a protocol-first, depth-first treatment of WebSockets for engineers building real-time features, with worked examples in both Node.js and Python. It starts on the wire — the HTTP upgrade handshake, frames, opcodes, close codes, `ws://` vs `wss://`, subprotocols — then builds up through the browser client API (events, binary data, reconnection with backoff), Node.js servers with `ws` (broadcasting, manual upgrade handling, heartbeats), Socket.IO (rooms, acknowledgements, and when not to use it), and Python servers (`websockets`, FastAPI/Starlette, Django Channels, python-socketio). It then goes deep on the hard parts: message-design patterns (envelopes, pub/sub, request-response, presence, framing), scaling stateful connections with a Redis backplane and sticky sessions, production concerns (the browser auth-header problem, Cross-Site WebSocket Hijacking, backpressure, heartbeats, reverse proxies), and reliability (delivery guarantees, at-least-once with acks/dedup, state recovery, the thundering herd). It closes with an honest comparison to SSE, long-polling, WebTransport, gRPC streaming, and WebRTC — including when *not* to use WebSockets — followed by five copy-paste recipes and an end-to-end walkthrough of a scalable, authenticated chat service.

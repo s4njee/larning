@@ -146,7 +146,48 @@ def escape_raw_html_tags(md_text):
 # Markdown -> HTML transform (shared with the bespoke builders)
 # --------------------------------------------------------------------------- #
 
-def transform(md_text):
+def rewrite_local_markdown_links(body, link_rewrites):
+    """Rewrite local Markdown links to generated HTML targets.
+
+    The GitHub Pages artifact publishes html/ only, so cross-guide links like
+    RUST_FOR_PYTHON_DEVS.md need to point at rust-for-python-devs.html.
+    """
+    if not link_rewrites:
+        return body
+
+    def repl(match):
+        quote, href = match.group(1), match.group(2)
+        if re.match(r"^(?:[a-z][a-z0-9+.-]*:|#)", href, re.I):
+            return match.group(0)
+
+        path = href
+        anchor = ""
+        query = ""
+        if "#" in path:
+            path, anchor = path.split("#", 1)
+            anchor = "#" + anchor
+        if "?" in path:
+            path, query = path.split("?", 1)
+            query = "?" + query
+
+        normalized = path.replace("\\", "/")
+        while normalized.startswith("./"):
+            normalized = normalized[2:]
+        while normalized.startswith("../"):
+            normalized = normalized[3:]
+
+        target = link_rewrites.get(normalized)
+        if not target:
+            target = link_rewrites.get(os.path.basename(normalized))
+        if not target:
+            return match.group(0)
+
+        return f"href={quote}{target}{query}{anchor}{quote}"
+
+    return re.sub(r"href=(['\"])([^'\"]+)\1", repl, body)
+
+
+def transform(md_text, link_rewrites=None):
     md_text = escape_raw_html_tags(md_text)
     md = markdown.Markdown(
         extensions=["fenced_code", "tables", "toc", "attr_list", "sane_lists"],
@@ -167,6 +208,7 @@ def transform(md_text):
 
     body = re.sub(r'<pre><code class="([^"]*)">', norm_code, body)
     body = body.replace("<pre><code>", '<pre><code class="language-text">')
+    body = rewrite_local_markdown_links(body, link_rewrites)
 
     # Build sidebar TOC from h2/h3 headings.
     toc = ['<nav class="toc" aria-label="Table of contents"><ul>']
@@ -226,7 +268,7 @@ def esc_attr(s):
     return s.replace("&", "&amp;").replace('"', "&quot;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def build(src, title=None, brand=None, accent=None, accent2=None, out=None, auto=False):
+def build(src, title=None, brand=None, accent=None, accent2=None, out=None, auto=False, link_rewrites=None):
     with open(src, encoding="utf-8") as f:
         md_text = f.read()
 
@@ -243,7 +285,7 @@ def build(src, title=None, brand=None, accent=None, accent2=None, out=None, auto
     if accent:
         css = apply_accent(css, accent, accent2 or accent)
 
-    toc_html, body = transform(md_text)
+    toc_html, body = transform(md_text, link_rewrites=link_rewrites)
     desc = f"An interactive study guide: {title}."
 
     page = (PAGE

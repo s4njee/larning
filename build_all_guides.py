@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 from build_caddy_html import CSS, JS
-from build_guide import PAGE, apply_accent, auto_accent, build, esc_attr, transform
+from build_guide import PAGE, apply_accent, auto_accent, build, esc_attr, rewrite_local_markdown_links, transform
 
 
 GUIDES = [
@@ -21,19 +21,24 @@ GUIDES = [
     ("PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md", "html/python-vs-nodejs-async-study-guide.html", {"accent": "#ffd43b"}),
     ("RUST_FOR_PYTHON_DEVS.md", "html/rust-for-python-devs.html", {"accent": "#f74c00"}),
     ("TYPESCRIPT_STUDY_GUIDE.md", "html/typescript-study-guide.html", {"accent": "#3178c6", "brand": "TS"}),
+    ("SWIFT_STUDY_GUIDE.md", "html/swift-study-guide.html", {"accent": "#f05138", "brand": "Swift"}),
+    ("IOS_DEVELOPMENT_STUDY_GUIDE.md", "html/ios-development-study-guide.html", {"accent": "#f05138", "brand": "iOS"}),
     ("DJANGO_STUDY_GUIDE.md", "html/django-study-guide.html", {"accent": "#ffd43b"}),
     ("ELECTRON_STUDY_GUIDE.md", "html/electron-study-guide.html", {"auto": True}),
     ("NEXTJS_STUDY_GUIDE.md", "html/nextjs-study-guide.html", {"auto": True}),
     ("QT_STUDY_GUIDE.md", "html/qt-study-guide.html", {"auto": True}),
     ("SVELTEKIT_STUDY_GUIDE.md", "html/sveltekit-study-guide.html", {"auto": True}),
     ("VUE_STUDY_GUIDE.md", "html/vue-study-guide.html", {"accent": "#42b883"}),
+    ("WEBGPU_STUDY_GUIDE.md", "html/webgpu-study-guide.html", {"auto": True}),
     ("WEBSOCKETS_STUDY_GUIDE.md", "html/websockets-study-guide.html", {"auto": True}),
     ("ANSIBLE_STUDY_GUIDE.md", "html/ansible-study-guide.html", {"auto": True}),
     ("AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md", "html/azure-for-aws-solutions-architect.html", {"auto": True}),
+    ("GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md", "html/gcp-for-aws-solutions-architect.html", {"auto": True}),
     ("CLOUDFLARE_STUDY_GUIDE.md", "html/cloudflare-study-guide.html", {"auto": True}),
     ("DOCKER_STUDY_GUIDE.md", "html/docker-study-guide.html", {"accent": "#2496ed"}),
     ("GITHUB_ACTIONS_STUDY_GUIDE.md", "html/github-actions-study-guide.html", {"auto": True}),
     ("OBSERVABILITY_STUDY_GUIDE.md", "html/observability-study-guide.html", {"auto": True}),
+    ("TESTING_STUDY_GUIDE.md", "html/testing-study-guide.html", {"auto": True}),
     ("TERRAFORM_STUDY_GUIDE.md", "html/terraform-study-guide.html", {"auto": True}),
     ("k8s/ADVANCED_KUBERNETES_STUDY_GUIDE.md", "html/advanced-kubernetes-study-guide.html", {"accent": "#326ce5", "brand": "K8s"}),
     ("k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md", "html/docker-kubernetes-networking-study-guide.html", {"accent": "#326ce5", "brand": "K8s"}),
@@ -59,6 +64,7 @@ GUIDES = [
     ("README.md", "html/readme.html", {"title": "Study Guides", "brand": "SG", "auto": True}),
     ("TOPICS.md", "html/topics.html", {"title": "Study Guide Topics", "brand": "SG", "auto": True}),
     ("ToDo.md", "html/todo.html", {"title": "Study Guide Conversion ToDo", "brand": "TODO", "auto": True}),
+    ("REMAINING.md", "html/remaining.html", {"title": "Remaining Topics in 2026", "brand": "TODO", "auto": True}),
 ]
 
 CATEGORIES = [
@@ -68,16 +74,18 @@ CATEGORIES = [
         "cpp26-study-guide.html", "dotnet-for-python-devs.html",
         "golang-for-python-devs.html", "python-concurrency.html",
         "python-vs-nodejs-async-study-guide.html", "rust-for-python-devs.html",
-        "typescript-study-guide.html",
+        "typescript-study-guide.html", "swift-study-guide.html",
     ]),
     ("Web and frontend", [
         "django-study-guide.html", "electron-study-guide.html",
         "nextjs-study-guide.html", "qt-study-guide.html",
         "sveltekit-study-guide.html", "vue-study-guide.html",
-        "websockets-study-guide.html",
+        "webgpu-study-guide.html", "websockets-study-guide.html",
+        "ios-development-study-guide.html",
     ]),
     ("Infra, cloud, and ops", [
         "ansible-study-guide.html", "azure-for-aws-solutions-architect.html",
+        "gcp-for-aws-solutions-architect.html",
         "cloudflare-study-guide.html", "docker-study-guide.html",
         "github-actions-study-guide.html", "observability-study-guide.html",
         "terraform-study-guide.html", "advanced-kubernetes-study-guide.html",
@@ -97,13 +105,43 @@ CATEGORIES = [
         "ai-agents-study-guide.html", "auth-study-guide.html",
         "crypto-fundamentals.html", "distributed-systems-study-guide.html",
         "kali-linux-study-guide.html", "llm-app-dev-study-guide.html",
-        "networking-fundamentals.html",
+        "networking-fundamentals.html", "testing-study-guide.html",
     ]),
     ("Bespoke and repo pages", [
         "caddy-study-guide.html", "nginx-study-guide.html", "readme.html",
-        "topics.html", "todo.html",
+        "topics.html", "todo.html", "remaining.html",
     ]),
 ]
+
+
+def guide_link_rewrites():
+    rewrites = {}
+    for src, out, _ in GUIDES:
+        target = Path(out).name
+        src_path = Path(src).as_posix()
+        keys = {
+            src_path,
+            f"./{src_path}",
+            Path(src_path).name,
+        }
+        for key in keys:
+            rewrites[key] = target
+    bespoke = {
+        "CADDY_STUDY_GUIDE.md": "caddy-study-guide.html",
+        "NGINX_STUDY_GUIDE.md": "nginx-study-guide.html",
+    }
+    for src, target in bespoke.items():
+        rewrites[src] = target
+        rewrites[f"./{src}"] = target
+    return rewrites
+
+
+def rewrite_site_links(link_rewrites):
+    for path in Path("html").glob("*.html"):
+        original = path.read_text(encoding="utf-8")
+        rewritten = rewrite_local_markdown_links(original, link_rewrites)
+        if rewritten != original:
+            path.write_text(rewritten, encoding="utf-8")
 
 
 def title_for(path):
@@ -152,11 +190,13 @@ def main():
     for bespoke in ("build_caddy_html.py", "build_nginx_html.py"):
         subprocess.run([sys.executable, bespoke], check=True)
 
+    link_rewrites = guide_link_rewrites()
     for src, out, opts in GUIDES:
-        build(src, out=out, **opts)
+        build(src, out=out, link_rewrites=link_rewrites, **opts)
         print(f"wrote {out}")
 
     build_index()
+    rewrite_site_links(link_rewrites)
 
 
 if __name__ == "__main__":

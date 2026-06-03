@@ -1,25 +1,27 @@
 # Modern C++ in 2026 (C++26)
 
-A depth-first guide to the C++26 standard and the paradigms that matter in 2026 — for engineers who know C++ (any vintage) and want to understand what changed, what to adopt, what to abandon, and how to write C++ that a 2026 team would recognize as modern. C++26, finalized in March 2026, is widely considered the most significant update since C++11. This guide covers the three headline features (reflection, contracts, `std::execution`), the paradigm shifts that accumulated across C++11 through C++26, and the honest state of C++ safety in a world that's asking hard questions about memory-safe languages.
+A depth-first guide to the C++26 standard and the paradigms that matter in 2026 — for engineers who know C++ (any vintage) and want to understand what changed, what to adopt, what to abandon, and how to write C++ that a 2026 team would recognize as modern. C++26, voted out by WG21 in March 2026 and moving through final ISO publication, is widely considered the most significant update since C++11. This guide covers the three headline features (reflection, contracts, `std::execution`), the paradigm shifts that accumulated across C++11 through C++26, the honest state of C++ safety in a world that's asking hard questions about memory-safe languages, and an opinionated development playbook for real projects.
 
 This guide has natural siblings in the repo. The [Rust for Python Developers guide](RUST_FOR_PYTHON_DEVS.md) is the foil for Part 8's safety discussion — Rust is the language whose guarantees C++ is being measured against. The [Advanced Go guide](ADVANCED_GO_STUDY_GUIDE.md) shares this guide's "what are you really fighting?" framing (its thesis: in Python you fight the interpreter, in Go the allocator and GC — in C++ you fight undefined behavior and lifetimes), and its memory-layout chapter pairs with Part 3's struct-of-arrays material. The [Python Concurrency guide](PYTHON_CONCURRENCY.md) and the async guides are the cross-language context for Part 5's concurrency model, and the [ESP32 guide](ESP32_STUDY_GUIDE.md) is where C++26's allocation-free containers (Part 7) actually earn their keep.
 
-Primary references: the [ISO C++ Standard](https://isocpp.org/), [cppreference.com](https://en.cppreference.com/), Herb Sutter's [trip reports](https://herbsutter.com/), [Modernes C++](https://www.modernescpp.com/), and the [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines).
+Primary references: the [ISO C++ Standard](https://isocpp.org/), [cppreference.com](https://en.cppreference.com/), Herb Sutter's [trip reports](https://herbsutter.com/), [Modernes C++](https://www.modernescpp.com/), and the [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines). For C++26 specifics, cross-check the WG21 papers for [static reflection (P2996)](https://wg21.link/P2996R13), [contracts (P2900)](https://wg21.link/P2900R14), and [`std::execution` (P2300)](https://wg21.link/P2300R10), plus live compiler status pages for [GCC](https://gcc.gnu.org/projects/cxx-status.html), [Clang](https://clang.llvm.org/cxx_status.html), and [MSVC](https://learn.microsoft.com/en-us/cpp/overview/visual-cpp-language-conformance).
 
 ---
 
 ## Table of Contents
 
-1. [Part 1 — The C++ Timeline: What Changed and When](#part-1--the-c-timeline-what-changed-and-when)
-2. [Part 2 — The Paradigm Shift: How Modern C++ Thinks](#part-2--the-paradigm-shift-how-modern-c-thinks)
-3. [Part 3 — Static Reflection](#part-3--static-reflection)
-4. [Part 4 — Contracts](#part-4--contracts)
-5. [Part 5 — std::execution (Senders & Receivers)](#part-5--stdexecution-senders--receivers)
-6. [Part 6 — Language Improvements in C++26](#part-6--language-improvements-in-c26)
-7. [Part 7 — Library Additions in C++26](#part-7--library-additions-in-c26)
-8. [Part 8 — The Safety Question](#part-8--the-safety-question)
-9. [Part 9 — Tooling & Build Systems in 2026](#part-9--tooling--build-systems-in-2026)
-10. [Part 10 — The Old Way vs. The New Way](#part-10--the-old-way-vs-the-new-way)
+1. [Part 1 — The C++ Timeline: What Changed and When](#part-1-the-c-timeline-what-changed-and-when)
+2. [Part 2 — The Paradigm Shift: How Modern C++ Thinks](#part-2-the-paradigm-shift-how-modern-c-thinks)
+3. [Part 3 — Static Reflection](#part-3-static-reflection)
+4. [Part 4 — Contracts](#part-4-contracts)
+5. [Part 5 — std::execution (Senders & Receivers)](#part-5-stdexecution-senders-receivers)
+6. [Part 6 — Language Improvements in C++26](#part-6-language-improvements-in-c26)
+7. [Part 7 — Library Additions in C++26](#part-7-library-additions-in-c26)
+8. [Part 8 — The Safety Question](#part-8-the-safety-question)
+9. [Part 9 — Tooling & Build Systems in 2026](#part-9-tooling-build-systems-in-2026)
+10. [Part 10 — Opinionated Modern C++ Development](#part-10-opinionated-modern-c-development)
+11. [Part 11 — Modernization Strategy for Real Codebases](#part-11-modernization-strategy-for-real-codebases)
+12. [Part 12 — The Old Way vs. The New Way](#part-12-the-old-way-vs-the-new-way)
 
 ---
 
@@ -1004,7 +1006,583 @@ If you remember one thing from Part 9: **the modern C++ baseline is CMake (3.28+
 
 ---
 
-## Part 10 — The Old Way vs. The New Way
+## Part 10 — Opinionated Modern C++ Development
+
+Modern C++ development is not "use every feature from the latest standard." That path produces clever code that is hard to build, hard to debug, and hard to staff. Modern C++ is a disciplined subset, a toolchain, a review culture, and a clear agreement about ownership, errors, concurrency, dependencies, and build reproducibility.
+
+This section is intentionally opinionated. You can choose different defaults, but you should choose them explicitly. An unspoken C++ style guide is not a style guide — it is a future incident report.
+
+### The Strong Opinion
+
+**Default to boring, explicit, value-oriented C++.** Use advanced language features to delete complexity, not to demonstrate fluency.
+
+The best modern C++ code in 2026 has these properties:
+
+- Ownership is obvious from the type.
+- Lifetimes are short, local, and mechanically enforced where possible.
+- APIs make invalid states hard to express.
+- Errors carry context.
+- Concurrency is structured and cancellable.
+- Build configuration is reproducible.
+- Unsafe code is rare, named, reviewed, and tested under sanitizers.
+- The project can be understood by a strong engineer who does not happen to be the original author.
+
+That last point matters. C++ culture has historically rewarded wizardry. Enterprise C++ rewards maintainable leverage.
+
+### The 2026 Default Stack
+
+For a greenfield production C++ project, start here:
+
+| Area | Opinionated default |
+|---|---|
+| Language | C++23 today; C++26 for new internal systems when compiler support is validated |
+| Build | CMake 3.28+ with `CMakePresets.json` |
+| Package manager | vcpkg or Conan 2.x, with lockfiles/version pins |
+| Formatting | `clang-format`, enforced in CI |
+| Static analysis | `clang-tidy` with `bugprone-*`, `modernize-*`, `performance-*`, selected `cppcoreguidelines-*` |
+| Runtime analysis | ASan + UBSan on every PR; TSan on concurrency-heavy code |
+| Tests | GoogleTest, Catch2, or doctest; pick one and standardize |
+| Fuzzing | libFuzzer, AFL++, or equivalent for parsers, decoders, protocol handlers, and serializers |
+| Benchmarks | Google Benchmark or nanobench for hot paths |
+| Docs | API docs only where they add semantic value; architecture docs for boundaries and ownership rules |
+| CI | Matrix across compiler, build type, sanitizer mode, and target platform |
+
+Do not begin by debating modules, reflection, custom allocators, or metaprogramming style. Begin by making the build boring and the quality gates unavoidable.
+
+### Project Shape
+
+A production C++ project should make ownership boundaries visible from the filesystem:
+
+```text
+project/
+  CMakeLists.txt
+  CMakePresets.json
+  cmake/
+  include/
+    company/product/
+      public_api.hpp
+  src/
+    product/
+      internal_component.cpp
+      internal_component.hpp
+  apps/
+    product_cli/
+      main.cpp
+  tests/
+    unit/
+    integration/
+  fuzz/
+  benchmarks/
+  docs/
+```
+
+The rules:
+
+- `include/` contains public headers only. If a header is not part of the public API, it belongs under `src/`.
+- Public headers include as little as possible. Prefer forward declarations, `pimpl`, and stable value types when ABI matters.
+- Internal code should not depend on `apps/`.
+- Tests should link the same libraries production code links, not copy implementation files directly.
+- Generated code belongs in a generated directory and should be clearly marked.
+- Avoid a dumping-ground `util/` namespace. If a utility has no domain name, it probably has no owner.
+
+### House Style
+
+Use these defaults unless you have a measured reason not to:
+
+- Prefer `std::vector`, `std::array`, `std::string`, and domain value types over raw arrays and raw buffers.
+- Prefer stack values. Reach for heap allocation only when identity, polymorphism, lifetime extension, or size requires it.
+- Prefer `std::unique_ptr` for owning heap pointers. Treat `std::shared_ptr` as a design smell until proven necessary.
+- Use references for required non-null parameters.
+- Use pointers, `std::optional`, or a `not_null<T*>` wrapper for optional/non-owning relationships.
+- Use `std::span<T>` for non-owning contiguous ranges.
+- Use `std::string_view` for read-only string parameters; do not store it unless the owner lifetime is guaranteed.
+- Use `auto` when it removes noise and the type is obvious from the right-hand side.
+- Use explicit types when the type carries domain meaning.
+- Use `enum class`, not unscoped enums.
+- Use `constexpr` for pure compile-time-capable functions.
+- Use `consteval` only when runtime use must be forbidden.
+- Use `[[nodiscard]]` on functions where ignoring the result is almost certainly wrong.
+- Use `noexcept` when the function truly cannot throw and the guarantee matters.
+- Avoid macros except for include guards, platform/compiler seams, generated code, and unavoidable conditional compilation.
+- Never put `using namespace std;` in a header. Better: never put `using namespace std;` anywhere.
+
+The style is not "new syntax everywhere." It is "the type system explains the program."
+
+### Ownership and Lifetime Policy
+
+Ownership must be encoded in the type. If a reviewer has to ask "who deletes this?", the code is not done.
+
+| Type shape | Meaning | Default policy |
+|---|---|---|
+| `T` | Owned value | Preferred |
+| `T&` | Required non-null borrowed object | Good for parameters |
+| `const T&` | Required borrowed read-only object | Good for large values |
+| `T*` | Optional or reseatable borrowed object | Non-owning only |
+| `std::unique_ptr<T>` | Exclusive ownership | Default heap owner |
+| `std::shared_ptr<T>` | Shared ownership | Rare; require rationale |
+| `std::weak_ptr<T>` | Observer of shared ownership | Use to break cycles |
+| `std::span<T>` | Borrowed contiguous view | Great for arrays/buffers |
+| `std::string_view` | Borrowed string view | Parameter default, storage hazard |
+
+Do not return raw owning pointers. Do not accept raw owning pointers. Do not store references or views in long-lived objects unless the owner relationship is documented and testable.
+
+This is the practical rule:
+
+```cpp
+// Good: caller owns the value.
+Image decode_image(std::span<const std::byte> bytes);
+
+// Good: caller gets a maybe-value.
+std::optional<User> find_user(UserId id);
+
+// Good: caller gets explicit exclusive ownership.
+std::unique_ptr<Connection> connect(Endpoint endpoint);
+
+// Suspicious: who owns this? Who deletes it?
+Connection* connect(Endpoint endpoint);
+```
+
+When you cross a C API boundary, wrap it immediately:
+
+```cpp
+using FileHandle = std::unique_ptr<FILE, decltype(&std::fclose)>;
+
+FileHandle open_file(const char* path, const char* mode) {
+    return FileHandle(std::fopen(path, mode), &std::fclose);
+}
+```
+
+Raw resources can exist at the boundary. They should not leak into the application.
+
+### API Design
+
+Modern C++ API design is about narrowing possibilities.
+
+Bad APIs rely on comments:
+
+```cpp
+// timeout_ms must be positive. retries must be 0-5. url must not be empty.
+bool fetch(std::string url, int timeout_ms, int retries);
+```
+
+Better APIs make the domain explicit:
+
+```cpp
+struct Url {
+    explicit Url(std::string value);
+    std::string value;
+};
+
+struct RetryPolicy {
+    int attempts;
+    std::chrono::milliseconds backoff;
+};
+
+enum class FetchError {
+    invalid_url,
+    timeout,
+    connection_refused,
+    protocol_error,
+};
+
+std::expected<Response, FetchError> fetch(
+    Url url,
+    std::chrono::milliseconds timeout,
+    RetryPolicy retry_policy
+);
+```
+
+The opinionated rules:
+
+- Do not use `int`, `bool`, and `std::string` as a substitute for a domain model.
+- Avoid boolean parameters in public APIs. `fetch(url, true, false, true)` is not an API; it is a puzzle.
+- Use small value types to give names to concepts: `UserId`, `OrderId`, `Timeout`, `ByteCount`.
+- Prefer return values over out-parameters.
+- Prefer `std::expected<T, E>` for local recoverable failures.
+- Prefer exceptions only when the codebase has an exception policy and all boundaries respect it.
+- Keep templates out of public APIs unless genericity is the point.
+- Use concepts to name template requirements.
+- Keep public headers stable and minimal.
+- Document ownership, threading, error behavior, and invalidation rules.
+
+### Error Handling Policy
+
+C++ has too many error mechanisms. A modern codebase needs a policy.
+
+Use this default:
+
+| Situation | Preferred mechanism |
+|---|---|
+| Programmer bug / violated precondition | Contract, assertion, or immediate termination depending on build policy |
+| Local recoverable error | `std::expected<T, Error>` |
+| Optional absence, not an error | `std::optional<T>` |
+| Low-level OS/library boundary | `std::error_code`, platform-specific error, or wrapper type |
+| Constructor cannot establish invariant | Exception, factory returning `expected`, or a validated value type |
+| Plugin/ABI boundary | No exceptions across the boundary; translate to status/result types |
+| Destructor failure | Log/record only; destructors must not throw |
+
+What not to do:
+
+- Do not return `bool` for a failure that needs a reason.
+- Do not use sentinel values like `-1`, `nullptr`, or empty string unless the domain genuinely says they are values.
+- Do not mix exceptions, error codes, `expected`, and logging randomly inside one layer.
+- Do not catch `...` and continue as if the program is healthy.
+- Do not throw from destructors.
+
+Good error types should be small, comparable, and attach context at boundaries:
+
+```cpp
+enum class ParseErrorCode {
+    unexpected_token,
+    invalid_escape,
+    trailing_input,
+};
+
+struct ParseError {
+    ParseErrorCode code;
+    std::size_t offset;
+    std::string message;
+};
+
+std::expected<Document, ParseError> parse_document(std::string_view text);
+```
+
+### Concurrency Policy
+
+Modern C++ concurrency should be structured, cancellable, and testable.
+
+The defaults:
+
+- Use `std::jthread`, not raw `std::thread`, for scoped threads.
+- Pass `std::stop_token` into long-running work.
+- Avoid detached threads. Detached threads are usually lifetime bugs with better timing.
+- Prefer message passing, queues, immutable snapshots, and ownership transfer over shared mutable state.
+- Use mutexes for ordinary shared state. Use atomics only when you can explain the memory ordering in review.
+- Use `std::execution` for composable asynchronous pipelines when compiler/library support is ready.
+- Keep callbacks small and move work into named functions.
+- Run TSan in CI for concurrency-heavy modules.
+
+Bad:
+
+```cpp
+std::thread([&] {
+    while (running) {
+        process(shared_state);
+    }
+}).detach();
+```
+
+Better:
+
+```cpp
+std::jthread worker([&](std::stop_token stop) {
+    while (!stop.stop_requested()) {
+        process_next_item();
+    }
+});
+```
+
+The rule: if the lifetime of the work is unclear, the concurrency model is wrong.
+
+### Testing and Quality Gates
+
+Testing C++ is not only about asserting outputs. It is how you make undefined behavior, races, ABI breakage, and performance regressions visible.
+
+A serious C++ test strategy has layers:
+
+| Layer | Purpose |
+|---|---|
+| Unit tests | Pure logic, value types, algorithms, error handling |
+| Integration tests | Filesystems, databases, services, processes, plugins |
+| Golden tests | Stable parsers, renderers, compilers, formatters |
+| Property tests | Invariants over many generated inputs |
+| Fuzz tests | Untrusted input, parsers, decoders, protocol handlers |
+| Sanitizer tests | Memory, undefined behavior, and data race detection |
+| Benchmark tests | Performance-sensitive paths with regression thresholds |
+
+Minimum policy:
+
+1. Every library target has unit tests.
+2. Every parser/decoder/deserializer has fuzz coverage.
+3. Every bug fix gets a regression test unless the cost is disproportionate and documented.
+4. Every PR runs normal tests plus ASan/UBSan.
+5. TSan runs at least nightly, and on every PR that touches concurrency.
+6. Benchmarks do not replace tests. They answer a different question.
+7. Flaky tests are treated as production bugs in the test system.
+
+For enterprise code, add two more:
+
+- Compatibility tests for persisted formats, network protocols, and public APIs.
+- Upgrade tests for dependency and compiler changes.
+
+If your team says "we cannot run sanitizers because the tests are flaky," the correct interpretation is "the codebase is already telling you where it hurts."
+
+### Performance Policy
+
+C++ is chosen for performance, but modern C++ performance is not "write low-level code everywhere." It is measuring where the program actually spends time and making layout, allocation, and ownership decisions intentionally.
+
+Default rules:
+
+- Profile before optimizing.
+- Keep hot data contiguous.
+- Prefer `std::vector` until you have evidence it is wrong.
+- Reserve capacity when the size is predictable.
+- Avoid allocation in hot loops.
+- Prefer value types over pointer graphs for cache locality.
+- Avoid virtual dispatch in hot paths unless polymorphism is actually needed.
+- Avoid `std::function` in hot paths when type erasure allocation matters.
+- Measure copies and allocations before introducing views everywhere.
+- Use `std::span`, `std::mdspan`, and `std::simd` where they clarify data access and vectorization.
+- Treat custom allocators as a late-stage optimization, not an architectural default.
+
+The danger is premature abstraction, not premature optimization. A template-heavy abstraction can be slower to compile, harder to debug, and no faster at runtime than a direct value-oriented design.
+
+### The Banned List
+
+Ban these in application code unless a narrow exception is approved:
+
+- Owning raw pointers.
+- Naked `new` and `delete`.
+- `malloc` and `free` outside C interop wrappers.
+- `std::shared_ptr` as the default ownership model.
+- `std::thread::detach`.
+- Global mutable state.
+- `using namespace std;` in headers.
+- C-style casts.
+- Macros for constants or functions.
+- Out-parameters when return values work.
+- Sentinel error values with no diagnostic context.
+- Throwing across plugin, C ABI, or service-process boundaries.
+- Catch-all handlers that swallow errors.
+
+This list is not about purity. It is about making the dangerous moves visible.
+
+### The Blessed List
+
+Reach for these first:
+
+- RAII wrappers.
+- Rule of Zero types.
+- `std::vector`, `std::array`, `std::string`, `std::string_view`, `std::span`.
+- `std::unique_ptr` for ownership that must be on the heap.
+- `std::optional`, `std::variant`, `std::expected`.
+- `std::chrono` types instead of raw integer time.
+- `enum class`.
+- `std::format`, `std::print`, and `std::println`.
+- Ranges for readable pipelines.
+- Concepts for public template requirements.
+- `std::jthread` and `std::stop_token`.
+- `constexpr` where it simplifies invariants or lookup tables.
+- Contracts for preconditions and invariants once your compiler/toolchain policy supports them.
+
+### Code Review Checklist
+
+A useful C++ review is not only "does this compile?"
+
+Ask:
+
+- Is ownership visible from the type?
+- Can any reference, pointer, span, or view outlive its owner?
+- Does every error path carry enough information to debug production?
+- Are exceptions either part of the layer policy or translated at the boundary?
+- Does this API make invalid states easy or hard?
+- Does this change introduce shared mutable state?
+- Do tests cover the failure path, not only the happy path?
+- Would ASan, UBSan, or TSan catch a bug here if one existed?
+- Does the public header expose implementation details?
+- Did we make the compile graph worse?
+- Is the clever part buying enough to justify its maintenance cost?
+
+If you remember one thing from Part 10: **modern C++ is a disciplined subset plus tooling, not a syntax contest. Default to values, RAII, explicit ownership, `expected`/`optional` for local recoverable outcomes, structured concurrency, reproducible builds, and sanitizer-backed CI. Clever code must earn its keep.**
+
+---
+
+## Part 11 — Modernization Strategy for Real Codebases
+
+Most teams do not get to start from a clean C++26 codebase. They inherit C++03 idioms, half-migrated C++11 code, platform macros, raw pointers, bespoke build systems, and a decade of tribal knowledge. Modernization is not a rewrite. It is a sequence of small changes that tighten the feedback loop and make old risks mechanically visible.
+
+The first rule: **do not modernize by spraying new syntax over old design.** Replacing every iterator loop with a range pipeline does not fix unclear ownership. Adding concepts to a bad template API does not make it good. Start with behavior, boundaries, and build discipline.
+
+### The Modernization Order
+
+Use this order for legacy codebases:
+
+1. **Freeze behavior with tests.** Add characterization tests before changing tricky code.
+2. **Make the build reproducible.** Introduce CMake presets or equivalent, pin compilers, and document supported platforms.
+3. **Turn warnings on.** Start with warnings visible; move to warnings-as-errors once the backlog is under control.
+4. **Format automatically.** Adopt `clang-format` and stop debating whitespace in review.
+5. **Run sanitizers.** ASan/UBSan first, then TSan where concurrency matters.
+6. **Ban new owning raw pointers.** Stop the bleeding before cleaning old wounds.
+7. **Wrap raw resources.** Files, sockets, handles, locks, memory maps, and C allocations get RAII wrappers.
+8. **Replace output parameters and sentinel returns.** Move toward return values, `optional`, and `expected`.
+9. **Clarify ownership APIs.** Introduce `unique_ptr`, references, spans, and domain value types.
+10. **Simplify templates.** Add concepts after APIs are already understandable.
+11. **Use ranges selectively.** Improve readability; do not turn every loop into a pipeline.
+12. **Consider modules last.** Modules help build structure, but they do not repair architecture by themselves.
+
+Modernization succeeds when each step reduces risk. It fails when the team tries to win a style argument across a million lines at once.
+
+### Draw a Boundary Around Legacy Code
+
+Do not demand that every old file become modern immediately. Draw a line:
+
+- Old code may keep old idioms temporarily.
+- New code must follow the modern policy.
+- Interfaces between old and new code must be explicit.
+- Dangerous legacy behavior gets wrapped behind narrow adapters.
+- Every touched file should get a little safer, but not necessarily perfect.
+
+This is the C++ version of the strangler pattern:
+
+```text
+new code  -> modern interface -> legacy adapter -> old subsystem
+```
+
+The adapter is where you translate:
+
+- Raw pointers to references, `unique_ptr`, or `span`.
+- Error codes to `expected`.
+- C strings to `std::string_view` or `std::string`.
+- Manual handles to RAII wrappers.
+- Global mutable state to explicit context objects.
+
+Do not let legacy conventions leak into new APIs just because the old subsystem is still underneath.
+
+### Raising the Language Standard
+
+Raising `-std=` is not a mechanical setting. It is an adoption plan.
+
+| Current state | Practical next step |
+|---|---|
+| C++03 | Move to C++17 first. C++20/23 is too much change at once. |
+| C++11/14 | Move to C++17, adopt `optional`, `variant`, filesystem, structured bindings. |
+| C++17 | Move to C++20, adopt concepts, ranges, `span`, `format`, `jthread`. |
+| C++20 | Move to C++23, adopt `expected`, `print`, library polish. |
+| C++23 | Trial C++26 features in isolated targets behind compiler checks. |
+
+For enterprise software, the standard version is not the only constraint. You need matching support from:
+
+- The oldest compiler you support.
+- The standard library implementation on each platform.
+- Static analysis tools.
+- Sanitizers.
+- Package manager profiles.
+- Build cache and remote execution infrastructure.
+- IDE/language-server support.
+
+Use feature-test macros and target-level compile checks. Do not make the entire codebase depend on one experimental C++26 feature because one team wants it.
+
+### Dependency Modernization
+
+Dependency chaos is one of the quiet killers of C++ projects.
+
+Opinionated policy:
+
+- Use exactly one package manager per repo unless there is a documented migration.
+- Pin dependency versions.
+- Prefer binary caching for CI speed.
+- Track licenses.
+- Record compiler, standard library, and platform assumptions.
+- Keep vendored code in a clearly named third-party area.
+- Do not patch third-party code invisibly. Carry patches as explicit files or forks.
+- Update dependencies on a schedule, not only during emergencies.
+
+Enterprise teams should also generate an SBOM where required by security policy and run dependency vulnerability scans. C++ does not have one universal ecosystem like npm or Cargo; the process must be explicit.
+
+### Headers, Modules, and Compile Times
+
+Compile time is a product concern when developers spend hours waiting for builds.
+
+Before modules:
+
+- Remove unnecessary includes.
+- Use forward declarations in headers where appropriate.
+- Move implementation details out of public headers.
+- Use `pimpl` for ABI-stable or dependency-heavy public types.
+- Split large headers by responsibility.
+- Avoid template-heavy APIs when runtime polymorphism or value types would do.
+- Consider precompiled headers only for stable, common dependencies.
+- Use build caching (`ccache`, `sccache`, Bazel remote cache, or equivalent).
+
+Then evaluate modules:
+
+- Start with internal modules, not public API modules.
+- Keep module boundaries aligned with architecture boundaries.
+- Validate IDE, CI, package, and compiler behavior before broad adoption.
+- Avoid mixing unstable module support with aggressive language upgrades in the same release train.
+
+Modules are promising. They are not a substitute for dependency hygiene.
+
+### ABI Reality
+
+C++ ABI is where elegant designs meet production constraints.
+
+If you ship shared libraries, plugins, SDKs, or cross-compiler components:
+
+- Do not casually expose STL types across unstable binary boundaries.
+- Avoid throwing exceptions across plugin or C ABI boundaries.
+- Keep allocation and deallocation on the same side of the boundary.
+- Use opaque handles or C-compatible facades for long-lived external APIs.
+- Version your ABI explicitly.
+- Test upgrade/downgrade scenarios.
+
+Inside one monorepo built with one toolchain, you can be more relaxed. Across vendors, compilers, plugins, or customer environments, be conservative.
+
+### Team Policy
+
+Enterprise C++ needs written defaults:
+
+- Supported language standard.
+- Supported compilers and platforms.
+- Build system and package manager.
+- Formatting and lint rules.
+- Ownership conventions.
+- Error-handling conventions.
+- Exception policy.
+- Concurrency policy.
+- ABI/public API policy.
+- Testing and sanitizer requirements.
+- Dependency update process.
+- Security review triggers.
+
+Keep the policy short enough that people read it. Enforce the mechanical parts with tools. Use code review for judgment, not for re-litigating formatting, include order, or whether raw owning pointers are still acceptable.
+
+### Adoption Matrix
+
+Different systems deserve different levels of modernity:
+
+| System type | Opinionated target |
+|---|---|
+| Greenfield internal service | C++23 or C++26 where support is validated |
+| Public library/SDK | C++20 or C++23; conservative ABI surface |
+| Embedded product | C++17/20 subset; allocation and exceptions policy explicit |
+| Game engine/plugin | Match engine/toolchain constraints; modernize inside modules |
+| HPC/data pipeline | C++20/23 plus careful use of `mdspan`, `simd`, and profiling |
+| Safety-critical component | Consider Rust or a restricted C++ profile; require analysis and certification plan |
+| Legacy monolith | Modern subset for new code; staged migration for old code |
+
+The right answer is rarely "everything on C++26 immediately." The right answer is "new code follows modern rules, shared infrastructure improves steadily, and risky components get extra scrutiny."
+
+### Migration Playbook
+
+A practical 90-day modernization pass might look like this:
+
+| Window | Work |
+|---|---|
+| Days 1-15 | Inventory compiler versions, build paths, dependencies, warnings, test coverage, crash history |
+| Days 16-30 | Add presets, CI matrix, formatting, baseline warnings, and a dependency manifest |
+| Days 31-45 | Enable ASan/UBSan jobs, fix the first wave of memory and undefined behavior defects |
+| Days 46-60 | Ban new raw ownership, add RAII wrappers for the worst resources, define error policy |
+| Days 61-75 | Modernize one vertical slice end-to-end, including tests, APIs, and ownership |
+| Days 76-90 | Document the new house style, make it the default for all new work, and plan the next subsystem |
+
+Success is not measured by the number of `auto` keywords introduced. It is measured by fewer crashes, faster reviews, reproducible builds, clearer APIs, and defects caught before customers see them.
+
+If you remember one thing from Part 11: **modernization is a risk-reduction program, not a rewrite and not a syntax upgrade. Stabilize the build, freeze behavior with tests, turn on analysis, stop adding new ownership debt, wrap dangerous boundaries, and migrate subsystem by subsystem.**
+
+---
+
+## Part 12 — The Old Way vs. The New Way
 
 A reference table. Left is code you'd find in a pre-2011 codebase. Right is idiomatic 2026 C++. If your codebase still has the left column, it's a modernization target.
 
@@ -1150,6 +1728,6 @@ std::visit([](auto& v) { std::println("{}", v); }, value);
 
 ---
 
-That's the guide. C++26 is a genuine milestone: reflection eliminates the boilerplate that has driven developers to macros and code generators for decades, contracts give the language its first standard mechanism for expressing function specifications, and `std::execution` provides a composable async model that replaces the broken `std::async`/`std::future` experiment. Combined with the paradigm shifts that accumulated since C++11 — RAII, value semantics, move semantics, concepts, ranges, `expected` — modern C++ is a significantly different language from what most engineers learned in school.
+That's the guide. C++26 is a genuine milestone: reflection eliminates the boilerplate that has driven developers to macros and code generators for decades, contracts give the language its first standard mechanism for expressing function specifications, and `std::execution` provides a composable async model that replaces the broken `std::async`/`std::future` experiment. Combined with the paradigm shifts that accumulated since C++11 — RAII, value semantics, move semantics, concepts, ranges, `expected` — and a disciplined house style around ownership, APIs, errors, tests, dependencies, and modernization, modern C++ is a significantly different language from what most engineers learned in school.
 
 The honest caveat: C++ in 2026 is more capable than ever, but it's also more complex than ever, and it still lacks the compile-time safety guarantees of Rust. The practical path is to adopt the modern subset aggressively, instrument with sanitizers and static analysis, and make informed decisions about when a component should be C++ and when it should be something else.
