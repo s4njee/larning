@@ -10,8 +10,6 @@ Ranking weights, in order: (1) **solves a problem** you or the field hit right n
 
 ## Tier 1 — Write these next
 
-1. **AI Engineering: Agents & Tool Use** *(AI)* — The defining skill of 2026. The [LLM App Dev guide](LLM_APP_DEV_STUDY_GUIDE.md) covers calling a model; this is the layer above it: the agent loop (plan → act → observe), tool/function calling, structured outputs, memory and context management, multi-agent orchestration, guardrails and retries, cost/latency control, and the frameworks — plus when to skip them and write the loop yourself. The highest market signal in the field right now and badly underserved by treatments that go past the demo into what survives production.
-2. **Testing** *(Cross-cutting)* — The testing pyramid, test doubles, fixtures, property-based testing, integration vs. e2e, flaky-test triage — and the 2026 wrinkle: how to test **non-deterministic** systems (LLM outputs, retries, eventual consistency) without writing brittle assertions. Touches every language guide in the repo and is currently absent entirely; high leverage precisely because it's cross-cutting.
 3. **AWS** *(Systems)* — A from-scratch counterpart to the existing Azure-for-AWS-architect guide, which assumes an AWS fluency no guide here actually provides. IAM, VPC, compute, storage, managed databases, and the cross-service patterns that matter — including the GPU/inference and managed-AI surface that now drives a lot of cloud spend. Closes an obvious loop and carries top market signal.
 4. **Web Application & LLM Security** *(Security)* — The OWASP Top 10 with depth — how each bug class works, how to test for it, how to prevent it — extended to the **new attack surface**: prompt injection, insecure tool use, data exfiltration through agents, and the OWASP Top 10 for LLM Applications. The defensive complement to the offensive Kali guide, and the security topic every team now needs whether or not they think they ship AI.
 
@@ -25,7 +23,6 @@ Ranking weights, in order: (1) **solves a problem** you or the field hit right n
 9. **SQL (Beyond Postgres)** *(Languages / Data)* — Window functions, CTEs, and query-planning concepts that port across engines. Directly deepens the Postgres guides and your day-to-day work; the adjacency and personal-stack fit make it cheap to write and high-return.
 10. **API Design** *(Architecture)* — REST, GraphQL, gRPC, OpenAPI, versioning, pagination, idempotency, and error models — opinionated and worked, not "REST 101." Newly urgent because the consumer of your API is increasingly an **agent**, and machine-legible, well-described, hard-to-misuse APIs are now a design constraint.
 11. **Kafka & Streaming** *(Data)* — Topics, partitions, consumer groups, exactly-once semantics, the broker/producer/consumer model. The dominant streaming substrate; both the Data Engineering and the new Distributed Systems guides reference it, but it earns its own depth-first treatment.
-13. **eBPF** *(Systems)* — Programmable kernel for observability, networking, and security without patching or rebooting — the engine under Cilium, Falco, Pixie, and `bpftrace`. One of the most consequential infrastructure shifts of the decade; pairs with the Networking, Observability, and Kubernetes guides and builds directly on a Linux Fundamentals guide.
 
 ---
 
@@ -34,7 +31,6 @@ Ranking weights, in order: (1) **solves a problem** you or the field hit right n
 Good ideas that are more niche, more situational, or simply lower-leverage than the above right now:
 
 - **React (Fundamentals)** *(Frontend)* — Hooks, reconciliation, server components; still the default of the job market, though lower personal fit given Vue.
-- **Nginx & Reverse Proxies** *(Systems)* — Config language, upstreams, caching, TLS termination, rate limiting; still the most common proxy on the planet, and a foil to the Caddy guide.
 - **Software Supply-Chain Security** *(Security)* — SLSA, Sigstore/cosign, SBOMs, signed and reproducible builds, dependency provenance; the area that's seen the most movement since the big 2020s supply-chain breaches, and a natural extension of the GitHub Actions guide.
 - **WebAssembly (Wasm)** *(Systems)* — Server-side and edge Wasm, the component model, WASI; the portable, sandboxed runtime story that keeps gaining ground for plugins and untrusted code.
 - **AI-Assisted Development** *(Tools)* — Working *with* agentic coding tools as a discipline: context curation, custom agents and skills, MCP servers, and evaluating your own workflow. Meta, fast-moving, and increasingly the difference in day-to-day throughput.
@@ -48,6 +44,5 @@ Good ideas that are more niche, more situational, or simply lower-leverage than 
 - **Embedded Linux on the Raspberry Pi Zero 2 W** *(Hardware)* — Boot process, GPIO, I2C/SPI/UART, device-tree overlays, low-power modes; the most directly actionable topic given the hardware already on your desk.
 - **Modern CSS** *(Frontend)* — Grid, container queries, custom properties, cascade layers, modern selectors; framework-agnostic, so it pays off across the Vue/Next/Svelte guides.
 - **Modern JS Runtimes** *(Languages)* — Bun and Deno: the post-Node toolchain, built-in tooling, and Web-standard APIs.
-- **GCP** *(Systems)* — The third cloud; a natural follow-on once AWS exists.
 
 Lower still, but on the radar: **Domain-Driven Design**, **Service Mesh** (Istio/Linkerd/Cilium), **Bash & Shell Scripting**, **C & Systems Programming**, **Threat Modeling**, **Pulumi & Crossplane**, **Tauri**, **Zig**, **Elixir & OTP**, and the terminal/build pair of **tmux** and **Make**.

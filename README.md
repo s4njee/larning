@@ -234,6 +234,11 @@ This guide helps Python developers get comfortable with Rust by focusing on the 
 
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/RUST_FOR_PYTHON_DEVS.md)
 
+### SQLite
+This guide is a comprehensive deep dive into SQLite — the most widely deployed database engine in the world. It covers SQLite's architecture (B-trees, the pager, the virtual machine), its manifest type system, concurrency and locking (WAL mode vs rollback journal), performance characteristics, and practical embedded use cases.
+
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/SQLITE_STUDY_GUIDE.md)
+
 ### SvelteKit
 This guide explains SvelteKit as a modern app framework with a lightweight, ergonomic developer experience. It focuses on the patterns you need to understand to build real apps: routing, data loading, component structure, and deployment flow.
 

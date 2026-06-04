@@ -1,0 +1,3130 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: SQLite Deep Dive.">
+<title>SQLite Deep Dive - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#4e84e9; --accent2:#5649e3; --accent-weak:rgba(78,132,233,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#4e84e9; --accent2:#5649e3; --accent-weak:rgba(78,132,233,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">S</span><span>SQLite Deep Dive</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#1-the-mental-model" data-target="1-the-mental-model">1. The Mental Model</a></li><li class="toc-l3"><a href="#what-sqlite-is" data-target="what-sqlite-is">What SQLite Is</a></li><li class="toc-l3"><a href="#why-sqlite-exists" data-target="why-sqlite-exists">Why SQLite Exists</a></li><li class="toc-l3"><a href="#scale-of-deployment" data-target="scale-of-deployment">Scale of Deployment</a></li><li class="toc-l3"><a href="#when-to-use-sqlite" data-target="when-to-use-sqlite">When to Use SQLite</a></li><li class="toc-l3"><a href="#when-not-to-use-sqlite" data-target="when-not-to-use-sqlite">When NOT to Use SQLite</a></li><li class="toc-l2"><a href="#2-architecture-internals" data-target="2-architecture-internals">2. Architecture &amp; Internals</a></li><li class="toc-l3"><a href="#the-processing-pipeline" data-target="the-processing-pipeline">The Processing Pipeline</a></li><li class="toc-l3"><a href="#vdbe-virtual-database-engine" data-target="vdbe-virtual-database-engine">VDBE (Virtual Database Engine)</a></li><li class="toc-l3"><a href="#b-tree-structure" data-target="b-tree-structure">B-tree Structure</a></li><li class="toc-l3"><a href="#the-database-file" data-target="the-database-file">The Database File</a></li><li class="toc-l3"><a href="#the-vfs-layer" data-target="the-vfs-layer">The VFS Layer</a></li><li class="toc-l2"><a href="#3-the-type-system" data-target="3-the-type-system">3. The Type System</a></li><li class="toc-l3"><a href="#manifest-typing-type-affinity" data-target="manifest-typing-type-affinity">Manifest Typing &amp; Type Affinity</a></li><li class="toc-l3"><a href="#five-storage-classes" data-target="five-storage-classes">Five Storage Classes</a></li><li class="toc-l3"><a href="#type-affinity" data-target="type-affinity">Type Affinity</a></li><li class="toc-l3"><a href="#strict-tables-3370" data-target="strict-tables-3370">STRICT Tables (3.37.0+)</a></li><li class="toc-l3"><a href="#dates-and-times" data-target="dates-and-times">Dates and Times</a></li><li class="toc-l2"><a href="#4-sql-feature-coverage" data-target="4-sql-feature-coverage">4. SQL Feature Coverage</a></li><li class="toc-l3"><a href="#ddl-data-definition-language" data-target="ddl-data-definition-language">DDL (Data Definition Language)</a></li><li class="toc-l3"><a href="#integer-primary-key-vs-autoincrement" data-target="integer-primary-key-vs-autoincrement">INTEGER PRIMARY KEY vs AUTOINCREMENT</a></li><li class="toc-l3"><a href="#without-rowid-tables" data-target="without-rowid-tables">WITHOUT ROWID Tables</a></li><li class="toc-l3"><a href="#dml-data-manipulation-language" data-target="dml-data-manipulation-language">DML (Data Manipulation Language)</a></li><li class="toc-l3"><a href="#ctes-and-recursive-queries" data-target="ctes-and-recursive-queries">CTEs and Recursive Queries</a></li><li class="toc-l3"><a href="#window-functions-3250" data-target="window-functions-3250">Window Functions (3.25.0+)</a></li><li class="toc-l3"><a href="#subqueries-and-exists" data-target="subqueries-and-exists">Subqueries and EXISTS</a></li><li class="toc-l3"><a href="#what-sqlite-does-not-support" data-target="what-sqlite-does-not-support">What SQLite Does NOT Support</a></li><li class="toc-l2"><a href="#5-indexes-query-planning" data-target="5-indexes-query-planning">5. Indexes &amp; Query Planning</a></li><li class="toc-l3"><a href="#index-types" data-target="index-types">Index Types</a></li><li class="toc-l3"><a href="#explain-query-plan" data-target="explain-query-plan">EXPLAIN QUERY PLAN</a></li><li class="toc-l3"><a href="#the-analyze-command" data-target="the-analyze-command">The ANALYZE Command</a></li><li class="toc-l3"><a href="#index-optimization-strategies" data-target="index-optimization-strategies">Index Optimization Strategies</a></li><li class="toc-l2"><a href="#6-transactions-concurrency-locking" data-target="6-transactions-concurrency-locking">6. Transactions, Concurrency &amp; Locking</a></li><li class="toc-l3"><a href="#transaction-basics" data-target="transaction-basics">Transaction Basics</a></li><li class="toc-l3"><a href="#the-five-lock-states-rollback-journal-mode" data-target="the-five-lock-states-rollback-journal-mode">The Five Lock States (Rollback Journal Mode)</a></li><li class="toc-l3"><a href="#busy-handling" data-target="busy-handling">Busy Handling</a></li><li class="toc-l3"><a href="#transaction-types" data-target="transaction-types">Transaction Types</a></li><li class="toc-l2"><a href="#7-wal-mode" data-target="7-wal-mode">7. WAL Mode</a></li><li class="toc-l3"><a href="#how-it-works" data-target="how-it-works">How It Works</a></li><li class="toc-l3"><a href="#wal-architecture" data-target="wal-architecture">WAL Architecture</a></li><li class="toc-l3"><a href="#wal-mode-trade-offs" data-target="wal-mode-trade-offs">WAL Mode Trade-offs</a></li><li class="toc-l3"><a href="#when-to-use-wal" data-target="when-to-use-wal">When to Use WAL</a></li><li class="toc-l2"><a href="#8-performance-tuning" data-target="8-performance-tuning">8. Performance Tuning</a></li><li class="toc-l3"><a href="#essential-pragmas" data-target="essential-pragmas">Essential PRAGMAs</a></li><li class="toc-l3"><a href="#batch-operations-in-transactions" data-target="batch-operations-in-transactions">Batch Operations in Transactions</a></li><li class="toc-l3"><a href="#prepared-statements" data-target="prepared-statements">Prepared Statements</a></li><li class="toc-l3"><a href="#practical-connection-setup-function" data-target="practical-connection-setup-function">Practical: Connection Setup Function</a></li><li class="toc-l3"><a href="#profiling" data-target="profiling">Profiling</a></li><li class="toc-l2"><a href="#9-json-support" data-target="9-json-support">9. JSON Support</a></li><li class="toc-l3"><a href="#json-operators-3380" data-target="json-operators-3380">JSON Operators (3.38.0+)</a></li><li class="toc-l3"><a href="#json-functions" data-target="json-functions">JSON Functions</a></li><li class="toc-l3"><a href="#json_each-iterate-over-json-arrays" data-target="json_each-iterate-over-json-arrays">json_each — Iterate Over JSON Arrays</a></li><li class="toc-l3"><a href="#practical-storing-flexible-data" data-target="practical-storing-flexible-data">Practical: Storing Flexible Data</a></li><li class="toc-l2"><a href="#10-full-text-search-fts5" data-target="10-full-text-search-fts5">10. Full-Text Search (FTS5)</a></li><li class="toc-l3"><a href="#creating-an-fts5-table" data-target="creating-an-fts5-table">Creating an FTS5 Table</a></li><li class="toc-l3"><a href="#searching" data-target="searching">Searching</a></li><li class="toc-l3"><a href="#keeping-fts-in-sync-with-a-content-table" data-target="keeping-fts-in-sync-with-a-content-table">Keeping FTS in Sync with a Content Table</a></li><li class="toc-l3"><a href="#fts5-tokenizers" data-target="fts5-tokenizers">FTS5 Tokenizers</a></li><li class="toc-l2"><a href="#11-virtual-tables" data-target="11-virtual-tables">11. Virtual Tables</a></li><li class="toc-l3"><a href="#built-in-virtual-tables" data-target="built-in-virtual-tables">Built-in Virtual Tables</a></li><li class="toc-l3"><a href="#r-tree-spatial-indexing" data-target="r-tree-spatial-indexing">R-tree: Spatial Indexing</a></li><li class="toc-l3"><a href="#csv-virtual-table" data-target="csv-virtual-table">CSV Virtual Table</a></li><li class="toc-l2"><a href="#12-practical-embedded-database-use-cases" data-target="12-practical-embedded-database-use-cases">12. Practical: Embedded Database Use Cases</a></li><li class="toc-l3"><a href="#mobile-applications" data-target="mobile-applications">Mobile Applications</a></li><li class="toc-l3"><a href="#desktop-applications" data-target="desktop-applications">Desktop Applications</a></li><li class="toc-l3"><a href="#real-world-desktop-software-using-sqlite" data-target="real-world-desktop-software-using-sqlite">Real-World Desktop Software Using SQLite</a></li><li class="toc-l3"><a href="#iot-and-edge-devices" data-target="iot-and-edge-devices">IoT and Edge Devices</a></li><li class="toc-l3"><a href="#configuration-and-settings-storage" data-target="configuration-and-settings-storage">Configuration and Settings Storage</a></li><li class="toc-l3"><a href="#testing-and-prototyping" data-target="testing-and-prototyping">Testing and Prototyping</a></li><li class="toc-l3"><a href="#data-analysis-with-sqlite-utils" data-target="data-analysis-with-sqlite-utils">Data Analysis with sqlite-utils</a></li><li class="toc-l3"><a href="#caching-layer" data-target="caching-layer">Caching Layer</a></li><li class="toc-l3"><a href="#local-first-applications" data-target="local-first-applications">Local-First Applications</a></li><li class="toc-l2"><a href="#13-sqlite-as-an-application-file-format" data-target="13-sqlite-as-an-application-file-format">13. SQLite as an Application File Format</a></li><li class="toc-l3"><a href="#why-sqlite-beats-custom-file-formats" data-target="why-sqlite-beats-custom-file-formats">Why SQLite Beats Custom File Formats</a></li><li class="toc-l3"><a href="#real-world-examples" data-target="real-world-examples">Real-World Examples</a></li><li class="toc-l3"><a href="#implementing-it" data-target="implementing-it">Implementing It</a></li><li class="toc-l2"><a href="#14-sqlite-vs-other-databases" data-target="14-sqlite-vs-other-databases">14. SQLite vs Other Databases</a></li><li class="toc-l3"><a href="#sqlite-vs-postgresql" data-target="sqlite-vs-postgresql">SQLite vs PostgreSQL</a></li><li class="toc-l3"><a href="#sqlite-vs-duckdb" data-target="sqlite-vs-duckdb">SQLite vs DuckDB</a></li><li class="toc-l3"><a href="#sqlite-vs-leveldb-rocksdb" data-target="sqlite-vs-leveldb-rocksdb">SQLite vs LevelDB / RocksDB</a></li><li class="toc-l3"><a href="#sqlite-vs-the-filesystem-for-small-data" data-target="sqlite-vs-the-filesystem-for-small-data">SQLite vs the Filesystem (for small data)</a></li><li class="toc-l2"><a href="#15-extensions-ecosystem" data-target="15-extensions-ecosystem">15. Extensions &amp; Ecosystem</a></li><li class="toc-l3"><a href="#language-bindings" data-target="language-bindings">Language Bindings</a></li><li class="toc-l3"><a href="#notable-extensions" data-target="notable-extensions">Notable Extensions</a></li><li class="toc-l3"><a href="#replication-distribution" data-target="replication-distribution">Replication &amp; Distribution</a></li><li class="toc-l3"><a href="#tools" data-target="tools">Tools</a></li><li class="toc-l3"><a href="#the-sqlite3-cli" data-target="the-sqlite3-cli">The sqlite3 CLI</a></li><li class="toc-l2"><a href="#16-backup-migration-maintenance" data-target="16-backup-migration-maintenance">16. Backup, Migration &amp; Maintenance</a></li><li class="toc-l3"><a href="#backup-strategies" data-target="backup-strategies">Backup Strategies</a></li><li class="toc-l3"><a href="#vacuum" data-target="vacuum">VACUUM</a></li><li class="toc-l3"><a href="#schema-migrations" data-target="schema-migrations">Schema Migrations</a></li><li class="toc-l3"><a href="#schema-version-tracking" data-target="schema-version-tracking">Schema Version Tracking</a></li><li class="toc-l2"><a href="#17-best-practices-anti-patterns" data-target="17-best-practices-anti-patterns">17. Best Practices &amp; Anti-Patterns</a></li><li class="toc-l3"><a href="#do-these-always" data-target="do-these-always">Do These Always</a></li><li class="toc-l3"><a href="#dont-do-these" data-target="dont-do-these">Don't Do These</a></li><li class="toc-l3"><a href="#connection-pool-pattern" data-target="connection-pool-pattern">Connection Pool Pattern</a></li><li class="toc-l2"><a href="#18-advanced-topics" data-target="18-advanced-topics">18. Advanced Topics</a></li><li class="toc-l3"><a href="#application-defined-functions" data-target="application-defined-functions">Application-Defined Functions</a></li><li class="toc-l3"><a href="#the-sqlite-amalgamation" data-target="the-sqlite-amalgamation">The SQLite Amalgamation</a></li><li class="toc-l3"><a href="#compile-time-options" data-target="compile-time-options">Compile-Time Options</a></li><li class="toc-l3"><a href="#the-authorizer-callback" data-target="the-authorizer-callback">The Authorizer Callback</a></li><li class="toc-l3"><a href="#sqlites-testing-methodology" data-target="sqlites-testing-methodology">SQLite's Testing Methodology</a></li><li class="toc-l3"><a href="#attached-databases" data-target="attached-databases">Attached Databases</a></li><li class="toc-l2"><a href="#19-limits-constraints" data-target="19-limits-constraints">19. Limits &amp; Constraints</a></li><li class="toc-l3"><a href="#practical-performance-boundaries" data-target="practical-performance-boundaries">Practical Performance Boundaries</a></li><li class="toc-l2"><a href="#20-common-mistakes" data-target="20-common-mistakes">20. Common Mistakes</a></li><li class="toc-l3"><a href="#1-not-using-transactions-for-bulk-inserts" data-target="1-not-using-transactions-for-bulk-inserts">1. Not Using Transactions for Bulk Inserts</a></li><li class="toc-l3"><a href="#2-forgetting-foreign-keys-are-off-by-default" data-target="2-forgetting-foreign-keys-are-off-by-default">2. Forgetting Foreign Keys Are Off by Default</a></li><li class="toc-l3"><a href="#3-using-not-in-with-nulls" data-target="3-using-not-in-with-nulls">3. Using NOT IN with NULLs</a></li><li class="toc-l3"><a href="#4-not-setting-busy-timeout" data-target="4-not-setting-busy-timeout">4. Not Setting Busy Timeout</a></li><li class="toc-l3"><a href="#5-using-autoincrement-when-you-dont-need-it" data-target="5-using-autoincrement-when-you-dont-need-it">5. Using AUTOINCREMENT When You Don't Need It</a></li><li class="toc-l3"><a href="#6-storing-dates-incorrectly" data-target="6-storing-dates-incorrectly">6. Storing Dates Incorrectly</a></li><li class="toc-l3"><a href="#7-assuming-column-types-are-enforced" data-target="7-assuming-column-types-are-enforced">7. Assuming Column Types Are Enforced</a></li><li class="toc-l2"><a href="#mastery-checklist" data-target="mastery-checklist">Mastery Checklist</a></li><li class="toc-l2"><a href="#recommended-reading-path" data-target="recommended-reading-path">Recommended Reading Path</a></li></ul></nav></aside>
+  <main><h1 id="sqlite-deep-dive">SQLite Deep Dive</h1>
+<p>A comprehensive guide to SQLite — the most widely deployed database engine in the world. Assumes you know basic SQL and have used a relational database before. This guide covers SQLite's architecture, unique design decisions, practical usage as an embedded database, and everything you need to use it effectively in real systems.</p>
+<p>Primary references: <a href="https://www.sqlite.org/docs.html">SQLite Documentation</a>, <a href="https://www.sqlite.org/lang.html">SQL Syntax</a>, <a href="https://www.sqlite.org/pragma.html">Pragma Statements</a>, <a href="https://www.sqlite.org/fileformat2.html">File Format</a></p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#1-the-mental-model">The Mental Model</a></li>
+<li><a href="#2-architecture--internals">Architecture &amp; Internals</a></li>
+<li><a href="#3-the-type-system">The Type System</a></li>
+<li><a href="#4-sql-feature-coverage">SQL Feature Coverage</a></li>
+<li><a href="#5-indexes--query-planning">Indexes &amp; Query Planning</a></li>
+<li><a href="#6-transactions-concurrency--locking">Transactions, Concurrency &amp; Locking</a></li>
+<li><a href="#7-wal-mode">WAL Mode</a></li>
+<li><a href="#8-performance-tuning">Performance Tuning</a></li>
+<li><a href="#9-json-support">JSON Support</a></li>
+<li><a href="#10-full-text-search-fts5">Full-Text Search (FTS5)</a></li>
+<li><a href="#11-virtual-tables">Virtual Tables</a></li>
+<li><a href="#12-practical-embedded-database-use-cases">Practical: Embedded Database Use Cases</a></li>
+<li><a href="#13-sqlite-as-an-application-file-format">SQLite as an Application File Format</a></li>
+<li><a href="#14-sqlite-vs-other-databases">SQLite vs Other Databases</a></li>
+<li><a href="#15-extensions--ecosystem">Extensions &amp; Ecosystem</a></li>
+<li><a href="#16-backup-migration--maintenance">Backup, Migration &amp; Maintenance</a></li>
+<li><a href="#17-best-practices--anti-patterns">Best Practices &amp; Anti-Patterns</a></li>
+<li><a href="#18-advanced-topics">Advanced Topics</a></li>
+<li><a href="#19-limits--constraints">Limits &amp; Constraints</a></li>
+<li><a href="#20-common-mistakes">Common Mistakes</a></li>
+</ol>
+<hr>
+<h2 id="1-the-mental-model">1. The Mental Model</h2>
+<h3 id="what-sqlite-is">What SQLite Is</h3>
+<p>SQLite is a <strong>self-contained, serverless, zero-configuration, transactional SQL database engine</strong>. The key word is <strong>embedded</strong> — SQLite runs inside your application process, not as a separate server. There is no network protocol, no daemon, no setup. Your application links against a C library (~600KB compiled) and reads/writes a single ordinary file on disk.</p>
+<pre><code class="language-text">┌──────────────────────────────────────────────────────┐
+│                  Your Application                     │
+│                                                      │
+│   ┌──────────────────────────────────────────────┐   │
+│   │              SQLite Library                   │   │
+│   │                                              │   │
+│   │   SQL in → Parser → Planner → VDBE → B-tree │   │
+│   │                                     ↕        │   │
+│   │                               Pager (I/O)    │   │
+│   └──────────────────────────┬───────────────────┘   │
+│                              │                        │
+└──────────────────────────────│────────────────────────┘
+                               ↕
+                    ┌─────────────────────┐
+                    │   database.db       │
+                    │   (single file)     │
+                    └─────────────────────┘
+</code></pre>
+<p>This is fundamentally different from PostgreSQL or MySQL where the database is a separate process (or cluster of processes) that your application talks to over a socket. In SQLite, the database engine is linked directly into your code. Function calls, not network packets.</p>
+<h3 id="why-sqlite-exists">Why SQLite Exists</h3>
+<p>SQLite was originally designed in 2000 by D. Richard Hipp for the US Navy, for use in guided missile destroyers — systems that needed a relational database but couldn't rely on a DBA or a running database server. That origin story explains its core design priorities:</p>
+<ul>
+<li><strong>Zero administration</strong>: no installation, no configuration, no server to manage</li>
+<li><strong>Reliable</strong>: must not lose data, even on power failure or crash</li>
+<li><strong>Portable</strong>: the database file works across any platform, any endianness, 32-bit or 64-bit</li>
+<li><strong>Small</strong>: the library must fit in resource-constrained environments</li>
+</ul>
+<h3 id="scale-of-deployment">Scale of Deployment</h3>
+<p>SQLite is estimated to have <strong>over one trillion active databases</strong> worldwide. It ships in:</p>
+<ul>
+<li>Every Android device</li>
+<li>Every iPhone and iPad</li>
+<li>Every copy of Firefox, Chrome, Safari, and Edge</li>
+<li>Every Mac (macOS uses it extensively)</li>
+<li>Every Windows 10/11 installation</li>
+<li>Python's standard library (<code>sqlite3</code>)</li>
+<li>PHP's built-in <code>PDO_SQLITE</code></li>
+<li>Airbus A350 flight software</li>
+</ul>
+<p>It is, by a significant margin, the most widely deployed database engine — and the most widely deployed software module of any kind — in the world.</p>
+<h3 id="when-to-use-sqlite">When to Use SQLite</h3>
+<table>
+<thead>
+<tr>
+<th>Use case</th>
+<th>Why SQLite fits</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Mobile apps (Android, iOS)</td>
+<td>Built into the OS, zero setup, fast local storage</td>
+</tr>
+<tr>
+<td>Desktop applications</td>
+<td>No server dependency, self-contained data files</td>
+</tr>
+<tr>
+<td>Embedded systems / IoT</td>
+<td>Tiny footprint (~600KB), no OS dependencies</td>
+</tr>
+<tr>
+<td>Application file format</td>
+<td>Single file, cross-platform, atomic writes, queryable</td>
+</tr>
+<tr>
+<td>Website (low-medium traffic)</td>
+<td>Simpler than running a database server, fast reads</td>
+</tr>
+<tr>
+<td>Development &amp; testing</td>
+<td>Drop-in replacement for server databases, in-memory mode</td>
+</tr>
+<tr>
+<td>Data analysis &amp; exploration</td>
+<td>Python stdlib, works with Datasette/sqlite-utils</td>
+</tr>
+<tr>
+<td>Configuration storage</td>
+<td>Better than flat files, supports structured queries</td>
+</tr>
+<tr>
+<td>Caching layer</td>
+<td>Fast reads, no server overhead, TTL via application logic</td>
+</tr>
+<tr>
+<td>Edge computing</td>
+<td>Local-first, works offline, sync later</td>
+</tr>
+</tbody>
+</table>
+<h3 id="when-not-to-use-sqlite">When NOT to Use SQLite</h3>
+<ul>
+<li><strong>High write concurrency</strong> — only one writer at a time. If multiple processes need to write simultaneously and frequently, use PostgreSQL or MySQL.</li>
+<li><strong>Client-server architecture</strong> — if the database must be accessed over a network by multiple application servers, use a server database. SQLite does not work reliably on network filesystems (NFS, SMB).</li>
+<li><strong>Very large datasets</strong> — SQLite handles tens of gigabytes well. At hundreds of gigabytes or terabytes, a server database with a more sophisticated query planner, buffer management, and parallel execution will perform better.</li>
+<li><strong>Fine-grained access control</strong> — SQLite has no user management, no <code>GRANT</code>/<code>REVOKE</code>. Access control is at the filesystem level.</li>
+<li><strong>Heavy analytical workloads</strong> — no parallel query execution. For OLAP, consider DuckDB (which is also embedded but column-oriented).</li>
+</ul>
+<hr>
+<h2 id="2-architecture-internals">2. Architecture &amp; Internals</h2>
+<h3 id="the-processing-pipeline">The Processing Pipeline</h3>
+<p>SQL execution flows through a well-defined pipeline:</p>
+<pre><code class="language-text">SQL Text
+   ↓
+┌──────────┐
+│ Tokenizer│ — breaks SQL into tokens
+└────┬─────┘
+     ↓
+┌──────────┐
+│  Parser  │ — LALR(1) parser (Lemon-generated), builds a parse tree
+└────┬─────┘
+     ↓
+┌──────────────┐
+│Code Generator│ — converts parse tree into VDBE bytecode
+└────┬─────────┘
+     ↓
+┌──────────┐
+│   VDBE   │ — register-based virtual machine, executes bytecode
+└────┬─────┘
+     ↓
+┌──────────┐
+│  B-tree  │ — manages tables and indexes as B-tree structures
+└────┬─────┘
+     ↓
+┌──────────┐
+│  Pager   │ — page cache, locking, journaling, crash recovery
+└────┬─────┘
+     ↓
+┌──────────┐
+│   VFS    │ — OS abstraction layer for file I/O
+└──────────┘
+</code></pre>
+<h3 id="vdbe-virtual-database-engine">VDBE (Virtual Database Engine)</h3>
+<p>The VDBE is the heart of SQLite. Every SQL statement compiles down to a program of bytecode opcodes (~187 different opcodes). You can inspect them:</p>
+<pre><code class="language-sql">EXPLAIN SELECT name FROM users WHERE age &gt; 30;
+</code></pre>
+<p>This outputs the actual bytecode program: <code>OpenRead</code>, <code>Rewind</code>, <code>Column</code>, <code>Gt</code>, <code>ResultRow</code>, <code>Next</code>, <code>Halt</code>, etc. Understanding VDBE output is rarely necessary, but it's useful for deep debugging.</p>
+<p>For practical query analysis, use <code>EXPLAIN QUERY PLAN</code> instead — it shows the high-level strategy:</p>
+<pre><code class="language-sql">EXPLAIN QUERY PLAN SELECT name FROM users WHERE age &gt; 30;
+-- QUERY PLAN
+-- `--SCAN users
+</code></pre>
+<p>Add an index and it changes:</p>
+<pre><code class="language-sql">CREATE INDEX idx_users_age ON users(age);
+EXPLAIN QUERY PLAN SELECT name FROM users WHERE age &gt; 30;
+-- QUERY PLAN
+-- `--SEARCH users USING INDEX idx_users_age (age&gt;?)
+</code></pre>
+<h3 id="b-tree-structure">B-tree Structure</h3>
+<p>SQLite uses two types of B-trees:</p>
+<ul>
+<li><strong>Table B-trees</strong> (B+ trees): Leaf nodes contain the actual row data. Keyed by a 64-bit integer <code>rowid</code>. Every table without <code>WITHOUT ROWID</code> has one.</li>
+<li><strong>Index B-trees</strong>: Both internal and leaf nodes contain key data. Used for secondary indexes.</li>
+</ul>
+<p>Each table and each index is its own B-tree, rooted at a specific page in the database file.</p>
+<h3 id="the-database-file">The Database File</h3>
+<p>The entire database — tables, indexes, schema, metadata — lives in a single file:</p>
+<ul>
+<li>First 100 bytes: <strong>database header</strong> (magic string <code>"SQLite format 3\000"</code>, page size, format versions, schema version, etc.)</li>
+<li>Default <strong>page size</strong>: 4096 bytes (configurable: 512 to 65536)</li>
+<li>Pages are numbered starting at 1; page 1 contains the header and the root of the <code>sqlite_master</code> table</li>
+<li>The file format is <strong>cross-platform</strong>: freely copy between big-endian/little-endian, 32-bit/64-bit</li>
+<li><strong>Format stability guarantee</strong>: the SQLite developers have pledged compatibility through at least <strong>2050</strong></li>
+</ul>
+<h3 id="the-vfs-layer">The VFS Layer</h3>
+<p>The Virtual File System (VFS) is an abstraction layer between SQLite and the operating system. This is what makes SQLite so portable — you can implement a custom VFS for:</p>
+<ul>
+<li>In-memory databases (built-in: <code>:memory:</code>)</li>
+<li>Encrypted storage (see SEE, SQLCipher)</li>
+<li>Custom I/O on embedded systems</li>
+<li>Logging and profiling I/O operations</li>
+</ul>
+<hr>
+<h2 id="3-the-type-system">3. The Type System</h2>
+<h3 id="manifest-typing-type-affinity">Manifest Typing &amp; Type Affinity</h3>
+<p>SQLite's type system is fundamentally different from other databases. It uses <strong>manifest typing</strong> — the type belongs to the <strong>value</strong>, not the column. Any column can hold any type of data (with one exception: <code>INTEGER PRIMARY KEY</code>).</p>
+<pre><code class="language-sql">CREATE TABLE demo (x, y, z);  -- no types at all, perfectly valid
+
+INSERT INTO demo VALUES (1, 'hello', 3.14);
+INSERT INTO demo VALUES ('text', NULL, X'DEADBEEF');  -- different types in same column
+</code></pre>
+<h3 id="five-storage-classes">Five Storage Classes</h3>
+<p>Every value in SQLite has one of exactly five storage classes:</p>
+<table>
+<thead>
+<tr>
+<th>Storage class</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NULL</code></td>
+<td>The null value</td>
+</tr>
+<tr>
+<td><code>INTEGER</code></td>
+<td>Signed integer (1, 2, 3, 4, 6, or 8 bytes, stored compactly)</td>
+</tr>
+<tr>
+<td><code>REAL</code></td>
+<td>8-byte IEEE 754 floating point</td>
+</tr>
+<tr>
+<td><code>TEXT</code></td>
+<td>UTF-8 or UTF-16 string</td>
+</tr>
+<tr>
+<td><code>BLOB</code></td>
+<td>Binary data, stored exactly as input</td>
+</tr>
+</tbody>
+</table>
+<h3 id="type-affinity">Type Affinity</h3>
+<p>When you declare a column type (e.g., <code>VARCHAR(100)</code>, <code>INT</code>, <code>DOUBLE</code>), SQLite maps it to a <strong>type affinity</strong> that acts as a preference, not a constraint:</p>
+<table>
+<thead>
+<tr>
+<th>Affinity</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>INTEGER</code></td>
+<td>Prefers storing as integer; converts strings that look like integers</td>
+</tr>
+<tr>
+<td><code>TEXT</code></td>
+<td>Prefers storing as text; stores everything as text</td>
+</tr>
+<tr>
+<td><code>BLOB</code> (or <code>NONE</code>)</td>
+<td>No preference; stores exactly what you give it</td>
+</tr>
+<tr>
+<td><code>REAL</code></td>
+<td>Prefers storing as float</td>
+</tr>
+<tr>
+<td><code>NUMERIC</code></td>
+<td>Stores as integer if possible, else float, else text</td>
+</tr>
+</tbody>
+</table>
+<p>The affinity rules match on the <strong>type name string</strong> in your <code>CREATE TABLE</code>:</p>
+<pre><code class="language-sql">-- &quot;INT&quot; anywhere → INTEGER affinity
+CREATE TABLE t1 (a INT);          -- INTEGER affinity
+CREATE TABLE t2 (a INTEGER);      -- INTEGER affinity
+CREATE TABLE t3 (a BIGINT);       -- INTEGER affinity (contains &quot;INT&quot;)
+CREATE TABLE t4 (a TINYINT);      -- INTEGER affinity
+
+-- &quot;CHAR&quot;, &quot;CLOB&quot;, &quot;TEXT&quot; → TEXT affinity
+CREATE TABLE t5 (a VARCHAR(255)); -- TEXT affinity (contains &quot;CHAR&quot;)
+CREATE TABLE t6 (a TEXT);         -- TEXT affinity
+
+-- &quot;BLOB&quot; or no type → BLOB affinity
+CREATE TABLE t7 (a BLOB);         -- BLOB affinity
+CREATE TABLE t8 (a);              -- BLOB affinity (no type)
+
+-- &quot;REAL&quot;, &quot;FLOA&quot;, &quot;DOUB&quot; → REAL affinity
+CREATE TABLE t9 (a REAL);         -- REAL affinity
+CREATE TABLE t10 (a DOUBLE);      -- REAL affinity
+CREATE TABLE t11 (a FLOAT);       -- REAL affinity
+
+-- anything else → NUMERIC affinity
+CREATE TABLE t12 (a BOOLEAN);     -- NUMERIC affinity
+CREATE TABLE t13 (a DATE);        -- NUMERIC affinity
+CREATE TABLE t14 (a DECIMAL);     -- NUMERIC affinity
+</code></pre>
+<h3 id="strict-tables-3370">STRICT Tables (3.37.0+)</h3>
+<p>If dynamic typing makes you uncomfortable, SQLite now supports strict type enforcement:</p>
+<pre><code class="language-sql">CREATE TABLE users (
+    id INTEGER PRIMARY KEY,
+    name TEXT NOT NULL,
+    age INTEGER,
+    score REAL
+) STRICT;
+
+INSERT INTO users VALUES (1, 'Alice', 'thirty', 9.5);
+-- Error: cannot store TEXT value in INTEGER column users.age
+</code></pre>
+<p>In strict mode, columns must be one of: <code>INT</code>, <code>INTEGER</code>, <code>REAL</code>, <code>TEXT</code>, <code>BLOB</code>, <code>ANY</code>.</p>
+<h3 id="dates-and-times">Dates and Times</h3>
+<p>SQLite has no native date/time storage class. Instead, it provides a suite of <strong>date and time functions</strong> that work with three representations:</p>
+<pre><code class="language-sql">-- TEXT as ISO 8601 strings (recommended)
+SELECT datetime('now');                    -- '2024-01-15 14:30:00'
+SELECT date('now', '+7 days');             -- '2024-01-22'
+SELECT strftime('%Y-%m-%d %H:%M', 'now'); -- formatted output
+
+-- REAL as Julian day numbers
+SELECT julianday('now');                   -- 2460324.104...
+
+-- INTEGER as Unix timestamps
+SELECT unixepoch('now');                   -- 1705329000
+SELECT datetime(1705329000, 'unixepoch'); -- back to text
+</code></pre>
+<p>Best practice: store dates as ISO 8601 text (<code>'2024-01-15 14:30:00'</code>) or as Unix timestamps (integers). Both work with SQLite's date functions and sort correctly.</p>
+<hr>
+<h2 id="4-sql-feature-coverage">4. SQL Feature Coverage</h2>
+<h3 id="ddl-data-definition-language">DDL (Data Definition Language)</h3>
+<pre><code class="language-sql">-- create table
+CREATE TABLE users (
+    id INTEGER PRIMARY KEY,              -- alias for rowid, auto-increments
+    email TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    bio TEXT DEFAULT '',
+    created_at TEXT DEFAULT (datetime('now')),
+    score REAL DEFAULT 0.0,
+    CHECK (length(email) &gt; 0)
+);
+
+-- alter table
+ALTER TABLE users ADD COLUMN avatar_url TEXT;
+ALTER TABLE users RENAME COLUMN bio TO biography;
+ALTER TABLE users RENAME TO people;
+ALTER TABLE users DROP COLUMN avatar_url;          -- 3.35.0+
+
+-- generated columns (3.31.0+)
+CREATE TABLE products (
+    price_cents INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+    total_cents INTEGER GENERATED ALWAYS AS (price_cents * quantity) STORED,
+    display_price TEXT GENERATED ALWAYS AS (
+        '$' || printf('%.2f', price_cents / 100.0)
+    ) VIRTUAL
+);
+
+-- views
+CREATE VIEW active_users AS
+SELECT * FROM users WHERE score &gt; 0;
+
+-- triggers
+CREATE TRIGGER update_timestamp
+AFTER UPDATE ON users
+FOR EACH ROW
+BEGIN
+    UPDATE users SET created_at = datetime('now') WHERE id = NEW.id;
+END;
+</code></pre>
+<h3 id="integer-primary-key-vs-autoincrement">INTEGER PRIMARY KEY vs AUTOINCREMENT</h3>
+<p>This is a critical SQLite concept that trips people up:</p>
+<pre><code class="language-sql">-- INTEGER PRIMARY KEY: alias for the built-in rowid
+-- Auto-increments by default (max existing rowid + 1)
+-- If you delete row 5 and insert again, you might get rowid 5 again
+CREATE TABLE t1 (id INTEGER PRIMARY KEY, name TEXT);
+
+-- AUTOINCREMENT: guarantees monotonically increasing IDs
+-- Maintains a sqlite_sequence table to track the max used value
+-- Slightly slower due to the extra table lookup
+-- Prevents rowid reuse — even after deletion, IDs only go up
+CREATE TABLE t2 (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);
+</code></pre>
+<p>In most cases, <code>INTEGER PRIMARY KEY</code> without <code>AUTOINCREMENT</code> is sufficient and faster. Use <code>AUTOINCREMENT</code> only if you specifically need to guarantee that rowids are never reused.</p>
+<h3 id="without-rowid-tables">WITHOUT ROWID Tables</h3>
+<p>Normal tables always have a hidden <code>rowid</code> column. <code>WITHOUT ROWID</code> tables store data directly in the index structure keyed by the primary key:</p>
+<pre><code class="language-sql">-- good for lookup tables with natural primary keys
+CREATE TABLE country_codes (
+    code TEXT PRIMARY KEY,
+    name TEXT NOT NULL
+) WITHOUT ROWID;
+
+-- good for many-to-many junction tables
+CREATE TABLE user_roles (
+    user_id INTEGER NOT NULL,
+    role_id INTEGER NOT NULL,
+    PRIMARY KEY (user_id, role_id)
+) WITHOUT ROWID;
+</code></pre>
+<p>Benefits: saves space (no separate rowid column), faster lookups by primary key for non-integer keys. Drawback: slower for large rows because the full row is stored in the B-tree interior nodes.</p>
+<h3 id="dml-data-manipulation-language">DML (Data Manipulation Language)</h3>
+<pre><code class="language-sql">-- insert
+INSERT INTO users (email, name) VALUES ('alice@example.com', 'Alice');
+
+-- insert multiple rows
+INSERT INTO users (email, name) VALUES
+    ('bob@example.com', 'Bob'),
+    ('carol@example.com', 'Carol');
+
+-- upsert (3.24.0+)
+INSERT INTO users (email, name) VALUES ('alice@example.com', 'Alice Updated')
+ON CONFLICT (email) DO UPDATE SET name = excluded.name;
+
+INSERT INTO users (email, name) VALUES ('alice@example.com', 'Alice')
+ON CONFLICT (email) DO NOTHING;
+
+-- returning (3.35.0+)
+INSERT INTO users (email, name) VALUES ('dave@example.com', 'Dave')
+RETURNING id, email;
+
+DELETE FROM users WHERE score &lt; 0 RETURNING id, email;
+
+UPDATE users SET score = score + 1 WHERE id = 1 RETURNING *;
+
+-- replace (insert or delete-then-insert if conflict)
+REPLACE INTO users (id, email, name) VALUES (1, 'alice2@example.com', 'Alice 2');
+</code></pre>
+<h3 id="ctes-and-recursive-queries">CTEs and Recursive Queries</h3>
+<pre><code class="language-sql">-- non-recursive CTE
+WITH recent_users AS (
+    SELECT * FROM users WHERE created_at &gt; datetime('now', '-7 days')
+)
+SELECT * FROM recent_users WHERE score &gt; 10;
+
+-- recursive CTE: generate a series
+WITH RECURSIVE cnt(x) AS (
+    SELECT 1
+    UNION ALL
+    SELECT x + 1 FROM cnt WHERE x &lt; 100
+)
+SELECT x FROM cnt;
+
+-- recursive CTE: traverse a tree (org chart)
+CREATE TABLE employees (
+    id INTEGER PRIMARY KEY,
+    name TEXT,
+    manager_id INTEGER REFERENCES employees(id)
+);
+
+WITH RECURSIVE org_chart AS (
+    -- anchor: the CEO (no manager)
+    SELECT id, name, manager_id, 0 AS depth, name AS path
+    FROM employees WHERE manager_id IS NULL
+
+    UNION ALL
+
+    -- recursive: each employee under their manager
+    SELECT e.id, e.name, e.manager_id, oc.depth + 1,
+           oc.path || ' &gt; ' || e.name
+    FROM employees e
+    JOIN org_chart oc ON e.manager_id = oc.id
+)
+SELECT * FROM org_chart ORDER BY path;
+</code></pre>
+<h3 id="window-functions-3250">Window Functions (3.25.0+)</h3>
+<pre><code class="language-sql">-- row numbering
+SELECT name, score,
+    ROW_NUMBER() OVER (ORDER BY score DESC) AS rank
+FROM users;
+
+-- running total
+SELECT date, amount,
+    SUM(amount) OVER (ORDER BY date ROWS UNBOUNDED PRECEDING) AS running_total
+FROM transactions;
+
+-- partition by category, rank within each
+SELECT category, name, score,
+    RANK() OVER (PARTITION BY category ORDER BY score DESC) AS category_rank
+FROM products;
+
+-- lag/lead (previous/next row values)
+SELECT date, price,
+    price - LAG(price) OVER (ORDER BY date) AS daily_change,
+    LEAD(price) OVER (ORDER BY date) AS next_price
+FROM stock_prices;
+
+-- moving average
+SELECT date, price,
+    AVG(price) OVER (ORDER BY date ROWS BETWEEN 6 PRECEDING AND CURRENT ROW) AS avg_7day
+FROM stock_prices;
+
+-- named window
+SELECT name, score,
+    ROW_NUMBER() OVER w AS rn,
+    RANK() OVER w AS rnk,
+    DENSE_RANK() OVER w AS drnk
+FROM users
+WINDOW w AS (ORDER BY score DESC);
+</code></pre>
+<h3 id="subqueries-and-exists">Subqueries and EXISTS</h3>
+<pre><code class="language-sql">-- correlated subquery
+SELECT u.name,
+    (SELECT COUNT(*) FROM orders o WHERE o.user_id = u.id) AS order_count
+FROM users u;
+
+-- EXISTS (often more efficient than IN for large sets)
+SELECT * FROM users u
+WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id);
+
+-- NOT EXISTS (preferred over NOT IN with nullable columns)
+SELECT * FROM users u
+WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id);
+</code></pre>
+<h3 id="what-sqlite-does-not-support">What SQLite Does NOT Support</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RIGHT JOIN</code>, <code>FULL OUTER JOIN</code></td>
+<td>Supported since 3.39.0 (2022). Older versions: LEFT JOIN only.</td>
+</tr>
+<tr>
+<td>Stored procedures</td>
+<td>Not supported. Use application-defined functions instead.</td>
+</tr>
+<tr>
+<td><code>GRANT</code> / <code>REVOKE</code></td>
+<td>Not supported. Access control is filesystem-level.</td>
+</tr>
+<tr>
+<td>User management</td>
+<td>Not supported. No concept of database users.</td>
+</tr>
+<tr>
+<td><code>ALTER TABLE ADD CONSTRAINT</code></td>
+<td>Not supported. Must recreate the table.</td>
+</tr>
+<tr>
+<td><code>TRUNCATE TABLE</code></td>
+<td>Not supported. Use <code>DELETE FROM table</code> (with no WHERE).</td>
+</tr>
+<tr>
+<td>Materialized views</td>
+<td>Not supported. Use application-level caching or triggers.</td>
+</tr>
+<tr>
+<td>Concurrent writers</td>
+<td>Only one writer at a time (even in WAL mode).</td>
+</tr>
+<tr>
+<td><code>ENUM</code> type</td>
+<td>Not supported natively. Use <code>CHECK</code> constraints.</td>
+</tr>
+<tr>
+<td>Parallel query execution</td>
+<td>Not supported. Single-threaded query execution.</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="5-indexes-query-planning">5. Indexes &amp; Query Planning</h2>
+<h3 id="index-types">Index Types</h3>
+<p>SQLite supports only B-tree indexes, but with several powerful variations:</p>
+<pre><code class="language-sql">-- basic index
+CREATE INDEX idx_users_email ON users(email);
+
+-- unique index
+CREATE UNIQUE INDEX idx_users_email ON users(email);
+
+-- multi-column index
+CREATE INDEX idx_orders_user_date ON orders(user_id, created_at);
+-- serves queries on (user_id), (user_id, created_at)
+-- does NOT efficiently serve queries on (created_at) alone
+
+-- partial index (3.8.0+)
+-- only indexes rows matching the WHERE clause — smaller and faster
+CREATE INDEX idx_active_users ON users(name) WHERE active = 1;
+-- only used when the query also has WHERE active = 1
+
+-- expression index
+CREATE INDEX idx_users_lower_email ON users(lower(email));
+-- query must use the exact expression: WHERE lower(email) = '...'
+
+-- covering index
+-- if the index contains all columns needed by the query,
+-- SQLite reads only from the index, never touching the table
+CREATE INDEX idx_users_email_name ON users(email, name);
+-- SELECT name FROM users WHERE email = '...'
+-- → uses index only, no table lookup
+</code></pre>
+<h3 id="explain-query-plan">EXPLAIN QUERY PLAN</h3>
+<p>This is your primary tool for understanding query performance:</p>
+<pre><code class="language-sql">EXPLAIN QUERY PLAN
+SELECT u.name, COUNT(o.id) AS order_count
+FROM users u
+LEFT JOIN orders o ON o.user_id = u.id
+WHERE u.active = 1
+GROUP BY u.id;
+
+-- output:
+-- QUERY PLAN
+-- |--SEARCH users USING INDEX idx_active_users (active=?)
+-- `--SEARCH orders USING INDEX idx_orders_user_id (user_id=?)
+</code></pre>
+<p>Key terms in the output:</p>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>SCAN table</code></td>
+<td>Full table scan — reads every row</td>
+</tr>
+<tr>
+<td><code>SEARCH table USING INDEX</code></td>
+<td>Uses an index for lookup — much faster</td>
+</tr>
+<tr>
+<td><code>SEARCH table USING INTEGER PRIMARY KEY</code></td>
+<td>Direct rowid lookup — fastest possible</td>
+</tr>
+<tr>
+<td><code>USING COVERING INDEX</code></td>
+<td>All needed data is in the index — no table access</td>
+</tr>
+<tr>
+<td><code>USING TEMPORARY B-TREE</code></td>
+<td>Creates a temp structure for ORDER BY or DISTINCT</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-analyze-command">The ANALYZE Command</h3>
+<pre><code class="language-sql">-- collect statistics about all tables and indexes
+ANALYZE;
+
+-- analyze a specific table
+ANALYZE users;
+
+-- view collected statistics
+SELECT * FROM sqlite_stat1;
+</code></pre>
+<p><code>ANALYZE</code> populates the <code>sqlite_stat1</code> (and optionally <code>sqlite_stat4</code>) tables with distribution statistics. The query planner uses these to choose between index scan and table scan, and to choose join order. <strong>Always run <code>ANALYZE</code> after bulk data loads</strong> — without it, the planner is guessing.</p>
+<h3 id="index-optimization-strategies">Index Optimization Strategies</h3>
+<ol>
+<li><strong>Index columns in WHERE clauses</strong> — especially equality comparisons</li>
+<li><strong>Index columns in JOIN conditions</strong> — critical for join performance</li>
+<li><strong>Index columns in ORDER BY</strong> — avoids a temporary sort</li>
+<li><strong>Use multi-column indexes wisely</strong> — order matters (most selective column first, or match your query's equality/range pattern)</li>
+<li><strong>Use partial indexes</strong> — if you frequently query a subset, index only that subset</li>
+<li><strong>Don't over-index</strong> — each index slows down INSERT/UPDATE/DELETE and uses disk space</li>
+<li><strong>Covering indexes</strong> — if a query only needs a few columns, include them all in the index</li>
+</ol>
+<hr>
+<h2 id="6-transactions-concurrency-locking">6. Transactions, Concurrency &amp; Locking</h2>
+<h3 id="transaction-basics">Transaction Basics</h3>
+<pre><code class="language-sql">-- explicit transaction
+BEGIN TRANSACTION;
+INSERT INTO accounts (name, balance) VALUES ('Alice', 1000);
+INSERT INTO accounts (name, balance) VALUES ('Bob', 500);
+COMMIT;
+
+-- rollback on error
+BEGIN TRANSACTION;
+UPDATE accounts SET balance = balance - 100 WHERE name = 'Alice';
+UPDATE accounts SET balance = balance + 100 WHERE name = 'Bob';
+-- something went wrong:
+ROLLBACK;
+
+-- savepoints (nested transactions)
+BEGIN TRANSACTION;
+INSERT INTO logs (msg) VALUES ('step 1');
+SAVEPOINT sp1;
+INSERT INTO logs (msg) VALUES ('step 2');
+-- undo step 2 only:
+ROLLBACK TO SAVEPOINT sp1;
+COMMIT;  -- step 1 is committed, step 2 is not
+</code></pre>
+<h3 id="the-five-lock-states-rollback-journal-mode">The Five Lock States (Rollback Journal Mode)</h3>
+<p>SQLite uses file-level locking with five states. Understanding these is essential for debugging concurrency issues:</p>
+<pre><code class="language-text">  UNLOCKED ──→ SHARED ──→ RESERVED ──→ PENDING ──→ EXCLUSIVE
+  (nothing)    (reading)   (planning    (waiting     (writing)
+                            to write)    for readers
+                                         to finish)
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Who can coexist</th>
+<th>What it means</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>UNLOCKED</code></td>
+<td>Everyone</td>
+<td>Default state, no active transaction</td>
+</tr>
+<tr>
+<td><code>SHARED</code></td>
+<td>Multiple readers</td>
+<td>Connection is reading; multiple SHARED locks allowed</td>
+</tr>
+<tr>
+<td><code>RESERVED</code></td>
+<td>Readers + one reserver</td>
+<td>Connection intends to write; only one RESERVED lock allowed; readers can still acquire SHARED</td>
+</tr>
+<tr>
+<td><code>PENDING</code></td>
+<td>Existing readers only</td>
+<td>Connection is about to write; no NEW shared locks can be acquired; existing readers finish</td>
+</tr>
+<tr>
+<td><code>EXCLUSIVE</code></td>
+<td>Nobody</td>
+<td>Connection is writing; no other locks of any kind</td>
+</tr>
+</tbody>
+</table>
+<h3 id="busy-handling">Busy Handling</h3>
+<p>When a connection can't acquire a lock, it gets <code>SQLITE_BUSY</code>. The default behavior is to return the error immediately, which is almost never what you want:</p>
+<pre><code class="language-sql">-- set a busy timeout: wait up to 5 seconds for a lock
+PRAGMA busy_timeout = 5000;
+</code></pre>
+<pre><code class="language-python"># Python: set busy timeout on connection
+import sqlite3
+conn = sqlite3.connect('mydb.db', timeout=5.0)  # 5-second busy timeout
+</code></pre>
+<h3 id="transaction-types">Transaction Types</h3>
+<p>SQLite supports three transaction types that control when locks are acquired:</p>
+<pre><code class="language-sql">-- DEFERRED (default): acquires locks lazily
+-- starts with no lock, acquires SHARED on first read, RESERVED on first write
+BEGIN DEFERRED TRANSACTION;
+
+-- IMMEDIATE: acquires RESERVED lock immediately
+-- guarantees you can write; blocks other writers at the start
+BEGIN IMMEDIATE TRANSACTION;
+
+-- EXCLUSIVE: acquires EXCLUSIVE lock immediately
+-- blocks all other connections (readers and writers)
+BEGIN EXCLUSIVE TRANSACTION;
+</code></pre>
+<p><strong>Best practice for write transactions</strong>: Use <code>BEGIN IMMEDIATE</code> to fail fast if another writer holds the lock, rather than succeeding on reads and then failing when you try to write.</p>
+<hr>
+<h2 id="7-wal-mode">7. WAL Mode</h2>
+<h3 id="how-it-works">How It Works</h3>
+<p>WAL (Write-Ahead Logging) is SQLite's most important performance feature. It fundamentally changes how reads and writes interact:</p>
+<p><strong>Rollback journal (default)</strong>:
+- Write = modify database file in place, keep original pages in journal
+- Read during write = <strong>blocked</strong> (must wait for EXCLUSIVE lock to release)</p>
+<p><strong>WAL mode</strong>:
+- Write = append changes to a separate WAL file (<code>-wal</code>)
+- Read = read from original database + consult WAL for recent changes
+- Read during write = <strong>not blocked</strong> (readers and writer operate concurrently)</p>
+<pre><code class="language-sql">-- enable WAL mode (do this once; it persists)
+PRAGMA journal_mode = WAL;
+-- returns: wal
+
+-- check current mode
+PRAGMA journal_mode;
+</code></pre>
+<h3 id="wal-architecture">WAL Architecture</h3>
+<pre><code class="language-text">┌──────────────┐     ┌──────────────┐     ┌──────────────┐
+│ database.db  │     │ database-wal │     │ database-shm │
+│              │     │              │     │              │
+│ original     │     │ appended     │     │ WAL index    │
+│ pages        │     │ changes      │     │ (shared mem) │
+│              │     │              │     │              │
+└──────────────┘     └──────────────┘     └──────────────┘
+</code></pre>
+<ul>
+<li>The <code>-wal</code> file contains all recent changes</li>
+<li>The <code>-shm</code> (shared memory) file is a hash table index for fast WAL lookups</li>
+<li><strong>Checkpointing</strong> transfers WAL content back to the database file</li>
+<li>Auto-checkpoint triggers when the WAL reaches 1000 pages (default)</li>
+</ul>
+<pre><code class="language-sql">-- manual checkpoint
+PRAGMA wal_checkpoint;             -- passive: checkpoint if no readers
+PRAGMA wal_checkpoint(FULL);       -- wait for readers, then checkpoint
+PRAGMA wal_checkpoint(RESTART);    -- full + reset WAL file
+PRAGMA wal_checkpoint(TRUNCATE);   -- full + truncate WAL to zero bytes
+
+-- configure auto-checkpoint threshold
+PRAGMA wal_autocheckpoint = 2000;  -- checkpoint every 2000 pages
+PRAGMA wal_autocheckpoint = 0;     -- disable auto-checkpoint
+</code></pre>
+<h3 id="wal-mode-trade-offs">WAL Mode Trade-offs</h3>
+<table>
+<thead>
+<tr>
+<th>Advantage</th>
+<th>Disadvantage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Readers don't block writers</td>
+<td>Three files instead of one (db, wal, shm)</td>
+</tr>
+<tr>
+<td>Writers don't block readers</td>
+<td>Doesn't work on network filesystems</td>
+</tr>
+<tr>
+<td>Faster for many workloads</td>
+<td>WAL file can grow large without checkpointing</td>
+</tr>
+<tr>
+<td>Fewer fsync operations</td>
+<td>Requires shared-memory support from OS</td>
+</tr>
+<tr>
+<td>Better concurrency</td>
+<td>Still only one writer at a time</td>
+</tr>
+</tbody>
+</table>
+<h3 id="when-to-use-wal">When to Use WAL</h3>
+<p>Use WAL mode <strong>almost always</strong>. The only reasons not to:</p>
+<ol>
+<li>You need a single-file database (e.g., for distribution or email attachment)</li>
+<li>You're on a system without shared-memory support</li>
+<li>You're using a network filesystem (WAL doesn't work there either, but neither does anything else reliably)</li>
+</ol>
+<hr>
+<h2 id="8-performance-tuning">8. Performance Tuning</h2>
+<h3 id="essential-pragmas">Essential PRAGMAs</h3>
+<p>Apply these at connection open for optimal performance:</p>
+<pre><code class="language-sql">-- WAL mode: dramatically improves concurrency
+PRAGMA journal_mode = WAL;
+
+-- synchronous NORMAL: safe with WAL, much faster than FULL
+-- FULL (default) fsyncs on every commit; NORMAL only fsyncs on checkpoint
+PRAGMA synchronous = NORMAL;
+
+-- cache size: increase for read-heavy workloads (negative = KiB)
+PRAGMA cache_size = -64000;  -- 64 MiB in-memory page cache
+
+-- memory-mapped I/O: map database file into address space
+-- avoids read() system calls; significant speedup for read-heavy workloads
+PRAGMA mmap_size = 268435456;  -- 256 MiB
+
+-- temp store: keep temporary tables and indexes in memory
+PRAGMA temp_store = MEMORY;
+
+-- foreign keys: NOT a performance pragma, but must be set per connection
+PRAGMA foreign_keys = ON;
+
+-- busy timeout: wait for locks instead of failing
+PRAGMA busy_timeout = 5000;
+</code></pre>
+<h3 id="batch-operations-in-transactions">Batch Operations in Transactions</h3>
+<p>This is the single most impactful performance optimization. Without explicit transactions, every statement is its own transaction with a full fsync:</p>
+<pre><code class="language-python">import sqlite3
+
+conn = sqlite3.connect('mydb.db')
+
+# SLOW: 10,000 individual transactions, 10,000 fsyncs
+for i in range(10000):
+    conn.execute(&quot;INSERT INTO t VALUES (?)&quot;, (i,))
+    conn.commit()  # implicit if autocommit
+
+# FAST: 1 transaction, 1 fsync
+conn.execute(&quot;BEGIN&quot;)
+for i in range(10000):
+    conn.execute(&quot;INSERT INTO t VALUES (?)&quot;, (i,))
+conn.execute(&quot;COMMIT&quot;)
+
+# FASTEST: use executemany
+conn.execute(&quot;BEGIN&quot;)
+conn.executemany(&quot;INSERT INTO t VALUES (?)&quot;, [(i,) for i in range(10000)])
+conn.execute(&quot;COMMIT&quot;)
+</code></pre>
+<p>The difference is dramatic: individual inserts might do ~100/second (fsync-limited), while batched inserts can do <strong>50,000–100,000+/second</strong>.</p>
+<h3 id="prepared-statements">Prepared Statements</h3>
+<pre><code class="language-python"># BAD: re-parses SQL every time
+for user in users:
+    conn.execute(f&quot;INSERT INTO users (name) VALUES ('{user}')&quot;)  # SQL injection too!
+
+# GOOD: parse once, execute many times with different parameters
+stmt = &quot;INSERT INTO users (name) VALUES (?)&quot;
+for user in users:
+    conn.execute(stmt, (user,))
+
+# BEST: executemany with prepared statement
+conn.executemany(&quot;INSERT INTO users (name) VALUES (?)&quot;, [(u,) for u in users])
+</code></pre>
+<h3 id="practical-connection-setup-function">Practical: Connection Setup Function</h3>
+<pre><code class="language-python">import sqlite3
+
+def get_connection(db_path, readonly=False):
+    &quot;&quot;&quot;Open a SQLite connection with optimal settings.&quot;&quot;&quot;
+    uri = f&quot;file:{db_path}&quot;
+    if readonly:
+        uri += &quot;?mode=ro&quot;
+
+    conn = sqlite3.connect(uri, uri=True, timeout=5.0)
+    conn.row_factory = sqlite3.Row  # access columns by name
+
+    # performance pragmas
+    conn.execute(&quot;PRAGMA journal_mode = WAL&quot;)
+    conn.execute(&quot;PRAGMA synchronous = NORMAL&quot;)
+    conn.execute(&quot;PRAGMA cache_size = -64000&quot;)
+    conn.execute(&quot;PRAGMA mmap_size = 268435456&quot;)
+    conn.execute(&quot;PRAGMA temp_store = MEMORY&quot;)
+    conn.execute(&quot;PRAGMA busy_timeout = 5000&quot;)
+
+    # correctness pragmas
+    conn.execute(&quot;PRAGMA foreign_keys = ON&quot;)
+
+    return conn
+</code></pre>
+<h3 id="profiling">Profiling</h3>
+<pre><code class="language-python"># trace all SQL statements
+conn.set_trace_callback(lambda sql: print(f&quot;SQL: {sql}&quot;))
+
+# time individual operations
+import time
+start = time.perf_counter()
+conn.execute(&quot;SELECT COUNT(*) FROM big_table&quot;)
+elapsed = time.perf_counter() - start
+print(f&quot;Query took {elapsed:.3f}s&quot;)
+</code></pre>
+<hr>
+<h2 id="9-json-support">9. JSON Support</h2>
+<p>SQLite has robust JSON support, built into the amalgamation since 3.38.0 (2022). Earlier versions need the <code>json1</code> extension.</p>
+<h3 id="json-operators-3380">JSON Operators (3.38.0+)</h3>
+<pre><code class="language-sql">-- extract with -&gt; (returns JSON) and -&gt;&gt; (returns SQL text/number)
+SELECT data-&gt;'name' FROM users;       -- returns JSON: &quot;Alice&quot;
+SELECT data-&gt;&gt;'name' FROM users;      -- returns text: Alice
+SELECT data-&gt;&gt;'age' FROM users;       -- returns number: 30
+
+-- nested paths
+SELECT data-&gt;'address'-&gt;&gt;'city' FROM users;
+SELECT data-&gt;&gt;'$.address.city' FROM users;  -- JSON path syntax
+</code></pre>
+<h3 id="json-functions">JSON Functions</h3>
+<pre><code class="language-sql">-- validate JSON
+SELECT json_valid('{&quot;name&quot;: &quot;Alice&quot;}');  -- 1
+SELECT json_valid('not json');           -- 0
+
+-- create JSON
+SELECT json_object('name', 'Alice', 'age', 30);
+-- '{&quot;name&quot;:&quot;Alice&quot;,&quot;age&quot;:30}'
+
+SELECT json_array(1, 2, 'three');
+-- '[1,2,&quot;three&quot;]'
+
+-- extract values
+SELECT json_extract('{&quot;a&quot;:1,&quot;b&quot;:[2,3]}', '$.a');      -- 1
+SELECT json_extract('{&quot;a&quot;:1,&quot;b&quot;:[2,3]}', '$.b[0]');   -- 2
+
+-- modify JSON
+SELECT json_set('{&quot;a&quot;:1}', '$.b', 2);           -- '{&quot;a&quot;:1,&quot;b&quot;:2}'
+SELECT json_insert('{&quot;a&quot;:1}', '$.b', 2);        -- '{&quot;a&quot;:1,&quot;b&quot;:2}' (only if $.b doesn't exist)
+SELECT json_replace('{&quot;a&quot;:1}', '$.a', 99);      -- '{&quot;a&quot;:99}'
+SELECT json_remove('{&quot;a&quot;:1,&quot;b&quot;:2}', '$.b');      -- '{&quot;a&quot;:1}'
+
+-- aggregate into JSON arrays/objects
+SELECT json_group_array(name) FROM users;
+-- '[&quot;Alice&quot;,&quot;Bob&quot;,&quot;Carol&quot;]'
+
+SELECT json_group_object(name, score) FROM users;
+-- '{&quot;Alice&quot;:95,&quot;Bob&quot;:82,&quot;Carol&quot;:91}'
+</code></pre>
+<h3 id="json_each-iterate-over-json-arrays">json_each — Iterate Over JSON Arrays</h3>
+<pre><code class="language-sql">-- flatten a JSON array column
+CREATE TABLE orders (
+    id INTEGER PRIMARY KEY,
+    items TEXT  -- JSON array: '[&quot;apple&quot;,&quot;banana&quot;,&quot;cherry&quot;]'
+);
+
+-- get each item as a row
+SELECT o.id, j.value AS item
+FROM orders o, json_each(o.items) j;
+
+-- query within JSON arrays
+SELECT id FROM orders
+WHERE EXISTS (
+    SELECT 1 FROM json_each(orders.items) WHERE value = 'apple'
+);
+</code></pre>
+<h3 id="practical-storing-flexible-data">Practical: Storing Flexible Data</h3>
+<pre><code class="language-sql">-- semi-structured data with JSON columns
+CREATE TABLE events (
+    id INTEGER PRIMARY KEY,
+    type TEXT NOT NULL,
+    timestamp TEXT DEFAULT (datetime('now')),
+    metadata TEXT DEFAULT '{}'  -- JSON
+);
+
+INSERT INTO events (type, metadata) VALUES
+    ('page_view', json('{&quot;url&quot;: &quot;/home&quot;, &quot;referrer&quot;: &quot;google.com&quot;}')),
+    ('purchase', json('{&quot;product_id&quot;: 42, &quot;amount&quot;: 29.99, &quot;currency&quot;: &quot;USD&quot;}'));
+
+-- query JSON fields
+SELECT type, metadata-&gt;&gt;'$.url' AS url
+FROM events
+WHERE type = 'page_view' AND metadata-&gt;&gt;'$.referrer' = 'google.com';
+
+-- index a JSON field for fast lookups
+CREATE INDEX idx_events_product ON events(
+    json_extract(metadata, '$.product_id')
+) WHERE type = 'purchase';
+</code></pre>
+<hr>
+<h2 id="10-full-text-search-fts5">10. Full-Text Search (FTS5)</h2>
+<p>FTS5 is SQLite's full-text search extension. It creates virtual tables with inverted indexes for fast text search across large document collections.</p>
+<h3 id="creating-an-fts5-table">Creating an FTS5 Table</h3>
+<pre><code class="language-sql">-- basic FTS5 table
+CREATE VIRTUAL TABLE articles_fts USING fts5(
+    title,
+    body,
+    content='articles',          -- external content table
+    content_rowid='id'           -- rowid mapping
+);
+
+-- standalone FTS5 table (stores its own content)
+CREATE VIRTUAL TABLE docs USING fts5(title, body);
+INSERT INTO docs (title, body) VALUES
+    ('SQLite Guide', 'SQLite is a self-contained database engine'),
+    ('PostgreSQL Guide', 'PostgreSQL is a powerful object-relational database'),
+    ('Redis Guide', 'Redis is an in-memory data structure store');
+</code></pre>
+<h3 id="searching">Searching</h3>
+<pre><code class="language-sql">-- basic search
+SELECT * FROM docs WHERE docs MATCH 'database';
+
+-- phrase search
+SELECT * FROM docs WHERE docs MATCH '&quot;database engine&quot;';
+
+-- boolean operators
+SELECT * FROM docs WHERE docs MATCH 'database AND powerful';
+SELECT * FROM docs WHERE docs MATCH 'database OR engine';
+SELECT * FROM docs WHERE docs MATCH 'database NOT redis';
+
+-- prefix search
+SELECT * FROM docs WHERE docs MATCH 'data*';  -- matches database, data
+
+-- column-specific search
+SELECT * FROM docs WHERE docs MATCH 'title:guide';
+
+-- NEAR operator (terms within N tokens of each other)
+SELECT * FROM docs WHERE docs MATCH 'NEAR(database engine, 3)';
+
+-- ranking with BM25 (lower = more relevant)
+SELECT *, rank FROM docs WHERE docs MATCH 'database' ORDER BY rank;
+
+-- or explicitly with bm25() function
+SELECT *, bm25(docs) AS score FROM docs
+WHERE docs MATCH 'database'
+ORDER BY score;
+
+-- highlight matches
+SELECT highlight(docs, 0, '&lt;b&gt;', '&lt;/b&gt;') AS title,
+       snippet(docs, 1, '&lt;b&gt;', '&lt;/b&gt;', '...', 20) AS body_snippet
+FROM docs WHERE docs MATCH 'database';
+</code></pre>
+<h3 id="keeping-fts-in-sync-with-a-content-table">Keeping FTS in Sync with a Content Table</h3>
+<pre><code class="language-sql">-- create the content table
+CREATE TABLE articles (
+    id INTEGER PRIMARY KEY,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL
+);
+
+-- create the FTS index pointing to it
+CREATE VIRTUAL TABLE articles_fts USING fts5(
+    title, body,
+    content='articles',
+    content_rowid='id'
+);
+
+-- triggers to keep FTS in sync
+CREATE TRIGGER articles_ai AFTER INSERT ON articles BEGIN
+    INSERT INTO articles_fts(rowid, title, body) VALUES (new.id, new.title, new.body);
+END;
+
+CREATE TRIGGER articles_ad AFTER DELETE ON articles BEGIN
+    INSERT INTO articles_fts(articles_fts, rowid, title, body) VALUES ('delete', old.id, old.title, old.body);
+END;
+
+CREATE TRIGGER articles_au AFTER UPDATE ON articles BEGIN
+    INSERT INTO articles_fts(articles_fts, rowid, title, body) VALUES ('delete', old.id, old.title, old.body);
+    INSERT INTO articles_fts(rowid, title, body) VALUES (new.id, new.title, new.body);
+END;
+</code></pre>
+<h3 id="fts5-tokenizers">FTS5 Tokenizers</h3>
+<pre><code class="language-sql">-- unicode61 (default): Unicode-aware tokenization
+CREATE VIRTUAL TABLE t1 USING fts5(content, tokenize='unicode61');
+
+-- ascii: ASCII-only, case-insensitive
+CREATE VIRTUAL TABLE t2 USING fts5(content, tokenize='ascii');
+
+-- porter: applies Porter stemming (running → run, databases → databas)
+CREATE VIRTUAL TABLE t3 USING fts5(content, tokenize='porter unicode61');
+
+-- trigram: character trigrams, supports LIKE and GLOB
+CREATE VIRTUAL TABLE t4 USING fts5(content, tokenize='trigram');
+</code></pre>
+<hr>
+<h2 id="11-virtual-tables">11. Virtual Tables</h2>
+<p>Virtual tables look like regular tables but their data comes from custom sources. They're the primary extension mechanism for SQLite.</p>
+<h3 id="built-in-virtual-tables">Built-in Virtual Tables</h3>
+<pre><code class="language-sql">-- generate_series: produce a sequence of numbers
+SELECT value FROM generate_series(1, 100);
+SELECT value FROM generate_series(0, 1000, 10);  -- step by 10
+
+-- dbstat: space usage statistics per table/index
+SELECT name, pageno, payload AS used_bytes, unused
+FROM dbstat;
+
+-- pragma virtual tables: query PRAGMAs like tables
+SELECT * FROM pragma_table_info('users');
+SELECT * FROM pragma_index_list('users');
+SELECT * FROM pragma_database_list;
+
+-- json_each / json_tree (covered in JSON section)
+SELECT * FROM json_each('[1,2,3]');
+SELECT * FROM json_tree('{&quot;a&quot;:{&quot;b&quot;:1},&quot;c&quot;:[2,3]}');
+</code></pre>
+<h3 id="r-tree-spatial-indexing">R-tree: Spatial Indexing</h3>
+<pre><code class="language-sql">-- create an R-tree virtual table for 2D bounding boxes
+CREATE VIRTUAL TABLE spatial_index USING rtree(
+    id,
+    min_x, max_x,
+    min_y, max_y
+);
+
+-- insert bounding boxes
+INSERT INTO spatial_index VALUES (1, 0.0, 10.0, 0.0, 10.0);
+INSERT INTO spatial_index VALUES (2, 5.0, 15.0, 5.0, 15.0);
+
+-- spatial query: find all objects overlapping a region
+SELECT id FROM spatial_index
+WHERE min_x &lt;= 12.0 AND max_x &gt;= 3.0
+  AND min_y &lt;= 12.0 AND max_y &gt;= 3.0;
+</code></pre>
+<h3 id="csv-virtual-table">CSV Virtual Table</h3>
+<pre><code class="language-sql">-- read a CSV file as a virtual table
+CREATE VIRTUAL TABLE temp.csv_data USING csv(
+    filename='/path/to/data.csv',
+    header=YES
+);
+
+SELECT * FROM csv_data WHERE column1 &gt; 100;
+</code></pre>
+<hr>
+<h2 id="12-practical-embedded-database-use-cases">12. Practical: Embedded Database Use Cases</h2>
+<p>This is where SQLite truly shines. It's not just a lightweight database — it's the standard for embedded data storage across every major platform.</p>
+<h3 id="mobile-applications">Mobile Applications</h3>
+<p><strong>Android</strong> (built into the OS):</p>
+<pre><code class="language-kotlin">// Modern Android: Room (Jetpack) wraps SQLite with type-safe queries
+@Entity(tableName = &quot;notes&quot;)
+data class Note(
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
+    val title: String,
+    val content: String,
+    val createdAt: Long = System.currentTimeMillis()
+)
+
+@Dao
+interface NoteDao {
+    @Query(&quot;SELECT * FROM notes ORDER BY createdAt DESC&quot;)
+    fun getAll(): Flow&lt;List&lt;Note&gt;&gt;
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(note: Note)
+
+    @Query(&quot;SELECT * FROM notes WHERE title LIKE '%' || :query || '%'&quot;)
+    fun search(query: String): Flow&lt;List&lt;Note&gt;&gt;
+}
+
+@Database(entities = [Note::class], version = 1)
+abstract class AppDatabase : RoomDatabase() {
+    abstract fun noteDao(): NoteDao
+}
+</code></pre>
+<p>Every Android app with local data uses SQLite — either directly or through Room. The <code>SQLiteOpenHelper</code> API manages schema versioning and migrations.</p>
+<p><strong>iOS</strong> (built into the OS):</p>
+<pre><code class="language-swift">// Swift: using GRDB.swift
+import GRDB
+
+struct Player: Codable, FetchableRecord, PersistableRecord {
+    var id: Int64?
+    var name: String
+    var score: Int
+}
+
+// setup
+let dbQueue = try DatabaseQueue(path: dbPath)
+try dbQueue.write { db in
+    try db.create(table: &quot;player&quot;) { t in
+        t.autoIncrementedPrimaryKey(&quot;id&quot;)
+        t.column(&quot;name&quot;, .text).notNull()
+        t.column(&quot;score&quot;, .integer).notNull().defaults(to: 0)
+    }
+}
+
+// query
+let topPlayers = try dbQueue.read { db in
+    try Player.order(Column(&quot;score&quot;).desc).limit(10).fetchAll(db)
+}
+</code></pre>
+<p>Apple's Core Data uses SQLite as its default persistent store. Every iPhone runs dozens of SQLite databases — for contacts, messages, photos, mail, and app data.</p>
+<h3 id="desktop-applications">Desktop Applications</h3>
+<pre><code class="language-python"># Python desktop app: local task manager
+import sqlite3
+from datetime import datetime
+
+class TaskDB:
+    def __init__(self, db_path=&quot;tasks.db&quot;):
+        self.conn = sqlite3.connect(db_path)
+        self.conn.row_factory = sqlite3.Row
+        self.conn.execute(&quot;PRAGMA journal_mode=WAL&quot;)
+        self.conn.execute(&quot;PRAGMA foreign_keys=ON&quot;)
+        self._init_schema()
+
+    def _init_schema(self):
+        self.conn.executescript(&quot;&quot;&quot;
+            CREATE TABLE IF NOT EXISTS projects (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                color TEXT DEFAULT '#3B82F6',
+                created_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY,
+                project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+                title TEXT NOT NULL,
+                description TEXT DEFAULT '',
+                priority INTEGER DEFAULT 0 CHECK (priority BETWEEN 0 AND 3),
+                completed INTEGER DEFAULT 0,
+                due_date TEXT,
+                created_at TEXT DEFAULT (datetime('now')),
+                completed_at TEXT
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
+            CREATE INDEX IF NOT EXISTS idx_tasks_due ON tasks(due_date) WHERE completed = 0;
+        &quot;&quot;&quot;)
+
+    def add_task(self, title, project_id=None, priority=0, due_date=None):
+        return self.conn.execute(
+            &quot;INSERT INTO tasks (title, project_id, priority, due_date) VALUES (?, ?, ?, ?) RETURNING id&quot;,
+            (title, project_id, priority, due_date)
+        ).fetchone()[&quot;id&quot;]
+
+    def complete_task(self, task_id):
+        self.conn.execute(
+            &quot;UPDATE tasks SET completed = 1, completed_at = datetime('now') WHERE id = ?&quot;,
+            (task_id,)
+        )
+        self.conn.commit()
+
+    def get_pending_tasks(self, project_id=None):
+        sql = &quot;SELECT * FROM tasks WHERE completed = 0&quot;
+        params = []
+        if project_id:
+            sql += &quot; AND project_id = ?&quot;
+            params.append(project_id)
+        sql += &quot; ORDER BY priority DESC, due_date ASC NULLS LAST&quot;
+        return self.conn.execute(sql, params).fetchall()
+
+    def get_stats(self):
+        return self.conn.execute(&quot;&quot;&quot;
+            SELECT
+                COUNT(*) AS total,
+                SUM(completed) AS done,
+                COUNT(*) - SUM(completed) AS pending,
+                SUM(CASE WHEN due_date &lt; date('now') AND completed = 0 THEN 1 ELSE 0 END) AS overdue
+            FROM tasks
+        &quot;&quot;&quot;).fetchone()
+</code></pre>
+<h3 id="real-world-desktop-software-using-sqlite">Real-World Desktop Software Using SQLite</h3>
+<table>
+<thead>
+<tr>
+<th>Application</th>
+<th>What It Stores</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Adobe Lightroom</strong></td>
+<td>Entire photo catalog — metadata, edits, collections, keywords. The <code>.lrcat</code> file is SQLite.</td>
+</tr>
+<tr>
+<td><strong>Mozilla Firefox</strong></td>
+<td>Bookmarks, history, cookies, form autofill, extension data, web storage. ~14 SQLite databases per profile.</td>
+</tr>
+<tr>
+<td><strong>Google Chrome</strong></td>
+<td>Same categories as Firefox — history, cookies, login data, web data, favicons. Each is a separate SQLite DB.</td>
+</tr>
+<tr>
+<td><strong>Apple Photos</strong></td>
+<td>Photo library metadata, face recognition data, albums</td>
+</tr>
+<tr>
+<td><strong>Apple Mail</strong></td>
+<td>Message indexing and search</td>
+</tr>
+<tr>
+<td><strong>Dropbox</strong></td>
+<td>Desktop client file sync state, metadata caching</td>
+</tr>
+<tr>
+<td><strong>Skype</strong></td>
+<td>Message history</td>
+</tr>
+<tr>
+<td><strong>iTunes / Apple Music</strong></td>
+<td>Media library database</td>
+</tr>
+<tr>
+<td><strong>Calibre</strong></td>
+<td>E-book library metadata</td>
+</tr>
+<tr>
+<td><strong>Fossil</strong></td>
+<td>Version control system — entire repo is a SQLite database</td>
+</tr>
+</tbody>
+</table>
+<h3 id="iot-and-edge-devices">IoT and Edge Devices</h3>
+<p>SQLite's tiny footprint (~600KB compiled, reducible to ~300KB) makes it ideal for embedded systems:</p>
+<pre><code class="language-c">// C: minimal embedded usage
+#include &quot;sqlite3.h&quot;
+
+int main() {
+    sqlite3 *db;
+    sqlite3_open(&quot;/data/sensor.db&quot;, &amp;db);
+
+    sqlite3_exec(db,
+        &quot;CREATE TABLE IF NOT EXISTS readings (&quot;
+        &quot;  id INTEGER PRIMARY KEY,&quot;
+        &quot;  sensor TEXT NOT NULL,&quot;
+        &quot;  value REAL NOT NULL,&quot;
+        &quot;  timestamp INTEGER DEFAULT (unixepoch())&quot;
+        &quot;)&quot;, NULL, NULL, NULL);
+
+    // log a sensor reading
+    sqlite3_stmt *stmt;
+    sqlite3_prepare_v2(db,
+        &quot;INSERT INTO readings (sensor, value) VALUES (?, ?)&quot;,
+        -1, &amp;stmt, NULL);
+    sqlite3_bind_text(stmt, 1, &quot;temperature&quot;, -1, SQLITE_STATIC);
+    sqlite3_bind_double(stmt, 2, 23.5);
+    sqlite3_step(stmt);
+    sqlite3_finalize(stmt);
+
+    sqlite3_close(db);
+}
+</code></pre>
+<p>Use cases: automotive infotainment, set-top boxes, smart home devices, industrial sensors, drones, medical devices. Airbus uses SQLite in the A350 flight software.</p>
+<h3 id="configuration-and-settings-storage">Configuration and Settings Storage</h3>
+<pre><code class="language-python">class AppConfig:
+    &quot;&quot;&quot;Use SQLite instead of INI/JSON files for app configuration.&quot;&quot;&quot;
+
+    def __init__(self, path=&quot;config.db&quot;):
+        self.conn = sqlite3.connect(path)
+        self.conn.execute(&quot;&quot;&quot;
+            CREATE TABLE IF NOT EXISTS config (
+                key TEXT PRIMARY KEY,
+                value TEXT,
+                updated_at TEXT DEFAULT (datetime('now'))
+            ) WITHOUT ROWID
+        &quot;&quot;&quot;)
+
+    def get(self, key, default=None):
+        row = self.conn.execute(
+            &quot;SELECT value FROM config WHERE key = ?&quot;, (key,)
+        ).fetchone()
+        return json.loads(row[0]) if row else default
+
+    def set(self, key, value):
+        self.conn.execute(
+            &quot;INSERT INTO config (key, value, updated_at) VALUES (?, ?, datetime('now')) &quot;
+            &quot;ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at&quot;,
+            (key, json.dumps(value))
+        )
+        self.conn.commit()
+
+    def get_all(self):
+        rows = self.conn.execute(&quot;SELECT key, value FROM config&quot;).fetchall()
+        return {k: json.loads(v) for k, v in rows}
+
+# usage
+config = AppConfig()
+config.set(&quot;theme&quot;, &quot;dark&quot;)
+config.set(&quot;window_size&quot;, {&quot;width&quot;: 1200, &quot;height&quot;: 800})
+config.set(&quot;recent_files&quot;, [&quot;/path/to/file1.txt&quot;, &quot;/path/to/file2.txt&quot;])
+</code></pre>
+<h3 id="testing-and-prototyping">Testing and Prototyping</h3>
+<pre><code class="language-python">import pytest
+import sqlite3
+
+@pytest.fixture
+def db():
+    &quot;&quot;&quot;In-memory SQLite database for fast, isolated tests.&quot;&quot;&quot;
+    conn = sqlite3.connect(&quot;:memory:&quot;)
+    conn.row_factory = sqlite3.Row
+    conn.execute(&quot;PRAGMA foreign_keys = ON&quot;)
+
+    # apply schema
+    conn.executescript(&quot;&quot;&quot;
+        CREATE TABLE users (
+            id INTEGER PRIMARY KEY,
+            email TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL
+        );
+        CREATE TABLE orders (
+            id INTEGER PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id),
+            total REAL NOT NULL,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+    &quot;&quot;&quot;)
+
+    yield conn
+    conn.close()
+
+def test_create_user(db):
+    db.execute(&quot;INSERT INTO users (email, name) VALUES (?, ?)&quot;, (&quot;a@b.com&quot;, &quot;Alice&quot;))
+    user = db.execute(&quot;SELECT * FROM users WHERE email = ?&quot;, (&quot;a@b.com&quot;,)).fetchone()
+    assert user[&quot;name&quot;] == &quot;Alice&quot;
+
+def test_foreign_key_enforcement(db):
+    with pytest.raises(sqlite3.IntegrityError):
+        db.execute(&quot;INSERT INTO orders (user_id, total) VALUES (999, 50.0)&quot;)
+</code></pre>
+<p>In-memory SQLite (<code>:memory:</code>) is perfect for unit tests: no filesystem, no cleanup, instant startup, complete isolation.</p>
+<h3 id="data-analysis-with-sqlite-utils">Data Analysis with sqlite-utils</h3>
+<pre><code class="language-bash"># install
+pip install sqlite-utils
+
+# import CSV into SQLite
+sqlite-utils insert data.db measurements measurements.csv --csv
+
+# import JSON
+cat events.json | sqlite-utils insert data.db events -
+
+# query
+sqlite-utils query data.db &quot;SELECT sensor, AVG(value) FROM measurements GROUP BY sensor&quot;
+
+# create an index
+sqlite-utils create-index data.db measurements sensor
+
+# export as JSON
+sqlite-utils query data.db &quot;SELECT * FROM measurements LIMIT 10&quot; --json
+
+# serve as a web interface with Datasette
+pip install datasette
+datasette data.db
+# opens http://localhost:8001 with a web UI for exploring data
+</code></pre>
+<h3 id="caching-layer">Caching Layer</h3>
+<pre><code class="language-python">class SQLiteCache:
+    &quot;&quot;&quot;Disk-backed cache with TTL, using SQLite.&quot;&quot;&quot;
+
+    def __init__(self, path=&quot;cache.db&quot;):
+        self.conn = sqlite3.connect(path)
+        self.conn.execute(&quot;PRAGMA journal_mode=WAL&quot;)
+        self.conn.execute(&quot;PRAGMA synchronous=NORMAL&quot;)
+        self.conn.execute(&quot;&quot;&quot;
+            CREATE TABLE IF NOT EXISTS cache (
+                key TEXT PRIMARY KEY,
+                value BLOB,
+                expires_at REAL
+            ) WITHOUT ROWID
+        &quot;&quot;&quot;)
+
+    def get(self, key):
+        row = self.conn.execute(
+            &quot;SELECT value FROM cache WHERE key = ? AND expires_at &gt; unixepoch()&quot;,
+            (key,)
+        ).fetchone()
+        if row:
+            return pickle.loads(row[0])
+        return None
+
+    def set(self, key, value, ttl_seconds=3600):
+        expires = time.time() + ttl_seconds
+        self.conn.execute(
+            &quot;INSERT INTO cache (key, value, expires_at) VALUES (?, ?, ?) &quot;
+            &quot;ON CONFLICT(key) DO UPDATE SET value=excluded.value, expires_at=excluded.expires_at&quot;,
+            (key, pickle.dumps(value), expires)
+        )
+        self.conn.commit()
+
+    def evict_expired(self):
+        self.conn.execute(&quot;DELETE FROM cache WHERE expires_at &lt;= unixepoch()&quot;)
+        self.conn.commit()
+</code></pre>
+<p>Real-world examples: <code>pip</code> caches package metadata in SQLite, <code>apt</code> uses SQLite for package info, many CDN edge nodes use SQLite for configuration caching.</p>
+<h3 id="local-first-applications">Local-First Applications</h3>
+<p>The "local-first" architecture — store data locally, sync to cloud when available — is perfectly suited to SQLite:</p>
+<pre><code class="language-python">class SyncableDB:
+    &quot;&quot;&quot;SQLite database with change tracking for sync.&quot;&quot;&quot;
+
+    def __init__(self, path):
+        self.conn = sqlite3.connect(path)
+        self.conn.execute(&quot;PRAGMA journal_mode=WAL&quot;)
+        self.conn.executescript(&quot;&quot;&quot;
+            CREATE TABLE IF NOT EXISTS notes (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                content TEXT DEFAULT '',
+                updated_at TEXT DEFAULT (datetime('now')),
+                synced INTEGER DEFAULT 0
+            );
+
+            CREATE TABLE IF NOT EXISTS sync_log (
+                id INTEGER PRIMARY KEY,
+                table_name TEXT,
+                row_id TEXT,
+                operation TEXT,  -- INSERT, UPDATE, DELETE
+                timestamp TEXT DEFAULT (datetime('now')),
+                synced INTEGER DEFAULT 0
+            );
+
+            CREATE TRIGGER IF NOT EXISTS notes_sync_insert
+            AFTER INSERT ON notes
+            BEGIN
+                INSERT INTO sync_log (table_name, row_id, operation)
+                VALUES ('notes', NEW.id, 'INSERT');
+            END;
+
+            CREATE TRIGGER IF NOT EXISTS notes_sync_update
+            AFTER UPDATE ON notes
+            BEGIN
+                INSERT INTO sync_log (table_name, row_id, operation)
+                VALUES ('notes', NEW.id, 'UPDATE');
+                UPDATE notes SET synced = 0 WHERE id = NEW.id;
+            END;
+        &quot;&quot;&quot;)
+
+    def get_unsynced_changes(self):
+        return self.conn.execute(
+            &quot;SELECT * FROM sync_log WHERE synced = 0 ORDER BY timestamp&quot;
+        ).fetchall()
+
+    def mark_synced(self, log_ids):
+        self.conn.executemany(
+            &quot;UPDATE sync_log SET synced = 1 WHERE id = ?&quot;,
+            [(id,) for id in log_ids]
+        )
+        self.conn.commit()
+</code></pre>
+<hr>
+<h2 id="13-sqlite-as-an-application-file-format">13. SQLite as an Application File Format</h2>
+<p>One of SQLite's most powerful and underappreciated use cases: using a SQLite database as your application's file format, instead of JSON, XML, or a custom binary format.</p>
+<h3 id="why-sqlite-beats-custom-file-formats">Why SQLite Beats Custom File Formats</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>SQLite</th>
+<th>JSON/XML</th>
+<th>Custom Binary</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Atomic writes (crash-safe)</td>
+<td>✅ Built-in</td>
+<td>❌ Must implement</td>
+<td>❌ Must implement</td>
+</tr>
+<tr>
+<td>Incremental updates</td>
+<td>✅ Modify without rewriting</td>
+<td>❌ Rewrite entire file</td>
+<td>❌ Usually rewrite</td>
+</tr>
+<tr>
+<td>Cross-platform</td>
+<td>✅ Guaranteed</td>
+<td>✅</td>
+<td>❌ Endianness issues</td>
+</tr>
+<tr>
+<td>Queryable</td>
+<td>✅ Full SQL</td>
+<td>❌ Load into memory</td>
+<td>❌ Custom code</td>
+</tr>
+<tr>
+<td>Schema evolution</td>
+<td>✅ ALTER TABLE</td>
+<td>❌ Manual parsing</td>
+<td>❌ Version headers</td>
+</tr>
+<tr>
+<td>Partial reads</td>
+<td>✅ Read any record</td>
+<td>❌ Load entire file</td>
+<td>⚠️ With offsets</td>
+</tr>
+<tr>
+<td>Concurrent access</td>
+<td>✅ With locking</td>
+<td>❌</td>
+<td>❌</td>
+</tr>
+<tr>
+<td>Tooling</td>
+<td>✅ sqlite3 CLI, GUI tools</td>
+<td>✅ Editors</td>
+<td>❌ Custom tools</td>
+</tr>
+</tbody>
+</table>
+<h3 id="real-world-examples">Real-World Examples</h3>
+<ul>
+<li><strong>GeoPackage</strong> (<code>.gpkg</code>): OGC standard for geospatial data — a SQLite database with spatial tables</li>
+<li><strong>Fossil SCM</strong>: The entire version control repository is a single SQLite file</li>
+<li><strong>Calibre</strong>: E-book library metadata stored in SQLite</li>
+<li><strong>EPUB</strong> readers: Some use SQLite for indexing and bookmarks</li>
+<li><strong>Adobe Lightroom</strong>: Photo catalog (<code>.lrcat</code>) is SQLite</li>
+<li><strong>macOS System Preferences</strong>: Many <code>.plist</code> stores backed by SQLite</li>
+</ul>
+<h3 id="implementing-it">Implementing It</h3>
+<pre><code class="language-python"># application file format using SQLite
+class ProjectFile:
+    SCHEMA_VERSION = 3
+
+    def __init__(self, path):
+        self.conn = sqlite3.connect(path)
+        self.conn.execute(&quot;PRAGMA journal_mode=WAL&quot;)
+        self.conn.execute(&quot;PRAGMA foreign_keys=ON&quot;)
+        self._migrate()
+
+    def _migrate(self):
+        current = self.conn.execute(&quot;PRAGMA user_version&quot;).fetchone()[0]
+
+        if current &lt; 1:
+            self.conn.executescript(&quot;&quot;&quot;
+                CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT);
+                CREATE TABLE documents (
+                    id INTEGER PRIMARY KEY,
+                    title TEXT NOT NULL,
+                    content BLOB,
+                    doc_type TEXT NOT NULL,
+                    created_at TEXT DEFAULT (datetime('now'))
+                );
+                PRAGMA user_version = 1;
+            &quot;&quot;&quot;)
+
+        if current &lt; 2:
+            self.conn.executescript(&quot;&quot;&quot;
+                ALTER TABLE documents ADD COLUMN tags TEXT DEFAULT '[]';
+                CREATE INDEX idx_docs_type ON documents(doc_type);
+                PRAGMA user_version = 2;
+            &quot;&quot;&quot;)
+
+        if current &lt; 3:
+            self.conn.executescript(&quot;&quot;&quot;
+                CREATE VIRTUAL TABLE documents_fts USING fts5(
+                    title, content, content='documents', content_rowid='id'
+                );
+                INSERT INTO documents_fts(rowid, title, content)
+                    SELECT id, title, content FROM documents;
+                PRAGMA user_version = 3;
+            &quot;&quot;&quot;)
+
+    def save_as(self, new_path):
+        &quot;&quot;&quot;Save a copy using SQLite's backup API.&quot;&quot;&quot;
+        dest = sqlite3.connect(new_path)
+        self.conn.backup(dest)
+        dest.close()
+</code></pre>
+<p>The key insight: <code>PRAGMA user_version</code> gives you a free schema version counter. Check it on open, apply migrations sequentially, and your file format evolves gracefully.</p>
+<hr>
+<h2 id="14-sqlite-vs-other-databases">14. SQLite vs Other Databases</h2>
+<h3 id="sqlite-vs-postgresql">SQLite vs PostgreSQL</h3>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>SQLite</th>
+<th>PostgreSQL</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Architecture</strong></td>
+<td>Embedded library, no server</td>
+<td>Client-server, multi-process</td>
+</tr>
+<tr>
+<td><strong>Setup</strong></td>
+<td>Zero configuration</td>
+<td>Requires installation, config, DBA</td>
+</tr>
+<tr>
+<td><strong>Concurrency</strong></td>
+<td>Single writer, many readers</td>
+<td>Many concurrent readers and writers</td>
+</tr>
+<tr>
+<td><strong>Locking</strong></td>
+<td>Database-level</td>
+<td>Row-level (MVCC)</td>
+</tr>
+<tr>
+<td><strong>Data types</strong></td>
+<td>Dynamic (type affinity)</td>
+<td>Strict, rich type system (200+ types)</td>
+</tr>
+<tr>
+<td><strong>SQL completeness</strong></td>
+<td>Most of SQL-92 + many additions</td>
+<td>Extremely comprehensive (SQL:2023)</td>
+</tr>
+<tr>
+<td><strong>Extensions</strong></td>
+<td>Limited</td>
+<td>Vast ecosystem (PostGIS, pgvector, etc.)</td>
+</tr>
+<tr>
+<td><strong>Replication</strong></td>
+<td>None built-in (Litestream, LiteFS)</td>
+<td>Streaming, logical, bidirectional</td>
+</tr>
+<tr>
+<td><strong>Scale</strong></td>
+<td>Single machine, ≤ ~100GB practical</td>
+<td>Terabytes, distributed with Citus</td>
+</tr>
+<tr>
+<td><strong>Best for</strong></td>
+<td>Embedded, mobile, desktop, edge</td>
+<td>Multi-user web apps, SaaS, data platforms</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Rule of thumb</strong>: If your data is accessed by a single application on a single machine, start with SQLite. If you need multi-user network access, go PostgreSQL.</p>
+<h3 id="sqlite-vs-duckdb">SQLite vs DuckDB</h3>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>SQLite</th>
+<th>DuckDB</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Focus</strong></td>
+<td>OLTP (transactions, point queries)</td>
+<td>OLAP (analytics, scans, aggregations)</td>
+</tr>
+<tr>
+<td><strong>Engine</strong></td>
+<td>Row-oriented</td>
+<td>Columnar, vectorized</td>
+</tr>
+<tr>
+<td><strong>Insert speed</strong></td>
+<td>Fast (single-row and bulk)</td>
+<td>Optimized for bulk ingestion</td>
+</tr>
+<tr>
+<td><strong>Scan speed</strong></td>
+<td>Good for small tables</td>
+<td>10-100x faster for large table scans</td>
+</tr>
+<tr>
+<td><strong>File I/O</strong></td>
+<td>Read/write SQLite files</td>
+<td>Read Parquet, CSV, JSON natively</td>
+</tr>
+<tr>
+<td><strong>Maturity</strong></td>
+<td>25+ years, trillions of deployments</td>
+<td>Since 2019, rapidly growing</td>
+</tr>
+<tr>
+<td><strong>Embedded</strong></td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Choose SQLite</strong> for transactional workloads, application storage, or when you need the most battle-tested embedded database. <strong>Choose DuckDB</strong> when your primary workload is analytical: aggregations over millions of rows, data science, ETL pipelines.</p>
+<h3 id="sqlite-vs-leveldb-rocksdb">SQLite vs LevelDB / RocksDB</h3>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>SQLite</th>
+<th>LevelDB / RocksDB</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Data model</strong></td>
+<td>Relational (tables, SQL)</td>
+<td>Key-value only</td>
+</tr>
+<tr>
+<td><strong>Query language</strong></td>
+<td>Full SQL</td>
+<td>get/put/delete/iterate</td>
+</tr>
+<tr>
+<td><strong>Indexes</strong></td>
+<td>B-tree, multiple per table</td>
+<td>LSM-tree, single key space</td>
+</tr>
+<tr>
+<td><strong>Write throughput</strong></td>
+<td>Good</td>
+<td>Excellent (LSM optimized for writes)</td>
+</tr>
+<tr>
+<td><strong>Read pattern</strong></td>
+<td>Random + range + complex queries</td>
+<td>Point lookups + range scans</td>
+</tr>
+<tr>
+<td><strong>Use case</strong></td>
+<td>General-purpose structured data</td>
+<td>High-throughput KV storage, write-heavy workloads</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Choose SQLite</strong> when you need relational queries, joins, or any SQL. <strong>Choose LevelDB/RocksDB</strong> when you only need key-value operations at extreme throughput.</p>
+<h3 id="sqlite-vs-the-filesystem-for-small-data">SQLite vs the Filesystem (for small data)</h3>
+<p>A surprising finding from SQLite's own benchmarks: <strong>SQLite is 35% faster than direct filesystem I/O</strong> for reading small blobs (under ~100KB). This is because:</p>
+<ul>
+<li>SQLite opens the file once; <code>fopen()</code> for each blob requires a separate <code>open()</code> + <code>stat()</code> + <code>read()</code> + <code>close()</code></li>
+<li>SQLite's page cache means repeated reads don't hit disk</li>
+<li>One database file means one inode to track, not thousands</li>
+</ul>
+<p>For application data that consists of many small records, SQLite is not just more convenient than flat files — it's faster.</p>
+<hr>
+<h2 id="15-extensions-ecosystem">15. Extensions &amp; Ecosystem</h2>
+<h3 id="language-bindings">Language Bindings</h3>
+<table>
+<thead>
+<tr>
+<th>Language</th>
+<th>Library</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Python</strong></td>
+<td><code>sqlite3</code> (stdlib)</td>
+<td>Built into Python. Always available.</td>
+</tr>
+<tr>
+<td><strong>Python</strong></td>
+<td><code>apsw</code></td>
+<td>Advanced bindings, exposes more of the C API</td>
+</tr>
+<tr>
+<td><strong>Node.js</strong></td>
+<td><code>better-sqlite3</code></td>
+<td>Synchronous API, fastest Node binding</td>
+</tr>
+<tr>
+<td><strong>Node.js</strong></td>
+<td><code>sql.js</code></td>
+<td>SQLite compiled to WebAssembly, runs in browser</td>
+</tr>
+<tr>
+<td><strong>Rust</strong></td>
+<td><code>rusqlite</code></td>
+<td>Safe Rust bindings, well-maintained</td>
+</tr>
+<tr>
+<td><strong>Go</strong></td>
+<td><code>mattn/go-sqlite3</code></td>
+<td>CGo-based, most popular</td>
+</tr>
+<tr>
+<td><strong>Go</strong></td>
+<td><code>modernc.org/sqlite</code></td>
+<td>Pure Go (no CGo), cross-compiles easily</td>
+</tr>
+<tr>
+<td><strong>Java</strong></td>
+<td><code>sqlite-jdbc</code></td>
+<td>JDBC driver</td>
+</tr>
+<tr>
+<td><strong>C#</strong></td>
+<td><code>Microsoft.Data.Sqlite</code></td>
+<td>Official .NET bindings</td>
+</tr>
+<tr>
+<td><strong>Ruby</strong></td>
+<td><code>sqlite3-ruby</code></td>
+<td>Standard Ruby gem</td>
+</tr>
+<tr>
+<td><strong>PHP</strong></td>
+<td><code>PDO_SQLITE</code></td>
+<td>Built into PHP</td>
+</tr>
+<tr>
+<td><strong>Swift</strong></td>
+<td><code>GRDB.swift</code></td>
+<td>Full-featured, type-safe</td>
+</tr>
+</tbody>
+</table>
+<h3 id="notable-extensions">Notable Extensions</h3>
+<table>
+<thead>
+<tr>
+<th>Extension</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>FTS5</strong></td>
+<td>Full-text search (built-in, but must be enabled at compile time)</td>
+</tr>
+<tr>
+<td><strong>R-tree</strong></td>
+<td>Spatial indexing for range queries</td>
+</tr>
+<tr>
+<td><strong>JSON1</strong></td>
+<td>JSON functions (built into amalgamation since 3.38.0)</td>
+</tr>
+<tr>
+<td><strong>SpatiaLite</strong></td>
+<td>Full GIS on SQLite (geometry, projections, spatial queries)</td>
+</tr>
+<tr>
+<td><strong>SQLean</strong></td>
+<td>Collection of essential extensions: regexp, crypto, stats, uuid, etc.</td>
+</tr>
+<tr>
+<td><strong>sqlite-vec / sqlite-vss</strong></td>
+<td>Vector similarity search for AI/ML embeddings</td>
+</tr>
+</tbody>
+</table>
+<h3 id="replication-distribution">Replication &amp; Distribution</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>What It Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Litestream</strong></td>
+<td>Streams WAL changes to S3-compatible storage in real-time. Continuous backup, point-in-time restore.</td>
+</tr>
+<tr>
+<td><strong>LiteFS</strong></td>
+<td>Distributed SQLite by Fly.io. Primary/replica replication across edge nodes.</td>
+</tr>
+<tr>
+<td><strong>cr-sqlite</strong></td>
+<td>CRDT-based multi-writer replication. Merge changes from multiple writers without conflicts.</td>
+</tr>
+<tr>
+<td><strong>rqlite</strong></td>
+<td>Distributed SQLite using Raft consensus. Multiple nodes, automatic leader election.</td>
+</tr>
+<tr>
+<td><strong>dqlite</strong></td>
+<td>Distributed SQLite by Canonical, used in LXD. Raft-based.</td>
+</tr>
+<tr>
+<td><strong>libSQL</strong> (Turso)</td>
+<td>SQLite fork with native replication, WASM user functions, HTTP API.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="tools">Tools</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>sqlite3</code></strong> CLI</td>
+<td>Official command-line shell — the primary interface</td>
+</tr>
+<tr>
+<td><strong>DB Browser for SQLite</strong></td>
+<td>Cross-platform GUI for browsing and editing databases</td>
+</tr>
+<tr>
+<td><strong>SQLiteStudio</strong></td>
+<td>Feature-rich GUI</td>
+</tr>
+<tr>
+<td><strong>Datasette</strong></td>
+<td>Web-based tool for exploring and publishing SQLite data (by Simon Willison)</td>
+</tr>
+<tr>
+<td><strong>sqlite-utils</strong></td>
+<td>CLI and Python library for creating, querying, and manipulating databases</td>
+</tr>
+<tr>
+<td><strong>litecli</strong></td>
+<td>CLI with autocompletion and syntax highlighting</td>
+</tr>
+<tr>
+<td><strong>sqlite3_analyzer</strong></td>
+<td>Official space-usage analysis tool</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-sqlite3-cli">The sqlite3 CLI</h3>
+<pre><code class="language-bash"># open a database
+sqlite3 mydb.db
+
+# useful dot-commands
+.tables               # list all tables
+.schema               # show CREATE statements for all objects
+.schema users          # show CREATE for a specific table
+.indexes users         # list indexes on a table
+.headers on            # show column headers in output
+.mode column           # columnar output
+.mode csv              # CSV output
+.mode json             # JSON output
+.mode markdown         # markdown table output
+
+# import/export
+.import data.csv tablename    # import CSV into table
+.output results.csv           # redirect output to file
+.dump                         # dump entire database as SQL
+.dump users                   # dump a single table
+
+# backup while database is in use
+.backup backup.db
+
+# attach another database
+ATTACH 'other.db' AS other;
+SELECT * FROM other.some_table;
+
+# performance analysis
+.timer on              # show execution time for each query
+.expert                # suggest indexes for a query (3.36.0+)
+</code></pre>
+<hr>
+<h2 id="16-backup-migration-maintenance">16. Backup, Migration &amp; Maintenance</h2>
+<h3 id="backup-strategies">Backup Strategies</h3>
+<pre><code class="language-python">import sqlite3
+
+# 1. Online backup via Python API (safe while DB is in use)
+source = sqlite3.connect(&quot;production.db&quot;)
+dest = sqlite3.connect(&quot;backup.db&quot;)
+source.backup(dest)
+dest.close()
+source.close()
+
+# 2. Incremental backup with progress callback
+def progress(status, remaining, total):
+    print(f&quot;Backup: {total - remaining}/{total} pages&quot;)
+
+source.backup(dest, pages=100, progress=progress)
+</code></pre>
+<pre><code class="language-bash"># 3. CLI backup
+sqlite3 production.db &quot;.backup backup.db&quot;
+
+# 4. VACUUM INTO (3.27.0+) — compacted backup
+sqlite3 production.db &quot;VACUUM INTO 'backup.db';&quot;
+
+# 5. Continuous replication with Litestream
+litestream replicate production.db s3://mybucket/production
+litestream restore -o restored.db s3://mybucket/production
+</code></pre>
+<p><strong>Never copy the database file while connections are open</strong> — the WAL file may contain uncommitted changes. Use <code>.backup</code>, <code>VACUUM INTO</code>, or the <code>sqlite3_backup</code> API instead.</p>
+<h3 id="vacuum">VACUUM</h3>
+<pre><code class="language-sql">-- rebuild the database file, reclaiming space from deleted data
+VACUUM;
+
+-- VACUUM into a new file (3.27.0+)
+VACUUM INTO 'compacted.db';
+
+-- auto-vacuum: automatically reclaim pages as data is deleted
+-- must be set BEFORE creating any tables
+PRAGMA auto_vacuum = FULL;       -- reclaim immediately
+PRAGMA auto_vacuum = INCREMENTAL; -- reclaim on demand
+PRAGMA incremental_vacuum(100);   -- reclaim up to 100 pages
+</code></pre>
+<p><code>VACUUM</code> rebuilds the entire database. It requires up to 2x the database size in free disk space and takes an exclusive lock. Use <code>VACUUM INTO</code> for a non-blocking alternative.</p>
+<h3 id="schema-migrations">Schema Migrations</h3>
+<p>SQLite's <code>ALTER TABLE</code> is limited. For complex schema changes, use the "12-step" table recreation pattern:</p>
+<pre><code class="language-sql">-- changing a column type, adding a constraint, etc.
+BEGIN TRANSACTION;
+
+-- 1. Create new table with desired schema
+CREATE TABLE users_new (
+    id INTEGER PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- 2. Copy data
+INSERT INTO users_new (id, email, name, created_at)
+SELECT id, email, name, COALESCE(created_at, datetime('now'))
+FROM users;
+
+-- 3. Drop old table
+DROP TABLE users;
+
+-- 4. Rename new table
+ALTER TABLE users_new RENAME TO users;
+
+-- 5. Recreate indexes, triggers, views
+CREATE INDEX idx_users_email ON users(email);
+
+COMMIT;
+
+-- 6. Update schema version
+PRAGMA user_version = 2;
+</code></pre>
+<h3 id="schema-version-tracking">Schema Version Tracking</h3>
+<pre><code class="language-sql">-- built-in version counter (integer, persists in the file header)
+PRAGMA user_version;          -- read current version
+PRAGMA user_version = 5;      -- set version
+
+-- application_id: another 32-bit integer for file type identification
+PRAGMA application_id;
+PRAGMA application_id = 0x4C4D4442;  -- &quot;LMDB&quot; in hex, for example
+</code></pre>
+<hr>
+<h2 id="17-best-practices-anti-patterns">17. Best Practices &amp; Anti-Patterns</h2>
+<h3 id="do-these-always">Do These Always</h3>
+<ol>
+<li><strong>Enable WAL mode</strong>: <code>PRAGMA journal_mode=WAL</code> — dramatically improves concurrency</li>
+<li><strong>Enable foreign keys</strong>: <code>PRAGMA foreign_keys=ON</code> — they are OFF by default and silently ignored</li>
+<li><strong>Set busy timeout</strong>: <code>PRAGMA busy_timeout=5000</code> — prevents immediate <code>SQLITE_BUSY</code> errors</li>
+<li><strong>Use <code>synchronous=NORMAL</code> with WAL</strong>: safe and much faster than the default <code>FULL</code></li>
+<li><strong>Wrap batch operations in transactions</strong>: 1 transaction with 10,000 inserts vs 10,000 individual transactions is 10-100x faster</li>
+<li><strong>Use parameterized queries</strong>: prevents SQL injection and improves performance via statement caching</li>
+<li><strong>Run <code>ANALYZE</code> after bulk data changes</strong>: gives the query planner accurate statistics</li>
+<li><strong>Use <code>BEGIN IMMEDIATE</code> for write transactions</strong>: fail fast if another writer holds the lock</li>
+</ol>
+<h3 id="dont-do-these">Don't Do These</h3>
+<ol>
+<li><strong>Don't skip transactions for batch inserts</strong> — each INSERT without a transaction triggers a separate fsync. This is the #1 SQLite performance mistake.</li>
+<li><strong>Don't use SQLite over a network filesystem</strong> — NFS and SMB have broken file locking. You will corrupt your database.</li>
+<li><strong>Don't forget <code>PRAGMA foreign_keys=ON</code></strong> — without this, foreign key constraints are silently ignored. This must be set per connection.</li>
+<li><strong>Don't use <code>AUTOINCREMENT</code> unless you need it</strong> — it adds overhead (a separate <code>sqlite_sequence</code> table). Plain <code>INTEGER PRIMARY KEY</code> already auto-increments.</li>
+<li><strong>Don't store large blobs (&gt;100KB) in the database</strong> — performance degrades. Store files on disk and reference them with a path.</li>
+<li><strong>Don't open many write connections</strong> — SQLite allows only one writer at a time. Use a single write connection with a queue.</li>
+<li><strong>Don't use <code>NOT IN</code> with potentially NULL subqueries</strong> — <code>NOT IN (1, 2, NULL)</code> always returns empty. Use <code>NOT EXISTS</code> instead.</li>
+<li><strong>Don't leave connections open in idle-in-transaction state</strong> — it prevents WAL checkpointing and can cause the WAL file to grow indefinitely.</li>
+</ol>
+<h3 id="connection-pool-pattern">Connection Pool Pattern</h3>
+<p>Since SQLite only allows one writer at a time, the optimal pattern is:</p>
+<pre><code class="language-python">import threading
+import sqlite3
+from queue import Queue
+
+class SQLitePool:
+    &quot;&quot;&quot;Single writer, multiple readers connection pattern.&quot;&quot;&quot;
+
+    def __init__(self, db_path):
+        self.db_path = db_path
+
+        # single write connection
+        self._writer = self._make_conn()
+        self._write_lock = threading.Lock()
+
+        # pool of read connections
+        self._readers = Queue()
+        for _ in range(4):
+            conn = self._make_conn()
+            conn.execute(&quot;PRAGMA query_only = ON&quot;)
+            self._readers.put(conn)
+
+    def _make_conn(self):
+        conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        conn.execute(&quot;PRAGMA journal_mode=WAL&quot;)
+        conn.execute(&quot;PRAGMA synchronous=NORMAL&quot;)
+        conn.execute(&quot;PRAGMA cache_size=-64000&quot;)
+        conn.execute(&quot;PRAGMA mmap_size=268435456&quot;)
+        conn.execute(&quot;PRAGMA foreign_keys=ON&quot;)
+        conn.execute(&quot;PRAGMA busy_timeout=5000&quot;)
+        return conn
+
+    def read(self, sql, params=()):
+        conn = self._readers.get()
+        try:
+            return conn.execute(sql, params).fetchall()
+        finally:
+            self._readers.put(conn)
+
+    def write(self, sql, params=()):
+        with self._write_lock:
+            self._writer.execute(sql, params)
+            self._writer.commit()
+</code></pre>
+<hr>
+<h2 id="18-advanced-topics">18. Advanced Topics</h2>
+<h3 id="application-defined-functions">Application-Defined Functions</h3>
+<pre><code class="language-python">import sqlite3
+import hashlib
+import re
+
+conn = sqlite3.connect(&quot;:memory:&quot;)
+
+# scalar function
+def sha256(text):
+    return hashlib.sha256(text.encode()).hexdigest()
+
+conn.create_function(&quot;sha256&quot;, 1, sha256)
+print(conn.execute(&quot;SELECT sha256('hello')&quot;).fetchone()[0])
+
+# deterministic function (can be used in indexes)
+conn.create_function(&quot;sha256&quot;, 1, sha256, deterministic=True)
+
+# regexp function (not built into SQLite by default)
+def regexp(pattern, string):
+    return bool(re.search(pattern, string))
+
+conn.create_function(&quot;REGEXP&quot;, 2, regexp)
+# now you can use: SELECT * FROM users WHERE email REGEXP '^[a-z]+@'
+
+# aggregate function
+class Median:
+    def __init__(self):
+        self.values = []
+
+    def step(self, value):
+        if value is not None:
+            self.values.append(value)
+
+    def finalize(self):
+        if not self.values:
+            return None
+        s = sorted(self.values)
+        n = len(s)
+        if n % 2 == 1:
+            return s[n // 2]
+        return (s[n // 2 - 1] + s[n // 2]) / 2
+
+conn.create_aggregate(&quot;median&quot;, 1, Median)
+</code></pre>
+<h3 id="the-sqlite-amalgamation">The SQLite Amalgamation</h3>
+<p>SQLite is distributed as a single C source file: <strong><code>sqlite3.c</code></strong> (the "amalgamation"), along with <code>sqlite3.h</code> and the <code>sqlite3</code> CLI.</p>
+<ul>
+<li><strong>~250,000 lines</strong> of C code in one file</li>
+<li>The amalgamation is 50-100% faster than separately compiled source files, because the compiler can inline across module boundaries and optimize the entire codebase as one unit</li>
+<li>Typical compiled size: <strong>~600KB</strong> (can be reduced to ~300KB with <code>SQLITE_OMIT_*</code> flags)</li>
+<li>Drop <code>sqlite3.c</code> and <code>sqlite3.h</code> into your project and compile. That's it. No build system, no dependencies, no dynamic linking required.</li>
+</ul>
+<h3 id="compile-time-options">Compile-Time Options</h3>
+<p>Key options for customizing SQLite:</p>
+<pre><code class="language-c">// threading mode
+#define SQLITE_THREADSAFE 1        // 0=single-thread, 1=serialized (default), 2=multi-thread
+
+// enable extensions
+#define SQLITE_ENABLE_FTS5 1
+#define SQLITE_ENABLE_RTREE 1
+#define SQLITE_ENABLE_JSON1 1      // default since 3.38.0
+#define SQLITE_ENABLE_MATH_FUNCTIONS 1
+
+// recommended hardening
+#define SQLITE_DQS 0               // disable double-quoted string literals
+
+// tuning
+#define SQLITE_DEFAULT_WAL_SYNCHRONOUS 1  // NORMAL sync in WAL mode
+#define SQLITE_DEFAULT_MEMSTATUS 0         // disable memory tracking overhead
+
+// omit unused features to reduce binary size
+#define SQLITE_OMIT_DEPRECATED 1
+#define SQLITE_OMIT_DECLTYPE 1
+#define SQLITE_OMIT_PROGRESS_CALLBACK 1
+</code></pre>
+<h3 id="the-authorizer-callback">The Authorizer Callback</h3>
+<p>SQLite's answer to access control — a callback that approves or denies every SQL operation:</p>
+<pre><code class="language-python">import sqlite3
+
+def authorizer(action, arg1, arg2, db_name, trigger_name):
+    # deny all DELETE operations
+    if action == sqlite3.SQLITE_DELETE:
+        return sqlite3.SQLITE_DENY
+    # deny access to sensitive tables
+    if action == sqlite3.SQLITE_READ and arg1 == &quot;secrets&quot;:
+        return sqlite3.SQLITE_DENY
+    return sqlite3.SQLITE_OK
+
+conn = sqlite3.connect(&quot;mydb.db&quot;)
+conn.set_authorizer(authorizer)
+
+conn.execute(&quot;SELECT * FROM users&quot;)    # OK
+conn.execute(&quot;DELETE FROM users&quot;)      # raises OperationalError
+</code></pre>
+<h3 id="sqlites-testing-methodology">SQLite's Testing Methodology</h3>
+<p>SQLite has one of the most thoroughly tested codebases in the history of software:</p>
+<ul>
+<li><strong>100% branch coverage</strong> (Modified Condition/Decision Coverage — MC/DC, the most rigorous coverage metric)</li>
+<li><strong>Over 150 million test cases</strong> in the test suite</li>
+<li>Test code is <strong>~600x the size</strong> of the SQLite library itself</li>
+<li>Three independent test harnesses:
+  1. <strong>TCL Test Suite</strong>: ~45,000 test cases
+  2. <strong>TH3 (Test Harness 3)</strong>: Proprietary, achieves 100% MC/DC coverage, tests every error path including malloc failures
+  3. <strong>SQL Logic Test (SLT)</strong>: ~7 million SQL statements for correctness verification</li>
+<li><strong>Out-of-memory testing</strong>: every <code>malloc()</code> is tested for failure</li>
+<li><strong>I/O error simulation</strong>: tests behavior on disk read/write failures</li>
+<li><strong>Crash simulation</strong>: tests at every point during a transaction</li>
+<li><strong>Extensive fuzzing</strong> with AFL, libfuzzer, and custom fuzzers</li>
+<li><strong>Valgrind and AddressSanitizer</strong> for memory error detection</li>
+</ul>
+<p>This testing rigor is why SQLite can be trusted in flight software, medical devices, and financial systems.</p>
+<h3 id="attached-databases">Attached Databases</h3>
+<pre><code class="language-sql">-- work with multiple database files simultaneously
+ATTACH DATABASE 'analytics.db' AS analytics;
+ATTACH DATABASE 'archive.db' AS archive;
+
+-- query across databases
+SELECT u.name, a.event_count
+FROM main.users u
+JOIN analytics.user_stats a ON a.user_id = u.id;
+
+-- move data between databases
+INSERT INTO archive.old_orders SELECT * FROM main.orders WHERE created_at &lt; '2023-01-01';
+DELETE FROM main.orders WHERE created_at &lt; '2023-01-01';
+
+DETACH DATABASE analytics;
+</code></pre>
+<p>You can attach up to 125 databases (default 10, configurable) to a single connection.</p>
+<hr>
+<h2 id="19-limits-constraints">19. Limits &amp; Constraints</h2>
+<table>
+<thead>
+<tr>
+<th>Limit</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Maximum database size</td>
+<td><strong>281 TB</strong> (theoretical; practical limit ~1 TB)</td>
+</tr>
+<tr>
+<td>Maximum string or BLOB length</td>
+<td><strong>1 billion bytes</strong> (1 GB)</td>
+</tr>
+<tr>
+<td>Maximum number of columns per table</td>
+<td><strong>32,767</strong> (default 2,000)</td>
+</tr>
+<tr>
+<td>Maximum SQL statement length</td>
+<td><strong>1 billion bytes</strong> (default 1,000,000,000)</td>
+</tr>
+<tr>
+<td>Maximum number of tables</td>
+<td>No hard limit (limited by schema size)</td>
+</tr>
+<tr>
+<td>Maximum number of attached databases</td>
+<td><strong>125</strong> (default 10)</td>
+</tr>
+<tr>
+<td>Maximum page size</td>
+<td><strong>65,536 bytes</strong></td>
+</tr>
+<tr>
+<td>Minimum page size</td>
+<td><strong>512 bytes</strong></td>
+</tr>
+<tr>
+<td>Maximum number of pages</td>
+<td><strong>4,294,967,294</strong> (2³² – 2)</td>
+</tr>
+<tr>
+<td>Maximum number of rows</td>
+<td><strong>2⁶⁴</strong> (limited by storage)</td>
+</tr>
+<tr>
+<td>Maximum number of host parameters in SQL</td>
+<td><strong>32,766</strong> (default 999)</td>
+</tr>
+<tr>
+<td>Maximum expression tree depth</td>
+<td><strong>1,000</strong></td>
+</tr>
+<tr>
+<td>Maximum terms in compound SELECT</td>
+<td><strong>500</strong></td>
+</tr>
+<tr>
+<td>Maximum arguments to a function</td>
+<td><strong>127</strong> (default 100)</td>
+</tr>
+<tr>
+<td>Maximum <code>LIKE</code> / <code>GLOB</code> pattern length</td>
+<td><strong>50,000 bytes</strong></td>
+</tr>
+</tbody>
+</table>
+<h3 id="practical-performance-boundaries">Practical Performance Boundaries</h3>
+<ul>
+<li><strong>Database size</strong>: Best performance under ~100 GB. Works at larger sizes but a server database will outperform.</li>
+<li><strong>Write throughput</strong>: 50,000–100,000+ inserts/second in a single transaction (hardware-dependent).</li>
+<li><strong>Read throughput</strong>: Can serve millions of reads per second for simple queries from cache.</li>
+<li><strong>Concurrent users</strong>: Handles dozens of concurrent readers easily. One writer at a time.</li>
+<li><strong>Website traffic</strong>: SQLite handles most websites with ease. The "100K hits/day" guideline from the SQLite docs is conservative — many production sites use SQLite at much higher traffic with a read-heavy workload.</li>
+</ul>
+<hr>
+<h2 id="20-common-mistakes">20. Common Mistakes</h2>
+<h3 id="1-not-using-transactions-for-bulk-inserts">1. Not Using Transactions for Bulk Inserts</h3>
+<pre><code class="language-python"># WRONG: ~100 inserts/second (each is its own transaction with fsync)
+for row in data:
+    conn.execute(&quot;INSERT INTO t VALUES (?)&quot;, (row,))
+
+# RIGHT: ~100,000 inserts/second (one transaction, one fsync)
+conn.execute(&quot;BEGIN&quot;)
+for row in data:
+    conn.execute(&quot;INSERT INTO t VALUES (?)&quot;, (row,))
+conn.execute(&quot;COMMIT&quot;)
+</code></pre>
+<h3 id="2-forgetting-foreign-keys-are-off-by-default">2. Forgetting Foreign Keys Are Off by Default</h3>
+<pre><code class="language-python">conn = sqlite3.connect(&quot;mydb.db&quot;)
+# foreign keys are NOT enforced here!
+
+conn.execute(&quot;PRAGMA foreign_keys = ON&quot;)  # must do this per connection
+</code></pre>
+<h3 id="3-using-not-in-with-nulls">3. Using NOT IN with NULLs</h3>
+<pre><code class="language-sql">-- BUG: returns NO rows if subquery produces any NULL
+SELECT * FROM users WHERE id NOT IN (SELECT manager_id FROM teams);
+
+-- FIX: use NOT EXISTS
+SELECT * FROM users u
+WHERE NOT EXISTS (SELECT 1 FROM teams t WHERE t.manager_id = u.id);
+</code></pre>
+<h3 id="4-not-setting-busy-timeout">4. Not Setting Busy Timeout</h3>
+<pre><code class="language-python"># WRONG: immediately raises OperationalError on any lock contention
+conn = sqlite3.connect(&quot;mydb.db&quot;)
+
+# RIGHT: wait up to 5 seconds for locks to clear
+conn = sqlite3.connect(&quot;mydb.db&quot;, timeout=5.0)
+</code></pre>
+<h3 id="5-using-autoincrement-when-you-dont-need-it">5. Using AUTOINCREMENT When You Don't Need It</h3>
+<pre><code class="language-sql">-- WASTEFUL: maintains sqlite_sequence table, slightly slower
+CREATE TABLE t (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);
+
+-- SUFFICIENT: auto-increments already, just allows rowid reuse
+CREATE TABLE t (id INTEGER PRIMARY KEY, name TEXT);
+</code></pre>
+<p>Only use <code>AUTOINCREMENT</code> if your application specifically requires that deleted row IDs are never reused.</p>
+<h3 id="6-storing-dates-incorrectly">6. Storing Dates Incorrectly</h3>
+<pre><code class="language-sql">-- BAD: ambiguous format, won't sort correctly, can't use date functions
+INSERT INTO events (date) VALUES ('1/15/2024');
+INSERT INTO events (date) VALUES ('Jan 15, 2024');
+
+-- GOOD: ISO 8601, sorts correctly, works with all date functions
+INSERT INTO events (date) VALUES ('2024-01-15');
+INSERT INTO events (date) VALUES (datetime('now'));
+</code></pre>
+<h3 id="7-assuming-column-types-are-enforced">7. Assuming Column Types Are Enforced</h3>
+<pre><code class="language-sql">-- this SUCCEEDS in regular SQLite — 'not_a_number' is stored as TEXT
+CREATE TABLE t (age INTEGER);
+INSERT INTO t VALUES ('not_a_number');
+
+-- use STRICT tables if you want enforcement
+CREATE TABLE t (age INTEGER) STRICT;
+INSERT INTO t VALUES ('not_a_number');  -- ERROR
+</code></pre>
+<hr>
+<h2 id="mastery-checklist">Mastery Checklist</h2>
+<p>You've reached mastery when you can:</p>
+<ol>
+<li>Explain the VDBE, B-tree, and Pager layers and how they interact during a transaction.</li>
+<li>Read an <code>EXPLAIN QUERY PLAN</code> output and know immediately whether you need an index, which index, and why.</li>
+<li>Configure the optimal set of PRAGMAs for a given workload and explain why each one matters.</li>
+<li>Design a schema using <code>WITHOUT ROWID</code>, <code>STRICT</code>, generated columns, and partial indexes — each where it fits.</li>
+<li>Implement a robust embedded database layer with proper connection management, write serialization, and error handling.</li>
+<li>Use SQLite as an application file format with schema versioning and migration.</li>
+<li>Choose between SQLite, PostgreSQL, and DuckDB for a given use case and justify the decision.</li>
+<li>Write recursive CTEs, window functions, and JSON queries fluently.</li>
+<li>Debug <code>SQLITE_BUSY</code> errors, understand the five lock states, and explain WAL mode's concurrency model.</li>
+<li>Articulate why SQLite can be trusted in safety-critical systems — cite its testing methodology.</li>
+</ol>
+<hr>
+<h2 id="recommended-reading-path">Recommended Reading Path</h2>
+<ol>
+<li><strong><a href="https://www.sqlite.org/docs.html">SQLite Documentation</a></strong> — Start with "About SQLite", then "SQL Language Reference", then "Pragma Statements".</li>
+<li><strong><a href="https://www.sqlite.org/testing.html">How SQLite Is Tested</a></strong> — Understanding the testing methodology builds justified confidence.</li>
+<li><strong><a href="https://www.sqlite.org/appfileformat.html">SQLite as an Application File Format</a></strong> — The official case for using SQLite as your file format.</li>
+<li><strong><a href="https://www.sqlite.org/fasterthanfs.html">35% Faster Than The Filesystem</a></strong> — Benchmark data on SQLite vs direct file I/O.</li>
+<li><strong><a href="https://www.sqlite.org/amalgamation.html">The SQLite Amalgamation</a></strong> — How and why SQLite ships as one C file.</li>
+<li><strong><a href="https://www.sqlite.org/famous.html">Well-Known Users of SQLite</a></strong> — Official list of notable deployments.</li>
+<li><strong>Simon Willison's blog</strong> (<a href="https://simonwillison.net">simonwillison.net</a>) — Prolific writer on SQLite tools, Datasette, sqlite-utils.</li>
+<li><strong><a href="https://fly.io/blog/all-in-on-sqlite-litestream/">Fly.io's SQLite series</a></strong> — Production experience running SQLite at the edge.</li>
+<li><strong><a href="https://blog.wesleyac.com/posts/consider-sqlite">Consider SQLite</a></strong> — Practical arguments for using SQLite more broadly.</li>
+<li><strong>Source code</strong> — The amalgamation is one file. Reading it (especially the header comment and the VDBE opcodes) is educational.</li>
+</ol>
+<hr>
+<p>SQLite's power is in what it omits. By removing the server, the network protocol, the access control system, and the configuration files, what remains is a fast, reliable, portable SQL engine that just works. The database is a file. The engine is a library call. For the majority of applications — mobile, desktop, IoT, development, edge computing, data analysis — this is not a compromise. It's the right architecture.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

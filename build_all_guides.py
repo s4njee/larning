@@ -54,6 +54,7 @@ GUIDES = [
     ("ADVANCED_POSTGRES.md", "html/advanced-postgres.html", {"accent": "#336791"}),
     ("POSTGRES_EXTENSIONS.md", "html/postgres-extensions.html", {"accent": "#336791"}),
     ("REDIS_STUDY_GUIDE.md", "html/redis-study-guide.html", {"accent": "#ff4438"}),
+    ("SQLITE_STUDY_GUIDE.md", "html/sqlite-study-guide.html", {"auto": True}),
     ("AI_AGENTS_STUDY_GUIDE.md", "html/ai-agents-study-guide.html", {"auto": True}),
     ("AUTH_STUDY_GUIDE.md", "html/auth-study-guide.html", {"auto": True}),
     ("CRYPTO_FUNDAMENTALS.md", "html/crypto-fundamentals.html", {"auto": True}),
@@ -101,7 +102,7 @@ CATEGORIES = [
     ("Data and messaging", [
         "data-engineering-study-guide.html", "postgres.html",
         "advanced-postgres.html", "postgres-extensions.html",
-        "redis-study-guide.html",
+        "redis-study-guide.html", "sqlite-study-guide.html",
     ]),
     ("Architecture, security, and AI", [
         "ai-agents-study-guide.html", "auth-study-guide.html",
