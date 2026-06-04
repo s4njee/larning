@@ -29,6 +29,7 @@ GUIDES = [
     ("QT_STUDY_GUIDE.md", "html/qt-study-guide.html", {"auto": True}),
     ("SVELTEKIT_STUDY_GUIDE.md", "html/sveltekit-study-guide.html", {"auto": True}),
     ("VUE_STUDY_GUIDE.md", "html/vue-study-guide.html", {"accent": "#42b883"}),
+    ("WEBGL_OPENGL_STUDY_GUIDE.md", "html/webgl-opengl-study-guide.html", {"auto": True}),
     ("WEBGPU_STUDY_GUIDE.md", "html/webgpu-study-guide.html", {"auto": True}),
     ("WEBSOCKETS_STUDY_GUIDE.md", "html/websockets-study-guide.html", {"auto": True}),
     ("ANSIBLE_STUDY_GUIDE.md", "html/ansible-study-guide.html", {"auto": True}),
@@ -82,7 +83,7 @@ CATEGORIES = [
         "django-study-guide.html", "electron-study-guide.html",
         "nextjs-study-guide.html", "qt-study-guide.html",
         "sveltekit-study-guide.html", "vue-study-guide.html",
-        "webgpu-study-guide.html", "websockets-study-guide.html",
+        "webgl-opengl-study-guide.html", "webgpu-study-guide.html", "websockets-study-guide.html",
         "ios-development-study-guide.html",
     ]),
     ("Infra, cloud, and ops", [

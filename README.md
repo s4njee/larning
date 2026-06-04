@@ -274,6 +274,11 @@ This guide introduces Vue through the lens of practical app building, focusing o
 
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/VUE_STUDY_GUIDE.md)
 
+### WebGL and OpenGL
+This guide is a depth-first treatment of the GL family of graphics APIs, using WebGL as the browser-based teaching environment for OpenGL and OpenGL ES concepts. It builds the mental model of GL as a state machine for feeding a programmable rasterization pipeline, then works through context setup, shaders, buffers, attributes, uniforms, VAOs, matrices, cameras, textures, samplers, framebuffers, depth, stencil, blending, transparency, instancing, performance, debugging, context loss, library choices, and how WebGL calls map back to native OpenGL.
+
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/WEBGL_OPENGL_STUDY_GUIDE.md)
+
 ### WebGPU
 This guide is a depth-first introduction to WebGPU, the modern explicit GPU API for the web. It explains what WebGPU is, why it exists, how it maps to modern graphics APIs, and how it compares with WebGL across state management, shaders, resources, compute, performance, compatibility, and developer experience. It then gives a practical primer on using WebGPU: adapters and devices, canvas configuration, buffers, textures, bind groups, render pipelines, WGSL, drawing a triangle, uniforms, render loops, compute shaders, debugging, performance practices, migration from WebGL, and when to use WebGPU, WebGL, or neither.
 

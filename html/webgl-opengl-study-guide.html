@@ -1,0 +1,2687 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: WebGL and OpenGL Study Guide.">
+<title>WebGL and OpenGL Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#ce4fe4; --accent2:#df4bb5; --accent-weak:rgba(206,79,228,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#ce4fe4; --accent2:#df4bb5; --accent-weak:rgba(206,79,228,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">W</span><span>WebGL and OpenGL Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-what-gl-is" data-target="part-1-what-gl-is">Part 1 - What GL Is</a></li><li class="toc-l3"><a href="#the-one-sentence-version" data-target="the-one-sentence-version">The One-Sentence Version</a></li><li class="toc-l3"><a href="#why-gl-matters" data-target="why-gl-matters">Why GL Matters</a></li><li class="toc-l3"><a href="#the-central-mental-model" data-target="the-central-mental-model">The Central Mental Model</a></li><li class="toc-l3"><a href="#immediate-mode-vs-modern-gl" data-target="immediate-mode-vs-modern-gl">Immediate Mode vs Modern GL</a></li><li class="toc-l2"><a href="#part-2-webgl-opengl-and-opengl-es" data-target="part-2-webgl-opengl-and-opengl-es">Part 2 - WebGL, OpenGL, and OpenGL ES</a></li><li class="toc-l3"><a href="#the-family-tree" data-target="the-family-tree">The Family Tree</a></li><li class="toc-l3"><a href="#webgl-1-vs-webgl-2" data-target="webgl-1-vs-webgl-2">WebGL 1 vs WebGL 2</a></li><li class="toc-l3"><a href="#browser-reality" data-target="browser-reality">Browser Reality</a></li><li class="toc-l3"><a href="#how-webgl-differs-from-native-opengl" data-target="how-webgl-differs-from-native-opengl">How WebGL Differs From Native OpenGL</a></li><li class="toc-l3"><a href="#webgl-vs-webgpu" data-target="webgl-vs-webgpu">WebGL vs WebGPU</a></li><li class="toc-l2"><a href="#part-3-the-gl-state-machine" data-target="part-3-the-gl-state-machine">Part 3 - The GL State Machine</a></li><li class="toc-l3"><a href="#binding-targets" data-target="binding-targets">Binding Targets</a></li><li class="toc-l3"><a href="#enable-bits" data-target="enable-bits">Enable Bits</a></li><li class="toc-l3"><a href="#draw-state" data-target="draw-state">Draw State</a></li><li class="toc-l3"><a href="#state-leaks" data-target="state-leaks">State Leaks</a></li><li class="toc-l3"><a href="#objects-vs-state" data-target="objects-vs-state">Objects vs State</a></li><li class="toc-l3"><a href="#the-debugging-rule" data-target="the-debugging-rule">The Debugging Rule</a></li><li class="toc-l2"><a href="#part-4-the-rendering-pipeline" data-target="part-4-the-rendering-pipeline">Part 4 - The Rendering Pipeline</a></li><li class="toc-l3"><a href="#pipeline-overview" data-target="pipeline-overview">Pipeline Overview</a></li><li class="toc-l3"><a href="#vertices" data-target="vertices">Vertices</a></li><li class="toc-l3"><a href="#vertex-shader" data-target="vertex-shader">Vertex Shader</a></li><li class="toc-l3"><a href="#primitive-assembly" data-target="primitive-assembly">Primitive Assembly</a></li><li class="toc-l3"><a href="#clip-space-and-ndc" data-target="clip-space-and-ndc">Clip Space and NDC</a></li><li class="toc-l3"><a href="#rasterization" data-target="rasterization">Rasterization</a></li><li class="toc-l3"><a href="#fragment-shader" data-target="fragment-shader">Fragment Shader</a></li><li class="toc-l3"><a href="#per-fragment-operations" data-target="per-fragment-operations">Per-Fragment Operations</a></li><li class="toc-l3"><a href="#framebuffer" data-target="framebuffer">Framebuffer</a></li><li class="toc-l2"><a href="#part-5-glsl-es-the-shader-language" data-target="part-5-glsl-es-the-shader-language">Part 5 - GLSL ES: The Shader Language</a></li><li class="toc-l3"><a href="#webgl-1-shader-basics" data-target="webgl-1-shader-basics">WebGL 1 Shader Basics</a></li><li class="toc-l3"><a href="#webgl-2-shader-basics" data-target="webgl-2-shader-basics">WebGL 2 Shader Basics</a></li><li class="toc-l3"><a href="#types" data-target="types">Types</a></li><li class="toc-l3"><a href="#precision" data-target="precision">Precision</a></li><li class="toc-l3"><a href="#uniforms" data-target="uniforms">Uniforms</a></li><li class="toc-l3"><a href="#varyings-and-interpolation" data-target="varyings-and-interpolation">Varyings and Interpolation</a></li><li class="toc-l3"><a href="#common-shader-mistakes" data-target="common-shader-mistakes">Common Shader Mistakes</a></li><li class="toc-l2"><a href="#part-6-your-first-webgl-app" data-target="part-6-your-first-webgl-app">Part 6 - Your First WebGL App</a></li><li class="toc-l3"><a href="#html" data-target="html">HTML</a></li><li class="toc-l3"><a href="#get-the-context" data-target="get-the-context">Get the Context</a></li><li class="toc-l3"><a href="#compile-shaders" data-target="compile-shaders">Compile Shaders</a></li><li class="toc-l3"><a href="#link-a-program" data-target="link-a-program">Link a Program</a></li><li class="toc-l3"><a href="#shader-sources" data-target="shader-sources">Shader Sources</a></li><li class="toc-l3"><a href="#upload-vertex-data" data-target="upload-vertex-data">Upload Vertex Data</a></li><li class="toc-l3"><a href="#describe-attribute-layout" data-target="describe-attribute-layout">Describe Attribute Layout</a></li><li class="toc-l3"><a href="#draw" data-target="draw">Draw</a></li><li class="toc-l3"><a href="#the-same-shape-in-opengl" data-target="the-same-shape-in-opengl">The Same Shape in OpenGL</a></li><li class="toc-l2"><a href="#part-7-buffers-attributes-uniforms-and-vaos" data-target="part-7-buffers-attributes-uniforms-and-vaos">Part 7 - Buffers, Attributes, Uniforms, and VAOs</a></li><li class="toc-l3"><a href="#buffer-objects" data-target="buffer-objects">Buffer Objects</a></li><li class="toc-l3"><a href="#usage-hints" data-target="usage-hints">Usage Hints</a></li><li class="toc-l3"><a href="#interleaved-vs-separate-buffers" data-target="interleaved-vs-separate-buffers">Interleaved vs Separate Buffers</a></li><li class="toc-l3"><a href="#index-buffers" data-target="index-buffers">Index Buffers</a></li><li class="toc-l3"><a href="#attribute-locations" data-target="attribute-locations">Attribute Locations</a></li><li class="toc-l3"><a href="#uniforms_1" data-target="uniforms_1">Uniforms</a></li><li class="toc-l3"><a href="#uniform-buffer-objects" data-target="uniform-buffer-objects">Uniform Buffer Objects</a></li><li class="toc-l3"><a href="#vertex-array-objects" data-target="vertex-array-objects">Vertex Array Objects</a></li><li class="toc-l3"><a href="#instancing" data-target="instancing">Instancing</a></li><li class="toc-l2"><a href="#part-8-matrices-coordinates-and-cameras" data-target="part-8-matrices-coordinates-and-cameras">Part 8 - Matrices, Coordinates, and Cameras</a></li><li class="toc-l3"><a href="#coordinate-spaces" data-target="coordinate-spaces">Coordinate Spaces</a></li><li class="toc-l3"><a href="#clip-space" data-target="clip-space">Clip Space</a></li><li class="toc-l3"><a href="#orthographic-projection" data-target="orthographic-projection">Orthographic Projection</a></li><li class="toc-l3"><a href="#perspective-projection" data-target="perspective-projection">Perspective Projection</a></li><li class="toc-l3"><a href="#view-matrix" data-target="view-matrix">View Matrix</a></li><li class="toc-l3"><a href="#screen-coordinates" data-target="screen-coordinates">Screen Coordinates</a></li><li class="toc-l3"><a href="#y-axis-confusion" data-target="y-axis-confusion">Y Axis Confusion</a></li><li class="toc-l2"><a href="#part-9-textures-samplers-and-pixel-data" data-target="part-9-textures-samplers-and-pixel-data">Part 9 - Textures, Samplers, and Pixel Data</a></li><li class="toc-l3"><a href="#create-a-texture" data-target="create-a-texture">Create a Texture</a></li><li class="toc-l3"><a href="#upload-an-image" data-target="upload-an-image">Upload an Image</a></li><li class="toc-l3"><a href="#texture-parameters" data-target="texture-parameters">Texture Parameters</a></li><li class="toc-l3"><a href="#power-of-two-rules" data-target="power-of-two-rules">Power-of-Two Rules</a></li><li class="toc-l3"><a href="#texture-units" data-target="texture-units">Texture Units</a></li><li class="toc-l3"><a href="#mipmaps" data-target="mipmaps">Mipmaps</a></li><li class="toc-l3"><a href="#texture-formats" data-target="texture-formats">Texture Formats</a></li><li class="toc-l3"><a href="#floating-point-textures" data-target="floating-point-textures">Floating-Point Textures</a></li><li class="toc-l2"><a href="#part-10-framebuffers-render-targets-and-post-processing" data-target="part-10-framebuffers-render-targets-and-post-processing">Part 10 - Framebuffers, Render Targets, and Post-Processing</a></li><li class="toc-l3"><a href="#why-render-offscreen" data-target="why-render-offscreen">Why Render Offscreen</a></li><li class="toc-l3"><a href="#create-a-color-render-target" data-target="create-a-color-render-target">Create a Color Render Target</a></li><li class="toc-l3"><a href="#add-depth-storage" data-target="add-depth-storage">Add Depth Storage</a></li><li class="toc-l3"><a href="#check-completeness" data-target="check-completeness">Check Completeness</a></li><li class="toc-l3"><a href="#render-pass-shape" data-target="render-pass-shape">Render Pass Shape</a></li><li class="toc-l3"><a href="#fullscreen-triangle" data-target="fullscreen-triangle">Fullscreen Triangle</a></li><li class="toc-l3"><a href="#multiple-render-targets" data-target="multiple-render-targets">Multiple Render Targets</a></li><li class="toc-l2"><a href="#part-11-depth-stencil-blending-and-transparency" data-target="part-11-depth-stencil-blending-and-transparency">Part 11 - Depth, Stencil, Blending, and Transparency</a></li><li class="toc-l3"><a href="#depth-testing" data-target="depth-testing">Depth Testing</a></li><li class="toc-l3"><a href="#depth-writes" data-target="depth-writes">Depth Writes</a></li><li class="toc-l3"><a href="#face-culling" data-target="face-culling">Face Culling</a></li><li class="toc-l3"><a href="#blending" data-target="blending">Blending</a></li><li class="toc-l3"><a href="#premultiplied-alpha" data-target="premultiplied-alpha">Premultiplied Alpha</a></li><li class="toc-l3"><a href="#transparency-sorting" data-target="transparency-sorting">Transparency Sorting</a></li><li class="toc-l3"><a href="#stencil-buffer" data-target="stencil-buffer">Stencil Buffer</a></li><li class="toc-l2"><a href="#part-12-performance-debugging-and-production-practices" data-target="part-12-performance-debugging-and-production-practices">Part 12 - Performance, Debugging, and Production Practices</a></li><li class="toc-l3"><a href="#the-performance-thesis" data-target="the-performance-thesis">The Performance Thesis</a></li><li class="toc-l3"><a href="#avoid-per-frame-resource-creation" data-target="avoid-per-frame-resource-creation">Avoid Per-Frame Resource Creation</a></li><li class="toc-l3"><a href="#batch-draw-calls" data-target="batch-draw-calls">Batch Draw Calls</a></li><li class="toc-l3"><a href="#avoid-readbacks" data-target="avoid-readbacks">Avoid Readbacks</a></li><li class="toc-l3"><a href="#texture-performance" data-target="texture-performance">Texture Performance</a></li><li class="toc-l3"><a href="#shader-performance" data-target="shader-performance">Shader Performance</a></li><li class="toc-l3"><a href="#context-loss" data-target="context-loss">Context Loss</a></li><li class="toc-l3"><a href="#error-checking" data-target="error-checking">Error Checking</a></li><li class="toc-l3"><a href="#debug-extensions-and-tools" data-target="debug-extensions-and-tools">Debug Extensions and Tools</a></li><li class="toc-l3"><a href="#production-checklist" data-target="production-checklist">Production Checklist</a></li><li class="toc-l2"><a href="#part-13-ecosystem-opengl-mapping-and-recipes" data-target="part-13-ecosystem-opengl-mapping-and-recipes">Part 13 - Ecosystem, OpenGL Mapping, and Recipes</a></li><li class="toc-l3"><a href="#libraries-and-engines" data-target="libraries-and-engines">Libraries and Engines</a></li><li class="toc-l3"><a href="#webgl-to-opengl-mapping" data-target="webgl-to-opengl-mapping">WebGL to OpenGL Mapping</a></li><li class="toc-l3"><a href="#recipe-resize-correctly" data-target="recipe-resize-correctly">Recipe: Resize Correctly</a></li><li class="toc-l3"><a href="#recipe-a-small-program-helper" data-target="recipe-a-small-program-helper">Recipe: A Small Program Helper</a></li><li class="toc-l3"><a href="#recipe-texture-atlas-sprites" data-target="recipe-texture-atlas-sprites">Recipe: Texture Atlas Sprites</a></li><li class="toc-l3"><a href="#recipe-picking-with-an-id-buffer" data-target="recipe-picking-with-an-id-buffer">Recipe: Picking With an ID Buffer</a></li><li class="toc-l3"><a href="#recipe-particle-instancing" data-target="recipe-particle-instancing">Recipe: Particle Instancing</a></li><li class="toc-l3"><a href="#recipe-post-processing-pipeline" data-target="recipe-post-processing-pipeline">Recipe: Post-Processing Pipeline</a></li><li class="toc-l3"><a href="#learning-path" data-target="learning-path">Learning Path</a></li><li class="toc-l3"><a href="#the-final-mental-model" data-target="the-final-mental-model">The Final Mental Model</a></li></ul></nav></aside>
+  <main><h1 id="webgl-and-opengl-study-guide">WebGL and OpenGL Study Guide</h1>
+<p>A depth-first guide to the GL family of graphics APIs for engineers who know JavaScript and the web platform but want to understand the older OpenGL mental model that still sits underneath a huge amount of real graphics work. The guide uses WebGL as the teaching environment because it runs in the browser, has a small setup surface, and exposes the OpenGL ES style API directly. The goal is not merely to learn "browser 3D." The goal is to learn the concepts behind OpenGL, OpenGL ES, WebGL, and many engine abstractions: the rendering pipeline, global state, buffers, attributes, uniforms, textures, framebuffers, depth, blending, instancing, extensions, debugging, and performance.</p>
+<p>The throughline is this: <strong>WebGL is OpenGL ES in the browser, and OpenGL is a state machine for feeding a programmable rasterization pipeline</strong>. You bind objects to targets, mutate context state, upload data, choose shaders, describe vertex layouts, and issue draw calls. The GPU then runs vertex shaders, assembles primitives, rasterizes them into fragments, runs fragment shaders, tests depth and stencil, blends with the framebuffer, and presents pixels.</p>
+<p>This guide pairs naturally with the <a href="webgpu-study-guide.html">WebGPU guide</a>, <a href="typescript-study-guide.html">TypeScript guide</a>, <a href="advanced-nodejs-study-guide.html">Advanced Node.js guide</a>, <a href="cpp26-study-guide.html">C++26 and Modern C++ guide</a>, and <a href="esp32-study-guide.html">ESP32 guide</a>. WebGL is a web API, but the concepts are systems concepts: memory layout, data transfer, parallel execution, driver overhead, synchronization, numeric precision, and hardware-shaped tradeoffs.</p>
+<p>Primary references: <a href="https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API">MDN WebGL API</a>, the <a href="https://registry.khronos.org/webgl/specs/latest/1.0/">WebGL 1.0 specification</a>, the <a href="https://registry.khronos.org/webgl/specs/latest/2.0/">WebGL 2.0 specification</a>, <a href="https://registry.khronos.org/OpenGL/specs/es/2.0/es_full_spec_2.0.pdf">OpenGL ES 2.0 specification</a>, <a href="https://registry.khronos.org/OpenGL/specs/es/3.0/es_spec_3.0.pdf">OpenGL ES 3.0 specification</a>, <a href="https://www.khronos.org/opengl/wiki/">Khronos OpenGL wiki</a>, <a href="https://webglfundamentals.org/">WebGL Fundamentals</a>, <a href="https://webgl2fundamentals.org/">WebGL2 Fundamentals</a>, and <a href="https://learnopengl.com/">LearnOpenGL</a>.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1-what-gl-is">Part 1 - What GL Is</a></li>
+<li><a href="#part-2-webgl-opengl-and-opengl-es">Part 2 - WebGL, OpenGL, and OpenGL ES</a></li>
+<li><a href="#part-3-the-gl-state-machine">Part 3 - The GL State Machine</a></li>
+<li><a href="#part-4-the-rendering-pipeline">Part 4 - The Rendering Pipeline</a></li>
+<li><a href="#part-5-glsl-es-the-shader-language">Part 5 - GLSL ES: The Shader Language</a></li>
+<li><a href="#part-6-your-first-webgl-app">Part 6 - Your First WebGL App</a></li>
+<li><a href="#part-7-buffers-attributes-uniforms-and-vaos">Part 7 - Buffers, Attributes, Uniforms, and VAOs</a></li>
+<li><a href="#part-8-matrices-coordinates-and-cameras">Part 8 - Matrices, Coordinates, and Cameras</a></li>
+<li><a href="#part-9-textures-samplers-and-pixel-data">Part 9 - Textures, Samplers, and Pixel Data</a></li>
+<li><a href="#part-10-framebuffers-render-targets-and-post-processing">Part 10 - Framebuffers, Render Targets, and Post-Processing</a></li>
+<li><a href="#part-11-depth-stencil-blending-and-transparency">Part 11 - Depth, Stencil, Blending, and Transparency</a></li>
+<li><a href="#part-12-performance-debugging-and-production-practices">Part 12 - Performance, Debugging, and Production Practices</a></li>
+<li><a href="#part-13-ecosystem-opengl-mapping-and-recipes">Part 13 - Ecosystem, OpenGL Mapping, and Recipes</a></li>
+</ol>
+<hr>
+<h2 id="part-1-what-gl-is">Part 1 - What GL Is</h2>
+<p>GL is a family of low-level graphics APIs designed around rasterization. Rasterization means turning geometric primitives, usually triangles, into pixels. You send vertex data and shader programs to the GPU, configure a large set of rendering state, and ask the GPU to draw.</p>
+<p>If you have used the web platform for years, place WebGL in this family:</p>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>What it gives you</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Canvas 2D</td>
+<td>Immediate-mode 2D drawing from JavaScript</td>
+</tr>
+<tr>
+<td>SVG</td>
+<td>Declarative vector graphics in the DOM</td>
+</tr>
+<tr>
+<td>CSS transforms/filters</td>
+<td>Browser-managed visual effects</td>
+</tr>
+<tr>
+<td>WebGL</td>
+<td>Low-level GPU rasterization through OpenGL ES</td>
+</tr>
+<tr>
+<td>WebGPU</td>
+<td>Modern explicit rendering and compute</td>
+</tr>
+</tbody>
+</table>
+<p>OpenGL and WebGL are not scene graphs, game engines, model loaders, or UI frameworks. They do not know what a camera, mesh, material, sprite, or light is. Those are engine concepts built on top of GL.</p>
+<h3 id="the-one-sentence-version">The One-Sentence Version</h3>
+<p>GL is a stateful API for configuring a programmable pipeline that transforms vertices into fragments and writes those fragments into a framebuffer.</p>
+<h3 id="why-gl-matters">Why GL Matters</h3>
+<p>OpenGL is older than the modern web, but it still matters because the mental model spread everywhere:</p>
+<ul>
+<li>WebGL is based on OpenGL ES.</li>
+<li>OpenGL ES shaped mobile graphics for years.</li>
+<li>Many engines still expose GL concepts even when their backend is Metal, Vulkan, Direct3D, or WebGPU.</li>
+<li>Shader programming, buffers, textures, depth testing, blending, and framebuffers remain core graphics ideas.</li>
+<li>Legacy and embedded systems often still use GL or GLES directly.</li>
+</ul>
+<p>Even when you later move to WebGPU, Vulkan, Metal, or Direct3D 12, learning GL gives you the vocabulary of GPU rasterization. WebGPU changes the API shape. It does not erase the pipeline.</p>
+<h3 id="the-central-mental-model">The Central Mental Model</h3>
+<p>Most GL work follows this pattern:</p>
+<ol>
+<li>Create GPU objects.</li>
+<li>Bind an object to a target.</li>
+<li>Fill that object with data.</li>
+<li>Compile and link shader programs.</li>
+<li>Tell GL how to read vertex data.</li>
+<li>Set global state such as viewport, depth test, blend mode, and culling.</li>
+<li>Bind textures and uniforms.</li>
+<li>Issue a draw call.</li>
+</ol>
+<p>The thing that surprises new users is that many calls act on "whatever object is currently bound." This is the source of both GL's convenience and its pain.</p>
+<pre><code class="language-javascript">gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
+</code></pre>
+<p><code>bufferData</code> does not receive <code>positionBuffer</code> directly. It modifies the buffer currently bound to <code>ARRAY_BUFFER</code>.</p>
+<h3 id="immediate-mode-vs-modern-gl">Immediate Mode vs Modern GL</h3>
+<p>Old desktop OpenGL had immediate mode:</p>
+<pre><code class="language-c">glBegin(GL_TRIANGLES);
+glVertex3f(0.0f, 1.0f, 0.0f);
+glVertex3f(-1.0f, -1.0f, 0.0f);
+glVertex3f(1.0f, -1.0f, 0.0f);
+glEnd();
+</code></pre>
+<p>That style is gone from WebGL and modern OpenGL practice. WebGL starts you in the programmable era. You use buffers and shaders from the beginning.</p>
+<p>The important shift:</p>
+<table>
+<thead>
+<tr>
+<th>Old idea</th>
+<th>Modern idea</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Fixed-function transform and lighting</td>
+<td>Vertex and fragment shaders</td>
+</tr>
+<tr>
+<td>Per-vertex calls</td>
+<td>Buffer objects</td>
+</tr>
+<tr>
+<td>Matrix stack</td>
+<td>Your own matrices in uniforms</td>
+</tr>
+<tr>
+<td>Built-in lights/materials</td>
+<td>Your own lighting code</td>
+</tr>
+<tr>
+<td>Hidden global defaults</td>
+<td>Explicit shader inputs and state setup</td>
+</tr>
+</tbody>
+</table>
+<p>This guide teaches the modern style.</p>
+<hr>
+<h2 id="part-2-webgl-opengl-and-opengl-es">Part 2 - WebGL, OpenGL, and OpenGL ES</h2>
+<p>WebGL is not exactly desktop OpenGL. It is a web-safe API derived from OpenGL ES.</p>
+<h3 id="the-family-tree">The Family Tree</h3>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>Environment</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpenGL</td>
+<td>Desktop/native</td>
+<td>Long-lived cross-platform graphics API</td>
+</tr>
+<tr>
+<td>OpenGL ES</td>
+<td>Embedded/mobile</td>
+<td>Smaller profile for phones, tablets, embedded devices</td>
+</tr>
+<tr>
+<td>WebGL 1</td>
+<td>Browser</td>
+<td>Based on OpenGL ES 2.0</td>
+</tr>
+<tr>
+<td>WebGL 2</td>
+<td>Browser</td>
+<td>Based on OpenGL ES 3.0</td>
+</tr>
+</tbody>
+</table>
+<p>WebGL removes unsafe features, defines stricter behavior, integrates with browser security rules, and runs through browser GPU process architecture. But the programming model is very close to OpenGL ES.</p>
+<h3 id="webgl-1-vs-webgl-2">WebGL 1 vs WebGL 2</h3>
+<p>WebGL 1 is the broader baseline. WebGL 2 adds many features that make the API feel closer to a modern, comfortable GL:</p>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>WebGL 1</th>
+<th>WebGL 2</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Base</td>
+<td>OpenGL ES 2.0</td>
+<td>OpenGL ES 3.0</td>
+</tr>
+<tr>
+<td>Shader version</td>
+<td>GLSL ES 1.00</td>
+<td>GLSL ES 3.00</td>
+</tr>
+<tr>
+<td>Vertex array objects</td>
+<td>Extension</td>
+<td>Core</td>
+</tr>
+<tr>
+<td>Instanced drawing</td>
+<td>Extension</td>
+<td>Core</td>
+</tr>
+<tr>
+<td>Multiple render targets</td>
+<td>Extension</td>
+<td>Core</td>
+</tr>
+<tr>
+<td>3D textures</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Integer textures</td>
+<td>Limited</td>
+<td>Better</td>
+</tr>
+<tr>
+<td>Transform feedback</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Uniform buffer objects</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Sync objects</td>
+<td>No</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<p>Use WebGL 2 when you can. Keep WebGL 1 in mind when maximum reach matters.</p>
+<h3 id="browser-reality">Browser Reality</h3>
+<p>WebGL has broad browser support, but it still has constraints:</p>
+<ul>
+<li>It requires a canvas.</li>
+<li>It may be disabled by browser, driver, GPU blocklist, enterprise policy, or privacy settings.</li>
+<li>Resources can be lost through context loss.</li>
+<li>Cross-origin images and videos must satisfy CORS rules before they can be sampled safely.</li>
+<li>Precision and extension availability vary.</li>
+</ul>
+<p>Always detect support:</p>
+<pre><code class="language-javascript">const canvas = document.querySelector('canvas');
+const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+
+if (!gl) {
+  showFallback();
+}
+</code></pre>
+<h3 id="how-webgl-differs-from-native-opengl">How WebGL Differs From Native OpenGL</h3>
+<p>Native OpenGL code usually runs in a process that talks to the driver. WebGL code runs in a browser tab. That changes the risk model.</p>
+<p>WebGL validates aggressively because the browser cannot let shader code or malformed buffers read arbitrary memory or crash the system. Many errors that native GL drivers might tolerate are rejected or sanitized in WebGL.</p>
+<p>Key differences:</p>
+<ul>
+<li>WebGL has no client-side vertex arrays. Vertex data lives in buffers.</li>
+<li>WebGL initializes resources more strictly to avoid data leaks.</li>
+<li>WebGL restricts texture usage until images are complete and origin-clean.</li>
+<li>WebGL exposes extensions through <code>getExtension</code>, not through arbitrary driver entry points.</li>
+<li>WebGL context loss is a normal event your app should handle.</li>
+</ul>
+<h3 id="webgl-vs-webgpu">WebGL vs WebGPU</h3>
+<p>WebGL is the older global-state model. WebGPU is the newer explicit model.</p>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>WebGL</th>
+<th>WebGPU</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Heritage</td>
+<td>OpenGL ES</td>
+<td>Vulkan/Metal/D3D12</td>
+</tr>
+<tr>
+<td>State</td>
+<td>Mutable context state</td>
+<td>Pipeline and bind objects</td>
+</tr>
+<tr>
+<td>Shader language</td>
+<td>GLSL ES</td>
+<td>WGSL</td>
+</tr>
+<tr>
+<td>Compute</td>
+<td>No true compute shaders</td>
+<td>Compute shaders</td>
+</tr>
+<tr>
+<td>Binding model</td>
+<td>Attributes, uniforms, texture units</td>
+<td>Bind groups</td>
+</tr>
+<tr>
+<td>Command model</td>
+<td>Immediate calls</td>
+<td>Recorded command buffers</td>
+</tr>
+<tr>
+<td>Reach</td>
+<td>Very broad</td>
+<td>Modern and growing</td>
+</tr>
+<tr>
+<td>Best use</td>
+<td>Portable graphics, legacy reach, learning GL</td>
+<td>Modern engines, compute, explicit control</td>
+</tr>
+</tbody>
+</table>
+<p>The APIs differ, but the drawing ideas carry over: vertices, primitives, textures, render targets, depth, blending, and shader stages.</p>
+<hr>
+<h2 id="part-3-the-gl-state-machine">Part 3 - The GL State Machine</h2>
+<p>GL is often described as a state machine. That is not an insult. It is the main fact you must internalize.</p>
+<h3 id="binding-targets">Binding Targets</h3>
+<p>Objects are not usually passed directly to every call. Instead, you bind them to named targets.</p>
+<pre><code class="language-javascript">const buffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0, 0, 1, 0, 0, 1]), gl.STATIC_DRAW);
+</code></pre>
+<p>Targets include:</p>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>gl.ARRAY_BUFFER</code></td>
+<td>Vertex attribute data</td>
+</tr>
+<tr>
+<td><code>gl.ELEMENT_ARRAY_BUFFER</code></td>
+<td>Index data</td>
+</tr>
+<tr>
+<td><code>gl.TEXTURE_2D</code></td>
+<td>2D texture binding</td>
+</tr>
+<tr>
+<td><code>gl.FRAMEBUFFER</code></td>
+<td>Offscreen or onscreen render target binding</td>
+</tr>
+<tr>
+<td><code>gl.RENDERBUFFER</code></td>
+<td>Render-only image storage</td>
+</tr>
+<tr>
+<td><code>gl.VERTEX_ARRAY</code></td>
+<td>Vertex input state in WebGL 2</td>
+</tr>
+</tbody>
+</table>
+<p>The phrase "current binding" appears constantly in GL documentation. Current bindings are hidden inputs to later calls.</p>
+<h3 id="enable-bits">Enable Bits</h3>
+<p>Some state is toggled:</p>
+<pre><code class="language-javascript">gl.enable(gl.DEPTH_TEST);
+gl.enable(gl.CULL_FACE);
+gl.disable(gl.BLEND);
+</code></pre>
+<p>Common enable bits:</p>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>DEPTH_TEST</code></td>
+<td>Reject fragments behind existing depth</td>
+</tr>
+<tr>
+<td><code>BLEND</code></td>
+<td>Combine new fragment color with existing color</td>
+</tr>
+<tr>
+<td><code>CULL_FACE</code></td>
+<td>Skip back-facing or front-facing triangles</td>
+</tr>
+<tr>
+<td><code>SCISSOR_TEST</code></td>
+<td>Restrict drawing to a rectangle</td>
+</tr>
+<tr>
+<td><code>STENCIL_TEST</code></td>
+<td>Use stencil buffer tests and writes</td>
+</tr>
+</tbody>
+</table>
+<p>These are global to the context. If one rendering path enables blending and forgets to disable it, another path may render incorrectly.</p>
+<h3 id="draw-state">Draw State</h3>
+<p>A draw call depends on many pieces of state:</p>
+<ul>
+<li>current program,</li>
+<li>current framebuffer,</li>
+<li>current viewport,</li>
+<li>current vertex array or attribute setup,</li>
+<li>bound index buffer,</li>
+<li>active textures and samplers,</li>
+<li>uniform values,</li>
+<li>depth/stencil/blend/cull settings,</li>
+<li>color/depth/stencil write masks.</li>
+</ul>
+<p>That means this innocent call:</p>
+<pre><code class="language-javascript">gl.drawArrays(gl.TRIANGLES, 0, 3);
+</code></pre>
+<p>is only meaningful if all required state has already been configured.</p>
+<h3 id="state-leaks">State Leaks</h3>
+<p>GL state leaks are a major source of bugs. A state leak happens when code changes context state and later code assumes the old state still exists.</p>
+<p>Bad pattern:</p>
+<pre><code class="language-javascript">function drawTransparentThing() {
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+}
+</code></pre>
+<p>This may break later opaque drawing because blending remains enabled.</p>
+<p>Better pattern:</p>
+<pre><code class="language-javascript">function drawTransparentThing() {
+  gl.enable(gl.BLEND);
+  gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+  gl.drawArrays(gl.TRIANGLES, 0, 6);
+  gl.disable(gl.BLEND);
+}
+</code></pre>
+<p>Large renderers usually go further: they centralize state changes in a renderer object, sort draw calls by material, and track cached state so they only call GL when state actually changes.</p>
+<h3 id="objects-vs-state">Objects vs State</h3>
+<p>GL has object handles:</p>
+<ul>
+<li>buffers,</li>
+<li>textures,</li>
+<li>programs,</li>
+<li>shaders,</li>
+<li>framebuffers,</li>
+<li>renderbuffers,</li>
+<li>vertex arrays,</li>
+<li>queries,</li>
+<li>sync objects.</li>
+</ul>
+<p>But objects still interact with context state. For example, a texture object stores image levels and parameters, but the active texture unit decides which texture the current shader sampler will read.</p>
+<h3 id="the-debugging-rule">The Debugging Rule</h3>
+<p>When a GL program draws nothing, ask:</p>
+<ol>
+<li>Is the canvas size and viewport correct?</li>
+<li>Is the program linked and in use?</li>
+<li>Are attribute locations enabled and pointing at the right buffers?</li>
+<li>Are uniforms set after linking and before drawing?</li>
+<li>Is the primitive inside clip space?</li>
+<li>Is depth, culling, stencil, scissor, or blending hiding the result?</li>
+<li>Is the framebuffer complete?</li>
+<li>Did <code>gl.getError()</code> report anything earlier?</li>
+</ol>
+<p>Most bugs are wrong state, wrong data layout, or wrong coordinates.</p>
+<hr>
+<h2 id="part-4-the-rendering-pipeline">Part 4 - The Rendering Pipeline</h2>
+<p>The GL pipeline is the conceptual spine of the API.</p>
+<h3 id="pipeline-overview">Pipeline Overview</h3>
+<p>For a simple draw:</p>
+<pre><code class="language-text">vertex buffers
+  -&gt; vertex shader
+  -&gt; primitive assembly
+  -&gt; clipping
+  -&gt; rasterization
+  -&gt; fragment shader
+  -&gt; depth/stencil tests
+  -&gt; blending
+  -&gt; framebuffer
+</code></pre>
+<p>You control parts of this pipeline with shaders and parts with fixed-function state.</p>
+<h3 id="vertices">Vertices</h3>
+<p>A vertex is not necessarily a position. A vertex is one logical record of input data. It may contain:</p>
+<ul>
+<li>position,</li>
+<li>normal,</li>
+<li>color,</li>
+<li>texture coordinates,</li>
+<li>tangent,</li>
+<li>bone indices,</li>
+<li>bone weights,</li>
+<li>instance data.</li>
+</ul>
+<p>In WebGL, vertex data is usually stored in typed arrays and uploaded into buffers.</p>
+<pre><code class="language-javascript">const vertices = new Float32Array([
+  // x, y, r, g, b
+   0.0,  0.8, 1.0, 0.0, 0.0,
+  -0.8, -0.8, 0.0, 1.0, 0.0,
+   0.8, -0.8, 0.0, 0.0, 1.0,
+]);
+</code></pre>
+<h3 id="vertex-shader">Vertex Shader</h3>
+<p>The vertex shader runs once per vertex. Its required job is to write clip-space position.</p>
+<pre><code class="language-glsl">attribute vec2 a_position;
+attribute vec3 a_color;
+
+varying vec3 v_color;
+
+void main() {
+  v_color = a_color;
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}
+</code></pre>
+<p>In WebGL 2:</p>
+<pre><code class="language-glsl">#version 300 es
+in vec2 a_position;
+in vec3 a_color;
+
+out vec3 v_color;
+
+void main() {
+  v_color = a_color;
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}
+</code></pre>
+<h3 id="primitive-assembly">Primitive Assembly</h3>
+<p>After vertex shading, GL groups vertices into primitives.</p>
+<p>Common modes:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POINTS</code></td>
+<td>Each vertex is a point</td>
+</tr>
+<tr>
+<td><code>LINES</code></td>
+<td>Each pair is a line</td>
+</tr>
+<tr>
+<td><code>LINE_STRIP</code></td>
+<td>Connected line chain</td>
+</tr>
+<tr>
+<td><code>TRIANGLES</code></td>
+<td>Each group of three vertices is a triangle</td>
+</tr>
+<tr>
+<td><code>TRIANGLE_STRIP</code></td>
+<td>Connected triangle strip</td>
+</tr>
+<tr>
+<td><code>TRIANGLE_FAN</code></td>
+<td>Fan around first vertex</td>
+</tr>
+</tbody>
+</table>
+<p>Triangles are the normal primitive for real rendering. GPUs are built around triangles.</p>
+<h3 id="clip-space-and-ndc">Clip Space and NDC</h3>
+<p><code>gl_Position</code> is in clip space. After the vertex shader, GL divides by <code>w</code>:</p>
+<pre><code class="language-text">ndc = clip.xyz / clip.w
+</code></pre>
+<p>Normalized device coordinates are visible when:</p>
+<pre><code class="language-text">-1 &lt;= x &lt;= 1
+-1 &lt;= y &lt;= 1
+-1 &lt;= z &lt;= 1
+</code></pre>
+<p>WebGL follows OpenGL's clip-space depth range of <code>-1..1</code>. This differs from WebGPU and Direct3D style APIs, which use <code>0..1</code>.</p>
+<h3 id="rasterization">Rasterization</h3>
+<p>Rasterization converts primitives into fragments. A fragment is a candidate pixel result. It has interpolated values from the vertex shader.</p>
+<p>If one vertex has red, one green, and one blue, the fragment shader receives interpolated colors across the triangle.</p>
+<pre><code class="language-glsl">precision mediump float;
+
+varying vec3 v_color;
+
+void main() {
+  gl_FragColor = vec4(v_color, 1.0);
+}
+</code></pre>
+<h3 id="fragment-shader">Fragment Shader</h3>
+<p>The fragment shader decides the output color. It can sample textures, compute lighting, discard fragments, and output color values.</p>
+<p>In WebGL 2:</p>
+<pre><code class="language-glsl">#version 300 es
+precision highp float;
+
+in vec3 v_color;
+out vec4 outColor;
+
+void main() {
+  outColor = vec4(v_color, 1.0);
+}
+</code></pre>
+<h3 id="per-fragment-operations">Per-Fragment Operations</h3>
+<p>After the fragment shader, fixed-function tests and operations happen:</p>
+<ul>
+<li>scissor test,</li>
+<li>stencil test,</li>
+<li>depth test,</li>
+<li>blending,</li>
+<li>dithering,</li>
+<li>color write mask.</li>
+</ul>
+<p>These are not shader code, but they strongly affect the result.</p>
+<h3 id="framebuffer">Framebuffer</h3>
+<p>The framebuffer is the destination for rendering. The default framebuffer is the canvas. Custom framebuffers let you render into textures for shadow maps, post-processing, picking, deferred rendering, and intermediate passes.</p>
+<hr>
+<h2 id="part-5-glsl-es-the-shader-language">Part 5 - GLSL ES: The Shader Language</h2>
+<p>WebGL shaders use GLSL ES, the OpenGL ES shading language.</p>
+<h3 id="webgl-1-shader-basics">WebGL 1 Shader Basics</h3>
+<p>WebGL 1 uses GLSL ES 1.00.</p>
+<p>Vertex shader:</p>
+<pre><code class="language-glsl">attribute vec2 a_position;
+attribute vec2 a_uv;
+
+uniform mat4 u_matrix;
+
+varying vec2 v_uv;
+
+void main() {
+  v_uv = a_uv;
+  gl_Position = u_matrix * vec4(a_position, 0.0, 1.0);
+}
+</code></pre>
+<p>Fragment shader:</p>
+<pre><code class="language-glsl">precision mediump float;
+
+uniform sampler2D u_texture;
+
+varying vec2 v_uv;
+
+void main() {
+  gl_FragColor = texture2D(u_texture, v_uv);
+}
+</code></pre>
+<p>Important keywords:</p>
+<table>
+<thead>
+<tr>
+<th>Keyword</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>attribute</code></td>
+<td>Per-vertex input to vertex shader</td>
+</tr>
+<tr>
+<td><code>uniform</code></td>
+<td>Constant value for a draw call</td>
+</tr>
+<tr>
+<td><code>varying</code></td>
+<td>Interpolated value from vertex to fragment shader</td>
+</tr>
+<tr>
+<td><code>precision</code></td>
+<td>Default numeric precision</td>
+</tr>
+<tr>
+<td><code>sampler2D</code></td>
+<td>Texture sampler type</td>
+</tr>
+</tbody>
+</table>
+<h3 id="webgl-2-shader-basics">WebGL 2 Shader Basics</h3>
+<p>WebGL 2 uses GLSL ES 3.00 when the shader begins with <code>#version 300 es</code>.</p>
+<pre><code class="language-glsl">#version 300 es
+in vec2 a_position;
+in vec2 a_uv;
+
+uniform mat4 u_matrix;
+
+out vec2 v_uv;
+
+void main() {
+  v_uv = a_uv;
+  gl_Position = u_matrix * vec4(a_position, 0.0, 1.0);
+}
+</code></pre>
+<pre><code class="language-glsl">#version 300 es
+precision highp float;
+
+uniform sampler2D u_texture;
+
+in vec2 v_uv;
+out vec4 outColor;
+
+void main() {
+  outColor = texture(u_texture, v_uv);
+}
+</code></pre>
+<p>Changes from WebGL 1:</p>
+<ul>
+<li><code>attribute</code> becomes <code>in</code>.</li>
+<li><code>varying</code> becomes <code>out</code> in vertex shaders and <code>in</code> in fragment shaders.</li>
+<li><code>gl_FragColor</code> is replaced by user-defined output variables.</li>
+<li><code>texture2D</code> becomes <code>texture</code>.</li>
+</ul>
+<h3 id="types">Types</h3>
+<p>Common GLSL types:</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>float</code>, <code>int</code>, <code>bool</code></td>
+<td>Scalars</td>
+</tr>
+<tr>
+<td><code>vec2</code>, <code>vec3</code>, <code>vec4</code></td>
+<td>Float vectors</td>
+</tr>
+<tr>
+<td><code>ivec2</code>, <code>ivec3</code>, <code>ivec4</code></td>
+<td>Integer vectors</td>
+</tr>
+<tr>
+<td><code>mat3</code>, <code>mat4</code></td>
+<td>Matrices</td>
+</tr>
+<tr>
+<td><code>sampler2D</code>, <code>samplerCube</code></td>
+<td>Texture samplers</td>
+</tr>
+</tbody>
+</table>
+<p>Vector swizzling is common:</p>
+<pre><code class="language-glsl">vec4 color = vec4(0.2, 0.4, 0.8, 1.0);
+vec3 rgb = color.rgb;
+vec2 yx = color.yx;
+</code></pre>
+<h3 id="precision">Precision</h3>
+<p>Fragment shaders in WebGL require precision declarations for floats:</p>
+<pre><code class="language-glsl">precision mediump float;
+</code></pre>
+<p>Common choices:</p>
+<table>
+<thead>
+<tr>
+<th>Precision</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lowp</code></td>
+<td>Colors or small values when acceptable</td>
+</tr>
+<tr>
+<td><code>mediump</code></td>
+<td>Many mobile-friendly fragment calculations</td>
+</tr>
+<tr>
+<td><code>highp</code></td>
+<td>Coordinates, lighting, physically sensitive math</td>
+</tr>
+</tbody>
+</table>
+<p>Use <code>highp</code> when correctness requires it, but remember that old mobile GPUs may have weaker support or performance for high precision in fragment shaders.</p>
+<h3 id="uniforms">Uniforms</h3>
+<p>Uniforms are values that remain constant across one draw call.</p>
+<pre><code class="language-javascript">const matrixLocation = gl.getUniformLocation(program, 'u_matrix');
+gl.useProgram(program);
+gl.uniformMatrix4fv(matrixLocation, false, matrix);
+</code></pre>
+<p>Uniform calls are typed:</p>
+<table>
+<thead>
+<tr>
+<th>JavaScript call</th>
+<th>GLSL type</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>uniform1f</code></td>
+<td><code>float</code></td>
+</tr>
+<tr>
+<td><code>uniform2f</code></td>
+<td><code>vec2</code></td>
+</tr>
+<tr>
+<td><code>uniform3fv</code></td>
+<td><code>vec3</code> or array of <code>vec3</code></td>
+</tr>
+<tr>
+<td><code>uniformMatrix4fv</code></td>
+<td><code>mat4</code></td>
+</tr>
+<tr>
+<td><code>uniform1i</code></td>
+<td><code>int</code>, <code>bool</code>, sampler texture unit</td>
+</tr>
+</tbody>
+</table>
+<p>Sampler uniforms are integers naming texture units.</p>
+<h3 id="varyings-and-interpolation">Varyings and Interpolation</h3>
+<p>Varyings carry data from vertex shader to fragment shader. GL interpolates them across the primitive.</p>
+<pre><code class="language-glsl">// vertex
+varying vec2 v_uv;
+v_uv = a_uv;
+
+// fragment
+varying vec2 v_uv;
+vec4 texel = texture2D(u_texture, v_uv);
+</code></pre>
+<p>This is why texture coordinates work: each fragment receives a different interpolated UV.</p>
+<h3 id="common-shader-mistakes">Common Shader Mistakes</h3>
+<ul>
+<li>Forgetting <code>precision mediump float;</code> in fragment shaders.</li>
+<li>Using WebGL 2 syntax in WebGL 1.</li>
+<li>Mismatching varying names or types between stages.</li>
+<li>Thinking uniforms change per vertex. They do not.</li>
+<li>Doing expensive branches or loops in fragment shaders without measuring.</li>
+<li>Letting values go outside expected ranges and creating NaNs.</li>
+<li>Forgetting that texture coordinate origin conventions differ between sources.</li>
+</ul>
+<hr>
+<h2 id="part-6-your-first-webgl-app">Part 6 - Your First WebGL App</h2>
+<p>This part builds the smallest useful WebGL renderer: draw a colored triangle.</p>
+<h3 id="html">HTML</h3>
+<pre><code class="language-html">&lt;canvas id=&quot;gl&quot; width=&quot;640&quot; height=&quot;360&quot;&gt;&lt;/canvas&gt;
+&lt;script type=&quot;module&quot; src=&quot;./main.js&quot;&gt;&lt;/script&gt;
+</code></pre>
+<h3 id="get-the-context">Get the Context</h3>
+<pre><code class="language-javascript">const canvas = document.querySelector('#gl');
+const gl = canvas.getContext('webgl');
+
+if (!gl) {
+  throw new Error('WebGL is not supported.');
+}
+</code></pre>
+<h3 id="compile-shaders">Compile Shaders</h3>
+<pre><code class="language-javascript">function compileShader(gl, type, source) {
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    const log = gl.getShaderInfoLog(shader);
+    gl.deleteShader(shader);
+    throw new Error(log);
+  }
+
+  return shader;
+}
+</code></pre>
+<h3 id="link-a-program">Link a Program</h3>
+<pre><code class="language-javascript">function createProgram(gl, vertexSource, fragmentSource) {
+  const vertexShader = compileShader(gl, gl.VERTEX_SHADER, vertexSource);
+  const fragmentShader = compileShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+
+  const program = gl.createProgram();
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
+  gl.linkProgram(program);
+
+  gl.deleteShader(vertexShader);
+  gl.deleteShader(fragmentShader);
+
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+    const log = gl.getProgramInfoLog(program);
+    gl.deleteProgram(program);
+    throw new Error(log);
+  }
+
+  return program;
+}
+</code></pre>
+<h3 id="shader-sources">Shader Sources</h3>
+<pre><code class="language-javascript">const vertexSource = `
+attribute vec2 a_position;
+attribute vec3 a_color;
+
+varying vec3 v_color;
+
+void main() {
+  v_color = a_color;
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}
+`;
+
+const fragmentSource = `
+precision mediump float;
+
+varying vec3 v_color;
+
+void main() {
+  gl_FragColor = vec4(v_color, 1.0);
+}
+`;
+</code></pre>
+<h3 id="upload-vertex-data">Upload Vertex Data</h3>
+<pre><code class="language-javascript">const vertices = new Float32Array([
+  // x, y, r, g, b
+   0.0,  0.8, 1.0, 0.0, 0.0,
+  -0.8, -0.8, 0.0, 1.0, 0.0,
+   0.8, -0.8, 0.0, 0.0, 1.0,
+]);
+
+const vertexBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+</code></pre>
+<p><code>STATIC_DRAW</code> is a usage hint. It means "I expect to upload this data rarely and draw from it many times." It does not make the buffer immutable.</p>
+<h3 id="describe-attribute-layout">Describe Attribute Layout</h3>
+<pre><code class="language-javascript">const program = createProgram(gl, vertexSource, fragmentSource);
+const positionLocation = gl.getAttribLocation(program, 'a_position');
+const colorLocation = gl.getAttribLocation(program, 'a_color');
+
+const stride = 5 * Float32Array.BYTES_PER_ELEMENT;
+
+gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+
+gl.enableVertexAttribArray(positionLocation);
+gl.vertexAttribPointer(
+  positionLocation,
+  2,
+  gl.FLOAT,
+  false,
+  stride,
+  0,
+);
+
+gl.enableVertexAttribArray(colorLocation);
+gl.vertexAttribPointer(
+  colorLocation,
+  3,
+  gl.FLOAT,
+  false,
+  stride,
+  2 * Float32Array.BYTES_PER_ELEMENT,
+);
+</code></pre>
+<p><code>vertexAttribPointer</code> is one of the most important calls in WebGL. It says how to decode bytes in the currently bound <code>ARRAY_BUFFER</code> into shader attributes.</p>
+<p>Arguments:</p>
+<table>
+<thead>
+<tr>
+<th>Argument</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>location</td>
+<td>Attribute location in shader program</td>
+</tr>
+<tr>
+<td>size</td>
+<td>Components per vertex, such as 2 for <code>vec2</code></td>
+</tr>
+<tr>
+<td>type</td>
+<td>Data type, such as <code>FLOAT</code></td>
+</tr>
+<tr>
+<td>normalized</td>
+<td>Convert integer data to normalized floats</td>
+</tr>
+<tr>
+<td>stride</td>
+<td>Bytes from one vertex record to the next</td>
+</tr>
+<tr>
+<td>offset</td>
+<td>Bytes to first component in the record</td>
+</tr>
+</tbody>
+</table>
+<h3 id="draw">Draw</h3>
+<pre><code class="language-javascript">function resizeCanvasToDisplaySize(canvas) {
+  const width = canvas.clientWidth || canvas.width;
+  const height = canvas.clientHeight || canvas.height;
+
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+}
+
+resizeCanvasToDisplaySize(canvas);
+gl.viewport(0, 0, canvas.width, canvas.height);
+
+gl.clearColor(0.05, 0.07, 0.09, 1.0);
+gl.clear(gl.COLOR_BUFFER_BIT);
+
+gl.useProgram(program);
+gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+gl.drawArrays(gl.TRIANGLES, 0, 3);
+</code></pre>
+<p>If you see a triangle, you have exercised the core pipeline:</p>
+<ul>
+<li>JavaScript data to GPU buffer,</li>
+<li>buffer layout to attributes,</li>
+<li>vertex shader,</li>
+<li>interpolation,</li>
+<li>fragment shader,</li>
+<li>framebuffer write.</li>
+</ul>
+<h3 id="the-same-shape-in-opengl">The Same Shape in OpenGL</h3>
+<p>Native OpenGL code has different setup details, but the shape is the same:</p>
+<pre><code class="language-c">glUseProgram(program);
+glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+glEnableVertexAttribArray(positionLocation);
+glVertexAttribPointer(positionLocation, 2, GL_FLOAT, GL_FALSE, stride, 0);
+glDrawArrays(GL_TRIANGLES, 0, 3);
+</code></pre>
+<p>This is why WebGL is such a good classroom for GL.</p>
+<hr>
+<h2 id="part-7-buffers-attributes-uniforms-and-vaos">Part 7 - Buffers, Attributes, Uniforms, and VAOs</h2>
+<p>Buffers move bulk data to the GPU. Attributes explain vertex layout. Uniforms configure a draw. Vertex array objects save vertex input state.</p>
+<h3 id="buffer-objects">Buffer Objects</h3>
+<p>Create and upload:</p>
+<pre><code class="language-javascript">const buffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+</code></pre>
+<p>Update part of a buffer:</p>
+<pre><code class="language-javascript">gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+gl.bufferSubData(gl.ARRAY_BUFFER, 0, updatedData);
+</code></pre>
+<p>Common buffer targets:</p>
+<table>
+<thead>
+<tr>
+<th>Target</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ARRAY_BUFFER</code></td>
+<td>Vertex data</td>
+</tr>
+<tr>
+<td><code>ELEMENT_ARRAY_BUFFER</code></td>
+<td>Indices</td>
+</tr>
+<tr>
+<td><code>COPY_READ_BUFFER</code></td>
+<td>WebGL 2 copy source</td>
+</tr>
+<tr>
+<td><code>COPY_WRITE_BUFFER</code></td>
+<td>WebGL 2 copy destination</td>
+</tr>
+<tr>
+<td><code>UNIFORM_BUFFER</code></td>
+<td>WebGL 2 uniform block data</td>
+</tr>
+<tr>
+<td><code>TRANSFORM_FEEDBACK_BUFFER</code></td>
+<td>WebGL 2 captured vertex shader output</td>
+</tr>
+</tbody>
+</table>
+<h3 id="usage-hints">Usage Hints</h3>
+<p>Buffer usage hints:</p>
+<table>
+<thead>
+<tr>
+<th>Hint</th>
+<th>Typical meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>STATIC_DRAW</code></td>
+<td>Upload rarely, draw often</td>
+</tr>
+<tr>
+<td><code>DYNAMIC_DRAW</code></td>
+<td>Update repeatedly, draw often</td>
+</tr>
+<tr>
+<td><code>STREAM_DRAW</code></td>
+<td>Use briefly, replace often</td>
+</tr>
+</tbody>
+</table>
+<p>They are hints to the implementation, not access permissions.</p>
+<h3 id="interleaved-vs-separate-buffers">Interleaved vs Separate Buffers</h3>
+<p>Interleaved:</p>
+<pre><code class="language-text">position color uv | position color uv | position color uv
+</code></pre>
+<p>Separate:</p>
+<pre><code class="language-text">positions...
+colors...
+uvs...
+</code></pre>
+<p>Interleaving often improves locality when attributes are used together. Separate buffers can be useful when some attributes update at different rates or are optional for different shaders.</p>
+<h3 id="index-buffers">Index Buffers</h3>
+<p>Index buffers let vertices be reused.</p>
+<pre><code class="language-javascript">const indices = new Uint16Array([
+  0, 1, 2,
+  2, 1, 3,
+]);
+
+const indexBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0);
+</code></pre>
+<p>Use <code>Uint16Array</code> for most meshes under 65,536 vertices. Use <code>Uint32Array</code> with WebGL 2 or the <code>OES_element_index_uint</code> extension in WebGL 1.</p>
+<h3 id="attribute-locations">Attribute Locations</h3>
+<p>You can query locations after linking:</p>
+<pre><code class="language-javascript">const positionLocation = gl.getAttribLocation(program, 'a_position');
+</code></pre>
+<p>Or bind them before linking:</p>
+<pre><code class="language-javascript">gl.bindAttribLocation(program, 0, 'a_position');
+gl.linkProgram(program);
+</code></pre>
+<p>Stable explicit locations make renderers easier to reason about, especially in native OpenGL and WebGL 2 style code.</p>
+<h3 id="uniforms_1">Uniforms</h3>
+<p>Uniforms are per-program state.</p>
+<pre><code class="language-javascript">gl.useProgram(program);
+gl.uniform1f(timeLocation, performance.now() / 1000);
+gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+gl.uniformMatrix4fv(matrixLocation, false, matrix);
+</code></pre>
+<p>Uniform values belong to the linked program object. If you switch programs, you need to set uniforms for that program.</p>
+<h3 id="uniform-buffer-objects">Uniform Buffer Objects</h3>
+<p>WebGL 2 adds uniform buffer objects. UBOs let you store uniform blocks in buffers and bind them for multiple programs.</p>
+<p>GLSL:</p>
+<pre><code class="language-glsl">#version 300 es
+layout(std140) uniform Scene {
+  mat4 u_viewProjection;
+  vec4 u_lightDirection;
+};
+</code></pre>
+<p>JavaScript:</p>
+<pre><code class="language-javascript">const blockIndex = gl.getUniformBlockIndex(program, 'Scene');
+gl.uniformBlockBinding(program, blockIndex, 0);
+gl.bindBufferBase(gl.UNIFORM_BUFFER, 0, sceneBuffer);
+</code></pre>
+<p>The difficult part is <code>std140</code> layout. Padding matters. For example, <code>vec3</code> occupies 16 bytes in many uniform block layouts. Treat UBO layout as a binary ABI.</p>
+<h3 id="vertex-array-objects">Vertex Array Objects</h3>
+<p>Vertex array objects store vertex attribute setup. WebGL 2 has VAOs in core.</p>
+<pre><code class="language-javascript">const vao = gl.createVertexArray();
+gl.bindVertexArray(vao);
+
+gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+gl.enableVertexAttribArray(positionLocation);
+gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, stride, 0);
+
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+
+gl.bindVertexArray(null);
+</code></pre>
+<p>Later:</p>
+<pre><code class="language-javascript">gl.bindVertexArray(vao);
+gl.drawElements(gl.TRIANGLES, indexCount, gl.UNSIGNED_SHORT, 0);
+</code></pre>
+<p>Important detail: the <code>ELEMENT_ARRAY_BUFFER</code> binding is stored in the VAO. The <code>ARRAY_BUFFER</code> binding itself is not stored, but each attribute pointer records the buffer that was bound when <code>vertexAttribPointer</code> was called.</p>
+<h3 id="instancing">Instancing</h3>
+<p>Instancing draws many copies of geometry with per-instance data.</p>
+<pre><code class="language-javascript">gl.vertexAttribDivisor(instanceOffsetLocation, 1);
+gl.drawArraysInstanced(gl.TRIANGLES, 0, vertexCount, instanceCount);
+</code></pre>
+<p>An attribute divisor of <code>1</code> means advance this attribute once per instance instead of once per vertex.</p>
+<p>Use instancing for:</p>
+<ul>
+<li>sprites,</li>
+<li>particles,</li>
+<li>repeated props,</li>
+<li>map markers,</li>
+<li>thousands of simple meshes.</li>
+</ul>
+<hr>
+<h2 id="part-8-matrices-coordinates-and-cameras">Part 8 - Matrices, Coordinates, and Cameras</h2>
+<p>GL does not have a camera. A camera is math you provide.</p>
+<h3 id="coordinate-spaces">Coordinate Spaces</h3>
+<p>Most renderers use a chain of coordinate spaces:</p>
+<pre><code class="language-text">local/object space
+  -&gt; world space
+  -&gt; view/camera space
+  -&gt; clip space
+  -&gt; normalized device coordinates
+  -&gt; screen pixels
+</code></pre>
+<p>Typical matrices:</p>
+<table>
+<thead>
+<tr>
+<th>Matrix</th>
+<th>Job</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Model</td>
+<td>Object to world</td>
+</tr>
+<tr>
+<td>View</td>
+<td>World to camera</td>
+</tr>
+<tr>
+<td>Projection</td>
+<td>Camera to clip</td>
+</tr>
+<tr>
+<td>MVP</td>
+<td>Projection * View * Model</td>
+</tr>
+</tbody>
+</table>
+<p>Vertex shader:</p>
+<pre><code class="language-glsl">attribute vec3 a_position;
+
+uniform mat4 u_model;
+uniform mat4 u_view;
+uniform mat4 u_projection;
+
+void main() {
+  gl_Position = u_projection * u_view * u_model * vec4(a_position, 1.0);
+}
+</code></pre>
+<p>Matrix order matters. GLSL matrices are column-major by convention, and vector multiplication is usually written with the matrix on the left.</p>
+<h3 id="clip-space">Clip Space</h3>
+<p>After multiplying by projection, the vertex is in clip space. The GPU clips primitives against the clip volume, then divides by <code>w</code>.</p>
+<p>Perspective projection works because farther points tend to have larger <code>w</code>, and the divide shrinks <code>x</code> and <code>y</code>.</p>
+<h3 id="orthographic-projection">Orthographic Projection</h3>
+<p>Orthographic projection keeps parallel lines parallel. It is useful for:</p>
+<ul>
+<li>2D rendering,</li>
+<li>UI overlays,</li>
+<li>CAD views,</li>
+<li>tile maps,</li>
+<li>debug visualization.</li>
+</ul>
+<p>Conceptually:</p>
+<pre><code class="language-javascript">function ortho(left, right, bottom, top, near, far) {
+  return [
+    2 / (right - left), 0, 0, 0,
+    0, 2 / (top - bottom), 0, 0,
+    0, 0, -2 / (far - near), 0,
+    -(right + left) / (right - left),
+    -(top + bottom) / (top - bottom),
+    -(far + near) / (far - near),
+    1,
+  ];
+}
+</code></pre>
+<h3 id="perspective-projection">Perspective Projection</h3>
+<p>Perspective projection makes distant objects appear smaller.</p>
+<p>Inputs:</p>
+<ul>
+<li>vertical field of view,</li>
+<li>aspect ratio,</li>
+<li>near plane,</li>
+<li>far plane.</li>
+</ul>
+<p>The near and far planes strongly affect depth precision. A near plane of <code>0.001</code> and far plane of <code>100000</code> will create z-fighting. Push the near plane out as far as your scene allows.</p>
+<h3 id="view-matrix">View Matrix</h3>
+<p>A view matrix is the inverse of the camera transform. If the camera moves right, the world appears to move left.</p>
+<p>Common look-at inputs:</p>
+<ul>
+<li>eye position,</li>
+<li>target position,</li>
+<li>up direction.</li>
+</ul>
+<pre><code class="language-javascript">const view = lookAt(
+  [3, 2, 5],
+  [0, 0, 0],
+  [0, 1, 0],
+);
+</code></pre>
+<p>In production, use a tested math library such as <code>gl-matrix</code> unless you are specifically learning the math.</p>
+<h3 id="screen-coordinates">Screen Coordinates</h3>
+<p>The viewport maps normalized device coordinates to pixels.</p>
+<pre><code class="language-javascript">gl.viewport(0, 0, canvas.width, canvas.height);
+</code></pre>
+<p>Canvas CSS size and drawing buffer size are different:</p>
+<pre><code class="language-javascript">const dpr = window.devicePixelRatio || 1;
+canvas.width = Math.round(canvas.clientWidth * dpr);
+canvas.height = Math.round(canvas.clientHeight * dpr);
+gl.viewport(0, 0, canvas.width, canvas.height);
+</code></pre>
+<p>If your rendering looks blurry, check drawing buffer size.</p>
+<h3 id="y-axis-confusion">Y Axis Confusion</h3>
+<p>Different systems use different origins:</p>
+<ul>
+<li>Web canvas pixels often feel top-left oriented.</li>
+<li>GL clip space has positive Y upward.</li>
+<li>Texture coordinates usually put <code>(0, 0)</code> at the lower-left in GL tradition.</li>
+<li>Images loaded from the web often arrive in top-left row order.</li>
+</ul>
+<p>WebGL provides:</p>
+<pre><code class="language-javascript">gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+</code></pre>
+<p>This flips source image data during texture upload. Use it intentionally, not as a random fix.</p>
+<hr>
+<h2 id="part-9-textures-samplers-and-pixel-data">Part 9 - Textures, Samplers, and Pixel Data</h2>
+<p>Textures are GPU images. Shaders sample them.</p>
+<h3 id="create-a-texture">Create a Texture</h3>
+<pre><code class="language-javascript">const texture = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, texture);
+
+gl.texImage2D(
+  gl.TEXTURE_2D,
+  0,
+  gl.RGBA,
+  1,
+  1,
+  0,
+  gl.RGBA,
+  gl.UNSIGNED_BYTE,
+  new Uint8Array([255, 0, 255, 255]),
+);
+</code></pre>
+<p>A 1x1 placeholder lets you render immediately while an image loads.</p>
+<h3 id="upload-an-image">Upload an Image</h3>
+<pre><code class="language-javascript">const image = new Image();
+image.crossOrigin = 'anonymous';
+image.src = '/texture.png';
+image.onload = () =&gt; {
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texImage2D(
+    gl.TEXTURE_2D,
+    0,
+    gl.RGBA,
+    gl.RGBA,
+    gl.UNSIGNED_BYTE,
+    image,
+  );
+  gl.generateMipmap(gl.TEXTURE_2D);
+};
+</code></pre>
+<p>Cross-origin images require correct CORS headers if you want to sample them in WebGL.</p>
+<h3 id="texture-parameters">Texture Parameters</h3>
+<p>Texture parameters control sampling and wrapping:</p>
+<pre><code class="language-javascript">gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+</code></pre>
+<p>Common filters:</p>
+<table>
+<thead>
+<tr>
+<th>Filter</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>NEAREST</code></td>
+<td>Pixelated nearest sample</td>
+</tr>
+<tr>
+<td><code>LINEAR</code></td>
+<td>Bilinear interpolation</td>
+</tr>
+<tr>
+<td><code>NEAREST_MIPMAP_NEAREST</code></td>
+<td>Nearest mip level, nearest texel</td>
+</tr>
+<tr>
+<td><code>LINEAR_MIPMAP_LINEAR</code></td>
+<td>Trilinear filtering</td>
+</tr>
+</tbody>
+</table>
+<p>Common wraps:</p>
+<table>
+<thead>
+<tr>
+<th>Wrap</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>CLAMP_TO_EDGE</code></td>
+<td>Clamp UV to edge</td>
+</tr>
+<tr>
+<td><code>REPEAT</code></td>
+<td>Repeat texture</td>
+</tr>
+<tr>
+<td><code>MIRRORED_REPEAT</code></td>
+<td>Repeat with mirrored tiles</td>
+</tr>
+</tbody>
+</table>
+<h3 id="power-of-two-rules">Power-of-Two Rules</h3>
+<p>WebGL 1 has restrictions for non-power-of-two textures. If a texture is not power-of-two in both dimensions, WebGL 1 requires:</p>
+<ul>
+<li>no mipmaps,</li>
+<li><code>CLAMP_TO_EDGE</code> wrapping,</li>
+<li>compatible minification filter such as <code>LINEAR</code> or <code>NEAREST</code>.</li>
+</ul>
+<p>Power-of-two dimensions are like 256, 512, 1024. WebGL 2 relaxes many of these restrictions.</p>
+<h3 id="texture-units">Texture Units</h3>
+<p>Shaders refer to sampler uniforms. Samplers point to texture units.</p>
+<pre><code class="language-javascript">gl.activeTexture(gl.TEXTURE0);
+gl.bindTexture(gl.TEXTURE_2D, diffuseTexture);
+gl.uniform1i(diffuseLocation, 0);
+
+gl.activeTexture(gl.TEXTURE1);
+gl.bindTexture(gl.TEXTURE_2D, normalTexture);
+gl.uniform1i(normalLocation, 1);
+</code></pre>
+<p>This indirection is classic GL:</p>
+<pre><code class="language-text">sampler uniform -&gt; texture unit -&gt; texture object
+</code></pre>
+<h3 id="mipmaps">Mipmaps</h3>
+<p>Mipmaps are smaller versions of a texture. They improve quality and performance when textures shrink on screen.</p>
+<pre><code class="language-javascript">gl.generateMipmap(gl.TEXTURE_2D);
+</code></pre>
+<p>Without mipmaps, distant textured surfaces can shimmer because many source texels compete for one output pixel.</p>
+<h3 id="texture-formats">Texture Formats</h3>
+<p>WebGL texture formats are a source of constant detail work.</p>
+<p>Common WebGL 1 formats:</p>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>RGBA</code> + <code>UNSIGNED_BYTE</code></td>
+<td>Standard color texture</td>
+</tr>
+<tr>
+<td><code>RGB</code> + <code>UNSIGNED_BYTE</code></td>
+<td>Color without alpha</td>
+</tr>
+<tr>
+<td><code>ALPHA</code></td>
+<td>Single channel alpha in WebGL 1</td>
+</tr>
+<tr>
+<td><code>LUMINANCE</code></td>
+<td>Legacy single channel</td>
+</tr>
+<tr>
+<td><code>LUMINANCE_ALPHA</code></td>
+<td>Legacy two channel</td>
+</tr>
+</tbody>
+</table>
+<p>WebGL 2 adds sized internal formats such as <code>RGBA8</code>, <code>R8</code>, <code>RG8</code>, <code>RGBA16F</code>, and integer formats.</p>
+<h3 id="floating-point-textures">Floating-Point Textures</h3>
+<p>Floating-point textures are useful for HDR, simulation, height maps, GPGPU-style tricks, and post-processing.</p>
+<p>In WebGL 1 they require extensions:</p>
+<pre><code class="language-javascript">const floatTextures = gl.getExtension('OES_texture_float');
+const halfFloatTextures = gl.getExtension('OES_texture_half_float');
+</code></pre>
+<p>Rendering to floating-point textures requires additional extension support. Always check before relying on it.</p>
+<hr>
+<h2 id="part-10-framebuffers-render-targets-and-post-processing">Part 10 - Framebuffers, Render Targets, and Post-Processing</h2>
+<p>The default framebuffer is the canvas. Custom framebuffers let you render somewhere else.</p>
+<h3 id="why-render-offscreen">Why Render Offscreen</h3>
+<p>Render-to-texture enables:</p>
+<ul>
+<li>post-processing effects,</li>
+<li>shadow maps,</li>
+<li>reflections,</li>
+<li>picking by object ID,</li>
+<li>deferred rendering,</li>
+<li>bloom,</li>
+<li>simulation feedback,</li>
+<li>screenshots or thumbnails.</li>
+</ul>
+<h3 id="create-a-color-render-target">Create a Color Render Target</h3>
+<pre><code class="language-javascript">const targetTexture = gl.createTexture();
+gl.bindTexture(gl.TEXTURE_2D, targetTexture);
+gl.texImage2D(
+  gl.TEXTURE_2D,
+  0,
+  gl.RGBA,
+  width,
+  height,
+  0,
+  gl.RGBA,
+  gl.UNSIGNED_BYTE,
+  null,
+);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+const framebuffer = gl.createFramebuffer();
+gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+gl.framebufferTexture2D(
+  gl.FRAMEBUFFER,
+  gl.COLOR_ATTACHMENT0,
+  gl.TEXTURE_2D,
+  targetTexture,
+  0,
+);
+</code></pre>
+<h3 id="add-depth-storage">Add Depth Storage</h3>
+<pre><code class="language-javascript">const depthBuffer = gl.createRenderbuffer();
+gl.bindRenderbuffer(gl.RENDERBUFFER, depthBuffer);
+gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
+gl.framebufferRenderbuffer(
+  gl.FRAMEBUFFER,
+  gl.DEPTH_ATTACHMENT,
+  gl.RENDERBUFFER,
+  depthBuffer,
+);
+</code></pre>
+<h3 id="check-completeness">Check Completeness</h3>
+<pre><code class="language-javascript">if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+  throw new Error('Framebuffer is incomplete.');
+}
+</code></pre>
+<p>Framebuffer completeness rules are strict. Attachments must have compatible sizes and formats.</p>
+<h3 id="render-pass-shape">Render Pass Shape</h3>
+<p>WebGL does not have render pass objects, but you still structure rendering into passes:</p>
+<pre><code class="language-javascript">// First pass: scene to texture.
+gl.bindFramebuffer(gl.FRAMEBUFFER, sceneFramebuffer);
+gl.viewport(0, 0, width, height);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+drawScene();
+
+// Second pass: texture to canvas.
+gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+gl.viewport(0, 0, canvas.width, canvas.height);
+drawFullscreenQuad(sceneTexture);
+</code></pre>
+<p>WebGPU names render passes explicitly. In GL, you impose the structure yourself through framebuffer binding and draw order.</p>
+<h3 id="fullscreen-triangle">Fullscreen Triangle</h3>
+<p>Many post-process effects draw one fullscreen triangle instead of a quad.</p>
+<p>Vertex shader:</p>
+<pre><code class="language-glsl">attribute vec2 a_position;
+varying vec2 v_uv;
+
+void main() {
+  v_uv = a_position * 0.5 + 0.5;
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}
+</code></pre>
+<p>Positions:</p>
+<pre><code class="language-javascript">new Float32Array([
+  -1, -1,
+   3, -1,
+  -1,  3,
+]);
+</code></pre>
+<p>The oversized triangle covers the screen without a diagonal seam.</p>
+<h3 id="multiple-render-targets">Multiple Render Targets</h3>
+<p>WebGL 2 supports multiple render targets:</p>
+<pre><code class="language-javascript">gl.drawBuffers([
+  gl.COLOR_ATTACHMENT0,
+  gl.COLOR_ATTACHMENT1,
+]);
+</code></pre>
+<p>Fragment shader:</p>
+<pre><code class="language-glsl">#version 300 es
+precision highp float;
+
+layout(location = 0) out vec4 outColor;
+layout(location = 1) out vec4 outNormal;
+
+void main() {
+  outColor = vec4(1.0);
+  outNormal = vec4(0.0, 0.0, 1.0, 1.0);
+}
+</code></pre>
+<p>MRT is the foundation of deferred rendering and many advanced pipelines.</p>
+<hr>
+<h2 id="part-11-depth-stencil-blending-and-transparency">Part 11 - Depth, Stencil, Blending, and Transparency</h2>
+<p>The fragment shader does not automatically win. Fixed-function per-fragment operations decide whether and how the result reaches the framebuffer.</p>
+<h3 id="depth-testing">Depth Testing</h3>
+<p>Depth testing keeps nearer fragments over farther fragments.</p>
+<pre><code class="language-javascript">gl.enable(gl.DEPTH_TEST);
+gl.depthFunc(gl.LESS);
+gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+</code></pre>
+<p>Common depth functions:</p>
+<table>
+<thead>
+<tr>
+<th>Function</th>
+<th>Passes when</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LESS</code></td>
+<td>Incoming depth is smaller</td>
+</tr>
+<tr>
+<td><code>LEQUAL</code></td>
+<td>Incoming depth is smaller or equal</td>
+</tr>
+<tr>
+<td><code>GREATER</code></td>
+<td>Incoming depth is larger</td>
+</tr>
+<tr>
+<td><code>ALWAYS</code></td>
+<td>Always passes</td>
+</tr>
+</tbody>
+</table>
+<p>Depth buffers are finite precision. Most precision is near the camera in a perspective projection, so avoid extremely tiny near planes.</p>
+<h3 id="depth-writes">Depth Writes</h3>
+<p>Depth testing and depth writing are separate:</p>
+<pre><code class="language-javascript">gl.depthMask(false); // stop writing depth
+drawTransparentObjects();
+gl.depthMask(true);
+</code></pre>
+<p>Transparent objects often test against depth but do not write depth.</p>
+<h3 id="face-culling">Face Culling</h3>
+<p>Face culling skips triangles facing away from the camera.</p>
+<pre><code class="language-javascript">gl.enable(gl.CULL_FACE);
+gl.cullFace(gl.BACK);
+gl.frontFace(gl.CCW);
+</code></pre>
+<p>By default, counter-clockwise triangles are front-facing. If your model disappears, winding order or a negative scale may be the cause.</p>
+<h3 id="blending">Blending</h3>
+<p>Blending combines source fragment color with destination framebuffer color.</p>
+<p>Standard alpha blending:</p>
+<pre><code class="language-javascript">gl.enable(gl.BLEND);
+gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+</code></pre>
+<p>Equation:</p>
+<pre><code class="language-text">out = src * srcAlpha + dst * (1 - srcAlpha)
+</code></pre>
+<p>Additive blending:</p>
+<pre><code class="language-javascript">gl.blendFunc(gl.ONE, gl.ONE);
+</code></pre>
+<p>Useful for particles, glows, fire, and light accumulation.</p>
+<h3 id="premultiplied-alpha">Premultiplied Alpha</h3>
+<p>With premultiplied alpha, RGB is already multiplied by alpha.</p>
+<pre><code class="language-javascript">gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+</code></pre>
+<p>Browsers and images often involve premultiplied alpha. Be deliberate about it:</p>
+<pre><code class="language-javascript">gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
+</code></pre>
+<p>Mismatched alpha conventions create dark or bright halos around sprites.</p>
+<h3 id="transparency-sorting">Transparency Sorting</h3>
+<p>Correct alpha blending usually requires drawing transparent objects back-to-front after opaque objects.</p>
+<p>Common order:</p>
+<ol>
+<li>Draw opaque objects with depth test and depth writes.</li>
+<li>Sort transparent objects from far to near.</li>
+<li>Draw transparent objects with depth test, blending, and depth writes disabled.</li>
+</ol>
+<p>This is imperfect for intersecting transparent geometry. Advanced solutions include weighted blended order-independent transparency, depth peeling, or avoiding problematic transparency.</p>
+<h3 id="stencil-buffer">Stencil Buffer</h3>
+<p>The stencil buffer stores small integer values per pixel. It is useful for:</p>
+<ul>
+<li>masks,</li>
+<li>mirrors,</li>
+<li>outlines,</li>
+<li>portals,</li>
+<li>UI clipping,</li>
+<li>constructive effects.</li>
+</ul>
+<p>Example shape:</p>
+<pre><code class="language-javascript">gl.enable(gl.STENCIL_TEST);
+gl.stencilFunc(gl.ALWAYS, 1, 0xff);
+gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
+drawMask();
+
+gl.stencilFunc(gl.EQUAL, 1, 0xff);
+gl.stencilOp(gl.KEEP, gl.KEEP, gl.KEEP);
+drawOnlyInsideMask();
+</code></pre>
+<p>Stencil is powerful but state-heavy. Encapsulate it carefully.</p>
+<hr>
+<h2 id="part-12-performance-debugging-and-production-practices">Part 12 - Performance, Debugging, and Production Practices</h2>
+<p>Fast WebGL is mostly about reducing CPU driver overhead, moving data predictably, and avoiding expensive GPU work per pixel.</p>
+<h3 id="the-performance-thesis">The Performance Thesis</h3>
+<p>The CPU prepares work. The driver validates and translates work. The GPU executes work. Bottlenecks can occur at any of those points.</p>
+<p>Fast WebGL code usually:</p>
+<ul>
+<li>creates resources outside the frame loop,</li>
+<li>batches draw calls,</li>
+<li>minimizes state changes,</li>
+<li>avoids synchronous readbacks,</li>
+<li>keeps shaders simple enough for target devices,</li>
+<li>uses appropriate texture formats and mipmaps,</li>
+<li>uploads only changed data,</li>
+<li>measures on real devices.</li>
+</ul>
+<h3 id="avoid-per-frame-resource-creation">Avoid Per-Frame Resource Creation</h3>
+<p>Bad:</p>
+<pre><code class="language-javascript">function render() {
+  const buffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, frameData, gl.DYNAMIC_DRAW);
+  gl.drawArrays(gl.TRIANGLES, 0, count);
+}
+</code></pre>
+<p>Better:</p>
+<pre><code class="language-javascript">const buffer = gl.createBuffer();
+
+function render() {
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferSubData(gl.ARRAY_BUFFER, 0, frameData);
+  gl.drawArrays(gl.TRIANGLES, 0, count);
+}
+</code></pre>
+<p>Create programs, buffers, textures, VAOs, and framebuffers during loading or resize, not during every frame.</p>
+<h3 id="batch-draw-calls">Batch Draw Calls</h3>
+<p>Each draw call has CPU overhead. Batching means drawing more work per call.</p>
+<p>Techniques:</p>
+<ul>
+<li>combine static meshes,</li>
+<li>use texture atlases,</li>
+<li>sort by material,</li>
+<li>use instancing,</li>
+<li>use uniform buffers in WebGL 2,</li>
+<li>reduce program switches,</li>
+<li>reduce framebuffer switches.</li>
+</ul>
+<p>Do not chase one giant draw call at all costs. The real goal is fewer expensive state changes and enough work per call.</p>
+<h3 id="avoid-readbacks">Avoid Readbacks</h3>
+<p>Calls that read GPU results can stall:</p>
+<pre><code class="language-javascript">gl.readPixels(...);
+gl.getParameter(...);
+gl.getError();
+</code></pre>
+<p><code>gl.getError()</code> is useful for debugging, but do not scatter it through hot production paths. For picking, prefer rendering a small ID buffer only when needed, or use CPU-side spatial structures when appropriate.</p>
+<h3 id="texture-performance">Texture Performance</h3>
+<p>Good texture hygiene:</p>
+<ul>
+<li>generate mipmaps for minified textures,</li>
+<li>use compressed textures when distribution pipeline allows,</li>
+<li>keep texture sizes reasonable,</li>
+<li>avoid frequent full texture uploads,</li>
+<li>use atlases for many sprites,</li>
+<li>avoid sampling too many large textures per fragment.</li>
+</ul>
+<p>Compressed texture support is extension-based:</p>
+<pre><code class="language-javascript">const astc = gl.getExtension('WEBGL_compressed_texture_astc');
+const s3tc = gl.getExtension('WEBGL_compressed_texture_s3tc');
+const etc = gl.getExtension('WEBGL_compressed_texture_etc');
+</code></pre>
+<p>Production engines often ship multiple compressed texture formats and select at runtime.</p>
+<h3 id="shader-performance">Shader Performance</h3>
+<p>Fragment shaders often dominate because they run per covered pixel. A fullscreen pass at high DPI can execute millions of fragment shader invocations.</p>
+<p>Watch for:</p>
+<ul>
+<li>many dependent texture reads,</li>
+<li>dynamic loops,</li>
+<li>divergent branches,</li>
+<li>high precision where medium precision is enough,</li>
+<li>expensive math in fragment shaders,</li>
+<li>overdraw from particles or transparency.</li>
+</ul>
+<p>Move work to the vertex shader when interpolation is acceptable. Precompute on the CPU when values change rarely.</p>
+<h3 id="context-loss">Context Loss</h3>
+<p>WebGL contexts can be lost. Treat it as a real production event.</p>
+<pre><code class="language-javascript">canvas.addEventListener('webglcontextlost', (event) =&gt; {
+  event.preventDefault();
+  stopRendering();
+});
+
+canvas.addEventListener('webglcontextrestored', () =&gt; {
+  recreateAllGpuResources();
+  startRendering();
+});
+</code></pre>
+<p>When context is restored, GPU objects are gone. You must recreate buffers, textures, programs, framebuffers, and VAOs.</p>
+<h3 id="error-checking">Error Checking</h3>
+<p>Basic error helper:</p>
+<pre><code class="language-javascript">function checkGl(gl, label) {
+  const error = gl.getError();
+  if (error !== gl.NO_ERROR) {
+    throw new Error(`${label}: WebGL error 0x${error.toString(16)}`);
+  }
+}
+</code></pre>
+<p>Use it around setup and suspicious paths, not every draw in a hot loop.</p>
+<h3 id="debug-extensions-and-tools">Debug Extensions and Tools</h3>
+<p>Useful tools:</p>
+<ul>
+<li>browser devtools canvas inspection where available,</li>
+<li><code>WEBGL_debug_renderer_info</code> for diagnostics,</li>
+<li><code>KHR_debug</code> in WebGL 2 where available,</li>
+<li>Spector.js for frame capture,</li>
+<li>shader compile logs,</li>
+<li>reduced test scenes.</li>
+</ul>
+<p><code>WEBGL_debug_renderer_info</code> may be restricted for privacy. Do not rely on it for core behavior.</p>
+<h3 id="production-checklist">Production Checklist</h3>
+<p>Before shipping:</p>
+<ul>
+<li>Feature-detect WebGL 2 and required extensions.</li>
+<li>Provide a fallback message or non-GL path.</li>
+<li>Handle context loss and restoration.</li>
+<li>Resize canvas using device pixel ratio intentionally.</li>
+<li>Compile and link shaders with useful logs.</li>
+<li>Check framebuffer completeness.</li>
+<li>Avoid per-frame resource creation.</li>
+<li>Avoid synchronous readback in animation loops.</li>
+<li>Test integrated GPUs and mobile devices.</li>
+<li>Test high-DPI displays.</li>
+<li>Test CORS behavior for textures.</li>
+<li>Budget GPU memory.</li>
+</ul>
+<hr>
+<h2 id="part-13-ecosystem-opengl-mapping-and-recipes">Part 13 - Ecosystem, OpenGL Mapping, and Recipes</h2>
+<p>Most production WebGL is written through libraries, but raw WebGL remains worth learning.</p>
+<h3 id="libraries-and-engines">Libraries and Engines</h3>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Three.js</td>
+<td>Popular 3D library with scene graph, materials, loaders</td>
+</tr>
+<tr>
+<td>Babylon.js</td>
+<td>Full-featured web 3D engine</td>
+</tr>
+<tr>
+<td>PlayCanvas</td>
+<td>Web-first game and 3D engine</td>
+</tr>
+<tr>
+<td>PixiJS</td>
+<td>Fast 2D renderer built around WebGL/WebGPU backends</td>
+</tr>
+<tr>
+<td>regl</td>
+<td>Functional WebGL command abstraction</td>
+</tr>
+<tr>
+<td>twgl.js</td>
+<td>Lightweight helpers from WebGL Fundamentals</td>
+</tr>
+<tr>
+<td>luma.gl</td>
+<td>Data visualization oriented GL abstraction</td>
+</tr>
+<tr>
+<td>deck.gl</td>
+<td>Large-scale data visualization</td>
+</tr>
+<tr>
+<td>CesiumJS</td>
+<td>Globe and geospatial visualization</td>
+</tr>
+<tr>
+<td>Spector.js</td>
+<td>WebGL frame debugger</td>
+</tr>
+</tbody>
+</table>
+<p>Use raw WebGL when:</p>
+<ul>
+<li>you are learning the graphics pipeline,</li>
+<li>you need a tiny custom renderer,</li>
+<li>you are debugging engine behavior,</li>
+<li>you need control a library hides,</li>
+<li>you are porting GL/OpenGL ES concepts.</li>
+</ul>
+<p>Use a library when:</p>
+<ul>
+<li>you need model loading,</li>
+<li>you need cameras and controls,</li>
+<li>you need PBR materials,</li>
+<li>you need animation systems,</li>
+<li>you need production asset workflows,</li>
+<li>you are building an application rather than a renderer.</li>
+</ul>
+<h3 id="webgl-to-opengl-mapping">WebGL to OpenGL Mapping</h3>
+<p>Many WebGL calls map directly to OpenGL ES or OpenGL:</p>
+<table>
+<thead>
+<tr>
+<th>WebGL</th>
+<th>OpenGL / GLES idea</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>canvas.getContext('webgl')</code></td>
+<td>Create GL context through platform windowing API</td>
+</tr>
+<tr>
+<td><code>gl.createBuffer()</code></td>
+<td><code>glGenBuffers</code></td>
+</tr>
+<tr>
+<td><code>gl.bindBuffer()</code></td>
+<td><code>glBindBuffer</code></td>
+</tr>
+<tr>
+<td><code>gl.bufferData()</code></td>
+<td><code>glBufferData</code></td>
+</tr>
+<tr>
+<td><code>gl.createShader()</code></td>
+<td><code>glCreateShader</code></td>
+</tr>
+<tr>
+<td><code>gl.shaderSource()</code></td>
+<td><code>glShaderSource</code></td>
+</tr>
+<tr>
+<td><code>gl.compileShader()</code></td>
+<td><code>glCompileShader</code></td>
+</tr>
+<tr>
+<td><code>gl.createProgram()</code></td>
+<td><code>glCreateProgram</code></td>
+</tr>
+<tr>
+<td><code>gl.linkProgram()</code></td>
+<td><code>glLinkProgram</code></td>
+</tr>
+<tr>
+<td><code>gl.useProgram()</code></td>
+<td><code>glUseProgram</code></td>
+</tr>
+<tr>
+<td><code>gl.vertexAttribPointer()</code></td>
+<td><code>glVertexAttribPointer</code></td>
+</tr>
+<tr>
+<td><code>gl.drawArrays()</code></td>
+<td><code>glDrawArrays</code></td>
+</tr>
+<tr>
+<td><code>gl.drawElements()</code></td>
+<td><code>glDrawElements</code></td>
+</tr>
+<tr>
+<td><code>gl.createTexture()</code></td>
+<td><code>glGenTextures</code></td>
+</tr>
+<tr>
+<td><code>gl.texImage2D()</code></td>
+<td><code>glTexImage2D</code></td>
+</tr>
+<tr>
+<td><code>gl.createFramebuffer()</code></td>
+<td><code>glGenFramebuffers</code></td>
+</tr>
+</tbody>
+</table>
+<p>The biggest difference is context creation. Native OpenGL requires platform glue such as GLFW, SDL, EGL, WGL, GLX, CGL, or an engine. WebGL gets the context from a canvas.</p>
+<h3 id="recipe-resize-correctly">Recipe: Resize Correctly</h3>
+<pre><code class="language-javascript">function resizeCanvasToDisplaySize(canvas, multiplier = window.devicePixelRatio || 1) {
+  const width = Math.floor(canvas.clientWidth * multiplier);
+  const height = Math.floor(canvas.clientHeight * multiplier);
+
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+    return true;
+  }
+
+  return false;
+}
+
+function render() {
+  resizeCanvasToDisplaySize(gl.canvas);
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+  draw();
+  requestAnimationFrame(render);
+}
+</code></pre>
+<h3 id="recipe-a-small-program-helper">Recipe: A Small Program Helper</h3>
+<pre><code class="language-javascript">function createProgramFromSources(gl, vertexSource, fragmentSource) {
+  const program = createProgram(gl, vertexSource, fragmentSource);
+
+  return {
+    program,
+    attrib(name) {
+      const location = gl.getAttribLocation(program, name);
+      if (location &lt; 0) {
+        throw new Error(`Missing attribute: ${name}`);
+      }
+      return location;
+    },
+    uniform(name) {
+      const location = gl.getUniformLocation(program, name);
+      if (!location) {
+        throw new Error(`Missing uniform: ${name}`);
+      }
+      return location;
+    },
+  };
+}
+</code></pre>
+<p>Note that a uniform can be optimized out if the shader does not use it. In that case <code>getUniformLocation</code> returns <code>null</code>.</p>
+<h3 id="recipe-texture-atlas-sprites">Recipe: Texture Atlas Sprites</h3>
+<p>Store many sprites in one texture and use UV rectangles.</p>
+<p>Vertex data per sprite:</p>
+<pre><code class="language-text">x, y, u, v
+</code></pre>
+<p>Benefits:</p>
+<ul>
+<li>fewer texture binds,</li>
+<li>larger batches,</li>
+<li>simpler sprite renderer.</li>
+</ul>
+<p>Costs:</p>
+<ul>
+<li>atlas packing,</li>
+<li>bleeding between sprites unless padding is handled,</li>
+<li>maximum texture size limits.</li>
+</ul>
+<h3 id="recipe-picking-with-an-id-buffer">Recipe: Picking With an ID Buffer</h3>
+<p>Render object IDs into an offscreen framebuffer, then read one pixel under the pointer.</p>
+<p>Fragment shader:</p>
+<pre><code class="language-glsl">precision mediump float;
+uniform vec4 u_idColor;
+
+void main() {
+  gl_FragColor = u_idColor;
+}
+</code></pre>
+<p>Read:</p>
+<pre><code class="language-javascript">const pixel = new Uint8Array(4);
+gl.bindFramebuffer(gl.FRAMEBUFFER, pickingFramebuffer);
+gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
+</code></pre>
+<p>Remember that readback can stall. Do this only on interaction, not every frame without need.</p>
+<h3 id="recipe-particle-instancing">Recipe: Particle Instancing</h3>
+<p>Use one quad mesh and per-instance attributes:</p>
+<ul>
+<li>instance position,</li>
+<li>instance scale,</li>
+<li>instance color,</li>
+<li>instance rotation.</li>
+</ul>
+<p>Draw:</p>
+<pre><code class="language-javascript">gl.bindVertexArray(particleVao);
+gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, particleCount);
+</code></pre>
+<p>This turns thousands of sprite draw calls into one draw call.</p>
+<h3 id="recipe-post-processing-pipeline">Recipe: Post-Processing Pipeline</h3>
+<p>Common shape:</p>
+<ol>
+<li>Render scene into HDR or normal color texture.</li>
+<li>Render bright areas into bloom texture.</li>
+<li>Blur bloom texture with ping-pong framebuffers.</li>
+<li>Composite scene and bloom to canvas.</li>
+<li>Apply tone mapping and gamma correction.</li>
+</ol>
+<p>Even in WebGL, think in passes. Framebuffer binding is your pass boundary.</p>
+<h3 id="learning-path">Learning Path</h3>
+<ol>
+<li>Draw a triangle.</li>
+<li>Draw indexed geometry.</li>
+<li>Add a matrix uniform and move the triangle.</li>
+<li>Render textured quads.</li>
+<li>Build a 2D sprite batcher.</li>
+<li>Add a perspective camera and draw cubes.</li>
+<li>Add depth testing and face culling.</li>
+<li>Render to a texture and do a grayscale post-process.</li>
+<li>Add instanced particles.</li>
+<li>Capture a frame in Spector.js and explain every draw call.</li>
+</ol>
+<h3 id="the-final-mental-model">The Final Mental Model</h3>
+<p>In GL, think:</p>
+<pre><code class="language-text">Which program is current?
+Which buffers are bound?
+How are attributes decoded?
+Which uniforms and textures does this program see?
+Which framebuffer receives the result?
+Which fixed-function tests and blend modes are active?
+What draw call consumes all of that state?
+</code></pre>
+<p>That is the whole game. WebGL teaches this model with browser ergonomics, but the concepts are OpenGL concepts. Once you can reason about state, data layout, shader stages, and framebuffer output, most real-time graphics APIs become less mysterious.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>
