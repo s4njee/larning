@@ -20,6 +20,7 @@ GUIDES = [
     ("PYTHON_CONCURRENCY.md", "html/python-concurrency.html", {"accent": "#ffd43b"}),
     ("PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md", "html/python-vs-nodejs-async-study-guide.html", {"accent": "#ffd43b"}),
     ("RUST_FOR_PYTHON_DEVS.md", "html/rust-for-python-devs.html", {"accent": "#f74c00"}),
+    ("ADVANCED_RUST_STUDY_GUIDE.md", "html/advanced-rust-study-guide.html", {"accent": "#f74c00"}),
     ("TYPESCRIPT_STUDY_GUIDE.md", "html/typescript-study-guide.html", {"accent": "#3178c6", "brand": "TS"}),
     ("SWIFT_STUDY_GUIDE.md", "html/swift-study-guide.html", {"accent": "#f05138", "brand": "Swift"}),
     ("IOS_DEVELOPMENT_STUDY_GUIDE.md", "html/ios-development-study-guide.html", {"accent": "#f05138", "brand": "iOS"}),
@@ -48,6 +49,7 @@ GUIDES = [
     ("ADVANCED_LINUX_STUDY_GUIDE.md", "html/advanced-linux-study-guide.html", {"auto": True}),
     ("LINUX_FUNDAMENTALS_STUDY_GUIDE.md", "html/linux-fundamentals-study-guide.html", {"auto": True}),
     ("ESP32_STUDY_GUIDE.md", "html/esp32-study-guide.html", {"auto": True}),
+    ("RASPBERRY_PI_STUDY_GUIDE.md", "html/raspberry-pi-study-guide.html", {"accent": "#c51a4a", "brand": "RPi"}),
     ("GIT_STUDY_GUIDE.md", "html/git-study-guide.html", {"auto": True}),
     ("VIM_STUDY_GUIDE.md", "html/vim-study-guide.html", {"auto": True}),
     ("DATA_ENGINEERING_STUDY_GUIDE.md", "html/data-engineering-study-guide.html", {"auto": True}),
@@ -61,6 +63,7 @@ GUIDES = [
     ("CRYPTO_FUNDAMENTALS.md", "html/crypto-fundamentals.html", {"auto": True}),
     ("DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md", "html/distributed-systems-study-guide.html", {"auto": True}),
     ("KALI_LINUX_STUDY_GUIDE.md", "html/kali-linux-study-guide.html", {"auto": True}),
+    ("WEB_LLM_SECURITY_STUDY_GUIDE.md", "html/web-llm-security-study-guide.html", {"auto": True}),
     ("LLM_APP_DEV_STUDY_GUIDE.md", "html/llm-app-dev-study-guide.html", {"auto": True}),
     ("NETWORKING_FUNDAMENTALS.md", "html/networking-fundamentals.html", {"auto": True}),
     ("EBPF_STUDY_GUIDE.md", "html/ebpf-study-guide.html", {"auto": True}),
@@ -77,6 +80,7 @@ CATEGORIES = [
         "cpp26-study-guide.html", "dotnet-for-python-devs.html",
         "golang-for-python-devs.html", "python-concurrency.html",
         "python-vs-nodejs-async-study-guide.html", "rust-for-python-devs.html",
+        "advanced-rust-study-guide.html",
         "typescript-study-guide.html", "swift-study-guide.html",
     ]),
     ("Web and frontend", [
@@ -98,7 +102,8 @@ CATEGORIES = [
     ]),
     ("Systems, OS, and hardware", [
         "advanced-linux-study-guide.html", "linux-fundamentals-study-guide.html",
-        "esp32-study-guide.html", "git-study-guide.html", "vim-study-guide.html",
+        "esp32-study-guide.html", "raspberry-pi-study-guide.html",
+        "git-study-guide.html", "vim-study-guide.html",
     ]),
     ("Data and messaging", [
         "data-engineering-study-guide.html", "postgres.html",
@@ -109,6 +114,7 @@ CATEGORIES = [
         "ai-agents-study-guide.html", "auth-study-guide.html",
         "crypto-fundamentals.html", "distributed-systems-study-guide.html",
         "kali-linux-study-guide.html", "llm-app-dev-study-guide.html",
+        "web-llm-security-study-guide.html",
         "networking-fundamentals.html", "testing-study-guide.html",
     ]),
     ("Bespoke and repo pages", [

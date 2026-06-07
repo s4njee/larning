@@ -1,0 +1,1205 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Advanced Rust Study Guide.">
+<title>Advanced Rust Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#f74c00; --accent2:#f74c00; --accent-weak:rgba(247,76,0,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#f74c00; --accent2:#f74c00; --accent-weak:rgba(247,76,0,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">A</span><span>Advanced Rust Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#phase-1-the-type-system-deepened" data-target="phase-1-the-type-system-deepened">Phase 1: The Type System, Deepened</a></li><li class="toc-l3"><a href="#11-static-vs-dynamic-dispatch" data-target="11-static-vs-dynamic-dispatch">1.1 Static vs Dynamic Dispatch</a></li><li class="toc-l3"><a href="#12-lifetimes-beyond-the-basics" data-target="12-lifetimes-beyond-the-basics">1.2 Lifetimes Beyond the Basics</a></li><li class="toc-l3"><a href="#13-smart-pointers-and-interior-mutability" data-target="13-smart-pointers-and-interior-mutability">1.3 Smart Pointers and Interior Mutability</a></li><li class="toc-l3"><a href="#14-closures-and-the-fn-traits" data-target="14-closures-and-the-fn-traits">1.4 Closures and the Fn Traits</a></li><li class="toc-l2"><a href="#phase-2-concurrency" data-target="phase-2-concurrency">Phase 2: Concurrency</a></li><li class="toc-l3"><a href="#21-fearless-concurrency-send-and-sync" data-target="21-fearless-concurrency-send-and-sync">2.1 Fearless Concurrency: Send and Sync</a></li><li class="toc-l3"><a href="#22-message-passing-vs-shared-state" data-target="22-message-passing-vs-shared-state">2.2 Message Passing vs Shared State</a></li><li class="toc-l3"><a href="#23-atomics-and-lock-free-programming" data-target="23-atomics-and-lock-free-programming">2.3 Atomics and Lock-Free Programming</a></li><li class="toc-l2"><a href="#phase-3-async-rust" data-target="phase-3-async-rust">Phase 3: Async Rust</a></li><li class="toc-l3"><a href="#31-the-future-trait-and-the-async-model" data-target="31-the-future-trait-and-the-async-model">3.1 The Future Trait and the Async Model</a></li><li class="toc-l3"><a href="#32-pin-and-unpin" data-target="32-pin-and-unpin">3.2 Pin and Unpin</a></li><li class="toc-l3"><a href="#33-the-tokio-runtime" data-target="33-the-tokio-runtime">3.3 The Tokio Runtime</a></li><li class="toc-l3"><a href="#34-async-patterns-and-pitfalls" data-target="34-async-patterns-and-pitfalls">3.4 Async Patterns and Pitfalls</a></li><li class="toc-l3"><a href="#35-shared-state-in-async" data-target="35-shared-state-in-async">3.5 Shared State in Async</a></li><li class="toc-l2"><a href="#phase-4-unsafe-rust-and-ffi" data-target="phase-4-unsafe-rust-and-ffi">Phase 4: Unsafe Rust and FFI</a></li><li class="toc-l3"><a href="#41-the-unsafe-contract" data-target="41-the-unsafe-contract">4.1 The unsafe Contract</a></li><li class="toc-l3"><a href="#42-building-safe-abstractions" data-target="42-building-safe-abstractions">4.2 Building Safe Abstractions</a></li><li class="toc-l3"><a href="#43-ffi-talking-to-c" data-target="43-ffi-talking-to-c">4.3 FFI: Talking to C</a></li><li class="toc-l2"><a href="#phase-5-performance-and-production" data-target="phase-5-performance-and-production">Phase 5: Performance and Production</a></li><li class="toc-l3"><a href="#51-zero-cost-abstractions-and-where-they-leak" data-target="51-zero-cost-abstractions-and-where-they-leak">5.1 Zero-Cost Abstractions (and Where They Leak)</a></li><li class="toc-l3"><a href="#52-error-handling-at-scale" data-target="52-error-handling-at-scale">5.2 Error Handling at Scale</a></li><li class="toc-l3"><a href="#53-production-async-concerns" data-target="53-production-async-concerns">5.3 Production Async Concerns</a></li><li class="toc-l2"><a href="#capstone-projects" data-target="capstone-projects">Capstone Projects</a></li><li class="toc-l3"><a href="#project-1-concurrent-tcp-chat-server" data-target="project-1-concurrent-tcp-chat-server">Project 1: Concurrent TCP Chat Server</a></li><li class="toc-l3"><a href="#project-2-bounded-job-processor" data-target="project-2-bounded-job-processor">Project 2: Bounded Job Processor</a></li><li class="toc-l3"><a href="#project-3-safe-wrapper-over-a-c-library" data-target="project-3-safe-wrapper-over-a-c-library">Project 3: Safe Wrapper over a C Library</a></li><li class="toc-l3"><a href="#project-4-lock-free-metrics-counter" data-target="project-4-lock-free-metrics-counter">Project 4: Lock-Free Metrics Counter</a></li><li class="toc-l2"><a href="#study-methodology" data-target="study-methodology">Study Methodology</a></li><li class="toc-l2"><a href="#additional-reference-links" data-target="additional-reference-links">Additional Reference Links</a></li></ul></nav></aside>
+  <main><h1 id="advanced-rust-study-guide">Advanced Rust Study Guide</h1>
+<p>A depth-first guide to the Rust that senior work actually demands: <strong>async and the runtime model, concurrency, the type-system machinery, and unsafe/FFI</strong>. It is the sequel to <a href="rust-for-python-devs.html">Rust for Python Developers</a> — this guide assumes you already own the fundamentals (ownership and borrowing, <code>Result</code>/<code>Option</code>, traits, enums, pattern matching, <code>cargo</code>) and goes after the parts that take Rust from "I can write a CLI" to "I can build a correct concurrent service and reason about why it's correct."</p>
+<p>The throughline: in Python you fight the GIL and in Go you fight the garbage collector, but in Rust <strong>the compiler makes you prove your concurrency is sound before it runs</strong>. Async, <code>Send</code>/<code>Sync</code>, <code>Pin</code>, and <code>unsafe</code> are all the same story — encoding invariants in the type system so that whole classes of bugs become compile errors. Master that lens and the hard parts stop feeling arbitrary.</p>
+<p>Every section includes compilable code. Build real things, not toy examples.</p>
+<hr>
+<h2 id="phase-1-the-type-system-deepened">Phase 1: The Type System, Deepened</h2>
+<h3 id="11-static-vs-dynamic-dispatch">1.1 Static vs Dynamic Dispatch</h3>
+<ul>
+<li><strong>What it is</strong>: The two ways Rust turns a trait call into machine code — <strong>monomorphization</strong> (a specialized copy per concrete type, resolved at compile time) and <strong>dynamic dispatch</strong> (one copy, a vtable lookup at run time via <code>dyn Trait</code>); docs: <a href="https://doc.rust-lang.org/book/ch17-02-trait-objects.html">Trait objects</a>.</li>
+<li><strong>Why it matters</strong>: This is the single most common "which do I reach for" decision in Rust API design, and it trades binary size and indirection against flexibility and heterogeneity.</li>
+</ul>
+<pre><code class="language-rust">trait Shape {
+    fn area(&amp;self) -&gt; f64;
+}
+
+struct Circle { r: f64 }
+impl Shape for Circle {
+    fn area(&amp;self) -&gt; f64 { std::f64::consts::PI * self.r * self.r }
+}
+
+// Static dispatch: monomorphized per concrete S, fully inlinable, zero runtime cost.
+fn total_area&lt;S: Shape&gt;(shapes: &amp;[S]) -&gt; f64 {
+    shapes.iter().map(|s| s.area()).sum()
+}
+
+// Dynamic dispatch: ONE function, a vtable lookup per call — but it can hold a
+// heterogeneous mix of shapes behind a pointer.
+fn total_area_dyn(shapes: &amp;[Box&lt;dyn Shape&gt;]) -&gt; f64 {
+    shapes.iter().map(|s| s.area()).sum()
+}
+</code></pre>
+<ul>
+<li><strong>Choose generics (<code>impl Trait</code> / <code>&amp;lt;T&amp;gt;</code>)</strong> when the type is known at the call site, the call is hot, or you want inlining. <strong>Choose <code>dyn Trait</code></strong> when you need a collection of mixed types, want to keep code size down, or need to store a trait in a struct field without making the whole struct generic.</li>
+<li><strong>Object safety</strong> is the catch: a trait is only usable as <code>dyn Trait</code> if its methods don't return <code>Self</code> and aren't generic. The compiler enforces this, and the error ("the trait cannot be made into an object") confuses everyone the first time.</li>
+<li><strong><code>impl Trait</code></strong> in argument position is sugar for a generic bound; in return position it means "one concrete type I'm not naming" — essential for returning closures and futures.</li>
+</ul>
+<p>The bullets undersell the mental model: a generic function is a <em>template</em> the compiler stamps out, while a <code>dyn</code> value is a <em>fat pointer</em> (data pointer + vtable pointer). Once you can predict which one a given signature produces, surprises about binary size, inlining, and "why can't I put these in a <code>Vec</code>" mostly evaporate.</p>
+<h3 id="12-lifetimes-beyond-the-basics">1.2 Lifetimes Beyond the Basics</h3>
+<ul>
+<li><strong>What it is</strong>: The compile-time region analysis that proves no reference outlives its referent. You know elision and <code>&amp;'a T</code>; the advanced surface is <strong><code>'static</code></strong>, <strong>variance</strong>, and <strong>higher-ranked trait bounds</strong>; docs: <a href="https://doc.rust-lang.org/nomicon/lifetimes.html">Lifetimes (Nomicon)</a>.</li>
+<li><strong><code>'static</code></strong> means "lives for the entire program <em>or</em> owns all its data" — it is a bound (<code>T: 'static</code>), not just a literal. <code>thread::spawn</code> requires it because the thread may outlive the spawning frame.</li>
+<li><strong>Higher-ranked trait bounds (HRTB)</strong> — <code>for&lt;'a&gt; Fn(&amp;'a str) -&gt; &amp;'a str</code> — express "this holds for <em>every</em> lifetime," which is what you need for closures that accept a borrow of any duration:</li>
+</ul>
+<pre><code class="language-rust">// The bound must hold for ANY 'a the caller picks, not one fixed lifetime.
+fn apply&lt;F&gt;(f: F)
+where
+    F: for&lt;'a&gt; Fn(&amp;'a str) -&gt; &amp;'a str,
+{
+    let owned = String::from(&quot;hello world&quot;);
+    println!(&quot;{}&quot;, f(&amp;owned));      // works no matter how long `owned` lives
+}
+
+fn main() {
+    apply(|s| s.split(' ').next().unwrap());
+}
+</code></pre>
+<ul>
+<li><strong>The wall you'll hit</strong>: returning a reference into something you own (a self-referential struct) is <em>impossible</em> in safe Rust, because moving the struct would invalidate the internal pointer. That limitation is exactly what <code>Pin</code> (Phase 3) exists to manage for async state machines.</li>
+<li><strong>Variance</strong> rarely needs explicit thought, but knowing it exists explains why <code>&amp;'long T</code> coerces to <code>&amp;'short T</code> (covariance) while <code>&amp;mut T</code> does not vary in <code>T</code> (invariance) — the root cause of many "lifetime mismatch" errors around mutable references.</li>
+</ul>
+<p>The deeper point is that lifetimes are not annotations you sprinkle to satisfy the compiler; they are the <em>proof</em> that your reference graph is acyclic and well-ordered. When a lifetime error feels arbitrary, the fix is almost never "add <code>'static</code>" — it's to ask what ownership relationship you're actually trying to express.</p>
+<h3 id="13-smart-pointers-and-interior-mutability">1.3 Smart Pointers and Interior Mutability</h3>
+<ul>
+<li><strong>What it is</strong>: The toolbox for shared ownership and for mutating through a shared reference — <code>Box</code>, <code>Rc</code>/<code>Arc</code>, and the interior-mutability cells <code>Cell</code>/<code>RefCell</code>/<code>Mutex</code>/<code>RwLock</code>; docs: <a href="https://doc.rust-lang.org/std/cell/"><code>std::cell</code></a>, <a href="https://doc.rust-lang.org/std/rc/struct.Rc.html"><code>Rc</code></a>.</li>
+<li><strong>The decision table</strong> is worth memorizing:</li>
+<li><code>Box&amp;lt;T&amp;gt;</code> — single owner, heap allocation, the simplest indirection.</li>
+<li><code>Rc&amp;lt;T&amp;gt;</code> — multiple owners, <strong>single-threaded</strong>, reference-counted.</li>
+<li><code>Arc&amp;lt;T&amp;gt;</code> — multiple owners, <strong>thread-safe</strong> (atomic refcount).</li>
+<li><code>RefCell&amp;lt;T&amp;gt;</code> — single-threaded interior mutability, borrow rules checked <strong>at runtime</strong> (panics on violation).</li>
+<li><code>Mutex&amp;lt;T&amp;gt;</code> / <code>RwLock&amp;lt;T&amp;gt;</code> — thread-safe interior mutability via locking.</li>
+<li><strong>The two canonical combos</strong>: <code>Rc&lt;RefCell&amp;lt;T&amp;gt;&gt;</code> for shared mutable state on one thread (graphs, observers), and <code>Arc&lt;Mutex&amp;lt;T&amp;gt;&gt;</code> for shared mutable state across threads:</li>
+</ul>
+<pre><code class="language-rust">use std::sync::{Arc, Mutex};
+use std::thread;
+
+let counter = Arc::new(Mutex::new(0u64));
+let mut handles = vec![];
+
+for _ in 0..10 {
+    let counter = Arc::clone(&amp;counter);          // bump the refcount, not the data
+    handles.push(thread::spawn(move || {
+        let mut n = counter.lock().unwrap();     // lock; guard unlocks on drop
+        *n += 1;
+    }));
+}
+for h in handles { h.join().unwrap(); }
+assert_eq!(*counter.lock().unwrap(), 10);
+</code></pre>
+<ul>
+<li><strong>Interior mutability is the escape hatch</strong> from "shared XOR mutable," and it does not break the rule — it <em>moves the check</em>. <code>RefCell</code> enforces it at runtime; <code>Mutex</code> enforces it by blocking. Reach for it deliberately, not to dodge the borrow checker.</li>
+</ul>
+<p>What's easy to miss is that <code>Arc</code> and <code>Mutex</code> are orthogonal: <code>Arc</code> gives you <em>shared ownership</em>, <code>Mutex</code> gives you <em>safe mutation</em>. You combine them because thread-shared mutable state needs both, but plenty of code wants only one — <code>Arc&amp;lt;T&amp;gt;</code> for shared read-only config, <code>Mutex&amp;lt;T&amp;gt;</code> inside a struct that already has a single owner.</p>
+<h3 id="14-closures-and-the-fn-traits">1.4 Closures and the <code>Fn</code> Traits</h3>
+<ul>
+<li><strong>What it is</strong>: A closure is an anonymous function that <em>captures its environment</em>. Which of three traits it implements is determined by <strong>how</strong> it captures: <code>Fn</code> (by shared reference <code>&amp;</code>), <code>FnMut</code> (by unique reference <code>&amp;mut</code>), <code>FnOnce</code> (by value / move); docs: <a href="https://doc.rust-lang.org/book/ch13-01-closures.html">Closures</a>.</li>
+<li><strong>Why it matters</strong>: Every async combinator, iterator adapter, and <code>spawn</code> takes a closure, and the trait bound you write (<code>F: Fn</code> vs <code>F: FnOnce</code>) decides whether the caller can invoke it once or many times. This is also where the HRTB bounds from 1.2 show up in practice.</li>
+<li><strong>The hierarchy</strong>: every <code>Fn</code> is also <code>FnMut</code> is also <code>FnOnce</code> (calling by <code>&amp;</code> is stricter than by value). Bound your generic with the <em>weakest</em> trait that does the job — <code>FnOnce</code> if you only call once, <code>Fn</code> if many times.</li>
+</ul>
+<pre><code class="language-rust">// `impl Fn` returns a closure; `move` captures `x` by value so it outlives this frame.
+fn make_adder(x: i32) -&gt; impl Fn(i32) -&gt; i32 {
+    move |y| x + y
+}
+
+// `Fn` bound: callable repeatedly through a shared borrow.
+fn apply_twice&lt;F: Fn(i32) -&gt; i32&gt;(f: F, v: i32) -&gt; i32 {
+    f(f(v))
+}
+
+fn main() {
+    let add5 = make_adder(5);
+    assert_eq!(apply_twice(&amp;add5, 10), 20);
+
+    // FnMut: mutates captured state between calls.
+    let mut count = 0;
+    let mut tick = || { count += 1; count };
+    assert_eq!(tick(), 1);
+    assert_eq!(tick(), 2);
+
+    // FnOnce: moves a captured value out, so it can only be called once.
+    let name = String::from(&quot;rust&quot;);
+    let consume = move || name;        // takes ownership of `name`
+    let owned: String = consume();     // calling it a second time would not compile
+    assert_eq!(owned, &quot;rust&quot;);
+}
+</code></pre>
+<ul>
+<li><strong><code>move</code> is the bridge to concurrency</strong>: <code>thread::spawn</code> and <code>tokio::spawn</code> require the closure to own everything it touches (the spawning frame may be long gone), which is why those closures are almost always <code>move</code>.</li>
+<li><strong>Returning closures</strong> needs <code>impl Fn</code> for the static, monomorphized case (no allocation) or <code>Box&amp;lt;dyn Fn&amp;gt;</code> when you need to store closures of different shapes in one collection — the same static-vs-dynamic tradeoff from 1.1.</li>
+</ul>
+<p>The point that ties Phase 1 together: closures are just structs the compiler writes for you, holding the captured variables as fields and implementing one of the <code>Fn</code> traits. Seeing them that way demystifies both the move semantics (it's field ownership) and why an async block — which is also a compiler-generated struct holding its captured state — needs the exact same reasoning about <code>Send</code> and <code>'static</code> when you <code>spawn</code> it.</p>
+<hr>
+<h2 id="phase-2-concurrency">Phase 2: Concurrency</h2>
+<h3 id="21-fearless-concurrency-send-and-sync">2.1 Fearless Concurrency: <code>Send</code> and <code>Sync</code></h3>
+<ul>
+<li><strong>What it is</strong>: The two marker traits that make Rust's concurrency safety claims real. <strong><code>Send</code></strong> = safe to <em>move</em> to another thread; <strong><code>Sync</code></strong> = safe to <em>share</em> (<code>&amp;T</code>) across threads. They are <strong>auto traits</strong>: the compiler derives them structurally, so a type is <code>Send</code>/<code>Sync</code> iff all its fields are; docs: <a href="https://doc.rust-lang.org/nomicon/send-and-sync.html"><code>Send</code>/<code>Sync</code></a>.</li>
+<li><strong>Why it matters</strong>: "Fearless concurrency" is not a slogan — it's these two traits plus the borrow checker. Data races become <em>type errors</em>. <code>Rc&amp;lt;T&amp;gt;</code> is deliberately <strong>not</strong> <code>Send</code> (its refcount isn't atomic), so the moment you try to move one into a thread, the compiler stops you and points you at <code>Arc</code>.</li>
+<li><strong>Threads can borrow local data</strong> with scoped threads (stable since 1.63), which join before the scope ends — no <code>'static</code>, no <code>Arc</code> needed:</li>
+</ul>
+<pre><code class="language-rust">use std::thread;
+
+let mut data = vec![1, 2, 3];
+
+thread::scope(|s| {
+    s.spawn(|| println!(&quot;read borrow: {:?}&quot;, &amp;data));   // borrow local data directly
+    s.spawn(|| println!(&quot;len = {}&quot;, data.len()));
+});                                                      // all scoped threads joined HERE
+
+data.push(4);                                            // safe: the borrows have ended
+</code></pre>
+<ul>
+<li>You almost never <code>impl Send</code>/<code>Sync</code> by hand; the few times you do (wrapping a raw pointer in a sound abstraction) require <code>unsafe</code> because you're asserting a property the compiler can't verify.</li>
+</ul>
+<p>The non-obvious lesson is that <code>Send</code>/<code>Sync</code> are <em>contagious and free</em>. You get them automatically when your design is sound, and you lose them automatically when it isn't. A struct that suddenly "isn't <code>Send</code>" is a design signal — usually a stray <code>Rc</code>, a raw pointer, or a <code>RefCell</code> where a <code>Mutex</code> belongs.</p>
+<h3 id="22-message-passing-vs-shared-state">2.2 Message Passing vs Shared State</h3>
+<ul>
+<li><strong>What it is</strong>: The two coordination styles. Rust supports both, but channels ("do not communicate by sharing memory; share memory by communicating") often produce cleaner designs; docs: <a href="https://doc.rust-lang.org/std/sync/mpsc/"><code>std::sync::mpsc</code></a>.</li>
+<li><strong>Channels</strong> move ownership between threads, so there's nothing to lock:</li>
+</ul>
+<pre><code class="language-rust">use std::sync::mpsc;
+use std::thread;
+
+let (tx, rx) = mpsc::channel();
+
+for id in 0..3 {
+    let tx = tx.clone();                    // multiple producers
+    thread::spawn(move || {
+        tx.send(format!(&quot;hello from {id}&quot;)).unwrap();
+    });
+}
+drop(tx);                                   // drop the last sender so rx ends
+
+for msg in rx {                             // iterates until all senders are gone
+    println!(&quot;{msg}&quot;);
+}
+</code></pre>
+<ul>
+<li><strong>Use shared state (<code>Arc&amp;lt;Mutex&amp;gt;</code>)</strong> when many workers genuinely operate on one structure (a cache, a connection pool); <strong>use channels</strong> when you can model the work as a pipeline of owned messages. The latter scales better and deadlocks less.</li>
+</ul>
+<p>The subtle win of message passing is that it sidesteps the hardest part of locks — <em>lock ordering</em>. A pipeline of channels has no ordering to get wrong, which is why it's the default for most concurrent Rust services until a profiler says otherwise.</p>
+<h3 id="23-atomics-and-lock-free-programming">2.3 Atomics and Lock-Free Programming</h3>
+<ul>
+<li><strong>What it is</strong>: The lowest level — <code>AtomicUsize</code>, <code>AtomicBool</code>, and friends, mutated with an explicit <strong>memory <code>Ordering</code></strong> instead of a lock; docs: <a href="https://doc.rust-lang.org/std/sync/atomic/"><code>std::sync::atomic</code></a>.</li>
+<li><strong>The orderings</strong>, from weakest to strongest: <code>Relaxed</code> (atomicity only, no ordering between other variables), <code>Acquire</code>/<code>Release</code> (pair up to establish happens-before across a lock/handoff), and <code>SeqCst</code> (a single global order — safe default, but the slowest). A plain counter needs only <code>Relaxed</code>:</li>
+</ul>
+<pre><code class="language-rust">use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Arc;
+use std::thread;
+
+let hits = Arc::new(AtomicUsize::new(0));
+let mut handles = vec![];
+for _ in 0..10 {
+    let hits = Arc::clone(&amp;hits);
+    handles.push(thread::spawn(move || {
+        hits.fetch_add(1, Ordering::Relaxed);   // one atomic instruction, no lock
+    }));
+}
+for h in handles { h.join().unwrap(); }
+assert_eq!(hits.load(Ordering::Relaxed), 10);
+</code></pre>
+<ul>
+<li><strong>Compare-and-swap loops</strong> are how you build lock-free updates. Read, compute, and try to swap; if someone beat you, retry with their value:</li>
+</ul>
+<pre><code class="language-rust">use std::sync::atomic::{AtomicUsize, Ordering};
+
+// Lock-free &quot;store the max seen so far.&quot;
+fn store_max(slot: &amp;AtomicUsize, candidate: usize) {
+    let mut current = slot.load(Ordering::Relaxed);
+    while candidate &gt; current {
+        match slot.compare_exchange_weak(
+            current, candidate, Ordering::Release, Ordering::Relaxed,
+        ) {
+            Ok(_) =&gt; break,                  // we won the race
+            Err(actual) =&gt; current = actual, // lost; retry against the new value
+        }
+    }
+}
+</code></pre>
+<ul>
+<li><strong>Honest guidance</strong>: reach for atomics for counters, flags, and the occasional lock-free hot path — and reach for a <code>Mutex</code> for everything else. Hand-rolled lock-free data structures are genuinely hard (the ABA problem, reclamation); when you need them, use a vetted crate like <code>crossbeam</code> rather than rolling your own.</li>
+</ul>
+<p>The thing the orderings teach, once they click, is that "memory" on a modern CPU is not a single coherent array — it's a negotiated view across cores. <code>Acquire</code>/<code>Release</code> is how you draw a line that says "everything before this publish is visible after that consume." Most concurrency bugs at this level are missing or mismatched fences, not logic errors.</p>
+<hr>
+<h2 id="phase-3-async-rust">Phase 3: Async Rust</h2>
+<h3 id="31-the-future-trait-and-the-async-model">3.1 The <code>Future</code> Trait and the Async Model</h3>
+<ul>
+<li><strong>What it is</strong>: <code>async</code>/<code>await</code> is sugar. An <code>async fn</code> compiles into a <strong>state machine</strong> that implements the <code>Future</code> trait; awaiting it advances the machine. Crucially, <strong>futures are lazy</strong> — an <code>async</code> block does nothing until something polls it; docs: <a href="https://rust-lang.github.io/async-book/">Async Book</a>, <a href="https://doc.rust-lang.org/std/future/trait.Future.html"><code>Future</code></a>.</li>
+<li><strong>The trait</strong> is small. <code>poll</code> returns <code>Ready(value)</code> or <code>Pending</code>; when <code>Pending</code>, the future has stashed the <code>Waker</code> from the <code>Context</code> so it can notify the executor when it can make progress:</li>
+</ul>
+<pre><code class="language-rust">use std::future::Future;
+use std::pin::Pin;
+use std::task::{Context, Poll};
+
+// Yields control to the executor exactly once, then completes.
+// This is the whole async model in miniature: Pending + a wake, then Ready.
+struct YieldNow(bool);
+
+impl Future for YieldNow {
+    type Output = ();
+    fn poll(mut self: Pin&lt;&amp;mut Self&gt;, cx: &amp;mut Context&lt;'_&gt;) -&gt; Poll&lt;()&gt; {
+        if self.0 {
+            Poll::Ready(())
+        } else {
+            self.0 = true;
+            cx.waker().wake_by_ref();     // &quot;poll me again&quot; — without this we'd hang forever
+            Poll::Pending
+        }
+    }
+}
+</code></pre>
+<ul>
+<li><strong>The model is cooperative</strong>: a task runs until it hits a <code>Pending</code> (an <code>.await</code> that isn't ready), then <em>yields</em> the thread back to the executor. This is why a blocking call or a long CPU loop inside async code is poison — it never yields, starving every other task on that thread.</li>
+<li><strong><code>async fn</code> desugars</strong> to <code>fn(...) -&gt; impl Future&amp;lt;Output = ...&amp;gt;</code>. That's why an async function returns instantly with a future and why the body doesn't run until awaited.</li>
+</ul>
+<p>The insight worth internalizing: Rust async has <strong>no built-in runtime</strong>. The language gives you the <code>Future</code> trait and <code>await</code>; an executor (Tokio) supplies the thread pool, the timer, and the I/O reactor that actually polls your futures and responds to wakers. Python's <code>asyncio</code> bundles all of that; Rust deliberately unbundles it, which is why you pick a runtime.</p>
+<h3 id="32-pin-and-unpin">3.2 <code>Pin</code> and <code>Unpin</code></h3>
+<ul>
+<li><strong>What it is</strong>: The mechanism that makes self-referential futures safe. A state machine generated from <code>async</code> can hold a reference into its own data (a borrow held across an <code>.await</code>). If that future were <em>moved</em>, the internal pointer would dangle — so such futures must not move once polled. <code>Pin&amp;lt;P&amp;gt;</code> is the type-level promise "this won't move"; docs: <a href="https://doc.rust-lang.org/std/pin/"><code>Pin</code></a>.</li>
+<li><strong><code>Unpin</code></strong> is the auto trait for types that <em>don't care</em> about being moved (almost everything — <code>i32</code>, <code>String</code>, <code>Vec</code>). For <code>Unpin</code> types, <code>Pin</code> is a no-op you can ignore. Pinning only bites for the compiler-generated futures and hand-written self-referential types.</li>
+<li><strong>You rarely write <code>Pin</code> by hand</strong>; you pin a future to the stack to poll it, or you use the <code>pin!</code> macro:</li>
+</ul>
+<pre><code class="language-rust">use std::pin::pin;
+
+async fn run() {
+    let fut = async { 1 + 1 };
+    let mut fut = pin!(fut);     // pin to the stack so a manual poll loop can drive it in place
+    // ... a custom executor would now call fut.as_mut().poll(cx) repeatedly
+    let _ = fut;
+}
+</code></pre>
+<ul>
+<li><strong>For structs that wrap futures</strong>, the <code>pin-project</code> crate generates safe pinned access to fields, distinguishing structurally-pinned fields from freely-movable ones:</li>
+</ul>
+<pre><code class="language-rust">use pin_project::pin_project;
+use std::time::Instant;
+
+#[pin_project]
+struct Timed&lt;F&gt; {
+    #[pin] future: F,    // structurally pinned: pinning Self pins this field
+    started: Instant,    // not pinned: an ordinary movable field
+}
+</code></pre>
+<p>The reason <code>Pin</code> feels alien is that it solves a problem most languages never expose you to: in a GC'd language, objects never move and self-reference is free; in C, you simply promise not to move things and hope. Rust makes the promise <em>checkable</em>, and <code>Pin</code> is the type that carries it. You mostly consume it (via Tokio) rather than produce it.</p>
+<h3 id="33-the-tokio-runtime">3.3 The Tokio Runtime</h3>
+<ul>
+<li><strong>What it is</strong>: The de-facto async runtime — an executor (multi-threaded, work-stealing scheduler), a reactor (epoll/kqueue/IOCP via <code>mio</code>), and a timer wheel; docs: <a href="https://tokio.rs/">Tokio</a>, <a href="https://tokio.rs/tokio/tutorial">Tokio tutorial</a>.</li>
+<li><strong><code>#[tokio::main]</code></strong> sets up the runtime and blocks on your async <code>main</code>. <code>tokio::spawn</code> hands a future to the scheduler as a concurrent <strong>task</strong> (a green thread), returning a <code>JoinHandle</code>:</li>
+</ul>
+<pre><code class="language-rust">use tokio::time::{sleep, Duration};
+
+#[tokio::main]
+async fn main() {
+    // Two tasks run concurrently on the runtime; the sleeps OVERLAP.
+    let a = tokio::spawn(async { sleep(Duration::from_millis(50)).await; 1 });
+    let b = tokio::spawn(async { sleep(Duration::from_millis(30)).await; 2 });
+
+    let total = a.await.unwrap() + b.await.unwrap();   // ~50ms total, not 80ms
+    println!(&quot;{total}&quot;);
+}
+</code></pre>
+<ul>
+<li><strong>The cardinal rule: never block the executor.</strong> A multi-threaded runtime has a small pool (one thread per core by default), and a blocking call parks one of those threads. Offload blocking or CPU-heavy work to a dedicated pool:</li>
+</ul>
+<pre><code class="language-rust">// Blocking file read or heavy compute belongs on the blocking pool, not the async pool.
+let contents = tokio::task::spawn_blocking(|| std::fs::read(&quot;big.bin&quot;))
+    .await
+    .unwrap();
+</code></pre>
+<ul>
+<li><strong><code>spawn</code> requires <code>'static + Send</code></strong> futures, because the scheduler may run them on any worker thread at any time. This is where the famous "future cannot be sent between threads safely" error comes from — usually a non-<code>Send</code> value (an <code>Rc</code>, a <code>RefCell</code> guard) held across an <code>.await</code>.</li>
+</ul>
+<p>What the API hides is how much the runtime is doing: parking idle worker threads, stealing tasks from busy ones, multiplexing thousands of sockets onto one <code>epoll</code> call, and firing timers — all so your code can read like straight-line <code>await</code>s. Understanding that there's a scheduler underneath is what lets you reason about fairness, starvation, and why <code>spawn_blocking</code> exists.</p>
+<h3 id="34-async-patterns-and-pitfalls">3.4 Async Patterns and Pitfalls</h3>
+<ul>
+<li><strong><code>join!</code> vs <code>select!</code></strong> are the core combinators. <code>join!</code> waits for <em>all</em> futures; <code>select!</code> races them and takes the first to finish, <strong>dropping the losers</strong> — and in async Rust, <strong>drop means cancel</strong>:</li>
+</ul>
+<pre><code class="language-rust">use tokio::time::{sleep, Duration};
+
+#[tokio::main]
+async fn main() {
+    let work = async { sleep(Duration::from_secs(5)).await; &quot;done&quot; };
+
+    tokio::select! {
+        res = work =&gt; println!(&quot;finished: {res}&quot;),
+        _ = sleep(Duration::from_secs(1)) =&gt; println!(&quot;timed out&quot;),  // wins; `work` is dropped
+    }
+}
+</code></pre>
+<ul>
+<li><strong>Cancellation is implicit and pervasive</strong>: dropping a future stops it at its last <code>.await</code>. This is powerful (timeouts are trivial) and sharp (a future cancelled mid-update can leave state half-written). Code that must not be interrupted at an await point needs to be <strong>cancellation-safe</strong> — a property you design for, not assume.</li>
+<li><strong>Structured concurrency</strong> via <code>JoinSet</code> lets you spawn a dynamic group and collect results as they finish, with clean shutdown:</li>
+</ul>
+<pre><code class="language-rust">use tokio::task::JoinSet;
+
+#[tokio::main]
+async fn main() {
+    let mut set = JoinSet::new();
+    for i in 0..5 {
+        set.spawn(async move { i * i });
+    }
+    let mut sum = 0;
+    while let Some(res) = set.join_next().await {
+        sum += res.unwrap();          // arrive as they complete, not in spawn order
+    }
+    println!(&quot;{sum}&quot;);                // 30
+}
+</code></pre>
+<ul>
+<li><strong><code>async fn</code> in traits</strong> stabilized in 1.75 for many cases; for object-safe (<code>dyn</code>) async traits or public APIs you'll still meet the <code>#[async_trait]</code> crate. The recurring friction is the <strong><code>Send</code> bound</strong>: futures crossing <code>spawn</code> must be <code>Send</code>, which ripples through trait definitions as <code>+ Send</code> requirements.</li>
+<li><strong>Streams</strong> are the async analog of iterators — <code>next().await</code> in a loop, via <code>tokio-stream</code> / <code>futures</code>:</li>
+</ul>
+<pre><code class="language-rust">use tokio_stream::StreamExt;
+
+#[tokio::main]
+async fn main() {
+    let mut stream = tokio_stream::iter(vec![1, 2, 3]);
+    while let Some(n) = stream.next().await {
+        println!(&quot;{n}&quot;);
+    }
+}
+</code></pre>
+<p>The hardest-won lesson here is that <strong>cancellation safety is a first-class design concern</strong> in async Rust, with no equivalent in most languages. Every <code>.await</code> inside a <code>select!</code> branch is a point where your function might simply stop and be discarded. Robust services treat each await as a potential exit and keep invariants intact across them.</p>
+<h3 id="35-shared-state-in-async">3.5 Shared State in Async</h3>
+<ul>
+<li><strong>What it is</strong>: The async-aware synchronization primitives in <code>tokio::sync</code> — <code>Mutex</code>, <code>RwLock</code>, plus the channels <code>mpsc</code>, <code>oneshot</code>, <code>watch</code>, and <code>broadcast</code>; docs: <a href="https://docs.rs/tokio/latest/tokio/sync/"><code>tokio::sync</code></a>.</li>
+<li><strong>The #1 async footgun: holding a <code>std::sync::Mutex</code> guard across an <code>.await</code>.</strong> The guard isn't <code>Send</code>, so the task can't be scheduled — and even if it compiled, you'd risk deadlock by holding a lock while suspended. Scope the guard, or use <code>tokio::sync::Mutex</code>:</li>
+</ul>
+<pre><code class="language-rust">use std::sync::Mutex;
+
+// ❌ Wrong: the std guard is alive across the await point.
+async fn bad(state: &amp;Mutex&lt;Vec&lt;u8&gt;&gt;, client: &amp;Client) {
+    let mut g = state.lock().unwrap();
+    g.push(1);
+    client.fetch().await;        // guard still held — not Send, blocks the runtime
+    g.push(2);
+}
+
+// ✅ Right: release the lock before awaiting; re-acquire after.
+async fn good(state: &amp;Mutex&lt;Vec&lt;u8&gt;&gt;, client: &amp;Client) {
+    { state.lock().unwrap().push(1); }   // guard dropped at the brace
+    client.fetch().await;
+    { state.lock().unwrap().push(2); }
+}
+</code></pre>
+<ul>
+<li><strong>Pick the right channel</strong>: <code>mpsc</code> for work queues (many producers, one consumer), <code>oneshot</code> for a single request/response handoff, <code>watch</code> for "latest value" broadcast (config reloads), and <code>broadcast</code> for fan-out to many subscribers.</li>
+<li><strong>Use <code>tokio::sync::Mutex</code> only when you must hold a lock across an await.</strong> Otherwise prefer a short <code>std::sync::Mutex</code> critical section — it's faster and the scoped pattern above keeps it correct.</li>
+</ul>
+<p>The principle underneath all of it: <strong>locks and await don't mix well</strong>, because a lock assumes bounded hold time and an await is unbounded. The cleanest async designs minimize shared mutable state entirely, moving data through channels so each piece has a single owner at a time.</p>
+<hr>
+<h2 id="phase-4-unsafe-rust-and-ffi">Phase 4: Unsafe Rust and FFI</h2>
+<h3 id="41-the-unsafe-contract">4.1 The <code>unsafe</code> Contract</h3>
+<ul>
+<li><strong>What it is</strong>: <code>unsafe</code> unlocks exactly <strong>five</strong> extra powers: dereference a raw pointer, call an <code>unsafe</code> function, implement an <code>unsafe</code> trait, access/modify a <code>static mut</code>, and access a <code>union</code> field. That's the whole list; docs: <a href="https://doc.rust-lang.org/book/ch20-01-unsafe-rust.html">Unsafe Rust</a>, <a href="https://doc.rust-lang.org/nomicon/">Rustonomicon</a>.</li>
+<li><strong>What it does <em>not</em> do</strong>: turn off the borrow checker, the type system, or lifetimes. <code>unsafe</code> means "the compiler can't verify this is sound, so <em>I</em> am vouching for it" — and if you vouch wrong, you get undefined behavior, the one thing safe Rust promised to abolish.</li>
+</ul>
+<pre><code class="language-rust">let mut x = 42;
+let ptr = &amp;mut x as *mut i32;     // creating a raw pointer is SAFE
+unsafe {
+    *ptr += 1;                    // dereferencing it is UNSAFE — you assert it's valid &amp; aligned
+}
+assert_eq!(x, 43);
+</code></pre>
+<ul>
+<li><strong>The discipline</strong>: keep <code>unsafe</code> blocks tiny, document the invariant each one relies on, and never let UB be <em>reachable</em> from safe code. An <code>unsafe</code> block is a proof obligation; write the proof in a comment.</li>
+</ul>
+<h3 id="42-building-safe-abstractions">4.2 Building Safe Abstractions</h3>
+<ul>
+<li><strong>The whole point of <code>unsafe</code></strong> is to build a <em>safe</em> API on top of it — unsafe inside, safe contract outside. The canonical example is <code>split_at_mut</code>, which hands out two mutable slices into one buffer (the borrow checker can't see they're disjoint, but you can prove it):</li>
+</ul>
+<pre><code class="language-rust">use std::slice;
+
+fn split_at_mut(v: &amp;mut [i32], mid: usize) -&gt; (&amp;mut [i32], &amp;mut [i32]) {
+    let len = v.len();
+    let ptr = v.as_mut_ptr();
+    assert!(mid &lt;= len);                 // the invariant that makes the unsafe sound
+    unsafe {
+        (
+            slice::from_raw_parts_mut(ptr, mid),
+            slice::from_raw_parts_mut(ptr.add(mid), len - mid),  // disjoint range
+        )
+    }
+}
+</code></pre>
+<ul>
+<li>The safe signature (<code>&amp;mut [i32]</code> in, two <code>&amp;mut [i32]</code> out) means callers can never misuse it: the <code>assert!</code> rules out the one input that would break soundness, and the disjoint ranges guarantee the two <code>&amp;mut</code> never alias. <em>That</em> is idiomatic unsafe — a small, audited core under a totally safe surface.</li>
+</ul>
+<p>The mindset shift is that <code>unsafe</code> is not "Rust with the safety off"; it's "Rust where <em>you</em> supply the safety proof the compiler couldn't." Good unsafe code is rarer and more carefully reviewed than anything in C, precisely because the boundary is explicit and everything outside it stays checked.</p>
+<h3 id="43-ffi-talking-to-c">4.3 FFI: Talking to C</h3>
+<ul>
+<li><strong>What it is</strong>: The C ABI is Rust's interop lingua franca. <code>extern "C"</code> declares foreign functions and exports Rust ones; <code>#[repr(C)]</code> gives structs a stable, C-compatible layout; docs: <a href="https://doc.rust-lang.org/nomicon/ffi.html">FFI</a>.</li>
+<li><strong>Calling C</strong> (every foreign call is <code>unsafe</code> — the compiler can't check the other side):</li>
+</ul>
+<pre><code class="language-rust">extern &quot;C&quot; {
+    fn abs(input: i32) -&gt; i32;     // from the C standard library
+}
+
+fn main() {
+    let n = unsafe { abs(-5) };    // foreign calls are unsafe by definition
+    println!(&quot;{n}&quot;);               // 5
+}
+</code></pre>
+<ul>
+<li><strong>Being called from C</strong> — export with <code>#[no_mangle]</code> and <code>extern "C"</code>, and give shared structs <code>#[repr(C)]</code>:</li>
+</ul>
+<pre><code class="language-rust">#[no_mangle]
+pub extern &quot;C&quot; fn add(a: i32, b: i32) -&gt; i32 {
+    a + b
+}
+
+#[repr(C)]
+pub struct Point { pub x: f64, pub y: f64 }   // predictable layout, no field reordering
+</code></pre>
+<ul>
+<li><strong>The hazards at the boundary</strong>: ownership (who frees memory — <code>CString::into_raw</code> / <code>from_raw</code> to pass owned strings), null and validity of incoming pointers, and <strong>never unwinding across the boundary</strong> (wrap Rust panics with <code>std::panic::catch_unwind</code> before returning to C). Tools <code>bindgen</code> (C headers → Rust) and <code>cbindgen</code> (Rust → C headers) automate the declarations.</li>
+</ul>
+<p>The reframing that helps: FFI is the one place Rust's guarantees genuinely stop at a line, and that line is the C ABI. The professional move is to make the unsafe <code>extern</code> surface as thin as possible and wrap it immediately in a safe Rust module, so the rest of your codebase never sees a raw pointer.</p>
+<hr>
+<h2 id="phase-5-performance-and-production">Phase 5: Performance and Production</h2>
+<h3 id="51-zero-cost-abstractions-and-where-they-leak">5.1 Zero-Cost Abstractions (and Where They Leak)</h3>
+<ul>
+<li><strong>The promise</strong>: iterators, closures, generics, <code>async</code>, and <code>Option</code>/<code>Result</code> compile down to what you'd write by hand — a <code>.iter().map().filter().sum()</code> chain becomes the same loop, with no allocation or indirection.</li>
+<li><strong>Where it leaks</strong> (the costs that <em>aren't</em> free, and worth watching): <code>Box&amp;lt;dyn Trait&amp;gt;</code> adds a vtable indirection, <code>Arc::clone</code> is an atomic increment (cheap but not nothing — don't clone in a tight loop), and every <code>.collect()</code> / <code>String</code> / <code>Vec::push</code>-past-capacity is an allocation. Async adds a state-machine size cost: large futures bloat and pulling a big future behind <code>Box::pin</code> trades size for an allocation.</li>
+<li><strong>Measure, don't guess</strong>: <code>cargo flamegraph</code> for where time goes, <code>criterion</code> for statistically-sound microbenchmarks, and <code>cargo build --release</code> always when benchmarking (debug builds are 10–100× slower and meaningless for perf).</li>
+</ul>
+<p>The honest framing: "zero-cost" means <em>zero overhead versus the equivalent hand-written code</em>, not <em>zero cost in absolute terms</em>. The abstraction is free; the allocation, the atomic, and the dynamic dispatch you asked for are not. Senior Rust performance work is mostly about <em>not allocating</em> and <em>not indirecting</em> on hot paths.</p>
+<h3 id="52-error-handling-at-scale">5.2 Error Handling at Scale</h3>
+<ul>
+<li><strong>The two-crate convention</strong>: use <code>thiserror</code> to define precise error <em>enums</em> in <strong>libraries</strong> (callers can match on variants), and <code>anyhow</code> for ergonomic, context-rich error <em>propagation</em> in <strong>applications</strong> (where you mostly just bubble up and log); docs: <a href="https://docs.rs/thiserror/"><code>thiserror</code></a>, <a href="https://docs.rs/anyhow/"><code>anyhow</code></a>.</li>
+</ul>
+<pre><code class="language-rust">use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum StoreError {
+    #[error(&quot;item not found: {0}&quot;)]
+    NotFound(String),
+    #[error(&quot;backing store unavailable&quot;)]
+    Io(#[from] std::io::Error),     // generates From&lt;io::Error&gt;, so `?` just works
+}
+
+fn load(path: &amp;str) -&gt; Result&lt;String, StoreError&gt; {
+    let data = std::fs::read_to_string(path)?;   // io::Error auto-converts via #[from]
+    Ok(data)
+}
+</code></pre>
+<ul>
+<li><strong>The <code>?</code> operator</strong> is the workhorse — it returns early on <code>Err</code>, applying any <code>From</code> conversion in scope. <code>#[from]</code> wiring is what makes one function return a clean unified error from many sources.</li>
+<li><strong>In application code, <code>anyhow</code> goes the other way</strong> — it erases the concrete error type and lets you attach human context as the error bubbles up:</li>
+</ul>
+<pre><code class="language-rust">use anyhow::{Context, Result};
+
+fn start() -&gt; Result&lt;()&gt; {
+    let raw = std::fs::read_to_string(&quot;config.toml&quot;)
+        .context(&quot;reading config.toml&quot;)?;          // any error type gains a readable trail
+    let port: u16 = raw.trim().parse()
+        .context(&quot;config must contain a port number&quot;)?;
+    println!(&quot;listening on :{port}&quot;);
+    Ok(())
+}
+</code></pre>
+<p>The design principle is <strong>typed errors at boundaries, opaque errors in the middle</strong>: a library exposes a precise enum so consumers can react, while an application's internals lean on <code>anyhow</code> to add context (<code>.context("loading config")</code>) without ceremony. Mixing the two — <code>anyhow</code> inside, <code>thiserror</code> at the public edge — is the mainstream pattern.</p>
+<h3 id="53-production-async-concerns">5.3 Production Async Concerns</h3>
+<ul>
+<li><strong>Graceful shutdown</strong>: wire a cancellation signal to every long-lived task so the process drains instead of dropping work. <code>tokio_util::sync::CancellationToken</code> plus <code>select!</code> is the standard shape:</li>
+</ul>
+<pre><code class="language-rust">use tokio_util::sync::CancellationToken;
+use tokio::time::{sleep, Duration};
+
+#[tokio::main]
+async fn main() {
+    let token = CancellationToken::new();
+    let worker_token = token.clone();
+
+    let worker = tokio::spawn(async move {
+        loop {
+            tokio::select! {
+                _ = worker_token.cancelled() =&gt; break,          // shutdown requested
+                _ = sleep(Duration::from_millis(100)) =&gt; { /* do a unit of work */ }
+            }
+        }
+    });
+
+    tokio::signal::ctrl_c().await.unwrap();   // wait for Ctrl-C
+    token.cancel();                           // ask all workers to stop at their next await
+    worker.await.unwrap();                    // let them finish draining
+}
+</code></pre>
+<ul>
+<li><strong>Backpressure</strong>: prefer <strong>bounded</strong> channels (<code>mpsc::channel(capacity)</code>). An unbounded queue turns a slow consumer into an out-of-memory crash; a bounded one makes producers wait, which is the system telling you the truth about its throughput.</li>
+<li><strong>Observability</strong>: instrument with the <code>tracing</code> crate (structured, async-aware spans), and reach for <code>tokio-console</code> to <em>see</em> your tasks live — which are stalled, which are busy, where the runtime is contended. It's the async equivalent of a thread profiler and indispensable when "it's slow" needs a cause.</li>
+<li><strong>Avoid task explosion</strong>: <code>spawn</code> is cheap but not free; spawning per-item without bound creates scheduling pressure and unbounded memory. Use a <code>JoinSet</code>, a <code>Semaphore</code>, or a worker pool to cap concurrency.</li>
+</ul>
+<p>The throughline of productionizing async Rust is <strong>bounding things</strong>: bounded queues, bounded concurrency, bounded task lifetimes via cancellation. The language gives you fearless concurrency for correctness; staying up under load is about putting ceilings on everything so load translates into backpressure instead of collapse.</p>
+<hr>
+<h2 id="capstone-projects">Capstone Projects</h2>
+<p>Build these to turn the concepts into instincts. Each forces a different hard part to be correct.</p>
+<h3 id="project-1-concurrent-tcp-chat-server">Project 1: Concurrent TCP Chat Server</h3>
+<ul>
+<li><strong>Stack</strong>: Tokio, <code>tokio::net::TcpListener</code>, <code>broadcast</code> channel, <code>select!</code>, graceful shutdown.</li>
+<li><strong>Build</strong>: Accept many clients, fan out each message to all others via a <code>broadcast</code> channel, and shut down cleanly on Ctrl-C. Each connection is a spawned task that <code>select!</code>s between "socket has data" and "broadcast has a message for me."</li>
+<li><strong>Why it matters</strong>: It exercises the real async core — per-connection tasks, shared broadcast state, cancellation safety, and the <code>Send</code> bounds that <code>spawn</code> imposes — in the canonical networked shape.</li>
+</ul>
+<h3 id="project-2-bounded-job-processor">Project 2: Bounded Job Processor</h3>
+<ul>
+<li><strong>Stack</strong>: <code>mpsc</code> bounded channel, a fixed worker pool, <code>Semaphore</code> for concurrency limits, <code>CancellationToken</code>.</li>
+<li><strong>Build</strong>: A queue that accepts jobs over a bounded channel, processes them across N workers with a concurrency cap, applies backpressure when full, and drains on shutdown.</li>
+<li><strong>Why it matters</strong>: This is the backpressure-and-shutdown pattern every production service needs, and it makes the "bound everything" lesson concrete.</li>
+</ul>
+<h3 id="project-3-safe-wrapper-over-a-c-library">Project 3: Safe Wrapper over a C Library</h3>
+<ul>
+<li><strong>Stack</strong>: <code>extern "C"</code>, <code>#[repr(C)]</code>, <code>bindgen</code>, <code>CString</code>/<code>CStr</code>, a safe module boundary.</li>
+<li><strong>Build</strong>: Bind a small C library (e.g., a compression or hashing lib), then wrap its raw <code>unsafe</code> calls in a safe Rust API that handles allocation, null checks, and error codes.</li>
+<li><strong>Why it matters</strong>: It teaches the discipline of confining <code>unsafe</code> to a thin, audited layer — the single most valuable unsafe skill.</li>
+</ul>
+<h3 id="project-4-lock-free-metrics-counter">Project 4: Lock-Free Metrics Counter</h3>
+<ul>
+<li><strong>Stack</strong>: <code>AtomicU64</code>, <code>Ordering</code>, <code>Arc</code>, a benchmark against <code>Mutex&amp;lt;u64&amp;gt;</code> with <code>criterion</code>.</li>
+<li><strong>Build</strong>: A sharded, lock-free counter that many threads bump concurrently, then benchmark it against the naive <code>Mutex</code> version under contention.</li>
+<li><strong>Why it matters</strong>: It makes the atomics-vs-locks tradeoff empirical instead of theoretical, and shows when lock-free actually wins (and when it doesn't).</li>
+</ul>
+<p>The capstones matter because async and unsafe Rust are easiest to <em>misunderstand</em> in isolation and easiest to <em>internalize</em> under real constraints. A chat server that must not drop messages on shutdown teaches cancellation safety more durably than any explanation.</p>
+<hr>
+<h2 id="study-methodology">Study Methodology</h2>
+<ol>
+<li><strong>Walk the ladder in order</strong>: type system → threads → async → unsafe. Async builds on <code>Send</code>/<code>Sync</code>; <code>Pin</code> builds on lifetimes; FFI builds on raw pointers. Skipping ahead is why async feels like magic — the foundations explain it.</li>
+<li><strong>Read the errors as design feedback</strong>: "not <code>Send</code>," "does not live long enough," and "cannot be made into an object" are the compiler telling you a real thing about your design. Treat each as a question about ownership, not a syntax puzzle.</li>
+<li><strong>Pick one runtime and learn it deeply</strong>: Tokio is the default. Learn its scheduler, <code>spawn_blocking</code>, and <code>tokio-console</code> before exploring alternatives.</li>
+<li><strong>Benchmark in <code>--release</code>, always</strong>: debug-build performance numbers are noise. Use <code>criterion</code> for micro and <code>flamegraph</code> for macro.</li>
+<li><strong>Confine <code>unsafe</code> and prove it</strong>: every <code>unsafe</code> block gets a comment stating the invariant it relies on. If you can't write the invariant, you can't write the block.</li>
+<li><strong>Default to message passing</strong>: reach for channels before shared <code>Mutex</code> state; it deadlocks less and scales better. Add shared state only when a profiler justifies it.</li>
+<li><strong>Bound everything in production</strong>: bounded channels, capped concurrency, cancellation on shutdown. Correctness comes from the type system; staying up comes from ceilings.</li>
+</ol>
+<p>The point of the sequence is that Rust's "hard" topics are one idea wearing four costumes: <strong>encode the invariant in the type system so violations don't compile.</strong> Once you see <code>Send</code>, <code>Pin</code>, lifetimes, and <code>unsafe</code> as that same move at different layers, the language stops feeling like a pile of special cases.</p>
+<hr>
+<h2 id="additional-reference-links">Additional Reference Links</h2>
+<ul>
+<li><strong>Core &amp; official</strong>:</li>
+<li><a href="https://doc.rust-lang.org/book/">The Rust Programming Language ("the book")</a></li>
+<li><a href="https://doc.rust-lang.org/nomicon/">The Rustonomicon (unsafe)</a></li>
+<li><a href="https://rust-lang.github.io/async-book/">The Async Book</a></li>
+<li><a href="https://doc.rust-lang.org/rust-by-example/">Rust by Example</a></li>
+<li><a href="https://doc.rust-lang.org/reference/">Rust Reference</a></li>
+<li><strong>Concurrency &amp; async</strong>:</li>
+<li><a href="https://doc.rust-lang.org/std/sync/"><code>std::sync</code></a> · <a href="https://doc.rust-lang.org/std/sync/atomic/"><code>std::sync::atomic</code></a></li>
+<li><a href="https://docs.rs/tokio/">Tokio docs</a> · <a href="https://tokio.rs/tokio/tutorial">Tokio tutorial</a></li>
+<li><a href="https://doc.rust-lang.org/std/pin/"><code>std::pin</code></a> · <a href="https://docs.rs/pin-project/"><code>pin-project</code></a></li>
+<li><a href="https://docs.rs/crossbeam/"><code>crossbeam</code></a> (lock-free building blocks)</li>
+<li><a href="https://github.com/tokio-rs/console">tokio-console</a></li>
+<li><strong>Errors, FFI, perf</strong>:</li>
+<li><a href="https://docs.rs/thiserror/"><code>thiserror</code></a> · <a href="https://docs.rs/anyhow/"><code>anyhow</code></a></li>
+<li><a href="https://rust-lang.github.io/rust-bindgen/"><code>bindgen</code></a> · <a href="https://github.com/mozilla/cbindgen"><code>cbindgen</code></a></li>
+<li><a href="https://docs.rs/criterion/"><code>criterion</code></a> · <a href="https://github.com/flamegraph-rs/flamegraph"><code>cargo-flamegraph</code></a></li>
+<li><strong>Deepen further</strong>:</li>
+<li><a href="https://marabos.nl/atomics/">Rust Atomics and Locks (Mara Bos, free online)</a></li>
+<li><a href="https://www.youtube.com/c/JonGjengset">Jon Gjengset — "Crust of Rust" / Decrusted videos</a></li>
+</ul>
+<p>Use the references as a map, not a substitute for the compiler. The fastest way to learn advanced Rust is to write code that doesn't compile, read what the compiler says, and fix the <em>design</em> it's pointing at — then confirm your mental model against the docs above.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

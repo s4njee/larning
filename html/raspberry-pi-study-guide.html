@@ -1,0 +1,2401 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Embedded Linux on the Raspberry Pi Zero 2 W.">
+<title>Embedded Linux on the Raspberry Pi Zero 2 W - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#c51a4a; --accent2:#c51a4a; --accent-weak:rgba(197,26,74,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#c51a4a; --accent2:#c51a4a; --accent-weak:rgba(197,26,74,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">RPi</span><span>Embedded Linux on the Raspberry Pi Zero 2 W</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#1-the-mental-model" data-target="1-the-mental-model">1. The Mental Model</a></li><li class="toc-l3"><a href="#microcontroller-vs-embedded-linux" data-target="microcontroller-vs-embedded-linux">Microcontroller vs. Embedded Linux</a></li><li class="toc-l3"><a href="#when-you-need-embedded-linux" data-target="when-you-need-embedded-linux">When You Need Embedded Linux</a></li><li class="toc-l3"><a href="#the-pi-zero-2-w-specifically" data-target="the-pi-zero-2-w-specifically">The Pi Zero 2 W Specifically</a></li><li class="toc-l2"><a href="#2-the-hardware" data-target="2-the-hardware">2. The Hardware</a></li><li class="toc-l3"><a href="#pi-zero-2-w-specifications" data-target="pi-zero-2-w-specifications">Pi Zero 2 W Specifications</a></li><li class="toc-l3"><a href="#the-40-pin-gpio-header" data-target="the-40-pin-gpio-header">The 40-Pin GPIO Header</a></li><li class="toc-l3"><a href="#what-you-need-on-your-desk" data-target="what-you-need-on-your-desk">What You Need on Your Desk</a></li><li class="toc-l2"><a href="#3-the-boot-process" data-target="3-the-boot-process">3. The Boot Process</a></li><li class="toc-l3"><a href="#why-the-boot-process-matters" data-target="why-the-boot-process-matters">Why the Boot Process Matters</a></li><li class="toc-l3"><a href="#the-boot-pipeline" data-target="the-boot-pipeline">The Boot Pipeline</a></li><li class="toc-l3"><a href="#the-boot-partition-fat32" data-target="the-boot-partition-fat32">The Boot Partition (FAT32)</a></li><li class="toc-l3"><a href="#configtxt-the-hardware-configuration-file" data-target="configtxt-the-hardware-configuration-file">config.txt — The Hardware Configuration File</a></li><li class="toc-l3"><a href="#cmdlinetxt-kernel-command-line" data-target="cmdlinetxt-kernel-command-line">cmdline.txt — Kernel Command Line</a></li><li class="toc-l2"><a href="#4-os-selection-image-creation" data-target="4-os-selection-image-creation">4. OS Selection &amp; Image Creation</a></li><li class="toc-l3"><a href="#raspberry-pi-os-lite-recommended-starting-point" data-target="raspberry-pi-os-lite-recommended-starting-point">Raspberry Pi OS Lite (Recommended Starting Point)</a></li><li class="toc-l3"><a href="#alternative-os-choices" data-target="alternative-os-choices">Alternative OS Choices</a></li><li class="toc-l3"><a href="#buildroot-when-you-need-minimal" data-target="buildroot-when-you-need-minimal">Buildroot — When You Need Minimal</a></li><li class="toc-l3"><a href="#read-only-root-filesystem" data-target="read-only-root-filesystem">Read-Only Root Filesystem</a></li><li class="toc-l2"><a href="#5-headless-setup-serial-console" data-target="5-headless-setup-serial-console">5. Headless Setup &amp; Serial Console</a></li><li class="toc-l3"><a href="#pre-boot-configuration-before-first-boot" data-target="pre-boot-configuration-before-first-boot">Pre-Boot Configuration (Before First Boot)</a></li><li class="toc-l3"><a href="#first-ssh-connection" data-target="first-ssh-connection">First SSH Connection</a></li><li class="toc-l3"><a href="#the-serial-console-your-lifeline" data-target="the-serial-console-your-lifeline">The Serial Console — Your Lifeline</a></li><li class="toc-l3"><a href="#bluetooth-serial-on-the-zero-2-w" data-target="bluetooth-serial-on-the-zero-2-w">Bluetooth serial on the Zero 2 W</a></li><li class="toc-l2"><a href="#6-device-trees-overlays" data-target="6-device-trees-overlays">6. Device Trees &amp; Overlays</a></li><li class="toc-l3"><a href="#what-the-device-tree-is" data-target="what-the-device-tree-is">What the Device Tree Is</a></li><li class="toc-l3"><a href="#device-tree-overlays" data-target="device-tree-overlays">Device Tree Overlays</a></li><li class="toc-l3"><a href="#listing-available-overlays" data-target="listing-available-overlays">Listing Available Overlays</a></li><li class="toc-l3"><a href="#checking-whats-active" data-target="checking-whats-active">Checking What's Active</a></li><li class="toc-l3"><a href="#writing-a-custom-overlay" data-target="writing-a-custom-overlay">Writing a Custom Overlay</a></li><li class="toc-l2"><a href="#7-gpio-general-purpose-io" data-target="7-gpio-general-purpose-io">7. GPIO — General-Purpose I/O</a></li><li class="toc-l3"><a href="#the-modern-way-libgpiod" data-target="the-modern-way-libgpiod">The Modern Way: libgpiod</a></li><li class="toc-l3"><a href="#command-line-gpio-with-libgpiod" data-target="command-line-gpio-with-libgpiod">Command-Line GPIO with libgpiod</a></li><li class="toc-l3"><a href="#python-gpio-with-libgpiod" data-target="python-gpio-with-libgpiod">Python GPIO with libgpiod</a></li><li class="toc-l3"><a href="#python-gpio-with-gpiozero-higher-level" data-target="python-gpio-with-gpiozero-higher-level">Python GPIO with gpiozero (Higher-Level)</a></li><li class="toc-l3"><a href="#c-gpio-with-libgpiod" data-target="c-gpio-with-libgpiod">C GPIO with libgpiod</a></li><li class="toc-l3"><a href="#gpio-performance-pi-vs-esp32" data-target="gpio-performance-pi-vs-esp32">GPIO Performance: Pi vs. ESP32</a></li><li class="toc-l2"><a href="#8-i2c-inter-integrated-circuit" data-target="8-i2c-inter-integrated-circuit">8. I2C — Inter-Integrated Circuit</a></li><li class="toc-l3"><a href="#enabling-i2c" data-target="enabling-i2c">Enabling I2C</a></li><li class="toc-l3"><a href="#scanning-the-bus" data-target="scanning-the-bus">Scanning the Bus</a></li><li class="toc-l3"><a href="#reading-a-sensor-bme280-temperaturehumiditypressure" data-target="reading-a-sensor-bme280-temperaturehumiditypressure">Reading a Sensor (BME280 — Temperature/Humidity/Pressure)</a></li><li class="toc-l3"><a href="#raw-i2c-with-smbus2" data-target="raw-i2c-with-smbus2">Raw I2C with smbus2</a></li><li class="toc-l3"><a href="#i2c-speed" data-target="i2c-speed">I2C Speed</a></li><li class="toc-l3"><a href="#multiple-i2c-buses" data-target="multiple-i2c-buses">Multiple I2C Buses</a></li><li class="toc-l2"><a href="#9-spi-serial-peripheral-interface" data-target="9-spi-serial-peripheral-interface">9. SPI — Serial Peripheral Interface</a></li><li class="toc-l3"><a href="#enabling-spi" data-target="enabling-spi">Enabling SPI</a></li><li class="toc-l3"><a href="#spi-pin-mapping-spi0" data-target="spi-pin-mapping-spi0">SPI Pin Mapping (SPI0)</a></li><li class="toc-l3"><a href="#spi-from-python" data-target="spi-from-python">SPI from Python</a></li><li class="toc-l3"><a href="#spi-displays" data-target="spi-displays">SPI Displays</a></li><li class="toc-l3"><a href="#spi-speed" data-target="spi-speed">SPI Speed</a></li><li class="toc-l2"><a href="#10-uart-serial-communication" data-target="10-uart-serial-communication">10. UART &amp; Serial Communication</a></li><li class="toc-l3"><a href="#the-pi-zero-2-ws-uart-situation" data-target="the-pi-zero-2-ws-uart-situation">The Pi Zero 2 W's UART Situation</a></li><li class="toc-l3"><a href="#serial-communication-from-python" data-target="serial-communication-from-python">Serial Communication from Python</a></li><li class="toc-l3"><a href="#connecting-to-an-arduinoesp32" data-target="connecting-to-an-arduinoesp32">Connecting to an Arduino/ESP32</a></li><li class="toc-l2"><a href="#11-camera-csi" data-target="11-camera-csi">11. Camera (CSI)</a></li><li class="toc-l3"><a href="#camera-support" data-target="camera-support">Camera Support</a></li><li class="toc-l3"><a href="#libcamera-the-modern-camera-stack" data-target="libcamera-the-modern-camera-stack">libcamera — The Modern Camera Stack</a></li><li class="toc-l3"><a href="#python-camera-access" data-target="python-camera-access">Python Camera Access</a></li><li class="toc-l2"><a href="#12-power-management-low-power-operation" data-target="12-power-management-low-power-operation">12. Power Management &amp; Low-Power Operation</a></li><li class="toc-l3"><a href="#power-consumption-baseline" data-target="power-consumption-baseline">Power Consumption Baseline</a></li><li class="toc-l3"><a href="#reducing-power-draw" data-target="reducing-power-draw">Reducing Power Draw</a></li><li class="toc-l3"><a href="#solar-battery-power" data-target="solar-battery-power">Solar / Battery Power</a></li><li class="toc-l3"><a href="#usb-gadget-mode" data-target="usb-gadget-mode">USB Gadget Mode</a></li><li class="toc-l2"><a href="#13-systemd-running-your-application" data-target="13-systemd-running-your-application">13. Systemd — Running Your Application</a></li><li class="toc-l3"><a href="#the-service-file" data-target="the-service-file">The Service File</a></li><li class="toc-l3"><a href="#watchdog-timer" data-target="watchdog-timer">Watchdog Timer</a></li><li class="toc-l3"><a href="#timer-units-cron-replacement" data-target="timer-units-cron-replacement">Timer Units (cron Replacement)</a></li><li class="toc-l2"><a href="#14-networking-wifi-bluetooth-usb-gadget" data-target="14-networking-wifi-bluetooth-usb-gadget">14. Networking — WiFi, Bluetooth &amp; USB Gadget</a></li><li class="toc-l3"><a href="#wifi-configuration-with-networkmanager" data-target="wifi-configuration-with-networkmanager">WiFi Configuration with NetworkManager</a></li><li class="toc-l3"><a href="#bluetooth" data-target="bluetooth">Bluetooth</a></li><li class="toc-l3"><a href="#setting-up-a-captive-portal-apstation" data-target="setting-up-a-captive-portal-apstation">Setting Up a Captive Portal / AP+Station</a></li><li class="toc-l2"><a href="#15-cross-compilation-remote-development" data-target="15-cross-compilation-remote-development">15. Cross-Compilation &amp; Remote Development</a></li><li class="toc-l3"><a href="#why-cross-compile" data-target="why-cross-compile">Why Cross-Compile</a></li><li class="toc-l3"><a href="#cross-compilation-toolchain" data-target="cross-compilation-toolchain">Cross-Compilation Toolchain</a></li><li class="toc-l3"><a href="#remote-development-with-vs-code" data-target="remote-development-with-vs-code">Remote Development with VS Code</a></li><li class="toc-l3"><a href="#deploying-with-rsync" data-target="deploying-with-rsync">Deploying with rsync</a></li><li class="toc-l2"><a href="#16-real-time-performance-tuning" data-target="16-real-time-performance-tuning">16. Real-Time &amp; Performance Tuning</a></li><li class="toc-l3"><a href="#the-real-time-problem" data-target="the-real-time-problem">The Real-Time Problem</a></li><li class="toc-l3"><a href="#kernel-preemption-models" data-target="kernel-preemption-models">Kernel Preemption Models</a></li><li class="toc-l3"><a href="#cpu-isolation" data-target="cpu-isolation">CPU Isolation</a></li><li class="toc-l3"><a href="#memory-tuning" data-target="memory-tuning">Memory Tuning</a></li><li class="toc-l2"><a href="#17-security-for-deployed-devices" data-target="17-security-for-deployed-devices">17. Security for Deployed Devices</a></li><li class="toc-l3"><a href="#the-threat-model" data-target="the-threat-model">The Threat Model</a></li><li class="toc-l3"><a href="#essential-hardening" data-target="essential-hardening">Essential Hardening</a></li><li class="toc-l3"><a href="#encrypted-storage" data-target="encrypted-storage">Encrypted Storage</a></li><li class="toc-l3"><a href="#watchdog-health-monitoring" data-target="watchdog-health-monitoring">Watchdog + Health Monitoring</a></li><li class="toc-l2"><a href="#18-practical-projects" data-target="18-practical-projects">18. Practical Projects</a></li><li class="toc-l3"><a href="#project-1-environmental-data-logger" data-target="project-1-environmental-data-logger">Project 1: Environmental Data Logger</a></li><li class="toc-l3"><a href="#project-2-wildlife-camera-trap" data-target="project-2-wildlife-camera-trap">Project 2: Wildlife Camera Trap</a></li><li class="toc-l3"><a href="#project-3-iot-gateway" data-target="project-3-iot-gateway">Project 3: IoT Gateway</a></li><li class="toc-l2"><a href="#19-pi-zero-2-w-vs-esp32-when-to-use-which" data-target="19-pi-zero-2-w-vs-esp32-when-to-use-which">19. Pi Zero 2 W vs ESP32 — When to Use Which</a></li><li class="toc-l3"><a href="#decision-matrix" data-target="decision-matrix">Decision Matrix</a></li><li class="toc-l3"><a href="#the-hybrid-pattern" data-target="the-hybrid-pattern">The Hybrid Pattern</a></li><li class="toc-l2"><a href="#20-mastery-checklist" data-target="20-mastery-checklist">20. Mastery Checklist</a></li><li class="toc-l3"><a href="#getting-started" data-target="getting-started">Getting Started</a></li><li class="toc-l3"><a href="#hardware-interfaces" data-target="hardware-interfaces">Hardware Interfaces</a></li><li class="toc-l3"><a href="#system-administration" data-target="system-administration">System Administration</a></li><li class="toc-l3"><a href="#device-trees" data-target="device-trees">Device Trees</a></li><li class="toc-l3"><a href="#production-deployment" data-target="production-deployment">Production &amp; Deployment</a></li></ul></nav></aside>
+  <main><h1 id="embedded-linux-on-the-raspberry-pi-zero-2-w">Embedded Linux on the Raspberry Pi Zero 2 W</h1>
+<p>A practical, board-on-your-desk guide to embedded Linux on the Raspberry Pi Zero 2 W. This is the companion to the <a href="esp32-study-guide.html">ESP32 guide</a>: the ESP32 covers bare-metal microcontrollers (no OS, one program, microsecond GPIO); this guide covers the other half — running a full Linux kernel on constrained hardware, where you get filesystems, networking, multitasking, and a package manager, but trade away real-time guarantees and single-digit-milliamp sleep.</p>
+<p>Primary references: <a href="https://www.raspberrypi.com/documentation/">Raspberry Pi Documentation</a>, <a href="https://www.raspberrypi.com/documentation/computers/configuration.html#device-trees-overlays-and-parameters">Device Tree Reference</a>, <a href="https://git.kernel.org/pub/scm/libs/libgpiod/libgpiod.git/about/">libgpiod</a>, <a href="https://pinout.xyz/">Raspberry Pi Pinout</a></p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#1-the-mental-model">The Mental Model</a></li>
+<li><a href="#2-the-hardware">The Hardware</a></li>
+<li><a href="#3-the-boot-process">The Boot Process</a></li>
+<li><a href="#4-os-selection--image-creation">OS Selection &amp; Image Creation</a></li>
+<li><a href="#5-headless-setup--serial-console">Headless Setup &amp; Serial Console</a></li>
+<li><a href="#6-device-trees--overlays">Device Trees &amp; Overlays</a></li>
+<li><a href="#7-gpio--general-purpose-io">GPIO — General-Purpose I/O</a></li>
+<li><a href="#8-i2c--inter-integrated-circuit">I2C — Inter-Integrated Circuit</a></li>
+<li><a href="#9-spi--serial-peripheral-interface">SPI — Serial Peripheral Interface</a></li>
+<li><a href="#10-uart--serial-communication">UART &amp; Serial Communication</a></li>
+<li><a href="#11-camera-csi">Camera (CSI)</a></li>
+<li><a href="#12-power-management--low-power-operation">Power Management &amp; Low-Power Operation</a></li>
+<li><a href="#13-systemd--running-your-application">Systemd — Running Your Application</a></li>
+<li><a href="#14-networking--wifi-bluetooth--usb-gadget">Networking — WiFi, Bluetooth &amp; USB Gadget</a></li>
+<li><a href="#15-cross-compilation--remote-development">Cross-Compilation &amp; Remote Development</a></li>
+<li><a href="#16-real-time--performance-tuning">Real-Time &amp; Performance Tuning</a></li>
+<li><a href="#17-security-for-deployed-devices">Security for Deployed Devices</a></li>
+<li><a href="#18-practical-projects">Practical Projects</a></li>
+<li><a href="#19-pi-zero-2-w-vs-esp32--when-to-use-which">Pi Zero 2 W vs ESP32 — When to Use Which</a></li>
+<li><a href="#20-mastery-checklist">Mastery Checklist</a></li>
+</ol>
+<hr>
+<h2 id="1-the-mental-model">1. The Mental Model</h2>
+<h3 id="microcontroller-vs-embedded-linux">Microcontroller vs. Embedded Linux</h3>
+<p>The <a href="esp32-study-guide.html">ESP32 guide</a> teaches the microcontroller world: one program running on bare metal (or FreeRTOS), direct register access, microsecond-precision GPIO, deep sleep at 10 µA, and you cross-compile-and-flash every change. The Pi Zero 2 W is the opposite end of embedded:</p>
+<table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>ESP32 (Microcontroller)</th>
+<th>Pi Zero 2 W (Embedded Linux)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>OS</strong></td>
+<td>None, or FreeRTOS</td>
+<td>Full Linux kernel + userspace</td>
+</tr>
+<tr>
+<td><strong>Programming</strong></td>
+<td>C/MicroPython, cross-compile+flash</td>
+<td>Any language, edit on device or cross-compile</td>
+</tr>
+<tr>
+<td><strong>Boot time</strong></td>
+<td>~200 ms</td>
+<td>~15–30 s (can be optimized to ~5 s)</td>
+</tr>
+<tr>
+<td><strong>RAM</strong></td>
+<td>520 KB</td>
+<td>512 MB</td>
+</tr>
+<tr>
+<td><strong>Storage</strong></td>
+<td>4 MB flash (typical)</td>
+<td>microSD (8–128 GB)</td>
+</tr>
+<tr>
+<td><strong>GPIO latency</strong></td>
+<td>~50 ns (register-level)</td>
+<td>~1–10 µs (kernel overhead)</td>
+</tr>
+<tr>
+<td><strong>Power (active)</strong></td>
+<td>~80–240 mA</td>
+<td>~300–500 mA</td>
+</tr>
+<tr>
+<td><strong>Power (sleep)</strong></td>
+<td>~10 µA (deep sleep)</td>
+<td>~40 mA (minimum, no deep sleep)</td>
+</tr>
+<tr>
+<td><strong>Networking</strong></td>
+<td>WiFi/BLE (raw sockets)</td>
+<td>WiFi/BLE + full TCP/IP stack + SSH + HTTP</td>
+</tr>
+<tr>
+<td><strong>Multitasking</strong></td>
+<td>Cooperative/preemptive RTOS tasks</td>
+<td>Full preemptive multitasking, processes, threads</td>
+</tr>
+<tr>
+<td><strong>Filesystem</strong></td>
+<td>SPIFFS/LittleFS (flat)</td>
+<td>ext4, full POSIX, thousands of files</td>
+</tr>
+<tr>
+<td><strong>Camera</strong></td>
+<td>OV2640 (low-res JPEG)</td>
+<td>CSI camera (12 MP, H.264 video)</td>
+</tr>
+<tr>
+<td><strong>USB</strong></td>
+<td>Device only (no host)</td>
+<td>OTG (host and device)</td>
+</tr>
+<tr>
+<td><strong>Cost</strong></td>
+<td>~$5–8</td>
+<td>~$15</td>
+</tr>
+</tbody>
+</table>
+<h3 id="when-you-need-embedded-linux">When You Need Embedded Linux</h3>
+<p>Choose the Pi (or any embedded Linux board) when you need:</p>
+<ul>
+<li><strong>Complex processing</strong> — computer vision, machine learning inference, audio/video processing, data analysis</li>
+<li><strong>Rich networking</strong> — full TCP/IP, SSH, HTTP servers, MQTT clients, VPN, DNS</li>
+<li><strong>Filesystem</strong> — logging gigabytes of data, databases, serving files</li>
+<li><strong>Multiple concurrent services</strong> — a web dashboard AND a sensor logger AND an MQTT bridge</li>
+<li><strong>Rapid development</strong> — write Python, install packages with apt, debug over SSH</li>
+<li><strong>USB host</strong> — connect USB devices (webcams, storage, HID)</li>
+<li><strong>Camera</strong> — anything beyond low-res snapshots</li>
+</ul>
+<p>Choose the ESP32 when you need:</p>
+<ul>
+<li><strong>Battery life</strong> — deep sleep at 10 µA for months on a coin cell</li>
+<li><strong>Real-time GPIO</strong> — bit-banging protocols, precise timing</li>
+<li><strong>Instant-on</strong> — boot in 200 ms</li>
+<li><strong>Cost at scale</strong> — $5 per unit, not $15</li>
+<li><strong>Simplicity</strong> — one program, no kernel, no filesystem corruption risk</li>
+</ul>
+<h3 id="the-pi-zero-2-w-specifically">The Pi Zero 2 W Specifically</h3>
+<p>The Pi Zero 2 W occupies a sweet spot: <strong>powerful enough for real work, small enough to embed.</strong> It's the size of a stick of gum (65 × 30 mm), draws under 500 mA, costs $15, and runs the same Linux as the full-size Pi 4/5. It's the board you reach for when the ESP32 isn't enough but a Pi 4 is overkill.</p>
+<p>Common deployments: wildlife camera traps, IoT gateways, home automation hubs, weather stations with dashboards, amateur radio nodes, kiosk displays, network monitoring probes, remote data loggers.</p>
+<hr>
+<h2 id="2-the-hardware">2. The Hardware</h2>
+<h3 id="pi-zero-2-w-specifications">Pi Zero 2 W Specifications</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Specification</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>SoC</strong></td>
+<td>Broadcom BCM2710A1</td>
+</tr>
+<tr>
+<td><strong>CPU</strong></td>
+<td>Quad-core ARM Cortex-A53 @ 1 GHz (64-bit ARMv8-A)</td>
+</tr>
+<tr>
+<td><strong>RAM</strong></td>
+<td>512 MB LPDDR2</td>
+</tr>
+<tr>
+<td><strong>WiFi</strong></td>
+<td>802.11 b/g/n (2.4 GHz only)</td>
+</tr>
+<tr>
+<td><strong>Bluetooth</strong></td>
+<td>4.2 + BLE</td>
+</tr>
+<tr>
+<td><strong>Video out</strong></td>
+<td>Mini HDMI</td>
+</tr>
+<tr>
+<td><strong>USB</strong></td>
+<td>1× Micro USB (OTG — host and device)</td>
+</tr>
+<tr>
+<td><strong>Power</strong></td>
+<td>1× Micro USB (5V, recommended 2.5A supply)</td>
+</tr>
+<tr>
+<td><strong>Storage</strong></td>
+<td>microSD slot</td>
+</tr>
+<tr>
+<td><strong>GPIO</strong></td>
+<td>40-pin header (unpopulated — you solder the pins)</td>
+</tr>
+<tr>
+<td><strong>Camera</strong></td>
+<td>CSI-2 connector (22-pin, needs Pi Zero camera cable)</td>
+</tr>
+<tr>
+<td><strong>Size</strong></td>
+<td>65 × 30 × 5 mm</td>
+</tr>
+<tr>
+<td><strong>Weight</strong></td>
+<td>10 g</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-40-pin-gpio-header">The 40-Pin GPIO Header</h3>
+<p>The GPIO header is your interface to the physical world. All 40 pins have a specific function:</p>
+<pre><code class="language-text">                        Pi Zero 2 W — GPIO Header
+                        (component side, USB ports at bottom)
+
+    3V3  (1)  (2)  5V
+  GPIO2  (3)  (4)  5V         ← I2C1 SDA
+  GPIO3  (5)  (6)  GND        ← I2C1 SCL
+  GPIO4  (7)  (8)  GPIO14     ← UART TX
+    GND  (9)  (10) GPIO15     ← UART RX
+ GPIO17 (11)  (12) GPIO18     ← PWM0 / PCM CLK / I2S
+ GPIO27 (13)  (14) GND
+ GPIO22 (15)  (16) GPIO23
+    3V3 (17)  (18) GPIO24
+ GPIO10 (19)  (20) GND        ← SPI0 MOSI
+  GPIO9 (21)  (22) GPIO25     ← SPI0 MISO
+ GPIO11 (23)  (24) GPIO8      ← SPI0 SCLK / SPI0 CE0
+    GND (25)  (26) GPIO7      ← SPI0 CE1
+  GPIO0 (27)  (28) GPIO1      ← I2C0 (EEPROM, reserved for HATs)
+  GPIO5 (29)  (30) GND
+  GPIO6 (31)  (32) GPIO12     ← PWM0
+ GPIO13 (33)  (34) GND        ← PWM1
+ GPIO19 (35)  (36) GPIO16     ← PWM1 / SPI1 CE2
+ GPIO26 (37)  (38) GPIO20     ← SPI1 MOSI / PCM DIN
+    GND (39)  (40) GPIO21     ← SPI1 SCLK / PCM DOUT
+</code></pre>
+<p>Key points:
+- <strong>3.3V logic levels only.</strong> The GPIO pins are 3.3V and <strong>not 5V tolerant.</strong> Applying 5V to a GPIO pin will damage the SoC. Use a level shifter for 5V peripherals.
+- Pins 3 &amp; 5 have <strong>built-in 1.8 kΩ pull-ups</strong> (for I2C). All other GPIO pins have configurable internal pull-ups/pull-downs (~50 kΩ).
+- PWM: hardware PWM on GPIO 12, 13, 18, 19 (two channels, two outputs each).
+- There are only <strong>two 5V pins and two 3.3V pins</strong> for powering peripherals. Total 3.3V output current is ~50 mA (enough for a few sensors, not enough for an LED strip).</p>
+<h3 id="what-you-need-on-your-desk">What You Need on Your Desk</h3>
+<p>The minimum kit to get started:</p>
+<ol>
+<li><strong>Pi Zero 2 W</strong> — with GPIO header soldered (or solder it yourself)</li>
+<li><strong>microSD card</strong> — 16 GB minimum, Class 10 / A1</li>
+<li><strong>USB power supply</strong> — 5V, 2.5A minimum, micro USB</li>
+<li><strong>USB OTG adapter</strong> — micro USB male to USB-A female (for connecting keyboards, Ethernet adapters)</li>
+<li><strong>microSD card reader</strong> — to flash the OS image</li>
+</ol>
+<p>For headless (no monitor) work — the recommended approach:
+- A laptop with SSH (you already have this)
+- A USB-to-serial adapter (3.3V TTL) for the serial console — <strong>strongly recommended</strong> for debugging boot issues</p>
+<p>Optional but useful:
+- Mini HDMI to HDMI adapter/cable (for initial debugging)
+- Breadboard + jumper wires + a few LEDs and resistors (for GPIO)
+- I2C sensor (BME280 or SHT31 — temperature/humidity/pressure)
+- SPI display (SSD1306 OLED or ST7789 TFT)</p>
+<hr>
+<h2 id="3-the-boot-process">3. The Boot Process</h2>
+<h3 id="why-the-boot-process-matters">Why the Boot Process Matters</h3>
+<p>On the ESP32, boot is invisible — power on, your code runs 200 ms later. On the Pi, the boot process is a multi-stage pipeline that takes 15–30 seconds and involves firmware, a bootloader, the Linux kernel, an init system, and your services. Understanding it is essential for debugging "my Pi won't boot" and for optimizing startup time.</p>
+<h3 id="the-boot-pipeline">The Boot Pipeline</h3>
+<p>The Pi's boot is unusual — it starts on the <strong>GPU</strong>, not the CPU:</p>
+<pre><code class="language-text">Power on
+   ↓
+┌───────────────────────────────────┐
+│ Stage 1: On-chip ROM bootloader   │  Hardcoded in SoC silicon.
+│ (VideoCore GPU)                   │  Reads bootcode.bin from SD card.
+└─────────────┬─────────────────────┘
+              ↓
+┌───────────────────────────────────┐
+│ Stage 2: bootcode.bin             │  GPU firmware from SD card.
+│ (still on the GPU)               │  Initializes SDRAM.
+│                                   │  Loads start.elf.
+└─────────────┬─────────────────────┘
+              ↓
+┌───────────────────────────────────┐
+│ Stage 3: start.elf               │  GPU firmware. Reads config.txt.
+│ (GPU, reads config.txt)          │  Loads the Linux kernel + DTB.
+│                                   │  Releases the ARM CPU from reset.
+└─────────────┬─────────────────────┘
+              ↓
+┌───────────────────────────────────┐
+│ Stage 4: Linux kernel             │  Runs on the ARM CPU.
+│ (kernel8.img or kernel7l.img)    │  Mounts root filesystem.
+│                                   │  Starts PID 1 (init/systemd).
+└─────────────┬─────────────────────┘
+              ↓
+┌───────────────────────────────────┐
+│ Stage 5: systemd                  │  Starts services in parallel.
+│ (init system)                    │  Network, SSH, your application.
+└───────────────────────────────────┘
+</code></pre>
+<p>On Pi 4/5 and Zero 2 W with updated firmware: <code>bootcode.bin</code> is replaced by an on-SoC bootloader in newer firmware, but the overall flow is the same.</p>
+<h3 id="the-boot-partition-fat32">The Boot Partition (FAT32)</h3>
+<p>The microSD card has two partitions:</p>
+<ol>
+<li>
+<p><strong>Boot partition</strong> (<code>/boot/firmware/</code> when mounted) — FAT32, ~512 MB. Contains:
+   - <code>config.txt</code> — the Pi's BIOS equivalent (hardware configuration)
+   - <code>cmdline.txt</code> — kernel command-line parameters
+   - <code>kernel*.img</code> — the Linux kernel
+   - <code>*.dtb</code> — device tree binaries
+   - <code>overlays/</code> — device tree overlays
+   - <code>start*.elf</code>, <code>fixup*.dat</code> — GPU firmware</p>
+</li>
+<li>
+<p><strong>Root partition</strong> — ext4. The Linux root filesystem (<code>/</code>).</p>
+</li>
+</ol>
+<p>The boot partition is FAT32 so it can be read on any OS (Windows, macOS, Linux) — this is how you configure WiFi and enable SSH before the first boot.</p>
+<h3 id="configtxt-the-hardware-configuration-file">config.txt — The Hardware Configuration File</h3>
+<p><code>config.txt</code> is where you configure hardware before the kernel loads. It replaces what a PC does in BIOS/UEFI. Key settings:</p>
+<pre><code class="language-ini"># --- CPU &amp; Memory ---
+arm_64bit=1                    # Boot in 64-bit mode (default on Zero 2 W)
+arm_freq=1000                  # CPU frequency in MHz (default 1000)
+over_voltage=0                 # Overvoltage for overclocking (0 = none)
+gpu_mem=16                     # GPU memory split in MB (minimum for headless)
+
+# --- Display ---
+# For headless (no monitor), save power:
+dtoverlay=vc4-kms-v3d          # Modern DRM/KMS video driver
+#hdmi_blanking=1               # Blank HDMI when no display detected
+
+# --- Enable interfaces ---
+dtparam=i2c_arm=on             # Enable I2C1 on GPIO 2/3
+dtparam=spi=on                 # Enable SPI0 on GPIO 7-11
+enable_uart=1                  # Enable UART on GPIO 14/15
+
+# --- Device tree overlays ---
+dtoverlay=w1-gpio              # Enable 1-Wire on GPIO 4 (DS18B20 temp sensors)
+dtoverlay=pwm-2chan             # Enable hardware PWM on GPIO 12/13
+dtoverlay=i2c-rtc,ds3231       # Add DS3231 real-time clock on I2C
+
+# --- Camera ---
+#start_x=1                     # Enable camera (legacy stack)
+# camera_auto_detect=1         # Auto-detect CSI camera (modern libcamera)
+
+# --- Power saving ---
+dtoverlay=disable-bt            # Disable Bluetooth (saves ~20 mA)
+dtoverlay=disable-wifi          # Disable WiFi (saves ~40 mA, if using Ethernet)
+</code></pre>
+<p>Every hardware interface on the Pi is controlled here. If a peripheral doesn't work, <code>config.txt</code> is the first place to check.</p>
+<h3 id="cmdlinetxt-kernel-command-line">cmdline.txt — Kernel Command Line</h3>
+<p>A single line of kernel parameters. The default is fine for most cases:</p>
+<pre><code class="language-text">console=serial0,115200 console=tty1 root=PARTUUID=xxxxx rootfstype=ext4 fsck.repair=yes rootwait
+</code></pre>
+<p>Key parameters:
+- <code>console=serial0,115200</code> — enable kernel messages on the serial UART (essential for headless debugging)
+- <code>root=PARTUUID=xxxxx</code> — which partition is the root filesystem
+- <code>rootwait</code> — wait for the root device to appear (important for SD cards)
+- <code>quiet</code> — suppress most boot messages (add for faster perceived boot)</p>
+<hr>
+<h2 id="4-os-selection-image-creation">4. OS Selection &amp; Image Creation</h2>
+<h3 id="raspberry-pi-os-lite-recommended-starting-point">Raspberry Pi OS Lite (Recommended Starting Point)</h3>
+<p><strong>Raspberry Pi OS Lite</strong> (formerly Raspbian Lite) is the official OS without a desktop environment. It's a Debian-based Linux with Pi-specific kernel patches and tools. This is the right choice for 90% of embedded projects.</p>
+<pre><code class="language-bash"># Download and flash with Raspberry Pi Imager (GUI)
+# or use the CLI:
+# On macOS:
+brew install --cask raspberry-pi-imager
+
+# Or manually with dd (find the SD card device first):
+diskutil list                  # find the SD card (e.g., /dev/disk4)
+diskutil unmountDisk /dev/disk4
+sudo dd if=2024-raspios-bookworm-arm64-lite.img of=/dev/rdisk4 bs=4m status=progress
+sync
+</code></pre>
+<p>The <strong>Raspberry Pi Imager</strong> is strongly recommended over <code>dd</code> because it:
+- Downloads the latest image automatically
+- Lets you pre-configure WiFi, SSH, hostname, and user credentials before first boot
+- Writes the image and verifies it</p>
+<h3 id="alternative-os-choices">Alternative OS Choices</h3>
+<table>
+<thead>
+<tr>
+<th>OS</th>
+<th>Use Case</th>
+<th>Trade-off</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Raspberry Pi OS Lite</strong></td>
+<td>General embedded projects</td>
+<td>Easiest, best hardware support, largest community</td>
+</tr>
+<tr>
+<td><strong>Raspberry Pi OS (64-bit)</strong></td>
+<td>Need 64-bit userspace</td>
+<td>Same as above but 64-bit. Default on Zero 2 W now</td>
+</tr>
+<tr>
+<td><strong>DietPi</strong></td>
+<td>Minimal footprint, optimized</td>
+<td>Smaller base image, good for headless appliances</td>
+</tr>
+<tr>
+<td><strong>Buildroot</strong></td>
+<td>Custom minimal Linux</td>
+<td>You choose exactly what's included. 8 MB root image possible. Steep learning curve</td>
+</tr>
+<tr>
+<td><strong>Yocto / OpenEmbedded</strong></td>
+<td>Production embedded products</td>
+<td>Industry-standard build system. Very steep learning curve. Maximum control</td>
+</tr>
+<tr>
+<td><strong>Ubuntu Server</strong></td>
+<td>Familiar Ubuntu ecosystem</td>
+<td>Heavier than RPi OS Lite, good Snap/Docker support</td>
+</tr>
+<tr>
+<td><strong>Alpine Linux</strong></td>
+<td>Security-focused, musl libc</td>
+<td>Tiny footprint, but some packages unavailable</td>
+</tr>
+</tbody>
+</table>
+<h3 id="buildroot-when-you-need-minimal">Buildroot — When You Need Minimal</h3>
+<p>Buildroot generates a complete, custom Linux image — kernel + root filesystem — with only what you specify. The result can be as small as 8 MB. It's the right tool when you're building an appliance (a device that runs one application, not a general-purpose computer).</p>
+<pre><code class="language-bash">git clone https://github.com/buildroot/buildroot.git
+cd buildroot
+make raspberrypi0_2w_defconfig    # Pi Zero 2 W default config
+make menuconfig                    # customize packages, kernel, etc.
+make -j$(nproc)                    # build (takes 15-60 minutes)
+# Output: output/images/sdcard.img
+</code></pre>
+<p>Buildroot is conceptually simple: a Makefile that downloads, configures, cross-compiles, and packages everything. But it requires understanding Linux from the kernel up.</p>
+<h3 id="read-only-root-filesystem">Read-Only Root Filesystem</h3>
+<p>For deployed embedded devices, a <strong>read-only root filesystem</strong> prevents SD card corruption from power loss (the #1 reliability problem with Pi-based devices):</p>
+<pre><code class="language-bash"># Quick approach: add to cmdline.txt
+rootfstype=ext4 ro              # mount root as read-only
+
+# Create a tmpfs overlay for writable directories:
+# /tmp, /var/log, /var/run need to be writable
+# Use overlayfs or tmpfs mounts in /etc/fstab:
+tmpfs /tmp     tmpfs defaults,noatime,nosuid,size=50m 0 0
+tmpfs /var/log tmpfs defaults,noatime,nosuid,size=20m 0 0
+tmpfs /var/tmp tmpfs defaults,noatime,nosuid,size=20m 0 0
+</code></pre>
+<p>The alternative: use <code>overlayroot</code> or <code>raspi-config</code> → Performance → Overlay FS, which makes the entire root filesystem an overlay — writes go to a tmpfs and are lost on reboot. The SD card is never written to.</p>
+<hr>
+<h2 id="5-headless-setup-serial-console">5. Headless Setup &amp; Serial Console</h2>
+<h3 id="pre-boot-configuration-before-first-boot">Pre-Boot Configuration (Before First Boot)</h3>
+<p>After flashing the SD card, mount the boot partition on your laptop and create:</p>
+<p><strong>1. Enable SSH:</strong></p>
+<pre><code class="language-bash"># Create an empty file named 'ssh' in the boot partition
+touch /Volumes/bootfs/ssh
+</code></pre>
+<p><strong>2. Configure WiFi:</strong></p>
+<pre><code class="language-bash"># Using Raspberry Pi Imager: set WiFi during imaging (preferred)
+
+# Or manually, create /boot/firmware/wpa_supplicant.conf:
+# (Bookworm+ uses NetworkManager, but this still works for first boot)
+cat &gt; /Volumes/bootfs/wpa_supplicant.conf &lt;&lt; 'EOF'
+country=US
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+
+network={
+    ssid=&quot;YourNetworkName&quot;
+    psk=&quot;YourPassword&quot;
+    key_mgmt=WPA-PSK
+}
+EOF
+</code></pre>
+<p><strong>3. Create a user</strong> (required since Bookworm — no default <code>pi</code> user):</p>
+<pre><code class="language-bash"># Raspberry Pi Imager handles this. For manual setup:
+# Create userconf.txt with username:encrypted-password
+echo 'myuser:'$(echo 'mypassword' | openssl passwd -6 -stdin) &gt; /Volumes/bootfs/userconf.txt
+</code></pre>
+<h3 id="first-ssh-connection">First SSH Connection</h3>
+<pre><code class="language-bash"># Boot the Pi, wait ~60 seconds, then:
+ssh myuser@raspberrypi.local     # mDNS name (avahi)
+# or find the IP with:
+arp -a | grep -i &quot;b8:27:eb\|dc:a6:32\|d8:3a:dd\|2c:cf:67&quot;   # Pi MAC prefixes
+nmap -sn 192.168.1.0/24          # scan your subnet
+</code></pre>
+<h3 id="the-serial-console-your-lifeline">The Serial Console — Your Lifeline</h3>
+<p>SSH requires a working network. When the network is misconfigured, the SD card won't boot, or the Pi kernel-panics, the <strong>serial console</strong> is your only window in. It works even when SSH doesn't.</p>
+<p><strong>Hardware setup:</strong></p>
+<pre><code class="language-text">USB-to-Serial Adapter         Pi Zero 2 W
+(3.3V TTL, e.g. CP2102)      (GPIO header)
+
+    GND  ──────────────────── Pin 6  (GND)
+    TXD  ──────────────────── Pin 10 (GPIO15, RXD)
+    RXD  ──────────────────── Pin 8  (GPIO14, TXD)
+
+    Do NOT connect VCC/3.3V from the adapter to the Pi.
+    Power the Pi from its own USB power port.
+</code></pre>
+<p><strong>Important: TX crosses to RX.</strong> The adapter's TX goes to the Pi's RX, and vice versa.</p>
+<p><strong>Software setup:</strong></p>
+<pre><code class="language-bash"># Ensure UART is enabled in config.txt:
+enable_uart=1
+
+# Connect from macOS/Linux:
+ls /dev/tty.usbserial-*          # find the adapter device
+screen /dev/tty.usbserial-0001 115200
+# or:
+minicom -D /dev/tty.usbserial-0001 -b 115200
+
+# You'll see the full kernel boot log and a login prompt.
+# To exit screen: Ctrl-A then K, then Y
+</code></pre>
+<p>The serial console shows every kernel message from power-on — including the boot errors that SSH can never show you. If you're doing embedded Pi work, <strong>buy a USB-serial adapter.</strong> The $3 CP2102 or CH340 adapters work fine.</p>
+<h3 id="bluetooth-serial-on-the-zero-2-w">Bluetooth serial on the Zero 2 W</h3>
+<p>The Pi Zero 2 W's UART and Bluetooth share the same hardware UART. By default, Bluetooth gets the full UART (<code>ttyAMA0</code>) and the serial console gets the mini UART (<code>ttyS0</code>), which has limitations (baud rate tied to core clock). For a reliable serial console:</p>
+<pre><code class="language-ini"># In config.txt, disable Bluetooth to free the full UART:
+dtoverlay=disable-bt
+
+# Or swap the UARTs (Bluetooth gets mini UART, serial gets full UART):
+dtoverlay=miniuart-bt
+</code></pre>
+<hr>
+<h2 id="6-device-trees-overlays">6. Device Trees &amp; Overlays</h2>
+<h3 id="what-the-device-tree-is">What the Device Tree Is</h3>
+<p>On a PC, the BIOS/UEFI probes the hardware and tells the OS what's present. ARM boards like the Pi have no such discovery mechanism — the hardware is soldered to the board and the kernel needs to be told exactly what's there. The <strong>device tree</strong> is that description: a data structure that says "there's an I2C controller at address 0x7E804000, an SPI controller at 0x7E204000, the WiFi chip is connected to SDIO," and so on.</p>
+<p>The device tree is compiled from human-readable source (<code>.dts</code>) into a binary blob (<code>.dtb</code>) that the bootloader passes to the kernel at boot. You almost never write device tree source from scratch — you use <strong>overlays</strong> to modify the base tree.</p>
+<h3 id="device-tree-overlays">Device Tree Overlays</h3>
+<p>An <strong>overlay</strong> is a fragment that modifies the base device tree at boot time. This is how you enable, disable, or configure hardware without recompiling the kernel. Overlays are loaded via <code>config.txt</code>:</p>
+<pre><code class="language-ini"># Enable I2C
+dtparam=i2c_arm=on
+
+# Enable SPI
+dtparam=spi=on
+
+# Load a full overlay (from /boot/firmware/overlays/)
+dtoverlay=w1-gpio,gpiopin=4        # 1-Wire on GPIO4
+dtoverlay=i2c-rtc,ds3231           # DS3231 RTC on I2C
+dtoverlay=spi0-1cs                 # SPI0 with one chip-select
+dtoverlay=pwm-2chan,pin=12,func=4,pin2=13,func2=4   # Hardware PWM
+dtoverlay=gpio-ir,gpio_pin=17      # Infrared receiver on GPIO17
+</code></pre>
+<p><strong><code>dtparam</code></strong> modifies parameters in the base device tree (simple enable/disable).
+<strong><code>dtoverlay</code></strong> loads an entire overlay file from <code>/boot/firmware/overlays/</code>.</p>
+<h3 id="listing-available-overlays">Listing Available Overlays</h3>
+<pre><code class="language-bash">ls /boot/firmware/overlays/        # hundreds of .dtbo files
+# Each has documentation:
+cat /boot/firmware/overlays/README  # comprehensive docs for every overlay
+# Or search for a specific one:
+grep -A 20 &quot;^Name:.*i2c-rtc&quot; /boot/firmware/overlays/README
+</code></pre>
+<h3 id="checking-whats-active">Checking What's Active</h3>
+<pre><code class="language-bash"># See the live device tree:
+dtc -I fs /proc/device-tree/ 2&gt;/dev/null | less
+
+# Check specific nodes:
+ls /proc/device-tree/              # top-level nodes
+cat /proc/device-tree/model        # &quot;Raspberry Pi Zero 2 W Rev 1.0&quot;
+
+# Verify an overlay loaded correctly:
+vcdbg log msg 2&gt;&amp;1 | grep -i dtoverlay
+dmesg | grep -i &quot;i2c\|spi\|rtc&quot;   # kernel messages about hardware init
+</code></pre>
+<h3 id="writing-a-custom-overlay">Writing a Custom Overlay</h3>
+<p>For common peripherals, an overlay already exists. For custom hardware, you write one. The source is a <code>.dts</code> file:</p>
+<pre><code class="language-dts">// my-custom-overlay.dts — example: add a GPIO-connected LED
+/dts-v1/;
+/plugin/;
+
+/ {
+    compatible = &quot;brcm,bcm2835&quot;;
+
+    fragment@0 {
+        target-path = &quot;/&quot;;
+        __overlay__ {
+            my_led: my_led {
+                compatible = &quot;gpio-leds&quot;;
+                status_led {
+                    label = &quot;status&quot;;
+                    gpios = &lt;&amp;gpio 17 0&gt;;    /* GPIO17, active high */
+                    default-state = &quot;off&quot;;
+                };
+            };
+        };
+    };
+};
+</code></pre>
+<pre><code class="language-bash"># Compile and install:
+dtc -@ -I dts -O dtb -o my-custom-overlay.dtbo my-custom-overlay.dts
+sudo cp my-custom-overlay.dtbo /boot/firmware/overlays/
+
+# Enable in config.txt:
+dtoverlay=my-custom-overlay
+
+# Reboot and verify:
+ls /sys/class/leds/status/         # the LED appears as a sysfs device
+echo 1 | sudo tee /sys/class/leds/status/brightness   # turn on
+</code></pre>
+<hr>
+<h2 id="7-gpio-general-purpose-io">7. GPIO — General-Purpose I/O</h2>
+<h3 id="the-modern-way-libgpiod">The Modern Way: libgpiod</h3>
+<p>The Linux kernel's GPIO interface has evolved:</p>
+<ol>
+<li><strong>sysfs</strong> (<code>/sys/class/gpio/</code>) — deprecated since kernel 4.8. Still works but don't use it for new projects.</li>
+<li><strong>chardev / libgpiod</strong> — the modern interface. Faster, thread-safe, supports events (edge detection), and handles cleanup properly (pins are released when your process exits).</li>
+</ol>
+<pre><code class="language-bash"># Install libgpiod tools and Python bindings:
+sudo apt install gpiod python3-libgpiod
+</code></pre>
+<h3 id="command-line-gpio-with-libgpiod">Command-Line GPIO with libgpiod</h3>
+<pre><code class="language-bash"># List GPIO chips:
+gpiodetect
+# gpiochip0 [pinctrl-bcm2835] (54 lines)
+
+# Show all GPIO lines and their current state:
+gpioinfo gpiochip0
+# line  17:     unnamed       unused  input  active-high
+# line  18:     unnamed       unused  input  active-high
+# ...
+
+# Read a GPIO pin (input):
+gpioget gpiochip0 17
+# 0
+
+# Set a GPIO pin (output):
+gpioset gpiochip0 17=1          # set GPIO17 high
+gpioset gpiochip0 17=0          # set GPIO17 low
+
+# Blink an LED (set high, wait 1s, set low):
+gpioset -m time -u 1000000 gpiochip0 17=1     # hold high for 1 second
+
+# Monitor a pin for edges (button press):
+gpiomon --falling-edge gpiochip0 17
+# blocks until GPIO17 goes low, then prints a timestamp
+</code></pre>
+<h3 id="python-gpio-with-libgpiod">Python GPIO with libgpiod</h3>
+<pre><code class="language-python">#!/usr/bin/env python3
+&quot;&quot;&quot;Blink an LED on GPIO17 using the modern libgpiod interface.&quot;&quot;&quot;
+
+import gpiod
+import time
+
+CHIP = &quot;/dev/gpiochip0&quot;
+LED_PIN = 17
+
+# Request the line as output
+request = gpiod.request_lines(
+    CHIP,
+    consumer=&quot;blink-example&quot;,
+    config={LED_PIN: gpiod.LineSettings(direction=gpiod.line.Direction.OUTPUT)},
+)
+
+try:
+    while True:
+        request.set_value(LED_PIN, gpiod.line.Value.ACTIVE)
+        time.sleep(0.5)
+        request.set_value(LED_PIN, gpiod.line.Value.INACTIVE)
+        time.sleep(0.5)
+finally:
+    request.release()
+</code></pre>
+<h3 id="python-gpio-with-gpiozero-higher-level">Python GPIO with gpiozero (Higher-Level)</h3>
+<p>The <code>gpiozero</code> library wraps the low-level interface with hardware-aware classes:</p>
+<pre><code class="language-python">#!/usr/bin/env python3
+&quot;&quot;&quot;gpiozero — the Pythonic way.&quot;&quot;&quot;
+
+from gpiozero import LED, Button
+from signal import pause
+
+led = LED(17)           # GPIO17 as output (LED)
+button = Button(27)     # GPIO27 as input (button with internal pull-up)
+
+# React to button presses:
+button.when_pressed = led.on
+button.when_released = led.off
+
+# Or just blink:
+# led.blink(on_time=0.5, off_time=0.5)
+
+pause()    # keep the script running, waiting for events
+</code></pre>
+<p><code>gpiozero</code> is the recommended Python library for beginners and for any project where you're not chasing microsecond performance. It handles pull-ups, debouncing, edge detection, PWM, and cleanup automatically.</p>
+<h3 id="c-gpio-with-libgpiod">C GPIO with libgpiod</h3>
+<pre><code class="language-c">/* blink.c — blink an LED using libgpiod v2 API */
+#include &lt;gpiod.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;unistd.h&gt;
+
+#define CHIP &quot;/dev/gpiochip0&quot;
+#define LED_PIN 17
+
+int main(void) {
+    struct gpiod_chip *chip = gpiod_chip_open(CHIP);
+    if (!chip) { perror(&quot;gpiod_chip_open&quot;); return 1; }
+
+    struct gpiod_line_settings *settings = gpiod_line_settings_new();
+    gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_OUTPUT);
+
+    struct gpiod_line_config *config = gpiod_line_config_new();
+    unsigned int offset = LED_PIN;
+    gpiod_line_config_add_line_settings(config, &amp;offset, 1, settings);
+
+    struct gpiod_request_config *req_cfg = gpiod_request_config_new();
+    gpiod_request_config_set_consumer(req_cfg, &quot;blink&quot;);
+
+    struct gpiod_line_request *request =
+        gpiod_chip_request_lines(chip, req_cfg, config);
+
+    for (int i = 0; i &lt; 20; i++) {
+        gpiod_line_request_set_value(request, LED_PIN,
+            (i % 2) ? GPIOD_LINE_VALUE_ACTIVE : GPIOD_LINE_VALUE_INACTIVE);
+        usleep(500000);
+    }
+
+    gpiod_line_request_release(request);
+    gpiod_request_config_free(req_cfg);
+    gpiod_line_config_free(config);
+    gpiod_line_settings_free(settings);
+    gpiod_chip_close(chip);
+    return 0;
+}
+</code></pre>
+<pre><code class="language-bash"># Compile:
+gcc -o blink blink.c $(pkg-config --cflags --libs libgpiod)
+# Run:
+sudo ./blink
+</code></pre>
+<h3 id="gpio-performance-pi-vs-esp32">GPIO Performance: Pi vs. ESP32</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Toggle Frequency</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ESP32 register-level C</td>
+<td>~10–20 MHz</td>
+<td>Direct hardware register, no OS overhead</td>
+</tr>
+<tr>
+<td>Pi libgpiod C</td>
+<td>~1–5 MHz</td>
+<td>Kernel chardev interface</td>
+</tr>
+<tr>
+<td>Pi gpiozero Python</td>
+<td>~10–50 kHz</td>
+<td>Python overhead</td>
+</tr>
+<tr>
+<td>Pi sysfs (deprecated)</td>
+<td>~1–10 kHz</td>
+<td>Filesystem overhead</td>
+</tr>
+</tbody>
+</table>
+<p>For most embedded applications (reading sensors, controlling relays, driving LEDs), even the slowest method is fast enough. If you need microsecond precision, use the ESP32 or a dedicated microcontroller connected to the Pi via UART/SPI/I2C.</p>
+<hr>
+<h2 id="8-i2c-inter-integrated-circuit">8. I2C — Inter-Integrated Circuit</h2>
+<h3 id="enabling-i2c">Enabling I2C</h3>
+<pre><code class="language-ini"># In config.txt:
+dtparam=i2c_arm=on               # Enable I2C1 on GPIO 2 (SDA) / GPIO 3 (SCL)
+</code></pre>
+<pre><code class="language-bash"># After reboot, verify:
+ls /dev/i2c-*
+# /dev/i2c-1
+
+# Install tools:
+sudo apt install i2c-tools python3-smbus2
+</code></pre>
+<h3 id="scanning-the-bus">Scanning the Bus</h3>
+<pre><code class="language-bash"># Detect all connected I2C devices:
+i2cdetect -y 1
+#      0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f
+# 00:                         -- -- -- -- -- -- -- -- --
+# 10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+# 20: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+# 30: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+# 40: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+# 50: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+# 60: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+# 70: -- -- -- -- -- -- -- 77                        
+#                             ^^ BME280 at address 0x77
+</code></pre>
+<h3 id="reading-a-sensor-bme280-temperaturehumiditypressure">Reading a Sensor (BME280 — Temperature/Humidity/Pressure)</h3>
+<pre><code class="language-python">#!/usr/bin/env python3
+&quot;&quot;&quot;Read BME280 sensor via I2C using the bme280 library.&quot;&quot;&quot;
+
+import smbus2
+import bme280
+
+# pip3 install RPi.bme280
+port = 1          # I2C bus 1
+address = 0x77    # BME280 default address (or 0x76)
+
+bus = smbus2.SMBus(port)
+calibration_params = bme280.load_calibration_params(bus, address)
+
+data = bme280.sample(bus, address, calibration_params)
+
+print(f&quot;Temperature: {data.temperature:.1f} °C&quot;)
+print(f&quot;Humidity:    {data.humidity:.1f} %&quot;)
+print(f&quot;Pressure:    {data.pressure:.1f} hPa&quot;)
+</code></pre>
+<h3 id="raw-i2c-with-smbus2">Raw I2C with smbus2</h3>
+<pre><code class="language-python">#!/usr/bin/env python3
+&quot;&quot;&quot;Read a raw I2C register (example: WHO_AM_I from an accelerometer).&quot;&quot;&quot;
+
+import smbus2
+
+bus = smbus2.SMBus(1)
+address = 0x68          # Example: MPU6050 accelerometer
+
+# Read a single byte from register 0x75 (WHO_AM_I):
+who_am_i = bus.read_byte_data(address, 0x75)
+print(f&quot;WHO_AM_I: 0x{who_am_i:02x}&quot;)  # Should print 0x68 for MPU6050
+
+# Read a block of bytes (e.g., 6 bytes of accelerometer data):
+data = bus.read_i2c_block_data(address, 0x3B, 6)
+ax = (data[0] &lt;&lt; 8 | data[1])  # raw X acceleration
+ay = (data[2] &lt;&lt; 8 | data[3])  # raw Y acceleration
+az = (data[4] &lt;&lt; 8 | data[5])  # raw Z acceleration
+
+# Write a byte (e.g., configure the sensor):
+bus.write_byte_data(address, 0x6B, 0x00)  # wake up MPU6050
+
+bus.close()
+</code></pre>
+<h3 id="i2c-speed">I2C Speed</h3>
+<p>The default I2C clock is 100 kHz (standard mode). For faster communication:</p>
+<pre><code class="language-ini"># In config.txt — set I2C to 400 kHz (fast mode):
+dtparam=i2c_arm_baudrate=400000
+</code></pre>
+<p>Not all devices support fast mode. Check your sensor's datasheet.</p>
+<h3 id="multiple-i2c-buses">Multiple I2C Buses</h3>
+<p>The Pi Zero 2 W has one general-purpose I2C bus (I2C1). If you need more:</p>
+<pre><code class="language-ini"># Add a software-bitbanged I2C bus on any two GPIO pins:
+dtoverlay=i2c-gpio,bus=3,i2c_gpio_sda=23,i2c_gpio_scl=24
+# This creates /dev/i2c-3
+</code></pre>
+<hr>
+<h2 id="9-spi-serial-peripheral-interface">9. SPI — Serial Peripheral Interface</h2>
+<h3 id="enabling-spi">Enabling SPI</h3>
+<pre><code class="language-ini"># In config.txt:
+dtparam=spi=on
+</code></pre>
+<pre><code class="language-bash"># After reboot:
+ls /dev/spidev*
+# /dev/spidev0.0   (SPI0, chip enable 0 — GPIO8)
+# /dev/spidev0.1   (SPI0, chip enable 1 — GPIO7)
+</code></pre>
+<h3 id="spi-pin-mapping-spi0">SPI Pin Mapping (SPI0)</h3>
+<table>
+<thead>
+<tr>
+<th>Pin</th>
+<th>GPIO</th>
+<th>Function</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>19</td>
+<td>GPIO10</td>
+<td>MOSI (Master Out, Slave In)</td>
+</tr>
+<tr>
+<td>21</td>
+<td>GPIO9</td>
+<td>MISO (Master In, Slave Out)</td>
+</tr>
+<tr>
+<td>23</td>
+<td>GPIO11</td>
+<td>SCLK (Clock)</td>
+</tr>
+<tr>
+<td>24</td>
+<td>GPIO8</td>
+<td>CE0 (Chip Enable 0)</td>
+</tr>
+<tr>
+<td>26</td>
+<td>GPIO7</td>
+<td>CE1 (Chip Enable 1)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="spi-from-python">SPI from Python</h3>
+<pre><code class="language-python">#!/usr/bin/env python3
+&quot;&quot;&quot;SPI example: read from an MCP3008 ADC (analog-to-digital converter).&quot;&quot;&quot;
+
+import spidev
+
+spi = spidev.SpiDev()
+spi.open(0, 0)          # SPI bus 0, chip select 0
+spi.max_speed_hz = 1350000
+spi.mode = 0
+
+def read_adc(channel):
+    &quot;&quot;&quot;Read a value from MCP3008 ADC channel (0-7).&quot;&quot;&quot;
+    # MCP3008 SPI protocol: send [start, single-ended + channel, don't care]
+    # Receive [don't care, 2 high bits, 8 low bits]
+    cmd = [1, (8 + channel) &lt;&lt; 4, 0]
+    data = spi.xfer2(cmd)
+    value = ((data[1] &amp; 3) &lt;&lt; 8) | data[2]
+    return value    # 0-1023 (10-bit ADC)
+
+# Read channel 0:
+value = read_adc(0)
+voltage = value * 3.3 / 1023
+print(f&quot;ADC Channel 0: {value} ({voltage:.2f}V)&quot;)
+
+spi.close()
+</code></pre>
+<h3 id="spi-displays">SPI Displays</h3>
+<p>SPI is commonly used for small displays. The Linux framebuffer driver <code>fbtft</code> supports many SPI displays:</p>
+<pre><code class="language-ini"># In config.txt — example for SSD1306 128x64 OLED:
+dtoverlay=ssd1306,width=128,height=64
+
+# Or for an ST7789 TFT:
+dtoverlay=spi0-1cs
+# (then use a userspace driver like luma.oled or Pillow with fbdev)
+</code></pre>
+<pre><code class="language-python"># Using luma.oled for SSD1306:
+# pip3 install luma.oled
+from luma.core.interface.serial import spi
+from luma.oled.device import ssd1306
+from luma.core.render import canvas
+from PIL import ImageFont
+
+serial = spi(device=0, port=0, gpio_DC=24, gpio_RST=25)
+device = ssd1306(serial, width=128, height=64)
+
+with canvas(device) as draw:
+    draw.rectangle(device.bounding_box, outline=&quot;white&quot;, fill=&quot;black&quot;)
+    draw.text((10, 25), &quot;Hello, Pi!&quot;, fill=&quot;white&quot;)
+</code></pre>
+<h3 id="spi-speed">SPI Speed</h3>
+<p>SPI can run much faster than I2C:</p>
+<pre><code class="language-python">spi.max_speed_hz = 1000000    # 1 MHz (safe default)
+spi.max_speed_hz = 10000000   # 10 MHz (most peripherals handle this)
+spi.max_speed_hz = 50000000   # 50 MHz (fast displays, check datasheet)
+</code></pre>
+<hr>
+<h2 id="10-uart-serial-communication">10. UART &amp; Serial Communication</h2>
+<h3 id="the-pi-zero-2-ws-uart-situation">The Pi Zero 2 W's UART Situation</h3>
+<p>The BCM2710A1 has two UARTs:</p>
+<table>
+<thead>
+<tr>
+<th>UART</th>
+<th>Name</th>
+<th>Type</th>
+<th>Default Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>PL011</td>
+<td><code>/dev/ttyAMA0</code></td>
+<td>Full UART (16550-compatible)</td>
+<td>Bluetooth</td>
+</tr>
+<tr>
+<td>Mini UART</td>
+<td><code>/dev/ttyS0</code></td>
+<td>Reduced-feature UART</td>
+<td>Serial console (GPIO14/15)</td>
+</tr>
+</tbody>
+</table>
+<p>The mini UART's baud rate is linked to the core clock frequency, making it unreliable if the CPU frequency changes. For serious serial work:</p>
+<pre><code class="language-ini"># config.txt — disable Bluetooth, give the full UART to GPIO14/15:
+dtoverlay=disable-bt
+
+# Now /dev/ttyAMA0 is the serial console on GPIO14/15
+# (and /dev/serial0 symlinks to it)
+</code></pre>
+<h3 id="serial-communication-from-python">Serial Communication from Python</h3>
+<pre><code class="language-python">#!/usr/bin/env python3
+&quot;&quot;&quot;Talk to a GPS module (or any serial device) on the UART.&quot;&quot;&quot;
+
+import serial
+
+# Open the serial port:
+ser = serial.Serial(
+    port='/dev/serial0',    # symlink to the active UART
+    baudrate=9600,
+    timeout=1,
+)
+
+# Read lines (e.g., NMEA sentences from a GPS):
+while True:
+    line = ser.readline().decode('ascii', errors='replace').strip()
+    if line:
+        print(line)
+        # $GPGGA,123519,4807.038,N,01131.000,E,1,08,0.9,545.4,M,...
+
+# Write to the serial device:
+# ser.write(b'AT\r\n')          # send an AT command (e.g., to a modem)
+</code></pre>
+<h3 id="connecting-to-an-arduinoesp32">Connecting to an Arduino/ESP32</h3>
+<p>A common pattern: use the Pi for heavy processing (computer vision, web server, database) and an Arduino/ESP32 for real-time sensor/actuator work, connected via UART:</p>
+<pre><code class="language-text">Pi Zero 2 W                    Arduino/ESP32
+GPIO14 (TX) ──────────────── RX
+GPIO15 (RX) ──────────────── TX
+GND         ──────────────── GND
+
+⚠️  If the Arduino is 5V, use a level shifter or voltage divider
+    on the Arduino TX → Pi RX line. The Pi is 3.3V only.
+</code></pre>
+<hr>
+<h2 id="11-camera-csi">11. Camera (CSI)</h2>
+<h3 id="camera-support">Camera Support</h3>
+<p>The Pi Zero 2 W has a CSI-2 camera connector (smaller 22-pin, not the standard 15-pin — use the Pi Zero camera cable or adapter). Supported cameras:</p>
+<ul>
+<li><strong>Camera Module v2</strong> (IMX219, 8 MP) — $25, the standard choice</li>
+<li><strong>Camera Module v3</strong> (IMX708, 12 MP, autofocus) — $35</li>
+<li><strong>HQ Camera</strong> (IMX477, 12.3 MP, C/CS-mount lens) — $50</li>
+<li>Third-party cameras (IR, wide-angle, autofocus variants)</li>
+</ul>
+<h3 id="libcamera-the-modern-camera-stack">libcamera — The Modern Camera Stack</h3>
+<p>The legacy <code>raspistill</code>/<code>raspivid</code> commands are replaced by <strong>libcamera</strong>:</p>
+<pre><code class="language-bash"># Take a photo:
+libcamera-still -o photo.jpg
+
+# Take a photo with specific resolution and delay:
+libcamera-still -o photo.jpg --width 2592 --height 1944 -t 2000
+
+# Record video (H.264, 1080p, 10 seconds):
+libcamera-vid -o video.h264 -t 10000 --width 1920 --height 1080
+
+# Stream video over the network (RTSP-like, using TCP):
+libcamera-vid -t 0 --inline -o - | nc -l -p 5000
+# On the receiving end:  nc &lt;pi-ip&gt; 5000 | ffplay -
+
+# Timelapse (one photo every 5 seconds for 1 hour):
+libcamera-still -t 3600000 --timelapse 5000 -o 'timelapse_%04d.jpg'
+</code></pre>
+<h3 id="python-camera-access">Python Camera Access</h3>
+<pre><code class="language-python">#!/usr/bin/env python3
+&quot;&quot;&quot;Capture an image using picamera2 (the Python libcamera interface).&quot;&quot;&quot;
+
+from picamera2 import Picamera2
+import time
+
+picam2 = Picamera2()
+config = picam2.create_still_configuration(
+    main={&quot;size&quot;: (2592, 1944)},     # full resolution
+)
+picam2.configure(config)
+picam2.start()
+time.sleep(2)    # let auto-exposure settle
+
+picam2.capture_file(&quot;photo.jpg&quot;)
+print(&quot;Captured photo.jpg&quot;)
+picam2.stop()
+</code></pre>
+<p>For computer vision, <code>picamera2</code> integrates with OpenCV:</p>
+<pre><code class="language-python">from picamera2 import Picamera2
+import cv2
+
+picam2 = Picamera2()
+picam2.configure(picam2.create_preview_configuration(main={&quot;size&quot;: (640, 480)}))
+picam2.start()
+
+while True:
+    frame = picam2.capture_array()
+    # frame is a numpy array — use OpenCV as normal:
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    edges = cv2.Canny(gray, 50, 150)
+    # ... process edges, detect objects, etc.
+</code></pre>
+<hr>
+<h2 id="12-power-management-low-power-operation">12. Power Management &amp; Low-Power Operation</h2>
+<h3 id="power-consumption-baseline">Power Consumption Baseline</h3>
+<p>The Pi Zero 2 W has no deep sleep mode — the SoC is always on. But you can significantly reduce draw:</p>
+<table>
+<thead>
+<tr>
+<th>Configuration</th>
+<th>Current Draw (~)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Idle, WiFi + HDMI + LED</td>
+<td>~300 mA</td>
+</tr>
+<tr>
+<td>Idle, WiFi on, HDMI off, LED off</td>
+<td>~200 mA</td>
+</tr>
+<tr>
+<td>Idle, WiFi off, HDMI off, LED off, BT off</td>
+<td>~100 mA</td>
+</tr>
+<tr>
+<td>Under CPU load (all 4 cores)</td>
+<td>~400–500 mA</td>
+</tr>
+</tbody>
+</table>
+<p>Compare with the ESP32's deep sleep at ~10 µA. The Pi is not a battery device — it's a mains-powered (or large-battery/solar-powered) device.</p>
+<h3 id="reducing-power-draw">Reducing Power Draw</h3>
+<pre><code class="language-ini"># config.txt — disable unused hardware:
+dtoverlay=disable-bt              # Bluetooth off (~20 mA saved)
+dtoverlay=disable-wifi            # WiFi off (~40 mA saved, only if using USB Ethernet)
+gpu_mem=16                        # Minimum GPU memory for headless
+
+# Disable HDMI (runtime):
+# In a startup script or service:
+/usr/bin/tvservice -o             # turn HDMI off (~25 mA saved)
+# Or in config.txt for Pi 4/Zero 2 W with KMS driver:
+# (no config.txt option — use tvservice or xrandr)
+</code></pre>
+<pre><code class="language-bash"># Disable the activity LED:
+echo none | sudo tee /sys/class/leds/ACT/trigger
+echo 0 | sudo tee /sys/class/leds/ACT/brightness
+
+# Disable USB hub (if no USB devices needed — Pi Zero 2 W only):
+# The Zero 2 W's USB is OTG, so there's no separate hub to disable.
+
+# Reduce CPU frequency:
+echo 600000 | sudo tee /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+
+# Disable unused CPU cores:
+echo 0 | sudo tee /sys/devices/system/cpu/cpu1/online
+echo 0 | sudo tee /sys/devices/system/cpu/cpu2/online
+echo 0 | sudo tee /sys/devices/system/cpu/cpu3/online
+</code></pre>
+<h3 id="solar-battery-power">Solar / Battery Power</h3>
+<p>For battery-powered Pi projects, the strategy is fundamentally different from the ESP32's "sleep 99% of the time" approach:</p>
+<ol>
+<li>
+<p><strong>Duty-cycle the whole Pi</strong> — use an external timer circuit (e.g., Witty Pi, TPL5110, or a 555 timer) to power-cycle the Pi. The Pi boots, does its work (30–120 seconds), then the external circuit cuts power. This achieves ~µA average draw with mA-level active bursts.</p>
+</li>
+<li>
+<p><strong>Large battery + solar panel</strong> — a 10,000 mAh battery runs the Pi for ~15–20 hours at 200 mA. A 6W solar panel can maintain this indefinitely in good sun.</p>
+</li>
+<li>
+<p><strong>Use the ESP32 as a wake controller</strong> — the ESP32 sleeps at 10 µA, wakes on a sensor event or timer, boots the Pi via a MOSFET switch, communicates over UART/I2C, then cuts Pi power again.</p>
+</li>
+</ol>
+<h3 id="usb-gadget-mode">USB Gadget Mode</h3>
+<p>The Pi Zero 2 W's USB port supports <strong>OTG (On-The-Go)</strong> — it can act as either a USB host (connect devices to the Pi) or a USB device (the Pi appears as a device to a computer). Gadget mode makes the Pi appear as:</p>
+<pre><code class="language-ini"># config.txt — enable USB gadget:
+dtoverlay=dwc2
+
+# cmdline.txt — load the gadget module after rootwait:
+# Add &quot;modules-load=dwc2,g_ether&quot; after &quot;rootwait&quot;:
+rootwait modules-load=dwc2,g_ether
+</code></pre>
+<p>Available gadget modes:</p>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Pi Appears As</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>g_ether</code></td>
+<td>USB Ethernet adapter — SSH over USB cable</td>
+</tr>
+<tr>
+<td><code>g_serial</code></td>
+<td>USB serial port</td>
+</tr>
+<tr>
+<td><code>g_mass_storage</code></td>
+<td>USB flash drive (serve a file/partition)</td>
+</tr>
+<tr>
+<td><code>g_hid</code></td>
+<td>USB keyboard/mouse</td>
+</tr>
+<tr>
+<td><code>g_multi</code></td>
+<td>Combination (Ethernet + serial + storage)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Ethernet gadget</strong> is particularly useful: plug the Pi into your laptop with a single USB cable, and it gets power AND a network connection. SSH in via <code>ssh user@raspberrypi.local</code> or <code>ssh user@10.0.0.2</code> (the default gadget IP).</p>
+<hr>
+<h2 id="13-systemd-running-your-application">13. Systemd — Running Your Application</h2>
+<h3 id="the-service-file">The Service File</h3>
+<p>On an embedded device, your application needs to start at boot and restart if it crashes. Systemd handles this:</p>
+<pre><code class="language-ini"># /etc/systemd/system/myapp.service
+[Unit]
+Description=My Sensor Logger Application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=myuser
+WorkingDirectory=/home/myuser/myapp
+ExecStart=/usr/bin/python3 /home/myuser/myapp/main.py
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Resource limits (good practice for embedded):
+MemoryMax=100M
+CPUQuota=50%
+
+# Security hardening:
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target
+</code></pre>
+<pre><code class="language-bash"># Enable and start:
+sudo systemctl daemon-reload
+sudo systemctl enable myapp.service     # start at boot
+sudo systemctl start myapp.service      # start now
+
+# Check status and logs:
+sudo systemctl status myapp.service
+journalctl -u myapp.service -f          # follow logs in real time
+journalctl -u myapp.service --since &quot;1 hour ago&quot;
+</code></pre>
+<h3 id="watchdog-timer">Watchdog Timer</h3>
+<p>The Pi has a hardware watchdog. If your application hangs and stops petting the watchdog, the Pi reboots:</p>
+<pre><code class="language-ini"># /etc/systemd/system.conf — enable hardware watchdog:
+RuntimeWatchdogSec=15           # reboot if systemd doesn't pet within 15s
+RebootWatchdogSec=10min         # reboot timeout during shutdown
+
+# Or per-service in [Service]:
+WatchdogSec=30                  # systemd expects sd_notify(&quot;WATCHDOG=1&quot;) every 30s
+</code></pre>
+<pre><code class="language-python"># In your Python application — pet the watchdog:
+import systemd.daemon
+import time
+
+while True:
+    # ... do your work ...
+    systemd.daemon.notify(&quot;WATCHDOG=1&quot;)   # I'm alive
+    time.sleep(10)
+</code></pre>
+<h3 id="timer-units-cron-replacement">Timer Units (cron Replacement)</h3>
+<p>For periodic tasks, use systemd timers instead of cron:</p>
+<pre><code class="language-ini"># /etc/systemd/system/sensor-reading.timer
+[Unit]
+Description=Take sensor reading every 5 minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+AccuracySec=10s
+
+[Install]
+WantedBy=timers.target
+</code></pre>
+<pre><code class="language-ini"># /etc/systemd/system/sensor-reading.service
+[Unit]
+Description=Take one sensor reading
+
+[Service]
+Type=oneshot
+ExecStart=/home/myuser/read_sensor.py
+User=myuser
+</code></pre>
+<pre><code class="language-bash">sudo systemctl enable --now sensor-reading.timer
+systemctl list-timers          # verify it's scheduled
+</code></pre>
+<hr>
+<h2 id="14-networking-wifi-bluetooth-usb-gadget">14. Networking — WiFi, Bluetooth &amp; USB Gadget</h2>
+<h3 id="wifi-configuration-with-networkmanager">WiFi Configuration with NetworkManager</h3>
+<p>Raspberry Pi OS Bookworm and later use NetworkManager:</p>
+<pre><code class="language-bash"># Scan for networks:
+nmcli device wifi list
+
+# Connect to a network:
+nmcli device wifi connect &quot;MyNetwork&quot; password &quot;MyPassword&quot;
+
+# Show current connection:
+nmcli connection show
+
+# Set a static IP:
+nmcli connection modify &quot;MyNetwork&quot; \
+    ipv4.method manual \
+    ipv4.addresses &quot;192.168.1.100/24&quot; \
+    ipv4.gateway &quot;192.168.1.1&quot; \
+    ipv4.dns &quot;8.8.8.8&quot;
+nmcli connection up &quot;MyNetwork&quot;
+
+# Create a WiFi access point (AP mode):
+nmcli device wifi hotspot ssid &quot;PiHotspot&quot; password &quot;secretpassword&quot;
+</code></pre>
+<h3 id="bluetooth">Bluetooth</h3>
+<pre><code class="language-bash"># Install BlueZ tools:
+sudo apt install bluetooth bluez python3-bluez
+
+# Scan for devices:
+bluetoothctl
+[bluetooth]# power on
+[bluetooth]# scan on
+# ... wait for devices to appear ...
+[bluetooth]# pair XX:XX:XX:XX:XX:XX
+[bluetooth]# connect XX:XX:XX:XX:XX:XX
+[bluetooth]# quit
+</code></pre>
+<p>For BLE (Bluetooth Low Energy) — e.g., reading a BLE sensor:</p>
+<pre><code class="language-python">#!/usr/bin/env python3
+&quot;&quot;&quot;Read a BLE thermometer using bleak (cross-platform BLE library).&quot;&quot;&quot;
+
+import asyncio
+from bleak import BleakScanner, BleakClient
+
+SENSOR_NAME = &quot;ThermoBeacon&quot;
+
+async def main():
+    # Scan for the device:
+    device = await BleakScanner.find_device_by_name(SENSOR_NAME, timeout=10)
+    if not device:
+        print(&quot;Device not found&quot;)
+        return
+
+    async with BleakClient(device) as client:
+        # Read a characteristic (example UUID):
+        data = await client.read_gatt_char(&quot;00002a6e-0000-1000-8000-00805f9b34fb&quot;)
+        temp = int.from_bytes(data, 'little') / 100
+        print(f&quot;Temperature: {temp:.1f} °C&quot;)
+
+asyncio.run(main())
+</code></pre>
+<h3 id="setting-up-a-captive-portal-apstation">Setting Up a Captive Portal / AP+Station</h3>
+<p>A common embedded pattern: the Pi creates a WiFi access point for initial configuration, while also connecting to an existing network:</p>
+<pre><code class="language-bash"># This requires two WiFi interfaces or concurrent AP+STA mode.
+# The Pi Zero 2 W's onboard WiFi supports concurrent AP+STA in some
+# configurations, but a USB WiFi dongle is more reliable.
+
+# Simpler approach: AP mode for config, then switch to station mode:
+# 1. Boot into AP mode if no known network is available
+# 2. User connects to AP, opens captive portal, enters WiFi credentials
+# 3. Pi saves credentials and reboots into station mode
+</code></pre>
+<hr>
+<h2 id="15-cross-compilation-remote-development">15. Cross-Compilation &amp; Remote Development</h2>
+<h3 id="why-cross-compile">Why Cross-Compile</h3>
+<p>The Pi Zero 2 W's quad-core Cortex-A53 at 1 GHz is capable, but compiling large C/C++ projects (or the Linux kernel) on it takes hours. Cross-compilation runs the compiler on your fast laptop and produces ARM binaries.</p>
+<h3 id="cross-compilation-toolchain">Cross-Compilation Toolchain</h3>
+<pre><code class="language-bash"># On your host machine (x86_64 Linux or macOS):
+
+# Install the cross-compiler:
+# Ubuntu/Debian:
+sudo apt install gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+# macOS (via Homebrew):
+brew install aarch64-elf-gcc
+# or use a Docker container with the toolchain
+
+# Cross-compile a C program:
+aarch64-linux-gnu-gcc -o hello hello.c
+
+# Copy to Pi and run:
+scp hello myuser@raspberrypi.local:~/
+ssh myuser@raspberrypi.local ./hello
+</code></pre>
+<h3 id="remote-development-with-vs-code">Remote Development with VS Code</h3>
+<p>The most productive workflow for Pi development:</p>
+<ol>
+<li>Install the <strong>Remote - SSH</strong> extension in VS Code</li>
+<li>Connect: <code>Ctrl+Shift+P</code> → "Remote-SSH: Connect to Host" → <code>myuser@raspberrypi.local</code></li>
+<li>VS Code runs on the Pi (server-side), your UI runs on your laptop</li>
+<li>Edit files, run terminals, debug — all over SSH, with full IDE features</li>
+</ol>
+<p>This gives you the development experience of a fast local machine with the execution environment of the Pi. For Python projects on the Pi Zero 2 W, this is the recommended workflow — no cross-compilation needed.</p>
+<h3 id="deploying-with-rsync">Deploying with rsync</h3>
+<pre><code class="language-bash"># Sync your project directory to the Pi:
+rsync -avz --exclude='.git' --exclude='__pycache__' \
+    ./myproject/ myuser@raspberrypi.local:~/myproject/
+
+# One-liner: sync and restart the service:
+rsync -avz ./myproject/ pi:~/myproject/ &amp;&amp; ssh pi 'sudo systemctl restart myapp'
+</code></pre>
+<hr>
+<h2 id="16-real-time-performance-tuning">16. Real-Time &amp; Performance Tuning</h2>
+<h3 id="the-real-time-problem">The Real-Time Problem</h3>
+<p>Linux is not a real-time OS. The kernel preempts tasks, handles interrupts, runs garbage collection, and performs background I/O — all of which add unpredictable latency to your application. For most embedded tasks (reading a sensor every second, serving a web page), this doesn't matter. For time-critical tasks (motor control, audio processing, high-speed data acquisition), it does.</p>
+<h3 id="kernel-preemption-models">Kernel Preemption Models</h3>
+<p>The standard Raspberry Pi OS kernel uses <code>PREEMPT_VOLUNTARY</code> — the kernel can preempt user tasks but not itself. The real-time kernel patch (<code>PREEMPT_RT</code>) makes the kernel fully preemptible:</p>
+<pre><code class="language-bash"># Check current preemption model:
+uname -a
+# ... PREEMPT ... (standard) or ... PREEMPT_RT ... (real-time)
+
+# Install the RT kernel (if available for your Pi OS version):
+sudo apt install linux-image-rt-arm64
+# Reboot and select the RT kernel
+</code></pre>
+<p>With <code>PREEMPT_RT</code>:
+- Worst-case GPIO latency drops from ~1 ms to ~50–100 µs
+- Interrupt handlers run as preemptible threads
+- Suitable for soft real-time applications (audio, motor control with encoders)</p>
+<p>For hard real-time (sub-10 µs guarantees), use a dedicated microcontroller.</p>
+<h3 id="cpu-isolation">CPU Isolation</h3>
+<p>Pin your real-time application to a dedicated CPU core that the kernel doesn't use for anything else:</p>
+<pre><code class="language-bash"># cmdline.txt — isolate CPU 3 from the scheduler:
+isolcpus=3 nohz_full=3 rcu_nocbs=3
+
+# In your application, set CPU affinity:
+taskset -c 3 ./my_realtime_app
+
+# Or in the systemd service:
+# [Service]
+# CPUAffinity=3
+</code></pre>
+<h3 id="memory-tuning">Memory Tuning</h3>
+<pre><code class="language-bash"># Disable swap (swap on SD card is slow and kills the card):
+sudo dphys-swapfile swapoff
+sudo systemctl disable dphys-swapfile
+
+# Lock your application's memory (prevent page faults):
+# In C:
+# mlockall(MCL_CURRENT | MCL_FUTURE);
+# In Python: not easily possible, but less critical
+</code></pre>
+<hr>
+<h2 id="17-security-for-deployed-devices">17. Security for Deployed Devices</h2>
+<h3 id="the-threat-model">The Threat Model</h3>
+<p>A Pi deployed in the field (weather station, kiosk, remote logger) faces different threats than a server:</p>
+<ul>
+<li><strong>Physical access</strong> — someone can steal the SD card and read your credentials</li>
+<li><strong>Network exposure</strong> — if it has WiFi, it's on a network</li>
+<li><strong>Unattended operation</strong> — you're not watching the logs</li>
+</ul>
+<h3 id="essential-hardening">Essential Hardening</h3>
+<pre><code class="language-bash"># 1. Change the default password (done during setup, but verify):
+passwd
+
+# 2. Disable password authentication for SSH (use keys only):
+ssh-keygen -t ed25519 -C &quot;pi-zero&quot;      # on your laptop
+ssh-copy-id myuser@raspberrypi.local     # copy public key to Pi
+# Then on the Pi, edit /etc/ssh/sshd_config:
+# PasswordAuthentication no
+# PermitRootLogin no
+sudo systemctl restart ssh
+
+# 3. Enable the firewall:
+sudo apt install ufw
+sudo ufw default deny incoming
+sudo ufw default allow outgoing
+sudo ufw allow ssh
+sudo ufw enable
+
+# 4. Keep the system updated:
+sudo apt update &amp;&amp; sudo apt upgrade -y
+# Or set up unattended upgrades:
+sudo apt install unattended-upgrades
+sudo dpkg-reconfigure -plow unattended-upgrades
+
+# 5. Remove unnecessary services:
+sudo systemctl disable avahi-daemon    # if you don't need mDNS
+sudo systemctl disable triggerhappy    # keyboard shortcut daemon
+</code></pre>
+<h3 id="encrypted-storage">Encrypted Storage</h3>
+<p>The SD card is trivially readable if physically removed. For sensitive data:</p>
+<pre><code class="language-bash"># Encrypt a data partition with LUKS:
+sudo apt install cryptsetup
+sudo cryptsetup luksFormat /dev/mmcblk0p3
+sudo cryptsetup luksOpen /dev/mmcblk0p3 data
+sudo mkfs.ext4 /dev/mapper/data
+sudo mount /dev/mapper/data /mnt/data
+
+# Store secrets (API keys, certificates) on the encrypted partition.
+# The encryption key must be entered at boot (or stored in a TPM/HSM,
+# which the Pi Zero 2 W doesn't have — a limitation of this platform).
+</code></pre>
+<h3 id="watchdog-health-monitoring">Watchdog + Health Monitoring</h3>
+<pre><code class="language-bash"># The hardware watchdog reboots a hung Pi:
+sudo apt install watchdog
+# Configure /etc/watchdog.conf:
+# watchdog-device = /dev/watchdog
+# watchdog-timeout = 15
+# max-load-1 = 24
+# min-memory = 1
+sudo systemctl enable watchdog
+</code></pre>
+<hr>
+<h2 id="18-practical-projects">18. Practical Projects</h2>
+<h3 id="project-1-environmental-data-logger">Project 1: Environmental Data Logger</h3>
+<p>A sensor station that reads temperature, humidity, and pressure every 5 minutes and serves a web dashboard.</p>
+<p><strong>Hardware:</strong> Pi Zero 2 W + BME280 (I2C) + microSD card
+<strong>Software:</strong> Python + Flask + SQLite + systemd timer</p>
+<pre><code class="language-python">#!/usr/bin/env python3
+&quot;&quot;&quot;sensor_logger.py — read BME280 and log to SQLite.&quot;&quot;&quot;
+
+import sqlite3
+import time
+import smbus2
+import bme280
+
+DB_PATH = &quot;/home/myuser/sensors.db&quot;
+I2C_PORT = 1
+BME280_ADDR = 0x77
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute(&quot;&quot;&quot;
+        CREATE TABLE IF NOT EXISTS readings (
+            timestamp TEXT DEFAULT (datetime('now')),
+            temperature REAL,
+            humidity REAL,
+            pressure REAL
+        )
+    &quot;&quot;&quot;)
+    conn.commit()
+    return conn
+
+def read_sensor():
+    bus = smbus2.SMBus(I2C_PORT)
+    cal = bme280.load_calibration_params(bus, BME280_ADDR)
+    data = bme280.sample(bus, BME280_ADDR, cal)
+    bus.close()
+    return data.temperature, data.humidity, data.pressure
+
+def main():
+    conn = init_db()
+    temp, hum, pres = read_sensor()
+    conn.execute(
+        &quot;INSERT INTO readings (temperature, humidity, pressure) VALUES (?, ?, ?)&quot;,
+        (round(temp, 2), round(hum, 2), round(pres, 2)),
+    )
+    conn.commit()
+    conn.close()
+    print(f&quot;Logged: {temp:.1f}°C, {hum:.1f}%, {pres:.1f} hPa&quot;)
+
+if __name__ == &quot;__main__&quot;:
+    main()
+</code></pre>
+<pre><code class="language-python">#!/usr/bin/env python3
+&quot;&quot;&quot;dashboard.py — serve sensor data as a simple web dashboard.&quot;&quot;&quot;
+
+from flask import Flask, jsonify, render_template_string
+import sqlite3
+
+app = Flask(__name__)
+DB_PATH = &quot;/home/myuser/sensors.db&quot;
+
+TEMPLATE = &quot;&quot;&quot;
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;&lt;head&gt;&lt;title&gt;Sensor Dashboard&lt;/title&gt;
+&lt;meta http-equiv=&quot;refresh&quot; content=&quot;60&quot;&gt;
+&lt;style&gt;
+  body { font-family: system-ui; background: #1a1a2e; color: #e0e0e0;
+         display: flex; flex-direction: column; align-items: center; padding: 2em; }
+  .card { background: #16213e; border-radius: 12px; padding: 1.5em 2em;
+          margin: 0.5em; min-width: 200px; text-align: center; }
+  .value { font-size: 2.5em; font-weight: bold; color: #4ade80; }
+  .label { color: #9aa0ad; font-size: 0.9em; margin-top: 0.3em; }
+  .grid { display: flex; gap: 1em; flex-wrap: wrap; justify-content: center; }
+&lt;/style&gt;&lt;/head&gt;
+&lt;body&gt;
+&lt;h1&gt;🌡️ Sensor Dashboard&lt;/h1&gt;
+&lt;div class=&quot;grid&quot;&gt;
+  &lt;div class=&quot;card&quot;&gt;&lt;div class=&quot;value&quot;&gt;{{ t }}°C&lt;/div&gt;&lt;div class=&quot;label&quot;&gt;Temperature&lt;/div&gt;&lt;/div&gt;
+  &lt;div class=&quot;card&quot;&gt;&lt;div class=&quot;value&quot;&gt;{{ h }}%&lt;/div&gt;&lt;div class=&quot;label&quot;&gt;Humidity&lt;/div&gt;&lt;/div&gt;
+  &lt;div class=&quot;card&quot;&gt;&lt;div class=&quot;value&quot;&gt;{{ p }} hPa&lt;/div&gt;&lt;div class=&quot;label&quot;&gt;Pressure&lt;/div&gt;&lt;/div&gt;
+&lt;/div&gt;
+&lt;p style=&quot;color:#6b7180; margin-top:2em;&quot;&gt;Last reading: {{ ts }}&lt;/p&gt;
+&lt;/body&gt;&lt;/html&gt;
+&quot;&quot;&quot;
+
+@app.route(&quot;/&quot;)
+def index():
+    conn = sqlite3.connect(DB_PATH)
+    row = conn.execute(
+        &quot;SELECT timestamp, temperature, humidity, pressure &quot;
+        &quot;FROM readings ORDER BY rowid DESC LIMIT 1&quot;
+    ).fetchone()
+    conn.close()
+    if row:
+        return render_template_string(TEMPLATE,
+            ts=row[0], t=f&quot;{row[1]:.1f}&quot;, h=f&quot;{row[2]:.1f}&quot;, p=f&quot;{row[3]:.0f}&quot;)
+    return &quot;No data yet&quot;
+
+@app.route(&quot;/api/readings&quot;)
+def api_readings():
+    conn = sqlite3.connect(DB_PATH)
+    rows = conn.execute(
+        &quot;SELECT timestamp, temperature, humidity, pressure &quot;
+        &quot;FROM readings ORDER BY rowid DESC LIMIT 288&quot;     # last 24h at 5min intervals
+    ).fetchall()
+    conn.close()
+    return jsonify([
+        {&quot;ts&quot;: r[0], &quot;temp&quot;: r[1], &quot;hum&quot;: r[2], &quot;pres&quot;: r[3]} for r in rows
+    ])
+
+if __name__ == &quot;__main__&quot;:
+    app.run(host=&quot;0.0.0.0&quot;, port=8080)
+</code></pre>
+<h3 id="project-2-wildlife-camera-trap">Project 2: Wildlife Camera Trap</h3>
+<p><strong>Hardware:</strong> Pi Zero 2 W + Camera Module v3 + PIR motion sensor (GPIO) + battery pack
+<strong>Concept:</strong> PIR sensor wakes the Pi (via external power controller), Pi boots, takes a burst of photos, saves to SD, powers off.</p>
+<pre><code class="language-python">#!/usr/bin/env python3
+&quot;&quot;&quot;camera_trap.py — capture images on motion detection.&quot;&quot;&quot;
+
+from gpiozero import MotionSensor
+from picamera2 import Picamera2
+from datetime import datetime
+import os
+import subprocess
+
+PIR_PIN = 4
+OUTPUT_DIR = &quot;/home/myuser/captures&quot;
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+pir = MotionSensor(PIR_PIN)
+picam2 = Picamera2()
+config = picam2.create_still_configuration(main={&quot;size&quot;: (4056, 3040)})
+picam2.configure(config)
+picam2.start()
+
+print(&quot;Camera trap active. Waiting for motion...&quot;)
+while True:
+    pir.wait_for_motion()
+    timestamp = datetime.now().strftime(&quot;%Y%m%d_%H%M%S&quot;)
+
+    # Burst: 3 photos in rapid succession
+    for i in range(3):
+        filename = f&quot;{OUTPUT_DIR}/capture_{timestamp}_{i}.jpg&quot;
+        picam2.capture_file(filename)
+        print(f&quot;Captured: {filename}&quot;)
+
+    pir.wait_for_no_motion()
+</code></pre>
+<h3 id="project-3-iot-gateway">Project 3: IoT Gateway</h3>
+<p><strong>Concept:</strong> Pi collects data from BLE sensors and ESP32 nodes, aggregates it, and publishes to an MQTT broker or cloud service.</p>
+<pre><code class="language-python">#!/usr/bin/env python3
+&quot;&quot;&quot;iot_gateway.py — collect sensor data via MQTT and forward to cloud.&quot;&quot;&quot;
+
+import paho.mqtt.client as mqtt
+import json
+import sqlite3
+import requests
+
+LOCAL_BROKER = &quot;localhost&quot;       # Mosquitto running on the Pi
+CLOUD_ENDPOINT = &quot;https://api.example.com/data&quot;
+
+db = sqlite3.connect(&quot;/home/myuser/gateway.db&quot;)
+db.execute(&quot;&quot;&quot;
+    CREATE TABLE IF NOT EXISTS sensor_data (
+        timestamp TEXT DEFAULT (datetime('now')),
+        device_id TEXT,
+        payload TEXT
+    )
+&quot;&quot;&quot;)
+db.commit()
+
+def on_message(client, userdata, msg):
+    &quot;&quot;&quot;Handle incoming sensor data from local MQTT topics.&quot;&quot;&quot;
+    try:
+        data = json.loads(msg.payload)
+        device_id = msg.topic.split(&quot;/&quot;)[-1]
+
+        # Store locally:
+        db.execute(
+            &quot;INSERT INTO sensor_data (device_id, payload) VALUES (?, ?)&quot;,
+            (device_id, msg.payload.decode())
+        )
+        db.commit()
+
+        # Forward to cloud (with retry):
+        try:
+            requests.post(CLOUD_ENDPOINT, json={
+                &quot;device&quot;: device_id, &quot;data&quot;: data
+            }, timeout=5)
+        except requests.RequestException:
+            pass    # local data is preserved; cloud sync will catch up
+
+        print(f&quot;[{device_id}] {data}&quot;)
+    except Exception as e:
+        print(f&quot;Error: {e}&quot;)
+
+client = mqtt.Client()
+client.on_message = on_message
+client.connect(LOCAL_BROKER, 1883)
+client.subscribe(&quot;sensors/#&quot;)      # all sensor topics
+client.loop_forever()
+</code></pre>
+<hr>
+<h2 id="19-pi-zero-2-w-vs-esp32-when-to-use-which">19. Pi Zero 2 W vs ESP32 — When to Use Which</h2>
+<h3 id="decision-matrix">Decision Matrix</h3>
+<table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Choose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Battery-powered, needs to last months</td>
+<td><strong>ESP32</strong> — deep sleep at 10 µA</td>
+</tr>
+<tr>
+<td>Camera with video / computer vision</td>
+<td><strong>Pi</strong> — CSI camera, OpenCV, ML inference</td>
+</tr>
+<tr>
+<td>Web server with dashboard</td>
+<td><strong>Pi</strong> — Flask/Node, proper HTTP stack</td>
+</tr>
+<tr>
+<td>Read a sensor and send to MQTT</td>
+<td><strong>Either</strong> — ESP32 is cheaper and simpler</td>
+</tr>
+<tr>
+<td>Real-time motor control (µs precision)</td>
+<td><strong>ESP32</strong> — bare-metal GPIO</td>
+</tr>
+<tr>
+<td>Machine learning inference</td>
+<td><strong>Pi</strong> — TensorFlow Lite, 512 MB RAM</td>
+</tr>
+<tr>
+<td>Costs matters at 1000+ units</td>
+<td><strong>ESP32</strong> — $5 vs $15</td>
+</tr>
+<tr>
+<td>USB host (webcam, keyboard, storage)</td>
+<td><strong>Pi</strong> — USB OTG</td>
+</tr>
+<tr>
+<td>BLE beacon / simple BLE peripheral</td>
+<td><strong>ESP32</strong> — lighter stack</td>
+</tr>
+<tr>
+<td>Full TCP/IP + SSH + remote management</td>
+<td><strong>Pi</strong> — full Linux networking</td>
+</tr>
+<tr>
+<td>Needs to boot in under 1 second</td>
+<td><strong>ESP32</strong> — 200 ms boot</td>
+</tr>
+<tr>
+<td>Runs multiple concurrent services</td>
+<td><strong>Pi</strong> — Linux process model</td>
+</tr>
+<tr>
+<td>Deployment in harsh/remote environment</td>
+<td><strong>ESP32</strong> — simpler, fewer failure modes</td>
+</tr>
+<tr>
+<td>Prototype to production quickly</td>
+<td><strong>Pi</strong> for prototype → custom Linux board or ESP32 for production</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-hybrid-pattern">The Hybrid Pattern</h3>
+<p>The most robust architecture for complex embedded products: <strong>ESP32 for the real-time front end, Pi for the smart back end.</strong></p>
+<pre><code class="language-text">Sensors ──→ ESP32 ──UART/I2C──→ Pi Zero 2 W ──WiFi──→ Cloud
+  (analog,       (real-time       (processing,           (dashboard,
+   digital,       sampling,        storage,               alerts,
+   timing-        motor control,   web server,            analytics)
+   critical)      deep sleep)      ML inference)
+</code></pre>
+<p>The ESP32 handles the physical world with microsecond precision and milliamp power. The Pi handles the computational world with gigabytes of storage and a full networking stack. They communicate over a simple serial or I2C link. Each does what it's best at.</p>
+<hr>
+<h2 id="20-mastery-checklist">20. Mastery Checklist</h2>
+<h3 id="getting-started">Getting Started</h3>
+<ul>
+<li>[ ] Flash Raspberry Pi OS Lite to an SD card with pre-configured WiFi and SSH</li>
+<li>[ ] Boot headless and SSH in successfully</li>
+<li>[ ] Set up a serial console with a USB-to-serial adapter</li>
+<li>[ ] Understand the boot partition layout (<code>config.txt</code>, <code>cmdline.txt</code>, kernel, overlays)</li>
+</ul>
+<h3 id="hardware-interfaces">Hardware Interfaces</h3>
+<ul>
+<li>[ ] Blink an LED on GPIO using <code>libgpiod</code> (command line and Python)</li>
+<li>[ ] Read a button with edge detection using <code>gpiozero</code></li>
+<li>[ ] Connect and read an I2C sensor (BME280 or similar) with <code>i2cdetect</code> and Python</li>
+<li>[ ] Drive an SPI display (OLED or TFT)</li>
+<li>[ ] Communicate over UART with another device (Arduino, GPS module)</li>
+<li>[ ] Enable and use the CSI camera with <code>libcamera</code> and <code>picamera2</code></li>
+</ul>
+<h3 id="system-administration">System Administration</h3>
+<ul>
+<li>[ ] Write a systemd service that starts your application at boot and restarts on failure</li>
+<li>[ ] Set up a systemd timer for periodic tasks</li>
+<li>[ ] Configure WiFi with NetworkManager (<code>nmcli</code>)</li>
+<li>[ ] Set up USB gadget mode (Ethernet over USB)</li>
+<li>[ ] Enable and configure the hardware watchdog</li>
+</ul>
+<h3 id="device-trees">Device Trees</h3>
+<ul>
+<li>[ ] Enable I2C, SPI, and UART via <code>config.txt</code> dtparams</li>
+<li>[ ] Load a device tree overlay for a specific peripheral</li>
+<li>[ ] Read <code>/boot/firmware/overlays/README</code> to find the right overlay for your hardware</li>
+</ul>
+<h3 id="production-deployment">Production &amp; Deployment</h3>
+<ul>
+<li>[ ] Set up a read-only root filesystem</li>
+<li>[ ] Harden SSH (key-only auth, disable root login, firewall)</li>
+<li>[ ] Cross-compile a C program and deploy to the Pi</li>
+<li>[ ] Use VS Code Remote-SSH for development</li>
+<li>[ ] Build a complete project: sensor + logger + web dashboard + systemd service</li>
+<li>[ ] Understand when to use a Pi vs. an ESP32 vs. a hybrid</li>
+</ul></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>
