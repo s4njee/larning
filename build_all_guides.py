@@ -33,6 +33,7 @@ GUIDES = [
     ("WEBGL_OPENGL_STUDY_GUIDE.md", "html/webgl-opengl-study-guide.html", {"auto": True}),
     ("WEBGPU_STUDY_GUIDE.md", "html/webgpu-study-guide.html", {"auto": True}),
     ("WEBSOCKETS_STUDY_GUIDE.md", "html/websockets-study-guide.html", {"auto": True}),
+    ("BLENDER_STUDY_GUIDE.md", "html/blender-study-guide.html", {"accent": "#ea7600"}),
     ("ANSIBLE_STUDY_GUIDE.md", "html/ansible-study-guide.html", {"auto": True}),
     ("AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md", "html/azure-for-aws-solutions-architect.html", {"auto": True}),
     ("GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md", "html/gcp-for-aws-solutions-architect.html", {"auto": True}),
@@ -48,6 +49,7 @@ GUIDES = [
     ("k8s/KUBERNETES_STUDY_GUIDE.md", "html/kubernetes-study-guide.html", {"accent": "#326ce5", "brand": "K8s"}),
     ("ADVANCED_LINUX_STUDY_GUIDE.md", "html/advanced-linux-study-guide.html", {"auto": True}),
     ("LINUX_FUNDAMENTALS_STUDY_GUIDE.md", "html/linux-fundamentals-study-guide.html", {"auto": True}),
+    ("LINUX_NETWORKING_STUDY_GUIDE.md", "html/linux-networking-study-guide.html", {"auto": True}),
     ("ESP32_STUDY_GUIDE.md", "html/esp32-study-guide.html", {"auto": True}),
     ("RASPBERRY_PI_STUDY_GUIDE.md", "html/raspberry-pi-study-guide.html", {"accent": "#c51a4a", "brand": "RPi"}),
     ("GIT_STUDY_GUIDE.md", "html/git-study-guide.html", {"auto": True}),
@@ -90,6 +92,9 @@ CATEGORIES = [
         "webgl-opengl-study-guide.html", "webgpu-study-guide.html", "websockets-study-guide.html",
         "ios-development-study-guide.html",
     ]),
+    ("Creative and 3D", [
+        "blender-study-guide.html",
+    ]),
     ("Infra, cloud, and ops", [
         "ansible-study-guide.html", "azure-for-aws-solutions-architect.html",
         "gcp-for-aws-solutions-architect.html",
@@ -102,6 +107,7 @@ CATEGORIES = [
     ]),
     ("Systems, OS, and hardware", [
         "advanced-linux-study-guide.html", "linux-fundamentals-study-guide.html",
+        "linux-networking-study-guide.html",
         "esp32-study-guide.html", "raspberry-pi-study-guide.html",
         "git-study-guide.html", "vim-study-guide.html",
     ]),

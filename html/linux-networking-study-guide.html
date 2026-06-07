@@ -1,0 +1,2101 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Linux Networking Study Guide.">
+<title>Linux Networking Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#51dce6; --accent2:#4d97e0; --accent-weak:rgba(81,220,230,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#51dce6; --accent2:#4d97e0; --accent-weak:rgba(81,220,230,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">L</span><span>Linux Networking Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-the-linux-network-mental-model" data-target="part-1-the-linux-network-mental-model">Part 1 - The Linux Network Mental Model</a></li><li class="toc-l3"><a href="#the-debugging-ladder" data-target="the-debugging-ladder">The Debugging Ladder</a></li><li class="toc-l3"><a href="#the-addresses-used-in-examples" data-target="the-addresses-used-in-examples">The Addresses Used in Examples</a></li><li class="toc-l2"><a href="#part-2-lab-setup-and-safety" data-target="part-2-lab-setup-and-safety">Part 2 - Lab Setup and Safety</a></li><li class="toc-l3"><a href="#runtime-vs-persistent-configuration" data-target="runtime-vs-persistent-configuration">Runtime vs Persistent Configuration</a></li><li class="toc-l3"><a href="#safety-rules" data-target="safety-rules">Safety Rules</a></li><li class="toc-l2"><a href="#part-3-interfaces-addresses-and-links-with-ip" data-target="part-3-interfaces-addresses-and-links-with-ip">Part 3 - Interfaces, Addresses, and Links with ip</a></li><li class="toc-l3"><a href="#inspect-a-link" data-target="inspect-a-link">Inspect a Link</a></li><li class="toc-l3"><a href="#bring-a-link-up-or-down" data-target="bring-a-link-up-or-down">Bring a Link Up or Down</a></li><li class="toc-l3"><a href="#add-and-remove-an-address" data-target="add-and-remove-an-address">Add and Remove an Address</a></li><li class="toc-l3"><a href="#json-output-for-scripts" data-target="json-output-for-scripts">JSON Output for Scripts</a></li><li class="toc-l3"><a href="#change-mtu" data-target="change-mtu">Change MTU</a></li><li class="toc-l3"><a href="#watch-network-events" data-target="watch-network-events">Watch Network Events</a></li><li class="toc-l2"><a href="#part-4-routes-rules-and-neighbors" data-target="part-4-routes-rules-and-neighbors">Part 4 - Routes, Rules, and Neighbors</a></li><li class="toc-l3"><a href="#the-best-route-debug-command" data-target="the-best-route-debug-command">The Best Route Debug Command</a></li><li class="toc-l3"><a href="#add-a-temporary-route" data-target="add-a-temporary-route">Add a Temporary Route</a></li><li class="toc-l3"><a href="#multiple-default-routes" data-target="multiple-default-routes">Multiple Default Routes</a></li><li class="toc-l3"><a href="#policy-routing" data-target="policy-routing">Policy Routing</a></li><li class="toc-l3"><a href="#arp-and-ipv6-neighbors" data-target="arp-and-ipv6-neighbors">ARP and IPv6 Neighbors</a></li><li class="toc-l3"><a href="#dns-is-not-routing" data-target="dns-is-not-routing">DNS Is Not Routing</a></li><li class="toc-l2"><a href="#part-5-sockets-and-services-with-ss" data-target="part-5-sockets-and-services-with-ss">Part 5 - Sockets and Services with ss</a></li><li class="toc-l3"><a href="#listening-ports" data-target="listening-ports">Listening Ports</a></li><li class="toc-l3"><a href="#established-connections" data-target="established-connections">Established Connections</a></li><li class="toc-l3"><a href="#filter-by-port-or-host" data-target="filter-by-port-or-host">Filter by Port or Host</a></li><li class="toc-l3"><a href="#tcp-details" data-target="tcp-details">TCP Details</a></li><li class="toc-l3"><a href="#backlog-problems" data-target="backlog-problems">Backlog Problems</a></li><li class="toc-l3"><a href="#unix-domain-sockets" data-target="unix-domain-sockets">Unix Domain Sockets</a></li><li class="toc-l2"><a href="#part-6-netcat-for-real-debugging" data-target="part-6-netcat-for-real-debugging">Part 6 - Netcat for Real Debugging</a></li><li class="toc-l3"><a href="#test-whether-a-tcp-port-is-reachable" data-target="test-whether-a-tcp-port-is-reachable">Test Whether a TCP Port Is Reachable</a></li><li class="toc-l3"><a href="#talk-http-by-hand" data-target="talk-http-by-hand">Talk HTTP by Hand</a></li><li class="toc-l3"><a href="#create-a-test-tcp-server" data-target="create-a-test-tcp-server">Create a Test TCP Server</a></li><li class="toc-l3"><a href="#return-a-fake-http-response" data-target="return-a-fake-http-response">Return a Fake HTTP Response</a></li><li class="toc-l3"><a href="#udp-smoke-test" data-target="udp-smoke-test">UDP Smoke Test</a></li><li class="toc-l3"><a href="#unix-socket-test" data-target="unix-socket-test">Unix Socket Test</a></li><li class="toc-l2"><a href="#part-7-measuring-throughput-with-iperf3" data-target="part-7-measuring-throughput-with-iperf3">Part 7 - Measuring Throughput with iperf3</a></li><li class="toc-l3"><a href="#basic-tcp-test" data-target="basic-tcp-test">Basic TCP Test</a></li><li class="toc-l3"><a href="#reverse-direction" data-target="reverse-direction">Reverse Direction</a></li><li class="toc-l3"><a href="#bidirectional-test" data-target="bidirectional-test">Bidirectional Test</a></li><li class="toc-l3"><a href="#parallel-streams" data-target="parallel-streams">Parallel Streams</a></li><li class="toc-l3"><a href="#udp-test" data-target="udp-test">UDP Test</a></li><li class="toc-l3"><a href="#json-for-automation" data-target="json-for-automation">JSON for Automation</a></li><li class="toc-l3"><a href="#bind-to-an-interface-or-address" data-target="bind-to-an-interface-or-address">Bind to an Interface or Address</a></li><li class="toc-l3"><a href="#zero-copy-mode" data-target="zero-copy-mode">Zero-Copy Mode</a></li><li class="toc-l3"><a href="#interpret-results-like-an-operator" data-target="interpret-results-like-an-operator">Interpret Results Like an Operator</a></li><li class="toc-l2"><a href="#part-8-network-namespaces-and-veth-labs" data-target="part-8-network-namespaces-and-veth-labs">Part 8 - Network Namespaces and veth Labs</a></li><li class="toc-l3"><a href="#two-namespaces-connected-by-a-veth-pair" data-target="two-namespaces-connected-by-a-veth-pair">Two Namespaces Connected by a veth Pair</a></li><li class="toc-l3"><a href="#use-nc-across-namespaces" data-target="use-nc-across-namespaces">Use nc Across Namespaces</a></li><li class="toc-l3"><a href="#use-iperf3-across-namespaces" data-target="use-iperf3-across-namespaces">Use iperf3 Across Namespaces</a></li><li class="toc-l3"><a href="#add-a-router-namespace" data-target="add-a-router-namespace">Add a Router Namespace</a></li><li class="toc-l3"><a href="#why-this-matters" data-target="why-this-matters">Why This Matters</a></li><li class="toc-l2"><a href="#part-9-practical-troubleshooting-playbooks" data-target="part-9-practical-troubleshooting-playbooks">Part 9 - Practical Troubleshooting Playbooks</a></li><li class="toc-l3"><a href="#playbook-the-service-is-down" data-target="playbook-the-service-is-down">Playbook: "The Service Is Down"</a></li><li class="toc-l3"><a href="#playbook-it-works-locally-but-not-remotely" data-target="playbook-it-works-locally-but-not-remotely">Playbook: "It Works Locally but Not Remotely"</a></li><li class="toc-l3"><a href="#playbook-the-default-route-is-wrong" data-target="playbook-the-default-route-is-wrong">Playbook: "The Default Route Is Wrong"</a></li><li class="toc-l3"><a href="#playbook-dns-is-broken" data-target="playbook-dns-is-broken">Playbook: "DNS Is Broken"</a></li><li class="toc-l3"><a href="#playbook-the-network-is-slow" data-target="playbook-the-network-is-slow">Playbook: "The Network Is Slow"</a></li><li class="toc-l3"><a href="#playbook-mtu-black-hole" data-target="playbook-mtu-black-hole">Playbook: "MTU Black Hole"</a></li><li class="toc-l3"><a href="#playbook-a-port-is-filtered-somewhere" data-target="playbook-a-port-is-filtered-somewhere">Playbook: "A Port Is Filtered Somewhere"</a></li><li class="toc-l2"><a href="#part-10-file-transfer-cookbook" data-target="part-10-file-transfer-cookbook">Part 10 - File Transfer Cookbook</a></li><li class="toc-l3"><a href="#decision-matrix" data-target="decision-matrix">Decision Matrix</a></li><li class="toc-l3"><a href="#before-any-large-transfer" data-target="before-any-large-transfer">Before Any Large Transfer</a></li><li class="toc-l3"><a href="#scp-simple-encrypted-copy" data-target="scp-simple-encrypted-copy">scp: Simple Encrypted Copy</a></li><li class="toc-l3"><a href="#rsync-the-default-for-serious-copies" data-target="rsync-the-default-for-serious-copies">rsync: The Default for Serious Copies</a></li><li class="toc-l3"><a href="#tar-over-ssh-faithful-one-shot-tree-transfer" data-target="tar-over-ssh-faithful-one-shot-tree-transfer">tar Over SSH: Faithful One-Shot Tree Transfer</a></li><li class="toc-l3"><a href="#direct-netcat-single-file-trusted-network-only" data-target="direct-netcat-single-file-trusted-network-only">Direct netcat: Single File, Trusted Network Only</a></li><li class="toc-l3"><a href="#tar-netcat-fast-directory-transfer-on-trusted-lan" data-target="tar-netcat-fast-directory-transfer-on-trusted-lan">tar + netcat: Fast Directory Transfer on Trusted LAN</a></li><li class="toc-l3"><a href="#split-archives-for-fragile-links" data-target="split-archives-for-fragile-links">Split Archives for Fragile Links</a></li><li class="toc-l3"><a href="#preserve-metadata-correctly" data-target="preserve-metadata-correctly">Preserve Metadata Correctly</a></li><li class="toc-l3"><a href="#transfer-many-small-files" data-target="transfer-many-small-files">Transfer Many Small Files</a></li><li class="toc-l3"><a href="#transfer-one-huge-file" data-target="transfer-one-huge-file">Transfer One Huge File</a></li><li class="toc-l3"><a href="#move-a-live-application-directory" data-target="move-a-live-application-directory">Move a Live Application Directory</a></li><li class="toc-l3"><a href="#copy-through-a-bastion" data-target="copy-through-a-bastion">Copy Through a Bastion</a></li><li class="toc-l3"><a href="#validate-a-transfer" data-target="validate-a-transfer">Validate a Transfer</a></li><li class="toc-l3"><a href="#file-transfer-decision-tree" data-target="file-transfer-decision-tree">File Transfer Decision Tree</a></li><li class="toc-l2"><a href="#part-11-tool-cheat-sheets" data-target="part-11-tool-cheat-sheets">Part 11 - Tool Cheat Sheets</a></li><li class="toc-l3"><a href="#ip" data-target="ip">ip</a></li><li class="toc-l3"><a href="#ss" data-target="ss">ss</a></li><li class="toc-l3"><a href="#nc-netcat" data-target="nc-netcat">nc / netcat</a></li><li class="toc-l3"><a href="#iperf3" data-target="iperf3">iperf3</a></li><li class="toc-l3"><a href="#scp" data-target="scp">scp</a></li><li class="toc-l3"><a href="#rsync" data-target="rsync">rsync</a></li><li class="toc-l3"><a href="#tar" data-target="tar">tar</a></li><li class="toc-l2"><a href="#final-mental-model" data-target="final-mental-model">Final Mental Model</a></li></ul></nav></aside>
+  <main><h1 id="linux-networking-study-guide">Linux Networking Study Guide</h1>
+<p>A practical, command-line-first guide to Linux networking for engineers who need to debug real machines, containers, VMs, lab boxes, and production hosts. The <a href="networking-fundamentals.html">Networking Fundamentals guide</a> explains the protocols; this guide is about operating the Linux network stack with modern tools: <code>ip</code>, <code>ss</code>, <code>nc</code>/netcat, <code>iperf3</code>, namespaces, routes, sockets, and file-transfer workflows.</p>
+<p>The thesis: <strong>Linux networking becomes manageable when you think in kernel objects.</strong> Interfaces, addresses, routes, neighbors, sockets, namespaces, firewall rules, and queues are all inspectable. The job is to ask the kernel the right question.</p>
+<p>Primary references: the iproute2 <a href="https://manpages.debian.org/bookworm/iproute2/ip.8.en.html"><code>ip(8)</code> manual</a>, the iproute2 <a href="https://man7.org/linux/man-pages/man8/ss.8.html"><code>ss(8)</code> manual</a>, the OpenBSD <a href="https://man.openbsd.org/nc.1"><code>nc(1)</code> manual</a>, <a href="https://software.es.net/iperf/">iperf3 documentation</a>, the OpenSSH <a href="https://man7.org/linux/man-pages/man1/scp.1.html"><code>scp(1)</code> manual</a>, <a href="https://www.openssh.org/releasenotes.html">OpenSSH release notes</a>, <a href="https://rsync.samba.org/">rsync upstream</a>, and the <a href="https://www.gnu.org/software/tar/manual/tar.html">GNU tar manual</a>.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1-the-linux-network-mental-model">Part 1 - The Linux Network Mental Model</a></li>
+<li><a href="#part-2-lab-setup-and-safety">Part 2 - Lab Setup and Safety</a></li>
+<li><a href="#part-3-interfaces-addresses-and-links-with-ip">Part 3 - Interfaces, Addresses, and Links with ip</a></li>
+<li><a href="#part-4-routes-rules-and-neighbors">Part 4 - Routes, Rules, and Neighbors</a></li>
+<li><a href="#part-5-sockets-and-services-with-ss">Part 5 - Sockets and Services with ss</a></li>
+<li><a href="#part-6-netcat-for-real-debugging">Part 6 - Netcat for Real Debugging</a></li>
+<li><a href="#part-7-measuring-throughput-with-iperf3">Part 7 - Measuring Throughput with iperf3</a></li>
+<li><a href="#part-8-network-namespaces-and-veth-labs">Part 8 - Network Namespaces and veth Labs</a></li>
+<li><a href="#part-9-practical-troubleshooting-playbooks">Part 9 - Practical Troubleshooting Playbooks</a></li>
+<li><a href="#part-10-file-transfer-cookbook">Part 10 - File Transfer Cookbook</a></li>
+<li><a href="#part-11-tool-cheat-sheets">Part 11 - Tool Cheat Sheets</a></li>
+</ol>
+<hr>
+<h2 id="part-1-the-linux-network-mental-model">Part 1 - The Linux Network Mental Model</h2>
+<p>Modern Linux networking is not a pile of magic commands. It is a set of kernel objects:</p>
+<table>
+<thead>
+<tr>
+<th>Object</th>
+<th>What it means</th>
+<th>Main tools</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Link/interface</td>
+<td>A network endpoint: physical NIC, loopback, veth, bridge, bond, VLAN, tunnel</td>
+<td><code>ip link</code>, <code>ethtool</code></td>
+</tr>
+<tr>
+<td>Address</td>
+<td>An IPv4/IPv6 address assigned to an interface</td>
+<td><code>ip addr</code></td>
+</tr>
+<tr>
+<td>Route</td>
+<td>A decision about where packets go next</td>
+<td><code>ip route</code></td>
+</tr>
+<tr>
+<td>Rule</td>
+<td>A policy-routing selector before the route table lookup</td>
+<td><code>ip rule</code></td>
+</tr>
+<tr>
+<td>Neighbor</td>
+<td>ARP/NDP cache entry: IP address -&gt; link-layer address</td>
+<td><code>ip neigh</code></td>
+</tr>
+<tr>
+<td>Socket</td>
+<td>A local endpoint owned by a process</td>
+<td><code>ss</code>, <code>lsof</code>, <code>/proc</code></td>
+</tr>
+<tr>
+<td>Namespace</td>
+<td>A separate network stack with its own interfaces/routes/sockets</td>
+<td><code>ip netns</code>, <code>nsenter</code></td>
+</tr>
+<tr>
+<td>Firewall/NAT state</td>
+<td>Packet filter, connection tracking, and address translation state</td>
+<td><code>nft</code>, <code>iptables</code>, <code>conntrack</code></td>
+</tr>
+<tr>
+<td>Queue/qdisc</td>
+<td>Packet scheduling and shaping state</td>
+<td><code>tc</code></td>
+</tr>
+</tbody>
+</table>
+<p>The old commands still exist on many machines:</p>
+<table>
+<thead>
+<tr>
+<th>Old habit</th>
+<th>Modern default</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ifconfig</code></td>
+<td><code>ip addr</code>, <code>ip link</code></td>
+</tr>
+<tr>
+<td><code>route -n</code></td>
+<td><code>ip route</code></td>
+</tr>
+<tr>
+<td><code>arp -n</code></td>
+<td><code>ip neigh</code></td>
+</tr>
+<tr>
+<td><code>netstat -tulpn</code></td>
+<td><code>ss -tulpn</code></td>
+</tr>
+<tr>
+<td><code>brctl</code></td>
+<td><code>bridge</code>, <code>ip link</code></td>
+</tr>
+<tr>
+<td><code>iptables</code> for new firewalls</td>
+<td><code>nft</code> where the distro supports it</td>
+</tr>
+</tbody>
+</table>
+<p>This guide focuses on the modern defaults, because they map better to how the kernel actually works. <code>ip</code> and <code>ss</code> are part of iproute2 and speak to the kernel over netlink. They are not just nicer output; they are the native operator interface.</p>
+<h3 id="the-debugging-ladder">The Debugging Ladder</h3>
+<p>When a network problem appears, walk downward:</p>
+<ol>
+<li><strong>Name resolution:</strong> does the name resolve to the expected address?</li>
+<li><strong>Local service:</strong> is a process listening on the expected address and port?</li>
+<li><strong>Local routing:</strong> which interface would Linux use to reach the destination?</li>
+<li><strong>Link state:</strong> is the interface up, does it have carrier, are counters increasing?</li>
+<li><strong>Neighbor resolution:</strong> can Linux resolve the next-hop MAC address?</li>
+<li><strong>Remote reachability:</strong> does ICMP/TCP reach the target?</li>
+<li><strong>Firewall/NAT:</strong> is a packet being dropped or rewritten?</li>
+<li><strong>Throughput:</strong> is the link slow, or is the application/disk/CPU slow?</li>
+</ol>
+<p>Most incidents become obvious if you do not skip steps.</p>
+<h3 id="the-addresses-used-in-examples">The Addresses Used in Examples</h3>
+<p>The examples use documentation ranges:</p>
+<table>
+<thead>
+<tr>
+<th>Purpose</th>
+<th>IPv4 range</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Examples</td>
+<td><code>192.0.2.0/24</code>, <code>198.51.100.0/24</code>, <code>203.0.113.0/24</code></td>
+</tr>
+<tr>
+<td>Private LAN</td>
+<td><code>10.0.0.0/8</code>, <code>172.16.0.0/12</code>, <code>192.168.0.0/16</code></td>
+</tr>
+</tbody>
+</table>
+<p>Replace them with your real interface names and addresses.</p>
+<hr>
+<h2 id="part-2-lab-setup-and-safety">Part 2 - Lab Setup and Safety</h2>
+<p>Install the core tools:</p>
+<pre><code class="language-bash"># Debian/Ubuntu
+sudo apt update
+sudo apt install -y iproute2 iputils-ping dnsutils netcat-openbsd iperf3 rsync tar openssh-client pv jq ethtool nftables conntrack
+
+# Fedora/RHEL-family
+sudo dnf install -y iproute iputils bind-utils nmap-ncat iperf3 rsync tar openssh-clients pv jq ethtool nftables conntrack-tools
+
+# Arch
+sudo pacman -Syu iproute2 iputils bind netcat iperf3 rsync tar openssh pv jq ethtool nftables conntrack-tools
+</code></pre>
+<p>Check versions:</p>
+<pre><code class="language-bash">ip -Version
+ss --version
+nc -h 2&gt;&amp;1 | head -20
+iperf3 --version
+rsync --version
+ssh -V
+tar --version
+</code></pre>
+<h3 id="runtime-vs-persistent-configuration">Runtime vs Persistent Configuration</h3>
+<p>Most <code>ip</code> commands are runtime changes. They disappear on reboot or when NetworkManager/systemd-networkd/netplan reapplies configuration.</p>
+<p>Use <code>ip</code> for:</p>
+<ul>
+<li>Debugging.</li>
+<li>Labs.</li>
+<li>Emergency temporary fixes.</li>
+<li>Proving what persistent config should be.</li>
+</ul>
+<p>Use your distro's network manager for persistent config:</p>
+<pre><code class="language-bash"># NetworkManager
+nmcli dev status
+nmcli con show
+
+# systemd-networkd
+networkctl status
+
+# Ubuntu netplan
+ls /etc/netplan/
+</code></pre>
+<h3 id="safety-rules">Safety Rules</h3>
+<p>On a remote machine:</p>
+<ul>
+<li>Do not delete the default route unless you have console access.</li>
+<li>Do not bring the management interface down over SSH.</li>
+<li>Prefer <code>ip route replace</code> over delete/add when changing routes.</li>
+<li>Start a rollback timer before risky changes:</li>
+</ul>
+<pre><code class="language-bash"># Reboot in 5 minutes unless you cancel it.
+sudo shutdown -r +5 &quot;network rollback timer&quot;
+
+# After confirming networking works:
+sudo shutdown -c
+</code></pre>
+<p>For firewall work, use the same pattern. A saved rollback is cheap; a locked-out server is not.</p>
+<hr>
+<h2 id="part-3-interfaces-addresses-and-links-with-ip">Part 3 - Interfaces, Addresses, and Links with ip</h2>
+<p>Start with the compact view:</p>
+<pre><code class="language-bash">ip -br link
+ip -br addr
+</code></pre>
+<p>Common output:</p>
+<pre><code class="language-text">lo               UNKNOWN        127.0.0.1/8 ::1/128
+eth0             UP             10.0.2.15/24 fe80::5054:ff:fe12:3456/64
+docker0          DOWN           172.17.0.1/16
+</code></pre>
+<p>Meaning:</p>
+<ul>
+<li><code>lo</code> is loopback.</li>
+<li><code>eth0</code> is up and has IPv4 and link-local IPv6 addresses.</li>
+<li><code>docker0</code> exists but has no active link.</li>
+</ul>
+<h3 id="inspect-a-link">Inspect a Link</h3>
+<pre><code class="language-bash">ip link show dev eth0
+ip -d link show dev eth0
+ip -s link show dev eth0
+</code></pre>
+<p>Look for:</p>
+<ul>
+<li><code>state UP</code> vs <code>state DOWN</code>.</li>
+<li><code>LOWER_UP</code>, which usually means carrier/link detected.</li>
+<li>MTU.</li>
+<li><code>rx</code>/<code>tx</code> errors, drops, overruns, carrier errors.</li>
+</ul>
+<p>For hardware details:</p>
+<pre><code class="language-bash">sudo ethtool eth0
+sudo ethtool -S eth0 | egrep 'err|drop|timeout|crc|miss|coll|reset'
+</code></pre>
+<p>If <code>ip link</code> says the interface is up but <code>ethtool</code> says no link detected, you likely have a cable, switch port, VM attachment, or NIC problem.</p>
+<h3 id="bring-a-link-up-or-down">Bring a Link Up or Down</h3>
+<pre><code class="language-bash">sudo ip link set dev eth0 up
+sudo ip link set dev eth0 down
+</code></pre>
+<p>Do not run the second command on the interface carrying your SSH session unless you are at the console.</p>
+<h3 id="add-and-remove-an-address">Add and Remove an Address</h3>
+<p>Temporary address:</p>
+<pre><code class="language-bash">sudo ip addr add 192.0.2.10/24 dev eth0
+ip -br addr show dev eth0
+</code></pre>
+<p>Remove it:</p>
+<pre><code class="language-bash">sudo ip addr del 192.0.2.10/24 dev eth0
+</code></pre>
+<p>Flush all addresses on an interface:</p>
+<pre><code class="language-bash">sudo ip addr flush dev eth0
+</code></pre>
+<p>That is destructive. Do not do it remotely unless you know exactly what you are flushing.</p>
+<h3 id="json-output-for-scripts">JSON Output for Scripts</h3>
+<p>Prefer JSON over parsing human output:</p>
+<pre><code class="language-bash">ip -j addr show dev eth0 | jq .
+ip -j route get 1.1.1.1 | jq .
+</code></pre>
+<p>This matters in automation. Human formats change; JSON is much safer.</p>
+<h3 id="change-mtu">Change MTU</h3>
+<pre><code class="language-bash">sudo ip link set dev eth0 mtu 9000
+ip link show dev eth0
+</code></pre>
+<p>Jumbo frames only work if every hop in the Layer 2 path supports them. A mismatch creates strange loss and stalls. For internet-facing traffic, 1500 is the ordinary default.</p>
+<h3 id="watch-network-events">Watch Network Events</h3>
+<pre><code class="language-bash">ip monitor
+</code></pre>
+<p>Then in another terminal:</p>
+<pre><code class="language-bash">sudo ip addr add 192.0.2.99/24 dev eth0
+sudo ip addr del 192.0.2.99/24 dev eth0
+</code></pre>
+<p><code>ip monitor</code> is excellent for catching DHCP renewals, NetworkManager changes, interfaces flapping, and routes being injected or removed.</p>
+<hr>
+<h2 id="part-4-routes-rules-and-neighbors">Part 4 - Routes, Rules, and Neighbors</h2>
+<p>The route table answers: "Where would this packet go?"</p>
+<pre><code class="language-bash">ip route
+ip -6 route
+</code></pre>
+<p>Typical output:</p>
+<pre><code class="language-text">default via 10.0.2.2 dev eth0 proto dhcp src 10.0.2.15 metric 100
+10.0.2.0/24 dev eth0 proto kernel scope link src 10.0.2.15 metric 100
+</code></pre>
+<p>Meaning:</p>
+<ul>
+<li>Traffic to <code>10.0.2.0/24</code> is local on <code>eth0</code>.</li>
+<li>Everything else goes to the default gateway <code>10.0.2.2</code>.</li>
+</ul>
+<h3 id="the-best-route-debug-command">The Best Route Debug Command</h3>
+<p>Use <code>ip route get</code> constantly:</p>
+<pre><code class="language-bash">ip route get 8.8.8.8
+ip route get 203.0.113.20 from 10.0.2.15
+</code></pre>
+<p>It tells you the chosen interface, source address, gateway, and route decision. When a host has multiple NICs, VPNs, containers, or policy routing, <code>ip route get</code> is the truth.</p>
+<h3 id="add-a-temporary-route">Add a Temporary Route</h3>
+<pre><code class="language-bash">sudo ip route add 203.0.113.0/24 via 10.0.2.1 dev eth0
+</code></pre>
+<p>Replace an existing route:</p>
+<pre><code class="language-bash">sudo ip route replace default via 10.0.2.1 dev eth0 metric 100
+</code></pre>
+<p>Delete a route:</p>
+<pre><code class="language-bash">sudo ip route del 203.0.113.0/24
+</code></pre>
+<h3 id="multiple-default-routes">Multiple Default Routes</h3>
+<p>Servers with several NICs often have several defaults:</p>
+<pre><code class="language-bash">ip route show default
+</code></pre>
+<p>Example:</p>
+<pre><code class="language-text">default via 10.10.0.1 dev eth0 metric 100
+default via 192.168.50.1 dev eth1 metric 200
+</code></pre>
+<p>Lower metric wins. If traffic leaves through the wrong interface, check:</p>
+<pre><code class="language-bash">ip route get 1.1.1.1
+ip rule
+</code></pre>
+<h3 id="policy-routing">Policy Routing</h3>
+<p>Policy routing means: before looking at the normal route table, choose a table based on source address, mark, incoming interface, or other selectors.</p>
+<p>Example: send traffic sourced from <code>192.168.50.10</code> out <code>eth1</code>:</p>
+<pre><code class="language-bash">echo &quot;100 wan2&quot; | sudo tee -a /etc/iproute2/rt_tables
+sudo ip route add default via 192.168.50.1 dev eth1 table wan2
+sudo ip rule add from 192.168.50.10/32 table wan2 priority 1000
+
+ip rule
+ip route show table wan2
+ip route get 8.8.8.8 from 192.168.50.10
+</code></pre>
+<p>Temporary cleanup:</p>
+<pre><code class="language-bash">sudo ip rule del from 192.168.50.10/32 table wan2 priority 1000
+sudo ip route flush table wan2
+</code></pre>
+<p>Policy routing is powerful and easy to forget. Always document it.</p>
+<h3 id="arp-and-ipv6-neighbors">ARP and IPv6 Neighbors</h3>
+<p>Neighbor entries map IP addresses to link-layer addresses:</p>
+<pre><code class="language-bash">ip neigh
+ip neigh show dev eth0
+ip neigh show nud failed
+</code></pre>
+<p>States:</p>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>REACHABLE</code></td>
+<td>Recently confirmed</td>
+</tr>
+<tr>
+<td><code>STALE</code></td>
+<td>Known, but not recently confirmed</td>
+</tr>
+<tr>
+<td><code>DELAY</code> / <code>PROBE</code></td>
+<td>Linux is checking reachability</td>
+</tr>
+<tr>
+<td><code>FAILED</code></td>
+<td>Neighbor resolution failed</td>
+</tr>
+<tr>
+<td><code>PERMANENT</code></td>
+<td>Static entry</td>
+</tr>
+</tbody>
+</table>
+<p>Flush a bad neighbor entry:</p>
+<pre><code class="language-bash">sudo ip neigh flush to 10.0.2.2 dev eth0
+</code></pre>
+<p>If a route is correct but packets do not leave, neighbor resolution may be stuck. Check <code>ip neigh</code> before blaming DNS or the application.</p>
+<h3 id="dns-is-not-routing">DNS Is Not Routing</h3>
+<p>DNS maps names to addresses. Routing decides how to reach addresses.</p>
+<p>Useful checks:</p>
+<pre><code class="language-bash">getent hosts example.com
+resolvectl status
+resolvectl query example.com
+dig example.com
+dig @1.1.1.1 example.com
+</code></pre>
+<p>If <code>dig @1.1.1.1 example.com</code> works but <code>getent hosts example.com</code> fails, the problem is local resolver configuration. If both work but connections fail, the problem is not DNS.</p>
+<hr>
+<h2 id="part-5-sockets-and-services-with-ss">Part 5 - Sockets and Services with ss</h2>
+<p><code>ss</code> answers: "What sockets exist, what state are they in, and which processes own them?"</p>
+<h3 id="listening-ports">Listening Ports</h3>
+<pre><code class="language-bash">sudo ss -tulpn
+sudo ss -ltnp
+sudo ss -lunp
+</code></pre>
+<p>Flags:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-t</code></td>
+<td>TCP</td>
+</tr>
+<tr>
+<td><code>-u</code></td>
+<td>UDP</td>
+</tr>
+<tr>
+<td><code>-l</code></td>
+<td>listening sockets</td>
+</tr>
+<tr>
+<td><code>-p</code></td>
+<td>process info</td>
+</tr>
+<tr>
+<td><code>-n</code></td>
+<td>numeric addresses/ports</td>
+</tr>
+</tbody>
+</table>
+<p>Example:</p>
+<pre><code class="language-text">State  Recv-Q Send-Q Local Address:Port Peer Address:Port Process
+LISTEN 0      4096   127.0.0.1:5432      0.0.0.0:*     users:((&quot;postgres&quot;,pid=1234,fd=5))
+LISTEN 0      511    0.0.0.0:80          0.0.0.0:*     users:((&quot;nginx&quot;,pid=2222,fd=6))
+</code></pre>
+<p>Important distinction:</p>
+<ul>
+<li><code>127.0.0.1:5432</code> listens only on localhost.</li>
+<li><code>0.0.0.0:80</code> listens on all IPv4 interfaces.</li>
+<li><code>[::]:443</code> may listen on IPv6 and sometimes IPv4 too, depending on <code>net.ipv6.bindv6only</code>.</li>
+</ul>
+<h3 id="established-connections">Established Connections</h3>
+<pre><code class="language-bash">ss -tan state established
+ss -tan state syn-sent
+ss -tan state time-wait
+</code></pre>
+<p>Common states:</p>
+<table>
+<thead>
+<tr>
+<th>State</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>LISTEN</code></td>
+<td>Server socket waiting for connections</td>
+</tr>
+<tr>
+<td><code>SYN-SENT</code></td>
+<td>Local host sent SYN, waiting for SYN-ACK</td>
+</tr>
+<tr>
+<td><code>SYN-RECV</code></td>
+<td>Server received SYN, not fully established</td>
+</tr>
+<tr>
+<td><code>ESTAB</code></td>
+<td>Connection established</td>
+</tr>
+<tr>
+<td><code>TIME-WAIT</code></td>
+<td>Closed recently; kernel keeps state briefly</td>
+</tr>
+<tr>
+<td><code>CLOSE-WAIT</code></td>
+<td>Remote closed; local process has not closed</td>
+</tr>
+</tbody>
+</table>
+<p>Many <code>CLOSE-WAIT</code> sockets usually mean an application bug: the peer closed but your process is not closing its side.</p>
+<h3 id="filter-by-port-or-host">Filter by Port or Host</h3>
+<pre><code class="language-bash">ss -tan '( sport = :443 or dport = :443 )'
+ss -tan dst 203.0.113.20
+ss -tan state established dst 203.0.113.20
+</code></pre>
+<p>Find who owns a port:</p>
+<pre><code class="language-bash">sudo ss -ltnp 'sport = :8080'
+</code></pre>
+<h3 id="tcp-details">TCP Details</h3>
+<pre><code class="language-bash">ss -ti dst 203.0.113.20
+ss -tmi state established
+</code></pre>
+<p>Look for:</p>
+<ul>
+<li>RTT estimates.</li>
+<li>Congestion window (<code>cwnd</code>).</li>
+<li>Retransmissions.</li>
+<li>Send/receive memory.</li>
+<li>Stalled queues.</li>
+</ul>
+<p>This is where <code>ss</code> becomes more than a netstat replacement. It shows TCP behavior without packet capture.</p>
+<h3 id="backlog-problems">Backlog Problems</h3>
+<p>If a service is overloaded:</p>
+<pre><code class="language-bash">sudo ss -ltn
+</code></pre>
+<p>Look at <code>Recv-Q</code> and <code>Send-Q</code> on listening sockets. A large receive queue can mean connections are arriving faster than the application accepts them.</p>
+<p>Also inspect:</p>
+<pre><code class="language-bash">sysctl net.core.somaxconn
+sysctl net.ipv4.tcp_max_syn_backlog
+</code></pre>
+<p>Do not blindly tune these. First confirm the application is actually accepting connections and has enough workers.</p>
+<h3 id="unix-domain-sockets">Unix Domain Sockets</h3>
+<p>Not all sockets are TCP/UDP:</p>
+<pre><code class="language-bash">ss -xap
+</code></pre>
+<p>This helps with local services like Docker, Postgres, systemd, Wayland, and agents that communicate over filesystem socket paths.</p>
+<hr>
+<h2 id="part-6-netcat-for-real-debugging">Part 6 - Netcat for Real Debugging</h2>
+<p><code>nc</code>/netcat is a raw network multitool. It can connect, listen, send bytes, receive bytes, scan ports, and emulate simple clients and servers.</p>
+<p>Netcat has variants:</p>
+<table>
+<thead>
+<tr>
+<th>Variant</th>
+<th>Common on</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>OpenBSD <code>nc</code></td>
+<td>Debian/Ubuntu, BSDs</td>
+<td>Good default; common flags include <code>-l</code>, <code>-N</code>, <code>-z</code>, <code>-w</code>, <code>-U</code></td>
+</tr>
+<tr>
+<td>GNU netcat</td>
+<td>Older Linux systems</td>
+<td>Different EOF flags; often uses <code>-q</code></td>
+</tr>
+<tr>
+<td>Nmap <code>ncat</code></td>
+<td>RHEL/Fedora via <code>nmap-ncat</code></td>
+<td>Extra proxy/TLS features</td>
+</tr>
+<tr>
+<td>BusyBox <code>nc</code></td>
+<td>Alpine/embedded</td>
+<td>Smaller feature set</td>
+</tr>
+</tbody>
+</table>
+<p>Always check:</p>
+<pre><code class="language-bash">nc -h 2&gt;&amp;1 | head -40
+</code></pre>
+<h3 id="test-whether-a-tcp-port-is-reachable">Test Whether a TCP Port Is Reachable</h3>
+<pre><code class="language-bash">nc -vz 203.0.113.10 443
+nc -vz -w 3 203.0.113.10 1-1024
+</code></pre>
+<p>Use this when:</p>
+<ul>
+<li><code>curl</code> fails but you want to know if TCP connects at all.</li>
+<li>You need to distinguish "service not listening" from "HTTP is broken."</li>
+<li>You are testing a firewall rule.</li>
+</ul>
+<p>Exit status matters:</p>
+<pre><code class="language-bash">if nc -z -w 2 app.example.com 443; then
+  echo &quot;tcp reachable&quot;
+else
+  echo &quot;tcp not reachable&quot;
+fi
+</code></pre>
+<h3 id="talk-http-by-hand">Talk HTTP by Hand</h3>
+<pre><code class="language-bash">printf 'GET /health HTTP/1.1\r\nHost: app.example.com\r\nConnection: close\r\n\r\n' \
+  | nc -N app.example.com 80
+</code></pre>
+<p>If your <code>nc</code> does not support <code>-N</code>, try:</p>
+<pre><code class="language-bash">printf 'GET /health HTTP/1.1\r\nHost: app.example.com\r\nConnection: close\r\n\r\n' \
+  | nc -q 0 app.example.com 80
+</code></pre>
+<p>The point is to send EOF after stdin closes. Without that, some servers wait.</p>
+<h3 id="create-a-test-tcp-server">Create a Test TCP Server</h3>
+<p>Terminal 1:</p>
+<pre><code class="language-bash">nc -l 8080
+</code></pre>
+<p>Terminal 2:</p>
+<pre><code class="language-bash">printf 'hello\n' | nc -N 127.0.0.1 8080
+</code></pre>
+<p>This is a fast way to prove local firewall, routing, and port-forward behavior.</p>
+<h3 id="return-a-fake-http-response">Return a Fake HTTP Response</h3>
+<pre><code class="language-bash">while true; do
+  printf 'HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nOK' \
+    | nc -l 8080
+done
+</code></pre>
+<p>Then:</p>
+<pre><code class="language-bash">curl -v http://127.0.0.1:8080/
+</code></pre>
+<p>Use this to test a reverse proxy or load balancer before the real backend exists.</p>
+<h3 id="udp-smoke-test">UDP Smoke Test</h3>
+<p>Receiver:</p>
+<pre><code class="language-bash">nc -u -l 9999
+</code></pre>
+<p>Sender:</p>
+<pre><code class="language-bash">printf 'packet\n' | nc -u -w 1 203.0.113.10 9999
+</code></pre>
+<p>UDP has no connection handshake. A successful sender exit does not prove the receiver got the packet. Use packet capture or application logs for confirmation.</p>
+<h3 id="unix-socket-test">Unix Socket Test</h3>
+<pre><code class="language-bash">nc -U /var/run/docker.sock
+</code></pre>
+<p>Be careful: local Unix sockets often expose powerful APIs. Docker's socket is effectively root-equivalent on many systems.</p>
+<hr>
+<h2 id="part-7-measuring-throughput-with-iperf3">Part 7 - Measuring Throughput with iperf3</h2>
+<p><code>iperf3</code> measures the network path without your application protocol, database, filesystem, or object store in the way. Use it before blaming an app for being slow.</p>
+<h3 id="basic-tcp-test">Basic TCP Test</h3>
+<p>Server:</p>
+<pre><code class="language-bash">iperf3 -s
+</code></pre>
+<p>Client:</p>
+<pre><code class="language-bash">iperf3 -c 203.0.113.10
+</code></pre>
+<p>Run longer and report every 2 seconds:</p>
+<pre><code class="language-bash">iperf3 -c 203.0.113.10 -t 30 -i 2
+</code></pre>
+<h3 id="reverse-direction">Reverse Direction</h3>
+<p>Default mode sends from client to server. Reverse mode sends from server to client:</p>
+<pre><code class="language-bash">iperf3 -c 203.0.113.10 -R
+</code></pre>
+<p>Use this for asymmetric links, cloud egress checks, and "downloads are slow but uploads are fine" reports.</p>
+<h3 id="bidirectional-test">Bidirectional Test</h3>
+<pre><code class="language-bash">iperf3 -c 203.0.113.10 --bidir
+</code></pre>
+<p>This uses separate sockets for both directions. It can expose duplex issues and oversubscribed links.</p>
+<h3 id="parallel-streams">Parallel Streams</h3>
+<pre><code class="language-bash">iperf3 -c 203.0.113.10 -P 4
+</code></pre>
+<p>Parallel streams can fill high-bandwidth/high-latency paths where one TCP flow cannot. Interpret carefully: if one stream is slow but four streams are fast, the network may be fine while a single application's flow is constrained by TCP window, congestion, or middleboxes.</p>
+<h3 id="udp-test">UDP Test</h3>
+<pre><code class="language-bash">iperf3 -c 203.0.113.10 -u -b 100M -t 20
+</code></pre>
+<p>UDP tests answer different questions:</p>
+<ul>
+<li>How much loss appears at a target rate?</li>
+<li>How much jitter is present?</li>
+<li>Does a firewall treat UDP differently?</li>
+</ul>
+<p>Do not run unlimited UDP tests on shared networks. You can create real congestion.</p>
+<h3 id="json-for-automation">JSON for Automation</h3>
+<pre><code class="language-bash">iperf3 -c 203.0.113.10 -t 10 --json &gt; iperf.json
+jq '.end.sum_received.bits_per_second' iperf.json
+</code></pre>
+<p>Use JSON in CI, lab validation, and capacity reports.</p>
+<h3 id="bind-to-an-interface-or-address">Bind to an Interface or Address</h3>
+<p>Server:</p>
+<pre><code class="language-bash">iperf3 -s -B 192.0.2.10
+</code></pre>
+<p>Client:</p>
+<pre><code class="language-bash">iperf3 -c 192.0.2.10 -B 192.0.2.20
+</code></pre>
+<p>This matters on multihomed hosts and VPN machines.</p>
+<h3 id="zero-copy-mode">Zero-Copy Mode</h3>
+<pre><code class="language-bash">iperf3 -c 203.0.113.10 -Z
+</code></pre>
+<p>Zero-copy mode can reduce CPU overhead. If throughput jumps only with <code>-Z</code>, CPU copying may be part of the bottleneck.</p>
+<h3 id="interpret-results-like-an-operator">Interpret Results Like an Operator</h3>
+<p>Compare:</p>
+<ol>
+<li><code>iperf3</code> throughput.</li>
+<li>Real file transfer throughput.</li>
+<li>Disk read/write throughput.</li>
+<li>CPU usage during encryption/compression.</li>
+<li>Retransmits and RTT from <code>ss -ti</code>.</li>
+</ol>
+<p>Example:</p>
+<pre><code class="language-bash"># Network path
+iperf3 -c nas.local -t 30
+
+# Disk read path
+dd if=/data/bigfile of=/dev/null bs=16M status=progress
+
+# Transfer path
+rsync -a --info=progress2 /data/bigfile nas:/data/
+</code></pre>
+<p>If <code>iperf3</code> shows 940 Mbit/s on gigabit Ethernet but <code>rsync</code> gets 90 Mbit/s, the link is probably not the bottleneck. Look at disk, CPU, SSH cipher, compression, small-file overhead, or remote filesystem behavior.</p>
+<hr>
+<h2 id="part-8-network-namespaces-and-veth-labs">Part 8 - Network Namespaces and veth Labs</h2>
+<p>Network namespaces are how containers get separate interfaces, routes, firewall state, and sockets. You can build a tiny container-like network by hand.</p>
+<h3 id="two-namespaces-connected-by-a-veth-pair">Two Namespaces Connected by a veth Pair</h3>
+<p>Create namespaces:</p>
+<pre><code class="language-bash">sudo ip netns add red
+sudo ip netns add blue
+</code></pre>
+<p>Create a virtual Ethernet pair:</p>
+<pre><code class="language-bash">sudo ip link add veth-red type veth peer name veth-blue
+sudo ip link set veth-red netns red
+sudo ip link set veth-blue netns blue
+</code></pre>
+<p>Assign addresses:</p>
+<pre><code class="language-bash">sudo ip -n red addr add 10.10.0.1/24 dev veth-red
+sudo ip -n blue addr add 10.10.0.2/24 dev veth-blue
+</code></pre>
+<p>Bring links up:</p>
+<pre><code class="language-bash">sudo ip -n red link set lo up
+sudo ip -n blue link set lo up
+sudo ip -n red link set veth-red up
+sudo ip -n blue link set veth-blue up
+</code></pre>
+<p>Test:</p>
+<pre><code class="language-bash">sudo ip netns exec red ping -c 3 10.10.0.2
+sudo ip -n red route
+sudo ip -n blue addr
+</code></pre>
+<h3 id="use-nc-across-namespaces">Use nc Across Namespaces</h3>
+<p>Receiver:</p>
+<pre><code class="language-bash">sudo ip netns exec blue nc -l 8080
+</code></pre>
+<p>Sender:</p>
+<pre><code class="language-bash">printf 'hello from red\n' | sudo ip netns exec red nc -N 10.10.0.2 8080
+</code></pre>
+<p>If your <code>nc</code> lacks <code>-N</code>, try <code>-q 0</code>.</p>
+<h3 id="use-iperf3-across-namespaces">Use iperf3 Across Namespaces</h3>
+<p>Server:</p>
+<pre><code class="language-bash">sudo ip netns exec blue iperf3 -s
+</code></pre>
+<p>Client:</p>
+<pre><code class="language-bash">sudo ip netns exec red iperf3 -c 10.10.0.2 -t 10
+</code></pre>
+<p>This tests the local kernel path, not a physical NIC. It is still useful for learning veth behavior and container plumbing.</p>
+<h3 id="add-a-router-namespace">Add a Router Namespace</h3>
+<p>This pattern models two LANs connected by a router:</p>
+<pre><code class="language-bash">sudo ip netns add left
+sudo ip netns add right
+sudo ip netns add rtr
+
+sudo ip link add veth-left type veth peer name veth-rtr-left
+sudo ip link add veth-right type veth peer name veth-rtr-right
+
+sudo ip link set veth-left netns left
+sudo ip link set veth-rtr-left netns rtr
+sudo ip link set veth-right netns right
+sudo ip link set veth-rtr-right netns rtr
+
+sudo ip -n left addr add 10.1.0.2/24 dev veth-left
+sudo ip -n rtr addr add 10.1.0.1/24 dev veth-rtr-left
+sudo ip -n right addr add 10.2.0.2/24 dev veth-right
+sudo ip -n rtr addr add 10.2.0.1/24 dev veth-rtr-right
+
+for ns in left right rtr; do sudo ip -n &quot;$ns&quot; link set lo up; done
+sudo ip -n left link set veth-left up
+sudo ip -n rtr link set veth-rtr-left up
+sudo ip -n right link set veth-right up
+sudo ip -n rtr link set veth-rtr-right up
+
+sudo ip -n left route add default via 10.1.0.1
+sudo ip -n right route add default via 10.2.0.1
+sudo ip netns exec rtr sysctl -w net.ipv4.ip_forward=1
+</code></pre>
+<p>Test:</p>
+<pre><code class="language-bash">sudo ip netns exec left ping -c 3 10.2.0.2
+sudo ip netns exec left ip route get 10.2.0.2
+</code></pre>
+<p>Cleanup:</p>
+<pre><code class="language-bash">for ns in left right rtr red blue; do
+  sudo ip netns del &quot;$ns&quot; 2&gt;/dev/null || true
+done
+</code></pre>
+<h3 id="why-this-matters">Why This Matters</h3>
+<p>Docker, containerd, Kubernetes, Podman, systemd-nspawn, and many CNI plugins all use these primitives. A pod is not magic: it is a process in a network namespace, usually connected to the host through a veth pair and routed or bridged by host networking rules.</p>
+<hr>
+<h2 id="part-9-practical-troubleshooting-playbooks">Part 9 - Practical Troubleshooting Playbooks</h2>
+<p>This section is deliberately procedural. Run the commands in order. Do not jump straight to packet capture unless the simpler checks are exhausted.</p>
+<h3 id="playbook-the-service-is-down">Playbook: "The Service Is Down"</h3>
+<p>On the server:</p>
+<pre><code class="language-bash">sudo ss -ltnp 'sport = :443'
+ip -br addr
+ip route
+sudo nft list ruleset | less
+</code></pre>
+<p>On the client:</p>
+<pre><code class="language-bash">getent hosts app.example.com
+addr=$(getent ahostsv4 app.example.com | awk 'NR==1 {print $1}')
+ip route get &quot;$addr&quot;
+nc -vz -w 3 app.example.com 443
+curl -vk https://app.example.com/
+</code></pre>
+<p>Interpretation:</p>
+<table>
+<thead>
+<tr>
+<th>Observation</th>
+<th>Likely cause</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Nothing listening on server</td>
+<td>Application is down or bound to wrong port</td>
+</tr>
+<tr>
+<td>Listening on <code>127.0.0.1</code> only</td>
+<td>Service is local-only; bind to real interface or proxy it</td>
+</tr>
+<tr>
+<td>Client cannot resolve name</td>
+<td>DNS/resolver issue</td>
+</tr>
+<tr>
+<td><code>ip route get</code> chooses wrong interface</td>
+<td>Route or policy-routing issue</td>
+</tr>
+<tr>
+<td><code>nc</code> times out</td>
+<td>Firewall, routing, security group, or packet loss</td>
+</tr>
+<tr>
+<td><code>nc</code> says refused</td>
+<td>Host reachable, port closed or rejected</td>
+</tr>
+<tr>
+<td><code>curl</code> connects but HTTP fails</td>
+<td>App/proxy/TLS layer, not TCP reachability</td>
+</tr>
+</tbody>
+</table>
+<h3 id="playbook-it-works-locally-but-not-remotely">Playbook: "It Works Locally but Not Remotely"</h3>
+<p>On the server:</p>
+<pre><code class="language-bash">sudo ss -ltnp
+ip -br addr
+</code></pre>
+<p>Look for this:</p>
+<pre><code class="language-text">LISTEN 0 128 127.0.0.1:8080 0.0.0.0:* users:((&quot;app&quot;,pid=1234,fd=7))
+</code></pre>
+<p>The app is only listening on loopback. Fix the bind address:</p>
+<ul>
+<li><code>127.0.0.1</code> means local only.</li>
+<li><code>0.0.0.0</code> means all IPv4 interfaces.</li>
+<li><code>::</code> means IPv6 wildcard and may also cover IPv4 depending on system settings.</li>
+</ul>
+<h3 id="playbook-the-default-route-is-wrong">Playbook: "The Default Route Is Wrong"</h3>
+<pre><code class="language-bash">ip route show default
+ip rule
+ip route get 8.8.8.8
+ip -br addr
+ip route get 8.8.8.8 from 192.0.2.10
+</code></pre>
+<p>Fix temporarily:</p>
+<pre><code class="language-bash">sudo ip route replace default via 10.0.2.1 dev eth0 metric 100
+</code></pre>
+<p>Then make the same change persistently with NetworkManager, netplan, systemd-networkd, or your cloud-init config.</p>
+<h3 id="playbook-dns-is-broken">Playbook: "DNS Is Broken"</h3>
+<pre><code class="language-bash">getent hosts internal.service
+resolvectl status
+resolvectl query internal.service
+dig internal.service
+dig @10.0.0.53 internal.service
+dig @1.1.1.1 example.com
+</code></pre>
+<p>Interpretation:</p>
+<table>
+<thead>
+<tr>
+<th>Observation</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>dig @1.1.1.1 example.com</code> works, <code>getent</code> fails</td>
+<td>Local resolver config problem</td>
+</tr>
+<tr>
+<td>Internal DNS works, public DNS fails</td>
+<td>Upstream/forwarder problem</td>
+</tr>
+<tr>
+<td>Public DNS works, internal DNS fails</td>
+<td>Search domain, split DNS, VPN, or internal resolver problem</td>
+</tr>
+<tr>
+<td>DNS returns wrong IP</td>
+<td>Zone/config issue, not Linux routing</td>
+</tr>
+</tbody>
+</table>
+<h3 id="playbook-the-network-is-slow">Playbook: "The Network Is Slow"</h3>
+<p>Separate network from everything else:</p>
+<pre><code class="language-bash">iperf3 -s                       # on target
+iperf3 -c target -t 30 -i 2      # on source
+iperf3 -c target -R -t 30        # reverse direction
+iperf3 -c target --bidir -t 30   # both directions
+</code></pre>
+<p>Then inspect TCP:</p>
+<pre><code class="language-bash">ss -ti dst target
+ip -s link show dev eth0
+sudo ethtool -S eth0 | egrep 'err|drop|crc|timeout|reset'
+</code></pre>
+<p>Then compare with disk and file transfer:</p>
+<pre><code class="language-bash">dd if=/data/bigfile of=/dev/null bs=64M status=progress
+rsync -a --info=progress2 /data/bigfile target:/tmp/
+</code></pre>
+<p>Common conclusions:</p>
+<table>
+<thead>
+<tr>
+<th>Result</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>iperf3</code> fast, rsync slow</td>
+<td>Disk/CPU/SSH/small files, not raw network</td>
+</tr>
+<tr>
+<td><code>iperf3</code> slow both directions</td>
+<td>Link/path/firewall/VM host issue</td>
+</tr>
+<tr>
+<td><code>iperf3</code> fast one direction, slow reverse</td>
+<td>Asymmetric link, shaping, routing, or duplex path</td>
+</tr>
+<tr>
+<td>Many retransmits in <code>ss -ti</code></td>
+<td>Loss or congestion</td>
+</tr>
+<tr>
+<td>Interface CRC errors</td>
+<td>Physical/NIC/switch problem</td>
+</tr>
+</tbody>
+</table>
+<h3 id="playbook-mtu-black-hole">Playbook: "MTU Black Hole"</h3>
+<p>Symptoms:</p>
+<ul>
+<li>Small requests work.</li>
+<li>Large transfers stall.</li>
+<li>VPN, tunnel, or cloud overlay is involved.</li>
+</ul>
+<p>Test:</p>
+<pre><code class="language-bash">ping -M do -s 1472 target       # 1500-byte IPv4 packet: 1472 payload + 28 header
+ping -M do -s 1400 target
+tracepath target
+</code></pre>
+<p>If 1400 works and 1472 fails, MTU is part of the story. Fix the tunnel MTU or TCP MSS clamping at the correct boundary. Do not randomly lower every host to 1200 unless you understand the path.</p>
+<h3 id="playbook-a-port-is-filtered-somewhere">Playbook: "A Port Is Filtered Somewhere"</h3>
+<p>Server:</p>
+<pre><code class="language-bash">sudo ss -ltnp 'sport = :9000'
+sudo nft list ruleset | less
+</code></pre>
+<p>Client:</p>
+<pre><code class="language-bash">nc -vz -w 3 server 9000
+</code></pre>
+<p>Middlebox/cloud:</p>
+<ul>
+<li>Security group / firewall rule.</li>
+<li>Host firewall.</li>
+<li>Network ACL.</li>
+<li>Kubernetes NetworkPolicy.</li>
+<li>Load balancer listener/target health.</li>
+</ul>
+<p><code>connection refused</code> usually means the host replied but the port is closed. <code>timed out</code> usually means no reply reached the client.</p>
+<hr>
+<h2 id="part-10-file-transfer-cookbook">Part 10 - File Transfer Cookbook</h2>
+<p>File transfer is where networking meets disk, CPU, encryption, metadata, and operational risk. The fastest method is not always the best method.</p>
+<h3 id="decision-matrix">Decision Matrix</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Best for</th>
+<th style="text-align: right;">Encrypted</th>
+<th style="text-align: right;">Resumable</th>
+<th style="text-align: right;">Preserves metadata</th>
+<th style="text-align: right;">Good for repeat sync</th>
+<th>Main risk</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>scp</code></td>
+<td>Simple one-off copy over SSH</td>
+<td style="text-align: right;">Yes</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;">Basic with <code>-p</code></td>
+<td style="text-align: right;">No</td>
+<td>Slow-ish, no resume/incremental</td>
+</tr>
+<tr>
+<td><code>rsync</code> over SSH</td>
+<td>Repeat syncs, large trees, resumable copies</td>
+<td style="text-align: right;">Yes</td>
+<td style="text-align: right;">Yes</td>
+<td style="text-align: right;">Excellent with right flags</td>
+<td style="text-align: right;">Yes</td>
+<td><code>--delete</code> can erase good data</td>
+</tr>
+<tr>
+<td><code>tar</code> over SSH</td>
+<td>One-time exact tree stream, no remote rsync needed</td>
+<td style="text-align: right;">Yes</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;">Excellent with right flags</td>
+<td style="text-align: right;">No</td>
+<td>Restart from zero if interrupted</td>
+</tr>
+<tr>
+<td><code>tar</code> + <code>nc</code></td>
+<td>Fast trusted-LAN bulk copy</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;">Good because tar carries metadata</td>
+<td style="text-align: right;">No</td>
+<td>No auth/encryption/integrity</td>
+</tr>
+<tr>
+<td>Direct <code>nc</code> file</td>
+<td>Fast single file on trusted isolated network</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;">No</td>
+<td>Easy to corrupt/mis-send silently</td>
+</tr>
+</tbody>
+</table>
+<p>Short version:</p>
+<ul>
+<li>Use <strong>scp</strong> for a quick encrypted copy.</li>
+<li>Use <strong>rsync</strong> when you may run it more than once.</li>
+<li>Use <strong>tar over SSH</strong> when you need a faithful tree stream and the remote may not have rsync.</li>
+<li>Use <strong>tar + netcat</strong> only on a trusted network when speed matters more than security.</li>
+<li>Use <strong>direct netcat</strong> for labs, rescue work, and isolated direct cables, not ordinary production transfer.</li>
+</ul>
+<h3 id="before-any-large-transfer">Before Any Large Transfer</h3>
+<p>Measure the network:</p>
+<pre><code class="language-bash">iperf3 -s                  # receiver
+iperf3 -c receiver -t 20   # sender
+</code></pre>
+<p>Check disk speed:</p>
+<pre><code class="language-bash">dd if=/data/bigfile of=/dev/null bs=64M status=progress
+</code></pre>
+<p>Estimate transfer time:</p>
+<pre><code class="language-bash"># 500 GiB over a real 940 Mbit/s gigabit link is roughly 75 minutes before overhead.
+</code></pre>
+<p>Use <code>tmux</code> or <code>screen</code> for long transfers:</p>
+<pre><code class="language-bash">tmux new -s transfer
+</code></pre>
+<p>Always verify important transfers:</p>
+<pre><code class="language-bash">sha256sum bigfile &gt; bigfile.sha256
+sha256sum -c bigfile.sha256
+</code></pre>
+<h3 id="scp-simple-encrypted-copy">scp: Simple Encrypted Copy</h3>
+<p>OpenSSH <code>scp</code> uses SFTP by default in modern OpenSSH, while keeping the familiar <code>scp</code> interface.</p>
+<p>Copy one file:</p>
+<pre><code class="language-bash">scp ./backup.tar.zst user@server:/srv/restore/
+</code></pre>
+<p>Copy a directory:</p>
+<pre><code class="language-bash">scp -r ./site user@server:/srv/
+</code></pre>
+<p>Preserve times and modes:</p>
+<pre><code class="language-bash">scp -p ./backup.tar.zst user@server:/srv/restore/
+</code></pre>
+<p>Use a nonstandard SSH port:</p>
+<pre><code class="language-bash">scp -P 2222 ./file user@server:/tmp/
+</code></pre>
+<p>Use a jump host:</p>
+<pre><code class="language-bash">scp -J bastion.example.com ./file user@app.internal:/tmp/
+</code></pre>
+<p>Limit bandwidth. OpenSSH <code>scp -l</code> is in Kbit/s:</p>
+<pre><code class="language-bash">scp -l 50000 ./bigfile user@server:/srv/
+</code></pre>
+<p>That is about 50 Mbit/s.</p>
+<p>Use compression only when data is compressible and CPU is not the bottleneck:</p>
+<pre><code class="language-bash">scp -C ./logs.tar user@server:/srv/
+</code></pre>
+<p>Do not expect <code>scp</code> to resume interrupted transfers. For large or unreliable transfers, use <code>rsync</code>.</p>
+<h3 id="rsync-the-default-for-serious-copies">rsync: The Default for Serious Copies</h3>
+<p>The most common safe pattern:</p>
+<pre><code class="language-bash">rsync -aP --info=progress2 ./data/ user@server:/srv/data/
+</code></pre>
+<p>Important: trailing slash semantics matter.</p>
+<pre><code class="language-bash">rsync -a ./data  user@server:/srv/   # creates /srv/data
+rsync -a ./data/ user@server:/srv/   # copies contents into /srv/
+</code></pre>
+<p>Resume and keep partial files:</p>
+<pre><code class="language-bash">rsync -aP --partial-dir=.rsync-partial ./bigfile user@server:/srv/
+</code></pre>
+<p>For an interrupted append-like large file:</p>
+<pre><code class="language-bash">rsync -aP --append-verify ./bigfile user@server:/srv/
+</code></pre>
+<p>Mirror a directory, but preview deletion first:</p>
+<pre><code class="language-bash">rsync -aHAX --numeric-ids --delete --dry-run /srv/app/ root@server:/srv/app/
+rsync -aHAX --numeric-ids --delete           /srv/app/ root@server:/srv/app/
+</code></pre>
+<p>Flags:</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>-a</code></td>
+<td>archive mode: recursive plus common metadata</td>
+</tr>
+<tr>
+<td><code>-P</code></td>
+<td><code>--partial --progress</code></td>
+</tr>
+<tr>
+<td><code>--info=progress2</code></td>
+<td>overall progress</td>
+</tr>
+<tr>
+<td><code>-H</code></td>
+<td>preserve hard links</td>
+</tr>
+<tr>
+<td><code>-A</code></td>
+<td>preserve ACLs</td>
+</tr>
+<tr>
+<td><code>-X</code></td>
+<td>preserve xattrs</td>
+</tr>
+<tr>
+<td><code>--numeric-ids</code></td>
+<td>do not map uid/gid names</td>
+</tr>
+<tr>
+<td><code>--delete</code></td>
+<td>delete files on destination not present on source</td>
+</tr>
+<tr>
+<td><code>--dry-run</code></td>
+<td>show what would happen</td>
+</tr>
+<tr>
+<td><code>--bwlimit=50M</code></td>
+<td>throttle transfer</td>
+</tr>
+</tbody>
+</table>
+<p>Compression:</p>
+<pre><code class="language-bash">rsync -azP ./logs/ user@server:/srv/logs/
+</code></pre>
+<p>Use <code>-z</code> for text/logs over slow links. Avoid it for already compressed data, media, VM images, and fast LANs where CPU becomes the bottleneck.</p>
+<p>Custom SSH options:</p>
+<pre><code class="language-bash">rsync -aP -e 'ssh -J bastion.example.com -p 2222' ./data/ user@app:/srv/data/
+</code></pre>
+<p>The rule: if you might need to run the transfer twice, start with rsync.</p>
+<h3 id="tar-over-ssh-faithful-one-shot-tree-transfer">tar Over SSH: Faithful One-Shot Tree Transfer</h3>
+<p><code>tar</code> streams a filesystem tree. SSH provides encryption and authentication.</p>
+<p>Copy a directory tree:</p>
+<pre><code class="language-bash">tar -C /src -cpf - . \
+  | ssh user@server 'mkdir -p /dst &amp;&amp; tar -C /dst -xpf -'
+</code></pre>
+<p>Preserve advanced Linux metadata:</p>
+<pre><code class="language-bash">sudo tar --xattrs --acls --selinux --numeric-owner -C / -cpf - var/lib/app \
+  | ssh root@server 'sudo tar --xattrs --acls --selinux --numeric-owner -C / -xpf -'
+</code></pre>
+<p>Sparse VM image or database-like file:</p>
+<pre><code class="language-bash">sudo tar --sparse -C /vmstore -cpf - images \
+  | ssh root@server 'sudo tar --sparse -C /vmstore -xpf -'
+</code></pre>
+<p>Compress with zstd in the pipeline:</p>
+<pre><code class="language-bash">tar -C /src -cpf - . \
+  | zstd -T0 -3 \
+  | ssh user@server 'zstd -d | tar -C /dst -xpf -'
+</code></pre>
+<p>Show progress with <code>pv</code>:</p>
+<pre><code class="language-bash">tar -C /src -cpf - . \
+  | pv \
+  | ssh user@server 'tar -C /dst -xpf -'
+</code></pre>
+<p>When to use tar over SSH:</p>
+<ul>
+<li>Remote host has SSH but not rsync.</li>
+<li>You want an exact stream of a tree.</li>
+<li>You are migrating a service directory once.</li>
+<li>You need xattrs/ACLs/SELinux labels and know both sides support them.</li>
+</ul>
+<p>When not to use it:</p>
+<ul>
+<li>Unreliable links.</li>
+<li>Transfers you may need to resume.</li>
+<li>Continuous mirroring.</li>
+</ul>
+<h3 id="direct-netcat-single-file-trusted-network-only">Direct netcat: Single File, Trusted Network Only</h3>
+<p>Direct netcat is raw TCP. No encryption, no authentication, no file metadata, no resume. Use it on direct cables, private lab VLANs, or emergency trusted networks.</p>
+<p>Receiver first:</p>
+<pre><code class="language-bash">nc -l 9000 &gt; bigfile
+</code></pre>
+<p>Some variants require:</p>
+<pre><code class="language-bash">nc -l -p 9000 &gt; bigfile
+</code></pre>
+<p>Sender:</p>
+<pre><code class="language-bash">pv bigfile | nc -N receiver 9000
+</code></pre>
+<p>If <code>-N</code> is not supported:</p>
+<pre><code class="language-bash">pv bigfile | nc -q 0 receiver 9000
+</code></pre>
+<p>Verify:</p>
+<pre><code class="language-bash"># sender before transfer
+sha256sum bigfile
+
+# receiver after transfer
+sha256sum bigfile
+</code></pre>
+<p>Firewall:</p>
+<pre><code class="language-bash">sudo ufw allow from sender_ip to any port 9000 proto tcp
+# or with nftables, add the narrow equivalent rule for your ruleset.
+</code></pre>
+<p>Close the port when done.</p>
+<h3 id="tar-netcat-fast-directory-transfer-on-trusted-lan">tar + netcat: Fast Directory Transfer on Trusted LAN</h3>
+<p>Receiver:</p>
+<pre><code class="language-bash">mkdir -p /dst
+nc -l 9000 | tar -C /dst -xpf -
+</code></pre>
+<p>Sender:</p>
+<pre><code class="language-bash">tar -C /src -cpf - . | pv | nc -N receiver 9000
+</code></pre>
+<p>Compressed:</p>
+<p>Receiver:</p>
+<pre><code class="language-bash">mkdir -p /dst
+nc -l 9000 | zstd -d | tar -C /dst -xpf -
+</code></pre>
+<p>Sender:</p>
+<pre><code class="language-bash">tar -C /src -cpf - . | zstd -T0 -3 | pv | nc -N receiver 9000
+</code></pre>
+<p>With metadata:</p>
+<p>Receiver:</p>
+<pre><code class="language-bash">sudo nc -l 9000 \
+  | sudo tar --xattrs --acls --selinux --numeric-owner -C /dst -xpf -
+</code></pre>
+<p>Sender:</p>
+<pre><code class="language-bash">sudo tar --xattrs --acls --selinux --numeric-owner -C /src -cpf - . \
+  | pv \
+  | nc -N receiver 9000
+</code></pre>
+<p>Use this only when the network is trusted. Anyone who can connect to the listening port can send bytes.</p>
+<h3 id="split-archives-for-fragile-links">Split Archives for Fragile Links</h3>
+<p>If you cannot use rsync and need restartability, split the archive:</p>
+<pre><code class="language-bash">tar -C /src -cpf - . | zstd -T0 -3 | split -b 4G - backup.tar.zst.
+rsync -aP backup.tar.zst.* user@server:/srv/restore/
+</code></pre>
+<p>On receiver:</p>
+<pre><code class="language-bash">cat backup.tar.zst.* | zstd -d | tar -C /dst -xpf -
+</code></pre>
+<p>This combines tar's metadata preservation with rsync's resumable file transfer.</p>
+<h3 id="preserve-metadata-correctly">Preserve Metadata Correctly</h3>
+<p>For normal user data:</p>
+<pre><code class="language-bash">rsync -aP ./photos/ server:/backup/photos/
+</code></pre>
+<p>For system trees:</p>
+<pre><code class="language-bash">sudo rsync -aHAX --numeric-ids /srv/app/ root@server:/srv/app/
+</code></pre>
+<p>For tar:</p>
+<pre><code class="language-bash">sudo tar --xattrs --acls --selinux --numeric-owner -C / -cpf app.tar srv/app
+</code></pre>
+<p>Metadata checklist:</p>
+<table>
+<thead>
+<tr>
+<th>Metadata</th>
+<th style="text-align: right;">scp</th>
+<th style="text-align: right;">rsync</th>
+<th style="text-align: right;">tar</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>File contents</td>
+<td style="text-align: right;">Yes</td>
+<td style="text-align: right;">Yes</td>
+<td style="text-align: right;">Yes</td>
+</tr>
+<tr>
+<td>Directory tree</td>
+<td style="text-align: right;"><code>-r</code></td>
+<td style="text-align: right;">Yes</td>
+<td style="text-align: right;">Yes</td>
+</tr>
+<tr>
+<td>Mode bits</td>
+<td style="text-align: right;">With <code>-p</code> basic</td>
+<td style="text-align: right;">Yes with <code>-a</code></td>
+<td style="text-align: right;">Yes</td>
+</tr>
+<tr>
+<td>Timestamps</td>
+<td style="text-align: right;">With <code>-p</code></td>
+<td style="text-align: right;">Yes with <code>-a</code></td>
+<td style="text-align: right;">Yes</td>
+</tr>
+<tr>
+<td>Owners/groups</td>
+<td style="text-align: right;">Limited unless root</td>
+<td style="text-align: right;"><code>-o -g</code>, <code>--numeric-ids</code></td>
+<td style="text-align: right;"><code>--numeric-owner</code></td>
+</tr>
+<tr>
+<td>ACLs</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;"><code>-A</code></td>
+<td style="text-align: right;"><code>--acls</code></td>
+</tr>
+<tr>
+<td>xattrs</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;"><code>-X</code></td>
+<td style="text-align: right;"><code>--xattrs</code></td>
+</tr>
+<tr>
+<td>SELinux labels</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;">xattrs if supported</td>
+<td style="text-align: right;"><code>--selinux</code></td>
+</tr>
+<tr>
+<td>Hard links</td>
+<td style="text-align: right;">No</td>
+<td style="text-align: right;"><code>-H</code></td>
+<td style="text-align: right;">Usually yes in archive</td>
+</tr>
+<tr>
+<td>Sparse files</td>
+<td style="text-align: right;">Poor</td>
+<td style="text-align: right;"><code>-S</code></td>
+<td style="text-align: right;"><code>--sparse</code></td>
+</tr>
+</tbody>
+</table>
+<h3 id="transfer-many-small-files">Transfer Many Small Files</h3>
+<p>Many small files are slow because each file means metadata operations.</p>
+<p>Good:</p>
+<pre><code class="language-bash">tar -C /src -cpf - . | ssh server 'tar -C /dst -xpf -'
+</code></pre>
+<p>Also good if repeated:</p>
+<pre><code class="language-bash">rsync -a --delete /src/ server:/dst/
+</code></pre>
+<p>Bad:</p>
+<pre><code class="language-bash">for f in /src/*; do scp &quot;$f&quot; server:/dst/; done
+</code></pre>
+<p>That creates a new SSH/SFTP session pattern or at least per-file overhead that scales poorly.</p>
+<h3 id="transfer-one-huge-file">Transfer One Huge File</h3>
+<p>Best default:</p>
+<pre><code class="language-bash">rsync -aP --partial-dir=.rsync-partial ./huge.img server:/dst/
+</code></pre>
+<p>If the link is a trusted direct cable and you need raw speed:</p>
+<pre><code class="language-bash"># receiver
+nc -l 9000 &gt; huge.img
+
+# sender
+pv huge.img | nc -N receiver 9000
+</code></pre>
+<p>Verify checksums either way.</p>
+<h3 id="move-a-live-application-directory">Move a Live Application Directory</h3>
+<p>Preferred pattern:</p>
+<ol>
+<li>Initial sync while app is running.</li>
+<li>Stop app.</li>
+<li>Final sync with delete.</li>
+<li>Start app on destination.</li>
+</ol>
+<pre><code class="language-bash">rsync -aHAX --numeric-ids /srv/app/ root@new:/srv/app/
+
+sudo systemctl stop app
+rsync -aHAX --numeric-ids --delete /srv/app/ root@new:/srv/app/
+ssh root@new 'systemctl start app'
+</code></pre>
+<p>Do not use direct <code>nc</code> for a live tree unless you can guarantee a quiescent source.</p>
+<h3 id="copy-through-a-bastion">Copy Through a Bastion</h3>
+<p>SCP:</p>
+<pre><code class="language-bash">scp -J bastion.example.com ./file user@app.internal:/tmp/
+</code></pre>
+<p>Rsync:</p>
+<pre><code class="language-bash">rsync -aP -e 'ssh -J bastion.example.com' ./data/ user@app.internal:/srv/data/
+</code></pre>
+<p>Tar over SSH:</p>
+<pre><code class="language-bash">tar -C /src -cpf - . \
+  | ssh -J bastion.example.com user@app.internal 'tar -C /dst -xpf -'
+</code></pre>
+<p>Netcat through a bastion is the wrong tool. Use SSH.</p>
+<h3 id="validate-a-transfer">Validate a Transfer</h3>
+<p>Single file:</p>
+<pre><code class="language-bash">sha256sum bigfile
+ssh server 'sha256sum /dst/bigfile'
+</code></pre>
+<p>Directory spot check:</p>
+<pre><code class="language-bash">rsync -aHAX --numeric-ids --dry-run --checksum /src/ server:/dst/
+</code></pre>
+<p>Count files and bytes:</p>
+<pre><code class="language-bash">find /src -type f -printf '.' | wc -c
+du -sh /src
+ssh server 'find /dst -type f -printf &quot;.&quot; | wc -c; du -sh /dst'
+</code></pre>
+<p><code>rsync --checksum</code> is expensive but useful for verification because it reads file contents instead of trusting size/time.</p>
+<h3 id="file-transfer-decision-tree">File Transfer Decision Tree</h3>
+<pre><code class="language-text">Need encryption/auth over an untrusted network?
+  yes -&gt; use SSH-based transfer.
+    One file or small tree, one time? -&gt; scp.
+    Repeat, resume, mirror, or big tree? -&gt; rsync.
+    Remote lacks rsync but has tar+ssh? -&gt; tar over SSH.
+  no -&gt; isolated trusted LAN/direct cable?
+    One huge file and you can verify checksum? -&gt; nc.
+    Directory tree and you can verify? -&gt; tar + nc.
+    Anything production or repeatable? -&gt; rsync anyway.
+</code></pre>
+<hr>
+<h2 id="part-11-tool-cheat-sheets">Part 11 - Tool Cheat Sheets</h2>
+<h3 id="ip">ip</h3>
+<pre><code class="language-bash">ip -br addr
+ip -br link
+ip -d link show dev eth0
+ip -s link show dev eth0
+ip route
+ip route get 8.8.8.8
+ip rule
+ip neigh
+ip monitor
+ip -j addr | jq .
+</code></pre>
+<p>Temporary changes:</p>
+<pre><code class="language-bash">sudo ip link set dev eth0 up
+sudo ip addr add 192.0.2.10/24 dev eth0
+sudo ip route replace default via 192.0.2.1 dev eth0
+sudo ip neigh flush dev eth0
+</code></pre>
+<h3 id="ss">ss</h3>
+<pre><code class="language-bash">sudo ss -tulpn
+sudo ss -ltnp 'sport = :8080'
+ss -tan state established
+ss -tan '( sport = :443 or dport = :443 )'
+ss -ti dst 203.0.113.10
+ss -xap
+</code></pre>
+<h3 id="nc-netcat">nc / netcat</h3>
+<pre><code class="language-bash">nc -vz -w 3 host 443
+printf 'GET / HTTP/1.1\r\nHost: host\r\nConnection: close\r\n\r\n' | nc -N host 80
+nc -l 8080
+nc -u -l 9999
+pv file | nc -N receiver 9000
+nc -l 9000 &gt; file
+</code></pre>
+<p>Variant fallback:</p>
+<pre><code class="language-bash"># If -N is missing:
+pv file | nc -q 0 receiver 9000
+
+# If &quot;nc -l 9000&quot; fails:
+nc -l -p 9000 &gt; file
+</code></pre>
+<h3 id="iperf3">iperf3</h3>
+<pre><code class="language-bash">iperf3 -s
+iperf3 -c server -t 30 -i 2
+iperf3 -c server -R
+iperf3 -c server --bidir
+iperf3 -c server -P 4
+iperf3 -c server -u -b 100M
+iperf3 -c server --json &gt; result.json
+iperf3 -c server -Z
+</code></pre>
+<h3 id="scp">scp</h3>
+<pre><code class="language-bash">scp file user@host:/dst/
+scp -r dir user@host:/dst/
+scp -p file user@host:/dst/
+scp -P 2222 file user@host:/dst/
+scp -J bastion file user@host:/dst/
+scp -l 50000 file user@host:/dst/
+</code></pre>
+<h3 id="rsync">rsync</h3>
+<pre><code class="language-bash">rsync -aP --info=progress2 src/ user@host:/dst/
+rsync -aP --partial-dir=.rsync-partial bigfile user@host:/dst/
+rsync -aHAX --numeric-ids --delete --dry-run src/ root@host:/dst/
+rsync -aHAX --numeric-ids --delete src/ root@host:/dst/
+rsync -aP -e 'ssh -J bastion' src/ user@host:/dst/
+rsync -a --bwlimit=50M src/ user@host:/dst/
+</code></pre>
+<h3 id="tar">tar</h3>
+<pre><code class="language-bash">tar -C /src -cpf - . | ssh host 'tar -C /dst -xpf -'
+tar -C /src -cpf - . | zstd -T0 -3 | ssh host 'zstd -d | tar -C /dst -xpf -'
+sudo tar --xattrs --acls --selinux --numeric-owner -C / -cpf - srv/app \
+  | ssh root@host 'sudo tar --xattrs --acls --selinux --numeric-owner -C / -xpf -'
+tar -C /src -cpf - . | pv | nc -N receiver 9000
+</code></pre>
+<hr>
+<h2 id="final-mental-model">Final Mental Model</h2>
+<p>Linux networking is a debugging advantage if you use the right layer:</p>
+<ul>
+<li><code>ip</code> tells you what the kernel would do with packets.</li>
+<li><code>ss</code> tells you what processes and sockets are doing.</li>
+<li><code>nc</code> lets you send and receive raw bytes to prove reachability.</li>
+<li><code>iperf3</code> tells you what the path can carry without application noise.</li>
+<li><code>rsync</code>, <code>scp</code>, <code>tar</code>, and <code>nc</code> are not interchangeable; they trade security, resumability, metadata, and speed.</li>
+</ul>
+<p>If you remember one operational rule, make it this: <strong>prove the path before blaming the application, and choose the transfer tool based on risk, not just speed.</strong></p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

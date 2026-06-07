@@ -1,0 +1,2339 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Blender — A Conceptual Guide.">
+<title>Blender — A Conceptual Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#ea7600; --accent2:#ea7600; --accent-weak:rgba(234,118,0,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#ea7600; --accent2:#ea7600; --accent-weak:rgba(234,118,0,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint)}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:1fr}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">B</span><span>Blender — A Conceptual Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#1-the-mental-model" data-target="1-the-mental-model">1. The Mental Model</a></li><li class="toc-l3"><a href="#what-blender-is" data-target="what-blender-is">What Blender Is</a></li><li class="toc-l3"><a href="#the-pipeline-mindset" data-target="the-pipeline-mindset">The Pipeline Mindset</a></li><li class="toc-l3"><a href="#the-data-model" data-target="the-data-model">The Data Model</a></li><li class="toc-l3"><a href="#coordinate-system" data-target="coordinate-system">Coordinate System</a></li><li class="toc-l2"><a href="#2-the-interface-navigation" data-target="2-the-interface-navigation">2. The Interface &amp; Navigation</a></li><li class="toc-l3"><a href="#the-editor-paradigm" data-target="the-editor-paradigm">The Editor Paradigm</a></li><li class="toc-l3"><a href="#workspaces" data-target="workspaces">Workspaces</a></li><li class="toc-l3"><a href="#3d-viewport-navigation" data-target="3d-viewport-navigation">3D Viewport Navigation</a></li><li class="toc-l3"><a href="#the-operator-system" data-target="the-operator-system">The Operator System</a></li><li class="toc-l3"><a href="#essential-hotkeys" data-target="essential-hotkeys">Essential Hotkeys</a></li><li class="toc-l2"><a href="#3-objects-scenes-collections" data-target="3-objects-scenes-collections">3. Objects, Scenes &amp; Collections</a></li><li class="toc-l3"><a href="#object-types" data-target="object-types">Object Types</a></li><li class="toc-l3"><a href="#collections" data-target="collections">Collections</a></li><li class="toc-l3"><a href="#scenes-view-layers" data-target="scenes-view-layers">Scenes &amp; View Layers</a></li><li class="toc-l3"><a href="#the-parent-child-hierarchy" data-target="the-parent-child-hierarchy">The Parent-Child Hierarchy</a></li><li class="toc-l2"><a href="#4-modes-the-central-concept" data-target="4-modes-the-central-concept">4. Modes — The Central Concept</a></li><li class="toc-l3"><a href="#why-modes-exist" data-target="why-modes-exist">Why Modes Exist</a></li><li class="toc-l3"><a href="#the-modes" data-target="the-modes">The Modes</a></li><li class="toc-l3"><a href="#the-trap" data-target="the-trap">The Trap</a></li><li class="toc-l2"><a href="#5-modeling" data-target="5-modeling">5. Modeling</a></li><li class="toc-l3"><a href="#the-mesh-primitive" data-target="the-mesh-primitive">The Mesh Primitive</a></li><li class="toc-l3"><a href="#vertices-edges-faces" data-target="vertices-edges-faces">Vertices, Edges, Faces</a></li><li class="toc-l3"><a href="#topology" data-target="topology">Topology</a></li><li class="toc-l3"><a href="#key-modeling-operations" data-target="key-modeling-operations">Key Modeling Operations</a></li><li class="toc-l3"><a href="#box-modeling-vs-poly-by-poly" data-target="box-modeling-vs-poly-by-poly">Box Modeling vs. Poly-by-Poly</a></li><li class="toc-l3"><a href="#normals" data-target="normals">Normals</a></li><li class="toc-l2"><a href="#6-modifiers-non-destructive-workflows" data-target="6-modifiers-non-destructive-workflows">6. Modifiers &amp; Non-Destructive Workflows</a></li><li class="toc-l3"><a href="#what-modifiers-are" data-target="what-modifiers-are">What Modifiers Are</a></li><li class="toc-l3"><a href="#the-modifier-stack" data-target="the-modifier-stack">The Modifier Stack</a></li><li class="toc-l3"><a href="#essential-modifiers" data-target="essential-modifiers">Essential Modifiers</a></li><li class="toc-l3"><a href="#apply-vs-keep" data-target="apply-vs-keep">Apply vs. Keep</a></li><li class="toc-l2"><a href="#7-materials-shading" data-target="7-materials-shading">7. Materials &amp; Shading</a></li><li class="toc-l3"><a href="#what-a-material-is" data-target="what-a-material-is">What a Material Is</a></li><li class="toc-l3"><a href="#pbr-physically-based-rendering" data-target="pbr-physically-based-rendering">PBR — Physically Based Rendering</a></li><li class="toc-l3"><a href="#texture-maps" data-target="texture-maps">Texture Maps</a></li><li class="toc-l3"><a href="#procedural-textures" data-target="procedural-textures">Procedural Textures</a></li><li class="toc-l2"><a href="#8-uv-mapping-texturing" data-target="8-uv-mapping-texturing">8. UV Mapping &amp; Texturing</a></li><li class="toc-l3"><a href="#the-problem-uv-mapping-solves" data-target="the-problem-uv-mapping-solves">The Problem UV Mapping Solves</a></li><li class="toc-l3"><a href="#the-concept" data-target="the-concept">The Concept</a></li><li class="toc-l3"><a href="#unwrapping-methods" data-target="unwrapping-methods">Unwrapping Methods</a></li><li class="toc-l3"><a href="#seams" data-target="seams">Seams</a></li><li class="toc-l3"><a href="#texture-painting" data-target="texture-painting">Texture Painting</a></li><li class="toc-l2"><a href="#9-lighting" data-target="9-lighting">9. Lighting</a></li><li class="toc-l3"><a href="#light-types" data-target="light-types">Light Types</a></li><li class="toc-l3"><a href="#three-point-lighting" data-target="three-point-lighting">Three-Point Lighting</a></li><li class="toc-l3"><a href="#hdri-environment-lighting" data-target="hdri-environment-lighting">HDRI Environment Lighting</a></li><li class="toc-l3"><a href="#light-behavior-in-render-engines" data-target="light-behavior-in-render-engines">Light Behavior in Render Engines</a></li><li class="toc-l2"><a href="#10-cameras-rendering" data-target="10-cameras-rendering">10. Cameras &amp; Rendering</a></li><li class="toc-l3"><a href="#camera-concepts" data-target="camera-concepts">Camera Concepts</a></li><li class="toc-l3"><a href="#render-engines" data-target="render-engines">Render Engines</a></li><li class="toc-l3"><a href="#render-settings-that-matter" data-target="render-settings-that-matter">Render Settings That Matter</a></li><li class="toc-l3"><a href="#rendering-animation" data-target="rendering-animation">Rendering Animation</a></li><li class="toc-l2"><a href="#11-sculpting" data-target="11-sculpting">11. Sculpting</a></li><li class="toc-l3"><a href="#the-concept_1" data-target="the-concept_1">The Concept</a></li><li class="toc-l3"><a href="#key-brushes" data-target="key-brushes">Key Brushes</a></li><li class="toc-l3"><a href="#dynamic-topology-dyntopo" data-target="dynamic-topology-dyntopo">Dynamic Topology (Dyntopo)</a></li><li class="toc-l3"><a href="#multires-modifier" data-target="multires-modifier">Multires Modifier</a></li><li class="toc-l2"><a href="#12-rigging" data-target="12-rigging">12. Rigging</a></li><li class="toc-l3"><a href="#the-armature" data-target="the-armature">The Armature</a></li><li class="toc-l3"><a href="#bone-orientation-roll-symmetry" data-target="bone-orientation-roll-symmetry">Bone Orientation, Roll &amp; Symmetry</a></li><li class="toc-l3"><a href="#the-rigging-workflow" data-target="the-rigging-workflow">The Rigging Workflow</a></li><li class="toc-l3"><a href="#deform-bones-vs-control-bones" data-target="deform-bones-vs-control-bones">Deform Bones vs. Control Bones</a></li><li class="toc-l3"><a href="#bone-parenting-how-the-mesh-follows-the-skeleton" data-target="bone-parenting-how-the-mesh-follows-the-skeleton">Bone Parenting — How the Mesh Follows the Skeleton</a></li><li class="toc-l3"><a href="#the-armature-modifier-skinning-options" data-target="the-armature-modifier-skinning-options">The Armature Modifier — Skinning Options</a></li><li class="toc-l3"><a href="#automatic-weights" data-target="automatic-weights">Automatic Weights</a></li><li class="toc-l3"><a href="#weight-painting" data-target="weight-painting">Weight Painting</a></li><li class="toc-l3"><a href="#mirroring-weights" data-target="mirroring-weights">Mirroring Weights</a></li><li class="toc-l3"><a href="#forward-kinematics-fk-vs-inverse-kinematics-ik" data-target="forward-kinematics-fk-vs-inverse-kinematics-ik">Forward Kinematics (FK) vs. Inverse Kinematics (IK)</a></li><li class="toc-l3"><a href="#ikfk-switching-auto-ik" data-target="ikfk-switching-auto-ik">IK/FK Switching &amp; Auto-IK</a></li><li class="toc-l3"><a href="#pole-targets" data-target="pole-targets">Pole Targets</a></li><li class="toc-l3"><a href="#spline-ik" data-target="spline-ik">Spline IK</a></li><li class="toc-l3"><a href="#bendy-bones-b-bones" data-target="bendy-bones-b-bones">Bendy Bones (B-Bones)</a></li><li class="toc-l3"><a href="#bone-constraints" data-target="bone-constraints">Bone Constraints</a></li><li class="toc-l3"><a href="#custom-bone-shapes-bone-collections" data-target="custom-bone-shapes-bone-collections">Custom Bone Shapes &amp; Bone Collections</a></li><li class="toc-l3"><a href="#rigify-blenders-auto-rig-add-on" data-target="rigify-blenders-auto-rig-add-on">Rigify — Blender's Auto-Rig Add-on</a></li><li class="toc-l3"><a href="#corrective-shape-keys" data-target="corrective-shape-keys">Corrective Shape Keys</a></li><li class="toc-l3"><a href="#rigging-gotchas-best-practices" data-target="rigging-gotchas-best-practices">Rigging Gotchas &amp; Best Practices</a></li><li class="toc-l2"><a href="#13-animation" data-target="13-animation">13. Animation</a></li><li class="toc-l3"><a href="#keyframes-the-foundation" data-target="keyframes-the-foundation">Keyframes — The Foundation</a></li><li class="toc-l3"><a href="#keying-sets-what-gets-keyed" data-target="keying-sets-what-gets-keyed">Keying Sets — What Gets Keyed</a></li><li class="toc-l3"><a href="#the-timeline" data-target="the-timeline">The Timeline</a></li><li class="toc-l3"><a href="#the-graph-editor" data-target="the-graph-editor">The Graph Editor</a></li><li class="toc-l3"><a href="#f-curve-handle-types" data-target="f-curve-handle-types">F-Curve Handle Types</a></li><li class="toc-l3"><a href="#extrapolation-cyclic-motion" data-target="extrapolation-cyclic-motion">Extrapolation &amp; Cyclic Motion</a></li><li class="toc-l3"><a href="#the-twelve-principles-of-animation" data-target="the-twelve-principles-of-animation">The Twelve Principles of Animation</a></li><li class="toc-l3"><a href="#pose-to-pose-vs-straight-ahead" data-target="pose-to-pose-vs-straight-ahead">Pose-to-Pose vs. Straight-Ahead</a></li><li class="toc-l3"><a href="#blocking-splining-polish-the-three-passes" data-target="blocking-splining-polish-the-three-passes">Blocking, Splining &amp; Polish — The Three Passes</a></li><li class="toc-l3"><a href="#animation-sliders-pose-tools" data-target="animation-sliders-pose-tools">Animation Sliders &amp; Pose Tools</a></li><li class="toc-l3"><a href="#motion-paths-onion-skinning" data-target="motion-paths-onion-skinning">Motion Paths (Onion Skinning)</a></li><li class="toc-l3"><a href="#the-dope-sheet" data-target="the-dope-sheet">The Dope Sheet</a></li><li class="toc-l3"><a href="#the-nla-editor-non-linear-animation" data-target="the-nla-editor-non-linear-animation">The NLA Editor (Non-Linear Animation)</a></li><li class="toc-l3"><a href="#actions" data-target="actions">Actions</a></li><li class="toc-l3"><a href="#drivers" data-target="drivers">Drivers</a></li><li class="toc-l3"><a href="#shape-keys" data-target="shape-keys">Shape Keys</a></li><li class="toc-l3"><a href="#worked-example-a-walk-cycle" data-target="worked-example-a-walk-cycle">Worked Example: A Walk Cycle</a></li><li class="toc-l3"><a href="#previewing-reviewing-animation" data-target="previewing-reviewing-animation">Previewing &amp; Reviewing Animation</a></li><li class="toc-l3"><a href="#animation-workflow-putting-it-together" data-target="animation-workflow-putting-it-together">Animation Workflow — Putting It Together</a></li><li class="toc-l2"><a href="#14-geometry-nodes" data-target="14-geometry-nodes">14. Geometry Nodes</a></li><li class="toc-l3"><a href="#the-concept_2" data-target="the-concept_2">The Concept</a></li><li class="toc-l3"><a href="#how-it-works" data-target="how-it-works">How It Works</a></li><li class="toc-l3"><a href="#why-it-matters" data-target="why-it-matters">Why It Matters</a></li><li class="toc-l2"><a href="#15-particles-physics" data-target="15-particles-physics">15. Particles &amp; Physics</a></li><li class="toc-l3"><a href="#particle-systems" data-target="particle-systems">Particle Systems</a></li><li class="toc-l3"><a href="#physics-simulations" data-target="physics-simulations">Physics Simulations</a></li><li class="toc-l3"><a href="#the-blender-simulation-mindset" data-target="the-blender-simulation-mindset">The Blender Simulation Mindset</a></li><li class="toc-l2"><a href="#16-compositing-post-processing" data-target="16-compositing-post-processing">16. Compositing &amp; Post-Processing</a></li><li class="toc-l3"><a href="#the-compositor" data-target="the-compositor">The Compositor</a></li><li class="toc-l3"><a href="#render-passes" data-target="render-passes">Render Passes</a></li><li class="toc-l2"><a href="#17-video-editing" data-target="17-video-editing">17. Video Editing</a></li><li class="toc-l3"><a href="#the-video-sequencer" data-target="the-video-sequencer">The Video Sequencer</a></li><li class="toc-l2"><a href="#18-add-ons-scripting" data-target="18-add-ons-scripting">18. Add-ons &amp; Scripting</a></li><li class="toc-l3"><a href="#add-ons" data-target="add-ons">Add-ons</a></li><li class="toc-l3"><a href="#python-scripting" data-target="python-scripting">Python Scripting</a></li><li class="toc-l2"><a href="#19-file-management-production-workflows" data-target="19-file-management-production-workflows">19. File Management &amp; Production Workflows</a></li><li class="toc-l3"><a href="#the-blend-file" data-target="the-blend-file">The .blend File</a></li><li class="toc-l3"><a href="#linking-appending" data-target="linking-appending">Linking &amp; Appending</a></li><li class="toc-l3"><a href="#library-overrides" data-target="library-overrides">Library Overrides</a></li><li class="toc-l3"><a href="#asset-library" data-target="asset-library">Asset Library</a></li><li class="toc-l3"><a href="#export-formats" data-target="export-formats">Export Formats</a></li><li class="toc-l2"><a href="#20-mastery-checklist" data-target="20-mastery-checklist">20. Mastery Checklist</a></li><li class="toc-l3"><a href="#fundamentals" data-target="fundamentals">Fundamentals</a></li><li class="toc-l3"><a href="#modeling" data-target="modeling">Modeling</a></li><li class="toc-l3"><a href="#materials-texturing" data-target="materials-texturing">Materials &amp; Texturing</a></li><li class="toc-l3"><a href="#lighting-rendering" data-target="lighting-rendering">Lighting &amp; Rendering</a></li><li class="toc-l3"><a href="#rigging" data-target="rigging">Rigging</a></li><li class="toc-l3"><a href="#animation" data-target="animation">Animation</a></li><li class="toc-l3"><a href="#advanced" data-target="advanced">Advanced</a></li></ul></nav></aside>
+  <main><h1 id="blender-a-conceptual-guide">Blender — A Conceptual Guide</h1>
+<p>A high-level, concept-first guide to Blender — the free, open-source 3D creation suite. This guide does not attempt to document every button; Blender is too vast for that. Instead it builds the mental framework: what each major system does, why it exists, how the pieces connect, and the vocabulary you need to learn the rest on your own. Rigging and animation get dedicated depth.</p>
+<p>Primary references: <a href="https://docs.blender.org/manual/en/latest/">Blender Manual</a>, <a href="https://docs.blender.org/api/current/">Blender Reference</a>, <a href="https://studio.blender.org/">Blender Studio</a></p>
+<blockquote>
+<p>This guide targets Blender 4.x (LTS). The interface and concepts have been stable since the 2.8 redesign; version-specific notes are called out where relevant.</p>
+</blockquote>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#1-the-mental-model">The Mental Model</a></li>
+<li><a href="#2-the-interface--navigation">The Interface &amp; Navigation</a></li>
+<li><a href="#3-objects-scenes--collections">Objects, Scenes &amp; Collections</a></li>
+<li><a href="#4-modes--the-central-concept">Modes — The Central Concept</a></li>
+<li><a href="#5-modeling">Modeling</a></li>
+<li><a href="#6-modifiers--non-destructive-workflows">Modifiers &amp; Non-Destructive Workflows</a></li>
+<li><a href="#7-materials--shading">Materials &amp; Shading</a></li>
+<li><a href="#8-uv-mapping--texturing">UV Mapping &amp; Texturing</a></li>
+<li><a href="#9-lighting">Lighting</a></li>
+<li><a href="#10-cameras--rendering">Cameras &amp; Rendering</a></li>
+<li><a href="#11-sculpting">Sculpting</a></li>
+<li><a href="#12-rigging">Rigging</a></li>
+<li><a href="#13-animation">Animation</a></li>
+<li><a href="#14-geometry-nodes">Geometry Nodes</a></li>
+<li><a href="#15-particles--physics">Particles &amp; Physics</a></li>
+<li><a href="#16-compositing--post-processing">Compositing &amp; Post-Processing</a></li>
+<li><a href="#17-video-editing">Video Editing</a></li>
+<li><a href="#18-add-ons--scripting">Add-ons &amp; Scripting</a></li>
+<li><a href="#19-file-management--production-workflows">File Management &amp; Production Workflows</a></li>
+<li><a href="#20-mastery-checklist">Mastery Checklist</a></li>
+</ol>
+<hr>
+<h2 id="1-the-mental-model">1. The Mental Model</h2>
+<h3 id="what-blender-is">What Blender Is</h3>
+<p>Blender is a <strong>complete 3D creation pipeline in a single application</strong>. Modeling, sculpting, rigging, animation, simulation, rendering, compositing, motion tracking, and video editing — all under one roof. Most commercial studios spread these across Maya, ZBrush, Houdini, Nuke, After Effects, and Premiere. Blender does all of it, free and open-source, and since version 2.8 (2019) the interface is genuinely competitive.</p>
+<p>The consequence: Blender is enormous. No one uses every feature. A character artist lives in sculpting and retopology. A motion-graphics designer lives in Geometry Nodes and the shader editor. An animator lives in the timeline and the graph editor. The guide is structured so you can read the concepts that matter to your path and skip the rest.</p>
+<h3 id="the-pipeline-mindset">The Pipeline Mindset</h3>
+<p>Every 3D project follows roughly the same pipeline, and Blender has a system for each stage:</p>
+<pre><code class="language-text">Concept → Model → UV Unwrap → Texture/Material → Rig → Animate → Light → Render → Composite → Output
+</code></pre>
+<p>Not every project uses every stage. A product render skips rigging and animation. A motion-graphics piece might skip modeling entirely (Geometry Nodes can generate everything procedurally). But understanding the pipeline tells you <em>why</em> each system exists and <em>when</em> you reach for it.</p>
+<h3 id="the-data-model">The Data Model</h3>
+<p>Blender's internal data model has a shape that explains most of its behavior:</p>
+<ul>
+<li>A <strong><code>.blend</code> file</strong> is a self-contained database. It holds everything: meshes, materials, textures, animations, render settings, even the UI layout.</li>
+<li>Data is organized into <strong>data-blocks</strong>. A mesh is a data-block. A material is a data-block. An armature is a data-block. Every data-block has a name and a user count.</li>
+<li><strong>Objects</strong> are containers that reference data-blocks. An object in the scene says "I am at position X, rotated by Y, and I display <em>this mesh</em> with <em>this material</em>." Multiple objects can share the same mesh data-block — this is <strong>instancing</strong>, and it's how you put a thousand identical trees in a scene without a thousand copies of the geometry.</li>
+<li>Data-blocks with <strong>zero users</strong> (nothing references them) are orphaned and cleaned up on save — unless you give them a <strong>fake user</strong> (the shield icon) to keep them around.</li>
+</ul>
+<p>This user-count system is why things sometimes "disappear" when you think you saved them. If a material has zero users (it's not assigned to any object), Blender discards it on reload. The shield icon prevents that.</p>
+<h3 id="coordinate-system">Coordinate System</h3>
+<p>Blender uses a <strong>right-handed coordinate system</strong> with <strong>Z-up</strong>:</p>
+<ul>
+<li><strong>X</strong> = left/right (red)</li>
+<li><strong>Y</strong> = forward/back (green)  </li>
+<li><strong>Z</strong> = up/down (blue)</li>
+</ul>
+<p>This differs from some engines (Unity uses Y-up). It matters when exporting. The FBX exporter handles the conversion automatically, but knowing the convention prevents confusion.</p>
+<hr>
+<h2 id="2-the-interface-navigation">2. The Interface &amp; Navigation</h2>
+<h3 id="the-editor-paradigm">The Editor Paradigm</h3>
+<p>Blender's interface is built on a single idea: <strong>the entire window is divided into editors, and any editor area can display any editor type.</strong> The 3D viewport, the timeline, the properties panel, the outliner — these are all <em>editor types</em>. You can split any area, join areas, and change any area to any editor type. This makes the interface infinitely customizable but initially overwhelming.</p>
+<p>The key editors:</p>
+<table>
+<thead>
+<tr>
+<th>Editor</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>3D Viewport</strong></td>
+<td>The main workspace — see and manipulate objects in 3D space</td>
+</tr>
+<tr>
+<td><strong>Outliner</strong></td>
+<td>Hierarchical view of everything in the scene (the "file tree")</td>
+</tr>
+<tr>
+<td><strong>Properties</strong></td>
+<td>Context-sensitive panels for the active object, scene, render, etc.</td>
+</tr>
+<tr>
+<td><strong>Timeline</strong></td>
+<td>Scrub through animation time; play/pause</td>
+</tr>
+<tr>
+<td><strong>Graph Editor</strong></td>
+<td>Edit animation curves (the "value over time" editor)</td>
+</tr>
+<tr>
+<td><strong>Dope Sheet</strong></td>
+<td>Overview of all keyframes across all objects</td>
+</tr>
+<tr>
+<td><strong>Shader Editor</strong></td>
+<td>Node-based material/shader editing</td>
+</tr>
+<tr>
+<td><strong>Geometry Node Editor</strong></td>
+<td>Node-based procedural geometry</td>
+</tr>
+<tr>
+<td><strong>Compositor</strong></td>
+<td>Node-based post-processing of rendered images</td>
+</tr>
+<tr>
+<td><strong>UV Editor</strong></td>
+<td>Unwrap and edit UV maps</td>
+</tr>
+<tr>
+<td><strong>Image Editor</strong></td>
+<td>View and paint textures</td>
+</tr>
+<tr>
+<td><strong>Text Editor</strong></td>
+<td>Write Python scripts</td>
+</tr>
+<tr>
+<td><strong>Preferences</strong></td>
+<td>Global settings, add-ons, keymaps</td>
+</tr>
+</tbody>
+</table>
+<h3 id="workspaces">Workspaces</h3>
+<p>Workspaces are <strong>saved editor layouts</strong>. The default file ships with: Layout, Modeling, Sculpting, UV Editing, Texture Paint, Shading, Animation, Rendering, Compositing, and Geometry Nodes. Each is just a preset arrangement of editors — you can customize them or create your own.</p>
+<p>Think of workspaces as task-specific desks. You don't model in the Animation workspace or animate in the Sculpting workspace. The tabs along the top switch contexts.</p>
+<h3 id="3d-viewport-navigation">3D Viewport Navigation</h3>
+<p>The viewport is where you spend most of your time. Navigation:</p>
+<ul>
+<li><strong>Middle mouse button (MMB)</strong> — orbit</li>
+<li><strong>Shift + MMB</strong> — pan</li>
+<li><strong>Scroll wheel</strong> — zoom</li>
+<li><strong>Numpad 1/3/7</strong> — front/right/top orthographic views</li>
+<li><strong>Numpad 5</strong> — toggle perspective/orthographic</li>
+<li><strong>Numpad 0</strong> — camera view</li>
+<li><strong>Numpad .</strong> — focus on selected object</li>
+</ul>
+<p>If you have no numpad (laptop), enable "Emulate Numpad" in Preferences → Input.</p>
+<h3 id="the-operator-system">The Operator System</h3>
+<p>Almost everything you do in Blender is an <strong>operator</strong> — a named, repeatable action. When you press <code>G</code> to grab (move) an object, you're invoking the <code>bpy.ops.transform.translate</code> operator. This matters because:</p>
+<ol>
+<li><strong>Every operator appears in the F3 search menu.</strong> If you forget a hotkey, press F3 and type what you want.</li>
+<li><strong>The last operator's settings appear in the bottom-left panel</strong> after you execute it. You can tweak parameters after the fact.</li>
+<li><strong>Operators are scriptable</strong> — the Python API mirrors the operator system exactly.</li>
+</ol>
+<h3 id="essential-hotkeys">Essential Hotkeys</h3>
+<p>Blender is hotkey-driven. You <em>can</em> use menus for everything, but it's painfully slow. The essential set:</p>
+<table>
+<thead>
+<tr>
+<th>Key</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>G</code></td>
+<td>Grab (move)</td>
+</tr>
+<tr>
+<td><code>R</code></td>
+<td>Rotate</td>
+</tr>
+<tr>
+<td><code>S</code></td>
+<td>Scale</td>
+</tr>
+<tr>
+<td><code>G/R/S</code> then <code>X/Y/Z</code></td>
+<td>Constrain to axis</td>
+</tr>
+<tr>
+<td><code>G</code> then type <code>3</code></td>
+<td>Move exactly 3 units</td>
+</tr>
+<tr>
+<td><code>Tab</code></td>
+<td>Toggle Object/Edit mode</td>
+</tr>
+<tr>
+<td><code>A</code></td>
+<td>Select all</td>
+</tr>
+<tr>
+<td><code>Alt+A</code></td>
+<td>Deselect all</td>
+</tr>
+<tr>
+<td><code>X</code> or <code>Delete</code></td>
+<td>Delete</td>
+</tr>
+<tr>
+<td><code>Shift+A</code></td>
+<td>Add menu (new objects)</td>
+</tr>
+<tr>
+<td><code>Ctrl+Z</code> / <code>Ctrl+Shift+Z</code></td>
+<td>Undo / redo</td>
+</tr>
+<tr>
+<td><code>F3</code></td>
+<td>Search all operators</td>
+</tr>
+<tr>
+<td><code>N</code></td>
+<td>Toggle side panel (transform, item info)</td>
+</tr>
+<tr>
+<td><code>T</code></td>
+<td>Toggle toolbar</td>
+</tr>
+<tr>
+<td><code>H</code> / <code>Alt+H</code></td>
+<td>Hide / unhide selected</td>
+</tr>
+<tr>
+<td><code>Ctrl+P</code></td>
+<td>Parent objects</td>
+</tr>
+<tr>
+<td><code>Shift+D</code></td>
+<td>Duplicate</td>
+</tr>
+<tr>
+<td><code>Alt+D</code></td>
+<td>Linked duplicate (shared data-block)</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="3-objects-scenes-collections">3. Objects, Scenes &amp; Collections</h2>
+<h3 id="object-types">Object Types</h3>
+<p>An object is a thing in 3D space with a position, rotation, and scale (its <strong>transform</strong>). Object types include:</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Mesh</strong></td>
+<td>Vertices, edges, and faces — the most common geometry type</td>
+</tr>
+<tr>
+<td><strong>Curve</strong></td>
+<td>Bézier or NURBS curves; can be rendered or used as paths</td>
+</tr>
+<tr>
+<td><strong>Surface</strong></td>
+<td>NURBS surfaces (rarely used directly)</td>
+</tr>
+<tr>
+<td><strong>Text</strong></td>
+<td>3D text objects (converted to mesh for detailed work)</td>
+</tr>
+<tr>
+<td><strong>Empty</strong></td>
+<td>An invisible transform — used as a parent, target, or reference point</td>
+</tr>
+<tr>
+<td><strong>Armature</strong></td>
+<td>A skeleton for rigging (bones)</td>
+</tr>
+<tr>
+<td><strong>Camera</strong></td>
+<td>The viewpoint for rendering</td>
+</tr>
+<tr>
+<td><strong>Light</strong></td>
+<td>Illumination source (point, sun, spot, area)</td>
+</tr>
+<tr>
+<td><strong>Lattice</strong></td>
+<td>A deformation cage for bending/warping other objects</td>
+</tr>
+<tr>
+<td><strong>Force Field</strong></td>
+<td>Invisible physics forces (wind, vortex, turbulence)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="collections">Collections</h3>
+<p>Collections are Blender's organizational system — think of them as folders. Objects live in collections. Collections can be nested. Each collection can be toggled visible/hidden, selectable/unselectable, or excluded from the view layer entirely.</p>
+<p>Common pattern: organize by type (<code>Lights</code>, <code>Characters</code>, <code>Environment</code>) or by purpose (<code>Hero_Assets</code>, <code>Background</code>, <code>Ref_Images</code>). In large scenes, good collection hygiene is the difference between a manageable project and chaos.</p>
+<h3 id="scenes-view-layers">Scenes &amp; View Layers</h3>
+<p>A <code>.blend</code> file can contain multiple <strong>scenes</strong>. Each scene has its own set of objects, world settings, and render settings. Use cases: a multi-shot animation, or separate scenes for modeling reference and final render.</p>
+<p>A <strong>view layer</strong> is a filtered view of a scene — you can include/exclude specific collections per view layer. Primarily used for compositing: render the character on one layer, the background on another, combine in the compositor.</p>
+<h3 id="the-parent-child-hierarchy">The Parent-Child Hierarchy</h3>
+<p>Objects can be parented to other objects (<code>Ctrl+P</code>). The child inherits the parent's transform — move the parent, the child follows. The child can still have its own local transform on top.</p>
+<p>Common uses:
+- Parent a sword to a character's hand bone
+- Parent all parts of a vehicle to an empty at its center
+- Parent lights to a rig so they move with the camera</p>
+<p>The Outliner shows the hierarchy as nested items.</p>
+<hr>
+<h2 id="4-modes-the-central-concept">4. Modes — The Central Concept</h2>
+<h3 id="why-modes-exist">Why Modes Exist</h3>
+<p>Blender's mode system is the single most important concept to internalize. <strong>Modes change what you can do to the selected object.</strong> In Object Mode, you move, rotate, and scale the whole object. In Edit Mode, you manipulate the individual vertices, edges, and faces that make up the object's geometry.</p>
+<p>Modes exist because the same selection, the same hotkeys, and the same viewport need to mean different things depending on what level you're working at. <code>G</code> in Object Mode moves the entire object. <code>G</code> in Edit Mode moves the selected vertex.</p>
+<h3 id="the-modes">The Modes</h3>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Available on</th>
+<th>What you do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Object Mode</strong></td>
+<td>Everything</td>
+<td>Select, transform, parent, duplicate whole objects</td>
+</tr>
+<tr>
+<td><strong>Edit Mode</strong></td>
+<td>Meshes, curves, surfaces, text, armatures, lattices</td>
+<td>Modify the internal geometry — vertices, edges, faces, control points, bones</td>
+</tr>
+<tr>
+<td><strong>Sculpt Mode</strong></td>
+<td>Meshes</td>
+<td>Freeform sculpting with brushes — push, pull, smooth, carve</td>
+</tr>
+<tr>
+<td><strong>Vertex Paint</strong></td>
+<td>Meshes</td>
+<td>Paint color data onto vertices</td>
+</tr>
+<tr>
+<td><strong>Weight Paint</strong></td>
+<td>Meshes</td>
+<td>Paint bone influence weights (for rigging)</td>
+</tr>
+<tr>
+<td><strong>Texture Paint</strong></td>
+<td>Meshes</td>
+<td>Paint directly onto the surface/UV texture</td>
+</tr>
+<tr>
+<td><strong>Pose Mode</strong></td>
+<td>Armatures</td>
+<td>Pose and keyframe bones for animation</td>
+</tr>
+</tbody>
+</table>
+<p>The mode is <strong>per-object</strong>. You enter Edit Mode <em>on</em> a specific mesh. Tab toggles between Object Mode and the last-used edit mode for the selected object.</p>
+<h3 id="the-trap">The Trap</h3>
+<p>New users frequently get confused because they're in the wrong mode. You're trying to select a vertex but nothing happens — you're in Object Mode. You're trying to move the whole object but only one vertex moves — you're in Edit Mode. <strong>Always check your mode</strong> (displayed in the top-left of the viewport header).</p>
+<hr>
+<h2 id="5-modeling">5. Modeling</h2>
+<h3 id="the-mesh-primitive">The Mesh Primitive</h3>
+<p>3D modeling in Blender starts with mesh primitives — simple shapes you add to the scene and then reshape:</p>
+<ul>
+<li><strong>Plane</strong> — a single flat quad (4 vertices)</li>
+<li><strong>Cube</strong> — the most common starting point</li>
+<li><strong>Sphere</strong> (UV sphere or Ico sphere) — the UV sphere has latitude/longitude topology; the Ico sphere has more even triangle distribution</li>
+<li><strong>Cylinder, Cone, Torus</strong> — other common starting shapes</li>
+</ul>
+<p>All modeling is some variation of: start with a primitive, enter Edit Mode, and reshape it.</p>
+<h3 id="vertices-edges-faces">Vertices, Edges, Faces</h3>
+<p>A mesh is made of three geometric elements:</p>
+<ul>
+<li><strong>Vertex</strong> — a point in 3D space</li>
+<li><strong>Edge</strong> — a line connecting two vertices</li>
+<li><strong>Face</strong> — a flat surface enclosed by edges (typically 3 or 4 edges — tris or quads)</li>
+</ul>
+<p>In Edit Mode, you can select and manipulate any of these. The <code>1/2/3</code> keys at the top of the keyboard (not numpad) switch between vertex, edge, and face select modes.</p>
+<h3 id="topology">Topology</h3>
+<p><strong>Topology</strong> is the structure of your mesh — how vertices, edges, and faces are connected. It's not about the shape; it's about the <em>flow</em> of the geometry.</p>
+<p>Why topology matters:
+- <strong>Subdivision</strong> — if your mesh is all quads (four-sided faces) with good edge flow, it subdivides smoothly. Triangles and n-gons (5+ sided faces) create pinching artifacts.
+- <strong>Deformation</strong> — a character mesh needs edge loops that follow the muscles and joints. Bad topology → ugly deformation when the character moves.
+- <strong>Performance</strong> — game engines care about polygon count. Fewer polygons with good topology looks better than more polygons with bad topology.</p>
+<p>The universal rule: <strong>use quads wherever possible, especially on anything that will be subdivided or deformed.</strong> Triangles are acceptable on flat, non-deforming surfaces. N-gons are acceptable only on perfectly flat surfaces that won't be subdivided.</p>
+<h3 id="key-modeling-operations">Key Modeling Operations</h3>
+<table>
+<thead>
+<tr>
+<th>Operation</th>
+<th>Hotkey</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Extrude</strong></td>
+<td><code>E</code></td>
+<td>Duplicates selected geometry and moves it outward — the primary way to "grow" a mesh</td>
+</tr>
+<tr>
+<td><strong>Inset</strong></td>
+<td><code>I</code></td>
+<td>Creates a smaller face inside the selected face — for adding detail</td>
+</tr>
+<tr>
+<td><strong>Bevel</strong></td>
+<td><code>Ctrl+B</code></td>
+<td>Rounds or chamfers edges — essential for realistic hard-surface models</td>
+</tr>
+<tr>
+<td><strong>Loop Cut</strong></td>
+<td><code>Ctrl+R</code></td>
+<td>Adds a ring of edges around the mesh — for adding topology</td>
+</tr>
+<tr>
+<td><strong>Merge</strong></td>
+<td><code>M</code></td>
+<td>Combines vertices into one — for closing gaps</td>
+</tr>
+<tr>
+<td><strong>Fill</strong></td>
+<td><code>F</code></td>
+<td>Creates a face from selected edges or vertices</td>
+</tr>
+<tr>
+<td><strong>Knife</strong></td>
+<td><code>K</code></td>
+<td>Free-hand cutting tool — adds edges wherever you draw</td>
+</tr>
+<tr>
+<td><strong>Bridge Edge Loops</strong></td>
+<td>Menu</td>
+<td>Connects two edge loops with faces — for joining parts</td>
+</tr>
+<tr>
+<td><strong>Subdivide</strong></td>
+<td>Right-click menu</td>
+<td>Splits each face into smaller faces</td>
+</tr>
+</tbody>
+</table>
+<h3 id="box-modeling-vs-poly-by-poly">Box Modeling vs. Poly-by-Poly</h3>
+<p>Two fundamental approaches:</p>
+<ul>
+<li><strong>Box modeling</strong>: Start with a cube (or other primitive), add loop cuts, extrude, and reshape until you have the final form. Good for hard-surface objects (machines, architecture, props).</li>
+<li><strong>Poly-by-poly</strong>: Build the mesh one face at a time by extruding edges. Good for organic shapes where you need precise topology from the start (faces, hands).</li>
+</ul>
+<p>Most workflows combine both: block out the shape with box modeling, then refine topology as needed.</p>
+<h3 id="normals">Normals</h3>
+<p>Every face has a <strong>normal</strong> — a vector pointing perpendicular to the surface, indicating which direction is "outside." Normals determine:</p>
+<ul>
+<li>Which side of a face is visible (back-face culling)</li>
+<li>How light bounces off the surface (shading)</li>
+<li>Which direction modifiers push geometry</li>
+</ul>
+<p>If a face looks dark or inside-out, its normal is probably flipped. Fix with: Mesh menu → Normals → Recalculate Outside (<code>Shift+N</code>).</p>
+<p><strong>Smooth vs. Flat shading</strong>: Flat shading shows each face as a distinct facet. Smooth shading interpolates normals across faces so the surface looks curved. In practice, you use smooth shading everywhere and control the hard edges with <strong>Auto Smooth</strong> (angle-based) or <strong>sharp edges</strong> (manually marked).</p>
+<hr>
+<h2 id="6-modifiers-non-destructive-workflows">6. Modifiers &amp; Non-Destructive Workflows</h2>
+<h3 id="what-modifiers-are">What Modifiers Are</h3>
+<p>Modifiers are <strong>non-destructive operations</strong> applied to an object's data. They sit in a stack (Properties → Modifier tab, the wrench icon) and are evaluated top-to-bottom. The key word is non-destructive — the original mesh is unchanged. You can adjust parameters, reorder, disable, or remove modifiers at any time.</p>
+<p>This is one of Blender's most powerful concepts. Instead of permanently subdividing a mesh, you add a Subdivision Surface modifier and can change the level at any time. Instead of permanently cutting a mesh in half and mirroring it, you add a Mirror modifier and model only one side.</p>
+<h3 id="the-modifier-stack">The Modifier Stack</h3>
+<p>Modifiers are evaluated sequentially. Order matters:</p>
+<pre><code class="language-text">Original Mesh
+    ↓
+Mirror (mirror across X axis)
+    ↓
+Subdivision Surface (smooth the geometry)
+    ↓
+Solidify (give the surface thickness)
+    ↓
+Final Displayed Result
+</code></pre>
+<p>Swapping the order of Subdivision and Solidify produces a completely different result. Drag modifiers in the stack to reorder.</p>
+<h3 id="essential-modifiers">Essential Modifiers</h3>
+<p><strong>Generate modifiers</strong> create or modify geometry:</p>
+<table>
+<thead>
+<tr>
+<th>Modifier</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Subdivision Surface</strong></td>
+<td>Smooths mesh by subdividing — <em>the</em> most-used modifier. Controls "Levels Viewport" (preview quality) and "Render" (final quality) separately</td>
+</tr>
+<tr>
+<td><strong>Mirror</strong></td>
+<td>Mirrors geometry across one or more axes — model half, get the whole thing. Essential for symmetrical objects</td>
+</tr>
+<tr>
+<td><strong>Array</strong></td>
+<td>Duplicates the object in a line, grid, or along a curve — for fences, chains, stairs</td>
+</tr>
+<tr>
+<td><strong>Boolean</strong></td>
+<td>Combines two meshes: union, intersection, or difference (cut one from another) — for hard-surface modeling</td>
+</tr>
+<tr>
+<td><strong>Solidify</strong></td>
+<td>Gives a surface thickness — turns a flat plane into a wall</td>
+</tr>
+<tr>
+<td><strong>Bevel</strong></td>
+<td>Adds bevels to edges procedurally — for non-destructive edge rounding</td>
+</tr>
+<tr>
+<td><strong>Screw</strong></td>
+<td>Revolves a profile curve around an axis — for goblets, vases, bolts</td>
+</tr>
+<tr>
+<td><strong>Remesh</strong></td>
+<td>Regenerates the mesh topology — useful after Boolean operations or sculpting</td>
+</tr>
+<tr>
+<td><strong>Skin</strong></td>
+<td>Generates a mesh around a skeleton of vertices/edges — for quick organic shapes</td>
+</tr>
+<tr>
+<td><strong>Decimate</strong></td>
+<td>Reduces polygon count — for game-ready optimization</td>
+</tr>
+<tr>
+<td><strong>Wireframe</strong></td>
+<td>Converts edges to tubes — for wireframe renders or cage structures</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Deform modifiers</strong> change the shape without changing topology:</p>
+<table>
+<thead>
+<tr>
+<th>Modifier</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Armature</strong></td>
+<td>Deforms the mesh based on bone positions — <em>the</em> rigging modifier</td>
+</tr>
+<tr>
+<td><strong>Lattice</strong></td>
+<td>Deforms using a lattice cage — good for broad-stroke reshaping</td>
+</tr>
+<tr>
+<td><strong>Curve</strong></td>
+<td>Deforms along a curve — for roads, pipes, tentacles</td>
+</tr>
+<tr>
+<td><strong>Shrinkwrap</strong></td>
+<td>Projects/snaps one mesh onto another's surface</td>
+</tr>
+<tr>
+<td><strong>Simple Deform</strong></td>
+<td>Twist, bend, taper, or stretch</td>
+</tr>
+<tr>
+<td><strong>Cast</strong></td>
+<td>Reshapes toward a sphere, cylinder, or cuboid</td>
+</tr>
+<tr>
+<td><strong>Wave</strong></td>
+<td>Animatable wave deformation</td>
+</tr>
+<tr>
+<td><strong>Displace</strong></td>
+<td>Deforms based on a texture — for terrain, surface detail</td>
+</tr>
+</tbody>
+</table>
+<h3 id="apply-vs-keep">Apply vs. Keep</h3>
+<p>When you <strong>apply</strong> a modifier (<code>Ctrl+A</code> on the modifier), the operation becomes permanent — the mesh is modified and the modifier is removed. Apply when:</p>
+<ul>
+<li>You need to edit the result directly</li>
+<li>You're exporting to a format that doesn't support modifiers (game engine)</li>
+<li>You're done iterating on that parameter</li>
+</ul>
+<p>Keep modifiers unapplied as long as possible to maintain flexibility.</p>
+<hr>
+<h2 id="7-materials-shading">7. Materials &amp; Shading</h2>
+<h3 id="what-a-material-is">What a Material Is</h3>
+<p>A material defines how a surface looks — its color, roughness, transparency, emission, and how it reacts to light. In Blender, materials are built using a <strong>node-based shader system</strong> in the Shader Editor.</p>
+<p>Every material is a tree of nodes that feeds into a <strong>shader output</strong>. The most common starting point is the <strong>Principled BSDF</strong> node — a physically-based shader that handles most real-world surfaces with a single node.</p>
+<h3 id="pbr-physically-based-rendering">PBR — Physically Based Rendering</h3>
+<p>Blender's shader system follows <strong>PBR (Physically Based Rendering)</strong> principles: materials are defined by measurable physical properties rather than artistic hacks. The Principled BSDF exposes:</p>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Controls</th>
+<th>Range</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Base Color</strong></td>
+<td>The surface color (albedo)</td>
+<td>Color or texture</td>
+</tr>
+<tr>
+<td><strong>Metallic</strong></td>
+<td>Is it metal or non-metal?</td>
+<td>0 (dielectric) to 1 (metal). Almost always exactly 0 or exactly 1 — real materials are one or the other</td>
+</tr>
+<tr>
+<td><strong>Roughness</strong></td>
+<td>How blurry are reflections?</td>
+<td>0 (mirror) to 1 (matte). Most real materials are 0.3–0.8</td>
+</tr>
+<tr>
+<td><strong>Specular IOR Level</strong></td>
+<td>Strength of reflections at glancing angles</td>
+<td>Default 0.5 works for most surfaces</td>
+</tr>
+<tr>
+<td><strong>Transmission</strong></td>
+<td>Transparency (glass, water)</td>
+<td>0 (opaque) to 1 (fully transmissive)</td>
+</tr>
+<tr>
+<td><strong>IOR</strong></td>
+<td>Index of refraction</td>
+<td>1.0 (air) to ~2.4 (diamond). Glass = 1.45, water = 1.33</td>
+</tr>
+<tr>
+<td><strong>Emission Color / Strength</strong></td>
+<td>Self-illumination</td>
+<td>For glowing surfaces, screens, fire</td>
+</tr>
+<tr>
+<td><strong>Alpha</strong></td>
+<td>Opacity</td>
+<td>0 (invisible) to 1 (fully visible). Needs blend mode set in material settings</td>
+</tr>
+<tr>
+<td><strong>Normal</strong></td>
+<td>Surface detail via normal maps</td>
+<td>Connect a Normal Map node</td>
+</tr>
+<tr>
+<td><strong>Coat</strong></td>
+<td>Clear-coat layer (car paint, lacquer)</td>
+<td>Weight 0–1</td>
+</tr>
+<tr>
+<td><strong>Sheen</strong></td>
+<td>Soft "fuzz" layer (velvet, fabric)</td>
+<td>Weight 0–1</td>
+</tr>
+<tr>
+<td><strong>Subsurface</strong></td>
+<td>Light scattering inside the surface (skin, wax, marble)</td>
+<td>Weight 0–1 with a scatter radius</td>
+</tr>
+</tbody>
+</table>
+<h3 id="texture-maps">Texture Maps</h3>
+<p>Real-world materials are rarely a single color. Textures (images) are plugged into shader inputs to add detail:</p>
+<table>
+<thead>
+<tr>
+<th>Map Type</th>
+<th>Plugs into</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Diffuse / Albedo</strong></td>
+<td>Base Color</td>
+<td>Surface color variation</td>
+</tr>
+<tr>
+<td><strong>Roughness</strong></td>
+<td>Roughness</td>
+<td>Per-pixel roughness variation</td>
+</tr>
+<tr>
+<td><strong>Metallic</strong></td>
+<td>Metallic</td>
+<td>Defines which areas are metal</td>
+</tr>
+<tr>
+<td><strong>Normal</strong></td>
+<td>Normal (via Normal Map node)</td>
+<td>Fakes surface bumps without extra geometry</td>
+</tr>
+<tr>
+<td><strong>Displacement</strong></td>
+<td>Material Output → Displacement</td>
+<td>Actually moves geometry (requires subdivision)</td>
+</tr>
+<tr>
+<td><strong>Ambient Occlusion</strong></td>
+<td>Multiply with Base Color</td>
+<td>Contact shadows (less needed with real-time AO)</td>
+</tr>
+<tr>
+<td><strong>Emission</strong></td>
+<td>Emission Color</td>
+<td>Glowing areas</td>
+</tr>
+<tr>
+<td><strong>Opacity / Alpha</strong></td>
+<td>Alpha</td>
+<td>Transparent areas (leaves, fences)</td>
+</tr>
+</tbody>
+</table>
+<p>Texture workflow: connect an <strong>Image Texture</strong> node to the input, with a <strong>Texture Coordinate</strong> and <strong>Mapping</strong> node controlling placement. The UV coordinate is the most common method — it uses the mesh's UV map (see next section).</p>
+<h3 id="procedural-textures">Procedural Textures</h3>
+<p>Blender includes built-in procedural textures — math-generated patterns that don't require image files:</p>
+<ul>
+<li><strong>Noise</strong> — organic randomness (clouds, terrain)</li>
+<li><strong>Voronoi</strong> — cell patterns (scales, cracked earth, stone tiles)</li>
+<li><strong>Wave</strong> — stripes or rings (wood grain, water ripples)</li>
+<li><strong>Musgrave</strong> — fractal noise (detailed terrain)</li>
+<li><strong>Gradient</strong> — linear, spherical, quadratic falloff</li>
+<li><strong>Checker</strong> — checkerboard pattern</li>
+<li><strong>Brick</strong> — configurable brick pattern</li>
+</ul>
+<p>Procedural textures are resolution-independent (they never pixelate) and infinitely tileable. They can be mixed, layered, and distorted through node chains to create complex materials without any image files.</p>
+<hr>
+<h2 id="8-uv-mapping-texturing">8. UV Mapping &amp; Texturing</h2>
+<h3 id="the-problem-uv-mapping-solves">The Problem UV Mapping Solves</h3>
+<p>A 3D surface is, well, 3D. A texture is a flat 2D image. <strong>UV mapping</strong> is the process of defining how the 2D image wraps onto the 3D surface — it's the relationship between every point on the mesh and a point on the texture.</p>
+<p>The name comes from the coordinate system: the texture uses <strong>U</strong> and <strong>V</strong> axes (because X, Y, Z are already taken by 3D space).</p>
+<h3 id="the-concept">The Concept</h3>
+<p>Imagine cutting open a cardboard box and laying it flat. The flattened box is the UV layout. Each face of the 3D mesh maps to a region of the flat texture. The UV Editor shows this flattened view.</p>
+<p>If you skip UV mapping and just apply a texture, Blender uses a default projection (often generated coordinates) which stretches horribly on complex shapes. Proper UV mapping eliminates stretching.</p>
+<h3 id="unwrapping-methods">Unwrapping Methods</h3>
+<p>Blender provides several unwrapping algorithms (Edit Mode → UV menu):</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Unwrap</strong> (default)</td>
+<td>General-purpose conformal unwrap. Requires seams to be marked</td>
+</tr>
+<tr>
+<td><strong>Smart UV Project</strong></td>
+<td>Automatic — splits the mesh into flat-ish chunks. Good for hard-surface objects where you don't need precise control</td>
+</tr>
+<tr>
+<td><strong>Cube/Cylinder/Sphere Projection</strong></td>
+<td>Projects from a simple shape — works when the mesh roughly matches that shape</td>
+</tr>
+<tr>
+<td><strong>Project from View</strong></td>
+<td>Projects from the current viewport angle — for decals or view-dependent textures</td>
+</tr>
+</tbody>
+</table>
+<h3 id="seams">Seams</h3>
+<p>For the default Unwrap method, you mark <strong>seams</strong> — edges where the mesh is "cut" for flattening. Think of seams on a stuffed animal: they're where the fabric panels meet. Place seams:</p>
+<ul>
+<li>Along edges that won't be visible (back of a head, underside of an object)</li>
+<li>Where the surface changes direction sharply</li>
+<li>Around separate features (eyes, fingers)</li>
+</ul>
+<p>Mark seams in Edit Mode: select edges → Edge menu → Mark Seam.</p>
+<h3 id="texture-painting">Texture Painting</h3>
+<p>Blender can paint directly onto the 3D surface (Texture Paint mode) or onto the UV layout (Image Editor). This is useful for hand-painted textures, stylized art, or touch-ups. For photorealistic work, most artists create textures in external tools (Substance Painter, Quixel Mixer) and import them.</p>
+<hr>
+<h2 id="9-lighting">9. Lighting</h2>
+<h3 id="light-types">Light Types</h3>
+<p>Blender has four light object types:</p>
+<table>
+<thead>
+<tr>
+<th>Light</th>
+<th>Behavior</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Point</strong></td>
+<td>Emits in all directions from a single point</td>
+<td>Light bulbs, candles, small practicals</td>
+</tr>
+<tr>
+<td><strong>Sun</strong></td>
+<td>Parallel rays from infinitely far away, uniform across the scene</td>
+<td>Daylight, moonlight. Position doesn't matter — only rotation</td>
+</tr>
+<tr>
+<td><strong>Spot</strong></td>
+<td>Cone of light from a point</td>
+<td>Stage lights, flashlights, car headlights</td>
+</tr>
+<tr>
+<td><strong>Area</strong></td>
+<td>Emits from a flat rectangle or disc</td>
+<td>Soft studio lighting, windows, monitors. Larger area = softer shadows</td>
+</tr>
+</tbody>
+</table>
+<h3 id="three-point-lighting">Three-Point Lighting</h3>
+<p>The foundational lighting setup in photography, film, and 3D:</p>
+<ol>
+<li><strong>Key light</strong> — the main light source. Determines the dominant shadow direction. Placed to one side and above the subject.</li>
+<li><strong>Fill light</strong> — softer, dimmer light on the opposite side. Fills in shadows so they're not pitch-black. Often an area light or bounced light.</li>
+<li><strong>Rim/Back light</strong> — behind the subject, creating an edge highlight that separates the subject from the background.</li>
+</ol>
+<p>This setup works for almost every situation. Master it before getting fancy.</p>
+<h3 id="hdri-environment-lighting">HDRI Environment Lighting</h3>
+<p>An <strong>HDRI (High Dynamic Range Image)</strong> is a 360° photograph that provides both lighting and a background for the scene. It's the fastest way to get realistic, natural lighting — plug the HDRI into the World shader's Environment Texture node.</p>
+<p>Free HDRI sources: <a href="https://polyhaven.com/">Poly Haven</a>, <a href="https://ambientcg.com/">ambientCG</a>.</p>
+<h3 id="light-behavior-in-render-engines">Light Behavior in Render Engines</h3>
+<ul>
+<li><strong>EEVEE</strong> (real-time): Lights need manual shadow setup. Area lights don't automatically create soft shadows without enabling "Contact Shadows." Light probes help with indirect lighting.</li>
+<li><strong>Cycles</strong> (path tracer): All lighting is physically accurate. Area lights naturally create soft shadows. Indirect light bounces are computed automatically. More realistic, but slower.</li>
+</ul>
+<hr>
+<h2 id="10-cameras-rendering">10. Cameras &amp; Rendering</h2>
+<h3 id="camera-concepts">Camera Concepts</h3>
+<p>The camera defines what gets rendered. Key properties:</p>
+<ul>
+<li><strong>Focal Length</strong> — measured in mm. Wide-angle (18–35mm) exaggerates depth, creates dramatic perspectives. Normal (50mm) approximates human vision. Telephoto (85–200mm) compresses depth, flattens the scene.</li>
+<li><strong>Sensor Size</strong> — affects field of view for a given focal length. Default is 36mm (full-frame equivalent).</li>
+<li><strong>Depth of Field</strong> — blurs objects that aren't at the focus distance. Controlled by <strong>F-Stop</strong> (lower = more blur) and <strong>Focus Distance</strong> (or focus on a specific object).</li>
+<li><strong>Clipping</strong> — near/far clip planes determine the visible range. Objects outside this range are invisible.</li>
+</ul>
+<h3 id="render-engines">Render Engines</h3>
+<p>Blender ships with three render engines:</p>
+<table>
+<thead>
+<tr>
+<th>Engine</th>
+<th>Type</th>
+<th>Speed</th>
+<th>Quality</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>EEVEE</strong></td>
+<td>Rasterization (real-time)</td>
+<td>Fast (seconds)</td>
+<td>Good, approximate</td>
+<td>Previews, stylized work, animation, games-adjacent</td>
+</tr>
+<tr>
+<td><strong>Cycles</strong></td>
+<td>Path tracing (physically accurate)</td>
+<td>Slow (minutes–hours)</td>
+<td>Photorealistic</td>
+<td>Final renders, product viz, film, arch-viz</td>
+</tr>
+<tr>
+<td><strong>Workbench</strong></td>
+<td>OpenGL viewport render</td>
+<td>Instant</td>
+<td>Basic (flat, matcap)</td>
+<td>Clay renders, quick previews, modeling checks</td>
+</tr>
+</tbody>
+</table>
+<p><strong>EEVEE Next</strong> (Blender 4.2+) is a major upgrade: ray-traced shadows, reflections, and global illumination bring it much closer to Cycles quality while maintaining real-time performance.</p>
+<h3 id="render-settings-that-matter">Render Settings That Matter</h3>
+<ul>
+<li><strong>Resolution</strong> — output size in pixels. 1920×1080 for HD, 3840×2160 for 4K.</li>
+<li><strong>Samples</strong> — (Cycles) how many light rays per pixel. More samples = less noise = slower. 128–512 is typical for final renders with denoising.</li>
+<li><strong>Denoiser</strong> — AI-based noise reduction that lets you use fewer samples. OptiX (NVIDIA) or OpenImageDenoise (CPU/Intel). Dramatically reduces render time.</li>
+<li><strong>Color Management</strong> — use <strong>Filmic</strong> or <strong>AgX</strong> (Blender 4.0+) tone mapping for photorealistic results. The default "Standard" looks washed out.</li>
+<li><strong>Output Format</strong> — PNG for stills, OpenEXR for compositing (32-bit color), FFmpeg for video.</li>
+</ul>
+<h3 id="rendering-animation">Rendering Animation</h3>
+<p>For animation, you render a <strong>sequence of images</strong> (one per frame), not a video file directly. Why: if the render crashes at frame 347 of 500, you've lost nothing — just restart from 347. You assemble the image sequence into video afterward (in the Video Sequencer or an external tool).</p>
+<p>Output format for animation frames: PNG (quick, lossy-free, 8-bit) or OpenEXR (for compositing flexibility).</p>
+<hr>
+<h2 id="11-sculpting">11. Sculpting</h2>
+<h3 id="the-concept_1">The Concept</h3>
+<p>Sculpting treats the mesh like digital clay. Instead of manipulating individual vertices, you push, pull, smooth, and carve with <strong>brushes</strong> — the same metaphor as digital painting, but in 3D. It's the most intuitive way to create organic shapes (characters, creatures, terrain, organic props).</p>
+<p>Sculpting requires <strong>high polygon counts</strong> — thousands to millions of faces. A smooth sphere of 500 polygons can't hold the detail of a human face. A sphere of 2 million polygons can.</p>
+<h3 id="key-brushes">Key Brushes</h3>
+<table>
+<thead>
+<tr>
+<th>Brush</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Draw</strong></td>
+<td>Raises the surface where you paint — the default "add clay" brush</td>
+</tr>
+<tr>
+<td><strong>Clay Strips</strong></td>
+<td>Adds flat strips of "clay" — great for building up broad forms</td>
+</tr>
+<tr>
+<td><strong>Smooth</strong></td>
+<td>Smooths bumps and irregularities. Hold <code>Shift</code> to temporarily smooth with any brush</td>
+</tr>
+<tr>
+<td><strong>Grab</strong></td>
+<td>Pulls the surface as if grabbing and dragging — for large-scale shape changes</td>
+</tr>
+<tr>
+<td><strong>Crease</strong></td>
+<td>Creates sharp creases and folds — for wrinkles, folds, panel lines</td>
+</tr>
+<tr>
+<td><strong>Inflate</strong></td>
+<td>Expands the surface outward — for puffing up areas</td>
+</tr>
+<tr>
+<td><strong>Flatten</strong></td>
+<td>Flattens high points to a plane — for creating flat surfaces</td>
+</tr>
+<tr>
+<td><strong>Scrape</strong></td>
+<td>Scrapes away high points — like a chisel</td>
+</tr>
+<tr>
+<td><strong>Mask</strong></td>
+<td>Paints a mask that protects areas from sculpting</td>
+</tr>
+<tr>
+<td><strong>Trim</strong></td>
+<td>Cuts away geometry to a plane — for hard-surface detailing</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dynamic-topology-dyntopo">Dynamic Topology (Dyntopo)</h3>
+<p>By default, sculpting moves existing vertices. If the mesh doesn't have enough geometry where you're sculpting, you get blobby results. <strong>Dynamic Topology</strong> solves this by automatically adding geometry where you sculpt and keeping low detail where you don't.</p>
+<p>Dyntopo is great for concept sculpting when you don't care about topology. For production work (animation, texturing), you sculpt with Dyntopo first, then <strong>retopologize</strong> — rebuild the mesh with clean quad-based topology that deforms properly.</p>
+<h3 id="multires-modifier">Multires Modifier</h3>
+<p>The <strong>Multiresolution modifier</strong> is an alternative to Dyntopo. It works like Subdivision Surface but lets you sculpt at each subdivision level. The advantage: the base mesh retains clean topology, and the sculpted detail lives on top as displacement.</p>
+<p>Workflow: start with a clean base mesh → add Multires → subdivide to the level you need → sculpt the high-res detail → bake the detail as a normal/displacement map onto the low-res version.</p>
+<hr>
+<h2 id="12-rigging">12. Rigging</h2>
+<p>Rigging is the process of building a control system that lets you pose and animate a 3D model. It bridges modeling and animation: the modeler creates the static mesh, the rigger makes it movable, and the animator brings it to life.</p>
+<h3 id="the-armature">The Armature</h3>
+<p>An <strong>armature</strong> is Blender's skeleton system — a hierarchy of <strong>bones</strong>. You add an armature (Shift+A → Armature), which starts as a single bone. In Edit Mode on the armature, you build out the skeleton by extruding (<code>E</code>) new bones from existing ones.</p>
+<p>Each bone has:
+- A <strong>head</strong> (base/root of the bone, the ball joint)
+- A <strong>tail</strong> (tip of the bone)
+- A <strong>roll</strong> angle (rotation around its own axis — critical for predictable rotation)</p>
+<p>Bones form a <strong>parent-child hierarchy</strong>. Moving a parent bone moves all its children. An upper arm bone is parent to a forearm bone, which is parent to a hand bone.</p>
+<h3 id="bone-orientation-roll-symmetry">Bone Orientation, Roll &amp; Symmetry</h3>
+<p>Three bone properties cause most beginner rigging pain, and all three are about <em>orientation</em> rather than position:</p>
+<ul>
+<li><strong>Roll</strong> — the rotation of a bone around its own length. Two bones can have identical head and tail positions but different rolls, and they'll rotate around different axes. If a character's fingers curl sideways instead of into a fist, the bone rolls are wrong. Select the bones and use <strong>Armature → Bone Roll → Recalculate Roll</strong> (<code>Ctrl+N</code> in armature Edit Mode) to align them consistently (e.g., "Global +Z Axis" or "View").</li>
+<li><strong>Connected vs. disconnected</strong> — a <strong>connected</strong> bone's head is glued to its parent's tail, so moving the parent's tail drags the child. A <strong>disconnected</strong> bone is still parented (it inherits motion) but its head floats free anywhere. Arms and spines are usually connected; a pelvis bone or a free-floating control bone is disconnected. Toggle with <strong>Alt+P</strong> / <strong>Ctrl+P</strong> or the "Connected" checkbox.</li>
+<li><strong>Display mode</strong> — bones draw as <strong>Octahedral</strong> (default cone — shows roll and direction), <strong>Stick</strong> (thin lines — less clutter on dense rigs), <strong>B-Bone</strong>, <strong>Envelope</strong>, or <strong>Wireframe</strong>. Octahedral while building, Stick or custom shapes while animating.</li>
+</ul>
+<p>Turn on the bone's local axes (<strong>Armature → Viewport Display → Axes</strong>) while rigging so you can <em>see</em> which way each bone rotates. Predictable axes are the difference between a rig an animator enjoys and one they fight.</p>
+<p><strong>Symmetry</strong> halves the work on any bilateral creature. Name bones with a <strong><code>.L</code> / <code>.R</code> suffix</strong> (<code>UpperArm.L</code>, <code>Hand.R</code>) and Blender treats them as mirror pairs everywhere:</p>
+<ul>
+<li><strong>X-Axis Mirror</strong> (Armature → Tools, or the header toggle) — extrude or transform a <code>.L</code> bone and its <code>.R</code> twin mirrors automatically.</li>
+<li><strong>Symmetrize</strong> (Armature menu) — build one whole side, then generate the opposite side, with names and rolls flipped, in one click.</li>
+<li><strong>Flip Names</strong> repairs bones whose suffixes got out of sync.</li>
+</ul>
+<p>The <code>.L</code>/<code>.R</code> convention isn't cosmetic — weight mirroring, pose flipping ("paste flipped pose"), and Rigify all depend on it.</p>
+<h3 id="the-rigging-workflow">The Rigging Workflow</h3>
+<pre><code class="language-text">1. Model the mesh (neutral pose, T-pose or A-pose)
+       ↓
+2. Create the armature and position bones inside the mesh
+       ↓
+3. Parent the mesh to the armature (&quot;Armature Deform&quot;)
+       ↓
+4. Paint vertex weights (which bones control which parts of the mesh)
+       ↓
+5. Add constraints (IK, limits, copy transforms) for animator-friendly controls
+       ↓
+6. Test by posing in Pose Mode
+</code></pre>
+<h3 id="deform-bones-vs-control-bones">Deform Bones vs. Control Bones</h3>
+<p>The single most important idea in production rigging: <strong>the bones that deform the mesh are not the bones the animator touches.</strong> A good rig has two layers.</p>
+<ul>
+<li><strong>Deform bones</strong> are the actual skeleton — the bones bound to mesh vertices through weights. The animator never selects these directly. In Blender, only bones with the <strong>"Deform"</strong> checkbox enabled drive the Armature modifier; bones with it <em>off</em> can move things via constraints but skin nothing.</li>
+<li><strong>Control bones</strong> (controllers, "the rig") are the handles the animator grabs: an IK hand control, a foot control, a master/root control, FK rotation controls. They carry custom shapes, live on their own bone collections, and drive the deform bones through <strong>constraints</strong> (Copy Transforms, IK, etc.).</li>
+</ul>
+<pre><code class="language-text">Animator grabs →  CONTROL bones   (custom shapes, no deform)
+                       │  constraints (IK, Copy Rotation…)
+                       ▼
+                  DEFORM bones    (skinned to the mesh via weights)
+                       │  Armature modifier + vertex groups
+                       ▼
+                     The MESH
+</code></pre>
+<p>Why bother? Because this is what lets you offer an <strong>IK hand and an FK elbow on the same arm</strong>, a foot that rolls on one bone, sliders for facial poses, and limits that forbid impossible poses — none of which the raw deform skeleton can express. The simple "extrude bones, parent mesh, pose the bones directly" rig from the workflow above is the <em>deform layer only</em>. Everything that makes a rig pleasant to animate lives in the control layer on top. <strong>Rigify</strong> (below) generates both layers for you, which is why it's the usual recommendation.</p>
+<h3 id="bone-parenting-how-the-mesh-follows-the-skeleton">Bone Parenting — How the Mesh Follows the Skeleton</h3>
+<p>When you parent a mesh to an armature (<code>Ctrl+P</code> → Armature Deform), Blender creates an <strong>Armature modifier</strong> on the mesh. This modifier deforms the mesh based on bone positions. The connection between bones and mesh vertices is defined by <strong>vertex groups</strong>.</p>
+<p>Each bone corresponds to a vertex group with the same name. The <strong>weight</strong> of each vertex in that group (0.0 to 1.0) determines how much that bone influences it. A vertex with weight 1.0 in the "UpperArm.L" group moves entirely with the left upper arm bone. A vertex with weight 0.5 in both "UpperArm.L" and "Forearm.L" blends between both — this is how elbows, shoulders, and other joints deform smoothly.</p>
+<h3 id="the-armature-modifier-skinning-options">The Armature Modifier — Skinning Options</h3>
+<p>Parenting with Armature Deform adds an <strong>Armature modifier</strong> to the mesh, and a few of its options matter:</p>
+<ul>
+<li><strong>Preserve Volume</strong> switches to <strong>dual-quaternion skinning</strong> instead of the default linear blend. It dramatically reduces the "candy-wrapper" collapse where a twisting forearm or shoulder pinches to nothing. Turn it on for organic characters — it's the cheapest fix for twist deformation.</li>
+<li><strong>Vertex Groups vs. Bone Envelopes</strong> — by default, deformation is driven by <strong>vertex groups</strong> (per-vertex weights — precise, and what you'll use 99% of the time). <strong>Envelopes</strong> give each bone a capsule of influence — fast to set up, imprecise, mostly for blocking or simple props.</li>
+<li><strong>Stack order matters</strong> — the Armature is just another modifier. A Subdivision Surface <em>below</em> it subdivides the deformed result (smooth); <em>above</em> it deforms a smooth cage. For characters: deform first, subdivide after.</li>
+</ul>
+<h3 id="automatic-weights">Automatic Weights</h3>
+<p>When parenting the mesh to the armature, Blender offers <strong>"With Automatic Weights"</strong> — it tries to figure out which vertices belong to which bones based on proximity and bone heat diffusion. This works surprisingly well for simple rigs and gives you a starting point. But it's never perfect for production work — you'll always need to refine with weight painting.</p>
+<h3 id="weight-painting">Weight Painting</h3>
+<p><strong>Weight Paint mode</strong> is where you refine bone influence. The mesh is displayed as a heat map:</p>
+<ul>
+<li><strong>Blue</strong> = 0.0 weight (no influence)</li>
+<li><strong>Green</strong> = 0.5 (partial influence)</li>
+<li><strong>Red</strong> = 1.0 (full influence)</li>
+</ul>
+<p>You select a bone (in the armature), enter Weight Paint mode on the mesh, and paint weights. The key insight: <strong>deformation problems are almost always weight painting problems.</strong> If an elbow looks wrong when it bends, the weights around the elbow joint need fixing.</p>
+<p>Weight painting tips:
+- <strong>Use the Smooth brush</strong> to blend harsh transitions between bone influences
+- <strong>Enable "Show Zero Weights"</strong> (in the overlay menu) — areas with zero weight turn black, making gaps obvious
+- <strong>Normalize weights</strong> — every vertex's total weight across all groups should sum to 1.0. Blender can auto-normalize (enable in the tool options)
+- <strong>Lock vertex groups</strong> you're not painting — prevents accidentally modifying them
+- <strong>Test as you paint</strong> — pose the bone, see how it looks, adjust weights, repeat</p>
+<h3 id="mirroring-weights">Mirroring Weights</h3>
+<p>You only need to weight-paint one side of a symmetric character. To copy weights across:</p>
+<ul>
+<li>The mesh's vertex groups are named after the bones, so they already carry <code>.L</code>/<code>.R</code> suffixes.</li>
+<li>In Weight Paint mode, enable the header's <strong>X Mirror</strong> option — painting a <code>.L</code> vertex also paints its <code>.R</code> mirror in real time (requires symmetric topology).</li>
+<li>Or paint one side fully, then <strong>Weights → Mirror</strong> (or <strong>Symmetrize</strong>) to flip the finished weights to the other side.</li>
+</ul>
+<p>This halves the work and guarantees the sides actually match — hand-painting both sides independently never produces true symmetry.</p>
+<h3 id="forward-kinematics-fk-vs-inverse-kinematics-ik">Forward Kinematics (FK) vs. Inverse Kinematics (IK)</h3>
+<p><strong>FK (Forward Kinematics)</strong>: You rotate each bone in the chain individually. Rotate the upper arm, then the forearm, then the hand. This gives you precise control over every joint but is tedious for common motions.</p>
+<p><strong>IK (Inverse Kinematics)</strong>: You place a <strong>target</strong> (an empty or a bone), and the bone chain automatically solves how to reach it. Move the IK target and the whole arm follows. The shoulder, elbow, and wrist all rotate to reach the target position.</p>
+<pre><code class="language-text">FK:  Rotate shoulder → then rotate elbow → then rotate wrist
+     (build the pose from root to tip)
+
+IK:  Place the hand target → the arm figures itself out
+     (define where the end should be, solve backwards)
+</code></pre>
+<p>To set up IK: add an <strong>Inverse Kinematics constraint</strong> to the last bone in the chain, pointing at a target bone or empty. Set the <strong>chain length</strong> (how many bones the IK affects — 0 means the whole chain up to the root).</p>
+<h3 id="ikfk-switching-auto-ik">IK/FK Switching &amp; Auto-IK</h3>
+<p>Real rigs offer <em>both</em> FK and IK on the same limb, because each wins in different shots. FK arcs feel natural for a swinging arm; IK keeps a hand planted on a table or a foot locked to the floor. Animators switch between them per shot — sometimes mid-shot.</p>
+<ul>
+<li>A control rig exposes a <strong>custom property</strong> (often an "IK/FK" slider, 0–1) that blends a constraint's <strong>influence</strong> between the two solvers. Rigify builds this in, plus a <strong>snap</strong> operator so the limb doesn't jump when you switch.</li>
+<li><strong>Chain length</strong> on the IK constraint decides how far up the solve propagates (2 for forearm + upper arm, more for a spine). Length 0 means "all the way to the root," which you rarely want.</li>
+<li><strong>Auto IK</strong> (a Pose-Mode header toggle in the Tool panel) drags a bone chain IK-style with no setup — handy for quickly posing a plain FK skeleton, but not a substitute for a real IK control.</li>
+</ul>
+<p>The mental model: <strong>IK defines where the <em>end</em> of the chain goes and solves the joints backward; FK builds the pose from the root outward.</strong> Choose per shot based on what must stay still — a planted hand or foot wants IK, a free-swinging limb wants FK.</p>
+<h3 id="pole-targets">Pole Targets</h3>
+<p>IK solves where the chain ends up, but not the <em>orientation</em> of the in-between joints. An elbow can point in any direction while the hand stays in place. A <strong>pole target</strong> (another empty or bone) controls which direction the elbow (or knee) points. Place it in front of the knee/behind the elbow.</p>
+<h3 id="spline-ik">Spline IK</h3>
+<p>Where regular IK reaches a point, <strong>Spline IK</strong> makes a bone chain follow a <strong>curve</strong>. The chain bends smoothly along the spline, and you animate by editing the curve (or by hooking its control points to bones). This is the tool for anything long and flexible: <strong>tails, tentacles, ropes, snakes, spines, antennae</strong>. Add the chain, give the last bone a <strong>Spline IK constraint</strong>, point it at a curve, and set the chain length.</p>
+<h3 id="bendy-bones-b-bones">Bendy Bones (B-Bones)</h3>
+<p>A normal bone is rigid — a straight segment. A <strong>Bendy Bone (B-Bone)</strong> is a single bone that <strong>curves</strong>, subdividing itself into segments that interpolate a smooth bend between its endpoints. One B-Bone does the work of a multi-bone chain for organic curvature.</p>
+<ul>
+<li>Set a bone's <strong>Segments</strong> (Bone properties → Bendy Bones) above 1 to enable curving.</li>
+<li>Curvature is driven by <strong>handles</strong> — usually the previous/next bones (like a Bézier curve's tangents), or dedicated <strong>Custom Handle</strong> bones.</li>
+<li>Per-end <strong>Ease In/Out, Curvature, Roll, and Scale</strong> give you cartoony squash, smooth spine bends, lips, fingers, and rubber-hose limbs with far fewer bones.</li>
+</ul>
+<p>B-Bones are a Blender signature feature — Rigify leans on them for spines and faces. The trade-off: they cost more to compute and are overkill for rigid/mechanical rigs.</p>
+<h3 id="bone-constraints">Bone Constraints</h3>
+<p>Constraints modify bone behavior. They're the building blocks of a good control rig:</p>
+<table>
+<thead>
+<tr>
+<th>Constraint</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Inverse Kinematics</strong></td>
+<td>IK chain solving (arms, legs)</td>
+</tr>
+<tr>
+<td><strong>Copy Location / Rotation / Scale</strong></td>
+<td>Make one bone follow another (partially or fully)</td>
+</tr>
+<tr>
+<td><strong>Limit Location / Rotation / Scale</strong></td>
+<td>Prevent a bone from moving/rotating beyond a range (e.g., an elbow can't bend backward)</td>
+</tr>
+<tr>
+<td><strong>Damped Track / Track To</strong></td>
+<td>Point a bone at a target (eye tracking, head look-at)</td>
+</tr>
+<tr>
+<td><strong>Stretch To</strong></td>
+<td>Bone stretches to reach a target (rubber-hose animation, squash-and-stretch)</td>
+</tr>
+<tr>
+<td><strong>Transformation</strong></td>
+<td>Map one bone's transform to another's (a slider bone controls a blend shape)</td>
+</tr>
+<tr>
+<td><strong>Action</strong></td>
+<td>Drive a baked animation clip from another bone's value</td>
+</tr>
+<tr>
+<td><strong>Child Of</strong></td>
+<td>Dynamic parenting (pick up an object, hand it off) — switchable at animation time</td>
+</tr>
+<tr>
+<td><strong>Floor</strong></td>
+<td>Prevents a bone from going below a surface (feet on ground)</td>
+</tr>
+</tbody>
+</table>
+<p>Two settings appear on almost every constraint:</p>
+<ul>
+<li><strong>Influence</strong> (0–1) blends the constraint on and off — and is itself keyable, so you can switch IK off at frame 1 and on at frame 20, or fade a "look at" in and out.</li>
+<li><strong>Target/Owner space</strong> (World, Local, Pose, Local With Parent) sets <em>which coordinate frame</em> the constraint reads and writes in. Mismatched spaces are the usual reason a constraint "does something weird"; for most copy/limit constraints, Local-to-Local behaves intuitively.</li>
+</ul>
+<p>Constraints also <strong>stack and evaluate top to bottom</strong>, so a Limit Rotation placed <em>after</em> a Copy Rotation clamps the copied result. Order is part of the rig's logic.</p>
+<h3 id="custom-bone-shapes-bone-collections">Custom Bone Shapes &amp; Bone Collections</h3>
+<p>Two features turn a tangle of bones into a usable interface:</p>
+<ul>
+<li><strong>Custom bone shapes (widgets)</strong> — any bone can <em>display</em> as a chosen mesh object instead of the default octahedron (Bone properties → Viewport Display → <strong>Custom Object</strong>). Animators then grab a clear circle around the wrist, an arrow on the foot, or a cog on a mechanical control — shapes that read at a glance and signal what each control does. The widget is display-only; it doesn't deform or render.</li>
+<li><strong>Bone collections</strong> (called <em>bone layers</em> before 4.0) — group bones and toggle their visibility together. A clean rig parks the deform bones and mechanism on hidden collections, leaving only controls visible. The animator shows "Face" controls for a close-up, "Body" controls for a walk, and never sees the wiring.</li>
+</ul>
+<p>Add <strong>bone colors</strong> (per bone or per collection) — left side one hue, right side another, IK vs. FK a third — and the rig becomes self-documenting. This presentation layer is what separates a rig an animator <em>wants</em> to use from a pile of bones they have to decode.</p>
+<h3 id="rigify-blenders-auto-rig-add-on">Rigify — Blender's Auto-Rig Add-on</h3>
+<p>Building a full character rig from scratch is a weeks-long task for a professional. <strong>Rigify</strong> (bundled add-on, enable in Preferences) generates a complete, animator-friendly rig from a template:</p>
+<ol>
+<li>Add a Rigify <strong>meta-rig</strong> (Shift+A → Armature → choose a template — human, cat, horse, etc.)</li>
+<li>Scale and position the meta-rig bones to fit your mesh (Edit Mode)</li>
+<li>Click <strong>"Generate Rig"</strong> in the Armature properties</li>
+</ol>
+<p>Rigify produces a rig with FK/IK switching, pole targets, twist bones, facial controls, and custom properties — the kind of rig that takes weeks to build manually. It's the standard recommendation for character animation in Blender.</p>
+<h3 id="corrective-shape-keys">Corrective Shape Keys</h3>
+<p>Even with perfect weight painting, some poses create ugly deformation (the dreaded "candy wrapper" twist on forearms, or collapsing geometry at extreme bends). <strong>Corrective shape keys</strong> (also called corrective blend shapes) are hand-sculpted fixes that activate only at specific bone rotations.</p>
+<p>Workflow: pose the bone to the problem angle, sculpt the mesh into the correct shape, save that as a shape key, and drive the shape key's value from the bone's rotation. The <code>Corrective Smooth</code> modifier is a cheaper alternative that works well enough for many cases.</p>
+<h3 id="rigging-gotchas-best-practices">Rigging Gotchas &amp; Best Practices</h3>
+<p>The failures that cost beginners the most hours:</p>
+<ul>
+<li><strong>Apply scale and rotation before rigging</strong> (<code>Ctrl+A</code> → All Transforms, in Object Mode, on the mesh <em>and</em> the armature). <strong>Unapplied scale is the #1 cause of rigs that deform with bizarre offsets, IK that flips, and bones that stretch wrong.</strong> Object-level transforms must be neutral (scale 1,1,1; rotation 0) before you bind.</li>
+<li><strong>Model in a neutral pose</strong> — a <strong>T-pose</strong> or <strong>A-pose</strong> with limbs held away from the body. Arms pinned to the sides make shoulder and armpit weights impossible to separate.</li>
+<li><strong>Keep the rest pose clean</strong> — the armature's <strong>rest pose</strong> (Edit-Mode bone positions) is the deformation baseline; Pose Mode layers on top of it non-destructively. Don't "apply" a pose to the rest position unless you mean to rebake the bind.</li>
+<li><strong>Test the range of motion</strong> before handing off — bend every joint to its extreme, raise the arms overhead, twist the spine, make a fist. Fix weights and add corrective shapes <em>now</em>, not after animation starts.</li>
+<li><strong>Name everything, and name it before you mirror</strong> — <code>.L</code>/<code>.R</code> discipline pays off across weights, pose flipping, and Rigify. Renaming a rigged skeleton later breaks the vertex-group links.</li>
+</ul>
+<p>When in doubt, <strong>use Rigify</strong> and learn by inspecting what it generates — it bakes in most of these practices automatically.</p>
+<hr>
+<h2 id="13-animation">13. Animation</h2>
+<p>Animation in Blender means defining how values change over time — positions, rotations, scales, material properties, light intensity, anything with a numeric value can be animated.</p>
+<h3 id="keyframes-the-foundation">Keyframes — The Foundation</h3>
+<p>A <strong>keyframe</strong> records a value at a specific frame in time. You set a keyframe at frame 1 with the cube at position X=0, and another keyframe at frame 30 with X=5. Blender <strong>interpolates</strong> (fills in) the in-between frames automatically. The cube smoothly slides from 0 to 5 over 30 frames.</p>
+<p>Insert a keyframe: select the property, press <code>I</code> (or right-click → Insert Keyframe). The hotkey <code>I</code> in the viewport opens a menu to keyframe the current selection's location, rotation, scale, or all.</p>
+<p><strong>Auto-keying</strong> (the record button in the timeline) automatically creates keyframes whenever you move, rotate, or scale something. Useful for blocking in poses quickly, dangerous if left on accidentally.</p>
+<h3 id="keying-sets-what-gets-keyed">Keying Sets — What Gets Keyed</h3>
+<p>Pressing <code>I</code> raises the question <em>which</em> properties to key. A <strong>keying set</strong> is a saved list of properties so one keypress keys all of them at once — essential for character work, where a single pose touches dozens of bones.</p>
+<ul>
+<li>The <strong>active keying set</strong> is chosen in the timeline header; with one active, <code>I</code> keys exactly that set with no menu.</li>
+<li><strong>"Whole Character"</strong> is the built-in keying set for armatures — it keys every control bone's location/rotation/scale in one stroke, so each pose is a complete, clean keyframe (no half-keyed bones drifting later).</li>
+<li><strong>Auto-keying</strong> plus <strong>"Only Insert Needed"</strong> (Preferences → Animation) keeps curves tidy by writing a channel only when its value actually changes, instead of keying everything every time.</li>
+</ul>
+<p>The discipline that prevents most animation bugs: <strong>key the whole pose at once, on whole frames.</strong> Scattered partial keys on fractional frames are how F-Curves turn to spaghetti.</p>
+<h3 id="the-timeline">The Timeline</h3>
+<p>The timeline at the bottom of the default layout shows frames horizontally. Orange diamonds are keyframes for the selected object. The playhead (blue line) shows the current frame. Hit <code>Space</code> to play.</p>
+<ul>
+<li><strong>Start/End frame</strong> — defines the playback range</li>
+<li><strong>Frame rate</strong> — 24 fps (film), 30 fps (TV/web), or custom</li>
+<li><strong>Keyframe navigation</strong> — <code>←</code> / <code>→</code> jump to the previous/next keyframe</li>
+</ul>
+<h3 id="the-graph-editor">The Graph Editor</h3>
+<p>The Graph Editor is where animation gets precise. It shows <strong>F-Curves</strong> — function curves that plot a value (Y axis) over time (X axis). Each keyframe is a point on the curve, and the shape of the curve between keyframes determines the motion.</p>
+<p><strong>Interpolation modes</strong> control the curve shape:</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Behavior</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Bézier</strong> (default)</td>
+<td>Smooth ease-in/ease-out with tangent handles</td>
+<td>Most animation</td>
+</tr>
+<tr>
+<td><strong>Linear</strong></td>
+<td>Straight line between keyframes — constant speed</td>
+<td>Mechanical motion</td>
+</tr>
+<tr>
+<td><strong>Constant</strong></td>
+<td>Value jumps instantly at the keyframe — no interpolation</td>
+<td>On/off switches, visibility toggles</td>
+</tr>
+</tbody>
+</table>
+<p>The tangent handles on Bézier keyframes give you fine control: drag them to create slow-in, slow-out, overshoot, or snap. This is where the <em>feel</em> of animation lives. A bouncing ball isn't about the positions — it's about the easing curve.</p>
+<h3 id="f-curve-handle-types">F-Curve Handle Types</h3>
+<p>Bézier keyframes carry <strong>handles</strong> (tangents) whose <em>type</em> controls how the curve enters and leaves each key:</p>
+<table>
+<thead>
+<tr>
+<th>Handle</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Auto / Auto Clamped</strong></td>
+<td>Blender shapes a smooth curve for you; <em>Auto Clamped</em> (the default) prevents overshoot — values won't dip below or above neighboring keys</td>
+</tr>
+<tr>
+<td><strong>Vector</strong></td>
+<td>Handle aims straight at the neighboring key — effectively linear on that side</td>
+</tr>
+<tr>
+<td><strong>Aligned</strong></td>
+<td>The two handles stay in a straight line — symmetric ease; drag one and the other mirrors</td>
+</tr>
+<tr>
+<td><strong>Free</strong></td>
+<td>Each handle moves independently — full manual control for overshoot, snap, or asymmetric ease</td>
+</tr>
+</tbody>
+</table>
+<p>The thing beginners miss: <strong>the curve <em>is</em> the motion.</strong> A flat slope is a hold; a steep slope is fast motion; an S-curve is ease-out then ease-in. Reading and shaping slopes — not nudging keyframes — is where animation gets its feel. Auto Clamped is a safe default; switch to <strong>Free</strong> or <strong>Aligned</strong> to deliberately build overshoot and follow-through.</p>
+<h3 id="extrapolation-cyclic-motion">Extrapolation &amp; Cyclic Motion</h3>
+<p>By default an F-Curve is <strong>flat before the first key and after the last</strong> (Constant extrapolation) — motion stops dead. To make motion <em>continue or repeat</em>:</p>
+<ul>
+<li><strong>Extrapolation → Linear</strong> (Channel menu) keeps the ending slope going forever — a steady spin or constant drift.</li>
+<li><strong>F-Curve modifier → Cycles</strong> loops the keyframed range infinitely (<em>with Offset</em> to accumulate — a wheel that keeps turning, a walk that keeps walking). This is how a 24-frame cycle plays for a thousand frames.</li>
+<li>Other <strong>F-Curve modifiers</strong> stack procedural motion onto curves: <strong>Noise</strong> (organic jitter — a handheld camera, a flickering light), <strong>Stepped</strong> (preview on N's), <strong>Limits</strong>.</li>
+</ul>
+<p>Cyclic curves are the foundation of loops — walk and run cycles, idle breathing, spinning gears, flickering fire.</p>
+<h3 id="the-twelve-principles-of-animation">The Twelve Principles of Animation</h3>
+<p>These principles (from Disney's <em>The Illusion of Life</em>) are the foundation of all character animation. Blender gives you the tools; these principles tell you how to use them:</p>
+<ol>
+<li><strong>Squash and Stretch</strong> — objects deform to show impact and elasticity (a ball flattens on impact)</li>
+<li><strong>Anticipation</strong> — preparation before an action (crouch before a jump, wind up before a throw)</li>
+<li><strong>Staging</strong> — present the action so the audience reads it clearly</li>
+<li><strong>Straight Ahead vs. Pose to Pose</strong> — two workflow approaches (discussed below)</li>
+<li><strong>Follow-Through and Overlapping Action</strong> — different parts of the body stop at different times (hair keeps swinging after the head stops)</li>
+<li><strong>Slow In, Slow Out</strong> — motion accelerates and decelerates (the Bézier ease curves)</li>
+<li><strong>Arcs</strong> — natural motion follows arcs, not straight lines (a hand swings in an arc)</li>
+<li><strong>Secondary Action</strong> — supporting motion that adds richness (a character walks <em>and</em> swings their arms)</li>
+<li><strong>Timing</strong> — the number of frames between poses determines the feel (fewer frames = faster, snappier)</li>
+<li><strong>Exaggeration</strong> — push poses beyond reality for clarity and appeal</li>
+<li><strong>Solid Drawing</strong> — (translates to 3D as: good posing, balanced weight, clear silhouette)</li>
+<li><strong>Appeal</strong> — the character should be interesting to watch</li>
+</ol>
+<h3 id="pose-to-pose-vs-straight-ahead">Pose-to-Pose vs. Straight-Ahead</h3>
+<p>Two fundamental animation workflows:</p>
+<ul>
+<li><strong>Pose-to-Pose</strong>: Set key poses first (contact, passing, extreme positions), then fill in breakdowns and in-betweens. This is the standard professional workflow — it gives you control and structure.</li>
+<li><strong>Straight-Ahead</strong>: Animate frame by frame from start to finish. More spontaneous, good for fluid motion like fire or flowing water, but harder to control timing.</li>
+</ul>
+<p>Most character animation uses pose-to-pose. Blender's keyframe system is built for it.</p>
+<h3 id="blocking-splining-polish-the-three-passes">Blocking, Splining &amp; Polish — The Three Passes</h3>
+<p>Professional pose-to-pose animation runs in distinct passes, and <strong>the interpolation mode is the tool that separates them</strong>:</p>
+<ol>
+<li><strong>Blocking</strong> — set only the storytelling key poses and put the F-Curves on <strong>Constant ("stepped")</strong> interpolation so there's <em>no</em> in-betweening. The character snaps from pose to pose like a slideshow, which isolates <strong>acting and timing</strong> from the blur of interpolation — you judge the poses, nothing else.</li>
+<li><strong>Splining</strong> — switch to <strong>Bézier</strong>, add breakdowns (the in-between poses that define <em>how</em> you travel from A to B), and let the curves connect. The motion becomes continuous; now you fight floatiness.</li>
+<li><strong>Polish</strong> — refine curves in the Graph Editor: ease, overshoot, arcs, offsetting body parts for follow-through, and killing the inevitable foot slip.</li>
+</ol>
+<p>Skipping blocking is the most common beginner mistake — animating "straight into spline" buries timing problems under smooth curves where they're hard to see and harder to fix.</p>
+<h3 id="animation-sliders-pose-tools">Animation Sliders &amp; Pose Tools</h3>
+<p>Posing isn't only manual rotation — Blender ships <strong>pose-editing operators</strong> (the Pose menu, plus interactive sliders) that pros lean on constantly:</p>
+<ul>
+<li><strong>Breakdowner</strong> (<code>Ctrl+E</code>) — creates an in-between pose interpolated from the previous and next keys; slide to bias it toward either side. The fastest way to make breakdowns.</li>
+<li><strong>Push / Relax Pose</strong> — exaggerate a pose beyond the surrounding keys, or relax it back toward the interpolated value. Instant "more" or "less."</li>
+<li><strong>Blend to Neighbor / Blend to Default</strong> — nudge the current pose toward an adjacent key or the rest pose by a percentage.</li>
+<li><strong>Propagate</strong> — push the current pose forward to later keys (re-plant a hand that drifted across a cycle).</li>
+</ul>
+<p>These turn tedious value-tweaking into a few interactive drags, operating on whatever bones you've selected.</p>
+<h3 id="motion-paths-onion-skinning">Motion Paths (Onion Skinning)</h3>
+<p>You can't judge <strong>arcs</strong> — the most-violated animation principle — by scrubbing one frame at a time. <strong>Motion paths</strong> draw the trajectory of an object or bone across a frame range as a line in the viewport, with a dot per frame. Two things become instantly visible:</p>
+<ul>
+<li><strong>Arc quality</strong> — natural motion curves; a hand or foot tracing a jagged or dead-straight path looks robotic. You tweak until the path is a clean arc.</li>
+<li><strong>Spacing</strong> — dots bunched together mean slow motion, dots spread apart mean fast. Even spacing reads as mechanical; easing shows up as dots that bunch toward the ends. This is the visual form of "slow in, slow out."</li>
+</ul>
+<p>Enable per object (Object properties) or per bone (Armature data → Motion Paths) and <strong>Calculate</strong> the range. It's Blender's equivalent of an animator's onion skinning, and it's how you catch bad arcs before they ship.</p>
+<h3 id="the-dope-sheet">The Dope Sheet</h3>
+<p>The Dope Sheet shows all keyframes for all animated properties as a grid of diamonds. It's the overview — you see timing relationships across the whole scene. Use it to:</p>
+<ul>
+<li>Shift entire blocks of keyframes in time (select and <code>G</code> to move)</li>
+<li>Scale timing (select and <code>S</code> — spread keyframes apart or compress them together)</li>
+<li>Copy keyframes between objects or actions</li>
+</ul>
+<h3 id="the-nla-editor-non-linear-animation">The NLA Editor (Non-Linear Animation)</h3>
+<p>The <strong>NLA (Non-Linear Animation) Editor</strong> treats animation like a video editor treats clips. You package keyframe ranges into <strong>actions</strong> (named animation clips), then arrange, layer, blend, and loop them on an NLA track.</p>
+<p>Use case: you have a walk cycle (looping), an idle animation, and a wave animation. In the NLA, you lay down the walk cycle, blend into the wave, then back to idle — without manually re-keyframing anything. The NLA is essential for games (where animation states need to blend) and for long-form animation where reusing clips saves weeks of work.</p>
+<h3 id="actions">Actions</h3>
+<p>An <strong>action</strong> is a named collection of F-Curves — essentially a saved animation clip. By default, every object has one action (its current animation). You can create multiple actions and switch between them, or use them in the NLA.</p>
+<p>Actions are data-blocks. If an action has zero users, it gets discarded on save — use the <strong>fake user</strong> (shield icon) to keep actions you want to preserve.</p>
+<h3 id="drivers">Drivers</h3>
+<p>A <strong>driver</strong> is a value that's controlled by an expression or another value instead of keyframes. Examples:</p>
+<ul>
+<li>A gear's rotation driven by another gear's rotation (with a ratio)</li>
+<li>A bone's Y position drives a shape key from 0 to 1</li>
+<li>A custom property slider controls the blend between two materials</li>
+</ul>
+<p>Drivers let you create <strong>automated relationships</strong> so the animator doesn't have to keyframe every dependent value manually.</p>
+<h3 id="shape-keys">Shape Keys</h3>
+<p><strong>Shape keys</strong> (called blend shapes or morph targets in other software) store alternate versions of a mesh. The <strong>Basis</strong> shape key is the default shape. Additional shape keys define deformed versions. A slider (value 0–1) blends between them.</p>
+<p>Primary use: <strong>facial animation</strong>. You create shape keys for each expression — smile, frown, blink, open mouth, raise eyebrows — and animate the sliders to blend between them. Combined with a facial rig (bones for jaw, eyes, brows), shape keys give you fine-grained facial control.</p>
+<p>Shape keys can also be driven by bone transforms (a bone's rotation automatically triggers a corrective shape key).</p>
+<h3 id="worked-example-a-walk-cycle">Worked Example: A Walk Cycle</h3>
+<p>The walk cycle is the canonical animation exercise because it exercises timing, weight, arcs, overlap, and looping all at once. As a <strong>pose-to-pose, cyclic</strong> animation, it's built from <strong>four key poses</strong> (then mirrored for the other foot, giving a full stride):</p>
+<pre><code class="language-text">Contact → Down (recoil) → Passing → Up (high-point) → Contact (other foot) → …
+</code></pre>
+<ol>
+<li><strong>Contact</strong> — legs at maximum stride, both feet down, front heel and back toe touching. The extreme pose.</li>
+<li><strong>Down / Recoil</strong> — weight drops onto the front foot and the <strong>hips reach their lowest</strong> point as the body absorbs the impact; the knee bends.</li>
+<li><strong>Passing</strong> — the free leg passes under the body; the planted leg straightens and the hips begin to rise.</li>
+<li><strong>Up / High-point</strong> — the body pushes up over the straight planted leg; <strong>hips at their highest</strong>, about to fall into the next contact.</li>
+</ol>
+<p>The layers that sell it:</p>
+<ul>
+<li><strong>The hips drive everything</strong> — they bob <em>down</em> on contact/recoil and <em>up</em> on passing/high-point (two bobs per stride) and sway toward the planted foot. Animate the hips first.</li>
+<li><strong>Arms counter-swing</strong> — the arm opposite the forward leg swings forward for balance; offset its timing a frame or two <em>behind</em> the legs for <strong>follow-through</strong>.</li>
+<li><strong>Foot roll</strong> — the foot isn't rigid: heel strike → flat → toe push-off. A good foot control has a roll for exactly this.</li>
+<li><strong>Overlap</strong> — head, hands, and any hair or cloth lag slightly behind the body. Nothing stops on the same frame.</li>
+<li><strong>Make it cyclic</strong> — animate <strong>one stride</strong> (contact to the mirrored contact — roughly 12 frames at 24 fps for a stroll), then add a <strong>Cycles</strong> F-Curve modifier (with offset on the forward-motion channel) to loop it. Animate <em>in place</em> and move the root separately, or refining it is nearly impossible.</li>
+</ul>
+<p>The classic failure is <strong>foot sliding</strong>: if a planted foot drifts while it should be locked, the contact-to-passing keys aren't holding its position — IK feet and clean keys on the planted frames fix it. Motion paths on the feet make slips obvious.</p>
+<h3 id="previewing-reviewing-animation">Previewing &amp; Reviewing Animation</h3>
+<p>Scrubbing in the viewport lies — it doesn't play at real speed, and the final render is far too slow to iterate on. To actually <em>judge</em> animation:</p>
+<ul>
+<li><strong>Play at speed</strong> — <code>Space</code> plays the timeline; watch the <strong>frame-rate readout</strong>. If it can't hit your fps, set Playback → <strong>Sync → Frame Dropping</strong> so timing stays honest instead of crawling in slow motion.</li>
+<li><strong>Viewport (OpenGL) render</strong> — <em>Render → Render Animation</em> from the <strong>viewport</strong> renders the shaded viewport rather than the full engine (the "playblast"). You get a near-real-time movie to review acting and timing in minutes instead of hours.</li>
+<li><strong>Add a sound strip</strong> — drop audio into the Video Sequencer or as a Speaker and enable <strong>Sync → AV-sync</strong> to animate against the waveform. Essential for lip-sync and music-driven timing.</li>
+<li><strong>Review in a loop, at speed, with fresh eyes</strong> — problems invisible while scrubbing jump out the instant it plays back in real time.</li>
+</ul>
+<h3 id="animation-workflow-putting-it-together">Animation Workflow — Putting It Together</h3>
+<p>A character animation workflow in Blender typically looks like:</p>
+<pre><code class="language-text">1. Character mesh (modeled, UV-mapped, textured)
+       ↓
+2. Rig (armature + constraints + controls, or Rigify)
+       ↓
+3. Skin (parent mesh to armature, weight paint)
+       ↓
+4. Facial rig (shape keys + bone controls for face)
+       ↓
+5. Block out key poses (Pose Mode, pose-to-pose)
+       ↓
+6. Timing pass (adjust spacing in the Dope Sheet)
+       ↓
+7. Refine curves (Graph Editor — ease in/out, overshoots)
+       ↓
+8. Secondary animation (hair, cloth, props — physics or manual)
+       ↓
+9. Polish (arcs, follow-through, micro-adjustments)
+       ↓
+10. Light, render, composite
+</code></pre>
+<hr>
+<h2 id="14-geometry-nodes">14. Geometry Nodes</h2>
+<h3 id="the-concept_2">The Concept</h3>
+<p>Geometry Nodes is Blender's <strong>procedural geometry system</strong> — a visual node graph where you generate, modify, and assemble geometry using math and logic instead of manual modeling. It's Blender's answer to Houdini's procedural approach.</p>
+<p>Instead of manually placing 500 trees, you build a node tree that scatters points on a surface, instances a tree mesh at each point, randomizes scale/rotation, and removes points on steep slopes. Change the terrain → the trees automatically update.</p>
+<h3 id="how-it-works">How It Works</h3>
+<p>A Geometry Nodes modifier reads the object's geometry as input, pipes it through a node graph, and outputs modified geometry. Nodes process <strong>geometry</strong>, <strong>attributes</strong> (per-vertex/per-face/per-point data), <strong>values</strong>, and <strong>fields</strong> (functions that evaluate per-element).</p>
+<p>Key node categories:</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Examples</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Mesh Primitives</strong></td>
+<td>Grid, Cube, UV Sphere, Cone</td>
+<td>Generate basic shapes</td>
+</tr>
+<tr>
+<td><strong>Curve Primitives</strong></td>
+<td>Line, Circle, Spiral</td>
+<td>Generate curves</td>
+</tr>
+<tr>
+<td><strong>Instances</strong></td>
+<td>Instance on Points, Realize Instances</td>
+<td>Scatter and duplicate objects efficiently</td>
+</tr>
+<tr>
+<td><strong>Geometry</strong></td>
+<td>Join Geometry, Set Position, Transform</td>
+<td>Combine and transform geometry</td>
+</tr>
+<tr>
+<td><strong>Mesh Operations</strong></td>
+<td>Subdivide, Extrude, Bevel</td>
+<td>Modify mesh topology</td>
+</tr>
+<tr>
+<td><strong>Point/Distribute</strong></td>
+<td>Distribute Points on Faces, Points</td>
+<td>Scatter points for instancing</td>
+</tr>
+<tr>
+<td><strong>Attribute</strong></td>
+<td>Store Named Attribute, Attribute Statistics</td>
+<td>Read/write per-element data</td>
+</tr>
+<tr>
+<td><strong>Math/Vector</strong></td>
+<td>Math, Vector Math, Map Range</td>
+<td>Numeric computation</td>
+</tr>
+<tr>
+<td><strong>Utilities</strong></td>
+<td>Random Value, Index, Switch</td>
+<td>Logic and randomness</td>
+</tr>
+<tr>
+<td><strong>Input</strong></td>
+<td>Position, Normal, Object Info</td>
+<td>Read context data</td>
+</tr>
+</tbody>
+</table>
+<h3 id="why-it-matters">Why It Matters</h3>
+<p>Geometry Nodes is the fastest-growing part of Blender. It enables:</p>
+<ul>
+<li><strong>Procedural scattering</strong> — distribute rocks, plants, debris across terrain</li>
+<li><strong>Parametric modeling</strong> — buildings, furniture, mechanical parts from sliders</li>
+<li><strong>Motion graphics</strong> — animated abstract geometry</li>
+<li><strong>Simulation</strong> — custom particle-like systems</li>
+<li><strong>Procedural animation</strong> — geometry that animates itself based on rules</li>
+</ul>
+<p>If you come from a programming background, Geometry Nodes will feel natural — it's functional programming for geometry.</p>
+<hr>
+<h2 id="15-particles-physics">15. Particles &amp; Physics</h2>
+<h3 id="particle-systems">Particle Systems</h3>
+<p>Blender has two particle system types:</p>
+<ul>
+<li><strong>Emitter</strong> — particles are born, live, and die. Think sparks, rain, snow, fire embers, dust. Particles can be affected by gravity, wind, turbulence, and collisions.</li>
+<li><strong>Hair</strong> — long-lived strands that don't move (or move only via physics). Used for hair, fur, grass, feathers.</li>
+</ul>
+<p>Each particle can be rendered as a point, a line, a path, or an <strong>instance of another object</strong> (a leaf, a rock, a bird).</p>
+<h3 id="physics-simulations">Physics Simulations</h3>
+<p>Blender includes several physics simulation systems:</p>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>Simulates</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Rigid Body</strong></td>
+<td>Solid objects that collide, fall, stack</td>
+<td>Destruction, dominos, machinery</td>
+</tr>
+<tr>
+<td><strong>Soft Body</strong></td>
+<td>Deformable objects</td>
+<td>Jelly, bouncing, soft impact</td>
+</tr>
+<tr>
+<td><strong>Cloth</strong></td>
+<td>Fabric simulation</td>
+<td>Clothing, curtains, flags, tablecloths</td>
+</tr>
+<tr>
+<td><strong>Fluid</strong></td>
+<td>Liquid and gas</td>
+<td>Water, smoke, fire, explosions</td>
+</tr>
+<tr>
+<td><strong>Dynamic Paint</strong></td>
+<td>Surface interaction</td>
+<td>Footprints in snow, paint splatter, ripples</td>
+</tr>
+</tbody>
+</table>
+<p>Physics simulations are <strong>baked</strong> — calculated once and cached to disk. You set up the scene, hit "Bake," wait, then play back the result. Tweaking requires re-baking.</p>
+<h3 id="the-blender-simulation-mindset">The Blender Simulation Mindset</h3>
+<p>Physics in Blender is <strong>approximate and art-directed</strong>, not engineering simulation. The goal is to look right, not be physically correct. You'll constantly trade accuracy for speed and use manual keyframing to override simulation results when the physics doesn't produce the motion you want.</p>
+<hr>
+<h2 id="16-compositing-post-processing">16. Compositing &amp; Post-Processing</h2>
+<h3 id="the-compositor">The Compositor</h3>
+<p>Blender's Compositor is a <strong>node-based image processing system</strong> that runs on rendered images. It's the same concept as Nuke or After Effects' layer system — you take the rendered image and apply effects, corrections, and combinations.</p>
+<p>Common compositing operations:</p>
+<table>
+<thead>
+<tr>
+<th>Node</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Color Balance / Color Correction</strong></td>
+<td>Adjust lift, gamma, gain (shadows, midtones, highlights)</td>
+</tr>
+<tr>
+<td><strong>Glare</strong></td>
+<td>Bloom, streaks, fog glow</td>
+</tr>
+<tr>
+<td><strong>Blur</strong></td>
+<td>Gaussian, bokeh, or directional blur</td>
+</tr>
+<tr>
+<td><strong>Lens Distortion</strong></td>
+<td>Simulate real lens barrel/pincushion distortion</td>
+</tr>
+<tr>
+<td><strong>Mix</strong></td>
+<td>Combine two images (add, multiply, screen, overlay)</td>
+</tr>
+<tr>
+<td><strong>Alpha Over</strong></td>
+<td>Layer images with transparency</td>
+</tr>
+<tr>
+<td><strong>Cryptomatte</strong></td>
+<td>Select objects/materials in compositing by ID</td>
+</tr>
+<tr>
+<td><strong>Denoise</strong></td>
+<td>Clean up noisy Cycles renders</td>
+</tr>
+<tr>
+<td><strong>Vignette</strong> (via Ellipse Mask + Mix)</td>
+<td>Darken edges of frame</td>
+</tr>
+</tbody>
+</table>
+<h3 id="render-passes">Render Passes</h3>
+<p>Instead of rendering one final image, you can output individual <strong>render passes</strong> — separate layers of information:</p>
+<ul>
+<li><strong>Combined</strong> — the final image</li>
+<li><strong>Diffuse</strong> / <strong>Glossy</strong> / <strong>Transmission</strong> — separated by shader type</li>
+<li><strong>Emission</strong> — glowing objects only</li>
+<li><strong>Shadow</strong> — shadow information only</li>
+<li><strong>AO</strong> — ambient occlusion</li>
+<li><strong>Z Depth</strong> — distance from camera per pixel (for depth-of-field or fog in post)</li>
+<li><strong>Normal</strong> — surface normals (for relighting in post)</li>
+<li><strong>Object/Material Index</strong> — ID masks for selecting objects in compositing</li>
+</ul>
+<p>Rendering to passes gives you maximum flexibility to adjust the look after rendering, without re-rendering. Output these as <strong>OpenEXR multilayer</strong> files.</p>
+<hr>
+<h2 id="17-video-editing">17. Video Editing</h2>
+<h3 id="the-video-sequencer">The Video Sequencer</h3>
+<p>Blender includes a <strong>Video Sequence Editor (VSE)</strong> — a multi-track, non-linear video editor. It handles:</p>
+<ul>
+<li>Importing video, audio, and image sequences</li>
+<li>Cutting, trimming, and rearranging clips</li>
+<li>Transitions (cross, wipe, etc.)</li>
+<li>Speed control (slow motion, time remapping)</li>
+<li>Color correction</li>
+<li>Text overlays</li>
+<li>Mixing audio tracks</li>
+<li>Rendering to video formats (FFmpeg)</li>
+</ul>
+<p>The VSE is capable enough for YouTube production and short films. For complex projects with many effects, dedicated software (DaVinci Resolve, Premiere) has a deeper toolset, but for self-contained Blender projects — where you render 3D shots and edit them together — the VSE keeps everything in one file.</p>
+<hr>
+<h2 id="18-add-ons-scripting">18. Add-ons &amp; Scripting</h2>
+<h3 id="add-ons">Add-ons</h3>
+<p>Blender has a rich ecosystem of add-ons (plugins). Many ship bundled but disabled — enable them in Preferences → Add-ons. Notable built-in add-ons:</p>
+<table>
+<thead>
+<tr>
+<th>Add-on</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Rigify</strong></td>
+<td>Auto-generates full character rigs from templates</td>
+</tr>
+<tr>
+<td><strong>Node Wrangler</strong></td>
+<td>Essential keyboard shortcuts for node editing (Ctrl+Shift+click to preview a node)</td>
+</tr>
+<tr>
+<td><strong>LoopTools</strong></td>
+<td>Additional mesh editing tools (circle, relax, bridge, flatten)</td>
+</tr>
+<tr>
+<td><strong>Bool Tool</strong></td>
+<td>Fast boolean operations for hard-surface modeling</td>
+</tr>
+<tr>
+<td><strong>Import Images as Planes</strong></td>
+<td>Import reference images as textured planes</td>
+</tr>
+<tr>
+<td><strong>A.N.T. Landscape</strong></td>
+<td>Procedural terrain generation</td>
+</tr>
+<tr>
+<td><strong>Mesh: Extra Objects</strong></td>
+<td>Additional mesh primitives</td>
+</tr>
+<tr>
+<td><strong>Sapling Tree Gen</strong></td>
+<td>Procedural tree generation</td>
+</tr>
+</tbody>
+</table>
+<p>Third-party add-ons from the <strong>Blender Extensions Platform</strong> or individual developers extend Blender further — hard-surface kits, auto-retopology tools, advanced UV tools, asset libraries, etc.</p>
+<h3 id="python-scripting">Python Scripting</h3>
+<p>Blender is fully scriptable via Python. The <code>bpy</code> module exposes the entire data model and operator system. Use cases:</p>
+<ul>
+<li><strong>Automation</strong> — batch-rename objects, batch-export, generate reports</li>
+<li><strong>Custom tools</strong> — operators accessible from menus or hotkeys</li>
+<li><strong>Procedural generation</strong> — create geometry programmatically</li>
+<li><strong>Pipeline integration</strong> — import/export scripts for studio pipelines</li>
+</ul>
+<p>Every action you take in the Blender UI is logged as a Python command in the <strong>Info</strong> editor. This makes learning the API straightforward — do something in the UI, then read the Python equivalent.</p>
+<hr>
+<h2 id="19-file-management-production-workflows">19. File Management &amp; Production Workflows</h2>
+<h3 id="the-blend-file">The .blend File</h3>
+<p>A <code>.blend</code> file is self-contained by default — everything is embedded: meshes, textures, animations, render settings, even the UI layout. This is convenient but creates large files.</p>
+<p>For production work, you typically use <strong>external textures</strong> and reference them from the <code>.blend</code>. The "Pack All Into .blend" option (File → External Data) embeds external files for portability.</p>
+<h3 id="linking-appending">Linking &amp; Appending</h3>
+<ul>
+<li><strong>Append</strong> — copies a data-block from another <code>.blend</code> file into the current file. The copy is independent — changes to the original don't propagate.</li>
+<li><strong>Link</strong> — creates a live reference to a data-block in another <code>.blend</code> file. The linked data is read-only but stays in sync. If the original changes, the link updates on reload.</li>
+</ul>
+<p>Linking is how studios manage large projects: characters are built in dedicated <code>.blend</code> files and linked into shot files. The character department updates the rig, and every shot file picks up the change.</p>
+<h3 id="library-overrides">Library Overrides</h3>
+<p>When you link an object, it's read-only. <strong>Library overrides</strong> (the replacement for the old proxy system) let you override specific properties of linked data — for example, link a character rig but override the pose (so you can animate it in the shot file while the rig definition stays linked).</p>
+<h3 id="asset-library">Asset Library</h3>
+<p>Blender's <strong>Asset Browser</strong> (3.0+) lets you mark any data-block as an asset — materials, objects, collections, node groups, poses, worlds. Assets are browsable from a palette and can be drag-and-dropped into scenes. You can define asset libraries from local folders for team-shared resources.</p>
+<h3 id="export-formats">Export Formats</h3>
+<table>
+<thead>
+<tr>
+<th>Format</th>
+<th>Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>FBX</strong></td>
+<td>Game engines (Unity, Unreal), other 3D apps. Supports mesh, materials (partial), armature, animation</td>
+</tr>
+<tr>
+<td><strong>glTF/GLB</strong></td>
+<td>Web, real-time 3D, PBR-standard materials. The modern interchange format</td>
+</tr>
+<tr>
+<td><strong>OBJ</strong></td>
+<td>Legacy interchange. Mesh + UVs + materials only. No animation</td>
+</tr>
+<tr>
+<td><strong>USD</strong></td>
+<td>Pixar's Universal Scene Description. The emerging industry standard for complex scenes</td>
+</tr>
+<tr>
+<td><strong>Alembic (.abc)</strong></td>
+<td>Baked animation/simulation data. Good for heavy simulations</td>
+</tr>
+<tr>
+<td><strong>STL</strong></td>
+<td>3D printing. Mesh only, no color or material</td>
+</tr>
+<tr>
+<td><strong>Collada (.dae)</strong></td>
+<td>Older interchange format. Declining use</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="20-mastery-checklist">20. Mastery Checklist</h2>
+<h3 id="fundamentals">Fundamentals</h3>
+<ul>
+<li>[ ] Navigate the 3D viewport fluently (orbit, pan, zoom, numpad views)</li>
+<li>[ ] Understand the mode system — switch between Object, Edit, Sculpt, Pose, Weight Paint confidently</li>
+<li>[ ] Add, delete, select, transform objects and geometry with hotkeys</li>
+<li>[ ] Organize scenes with collections</li>
+<li>[ ] Use the F3 search to find any operator</li>
+</ul>
+<h3 id="modeling">Modeling</h3>
+<ul>
+<li>[ ] Model a hard-surface object (furniture, prop) from a cube using extrude, inset, bevel, loop cut</li>
+<li>[ ] Understand and maintain clean quad topology</li>
+<li>[ ] Use Mirror and Subdivision Surface modifiers non-destructively</li>
+<li>[ ] Use Boolean operations for hard-surface details</li>
+<li>[ ] Recalculate normals and use Auto Smooth</li>
+</ul>
+<h3 id="materials-texturing">Materials &amp; Texturing</h3>
+<ul>
+<li>[ ] Build a PBR material using Principled BSDF with texture maps</li>
+<li>[ ] UV-unwrap a model with proper seams and minimal stretching</li>
+<li>[ ] Use procedural textures (Noise, Voronoi) for surface variation</li>
+<li>[ ] Mix materials using a Mix Shader or node math</li>
+</ul>
+<h3 id="lighting-rendering">Lighting &amp; Rendering</h3>
+<ul>
+<li>[ ] Set up three-point lighting</li>
+<li>[ ] Use an HDRI for environment lighting</li>
+<li>[ ] Understand the difference between EEVEE and Cycles and choose appropriately</li>
+<li>[ ] Configure render settings (samples, denoising, color management, output format)</li>
+<li>[ ] Render an animation as an image sequence</li>
+</ul>
+<h3 id="rigging">Rigging</h3>
+<ul>
+<li>[ ] Build a simple bone chain and parent a mesh to it</li>
+<li>[ ] Name bones <code>.L</code>/<code>.R</code> and use X-Axis Mirror and Symmetrize</li>
+<li>[ ] Understand vertex groups, weight painting, and mirroring weights</li>
+<li>[ ] Distinguish deform bones from control bones in a rig</li>
+<li>[ ] Set up an IK chain with a pole target and FK/IK switching</li>
+<li>[ ] Use bone constraints (IK, Copy Rotation, Limit Rotation) and understand influence/space</li>
+<li>[ ] Use Bendy Bones or Spline IK for a tail or spine</li>
+<li>[ ] Give controls custom shapes and organize them on bone collections</li>
+<li>[ ] Apply scale before rigging and test the full range of motion</li>
+<li>[ ] Use Rigify to auto-generate a character rig</li>
+</ul>
+<h3 id="animation">Animation</h3>
+<ul>
+<li>[ ] Keyframe an object's transform and adjust timing in the Dope Sheet</li>
+<li>[ ] Key whole poses with the "Whole Character" keying set</li>
+<li>[ ] Edit F-Curves and handle types in the Graph Editor for proper easing</li>
+<li>[ ] Block in stepped, then spline, then polish</li>
+<li>[ ] Loop motion with a cyclic F-Curve modifier</li>
+<li>[ ] Use motion paths to fix arcs and spacing</li>
+<li>[ ] Create shape keys and animate them</li>
+<li>[ ] Use the NLA Editor to blend animation actions</li>
+<li>[ ] Animate a walk cycle (pose-to-pose, cyclic)</li>
+</ul>
+<h3 id="advanced">Advanced</h3>
+<ul>
+<li>[ ] Build a procedural effect with Geometry Nodes</li>
+<li>[ ] Run a cloth or rigid body simulation</li>
+<li>[ ] Use the Compositor for color correction and glare</li>
+<li>[ ] Write a simple Python script using <code>bpy</code></li>
+<li>[ ] Link assets from an external <code>.blend</code> and use library overrides</li>
+</ul></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>
