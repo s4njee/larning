@@ -79,6 +79,11 @@ This guide is a depth-first treatment of the Caddy web server for engineers runn
 
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/CADDY_STUDY_GUIDE.md)
 
+### CB8 on iOS
+This guide is a practical case study in porting an Electron + web-GUI desktop app to iOS, using [CB8](https://github.com/s4njee/CB8) — a comic and book reader with an embedded Fastify server, React/shadcn renderer, SQLite index, and node-7z archive handling — as the real codebase being ported. It starts by reading CB8's architecture to see what survives the port (the HTTP API, the tested pure logic in `src/shared/`, the SQLite schema) and what categorically cannot (Electron, Node, spawned 7-Zip executables), then weighs the four porting strategies honestly — wrapping the web UI in WKWebView/Capacitor, React Native, on-device Node runtimes, and native SwiftUI — and builds the recommended two-phase native answer. Phase 1 is a Swift client for CB8's existing server API: the full endpoint table transcribed from the route handlers, Codable models mirroring `WebComicRecord`, better-auth session cookies handled for free by `URLSession`, a paginated `LazyVGrid` library, and a native comic reader with `UIScrollView` zoom, prefetch windows, server-side `?width=` resizing, and interoperable progress writes. Phase 2 goes standalone: document-picker imports with security-scoped bookmarks, a GRDB port of CB8's schema (minus the server's auth tables), ImageIO thumbnail downsampling, ZIPFoundation CBZ access, the CBR/unrar licensing decision, and behavior-identical Swift ports of `naturalSort`, `imageFilter`, and the LRU cache — verified by transcribing CB8's vitest suites into Swift Testing. It closes with offline downloads and last-write-wins progress sync, App Review preparation specific to self-hosted-client apps (guideline 4.2, ATS exceptions, local network privacy, demo servers), and an appendix giving the WKWebView/Capacitor wrapper recipe as a stopgap.
+
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/CB8_IOS_STUDY_GUIDE.md)
+
 ### Cloudflare
 This guide explains Cloudflare from a builder's point of view, focusing on the tools and services you are most likely to use in real projects. It is meant to make the platform feel less like a bundle of products and more like a set of choices you can compose for delivery, security, and edge compute.
 

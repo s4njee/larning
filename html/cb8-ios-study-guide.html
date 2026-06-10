@@ -1,0 +1,1829 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: CB8 on iOS.">
+<title>CB8 on iOS - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#f05138; --accent2:#f05138; --accent-weak:rgba(240,81,56,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#f05138; --accent2:#f05138; --accent-weak:rgba(240,81,56,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint);pointer-events:none}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px;min-width:0;overflow-wrap:break-word}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:minmax(0,1fr)}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+  .spacer{display:none}
+  .brand{flex:1;min-width:0}
+  .brand > span:not(.logo):not(.sub){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">CB8</span><span>CB8 on iOS</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-reading-the-cb8-codebase-what-youre-actually-porting" data-target="part-1-reading-the-cb8-codebase-what-youre-actually-porting">Part 1 — Reading the CB8 Codebase: What You're Actually Porting</a></li><li class="toc-l3"><a href="#the-three-deployment-architecture" data-target="the-three-deployment-architecture">The three-deployment architecture</a></li><li class="toc-l3"><a href="#the-module-map" data-target="the-module-map">The module map</a></li><li class="toc-l3"><a href="#what-survives-the-port-and-in-what-form" data-target="what-survives-the-port-and-in-what-form">What survives the port, and in what form</a></li><li class="toc-l2"><a href="#part-2-choosing-a-porting-strategy" data-target="part-2-choosing-a-porting-strategy">Part 2 — Choosing a Porting Strategy</a></li><li class="toc-l3"><a href="#option-0-the-trap-run-the-node-backend-on-the-device" data-target="option-0-the-trap-run-the-node-backend-on-the-device">Option 0 (the trap): run the Node backend on the device</a></li><li class="toc-l3"><a href="#option-1-wrap-the-existing-web-gui-wkwebview-capacitor" data-target="option-1-wrap-the-existing-web-gui-wkwebview-capacitor">Option 1: wrap the existing web GUI (WKWebView / Capacitor)</a></li><li class="toc-l3"><a href="#option-2-react-native-expo" data-target="option-2-react-native-expo">Option 2: React Native / Expo</a></li><li class="toc-l3"><a href="#option-3-recommended-native-swiftui-in-two-phases" data-target="option-3-recommended-native-swiftui-in-two-phases">Option 3 (recommended): native SwiftUI, in two phases</a></li><li class="toc-l3"><a href="#strategy-decision-table" data-target="strategy-decision-table">Strategy decision table</a></li><li class="toc-l2"><a href="#part-3-project-setup-and-the-dependency-map" data-target="part-3-project-setup-and-the-dependency-map">Part 3 — Project Setup and the Dependency Map</a></li><li class="toc-l3"><a href="#creating-the-project" data-target="creating-the-project">Creating the project</a></li><li class="toc-l3"><a href="#the-dependency-map" data-target="the-dependency-map">The dependency map</a></li><li class="toc-l2"><a href="#part-4-the-swift-api-client" data-target="part-4-the-swift-api-client">Part 4 — The Swift API Client</a></li><li class="toc-l3"><a href="#the-endpoint-table" data-target="the-endpoint-table">The endpoint table</a></li><li class="toc-l3"><a href="#models" data-target="models">Models</a></li><li class="toc-l3"><a href="#sessions-without-ceremony" data-target="sessions-without-ceremony">Sessions without ceremony</a></li><li class="toc-l2"><a href="#part-5-the-library-ui" data-target="part-5-the-library-ui">Part 5 — The Library UI</a></li><li class="toc-l3"><a href="#replacing-react-query-the-library-view-model" data-target="replacing-react-query-the-library-view-model">Replacing react-query: the library view model</a></li><li class="toc-l3"><a href="#thumbnails-and-the-cache-buster" data-target="thumbnails-and-the-cache-buster">Thumbnails and the cache-buster</a></li><li class="toc-l3"><a href="#shelves-and-filters" data-target="shelves-and-filters">Shelves and filters</a></li><li class="toc-l2"><a href="#part-6-the-comic-reader" data-target="part-6-the-comic-reader">Part 6 — The Comic Reader</a></li><li class="toc-l3"><a href="#interaction-model" data-target="interaction-model">Interaction model</a></li><li class="toc-l3"><a href="#the-page-pipeline" data-target="the-page-pipeline">The page pipeline</a></li><li class="toc-l3"><a href="#reader-chrome" data-target="reader-chrome">Reader chrome</a></li><li class="toc-l2"><a href="#part-7-epub-and-pdf" data-target="part-7-epub-and-pdf">Part 7 — EPUB and PDF</a></li><li class="toc-l3"><a href="#pdf-a-free-upgrade" data-target="pdf-a-free-upgrade">PDF: a free upgrade</a></li><li class="toc-l3"><a href="#epub-two-honest-options" data-target="epub-two-honest-options">EPUB: two honest options</a></li><li class="toc-l3"><a href="#mobi" data-target="mobi">MOBI</a></li><li class="toc-l2"><a href="#part-8-going-standalone-the-on-device-library" data-target="part-8-going-standalone-the-on-device-library">Part 8 — Going Standalone: The On-Device Library</a></li><li class="toc-l3"><a href="#getting-files-in-the-ios-reality" data-target="getting-files-in-the-ios-reality">Getting files in: the iOS reality</a></li><li class="toc-l3"><a href="#the-grdb-schema-a-deliberate-subset" data-target="the-grdb-schema-a-deliberate-subset">The GRDB schema: a deliberate subset</a></li><li class="toc-l3"><a href="#scanning-and-thumbnails" data-target="scanning-and-thumbnails">Scanning and thumbnails</a></li><li class="toc-l2"><a href="#part-9-archives-and-the-shared-logic-ports" data-target="part-9-archives-and-the-shared-logic-ports">Part 9 — Archives and the Shared-Logic Ports</a></li><li class="toc-l3"><a href="#cbz-zipfoundation" data-target="cbz-zipfoundation">CBZ: ZIPFoundation</a></li><li class="toc-l3"><a href="#cbr-the-honest-options" data-target="cbr-the-honest-options">CBR: the honest options</a></li><li class="toc-l3"><a href="#porting-naturalsortts-the-spec-fidelity-exercise" data-target="porting-naturalsortts-the-spec-fidelity-exercise">Porting naturalSort.ts — the spec-fidelity exercise</a></li><li class="toc-l2"><a href="#part-10-progress-sync-and-offline" data-target="part-10-progress-sync-and-offline">Part 10 — Progress Sync and Offline</a></li><li class="toc-l3"><a href="#offline-downloads" data-target="offline-downloads">Offline downloads</a></li><li class="toc-l3"><a href="#progress-one-writer-rule" data-target="progress-one-writer-rule">Progress: one writer rule</a></li><li class="toc-l3"><a href="#what-not-to-build" data-target="what-not-to-build">What not to build</a></li><li class="toc-l2"><a href="#part-11-testing-porting-the-vitest-suite" data-target="part-11-testing-porting-the-vitest-suite">Part 11 — Testing: Porting the Vitest Suite</a></li><li class="toc-l2"><a href="#part-12-distribution-and-app-review" data-target="part-12-distribution-and-app-review">Part 12 — Distribution and App Review</a></li><li class="toc-l2"><a href="#appendix-the-wkwebview-capacitor-shortcut" data-target="appendix-the-wkwebview-capacitor-shortcut">Appendix — The WKWebView / Capacitor Shortcut</a></li><li class="toc-l2"><a href="#closing-the-porting-checklist" data-target="closing-the-porting-checklist">Closing: the porting checklist</a></li></ul></nav></aside>
+  <main><h1 id="cb8-on-ios">CB8 on iOS</h1>
+<p>A practical, depth-first guide to bringing <a href="https://github.com/s4njee/CB8">CB8</a> — a comic and book reader built as an Electron app with an embedded web server and a React web GUI — to iPhone and iPad. This is a case study in a problem many teams hit: you have a working Electron + web-GUI desktop app, and you want it on iOS, where Electron cannot follow. The guide walks the real decision (wrap the web UI, or go native?), then builds the recommended answer — a native SwiftUI app that speaks CB8's existing HTTP API and grows an on-device library mode — mapping every CB8 subsystem (Fastify server, better-auth sessions, SQLite index, node-7z archive handling, epub.js/pdf.js readers) to its iOS counterpart.</p>
+<p>Assumes you can read TypeScript (CB8's language) and have basic Swift/SwiftUI exposure — the <a href="ios-development-study-guide.html">iOS Development guide</a> and <a href="swift-study-guide.html">Swift guide</a> in this repo cover the prerequisites. The <a href="electron-study-guide.html">Electron guide</a> covers the desktop side of the architecture being ported.</p>
+<p>Primary references: the <a href="https://github.com/s4njee/CB8">CB8 repository</a>, Apple's <a href="https://developer.apple.com/app-store/review/guidelines/">App Store Review Guidelines</a>, <a href="https://github.com/groue/GRDB.swift">GRDB</a>, <a href="https://github.com/weichsel/ZIPFoundation">ZIPFoundation</a>, the <a href="https://github.com/readium/swift-toolkit">Readium Swift Toolkit</a>, and Apple's <a href="https://developer.apple.com/documentation/pdfkit">PDFKit</a> and <a href="https://developer.apple.com/documentation/webkit/wkwebview">WKWebView</a> documentation.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1--reading-the-cb8-codebase-what-youre-actually-porting">Part 1 — Reading the CB8 Codebase: What You're Actually Porting</a></li>
+<li><a href="#part-2--choosing-a-porting-strategy">Part 2 — Choosing a Porting Strategy</a></li>
+<li><a href="#part-3--project-setup-and-the-dependency-map">Part 3 — Project Setup and the Dependency Map</a></li>
+<li><a href="#part-4--the-swift-api-client">Part 4 — The Swift API Client</a></li>
+<li><a href="#part-5--the-library-ui">Part 5 — The Library UI</a></li>
+<li><a href="#part-6--the-comic-reader">Part 6 — The Comic Reader</a></li>
+<li><a href="#part-7--epub-and-pdf">Part 7 — EPUB and PDF</a></li>
+<li><a href="#part-8--going-standalone-the-on-device-library">Part 8 — Going Standalone: The On-Device Library</a></li>
+<li><a href="#part-9--archives-and-the-shared-logic-ports">Part 9 — Archives and the Shared-Logic Ports</a></li>
+<li><a href="#part-10--progress-sync-and-offline">Part 10 — Progress Sync and Offline</a></li>
+<li><a href="#part-11--testing-porting-the-vitest-suite">Part 11 — Testing: Porting the Vitest Suite</a></li>
+<li><a href="#part-12--distribution-and-app-review">Part 12 — Distribution and App Review</a></li>
+<li><a href="#appendix--the-wkwebview--capacitor-shortcut">Appendix — The WKWebView / Capacitor Shortcut</a></li>
+</ol>
+<hr>
+<h2 id="part-1-reading-the-cb8-codebase-what-youre-actually-porting">Part 1 — Reading the CB8 Codebase: What You're Actually Porting</h2>
+<p>Before writing a line of Swift, understand what CB8 <em>is</em> architecturally, because the architecture decides how hard the port is. CB8 is unusually well-positioned for an iOS port — and the reason why is the single most important fact in this guide.</p>
+<h3 id="the-three-deployment-architecture">The three-deployment architecture</h3>
+<p>CB8 runs three ways from one codebase: as an Electron desktop app, as a Docker container, and as a plain Node.js standalone bundle. All three host the <strong>same embedded HTTP server</strong> (Fastify-based, in <code>src/main/webServer/</code>), which serves two things:</p>
+<ol>
+<li>The compiled React SPA (<code>src/renderer/</code> built by Vite into <code>dist/web</code>)</li>
+<li>A JSON API under <code>/api/*</code></li>
+</ol>
+<p>The Electron window is, in effect, just a privileged browser pointed at the embedded server. A LAN browser hitting <code>http://&amp;lt;host&amp;gt;:8008</code> gets the identical UI. This means CB8 already crossed the hardest bridge most Electron apps never cross: <strong>the GUI is fully decoupled from the host process and talks to it over HTTP.</strong> Many Electron apps wire their renderer to the main process through <code>ipcRenderer</code> calls that have no network equivalent; porting those to mobile means inventing an API first. CB8's API already exists, is already versioned by its own web client, and already handles authentication and multi-user state.</p>
+<h3 id="the-module-map">The module map</h3>
+<p>The layout, from the repository:</p>
+<pre><code class="language-text">src/main/        # &quot;Backend&quot;: archive loading, scanning, SQLite, Fastify server, IPC
+  archiveLoader.ts        # CBZ/CBR access via node-7z (spawns a 7z executable)
+  fileScanner.ts          # walks folders, finds .cbz/.cbr/.epub/.pdf/.mobi
+  libraryDatabase.ts      # better-sqlite3 wrapper
+  db/                     # comics, tags, folders, favorites, bookmarks,
+                          # progress, history, users, libraries + schema/migrations
+  thumbnailGenerator.ts   # cover thumbnails (sharp / @napi-rs/canvas)
+  epubCoverExtractor.ts   # covers from EPUB
+  pdfCoverExtractor.ts    # covers from PDF
+  seriesParser.ts         # series/volume/chapter from filenames
+  webServer/              # the HTTP layer
+    auth.ts               # better-auth + bcryptjs, signed session cookies
+    routes/               # auth, comics, progress, tags, folders, users, ...
+    mapping.ts            # DB record -&gt; WebComicRecord (strips file paths)
+src/renderer/    # React + shadcn/Tailwind SPA (zustand, react-query, react-router)
+  pages/                  # Library, Reader, Browse, Continue, Recent, Tag, Folder, Auth
+src/shared/      # pure logic used by both sides — the porting goldmine
+  naturalSort.ts          # &quot;page2.jpg&quot; before &quot;page10.jpg&quot;
+  imageFilter.ts          # which archive entries count as pages
+  scaleFit.ts             # aspect-preserving fit math
+  coverSelection.ts       # which entry becomes the cover
+  lru.ts                  # page cache eviction
+  epubTheme.ts            # EPUB theme definitions
+  types.ts                # MediaRecord, QueryOptions, QueryResult, ...
+</code></pre>
+<p>Three observations that shape the port:</p>
+<p><strong>First: <code>src/shared/</code> is pure logic with tests.</strong> <code>naturalSort.ts</code>, <code>imageFilter.ts</code>, <code>scaleFit.ts</code>, <code>coverSelection.ts</code>, <code>lru.ts</code> have no Node or DOM dependencies and ship with vitest suites (<code>*.test.ts</code>). These don't port as <em>code</em> — you'll rewrite them in Swift — but they port as <em>specifications</em>: each file is a precise, tested statement of behavior your Swift version must match (Part 9), and each test file converts mechanically to Swift Testing (Part 11).</p>
+<p><strong>Second: the backend's platform dependencies are concentrated and identifiable.</strong> Four things in <code>src/main/</code> are categorically unavailable on iOS:</p>
+<ul>
+<li><code>node-7z</code> <strong>spawns a 7-Zip executable</strong> (<code>7z</code>/<code>7zz</code>/<code>7za</code> on <code>PATH</code>, per the README). iOS apps cannot spawn processes — there is no <code>posix_spawn</code> of bundled executables for sandboxed apps, full stop. Archive extraction must become an in-process library call (Part 9).</li>
+<li><code>better-sqlite3</code> is a native Node addon. iOS has SQLite built into the OS; you'll use it through GRDB (Part 8).</li>
+<li><code>sharp</code> / <code>@napi-rs/canvas</code> are native addons for image work. iOS replaces them with ImageIO/Core Graphics, which are better at this job anyway (Part 8).</li>
+<li>Fastify itself, and Node. There is no supported Node runtime on iOS (Part 2 examines the unsupported ones).</li>
+</ul>
+<p><strong>Third: the API is small, regular, and cookie-authenticated.</strong> The route handlers in <code>src/main/webServer/routes/</code> match URLs with regexes against a flat path space (<code>/api/comics/:id/pages/:n</code> and friends — full table in Part 4). Auth is better-auth with bcryptjs hashing and signed session cookies (<code>cookiePrefix: 'cb8'</code>, 30-day sliding sessions). For an iOS client this is nearly ideal: <code>URLSession</code> handles cookies automatically, and there's no OAuth dance or token refresh machinery to build.</p>
+<h3 id="what-survives-the-port-and-in-what-form">What survives the port, and in what form</h3>
+<table>
+<thead>
+<tr>
+<th>CB8 piece</th>
+<th>Survives as</th>
+<th>Effort</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>HTTP API (<code>webServer/routes/</code>)</td>
+<td>Consumed as-is by a Swift client</td>
+<td>Low — write the client</td>
+</tr>
+<tr>
+<td><code>src/shared/</code> pure logic</td>
+<td>Swift rewrites, behavior-identical, test-verified</td>
+<td>Low — small files</td>
+</tr>
+<tr>
+<td>SQLite schema (<code>db/schema/create.ts</code>)</td>
+<td>GRDB schema for on-device mode</td>
+<td>Medium — subset only</td>
+</tr>
+<tr>
+<td>React UI structure (pages, flows)</td>
+<td>SwiftUI screens mirroring the same routes</td>
+<td>Medium — rewrite</td>
+</tr>
+<tr>
+<td>Reader interactions (pinch/pan/swipe)</td>
+<td>Native gestures (better on iOS than in a webview)</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>Archive loading (<code>archiveLoader.ts</code> + node-7z)</td>
+<td>ZIPFoundation / libarchive in-process</td>
+<td>Medium–High (CBR is the catch)</td>
+</tr>
+<tr>
+<td>epub.js / pdf.js rendering</td>
+<td>PDFKit (native) + Readium or WKWebView+epub.js</td>
+<td>Medium</td>
+</tr>
+<tr>
+<td>Electron shell, IPC, menus, Forge packaging</td>
+<td>Nothing — does not port</td>
+<td>Zero (deleted, not ported)</td>
+</tr>
+</tbody>
+</table>
+<p>The Electron layer itself — <code>BrowserWindow</code>, <code>preload.ts</code>, <code>ipcHandlers.ts</code>, <code>menu.ts</code>, the Forge makers — contributes <em>nothing</em> to the iOS app. That's not a loss; it's the proof that CB8's "decoupled from Electron so the standalone bundle can reuse it" design (their words, from the project layout docs) was the right call. The port rides entirely on the parts that were already Electron-free.</p>
+<hr>
+<h2 id="part-2-choosing-a-porting-strategy">Part 2 — Choosing a Porting Strategy</h2>
+<p>"Electron app on iOS" has four candidate answers. Three are real options for CB8; one is a trap worth understanding so you can rule it out deliberately.</p>
+<h3 id="option-0-the-trap-run-the-node-backend-on-the-device">Option 0 (the trap): run the Node backend on the device</h3>
+<p>Projects like <strong>nodejs-mobile</strong> embed a Node runtime in a mobile app (with JIT disabled, since iOS forbids writable-executable memory for third-party apps — only Safari/WKWebView's JavaScriptCore gets a JIT). In theory you'd run CB8's embedded server on-device and point a WKWebView at <code>localhost</code>.</p>
+<p>In practice this fails CB8 specifically, on concrete grounds:</p>
+<ul>
+<li><strong><code>node-7z</code> cannot work.</strong> It shells out to a 7-Zip executable. iOS prohibits spawning processes. Every CBZ/CBR open in <code>archiveLoader.ts</code> dies. You'd be rewriting the archive layer anyway — in which case, why are you shipping a Node runtime?</li>
+<li><strong>Native addons</strong> (<code>better-sqlite3</code>, <code>sharp</code>) must be cross-compiled for iOS/arm64 against a community-maintained Node fork. This is where such ports go to die: every dependency bump becomes a porting project.</li>
+<li><strong>Lifecycle mismatch.</strong> iOS suspends apps aggressively. A long-lived server process with open SQLite handles and in-flight scans is the opposite of the iOS application model; you'd fight <code>beginBackgroundTask</code> expiration forever.</li>
+<li><strong>Review risk</strong> for shipping an interpreter plus a wrapped website (see Option 1's guideline discussion).</li>
+</ul>
+<p>Rule it out and move on.</p>
+<h3 id="option-1-wrap-the-existing-web-gui-wkwebview-capacitor">Option 1: wrap the existing web GUI (WKWebView / Capacitor)</h3>
+<p>CB8's React SPA already runs in any browser. A minimal iOS app is a <code>WKWebView</code> pointed at a CB8 server — either a remote one (home server, NAS, the Docker deployment) or a bundled copy of <code>dist/web</code> configured with a server URL. <a href="https://capacitorjs.com/">Capacitor</a> industrializes this: it ships your web build in the app bundle, serves it from a local custom scheme, and exposes native plugins (filesystem, haptics, status bar) to JS.</p>
+<p><strong>Honest assessment for CB8:</strong></p>
+<p><em>For:</em> near-zero UI work; pixel-identical to the desktop/web experience; the touch interactions already exist (the README advertises pinch/pan/swipe on touch); one UI codebase forever.</p>
+<p><em>Against:</em></p>
+<ul>
+<li><strong>App Review guideline 4.2 (Minimum Functionality).</strong> Apps that are "simply a web site bundled as an app" get rejected. A wrapper whose entire content lives on the user's own server is a gray zone — self-hosted client apps do ship (many Plex/Jellyfin-adjacent apps started this way), but rejection risk is real and resubmission cycles are slow.</li>
+<li><strong>It can't work without a server.</strong> The wrapper is a <em>client only</em>. No on-device library, no offline reading without significant new web-side work (and the web filesystem APIs available inside WKWebView won't give you Files-app integration users expect).</li>
+<li><strong>Reader feel.</strong> Web pinch-zoom inside a webview, fighting the webview's own gesture recognizers, never feels as good as a native <code>UIScrollView</code>. For an app whose entire job is reading, the reader <em>is</em> the product.</li>
+<li><strong>Per-page latency.</strong> The SPA fetches pages over HTTP even when "local"; fine on a LAN, but it forecloses the tight native image pipeline (ImageIO downsampling, prefetch, memory-mapped decode) that makes a reader feel instant.</li>
+</ul>
+<p>The wrapper is a legitimate <em>first milestone</em> — it's how you validate demand in a weekend — and the Appendix gives the recipe. It's the wrong <em>destination</em>.</p>
+<h3 id="option-2-react-native-expo">Option 2: React Native / Expo</h3>
+<p>Reuse the React <em>knowledge</em> (not the React DOM code — shadcn/Tailwind components don't transfer) with native rendering. For CB8 this lands awkwardly: the UI would be rewritten anyway (different component library, different navigation), the reader still needs native-grade gesture and image work (custom native modules or finicky <code>react-native-gesture-handler</code> tuning), and the archive/SQLite layer is native code regardless. You'd take on the RN toolchain to avoid a Swift UI layer that is, for this app, the easy part. If the team were a JS shop planning Android the same week, RN becomes defensible. For a personal project with one target platform, it's overhead.</p>
+<h3 id="option-3-recommended-native-swiftui-in-two-phases">Option 3 (recommended): native SwiftUI, in two phases</h3>
+<p><strong>Phase 1 — a native client for CB8 servers.</strong> CB8 already ships as Docker/standalone deployments whose entire purpose is multi-device access. A SwiftUI app speaking the existing <code>/api</code> (Parts 4–7) is a genuinely useful product on its own: library browsing, reading, per-user progress against your home server. No changes to the CB8 codebase required — the API as it exists today suffices.</p>
+<p><strong>Phase 2 — standalone on-device mode.</strong> Add a local library: import files via the document picker, index into GRDB using a port of CB8's schema, extract archives in-process, generate thumbnails with ImageIO (Parts 8–9). The app becomes what CB8's Electron build is on the desktop: a self-contained reader.</p>
+<p>This ordering mirrors CB8's own architecture (server core, multiple frontends) and front-loads the highest-value, lowest-risk work. Everything from here on builds Option 3, with the Appendix covering Option 1 as the quick alternative.</p>
+<h3 id="strategy-decision-table">Strategy decision table</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Web wrapper / Capacitor</th>
+<th>React Native</th>
+<th>Native SwiftUI</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UI reuse from CB8</td>
+<td>~100%</td>
+<td>~0% (knowledge only)</td>
+<td>0%</td>
+</tr>
+<tr>
+<td>Backend reuse</td>
+<td>100% (remote server)</td>
+<td>API client rewrite</td>
+<td>API client rewrite</td>
+</tr>
+<tr>
+<td>Offline / on-device library</td>
+<td>Effectively no</td>
+<td>Native modules needed</td>
+<td>First-class</td>
+</tr>
+<tr>
+<td>Reader gesture quality</td>
+<td>Webview-grade</td>
+<td>Good with effort</td>
+<td>Native</td>
+</tr>
+<tr>
+<td>App Review risk</td>
+<td>4.2 exposure</td>
+<td>Low</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>New toolchains</td>
+<td>Capacitor</td>
+<td>RN/Metro/Expo</td>
+<td>Xcode only</td>
+</tr>
+<tr>
+<td>Time to first usable build</td>
+<td>Days</td>
+<td>Weeks</td>
+<td>~2 weeks (Phase 1)</td>
+</tr>
+<tr>
+<td>Right when…</td>
+<td>validating demand fast</td>
+<td>JS team, Android too</td>
+<td>the reader is the product</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="part-3-project-setup-and-the-dependency-map">Part 3 — Project Setup and the Dependency Map</h2>
+<h3 id="creating-the-project">Creating the project</h3>
+<p>Xcode → New Project → iOS App. SwiftUI interface, Swift Testing for the test target. Set the deployment target to iOS 17 (gets <code>@Observable</code>, <code>NavigationStack</code> maturity, and modern <code>ScrollView</code> APIs while still covering essentially every device CB8's audience owns). Enable strict concurrency (Swift 6 language mode) from day one — retrofitting it hurts.</p>
+<p>Suggested target layout, mirroring CB8's separation of concerns:</p>
+<pre><code class="language-text">CB8iOS/
+  App/                  # @main, scenes, dependency container
+  API/                  # Part 4 — server client (CB8's webServer, consumed)
+  Library/              # Part 5 — browse UI (CB8's renderer/pages)
+  Reader/               # Parts 6–7 — comic/EPUB/PDF readers
+  LocalLibrary/         # Part 8 — GRDB store, scanner, importer (CB8's src/main)
+  Archives/             # Part 9 — CBZ/CBR access (CB8's archiveLoader)
+  Shared/               # Part 9 — naturalSort, imageFilter, scaleFit, LRU ports
+CB8iOSTests/            # Part 11 — ported vitest suites
+</code></pre>
+<p>The <code>Shared/</code> name is deliberate: it's the same role as CB8's <code>src/shared/</code>, and keeping the file names parallel (<code>NaturalSort.swift</code> ↔ <code>naturalSort.ts</code>) makes diffing behavior against upstream trivial when CB8 changes.</p>
+<h3 id="the-dependency-map">The dependency map</h3>
+<p>Every meaningful dependency in CB8's <code>package.json</code>, and what plays its role on iOS:</p>
+<table>
+<thead>
+<tr>
+<th>CB8 dependency</th>
+<th>Role in CB8</th>
+<th>iOS replacement</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>electron</code> + Forge makers</td>
+<td>Shell, packaging</td>
+<td>— (Xcode, App Store)</td>
+<td>Does not port; nothing to do</td>
+</tr>
+<tr>
+<td><code>fastify</code>, <code>@fastify/static</code>, <code>@fastify/cookie</code>, <code>@fastify/cors</code></td>
+<td>Embedded HTTP server</td>
+<td>— (Phase 1: consumed remotely; Phase 2: no server needed)</td>
+<td>The iOS app has no reason to host HTTP</td>
+</tr>
+<tr>
+<td><code>better-auth</code>, <code>bcryptjs</code></td>
+<td>Sessions, password hashing</td>
+<td><code>URLSession</code> + <code>HTTPCookieStorage</code>; Keychain for credentials</td>
+<td>Client side only — hashing stays on the server</td>
+</tr>
+<tr>
+<td><code>better-sqlite3</code></td>
+<td>Library index</td>
+<td><a href="https://github.com/groue/GRDB.swift">GRDB.swift</a></td>
+<td>Same SQLite underneath; GRDB adds Codable rows, migrations, observation</td>
+</tr>
+<tr>
+<td><code>node-7z</code> (+ 7-Zip binary), <code>yauzl</code></td>
+<td>CBZ/CBR extraction</td>
+<td><a href="https://github.com/weichsel/ZIPFoundation">ZIPFoundation</a> for CBZ; libarchive or UnrarKit for CBR</td>
+<td>The big rewrite; Part 9</td>
+</tr>
+<tr>
+<td><code>sharp</code>, <code>@napi-rs/canvas</code>, <code>@jsquash/jxl</code></td>
+<td>Thumbnails, resizing, JXL decode</td>
+<td>ImageIO (<code>CGImageSource</code> downsampling)</td>
+<td>JPEG XL decodes natively on iOS 17+</td>
+</tr>
+<tr>
+<td><code>pdfjs-dist</code></td>
+<td>PDF rendering + covers</td>
+<td><strong>PDFKit</strong> (system framework)</td>
+<td>A straight upgrade — native, fast, zero dependency</td>
+</tr>
+<tr>
+<td><code>epubjs</code></td>
+<td>EPUB rendering</td>
+<td><a href="https://github.com/readium/swift-toolkit">Readium Swift Toolkit</a>, or WKWebView reusing epub.js</td>
+<td>Part 7 weighs the choice</td>
+</tr>
+<tr>
+<td><code>react</code>, <code>react-router-dom</code></td>
+<td>UI, navigation</td>
+<td>SwiftUI, <code>NavigationStack</code></td>
+<td>Pages map 1:1 to screens</td>
+</tr>
+<tr>
+<td><code>zustand</code></td>
+<td>Client state</td>
+<td><code>@Observable</code> models</td>
+<td>Same role: plain observable state objects</td>
+</tr>
+<tr>
+<td><code>@tanstack/react-query</code></td>
+<td>Server cache, pagination</td>
+<td>Async/await + small cache layer</td>
+<td>Part 5 builds the equivalent</td>
+</tr>
+<tr>
+<td><code>tailwind</code>/shadcn/<code>radix</code></td>
+<td>Components</td>
+<td>SwiftUI built-ins</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>sonner</code> (toasts), <code>lucide-react</code> (icons)</td>
+<td>Chrome</td>
+<td>SwiftUI alerts/overlays, SF Symbols</td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>vitest</code>, <code>fast-check</code></td>
+<td>Tests</td>
+<td>Swift Testing (parameterized tests cover the fast-check cases pragmatically)</td>
+<td>Part 11</td>
+</tr>
+</tbody>
+</table>
+<p>Add the Swift packages (File → Add Package Dependencies): <code>GRDB.swift</code>, <code>ZIPFoundation</code>, and — when you reach Part 7 — <code>readium/swift-toolkit</code>. Phase 1 needs none of them; the API client below is pure Foundation.</p>
+<hr>
+<h2 id="part-4-the-swift-api-client">Part 4 — The Swift API Client</h2>
+<p>Phase 1 is a client for CB8's existing server. The contract is defined by <code>src/main/webServer/routes/</code> and <code>mapping.ts</code>, and it's worth transcribing precisely, because this is the actual API as implemented (not a hypothetical REST design).</p>
+<h3 id="the-endpoint-table">The endpoint table</h3>
+<p>Compiled from the route handlers' regex matches:</p>
+<table>
+<thead>
+<tr>
+<th>Method + Path</th>
+<th>Purpose</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST /api/auth/login</code></td>
+<td>Sign in</td>
+<td>Body <code>{username?, password}</code>; username defaults to <code>admin</code>. Sets signed session cookie</td>
+</tr>
+<tr>
+<td><code>POST /api/auth/logout</code></td>
+<td>Sign out</td>
+<td>Clears session</td>
+</tr>
+<tr>
+<td><code>GET /api/auth/session</code></td>
+<td>Who am I</td>
+<td>Returns <code>{user, host, guestAccess}</code></td>
+</tr>
+<tr>
+<td><code>POST /api/auth/register</code></td>
+<td>Create user</td>
+<td>Admin only</td>
+</tr>
+<tr>
+<td><code>GET /api/comics</code></td>
+<td>Query library</td>
+<td><code>search</code>, <code>tag</code>, <code>sortBy</code>, <code>sortOrder</code>, <code>offset</code>, <code>limit</code> (default 50), <code>mediaType</code>, <code>fileExt</code>, <code>readStatus</code>, <code>favorites</code></td>
+</tr>
+<tr>
+<td><code>GET /api/comics/:id</code></td>
+<td>One record</td>
+<td>Per-user progress overlaid</td>
+</tr>
+<tr>
+<td><code>DELETE /api/comics/:id</code></td>
+<td>Remove from library</td>
+<td>DB row only; server file untouched</td>
+</tr>
+<tr>
+<td><code>GET /api/comics/:id/thumbnail?v=</code></td>
+<td>Cover JPEG</td>
+<td><code>v</code> is a cache-buster derived from <code>dateAdded</code></td>
+</tr>
+<tr>
+<td><code>GET /api/comics/:id/pages/:n</code></td>
+<td>Page image</td>
+<td>0-indexed. <code>?width=</code> triggers <strong>server-side resize</strong> with day-long <code>Cache-Control</code></td>
+</tr>
+<tr>
+<td><code>GET /api/comics/:id/file</code></td>
+<td>Whole file stream</td>
+<td>For EPUB/PDF/MOBI client-side rendering — and offline downloads</td>
+</tr>
+<tr>
+<td><code>PUT /api/comics/:id/progress</code></td>
+<td>Save position</td>
+<td>Body <code>{page?, location?, completed?}</code>; server auto-completes on last page</td>
+</tr>
+<tr>
+<td><code>DELETE /api/comics/:id/progress</code></td>
+<td>Clear position</td>
+<td></td>
+</tr>
+<tr>
+<td><code>POST/DELETE /api/comics/:id/favorite</code></td>
+<td>Toggle favorite</td>
+<td></td>
+</tr>
+<tr>
+<td><code>GET/POST /api/comics/:id/bookmarks</code>, <code>PUT/DELETE …/bookmarks/:bid</code></td>
+<td>Bookmarks</td>
+<td></td>
+</tr>
+<tr>
+<td><code>GET/POST /api/history</code></td>
+<td>Reading history</td>
+<td>Paginated with <code>offset</code>/<code>limit</code></td>
+</tr>
+<tr>
+<td><code>GET /api/series</code>, <code>GET /api/series/:name/comics</code></td>
+<td>Series grouping</td>
+<td>From <code>seriesParser.ts</code> filename parsing</td>
+</tr>
+<tr>
+<td><code>GET /api/recently-read</code>, <code>GET /api/continue-reading</code></td>
+<td>Shelves</td>
+<td><code>limit</code>, <code>mediaType</code>; per-user when signed in</td>
+</tr>
+<tr>
+<td><code>GET /api/tags</code>, <code>/api/folders</code>, <code>/api/libraries</code></td>
+<td>Organization</td>
+<td>Virtual folders — no disk layout implied</td>
+</tr>
+<tr>
+<td><code>/api/admin/*</code>, <code>/api/settings/*</code></td>
+<td>Server admin</td>
+<td>Scan paths, uploads, guest access, rescan interval</td>
+</tr>
+</tbody>
+</table>
+<p>Two server behaviors matter to client design. <strong><code>?width=</code> resizing</strong>: the server caches resized pages and serves them with <code>Cache-Control: public, max-age=86400</code>, so requesting pages at device-pixel width is both a bandwidth and a server-cache win — pass <code>Int(viewWidth * displayScale)</code>. <strong>Progress auto-completion</strong>: <code>PUT progress</code> with <code>page &gt;= pageCount - 1</code> marks the item completed server-side unless the client says otherwise — so the iOS client should <em>not</em> duplicate that rule, or completion semantics will drift between clients.</p>
+<h3 id="models">Models</h3>
+<p><code>mapping.ts</code> defines the wire shape — <code>WebComicRecord</code> deliberately omits server file paths. The Swift mirror:</p>
+<pre><code class="language-swift">enum MediaType: String, Codable, Sendable {
+    case comic, book
+}
+
+/// Mirrors WebComicRecord in src/main/webServer/mapping.ts.
+struct ComicRecord: Codable, Identifiable, Hashable, Sendable {
+    let id: Int
+    let title: String
+    let pageCount: Int
+    let fileSize: Int64
+    let dateAdded: String
+    let tags: [String]
+    let lastPage: Int?
+    let lastLocation: String?     // EPUB CFI / PDF position for books
+    let lastRead: String?
+    let mediaType: MediaType
+    let thumbnailUrl: String      // relative: /api/comics/7/thumbnail?v=...
+    let fileExt: String           // &quot;cbz&quot; | &quot;cbr&quot; | &quot;epub&quot; | &quot;pdf&quot; | &quot;mobi&quot;
+    let favorited: Bool?
+}
+
+/// Mirrors QueryResult in src/shared/types.ts.
+struct ComicQueryResult: Codable, Sendable {
+    let records: [ComicRecord]
+    let totalCount: Int
+}
+
+/// Mirrors QueryOptions in src/shared/types.ts, as URL query items.
+struct LibraryQuery: Sendable {
+    enum SortBy: String { case title, dateAdded, fileSize, pageCount, lastRead }
+    enum ReadStatus: String { case unread, inProgress = &quot;in-progress&quot;, completed }
+
+    var search: String?
+    var tag: String?
+    var sortBy: SortBy = .dateAdded
+    var sortOrder: String = &quot;desc&quot;
+    var offset = 0
+    var limit = 50                // matches the server default
+    var mediaType: MediaType?
+    var fileExt: String?
+    var readStatus: ReadStatus?
+    var favorites = false
+
+    var queryItems: [URLQueryItem] {
+        var items = [
+            URLQueryItem(name: &quot;sortBy&quot;, value: sortBy.rawValue),
+            URLQueryItem(name: &quot;sortOrder&quot;, value: sortOrder),
+            URLQueryItem(name: &quot;offset&quot;, value: String(offset)),
+            URLQueryItem(name: &quot;limit&quot;, value: String(limit)),
+        ]
+        if let search, !search.isEmpty { items.append(.init(name: &quot;search&quot;, value: search)) }
+        if let tag { items.append(.init(name: &quot;tag&quot;, value: tag)) }
+        if let mediaType { items.append(.init(name: &quot;mediaType&quot;, value: mediaType.rawValue)) }
+        if let fileExt { items.append(.init(name: &quot;fileExt&quot;, value: fileExt)) }
+        if let readStatus { items.append(.init(name: &quot;readStatus&quot;, value: readStatus.rawValue)) }
+        if favorites { items.append(.init(name: &quot;favorites&quot;, value: &quot;true&quot;)) }
+        return items
+    }
+}
+</code></pre>
+<h3 id="sessions-without-ceremony">Sessions without ceremony</h3>
+<p>CB8 uses better-auth's signed session cookies (prefix <code>cb8</code>, 30-day sliding expiry, refreshed daily). The login route returns <code>Set-Cookie</code> headers and a JSON body. The pleasant consequence: <strong><code>URLSession</code> already implements the entire auth protocol.</strong> Its default configuration stores cookies in <code>HTTPCookieStorage</code> and replays them per host. You never parse, store, or attach a token.</p>
+<pre><code class="language-swift">actor CB8Client {
+    let baseURL: URL                  // e.g. http://192.168.1.20:8008
+    private let session: URLSession
+
+    init(baseURL: URL) {
+        self.baseURL = baseURL
+        let config = URLSessionConfiguration.default
+        config.httpCookieAcceptPolicy = .always   // server is self-hosted; cookie is first-party
+        config.httpShouldSetCookies = true
+        self.session = URLSession(configuration: config)
+    }
+
+    struct SessionUser: Codable, Sendable {
+        let id: Int
+        let username: String
+        let isAdmin: Bool
+    }
+
+    struct LoginResponse: Codable, Sendable {
+        let ok: Bool
+        let user: SessionUser
+    }
+
+    func login(username: String, password: String) async throws -&gt; SessionUser {
+        var request = URLRequest(url: baseURL.appending(path: &quot;/api/auth/login&quot;))
+        request.httpMethod = &quot;POST&quot;
+        request.setValue(&quot;application/json&quot;, forHTTPHeaderField: &quot;Content-Type&quot;)
+        request.httpBody = try JSONEncoder().encode(
+            [&quot;username&quot;: username, &quot;password&quot;: password])
+        let (data, response) = try await session.data(for: request)
+        try Self.checkStatus(response, data: data)
+        // Set-Cookie was captured by HTTPCookieStorage; nothing to do.
+        return try JSONDecoder().decode(LoginResponse.self, from: data).user
+    }
+
+    func comics(_ query: LibraryQuery) async throws -&gt; ComicQueryResult {
+        var components = URLComponents(
+            url: baseURL.appending(path: &quot;/api/comics&quot;),
+            resolvingAgainstBaseURL: false)!
+        components.queryItems = query.queryItems
+        let (data, response) = try await session.data(from: components.url!)
+        try Self.checkStatus(response, data: data)
+        return try JSONDecoder().decode(ComicQueryResult.self, from: data)
+    }
+
+    /// Page image URL — width in *pixels* so the server's resize cache
+    /// (Cache-Control: max-age=86400) serves device-sized images.
+    func pageURL(comic: Int, page: Int, width: Int? = nil) -&gt; URL {
+        var url = baseURL.appending(path: &quot;/api/comics/\(comic)/pages/\(page)&quot;)
+        if let width {
+            url.append(queryItems: [URLQueryItem(name: &quot;width&quot;, value: String(width))])
+        }
+        return url
+    }
+
+    func saveProgress(comic: Int, page: Int? = nil,
+                      location: String? = nil) async throws {
+        var request = URLRequest(
+            url: baseURL.appending(path: &quot;/api/comics/\(comic)/progress&quot;))
+        request.httpMethod = &quot;PUT&quot;
+        request.setValue(&quot;application/json&quot;, forHTTPHeaderField: &quot;Content-Type&quot;)
+        var body: [String: AnyEncodable] = [:]
+        if let page { body[&quot;page&quot;] = AnyEncodable(page) }
+        if let location { body[&quot;location&quot;] = AnyEncodable(location) }
+        request.httpBody = try JSONEncoder().encode(body)
+        let (data, response) = try await session.data(for: request)
+        try Self.checkStatus(response, data: data)
+        // Deliberately no completed flag: the server auto-completes on the
+        // final page (routes/progress.ts) — don't duplicate that rule here.
+    }
+
+    private static func checkStatus(_ response: URLResponse, data: Data) throws {
+        guard let http = response as? HTTPURLResponse else { throw CB8Error.transport }
+        switch http.statusCode {
+        case 200...299: return
+        case 401: throw CB8Error.unauthorized
+        default:
+            let message = (try? JSONDecoder().decode([String: String].self, from: data))?[&quot;error&quot;]
+            throw CB8Error.server(status: http.statusCode, message: message)
+        }
+    }
+}
+
+enum CB8Error: Error {
+    case transport
+    case unauthorized
+    case server(status: Int, message: String?)
+}
+</code></pre>
+<p>(<code>AnyEncodable</code> is the usual ten-line type-erasing wrapper; or define three small concrete body structs if you prefer.)</p>
+<p>Implementation notes, hard-won:</p>
+<ul>
+<li><strong><code>unauthorized</code> is a state, not an error.</strong> The session cookie outlives app launches (<code>HTTPCookieStorage</code> persists) but not the server's 30-day window. Catch <code>CB8Error.unauthorized</code> centrally and route to the login screen rather than surfacing an alert from whatever screen happened to fire the request. <code>GET /api/auth/session</code> on launch is the cheap way to decide which screen to show.</li>
+<li><strong>Store credentials in the Keychain, not the cookie.</strong> The cookie is the session; the Keychain entry (<code>kSecClassInternetPassword</code>, keyed by server URL) is what lets you re-login silently when the session lapses. Never UserDefaults.</li>
+<li><strong>HTTP on the LAN needs an ATS exception.</strong> Self-hosted CB8 is typically plain <code>http://</code> on a LAN. App Transport Security blocks that by default. <code>NSAllowsLocalNetworking</code> covers RFC1918-style local hosts; for a user-entered remote URL over HTTP you'd need broader exceptions and a justification at review time — or nudge users toward HTTPS reverse proxies, which their Docker deployment docs already accommodate.</li>
+<li><strong>Multiple servers are cheap.</strong> <code>CB8Client</code> is an actor per <code>baseURL</code>; a "server list" feature is an array of saved URLs + Keychain entries. Worth designing in from the start — NAS-app users expect it.</li>
+</ul>
+<hr>
+<h2 id="part-5-the-library-ui">Part 5 — The Library UI</h2>
+<p>CB8's renderer pages (<code>AllPage</code>, <code>ContinuePage</code>, <code>RecentPage</code>, <code>TagPage</code>, <code>FolderPages</code>, <code>BrowsePages</code>, <code>LibraryPage</code>, <code>ReaderPage</code>, <code>AuthPages</code>) translate directly to a <code>TabView</code> + <code>NavigationStack</code> structure: a Library tab (grid + search + filters), a Home tab (continue-reading and recently-read shelves), an Organize tab (tags/folders/series), and Settings.</p>
+<h3 id="replacing-react-query-the-library-view-model">Replacing react-query: the library view model</h3>
+<p>CB8's renderer leans on <code>@tanstack/react-query</code> for caching, pagination, and request dedup, with <code>zustand</code> for client state. On iOS the same division of labor is an <code>@Observable</code> model owning query state and an async pagination loop:</p>
+<pre><code class="language-swift">@Observable @MainActor
+final class LibraryModel {
+    private let client: CB8Client
+
+    var query = LibraryQuery() {
+        didSet { Task { await reload() } }
+    }
+    private(set) var records: [ComicRecord] = []
+    private(set) var totalCount = 0
+    private(set) var isLoading = false
+    var error: CB8Error?
+
+    init(client: CB8Client) { self.client = client }
+
+    func reload() async {
+        query.offset = 0
+        records = []
+        await loadNextPage()
+    }
+
+    /// Server pages by offset/limit with limit defaulting to 50 — same
+    /// values the web UI uses, so server-side query plans stay warm.
+    func loadNextPage() async {
+        guard !isLoading, records.count &lt; totalCount || records.isEmpty else { return }
+        isLoading = true
+        defer { isLoading = false }
+        do {
+            query.offset = records.count
+            let result = try await client.comics(query)
+            records.append(contentsOf: result.records)
+            totalCount = result.totalCount
+        } catch let e as CB8Error {
+            error = e
+        } catch {
+            self.error = .transport
+        }
+    }
+}
+</code></pre>
+<p>The grid itself:</p>
+<pre><code class="language-swift">struct LibraryGridView: View {
+    @Environment(LibraryModel.self) private var model
+    let client: CB8Client
+
+    private let columns = [GridItem(.adaptive(minimum: 110), spacing: 12)]
+
+    var body: some View {
+        @Bindable var model = model
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: 16) {
+                ForEach(model.records) { comic in
+                    NavigationLink(value: comic) {
+                        CoverCell(comic: comic, client: client)
+                    }
+                    .task {
+                        // Infinite scroll: trailing edge triggers next page
+                        if comic.id == model.records.suffix(8).first?.id {
+                            await model.loadNextPage()
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+        .searchable(text: $model.query.search.orEmpty)
+        .navigationDestination(for: ComicRecord.self) { comic in
+            ReaderScreen(comic: comic, client: client)
+        }
+    }
+}
+</code></pre>
+<h3 id="thumbnails-and-the-cache-buster">Thumbnails and the cache-buster</h3>
+<p>CB8 versions thumbnail URLs (<code>?v=&amp;lt;dateAdded ms&amp;gt;</code>) precisely so HTTP caches can hold covers aggressively without going stale across re-scans — <code>mapping.ts</code> documents the bug this prevents (a wiped-and-rescanned library serving the previous comic's cover from browser cache). Honor the same contract: cache by <strong>full URL including <code>v</code></strong>, and let cached entries live long.</p>
+<p><code>AsyncImage</code> works for a first pass but re-fetches too eagerly and offers no disk layer. A small <code>URLCache</code>-backed loader matches the server's design intent:</p>
+<pre><code class="language-swift">struct CoverCell: View {
+    let comic: ComicRecord
+    let client: CB8Client
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            CachedImage(url: client.baseURL.appending(path: comic.thumbnailUrl))
+                .aspectRatio(2/3, contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(alignment: .bottomLeading) {
+                    if let last = comic.lastPage, comic.pageCount &gt; 0 {
+                        ProgressView(value: Double(last + 1) / Double(comic.pageCount))
+                            .tint(.accentColor)
+                    }
+                }
+            Text(comic.title)
+                .font(.caption)
+                .lineLimit(2)
+        }
+    }
+}
+</code></pre>
+<p>where <code>CachedImage</code> resolves through a shared <code>URLSession</code> whose <code>URLCache</code> has a generous disk capacity (<code>URLCache(memoryCapacity: 64 &lt;&lt; 20, diskCapacity: 512 &lt;&lt; 20)</code>); the <code>v</code> parameter does the invalidation work for you. The thumbnail endpoint already serves small JPEGs (CB8 generates and caches covers server-side via <code>thumbnailGenerator.ts</code>), so no client-side resizing is needed for grid cells.</p>
+<h3 id="shelves-and-filters">Shelves and filters</h3>
+<p><code>GET /api/continue-reading</code> and <code>/api/recently-read</code> are purpose-built for the home tab — they return user-scoped shelves when signed in. The filter sheet maps 1:1 onto <code>LibraryQuery</code>: read status (unread / in-progress / completed), file extension, tag, sort — the same <code>FilterPreset</code> shape <code>src/shared/types.ts</code> defines for the web UI's saved filters. Persist presets in <code>UserDefaults</code> as <code>Codable</code>; they're small and device-local, same as the web client treats them.</p>
+<hr>
+<h2 id="part-6-the-comic-reader">Part 6 — The Comic Reader</h2>
+<p>The reader is where native pays for itself. CB8's web reader (<code>src/renderer/components/reader/</code>, <code>ReaderPage.tsx</code>) implements page-by-page reading with pinch/pan/swipe on touch; your job is the same interaction model with native gesture handling and a real image pipeline.</p>
+<h3 id="interaction-model">Interaction model</h3>
+<p>From CB8's reader (and <code>docs/READER.md</code>): one page (or spread) at a time; swipe to turn; pinch to zoom with pan; tap zones / keyboard for navigation; progress written as you read. The iOS shape:</p>
+<ul>
+<li>A horizontally paging container — <code>TabView(selection:)</code> with <code>.tabViewStyle(.page(indexDisplayMode: .never))</code> is the quickest correct start; a <code>UICollectionView</code>/<code>UIPageViewController</code> wrapper is the upgrade path if you need tighter prefetch control.</li>
+<li>Each page wrapped in a zoomable scroll view. SwiftUI still has no first-class pinch-zoom scroll container, so wrap <code>UIScrollView</code> — this is the standard, boring, correct answer:</li>
+</ul>
+<pre><code class="language-swift">struct ZoomableImage: UIViewRepresentable {
+    let image: UIImage
+
+    func makeUIView(context: Context) -&gt; UIScrollView {
+        let scroll = UIScrollView()
+        scroll.maximumZoomScale = 4
+        scroll.minimumZoomScale = 1
+        scroll.bouncesZoom = true
+        scroll.showsVerticalScrollIndicator = false
+        scroll.showsHorizontalScrollIndicator = false
+        scroll.delegate = context.coordinator
+
+        let imageView = UIImageView(image: image)
+        imageView.contentMode = .scaleAspectFit
+        imageView.frame = scroll.bounds
+        imageView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        scroll.addSubview(imageView)
+        context.coordinator.imageView = imageView
+
+        let doubleTap = UITapGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(Coordinator.handleDoubleTap(_:)))
+        doubleTap.numberOfTapsRequired = 2
+        scroll.addGestureRecognizer(doubleTap)
+        return scroll
+    }
+
+    func updateUIView(_ scroll: UIScrollView, context: Context) {
+        context.coordinator.imageView?.image = image
+    }
+
+    func makeCoordinator() -&gt; Coordinator { Coordinator() }
+
+    final class Coordinator: NSObject, UIScrollViewDelegate {
+        var imageView: UIImageView?
+
+        func viewForZooming(in scrollView: UIScrollView) -&gt; UIView? { imageView }
+
+        @objc func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
+            guard let scroll = gesture.view as? UIScrollView else { return }
+            if scroll.zoomScale &gt; scroll.minimumZoomScale {
+                scroll.setZoomScale(scroll.minimumZoomScale, animated: true)
+            } else {
+                let point = gesture.location(in: imageView)
+                let size = CGSize(width: scroll.bounds.width / 2.5,
+                                  height: scroll.bounds.height / 2.5)
+                scroll.zoom(to: CGRect(origin: CGPoint(x: point.x - size.width/2,
+                                                       y: point.y - size.height/2),
+                                       size: size), animated: true)
+            }
+        }
+    }
+}
+</code></pre>
+<p>One subtlety the web reader never had to solve: when a page is zoomed in, horizontal pan must scroll the zoomed image, and only flip pages at the edge. <code>UIScrollView</code> inside a paging container resolves this naturally (the inner scroll view wins while it has scrollable content), which is exactly why the wrapper beats reimplementing zoom with SwiftUI <code>MagnifyGesture</code> math.</p>
+<p>Add manga support early: a right-to-left mode is just reversing the page order fed to the pager (and flipping the tap zones). CB8 tracks page indexes, not directions, so RTL is purely a client presentation concern — index <code>n</code> is index <code>n</code> either way, and progress stays compatible with the web UI.</p>
+<h3 id="the-page-pipeline">The page pipeline</h3>
+<p>In Phase 1, pages come from <code>GET /api/comics/:id/pages/:n</code>. The server natural-sorts archive entries (<code>naturalSort.ts</code>) and filters non-images (<code>imageFilter.ts</code>), so <strong>page index <code>n</code> here equals page index <code>n</code> in the web UI</strong> — progress is interoperable by construction.</p>
+<p>A reader lives or dies on prefetch. The model: keep a window of decoded pages around the current index, fetch ahead in the reading direction, and evict behind:</p>
+<pre><code class="language-swift">@Observable @MainActor
+final class ComicReaderModel {
+    let comic: ComicRecord
+    private let client: CB8Client
+    private let pixelWidth: Int          // viewport width * displayScale
+    private var pages: [Int: UIImage] = [:]   // decoded page cache
+    private var inflight: [Int: Task&lt;UIImage, Error&gt;] = [:]
+    private let window = 3               // prefetch radius
+
+    var currentPage: Int {
+        didSet { Task { await turned(to: currentPage) } }
+    }
+
+    init(comic: ComicRecord, client: CB8Client, pixelWidth: Int) {
+        self.comic = comic
+        self.client = client
+        self.pixelWidth = pixelWidth
+        // Resume where any client (including the web UI) left off.
+        self.currentPage = comic.lastPage ?? 0
+    }
+
+    func image(for index: Int) async throws -&gt; UIImage {
+        if let cached = pages[index] { return cached }
+        if let task = inflight[index] { return try await task.value }
+        let task = Task { [client, pixelWidth, comic] in
+            let url = await client.pageURL(comic: comic.id, page: index,
+                                           width: pixelWidth)
+            let (data, _) = try await URLSession.shared.data(from: url)
+            guard let image = UIImage(data: data) else {
+                throw CB8Error.transport
+            }
+            return image
+        }
+        inflight[index] = task
+        defer { inflight[index] = nil }
+        let image = try await task.value
+        pages[index] = image
+        return image
+    }
+
+    private func turned(to index: Int) async {
+        // Prefetch the window ahead; drop pages outside it (LRU in spirit —
+        // CB8's shared/lru.ts plays this role for the web reader).
+        for offset in 1...window {
+            let ahead = index + offset
+            guard ahead &lt; comic.pageCount else { break }
+            Task { try? await image(for: ahead) }
+        }
+        pages = pages.filter { abs($0.key - index) &lt;= window + 1 }
+
+        // Persist progress — fire-and-forget, the same PUT the web UI sends.
+        try? await client.saveProgress(comic: comic.id, page: index)
+    }
+}
+</code></pre>
+<p>Three deliberate choices to note:</p>
+<ul>
+<li><strong><code>?width=</code> at device-pixel size.</strong> A 13"-iPad-resolution scan can be a 4000-pixel-wide PNG; decoding those wholesale is how reader apps blow their memory budget and get jetsam-killed. Asking the server for <code>viewportWidth × scale</code> pixels offloads the downsample, and the server caches the result for a day for every client at that width. When zoomed past ~2×, request the full-resolution URL for the current page only.</li>
+<li><strong>Progress writes on every turn, unthrottled.</strong> That's what the web client does, the payload is tiny, and it makes "put the phone down, continue on the desktop" seamless. If you must coalesce (cellular politeness), debounce to ~2s but always flush on <code>scenePhase</code> going <code>.background</code> — an unflushed final page is a user-visible bug across devices.</li>
+<li><strong>Decode off the main thread.</strong> <code>UIImage(data:)</code> defers decode to first render by default, which stutters page turns. Force pre-decode in the fetch task with <code>image.preparingForDisplay()</code> (<code>byPreparingForDisplay()</code> async variant) so the pager only ever touches ready-to-blit images.</li>
+</ul>
+<h3 id="reader-chrome">Reader chrome</h3>
+<p>Tap center toggles chrome (title bar, page slider, settings); tap left/right edges page backward/forward — same zones as CB8's touch UI. Build the slider on <code>comic.pageCount</code> and bind it to <code>currentPage</code>; add <code>.persistentSystemOverlays(.hidden)</code> and <code>.statusBarHidden</code> for immersion, and support hardware keyboards (arrow keys / space) with <code>.onKeyPress</code> — CB8's desktop reader has keyboard nav, and iPad users with keyboards expect parity.</p>
+<hr>
+<h2 id="part-7-epub-and-pdf">Part 7 — EPUB and PDF</h2>
+<p>CB8 treats books differently from comics: the server streams the whole file (<code>GET /api/comics/:id/file</code>) and the <em>client</em> renders it — <code>epubjs</code> for EPUB, <code>pdfjs-dist</code> for PDF in the web renderer. Progress for books is a string <code>location</code> (<code>lastLocation</code>), not a page index: an EPUB CFI or a position token, saved through the same progress endpoint.</p>
+<p>That architecture transfers directly: the iOS app downloads the file (cache it — Part 10 makes this the offline story too) and renders natively.</p>
+<h3 id="pdf-a-free-upgrade">PDF: a free upgrade</h3>
+<p><code>pdfjs-dist</code> exists because browsers lack a PDF API. iOS doesn't: <strong>PDFKit</strong> is a system framework with rendering, thumbnails, search, and text selection built in.</p>
+<pre><code class="language-swift">struct PDFReader: UIViewRepresentable {
+    let document: PDFDocument
+    let record: ComicRecord
+    let onLocationChange: (String) -&gt; Void
+
+    func makeUIView(context: Context) -&gt; PDFView {
+        let view = PDFView()
+        view.document = document
+        view.autoScales = true
+        view.displayMode = .singlePage
+        view.displayDirection = .horizontal
+        view.usePageViewController(true)   // page-curl style turns
+
+        if let location = record.lastLocation,
+           let pageIndex = Int(location),
+           let page = document.page(at: pageIndex) {
+            view.go(to: page)
+        }
+
+        NotificationCenter.default.addObserver(
+            forName: .PDFViewPageChanged, object: view, queue: .main
+        ) { [weak view] _ in
+            guard let view, let page = view.currentPage,
+                  let index = view.document?.index(for: page) else { return }
+            onLocationChange(String(index))
+        }
+        return view
+    }
+
+    func updateUIView(_ view: PDFView, context: Context) {}
+}
+</code></pre>
+<p>Store the page index as the <code>location</code> string. One compatibility note: agree with yourself on what the web client writes there (pdf.js page numbers are 1-based; <code>PDFDocument.index(for:)</code> is 0-based) and normalize in one place, or cross-device resume will be off by one — the classic symptom of exactly this bug.</p>
+<h3 id="epub-two-honest-options">EPUB: two honest options</h3>
+<p><strong>Option A — Readium Swift Toolkit (recommended).</strong> The open-source standard for native EPUB on iOS: parsing, pagination, themes, font scaling, CFI-style locators. Its <code>Locator</code> type serializes to JSON — store that serialization in <code>location</code> via the same <code>PUT progress</code>. Mapping CB8's EPUB features: theme toggle → Readium theme settings (port the palette constants from <code>src/shared/epubTheme.ts</code> so dark/sepia match the web exactly); adjustable font size → Readium font settings; Google Fonts → bundle the fonts you care about instead (runtime font fetching is a webview trick; licensed font files in the bundle are the native equivalent).</p>
+<p>The trade-off is honest: Readium is a substantial dependency with its own architecture (publication server, navigator view controllers), and its locator format won't match epub.js CFIs — <strong>cross-client EPUB resume needs a translation</strong>, or accept that book positions are per-client while comic positions stay shared. Comics are CB8's center of gravity (it began as a manga reader), so shipping with per-client book resume is a defensible cut.</p>
+<p><strong>Option B — WKWebView + epub.js.</strong> Reuse CB8's exact rendering: a local HTML page bundling <code>epub.js</code>, loading the book over the <code>/file</code> endpoint or from a local copy, with a <code>WKScriptMessageHandler</code> bridge reporting CFI changes to Swift, which forwards them to <code>saveProgress(location:)</code>. You inherit the web reader's behavior — including byte-identical CFIs, so resume interoperates with the web UI perfectly. You also inherit webview text rendering, webview memory behavior, and a JS bridge to maintain. Pick B if cross-device EPUB resume is non-negotiable; pick A if native reading feel wins. (B is also a useful stepping stone: ship it first, swap in Readium later behind the same <code>location</code> contract — with the CFI translation as the migration cost.)</p>
+<h3 id="mobi">MOBI</h3>
+<p>CB8 lists <code>.mobi</code> support; no maintained native Swift MOBI renderer exists. The pragmatic iOS answer: treat MOBI as download-only in v1 (open via the share sheet into Books or another handler), and if it matters later, convert server-side — adding an EPUB conversion path to the server's ingest pipeline would benefit the web client too, since <code>epubjs</code> doesn't render MOBI either (CB8 handles it with a separate path). Don't burn Phase 1 time here.</p>
+<hr>
+<h2 id="part-8-going-standalone-the-on-device-library">Part 8 — Going Standalone: The On-Device Library</h2>
+<p>Phase 2 makes the app whole: a library that lives on the device, no server required — the role CB8's Electron build plays on the desktop. This part ports <code>src/main/</code>'s storage and scanning; Part 9 ports archive access.</p>
+<h3 id="getting-files-in-the-ios-reality">Getting files in: the iOS reality</h3>
+<p>CB8's desktop scanner (<code>fileScanner.ts</code>) walks arbitrary folders. iOS has no arbitrary folders — the sandbox changes the shape of "scanning":</p>
+<ul>
+<li><strong>The app's Documents directory</strong> is yours. Set <code>UIFileSharingEnabled</code> and <code>LSSupportsOpeningDocumentsInPlace</code> in Info.plist and it appears in the Files app ("On My iPhone/iPad → CB8"), so users can drop a folder of CBZs in via Files, USB, or AirDrop.</li>
+<li><strong><code>UIDocumentPickerViewController</code></strong> (<code>.fileImporter</code> in SwiftUI) imports files or grants access to external folders — including folders on iCloud Drive, on a USB drive, or <em>on an SMB share</em>, which for the NAS-owning CB8 audience is a killer feature: the same share the Docker server scans can be browsed by the phone.</li>
+<li><strong>Security-scoped bookmarks</strong> are how folder access persists across launches. This is the iOS analog of CB8 persisting scan paths in its database.</li>
+</ul>
+<pre><code class="language-swift">struct ImportedFolder: Codable {
+    let bookmark: Data
+    let displayName: String
+}
+
+func persistFolderAccess(_ url: URL) throws -&gt; ImportedFolder {
+    // Must be called while access is granted (inside the picker callback).
+    let bookmark = try url.bookmarkData(
+        options: .minimalBookmark,
+        includingResourceValuesForKeys: nil,
+        relativeTo: nil)
+    return ImportedFolder(bookmark: bookmark, displayName: url.lastPathComponent)
+}
+
+func withFolderAccess&lt;T&gt;(_ folder: ImportedFolder,
+                         _ body: (URL) throws -&gt; T) throws -&gt; T {
+    var stale = false
+    let url = try URL(resolvingBookmarkData: folder.bookmark,
+                      bookmarkDataIsStale: &amp;stale)
+    guard url.startAccessingSecurityScopedResource() else {
+        throw LibraryError.accessDenied(folder.displayName)
+    }
+    defer { url.stopAccessingSecurityScopedResource() }
+    return try body(url)
+}
+</code></pre>
+<p>Decide the import policy per source: files added to Documents are <em>owned</em> (index in place); external folders are <em>referenced</em> (index via bookmark, like CB8 referencing files on disk without moving them — its README is emphatic that removal only deletes the DB row, never the file; keep that promise).</p>
+<h3 id="the-grdb-schema-a-deliberate-subset">The GRDB schema: a deliberate subset</h3>
+<p>CB8's <code>db/schema/create.ts</code> defines the full server schema. The on-device port takes the library tables and <strong>drops the entire auth complex</strong> — <code>users</code>, <code>session</code>, <code>account</code>, <code>verification</code> are better-auth's tables for multi-user web access, meaningless on a single-user device. Per-user progress tables collapse into the comic row itself (which CB8 also maintains for the desktop case).</p>
+<pre><code class="language-swift">import GRDB
+
+struct LocalComic: Codable, FetchableRecord, MutablePersistableRecord {
+    static let databaseTableName = &quot;comics&quot;
+
+    var id: Int64?
+    var bookmarkData: Data?      // replaces file_path for external files
+    var relativePath: String?    // for files owned in Documents
+    var title: String
+    var pageCount: Int
+    var fileSize: Int64
+    var dateAdded: Date
+    var lastPage: Int?
+    var lastLocation: String?
+    var lastRead: Date?
+    var mediaType: String        // 'comic' | 'book'
+    var seriesName: String?
+    var volumeNumber: Double?    // REAL in CB8's schema — keep it; &quot;vol 1.5&quot; exists
+    var chapterNumber: Double?
+    var completed: Bool
+
+    mutating func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
+    }
+}
+
+func makeDatabase(at path: String) throws -&gt; DatabasePool {
+    var config = Configuration()
+    config.prepareDatabase { db in
+        try db.execute(sql: &quot;PRAGMA journal_mode = WAL&quot;)
+    }
+    let pool = try DatabasePool(path: path, configuration: config)
+
+    var migrator = DatabaseMigrator()
+    migrator.registerMigration(&quot;v1&quot;) { db in
+        try db.create(table: &quot;comics&quot;) { t in
+            t.autoIncrementedPrimaryKey(&quot;id&quot;)
+            t.column(&quot;bookmarkData&quot;, .blob)
+            t.column(&quot;relativePath&quot;, .text)        // unique within Documents
+            t.column(&quot;title&quot;, .text).notNull()
+            t.column(&quot;pageCount&quot;, .integer).notNull()
+            t.column(&quot;fileSize&quot;, .integer).notNull()
+            t.column(&quot;dateAdded&quot;, .datetime).notNull()
+            t.column(&quot;lastPage&quot;, .integer)
+            t.column(&quot;lastLocation&quot;, .text)
+            t.column(&quot;lastRead&quot;, .datetime)
+            t.column(&quot;mediaType&quot;, .text).notNull().defaults(to: &quot;comic&quot;)
+            t.column(&quot;seriesName&quot;, .text)
+            t.column(&quot;volumeNumber&quot;, .double)
+            t.column(&quot;chapterNumber&quot;, .double)
+            t.column(&quot;completed&quot;, .boolean).notNull().defaults(to: false)
+        }
+        try db.create(table: &quot;tags&quot;) { t in
+            t.autoIncrementedPrimaryKey(&quot;id&quot;)
+            t.column(&quot;name&quot;, .text).notNull().unique()
+        }
+        try db.create(table: &quot;comicTags&quot;) { t in
+            t.belongsTo(&quot;comic&quot;, onDelete: .cascade).notNull()
+            t.belongsTo(&quot;tag&quot;, onDelete: .cascade).notNull()
+            t.primaryKey([&quot;comicId&quot;, &quot;tagId&quot;])
+        }
+        try db.create(table: &quot;bookmarks&quot;) { t in
+            t.autoIncrementedPrimaryKey(&quot;id&quot;)
+            t.belongsTo(&quot;comic&quot;, onDelete: .cascade).notNull()
+            t.column(&quot;page&quot;, .integer).notNull()
+            t.column(&quot;note&quot;, .text)
+        }
+    }
+    try migrator.migrate(pool)
+    return pool
+}
+</code></pre>
+<p>Two departures from CB8's schema, both deliberate. <strong>No <code>cover_thumbnail BLOB</code>:</strong> CB8 stores covers in the row; on iOS, store thumbnail JPEGs as files in <code>Library/Caches/Thumbnails/&amp;lt;id&amp;gt;.jpg</code> instead — Caches is purgeable by the system under storage pressure, which is exactly right for regenerable data, and it keeps rows small for fast grid queries. <strong>No <code>file_path</code>:</strong> sandbox paths aren't stable identity; the bookmark/relative-path pair is. Use CB8's migration discipline though — its <code>migrations.ts</code> tracks <code>schema_version</code> and is at v6; GRDB's <code>DatabaseMigrator</code> is the same idea with registration order as the version.</p>
+<p>GRDB's <code>ValueObservation</code> replaces the IPC change notifications the Electron renderer gets: the library grid observes the query and re-renders on any DB write — scanning updates the UI live, like CB8's <code>ScanProgress</code> events.</p>
+<h3 id="scanning-and-thumbnails">Scanning and thumbnails</h3>
+<p>The scanner walks granted folders, filters by CB8's extension list (<code>.cbz/.cbr/.epub/.pdf/.mobi</code>), and indexes anything new or changed — <code>fileScanner.ts</code>, translated to <code>FileManager.enumerator</code> inside <code>withFolderAccess</code>. Port <code>seriesParser.ts</code> alongside it: parsing series/volume/chapter out of filenames is regex work that transfers nearly line-for-line, and its vitest file (<code>seriesParser.test.ts</code>) comes along as the spec.</p>
+<p>Thumbnails replace <code>sharp</code> with ImageIO's downsampling — which decodes <em>at</em> the target size rather than decoding full-size then shrinking, the difference between a scan that hums and one that gets the app jetsam-killed:</p>
+<pre><code class="language-swift">import ImageIO
+
+func makeThumbnail(from imageData: Data, maxPixel: CGFloat = 480) -&gt; CGImage? {
+    let options: [CFString: Any] = [
+        kCGImageSourceCreateThumbnailFromImageAlways: true,
+        kCGImageSourceCreateThumbnailWithTransform: true,
+        kCGImageSourceShouldCacheImmediately: true,
+        kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+    ]
+    guard let source = CGImageSourceCreateWithData(imageData as CFData, nil) else {
+        return nil
+    }
+    return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+}
+</code></pre>
+<p>Cover <em>selection</em> (which archive entry becomes the thumbnail) is <code>coverSelection.ts</code> — port it, don't improvise, or local and server libraries will show different covers for the same file. EPUB covers come from the OPF manifest (Readium exposes this; or port <code>epubCoverExtractor.ts</code>'s logic over ZIPFoundation, since an EPUB is a ZIP); PDF covers are one PDFKit call: <code>document.page(at: 0)?.thumbnail(of: size, for: .mediaBox)</code> — that's the whole of <code>pdfCoverExtractor.ts</code> on iOS.</p>
+<p>Run scans as a cooperative async task updating a <code>ScanProgress</code>-shaped observable (<code>discovered</code> / <code>processed</code> / <code>currentFile</code> — same fields as CB8's type, your progress UI will thank you). Don't reach for <code>BGProcessingTask</code> first: scans triggered by an explicit import can run in the foreground with a progress bar, which is both simpler and more legible to the user. Background refresh of external folders is a later nicety, and security-scoped resources plus background task time limits make it genuinely fiddly.</p>
+<hr>
+<h2 id="part-9-archives-and-the-shared-logic-ports">Part 9 — Archives and the Shared-Logic Ports</h2>
+<p>This part replaces <code>archiveLoader.ts</code> + node-7z, and rewrites the <code>src/shared/</code> utilities the reader depends on. The contract to preserve, from <code>ArchiveHandle</code> in <code>src/shared/types.ts</code>: an archive opens to a list of image entries, natural-sorted, with <code>pageCount</code> and random access to any page's bytes.</p>
+<h3 id="cbz-zipfoundation">CBZ: ZIPFoundation</h3>
+<p>A CBZ is a ZIP of images. ZIPFoundation reads the central directory without unpacking, and extracts single entries to memory — random access, exactly what page-jumping needs:</p>
+<pre><code class="language-swift">import ZIPFoundation
+
+struct ComicArchive {
+    let url: URL
+    private let archive: Archive
+    /// Sorted, filtered image entries — index n IS page n, the same
+    /// invariant the server's ArchiveLoader maintains.
+    let pages: [Entry]
+
+    init(url: URL) throws {
+        self.url = url
+        self.archive = try Archive(url: url, accessMode: .read)
+        self.pages = archive
+            .filter { $0.type == .file &amp;&amp; isImageFile($0.path) }
+            .sorted { naturalCompare($0.path, $1.path) &lt; 0 }
+    }
+
+    var pageCount: Int { pages.count }
+
+    func pageData(at index: Int) throws -&gt; Data {
+        var data = Data()
+        data.reserveCapacity(Int(pages[index].uncompressedSize))
+        _ = try archive.extract(pages[index], bufferSize: 64 &lt;&lt; 10) { chunk in
+            data.append(chunk)
+        }
+        return data
+    }
+}
+</code></pre>
+<p>Keep open <code>ComicArchive</code> handles in a small LRU keyed by comic id — the same pattern as the server's <code>archiveCache.ts</code>, and the same reason: reopening the ZIP central directory on every page turn is wasted work. Port <code>src/shared/lru.ts</code> for this; it's a dozen lines and its test file keeps you honest.</p>
+<h3 id="cbr-the-honest-options">CBR: the honest options</h3>
+<p>CBR is RAR, and RAR is encumbered: the reference unrar source ships under a license forbidding use in RAR-creation tools (extraction is fine) and is not OSI-open-source. The options:</p>
+<ol>
+<li><strong>libarchive</strong> — reads RAR4 and (since 3.4) most RAR5. BSD-licensed, C API, ships in many places but <em>not</em> as an iOS-usable system library, so you vendor it (SPM wrappers exist, or build it as an xcframework). Fails on some solid/encrypted archives.</li>
+<li><strong>UnrarKit</strong> — Objective-C wrapper over the official unrar library. Best compatibility (it <em>is</em> RAR's own extractor); the unrar license rides along — acceptable for App Store distribution, but read it and note it in your acknowledgements screen.</li>
+<li><strong>Convert at the edge.</strong> Detect CBR at import and repack to CBZ (extract → re-zip with ZIPFoundation). Storage cost during conversion, but afterward your reader has exactly one archive path. For <em>server</em> libraries this is moot — the server's node-7z handles CBR and the phone only ever sees decoded images over <code>/pages/:n</code>. Phase 1 gets CBR support for free; only local imports need this decision.</li>
+</ol>
+<p>Recommendation: UnrarKit for owned local files (compatibility beats purity for a reader app), and lean on the server path otherwise. Whatever you choose, route both formats through the <code>ComicArchive</code> protocol so the reader is format-blind, as <code>archiveLoader.ts</code> is.</p>
+<h3 id="porting-naturalsortts-the-spec-fidelity-exercise">Porting <code>naturalSort.ts</code> — the spec-fidelity exercise</h3>
+<p>This function decides page order; an "almost right" port shows users page 10 after page 1 and before page 2. CB8's implementation: split into digit/non-digit chunks; numeric chunks compare as integers; numeric sorts before non-numeric at the same position; non-numeric compares case-insensitively; ties fall through; shorter wins. The Swift port, side by side with the original's structure:</p>
+<pre><code class="language-swift">/// Port of src/shared/naturalSort.ts — keep behavior identical, including
+/// the &quot;numeric chunks sort before non-numeric&quot; rule and the equal-number
+/// fall-through (&quot;01&quot; vs &quot;1&quot;).
+func naturalCompare(_ a: String, _ b: String) -&gt; Int {
+    func chunks(_ s: String) -&gt; [Substring] {
+        var result: [Substring] = []
+        var index = s.startIndex
+        while index &lt; s.endIndex {
+            let isDigit = s[index].isNumber
+            var end = index
+            while end &lt; s.endIndex, s[end].isNumber == isDigit {
+                end = s.index(after: end)
+            }
+            result.append(s[index..&lt;end])
+            index = end
+        }
+        return result
+    }
+
+    let ca = chunks(a), cb = chunks(b)
+    for (x, y) in zip(ca, cb) {
+        let xNum = x.first?.isNumber == true
+        let yNum = y.first?.isNumber == true
+        if xNum &amp;&amp; yNum {
+            let dx = Int(x) ?? 0, dy = Int(y) ?? 0
+            if dx != dy { return dx &lt; dy ? -1 : 1 }
+            // numerically equal (&quot;01&quot; vs &quot;1&quot;) — fall through
+        } else if xNum != yNum {
+            return xNum ? -1 : 1          // numbers before text
+        } else {
+            let cmp = x.lowercased().compare(y.lowercased())
+            if cmp != .orderedSame { return cmp == .orderedAscending ? -1 : 1 }
+        }
+    }
+    return ca.count - cb.count            // shorter first on full tie
+}
+</code></pre>
+<p>One fidelity caveat worth a comment in your code: the TypeScript original uses <code>localeCompare</code> for text chunks; the port uses plain <code>compare</code>. For ASCII filenames (the overwhelming case for scan sets) they agree; for non-ASCII titles they can disagree with the server's ordering. If your library is full of Japanese filenames and the same archive must page identically on web and iOS, match semantics with <code>compare(_:options:range:locale:)</code> against the same locale — and add the test case.</p>
+<p><code>imageFilter.ts</code> is a one-liner to port — same extension set, and note it includes <code>jxl</code> and <code>avif</code>, both of which iOS 17+ decodes natively, so don't drop them:</p>
+<pre><code class="language-swift">/// Port of src/shared/imageFilter.ts.
+private let imageExtensions: Set&lt;Substring&gt; =
+    [&quot;jpg&quot;, &quot;jpeg&quot;, &quot;png&quot;, &quot;webp&quot;, &quot;gif&quot;, &quot;bmp&quot;, &quot;jxl&quot;, &quot;avif&quot;]
+
+func isImageFile(_ filename: String) -&gt; Bool {
+    guard let ext = filename.split(separator: &quot;.&quot;).last else { return false }
+    return imageExtensions.contains(Substring(ext.lowercased()))
+}
+</code></pre>
+<p><code>scaleFit.ts</code> mostly dissolves — <code>contentMode: .fit</code> and <code>AVMakeRect(aspectRatio:insideRect:)</code> do this math natively — but port it anyway if you write custom layout for two-page spreads, where you'll need the explicit computation, and the degenerate-input guard (zero/negative dimensions → zero) has a test asserting it.</p>
+<hr>
+<h2 id="part-10-progress-sync-and-offline">Part 10 — Progress Sync and Offline</h2>
+<p>With both modes built, the app has two libraries: server (Phase 1) and local (Phase 2). The remaining glue is offline reading for server content, and a clear-eyed progress story.</p>
+<h3 id="offline-downloads">Offline downloads</h3>
+<p><code>GET /api/comics/:id/file</code> streams the original file — it exists for client-side book rendering, and it doubles as the download endpoint. Offline is then: download → store under <code>Library/Application Support/Offline/&amp;lt;serverID&amp;gt;/&amp;lt;comicID&amp;gt;.&amp;lt;ext&amp;gt;</code> (not Caches — user-requested downloads shouldn't evaporate; flag them with <code>isExcludedFromBackup</code>, they're re-downloadable) → open through the Part 8/9 local pipeline → keep the record's identity tied to the server copy.</p>
+<p>Use a background <code>URLSessionConfiguration.background</code> session so multi-hundred-MB archives survive app suspension and continue over Wi-Fi; the delegate-based completion writes the file and inserts a row in a <code>downloads</code> table mapping <code>(serverURL, remoteID) → localPath</code>. The reader checks that table first: if a local copy exists, pages come from <code>ComicArchive</code>; otherwise from <code>/pages/:n</code>. Same <code>ComicRecord</code>, two data sources behind one protocol — the iOS edition of CB8 serving the same UI from Electron or Docker.</p>
+<h3 id="progress-one-writer-rule">Progress: one writer rule</h3>
+<p>Reading position is the one piece of state both sides mutate. Keep the rules simple and explicit:</p>
+<ul>
+<li><strong>Server comics, online:</strong> the server is the source of truth. Write-through on every page turn (Part 6), read <code>lastPage</code> on open. No local persistence beyond the in-memory model.</li>
+<li><strong>Server comics, offline:</strong> queue progress writes locally (a <code>pendingProgress</code> table: comic id, page, location, timestamp). On reconnect, replay in timestamp order — <code>PUT progress</code> is idempotent per value, and <strong>last-write-wins is correct here</strong>, because "furthest device read to" is genuinely the latest event, not a conflict to merge. Don't build vector clocks for a comic reader.</li>
+<li><strong>Local comics:</strong> GRDB row is the only truth. No sync target exists.</li>
+</ul>
+<p>The single trap: replaying a <em>stale</em> offline queue after you've read further on another device would yank position backward. Cheap guard — when replaying, fetch the record first and skip queued writes older than the server's <code>lastRead</code>. That's the entire conflict policy, and it matches what users mean by "sync my place."</p>
+<h3 id="what-not-to-build">What not to build</h3>
+<p>Resist syncing the <em>libraries</em> themselves (server rows mirrored into GRDB wholesale, two-way). CB8's server is already the multi-device coordination point — that's its job in the Docker deployment. The phone is a client plus a private local shelf. The moment both sides own the same record you're building a distributed system, and Part 10 of a reader-app guide is the wrong place to be building one.</p>
+<hr>
+<h2 id="part-11-testing-porting-the-vitest-suite">Part 11 — Testing: Porting the Vitest Suite</h2>
+<p>CB8 ships tests where they pay: the pure logic (<code>naturalSort.test.ts</code>, <code>imageFilter.test.ts</code>, <code>scaleFit.test.ts</code>, <code>coverSelection.test.ts</code>, <code>lru.test.ts</code>, <code>seriesParser.test.ts</code>, plus property tests via fast-check). Since Part 9 ported those modules as specifications, the tests are the conformance suite — port them first, then the modules, TDD by transcription.</p>
+<p>Vitest and Swift Testing are close enough that conversion is mechanical:</p>
+<pre><code class="language-typescript">// naturalSort.test.ts (CB8)
+it('sorts page2 before page10', () =&gt; {
+  expect(naturalCompare('page2.jpg', 'page10.jpg')).toBeLessThan(0);
+});
+</code></pre>
+<pre><code class="language-swift">import Testing
+
+@Suite(&quot;NaturalSort — ported from src/shared/naturalSort.test.ts&quot;)
+struct NaturalSortTests {
+    @Test(&quot;sorts page2 before page10&quot;)
+    func numericChunks() {
+        #expect(naturalCompare(&quot;page2.jpg&quot;, &quot;page10.jpg&quot;) &lt; 0)
+    }
+
+    @Test(&quot;numbers sort before text at the same position&quot;)
+    func numbersBeforeText() {
+        #expect(naturalCompare(&quot;2.jpg&quot;, &quot;cover.jpg&quot;) &lt; 0)
+    }
+
+    @Test(arguments: [
+        ([&quot;page1.jpg&quot;, &quot;page10.jpg&quot;, &quot;page2.jpg&quot;],
+         [&quot;page1.jpg&quot;, &quot;page2.jpg&quot;, &quot;page10.jpg&quot;]),
+        ([&quot;ch1/p1.png&quot;, &quot;ch1/p10.png&quot;, &quot;ch1/p2.png&quot;],
+         [&quot;ch1/p1.png&quot;, &quot;ch1/p2.png&quot;, &quot;ch1/p10.png&quot;]),
+    ])
+    func ordersLikeTheServer(input: [String], expected: [String]) {
+        #expect(input.sorted { naturalCompare($0, $1) &lt; 0 } == expected)
+    }
+}
+</code></pre>
+<p>Parameterized <code>@Test(arguments:)</code> covers most of what fast-check was doing in spirit; if you want real property testing, generate random filename sets in a test and assert the invariants (totality, antisymmetry, transitivity on a sample, and "integer-aware ordering matches numeric comparison for pure-number names").</p>
+<p>Beyond the ports:</p>
+<ul>
+<li><strong>API client tests</strong> against a fixture server: spin up a tiny local HTTP server in tests (or stub <code>URLProtocol</code>) replaying captured CB8 responses — record real JSON from a dev server once, commit the fixtures. This catches the model-drift class of bug (a field renamed in <code>mapping.ts</code>) at test time instead of decode-crash time. When CB8's API changes upstream, refreshing fixtures <em>is</em> the compatibility audit.</li>
+<li><strong>Archive tests</strong> with tiny committed fixtures: a 4-page CBZ built in-repo (have the test create it with ZIPFoundation), including a non-image entry to prove filtering, and misordered names (<code>p1, p10, p2</code>) to prove sorting end-to-end through <code>ComicArchive</code>.</li>
+<li><strong>Snapshot the reader math, not the pixels.</strong> Progress writes, prefetch windows, and page-index handling are plain logic — test <code>ComicReaderModel</code> with a stubbed client and assert "opening at lastPage 41 requests pages 41–44," no UI involved. (Design note: that's why the model takes a client and width as init parameters.)</li>
+</ul>
+<p><code>pnpm test</code> ↔ <code>xcodebuild test</code> parity matters for one reason: when upstream CB8 changes <code>src/shared/</code>, the diff tells you which Swift file and which test file to update. Keep the "ported from" comment headers — they're the cross-reference.</p>
+<hr>
+<h2 id="part-12-distribution-and-app-review">Part 12 — Distribution and App Review</h2>
+<p>The mechanics (signing, TestFlight, App Store Connect) are covered in the <a href="ios-development-study-guide.html">iOS Development guide</a>; this part is the CB8-specific review surface.</p>
+<ul>
+<li><strong>Guideline 4.2 (minimum functionality) is fully defused by going native</strong> — Parts 4–9 are unambiguously an app, not a wrapped site. This was a real factor in the Part 2 decision, not a formality: the wrapper variant carries genuine rejection risk; the native app carries none on this axis.</li>
+<li><strong>User-generated / user-provided content.</strong> A reader for the user's own files is not a content service, but reviewers sometimes test with whatever's lying around. Make first-run state self-explanatory (empty library with clear import affordances), and make the server-connection screen obviously <em>bring-your-own-server</em> — apps that look like clients for a content service get asked "where does the content come from?" Have the answer in your review notes: "displays files the user owns; connects only to servers the user operates."</li>
+<li><strong>Demo account for review.</strong> If the server-client mode is prominent, App Review will want to try it. Run a small CB8 instance (their Docker image makes this trivial) with innocuous public-domain content, and put credentials in the review notes. Don't make a reviewer set up Docker.</li>
+<li><strong>ATS exceptions</strong> (Part 4): <code>NSAllowsLocalNetworking</code> is uncontroversial. Broad <code>NSAllowsArbitraryLoads</code> invites questions — if you support arbitrary HTTP URLs, scope the exception and explain it in review notes ("self-hosted media servers on user LANs commonly lack TLS").</li>
+<li><strong>Local network privacy.</strong> Talking to a LAN server triggers the local-network permission prompt (iOS 14+); set <code>NSLocalNetworkUsageDescription</code> to something honest ("CB8 connects to your own media server on your network"). If you later add Bonjour discovery of CB8 servers — a nice touch — declare the service type in <code>NSBonjourServices</code>.</li>
+<li><strong>Licenses ship with the app.</strong> ZIPFoundation (MIT), GRDB (MIT), Readium (BSD) are easy; UnrarKit bundles the unrar license with its no-RAR-creation clause — include all of them in an acknowledgements screen. CB8 itself is MIT-licensed, so deriving the iOS app from it (including porting its <code>shared/</code> logic) requires only preserving the copyright notice — do that in the acknowledgements too.</li>
+<li><strong>Encryption export compliance:</strong> HTTPS-only counts as exempt; declare <code>ITSAppUsesNonExemptEncryption = NO</code> and move on.</li>
+</ul>
+<p>A note on expectations: CB8's desktop releases ship via GitHub Releases — build, upload, done. iOS adds a review cycle (typically a day, occasionally a frustrating loop) and an annual developer fee. TestFlight is the pressure valve: up to 10,000 external testers with a lighter review, which for a self-hosted-community app may be a perfectly good "release channel" while the App Store listing matures. Sideloading via AltStore/EU alternative marketplaces exists but reaches a sliver of the audience.</p>
+<hr>
+<h2 id="appendix-the-wkwebview-capacitor-shortcut">Appendix — The WKWebView / Capacitor Shortcut</h2>
+<p>Part 2 ruled this out as the destination; here's the recipe anyway, because as a weekend proof-of-concept — or a stopgap while Phase 1 is in progress — it's genuinely useful, and building it teaches you the API surface.</p>
+<p><strong>Bare WKWebView (an afternoon):</strong> an app with one screen — a server URL field (persisted), and a full-screen <code>WKWebView</code> pointed at it. CB8's web UI already handles touch, auth, and responsive layout, so what you get is exactly the LAN-browser experience, packaged.</p>
+<pre><code class="language-swift">struct ServerWebView: UIViewRepresentable {
+    let url: URL
+
+    func makeUIView(context: Context) -&gt; WKWebView {
+        let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        // Session cookie persists in WKWebsiteDataStore.default()
+        let webView = WKWebView(frame: .zero, configuration: config)
+        webView.allowsBackForwardNavigationGestures = true
+        webView.scrollView.contentInsetAdjustmentBehavior = .never
+        webView.load(URLRequest(url: url))
+        return webView
+    }
+
+    func updateUIView(_ webView: WKWebView, context: Context) {}
+}
+</code></pre>
+<p>Details that separate "works" from "feels broken": handle the offline/unreachable state with a native retry screen (<code>webView(_:didFailProvisionalNavigation:)</code>) instead of WebKit's error page; respect safe areas <em>except</em> in the reader (CB8's reader goes immersive — let the web content underlap and the chrome handle insets); and disable the pinch-zoom of the <em>page itself</em> (viewport is already correctly set by the SPA) so the reader's own pinch handling wins.</p>
+<p><strong>Capacitor (a weekend):</strong> <code>npm i @capacitor/core @capacitor/ios</code> in the CB8 repo, point Capacitor's <code>webDir</code> at <code>dist/web</code>, and the SPA ships inside the app bundle, served from <code>capacitor://localhost</code> — with the SPA configured (one small upstream patch) to read a server base URL from preferences instead of assuming same-origin. You gain an app icon, splash screen, plugin access (haptics on page turn, keep-awake while reading), and offline shell loading. You don't gain: on-device libraries, native reader feel, or distance from guideline 4.2. CORS note: once the SPA is not same-origin with the API, the server's <code>@fastify/cors</code> config and the session cookie's <code>SameSite</code> behavior both need attention upstream — the cookie that "just worked" same-origin now needs <code>credentials: 'include'</code> on fetches and a CORS policy that allows it.</p>
+<p>If the wrapper is ever the thing you ship, pair it with at least one undeniably native capability (offline downloads through the share sheet, a native library tab) — both for review safety and because that's the gravitational path toward the real app this guide builds.</p>
+<hr>
+<h2 id="closing-the-porting-checklist">Closing: the porting checklist</h2>
+<p>The condensed sequence, with the CB8 source of truth for each step:</p>
+<ol>
+<li><strong>Read the API routes</strong> (<code>src/main/webServer/routes/</code>) — they are the contract. <em>(Part 4)</em></li>
+<li><strong>Ship the server client</strong>: login → grid → reader → progress. Usable app, zero CB8 changes. <em>(Parts 4–6)</em></li>
+<li><strong>Native PDF, chosen-trade-off EPUB.</strong> <em>(Part 7)</em></li>
+<li><strong>Port <code>src/shared/</code> with its tests</strong> — naturalSort, imageFilter, LRU, coverSelection, seriesParser. <em>(Parts 9, 11)</em></li>
+<li><strong>Local library</strong>: document picker + bookmarks, GRDB subset of <code>db/schema/create.ts</code>, ImageIO thumbnails. <em>(Part 8)</em></li>
+<li><strong>In-process archives</strong>: ZIPFoundation CBZ; decide CBR (UnrarKit / libarchive / convert). <em>(Part 9)</em></li>
+<li><strong>Offline + progress replay</strong> with the stale-write guard. <em>(Part 10)</em></li>
+<li><strong>Review prep</strong>: demo server, ATS scoping, local-network string, licenses. <em>(Part 12)</em></li>
+</ol>
+<p>The through-line: CB8's decision to put an HTTP API between its GUI and its engine — made so a desktop app could also be a Docker container — is what makes the iOS app a two-phase project instead of a rewrite-from-zero. The best time to make an Electron app portable to mobile is when you architect it; the second-best time is never needed if you did it the first way.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>
