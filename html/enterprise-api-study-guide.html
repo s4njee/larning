@@ -1,0 +1,1042 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Enterprise-Grade APIs.">
+<title>Enterprise-Grade APIs - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#e058dd; --accent2:#da549e; --accent-weak:rgba(224,88,221,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#e058dd; --accent2:#da549e; --accent-weak:rgba(224,88,221,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint);pointer-events:none}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px;min-width:0;overflow-wrap:break-word}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:minmax(0,1fr)}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+  .spacer{display:none}
+  .brand{flex:1;min-width:0}
+  .brand > span:not(.logo):not(.sub){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">E</span><span>Enterprise-Grade APIs</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-what-enterprise-grade-actually-means" data-target="part-1-what-enterprise-grade-actually-means">Part 1 — What "Enterprise-Grade" Actually Means</a></li><li class="toc-l2"><a href="#part-2-resource-and-error-design" data-target="part-2-resource-and-error-design">Part 2 — Resource and Error Design</a></li><li class="toc-l3"><a href="#resources-not-actions" data-target="resources-not-actions">Resources, not actions</a></li><li class="toc-l3"><a href="#representations-the-boring-decisions-that-age-the-best" data-target="representations-the-boring-decisions-that-age-the-best">Representations: the boring decisions that age the best</a></li><li class="toc-l3"><a href="#errors-are-an-api-surface-not-an-apology" data-target="errors-are-an-api-surface-not-an-apology">Errors are an API surface, not an apology</a></li><li class="toc-l2"><a href="#part-3-idempotency" data-target="part-3-idempotency">Part 3 — Idempotency</a></li><li class="toc-l3"><a href="#the-definition" data-target="the-definition">The definition</a></li><li class="toc-l3"><a href="#why-its-mandatory-not-nice-to-have" data-target="why-its-mandatory-not-nice-to-have">Why it's mandatory, not nice-to-have</a></li><li class="toc-l3"><a href="#idempotency-keys-making-post-retryable" data-target="idempotency-keys-making-post-retryable">Idempotency keys: making POST retryable</a></li><li class="toc-l3"><a href="#implementing-it-properly" data-target="implementing-it-properly">Implementing it properly</a></li><li class="toc-l3"><a href="#the-alternative-natural-idempotency-by-design" data-target="the-alternative-natural-idempotency-by-design">The alternative: natural idempotency by design</a></li><li class="toc-l2"><a href="#part-4-versioning-and-compatibility" data-target="part-4-versioning-and-compatibility">Part 4 — Versioning and Compatibility</a></li><li class="toc-l3"><a href="#the-prime-directive-dont-need-to-version" data-target="the-prime-directive-dont-need-to-version">The prime directive: don't need to version</a></li><li class="toc-l3"><a href="#when-you-must-version" data-target="when-you-must-version">When you must version</a></li><li class="toc-l2"><a href="#part-5-pagination-filtering-and-sorting" data-target="part-5-pagination-filtering-and-sorting">Part 5 — Pagination, Filtering, and Sorting</a></li><li class="toc-l3"><a href="#offset-pagination-is-a-correctness-bug-wearing-a-convenience-costume" data-target="offset-pagination-is-a-correctness-bug-wearing-a-convenience-costume">Offset pagination is a correctness bug wearing a convenience costume</a></li><li class="toc-l3"><a href="#filtering-and-sorting-are-allowlists-not-query-languages" data-target="filtering-and-sorting-are-allowlists-not-query-languages">Filtering and sorting are allowlists, not query languages</a></li><li class="toc-l2"><a href="#part-6-concurrency-control-and-consistency" data-target="part-6-concurrency-control-and-consistency">Part 6 — Concurrency Control and Consistency</a></li><li class="toc-l3"><a href="#the-lost-update-and-why-read-modify-write-is-the-crime-scene" data-target="the-lost-update-and-why-read-modify-write-is-the-crime-scene">The lost update, and why read-modify-write is the crime scene</a></li><li class="toc-l3"><a href="#consistency-is-part-of-the-contract-say-what-you-guarantee" data-target="consistency-is-part-of-the-contract-say-what-you-guarantee">Consistency is part of the contract — say what you guarantee</a></li><li class="toc-l2"><a href="#part-7-authentication-and-authorization" data-target="part-7-authentication-and-authorization">Part 7 — Authentication and Authorization</a></li><li class="toc-l3"><a href="#authentication-pick-boring-implement-precisely" data-target="authentication-pick-boring-implement-precisely">Authentication: pick boring, implement precisely</a></li><li class="toc-l3"><a href="#authorization-the-part-attackers-actually-use" data-target="authorization-the-part-attackers-actually-use">Authorization: the part attackers actually use</a></li><li class="toc-l2"><a href="#part-8-rate-limiting-quotas-and-load-shedding" data-target="part-8-rate-limiting-quotas-and-load-shedding">Part 8 — Rate Limiting, Quotas, and Load Shedding</a></li><li class="toc-l3"><a href="#three-different-problems-wearing-one-trench-coat" data-target="three-different-problems-wearing-one-trench-coat">Three different problems wearing one trench coat</a></li><li class="toc-l3"><a href="#the-contract-side-429-done-right" data-target="the-contract-side-429-done-right">The contract side: 429 done right</a></li><li class="toc-l2"><a href="#part-9-timeouts-retries-and-resilience" data-target="part-9-timeouts-retries-and-resilience">Part 9 — Timeouts, Retries, and Resilience</a></li><li class="toc-l3"><a href="#timeouts-every-call-has-one-chosen-not-inherited" data-target="timeouts-every-call-has-one-chosen-not-inherited">Timeouts: every call has one, chosen, not inherited</a></li><li class="toc-l3"><a href="#retries-powerful-and-a-loaded-weapon" data-target="retries-powerful-and-a-loaded-weapon">Retries: powerful, and a loaded weapon</a></li><li class="toc-l3"><a href="#you-own-the-client-too" data-target="you-own-the-client-too">You own the client too</a></li><li class="toc-l2"><a href="#part-10-long-running-operations-webhooks-and-events" data-target="part-10-long-running-operations-webhooks-and-events">Part 10 — Long-Running Operations, Webhooks, and Events</a></li><li class="toc-l3"><a href="#when-the-work-outlives-the-request-202-operation-resource" data-target="when-the-work-outlives-the-request-202-operation-resource">When the work outlives the request: 202 + operation resource</a></li><li class="toc-l3"><a href="#webhooks-you-as-a-client-at-enterprise-grade" data-target="webhooks-you-as-a-client-at-enterprise-grade">Webhooks: you, as a client, at enterprise grade</a></li><li class="toc-l2"><a href="#part-11-observability-and-auditability" data-target="part-11-observability-and-auditability">Part 11 — Observability and Auditability</a></li><li class="toc-l3"><a href="#the-request-id-is-the-spine" data-target="the-request-id-is-the-spine">The request ID is the spine</a></li><li class="toc-l2"><a href="#part-12-contracts-documentation-and-testing" data-target="part-12-contracts-documentation-and-testing">Part 12 — Contracts, Documentation, and Testing</a></li><li class="toc-l3"><a href="#the-openapi-document-is-the-artifact-not-the-afterthought" data-target="the-openapi-document-is-the-artifact-not-the-afterthought">The OpenAPI document is the artifact, not the afterthought</a></li><li class="toc-l2"><a href="#part-13-the-platform-layer-and-the-design-review-checklist" data-target="part-13-the-platform-layer-and-the-design-review-checklist">Part 13 — The Platform Layer and the Design-Review Checklist</a></li><li class="toc-l3"><a href="#what-belongs-in-the-gateway-vs-the-service" data-target="what-belongs-in-the-gateway-vs-the-service">What belongs in the gateway vs the service</a></li><li class="toc-l3"><a href="#the-design-review-checklist" data-target="the-design-review-checklist">The design-review checklist</a></li><li class="toc-l3"><a href="#the-closing-thesis" data-target="the-closing-thesis">The closing thesis</a></li></ul></nav></aside>
+  <main><h1 id="enterprise-grade-apis">Enterprise-Grade APIs</h1>
+<p>A depth-first guide to designing, building, and operating APIs that other teams — and other companies — can bet their systems on. "Enterprise-grade" is not a feature list; it is a posture: the API is a <strong>contract with consumers you cannot redeploy</strong>, and every design decision is judged by how it behaves under partial failure, concurrent access, malicious input, version skew, and ten years of accumulated clients. This guide covers resource and error design, idempotency (treated as the load-bearing concept it is), versioning and compatibility, pagination, concurrency control, authentication and authorization, rate limiting, retries and resilience, long-running operations and webhooks, observability, contract testing, and the platform layer — with wire-level HTTP examples throughout and implementation snippets in TypeScript.</p>
+<p>Assumes you've built and shipped HTTP APIs before. This guide is about the distance between "works in the demo" and "processes other people's money."</p>
+<p>Primary references: <a href="https://www.rfc-editor.org/rfc/rfc9110">RFC 9110 (HTTP Semantics)</a>, <a href="https://www.rfc-editor.org/rfc/rfc9457">RFC 9457 (Problem Details)</a>, the <a href="https://stripe.com/docs/api">Stripe API reference</a> (the de facto style standard for commercial APIs), <a href="https://owasp.org/API-Security/">OWASP API Security Top 10</a>, the <a href="https://spec.openapis.org/oas/latest.html">OpenAPI Specification</a>, and Google's <a href="https://google.aip.dev/">API Improvement Proposals</a>.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1--what-enterprise-grade-actually-means">Part 1 — What "Enterprise-Grade" Actually Means</a></li>
+<li><a href="#part-2--resource-and-error-design">Part 2 — Resource and Error Design</a></li>
+<li><a href="#part-3--idempotency">Part 3 — Idempotency</a></li>
+<li><a href="#part-4--versioning-and-compatibility">Part 4 — Versioning and Compatibility</a></li>
+<li><a href="#part-5--pagination-filtering-and-sorting">Part 5 — Pagination, Filtering, and Sorting</a></li>
+<li><a href="#part-6--concurrency-control-and-consistency">Part 6 — Concurrency Control and Consistency</a></li>
+<li><a href="#part-7--authentication-and-authorization">Part 7 — Authentication and Authorization</a></li>
+<li><a href="#part-8--rate-limiting-quotas-and-load-shedding">Part 8 — Rate Limiting, Quotas, and Load Shedding</a></li>
+<li><a href="#part-9--timeouts-retries-and-resilience">Part 9 — Timeouts, Retries, and Resilience</a></li>
+<li><a href="#part-10--long-running-operations-webhooks-and-events">Part 10 — Long-Running Operations, Webhooks, and Events</a></li>
+<li><a href="#part-11--observability-and-auditability">Part 11 — Observability and Auditability</a></li>
+<li><a href="#part-12--contracts-documentation-and-testing">Part 12 — Contracts, Documentation, and Testing</a></li>
+<li><a href="#part-13--the-platform-layer-and-the-design-review-checklist">Part 13 — The Platform Layer and the Design-Review Checklist</a></li>
+</ol>
+<hr>
+<h2 id="part-1-what-enterprise-grade-actually-means">Part 1 — What "Enterprise-Grade" Actually Means</h2>
+<p>Most API advice is about the happy path: name resources well, return sensible JSON, document it. Necessary, and nowhere near sufficient. The difference between an internal demo API and an enterprise-grade one is <strong>who bears the cost of your mistakes and how long they bear it</strong>:</p>
+<ul>
+<li><strong>You cannot redeploy your consumers.</strong> An internal frontend ships with its backend; an enterprise API has clients you've never met — partner integrations frozen in 2019, mobile apps users won't update, cron jobs in other companies' datacenters. Every field you expose, every status code you return, every quirk in your pagination is something <em>somebody</em> now depends on. <a href="https://www.hyrumslaw.com/">Hyrum's Law</a> is the operating condition: with enough consumers, every observable behavior of your API will be depended upon by someone — including your bugs.</li>
+<li><strong>The network is part of the API.</strong> Requests time out with the response in flight. Clients retry. Two requests for the same logical operation arrive concurrently on different nodes. An API that is correct only when every request arrives exactly once, in order, and gets its response delivered, is incorrect. Parts 3, 6, and 9 are about designing for the network you actually have.</li>
+<li><strong>Failure modes are interface, not implementation.</strong> What does a consumer see during your deploy? Your database failover? When they exceed their quota? Each of those is a contractual surface — <code>429</code> vs <code>503</code>, <code>Retry-After</code> present or absent, errors machine-parseable or prose — that consumers will write code against.</li>
+<li><strong>Operations are a feature.</strong> A consumer debugging "my requests fail at 2% since Tuesday" needs request IDs they can quote to your support, error bodies that distinguish <em>their</em> bug from <em>yours</em>, status pages, and deprecation timelines measured in quarters. None of this is glamorous; all of it is the product.</li>
+</ul>
+<p>A useful mental reframe: <strong>the API is a product whose users are programmers and whose UI is the wire format.</strong> Product discipline follows — versioned releases, migration guides, a changelog, support channels, and a deep reluctance to break users for your own convenience.</p>
+<p>The rest of this guide is that posture, made concrete, roughly in the order the problems bite: design (Parts 2–5), correctness under concurrency (Parts 3, 6), security (Part 7), surviving load and failure (Parts 8–9), escaping the request/response box (Part 10), and operating the thing (Parts 11–13).</p>
+<hr>
+<h2 id="part-2-resource-and-error-design">Part 2 — Resource and Error Design</h2>
+<h3 id="resources-not-actions">Resources, not actions</h3>
+<p>Model the domain as <strong>nouns with state</strong> manipulated through HTTP's uniform verbs, because the verbs carry semantics that infrastructure understands (Part 3 depends on this). The classic shape:</p>
+<pre><code class="language-text">GET    /v1/transfers              # list (paginated — Part 5)
+POST   /v1/transfers              # create
+GET    /v1/transfers/{id}         # read
+PATCH  /v1/transfers/{id}         # partial update
+DELETE /v1/transfers/{id}         # delete (or cancel — see below)
+POST   /v1/transfers/{id}/cancel  # action that isn't CRUD
+</code></pre>
+<p>The escape hatch in the last line matters: real domains have verbs that aren't state-overwrites (<code>cancel</code>, <code>approve</code>, <code>retry</code>). Forcing them into <code>PATCH {"status": "cancelled"}</code> conflates "client sets a field" with "system runs a workflow" and makes authorization and validation murky (may this caller set status to <em>anything</em>?). A sub-resource action endpoint (<code>POST .../cancel</code>) — Google's AIP-136 "custom methods" pattern — keeps the workflow explicit. Use it deliberately and sparingly; if most of your API is action endpoints, you've built RPC and should design it as RPC honestly.</p>
+<p><strong>Method semantics are a contract, not a style.</strong> RFC 9110 defines two properties that Part 3 and Part 9 build on:</p>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Safe (no state change)</th>
+<th>Idempotent</th>
+<th>Typical use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GET, HEAD</td>
+<td>yes</td>
+<td>yes</td>
+<td>reads</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td>no</td>
+<td><strong>yes</strong></td>
+<td>full replace ("make the resource equal this")</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td>no</td>
+<td><strong>yes</strong></td>
+<td>removal ("make it gone")</td>
+</tr>
+<tr>
+<td>PATCH</td>
+<td>no</td>
+<td>no (unless you design it so)</td>
+<td>partial update</td>
+</tr>
+<tr>
+<td>POST</td>
+<td>no</td>
+<td><strong>no</strong></td>
+<td>creation, actions, everything else</td>
+</tr>
+</tbody>
+</table>
+<p>Proxies, gateways, SDK retry layers, and browsers all assume these properties. A <code>GET</code> that mutates state will eventually be called by a prefetcher, a health checker, or a retry, and the resulting incident is your fault, not theirs.</p>
+<h3 id="representations-the-boring-decisions-that-age-the-best">Representations: the boring decisions that age the best</h3>
+<p>Wire-format choices are forever (Part 4 explains why), so make the durable ones up front:</p>
+<ul>
+<li><strong>IDs are opaque strings.</strong> Not integers (they leak cardinality, invite enumeration, and overflow JS's 2⁵³ integer ceiling), not raw UUIDs if you can do better: <strong>prefixed identifiers</strong> (<code>tr_8MGyq4zXKj0</code>) à la Stripe make IDs self-describing in logs and support tickets and let you change the generation scheme later. Document that IDs are opaque and up to N characters; never document the internal structure.</li>
+<li><strong>Timestamps are RFC 3339 / ISO 8601, UTC, with offset</strong> (<code>2026-06-10T14:23:05Z</code>). Never epoch integers (which unit?), never local time, never anything else. Accept that you'll receive sloppy input and reject it explicitly.</li>
+<li><strong>Money is integer minor units plus a currency code</strong> (<code>{"amount": 2500, "currency": "usd"}</code> = $25.00). JSON numbers are IEEE-754 doubles in most parsers; <code>0.1 + 0.2</code> is not your invoice total. If you must handle currencies with non-hundredth minor units or crypto precision, use a decimal <em>string</em> and say so.</li>
+<li><strong>Enums will grow.</strong> Document explicitly: "clients MUST tolerate unknown values of <code>status</code>" — and consider an <code>"other"</code>/catch-all story for critical switch statements. An enum you can't extend without breaking clients isn't an enum, it's a trap (Part 4).</li>
+<li><strong>Field naming is a one-time decision per API</strong>: pick <code>snake_case</code> or <code>camelCase</code>, write it down, lint it (Part 12). Mixed conventions are the smell reviewers notice first.</li>
+<li><strong>Return the full resource from writes.</strong> <code>POST /transfers</code> answers <code>201</code> with the created transfer (including server-set fields: <code>id</code>, <code>created_at</code>, <code>status</code>), so clients never need a follow-up <code>GET</code> that might hit a stale replica (Part 6).</li>
+</ul>
+<h3 id="errors-are-an-api-surface-not-an-apology">Errors are an API surface, not an apology</h3>
+<p>Two audiences read every error: a program deciding what to do next, and a human debugging at 2am. Serve both with <strong>RFC 9457 Problem Details</strong> (<code>application/problem+json</code>) plus a stable, machine-matchable code:</p>
+<pre><code class="language-http">HTTP/1.1 422 Unprocessable Content
+Content-Type: application/problem+json
+Request-Id: req_9f3b2c
+
+{
+  &quot;type&quot;: &quot;https://api.example.com/errors/insufficient-funds&quot;,
+  &quot;title&quot;: &quot;Insufficient funds&quot;,
+  &quot;status&quot;: 422,
+  &quot;detail&quot;: &quot;Account acct_7Hq2 has a balance of 1200 but the transfer requires 2500.&quot;,
+  &quot;code&quot;: &quot;insufficient_funds&quot;,
+  &quot;request_id&quot;: &quot;req_9f3b2c&quot;,
+  &quot;errors&quot;: [
+    { &quot;field&quot;: &quot;amount&quot;, &quot;code&quot;: &quot;exceeds_balance&quot;, &quot;message&quot;: &quot;Transfer amount exceeds available balance.&quot; }
+  ]
+}
+</code></pre>
+<p>The rules that make this work at scale:</p>
+<ul>
+<li><strong><code>code</code> is the contract; <code>detail</code> is prose.</strong> Clients branch on <code>code</code>; you may reword <code>detail</code> freely. Document every code. Never make clients regex your error messages — they will if you give them nothing better, and then your typo fixes are breaking changes (Hyrum again).</li>
+<li><strong>Status codes triage; bodies diagnose.</strong> <code>4xx</code> = "your request is wrong, don't retry it unchanged"; <code>5xx</code> = "we failed, retrying may help"; and within those, the handful that carry specific machine semantics: <code>401</code> (who are you) vs <code>403</code> (you, specifically, may not) vs <code>404</code> (not here — also the right answer for "exists but you may not know it exists," to avoid resource enumeration), <code>409</code> (state conflict — Part 6), <code>422</code> (understood but semantically invalid), <code>429</code> (slow down — Part 8). Don't get creative; clients have generic handlers keyed to exactly these.</li>
+<li><strong>Validation errors enumerate every problem at once</strong> (the <code>errors</code> array) — a client fixing one field per round trip will file a support ticket per round trip.</li>
+<li><strong>Every response carries a <code>Request-Id</code></strong> the client can quote and you can look up (Part 11). This single header eliminates a whole genre of support escalation.</li>
+<li><strong>Never leak internals</strong>: no stack traces, no SQL, no upstream hostnames, no "NullPointerException" — those are information disclosure to attackers and confusion to everyone else. The 500 body is generic; the <em>details</em> go to your logs, joined by <code>request_id</code>.</li>
+</ul>
+<hr>
+<h2 id="part-3-idempotency">Part 3 — Idempotency</h2>
+<p>The user-question at the heart of this guide, answered precisely and then built out, because idempotency is the keystone property that makes Parts 8–10 possible.</p>
+<h3 id="the-definition">The definition</h3>
+<blockquote>
+<p><strong>An operation is idempotent if performing it multiple times produces the same result as performing it once.</strong> In mathematical terms, an operation <code>f</code> is idempotent when <code>f(f(x)) = f(x)</code> — applying it again to an already-affected system changes nothing further.</p>
+</blockquote>
+<p>Three precise clarifications, because the definition is routinely misquoted:</p>
+<ol>
+<li><strong>It's about the <em>effect on the system</em>, not the response.</strong> <code>DELETE /transfers/tr_1</code> is idempotent even though the first call returns <code>204</code> and the second returns <code>404</code> — after either sequence, the system is in the same state: the transfer is gone. (Returning <code>204</code> for repeat deletes is also fine and arguably kinder; the <em>state</em> is the contract.)</li>
+<li><strong>It's not the same as "safe."</strong> <code>GET</code> is safe (no state change at all) and therefore trivially idempotent. <code>PUT</code> and <code>DELETE</code> change state — once. Safe ⊂ idempotent ⊂ all operations.</li>
+<li><strong>"Multiple times" includes "concurrently."</strong> Two identical requests racing on different app servers must <em>also</em> net out to once. Idempotency that only works sequentially isn't idempotency; it's luck. This is the part that makes implementation interesting (below).</li>
+</ol>
+<p>Some operations are <em>naturally</em> idempotent because of their semantics: assignment (<code>PUT /users/42/email</code> with <code>"a@b.com"</code> — setting it twice is setting it once), deletion, "ensure exists" upserts, set-membership operations (add tag <code>urgent</code> to a set: adding twice is adding once). Some are naturally <em>not</em>: append, increment, <strong>create</strong> ("make a <em>new</em> transfer"), send-an-email, charge-a-card. The first group you get by design discipline. The second group is where the engineering lives — and it's exactly the group that involves money and side effects.</p>
+<h3 id="why-its-mandatory-not-nice-to-have">Why it's mandatory, not nice-to-have</h3>
+<p>The distributed-systems syllogism that forces the issue:</p>
+<ol>
+<li>Networks fail partially: a client can send a request, have it <strong>execute successfully</strong>, and never see the response (timeout, connection reset, gateway hiccup, process crash after commit).</li>
+<li>The client now cannot distinguish "never arrived" from "executed, response lost." Its only options are: give up (and possibly lose a legitimate operation), or <strong>retry</strong> (and possibly duplicate it).</li>
+<li>Therefore every robust client retries — your SDKs retry, service meshes retry, mobile apps retry on reconnect, queue consumers redeliver (Part 10). So your API <strong>will</strong> receive duplicates. The only question is whether duplicates are harmless or whether someone gets charged twice.</li>
+</ol>
+<p>This generalizes to the most important sentence in distributed messaging: <strong>exactly-once <em>delivery</em> is impossible; exactly-once <em>effect</em> is achievable — as at-least-once delivery plus idempotent processing.</strong> Every system that appears to offer exactly-once semantics (Kafka transactions, payment processors, your bank) is doing deduplication somewhere. Enterprise-grade means you do it on purpose.</p>
+<h3 id="idempotency-keys-making-post-retryable">Idempotency keys: making POST retryable</h3>
+<p><code>POST /transfers</code> creates a <em>new</em> transfer per call — that's its meaning, so two calls legitimately make two transfers. To let a client safely retry the <em>same logical</em> creation, the client attaches a unique key identifying the logical operation, and the server deduplicates on it. This is the <strong><code>Idempotency-Key</code></strong> pattern (Stripe popularized it; an IETF draft standardizes the header):</p>
+<pre><code class="language-http">POST /v1/transfers HTTP/1.1
+Authorization: Bearer sk_live_…
+Idempotency-Key: 0d1aafc8-9c5e-4b7e-b9d2-2f6f3a9e4c11
+Content-Type: application/json
+
+{ &quot;amount&quot;: 2500, &quot;currency&quot;: &quot;usd&quot;, &quot;destination&quot;: &quot;acct_7Hq2&quot; }
+</code></pre>
+<p>Contract, from the server's perspective:</p>
+<ul>
+<li><strong>First time this key is seen</strong> (per caller — keys are scoped to the authenticated principal, or one tenant could poison another's keys): execute the request, <strong>store the result keyed by the idempotency key</strong>, return it.</li>
+<li><strong>Same key again</strong>: do not re-execute; <strong>replay the stored response</strong> — same status code, same body. The client can't tell the difference, which is the point.</li>
+<li><strong>Same key, <em>different</em> request body</strong>: this is a client bug, not a retry. Detect it (store a hash of the body alongside the key) and reject with <code>422</code>/<code>409</code> and an unambiguous error code — silently returning the old response to a <em>different</em> request hides corruption.</li>
+<li><strong>Same key while the first attempt is still executing</strong>: the race case. Don't run it twice in parallel; either block briefly or return <code>409 Conflict</code> with a "retry shortly" error so the client backs off and re-polls the same key.</li>
+<li><strong>Keys expire.</strong> Store them with a TTL (24h is common, Stripe's choice; long enough to cover any sane retry horizon, short enough to bound storage). Document the window.</li>
+</ul>
+<h3 id="implementing-it-properly">Implementing it properly</h3>
+<p>The naive version — <code>if (seen(key)) return cached; else execute(); save(key)</code> — has a time-of-check/time-of-use race: two concurrent duplicates both pass the <code>seen()</code> check. The fix is to make <strong>key reservation atomic and first</strong>, using a uniqueness guarantee from your store. With SQL:</p>
+<pre><code class="language-sql">CREATE TABLE idempotency_keys (
+  key         text NOT NULL,
+  principal   text NOT NULL,           -- scope keys per API client
+  body_hash   text NOT NULL,
+  state       text NOT NULL,           -- 'in_progress' | 'completed'
+  status_code int,
+  response    jsonb,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (principal, key)
+);
+</code></pre>
+<pre><code class="language-typescript">// Fastify-style middleware. The unique-constraint INSERT is the linchpin:
+// exactly one concurrent duplicate wins the reservation.
+async function withIdempotency(req: Request, reply: Reply, execute: () =&gt; Promise&lt;Result&gt;) {
+  const key = req.headers['idempotency-key'];
+  if (!key) return execute();                       // header optional; document it as
+                                                    // required for money-moving routes
+  const principal = req.auth.clientId;
+  const bodyHash = sha256(req.rawBody);
+
+  const inserted = await db.tryInsert('idempotency_keys', {
+    key, principal, body_hash: bodyHash, state: 'in_progress',
+  }); // INSERT ... ON CONFLICT DO NOTHING, returns whether we won
+
+  if (!inserted) {
+    const existing = await db.get('idempotency_keys', { principal, key });
+    if (existing.body_hash !== bodyHash) {
+      return reply.code(422).send(problem('idempotency_key_reused',
+        'This Idempotency-Key was already used with a different request body.'));
+    }
+    if (existing.state === 'in_progress') {
+      return reply.code(409).header('retry-after', '1').send(problem('request_in_flight',
+        'A request with this Idempotency-Key is still being processed. Retry shortly.'));
+    }
+    return reply.code(existing.status_code).send(existing.response);   // replay
+  }
+
+  const result = await execute();                   // the actual create
+  await db.update('idempotency_keys', { principal, key }, {
+    state: 'completed', status_code: result.status, response: result.body,
+  });
+  return reply.code(result.status).send(result.body);
+}
+</code></pre>
+<p>Hard-won details the sketch glosses over, in the order they'll bite you:</p>
+<ul>
+<li><strong>Put the business effect and the key update in one transaction</strong> when both live in the same database — otherwise a crash between "transfer committed" and "key marked completed" leaves an <code>in_progress</code> key whose retry would double-execute. If the effect is <em>external</em> (charging a card via a processor), you can't have one transaction; instead, <em>propagate the key downstream</em> (call the processor with the same idempotency key — Stripe et al. accept one precisely for this) so the retry of your half safely retries their half too. Idempotency composes by <strong>passing keys through the call chain</strong>.</li>
+<li><strong>Crashed <code>in_progress</code> keys need a recovery story</strong>: a TTL after which the key is considered abandoned and the operation is <em>re-verified</em> (check whether the transfer actually exists — by key-derived natural ID, see below) rather than blindly re-executed.</li>
+<li><strong>Replay the failure too, selectively.</strong> A <code>422 insufficient_funds</code> outcome is a real outcome — store and replay it. A <code>500</code> from your own bug is not a business outcome — let the retry re-execute. Rule of thumb: deterministic request-level failures are cached; transient infrastructure failures are not.</li>
+<li><strong>Who generates the key?</strong> The client, at the <em>intent</em> boundary: one key per user-visible action (per checkout click, per workflow step), generated once and persisted alongside the intent, reused across all retries of it. A client that generates a fresh UUID per HTTP attempt has built an elaborate no-op.</li>
+</ul>
+<h3 id="the-alternative-natural-idempotency-by-design">The alternative: natural idempotency by design</h3>
+<p>Before reaching for key infrastructure, check whether the operation can be <em>redesigned</em> to be idempotent on its own semantics — it's less machinery and often a better API:</p>
+<ul>
+<li><strong>Let clients name the resource</strong>: <code>PUT /transfers/{client-chosen-id}</code> ("create or no-op if exists") instead of <code>POST /transfers</code>. The ID <em>is</em> the dedup key, the uniqueness constraint <em>is</em> the implementation, and reads of the key store are reads of the resource table. Google's AIPs push this direction (client-specified resource IDs on create).</li>
+<li><strong>Make updates absolute, not relative</strong>: <code>{"balance_adjustment": -500}</code> is unretryable; <code>{"balance": 700, "if_version": 41}</code> (Part 6's optimistic concurrency) retries safely because the version check turns the second application into a no-op.</li>
+<li><strong>Make consumers dedup on event IDs</strong>: for webhooks and queues (Part 10), the event carries a unique ID; the consumer records processed IDs and skips repeats — the same key pattern, pushed to the receiving side.</li>
+</ul>
+<p>The decision rule: <strong>anything that moves money, sends communications, or creates resources on behalf of a retrying caller needs an idempotency story in the contract</strong> — either natural (preferred) or keyed (when "create a new X" is genuinely the semantic). Write down which, per endpoint. "We didn't think about it" is the only wrong answer.</p>
+<hr>
+<h2 id="part-4-versioning-and-compatibility">Part 4 — Versioning and Compatibility</h2>
+<h3 id="the-prime-directive-dont-need-to-version">The prime directive: don't need to version</h3>
+<p>Versioning is the <em>fire escape</em>; compatibility discipline is the <em>building code</em>. The overwhelming majority of API evolution can and should be <strong>additive within a version</strong>:</p>
+<p>Non-breaking (do freely, with a changelog entry): adding a response field; adding an <em>optional</em> request field with a backward-compatible default; adding an endpoint; adding an enum value <em>where you documented the tolerance rule</em> (Part 2); relaxing a validation; raising a limit.</p>
+<p>Breaking (requires a new version or a managed migration): removing or renaming anything; changing a type or format; making an optional field required; tightening validation that previously accepted input; changing a default; changing error <em>codes</em> (not prose); reordering paginated results a client documented as stable; meaningfully changing latency or rate-limit behavior, if consumers were told to rely on it. Note the asymmetry — requests follow "be conservative in what you send" for clients, and your <em>responses</em> are governed by Hyrum's Law: if it was observable, somebody depends on it.</p>
+<p>This only works if it's enforced, not aspired to: contract diffing in CI (Part 12) that fails the build on a breaking change to the OpenAPI document is worth more than any policy memo.</p>
+<h3 id="when-you-must-version">When you must version</h3>
+<ul>
+<li><strong>URI versioning</strong> (<code>/v1/transfers</code>) is the pragmatic default for public APIs: visible in every log line and support ticket, trivially routable at the gateway, impossible for a client to invoke accidentally. Its theoretical sin (the "same resource" has two URIs) costs nothing in practice.</li>
+<li><strong>Header/date versioning</strong> (Stripe's <code>Stripe-Version: 2026-05-01</code>, pinned per account at first use) is strictly more powerful — fine-grained, per-consumer migration, dozens of small versions instead of a giant v2 — and proportionally more machinery: version-transformation layers in the codebase, per-account pinning state, more support complexity. Adopt it if API evolution is your core business; otherwise it's overkill.</li>
+<li><strong>The major-version-as-new-product rule</strong>: a <code>/v2</code> is a <em>migration project you are imposing on every consumer</em>. Budget it like one — parallel operation for quarters-to-years, migration guides with before/after payloads, telemetry on who's still on v1, and active outreach to the long tail. Companies that ship v2s casually accumulate zombie versions forever; the discipline is to make v2 so rare that each one is an event.</li>
+</ul>
+<p><strong>Deprecation is a protocol, not an announcement.</strong> Mark it in the contract (OpenAPI <code>deprecated: true</code>), in responses (<code>Deprecation: true</code> and <code>Sunset: &amp;lt;http-date&amp;gt;</code> headers — RFC 8594), in docs, and in dashboards ("your integration called 3 deprecated endpoints this week"). Then <em>measure</em> before you remove: traffic on the deprecated surface, by consumer, with the loud ones contacted directly. The sunset date you can't enforce because a top customer still depends on the endpoint was never a date; pick dates you'll honor.</p>
+<hr>
+<h2 id="part-5-pagination-filtering-and-sorting">Part 5 — Pagination, Filtering, and Sorting</h2>
+<h3 id="offset-pagination-is-a-correctness-bug-wearing-a-convenience-costume">Offset pagination is a correctness bug wearing a convenience costume</h3>
+<p><code>?offset=5000&amp;limit=50</code> has two failure modes that disqualify it for anything that grows or changes: <strong>it skips or duplicates items under concurrent writes</strong> (a row inserted before your current page shifts everything; clients walking "all transfers" silently miss some — in a reconciliation job, that's a financial discrepancy), and <strong>it degrades as O(offset)</strong> in most stores (the database produces and discards 5,000 rows to serve page 101).</p>
+<p><strong>Cursor (keyset) pagination</strong> fixes both: each page returns an opaque token encoding the position <em>by stable sort key</em>, and the next page is "everything after that key":</p>
+<pre><code class="language-http">GET /v1/transfers?limit=50&amp;starting_after=tr_8MGyq4zXKj0
+
+{
+  &quot;data&quot;: [ … 50 transfers … ],
+  &quot;has_more&quot;: true,
+  &quot;next_cursor&quot;: &quot;Y3JlYXRlZF9hdDoyMDI2LTA2LTEwVDE0OjIzOjA1WjtpZDp0cl85…&quot;
+}
+</code></pre>
+<pre><code class="language-sql">-- The implementation is a WHERE clause on the sort key, not an OFFSET:
+SELECT * FROM transfers
+WHERE (created_at, id) &lt; ($cursor_created_at, $cursor_id)   -- id breaks ties
+ORDER BY created_at DESC, id DESC
+LIMIT 51;                                                    -- +1 to compute has_more
+</code></pre>
+<p>The rules that keep it honest: the sort key must be <strong>stable and unique</strong> (timestamp alone isn't — two rows in the same millisecond — so always pair it with the ID as tiebreaker); the cursor is <strong>opaque and signed/encoded</strong> (clients who can decode it will construct it, and then its format is API surface — Hyrum yet again); cursors <strong>expire gracefully</strong> (a 410 with <code>cursor_expired</code> beats silently wrong results); and <strong>don't return total counts by default</strong> — <code>COUNT(*)</code> over a filtered billion-row table costs more than the page itself, and the count is stale the moment it's computed. Offer it as an explicit opt-in (<code>?include_total=true</code>) with documented cost, or as an estimate.</p>
+<h3 id="filtering-and-sorting-are-allowlists-not-query-languages">Filtering and sorting are allowlists, not query languages</h3>
+<p>Expose <strong>named, documented, indexed filters</strong> (<code>?status=pending&amp;destination=acct_7Hq2&amp;created_after=2026-06-01</code>), not a generic expression language. Every filter you accept is a query plan you're promising to execute at production scale; a free-form filter language (or an unfiltered GraphQL resolver — same disease) is an invitation for a consumer to invent the query your indexes never imagined, at 9am on your busiest Monday. Same for sorting: <code>?sort=-created_at</code> from an enumerated set of keys you've indexed, with the pagination cursor scheme varying accordingly. Reject unknown filter/sort parameters with a <code>400</code> listing valid ones — silently ignoring them means a typo (<code>craeted_after</code>) returns the <em>unfiltered</em> world, which in a reconciliation script is a catastrophe that looks like success.</p>
+<hr>
+<h2 id="part-6-concurrency-control-and-consistency">Part 6 — Concurrency Control and Consistency</h2>
+<h3 id="the-lost-update-and-why-read-modify-write-is-the-crime-scene">The lost update, and why read-modify-write is the crime scene</h3>
+<p>Two admins open the same customer record; both edit; both save. Whoever saves last silently destroys the other's change. No error fires anywhere — this is the <strong>lost update</strong>, and any API offering <code>GET</code> then <code>PATCH</code>/<code>PUT</code> has it by default.</p>
+<p>The HTTP-native fix is <strong>optimistic concurrency with ETags and conditional requests</strong>:</p>
+<pre><code class="language-http">GET /v1/customers/cus_4Tz HTTP/1.1
+→ 200 OK
+  ETag: &quot;v17&quot;
+
+PATCH /v1/customers/cus_4Tz HTTP/1.1
+If-Match: &quot;v17&quot;
+{ &quot;email&quot;: &quot;new@example.com&quot; }
+
+→ 200 OK, ETag: &quot;v18&quot;          # version matched; write applied
+→ 412 Precondition Failed       # someone else wrote v18 first; client must
+                                # re-GET, re-apply intent, retry with new ETag
+</code></pre>
+<p>Implementation is one integer: a <code>version</code> column incremented on every write, compared in the <code>UPDATE ... WHERE id = $1 AND version = $2</code> (zero rows updated → <code>412</code>). The contract decisions that go with it: <strong>document which endpoints require <code>If-Match</code></strong> (require it on anything where lost updates hurt — silently accepting unconditional writes on a contested resource is choosing corruption as the default); return the new ETag on every write so clients can chain edits; and pair <code>412</code> with a problem body telling the client to refresh. Note the kinship with Part 3: a conditional write is <em>naturally idempotent</em> — replaying <code>If-Match: "v17"</code> after it succeeded yields <code>412</code>, not a second application, which is exactly the no-op you want from a retry. (<code>If-Unmodified-Since</code> is the timestamp cousin; use the ETag form — timestamps have resolution problems.)</p>
+<p>For <em>create</em> races, the same idea wears a different header: <code>If-None-Match: *</code> on <code>PUT /resources/{client-id}</code> means "create only if absent" — <code>412</code> tells the caller it already exists.</p>
+<h3 id="consistency-is-part-of-the-contract-say-what-you-guarantee">Consistency is part of the contract — say what you guarantee</h3>
+<p>Enterprise consumers build workflows across your endpoints, and they will discover your replication lag empirically unless you document it first. The questions to answer <em>in the docs</em>, per read endpoint:</p>
+<ul>
+<li><strong>Read-your-writes</strong>: after <code>POST /transfers</code> returns <code>201</code>, does <code>GET /transfers/{id}</code> immediately see it? If reads go to replicas, maybe not — and a consumer's create-then-fetch pipeline breaks mysteriously, rarely, only under load. The standard mitigations: serve <code>GET</code>-after-write from the primary for a sticky window; or return the full resource from the write (Part 2) so the follow-up <code>GET</code> is unnecessary; or document the lag honestly ("list endpoints may trail writes by up to N seconds") so consumers poll with that expectation.</li>
+<li><strong>List-vs-get coherence</strong>: can a transfer appear in <code>GET /transfers</code> before <code>GET /transfers/{id}</code> finds it (or vice versa)? Search indexes lag primaries; say so.</li>
+<li><strong>Monotonicity</strong>: can a client observe <code>status: completed</code> and then, on the next poll, <code>status: processing</code>? Never let state visibly move backward — consumers build state machines from your statuses, and a backward transition breaks them in ways they cannot defensively code around. If your statuses can be reordered by replication, read status from a source that can't.</li>
+</ul>
+<p>The honest general posture: strong consistency where the domain demands it (balances, inventory, anything compared against a limit), documented eventual consistency where it doesn't (search, analytics, activity feeds) — and the worst option is the undocumented mixture, where every consumer learns your architecture through their own incident.</p>
+<hr>
+<h2 id="part-7-authentication-and-authorization">Part 7 — Authentication and Authorization</h2>
+<h3 id="authentication-pick-boring-implement-precisely">Authentication: pick boring, implement precisely</h3>
+<p>For service-to-service and partner APIs, the realistic menu:</p>
+<ul>
+<li><strong>API keys</strong> (<code>Authorization: Bearer sk_live_…</code>): the workhorse. Long random secrets (256 bits), <strong>prefixed</strong> (<code>sk_live_</code> / <code>sk_test_</code> — the prefix prevents the classic test-key-in-prod accident and enables secret scanning; GitHub's scanners find prefixed keys in public repos and tell you), <strong>hashed at rest</strong> like passwords (a stolen key table must not be a skeleton key), shown once at creation, <strong>rotatable without downtime</strong> (two keys active per principal, swap, revoke — if rotation requires a support ticket, you've guaranteed nobody rotates), and revocable instantly.</li>
+<li><strong>OAuth 2.0 client credentials</strong> issuing short-lived JWTs: the step up when you need delegation, scopes across services, or federation with customers' identity providers. The implementation sins are all in validation: verify signature <em>and</em> <code>iss</code> <em>and</em> <code>aud</code> (a token minted for a different audience must not work here) <em>and</em> expiry; pin accepted algorithms (the <code>alg: none</code> and RS256→HS256 confusion attacks are twenty years old and still land); fetch keys via JWKS with caching and rotation handling.</li>
+<li><strong>mTLS</strong> where the counterparty is a bank or regulator that demands it; operationally heavy (cert lifecycle), usually terminated at the gateway.</li>
+</ul>
+<p>Whatever the scheme: credentials never in URLs (they land in logs, referrers, and browser history), always over TLS, with <code>401</code> for "no/invalid credentials" and <code>403</code> for "valid credentials, insufficient rights" — the distinction tells the client whether to re-authenticate or to stop.</p>
+<h3 id="authorization-the-part-attackers-actually-use">Authorization: the part attackers actually use</h3>
+<p>The OWASP API Security Top 10 has been led for years by <strong>BOLA — Broken Object Level Authorization</strong> — because it's the bug that scales: the attacker doesn't break your crypto, they increment an ID. <code>GET /v1/transfers/tr_8MGyq4zXKj0</code> with a <em>valid</em> key for tenant A must verify that <code>tr_8MGy…</code> <em>belongs to tenant A</em>, on every object, on every route, including the ones reached through relations (<code>/transfers/{id}/reversals/{rid}</code> — both IDs).</p>
+<p>The only architecture that survives audit is <strong>authorization as a chokepoint, not a convention</strong>: every data access path goes through a layer that takes the authenticated principal and scopes the query (<code>WHERE tenant_id = $principal.tenant</code>), rather than two hundred handlers each remembering to check. Make the <em>unscoped</em> query the hard thing to write — a <code>dangerouslyUnscopedQuery()</code> name with a lint rule beats a code-review checklist. Defense in depth where the data layer supports it (Postgres row-level security as the backstop). And return <code>404</code>, not <code>403</code>, for objects outside the caller's tenancy — <code>403</code> confirms the ID exists, which is reconnaissance you're giving away free.</p>
+<p><strong>Scopes</strong> bound what a credential may do (<code>transfers:read</code>, <code>transfers:write</code>, <code>webhooks:manage</code>): least privilege per integration, finer-grained for partners than for first-party. Scopes complement, never replace, object-level checks — <code>transfers:read</code> says the caller may read transfers, tenancy says <em>which</em> transfers.</p>
+<p>Multi-tenancy deserves one structural sentence: tenant isolation enforced in one place (chokepoint above), tenant ID derived from the <em>credential</em> and never from a request parameter (a <code>?tenant_id=</code> that the server trusts is BOLA with extra steps), and test suites that specifically attempt cross-tenant access on every endpoint (Part 12).</p>
+<hr>
+<h2 id="part-8-rate-limiting-quotas-and-load-shedding">Part 8 — Rate Limiting, Quotas, and Load Shedding</h2>
+<h3 id="three-different-problems-wearing-one-trench-coat">Three different problems wearing one trench coat</h3>
+<ul>
+<li><strong>Rate limiting</strong> (requests/second) protects your <em>capacity</em> from bursts and runaway clients.</li>
+<li><strong>Quotas</strong> (requests or resources per day/month) implement your <em>business model</em> and fairness between tenants.</li>
+<li><strong>Load shedding</strong> (rejecting work you could normally handle, because you're degraded) protects your <em>survival</em> during incidents.</li>
+</ul>
+<p>They share a status code and not much else; design them separately.</p>
+<p><strong>Token bucket</strong> is the rate-limiting algorithm to reach for: a bucket of capacity B refills at R tokens/sec; each request takes one; empty bucket → reject. It permits honest bursts (B deep) around a sustained rate (R) — matching how real clients behave (a batch job wakes up and fires 50 calls) better than fixed windows, which also suffer boundary bursts (2× the limit straddling a window edge). Implementation is small enough to read in full — the state is two numbers per key:</p>
+<pre><code class="language-typescript">// Token bucket per (principal, route-class). Atomic in Redis via Lua in
+// production; the logic is this:
+function tryConsume(bucket: Bucket, now: number, rate: number, capacity: number): boolean {
+  const elapsed = (now - bucket.updatedAt) / 1000;
+  bucket.tokens = Math.min(capacity, bucket.tokens + elapsed * rate);  // refill
+  bucket.updatedAt = now;
+  if (bucket.tokens &lt; 1) return false;
+  bucket.tokens -= 1;
+  return true;
+}
+</code></pre>
+<p>Key by <strong>principal</strong> (never IP alone — corporate NATs put a thousand legitimate users behind one address), with separate classes for cheap reads vs expensive writes vs auth attempts (the latter limited aggressively — credential stuffing is a rate-limiting problem).</p>
+<h3 id="the-contract-side-429-done-right">The contract side: 429 done right</h3>
+<p>A rate limit a client can't cooperate with is just an outage with paperwork. The response must teach the client to behave:</p>
+<pre><code class="language-http">HTTP/1.1 429 Too Many Requests
+Retry-After: 7
+RateLimit-Limit: 100
+RateLimit-Remaining: 0
+RateLimit-Reset: 7
+Content-Type: application/problem+json
+
+{ &quot;code&quot;: &quot;rate_limited&quot;, &quot;detail&quot;: &quot;Limit is 100 requests/minute per API key.&quot;, … }
+</code></pre>
+<p><code>Retry-After</code> is the load-bearing header — well-built SDKs honor it automatically, and <em>your</em> SDKs must (Part 9). Sending the <code>RateLimit-*</code> family on <em>successful</em> responses too lets clients self-regulate before hitting the wall, which converts support tickets into client-side throttles. Document the limits, per plan, in numbers — "fair use" is not a number.</p>
+<p><strong>Quotas</strong> return the same 429 with a different code (<code>quota_exceeded</code>) and a <code>Reset</code> measured in hours, plus — the part that's product work, not engineering — dashboards and webhook alerts at 80%, because a partner discovering their monthly quota at 100% on the 12th is a relationship problem no header fixes.</p>
+<p><strong>Load shedding</strong> is <code>503 + Retry-After</code>, triggered by <em>your</em> health (queue depth, latency percentiles), not the client's behavior — and it must shed <em>expensively-unimportant</em> work first: keep health checks, payment captures, and webhook deliveries; shed analytics queries and list endpoints. A flat random 503 under pressure means your most critical consumer is exactly as degraded as your least. Combine with admission-by-priority at the gateway and you have graceful degradation; without it you have a lottery.</p>
+<hr>
+<h2 id="part-9-timeouts-retries-and-resilience">Part 9 — Timeouts, Retries, and Resilience</h2>
+<h3 id="timeouts-every-call-has-one-chosen-not-inherited">Timeouts: every call has one, chosen, not inherited</h3>
+<p>An RPC without an explicit timeout has one anyway — the kernel's, the load balancer's, someone's — chosen by whoever thought about it least. Set them deliberately, <strong>descending along the call chain</strong>: if your gateway allows 30s, your handler gets ~25s, its database call gets less, so that the <em>innermost</em> layer fails first with a clean error rather than the gateway slamming the door on a half-finished transaction. (That half-finished state is precisely the duplicate-generator Part 3 defends against — timeouts and idempotency are two halves of one design.) Better still, <strong>propagate deadlines</strong>: pass the remaining budget downstream (gRPC does this natively; for HTTP, an internal header) so a request that's already doomed stops consuming capacity.</p>
+<h3 id="retries-powerful-and-a-loaded-weapon">Retries: powerful, and a loaded weapon</h3>
+<p>The rules, each load-bearing:</p>
+<ul>
+<li><strong>Retry only what's safe to retry</strong>: idempotent operations (or keyed ones — Part 3), on transient signals (timeouts, <code>429</code> honoring <code>Retry-After</code>, <code>502/503/504</code>). Never on <code>400/401/403/422</code> — the request is wrong; it will be wrong again.</li>
+<li><strong>Exponential backoff with jitter</strong>: <code>delay = random(0, min(cap, base × 2^attempt))</code> — "full jitter." The jitter isn't decoration: a failing dependency that recovers will be met by every waiting client retrying <em>in phase</em> if their backoffs are deterministic, re-killing it on schedule — the thundering herd / retry-storm pattern that turns a 10-second blip into an hour-long incident.</li>
+<li><strong>Cap the attempts and the budget.</strong> 2–3 attempts; and at the service level, a <strong>retry budget</strong> (e.g., retries may add at most 10–20% extra load): when the budget is exhausted, fail fast instead of multiplying traffic into a dying dependency. Crucially, <strong>retry at one layer, not every layer</strong> — if the client, the SDK, the gateway, the mesh, and the service each retry 3×, one user click becomes 243 requests at the bottom of the stack. Decide where retries live (usually: the outermost client, plus <em>nothing</em> in the middle) and disable them elsewhere.</li>
+</ul>
+<p><strong>Circuit breakers</strong> add the missing memory: after N consecutive failures to a dependency, stop calling it (fail fast or serve a fallback) for a cooling period, then <em>probe</em> with limited traffic before fully closing. This converts "every request waits 25s to fail" into "requests fail in 1ms while the dependency recovers" — protecting both your latency and their recovery. <strong>Bulkheads</strong> complete the set: per-dependency connection/concurrency pools, so the slow dependency saturates <em>its</em> pool and not your event loop, and one bad downstream can't take hostage the endpoints that never touch it.</p>
+<h3 id="you-own-the-client-too">You own the client too</h3>
+<p>Enterprise-grade APIs ship official SDKs, and the SDK is where this part becomes real: defaults that retry idempotent calls with full jitter, honor <code>Retry-After</code>, <strong>auto-generate idempotency keys for unsafe calls and reuse them across the SDK's own retries</strong>, set sane timeouts, and surface <code>request_id</code> on every error object. Hand-rolled integrations copy whatever your quickstart shows — so the quickstart shows the resilient pattern, not <code>fetch().then(JSON.parse)</code>. The behavior of a thousand consumers during your next partial outage is decided by what you ship in the SDK today.</p>
+<hr>
+<h2 id="part-10-long-running-operations-webhooks-and-events">Part 10 — Long-Running Operations, Webhooks, and Events</h2>
+<h3 id="when-the-work-outlives-the-request-202-operation-resource">When the work outlives the request: 202 + operation resource</h3>
+<p>Anything that takes longer than a few seconds (report generation, bulk imports, video processing, some payment rails) must not hold an HTTP connection as its progress indicator — connections die, gateways time out at fixed horizons, and a dropped response to a non-idempotent trigger is Part 3's nightmare again. The pattern:</p>
+<pre><code class="language-http">POST /v1/exports
+Idempotency-Key: 7c0e…                      # triggers are exactly the requests
+→ 202 Accepted                              # that need keys
+  Location: /v1/operations/op_3Fk
+
+GET /v1/operations/op_3Fk
+→ 200 { &quot;id&quot;: &quot;op_3Fk&quot;, &quot;status&quot;: &quot;running&quot;, &quot;progress&quot;: 62, … }
+→ 200 { &quot;status&quot;: &quot;succeeded&quot;, &quot;result&quot;: { &quot;export_url&quot;: &quot;…&quot; } }
+→ 200 { &quot;status&quot;: &quot;failed&quot;, &quot;error&quot;: { &quot;code&quot;: &quot;source_unavailable&quot;, … } }
+</code></pre>
+<p>The operation is a real resource: pollable (with documented poll etiquette and <code>Retry-After</code> hints), listable, with terminal states that <strong>persist long enough to be observed</strong> (an operation that vanishes on completion strands every client that missed the moment), and errors in the same problem-shape as everywhere else. This is Google AIP-151's long-running operations pattern, and it composes with everything earlier: the trigger takes an idempotency key, the poll is a plain <code>GET</code>, the statuses obey Part 6's monotonicity rule.</p>
+<h3 id="webhooks-you-as-a-client-at-enterprise-grade">Webhooks: you, as a client, at enterprise grade</h3>
+<p>Webhooks invert the relationship — now <em>you</em> are the unreliable network caller hitting <em>their</em> server — so every discipline from Parts 3 and 9 applies in mirror image, and it's your job to make their side easy to build correctly:</p>
+<ul>
+<li><strong>Sign every delivery</strong> — HMAC-SHA256 over <code>timestamp.payload</code> with a per-endpoint secret, timestamp echoed in the header and verified within a tolerance window (the timestamp kills replay; the HMAC kills forgery; constant-time comparison kills the timing oracle). Document the verification snippet in five languages; provide it in your SDKs.</li>
+<li><strong>Deliver at-least-once, and say so.</strong> You will retry on non-2xx and timeout (with backoff and jitter, for hours-to-days, then park failures in a dead-letter state visible in the dashboard with manual redelivery). Therefore consumers <strong>will receive duplicates</strong>, therefore every event carries a unique <code>event_id</code>, therefore their handler must dedup on it — Part 3's definition, now in your integration guide as a requirement: <em>"process webhooks idempotently."</em></li>
+<li><strong>Don't promise ordering.</strong> Retries and parallel delivery reorder events; consumers who need current state should treat the event as a doorbell and <code>GET</code> the resource (the "thin event" pattern — which also keeps payloads from becoming a second, accidentally-versioned representation of your resources).</li>
+<li><strong>Respond-fast contract</strong>: consumers should ack with <code>2xx</code> <em>before</em> processing (enqueue, then work) — a handler that does 30 seconds of work before responding will be timed out and redelivered into a duplicate storm. Put this in the docs; it's the most common webhook consumer bug.</li>
+</ul>
+<p>The same at-least-once + dedup logic governs <strong>event streams</strong> (Kafka/SNS/etc.) if you offer them; the transport changes, the contract — unique IDs, documented redelivery, consumer idempotency, schema evolution rules matching Part 4 — does not.</p>
+<hr>
+<h2 id="part-11-observability-and-auditability">Part 11 — Observability and Auditability</h2>
+<h3 id="the-request-id-is-the-spine">The request ID is the spine</h3>
+<p>One ID, generated at the edge (or accepted from the client and <em>echoed</em>), returned in every response header (<code>Request-Id</code>), attached to every log line, propagated to every downstream call (W3C <code>traceparent</code> if you're doing distributed tracing properly — do), and stored with every side effect. The payoff is the support workflow that defines enterprise-grade in practice: customer quotes <code>req_9f3b2c</code> from their error object → you reconstruct the entire request path in one query. Without it, every escalation starts with archaeology.</p>
+<p>On top of that spine:</p>
+<ul>
+<li><strong>Structured logs</strong> (JSON, one event per request at minimum: route, principal, tenant, status, latency, request ID) with <strong>secrets and PII scrubbed by construction</strong> — redaction in the serializer, not by hoping nobody logs the auth header. Your logs are where breaches go to become <em>worse</em> breaches.</li>
+<li><strong>RED metrics per route per consumer-class</strong>: Rate, Errors (by status class and by <em>your</em> error code), Duration as histograms — p50/p95/p99, never averages (an average latency is a number nobody experiences). Per-tenant breakdowns turn "the API is slow" tickets into "your batch job is hitting the uncached path" answers.</li>
+<li><strong>SLOs with error budgets</strong> rather than vanity uptime: "99.9% of authenticated requests succeed or fail with 4xx in &lt;500ms p99, measured monthly" is a promise an enterprise customer can put in <em>their</em> runbook — and the error-budget framing tells your own team when to stop shipping features and start shipping reliability.</li>
+<li><strong>Audit logs are a different artifact than debug logs</strong>: an immutable, queryable record of who did what to which resource when (principal, action, object, before/after where applicable) — retained per compliance schedule, exportable to the customer's SIEM. For regulated consumers this is a purchasing checklist item; bolting it on later means re-plumbing every write path, so the chokepoint from Part 7 should emit it from day one.</li>
+</ul>
+<p>And the operational truth that ties back to Part 1: <strong>your status page and incident comms are API surface.</strong> Consumers code retry policies against your published behavior; they staff on-call against your incident history. Lying to the status page is lying to their pagers.</p>
+<hr>
+<h2 id="part-12-contracts-documentation-and-testing">Part 12 — Contracts, Documentation, and Testing</h2>
+<h3 id="the-openapi-document-is-the-artifact-not-the-afterthought">The OpenAPI document is the artifact, not the afterthought</h3>
+<p>Whether you write the spec first or generate it from code annotations matters less than the non-negotiable: <strong>the spec is in the repo, reviewed in PRs, and CI fails if the implementation drifts from it.</strong> The spec is what SDKs are generated from, what the docs render, what mock servers serve, and what the breaking-change detector (Part 4) diffs — it's the single source the whole product hangs off. Lint it (Spectral with a ruleset encoding Part 2's conventions: naming case, error shape, pagination envelope, every operation has an error response documented) so style review is mechanical and human review is about semantics.</p>
+<p>The testing pyramid, API-flavored:</p>
+<ul>
+<li><strong>Contract tests</strong>: every endpoint's responses validate against the spec's schemas — including the <em>error</em> responses, which is where drift actually happens (the 422 nobody regenerated after refactoring validation).</li>
+<li><strong>Breaking-change gate</strong>: <code>oasdiff</code>-style comparison against the released spec on every PR; additive passes, breaking fails the build and requires the versioning ritual (Part 4), not a sheepish merge.</li>
+<li><strong>The adversarial suite</strong> — the tests that distinguish this guide's subject from a CRUD demo: replay every mutating request with the same idempotency key and assert single effect (Part 3); fire the same key <em>concurrently</em> and assert one winner (the race is the bug); attempt cross-tenant object access on every route with a second tenant's valid credentials (Part 7 — this suite <em>is</em> your BOLA defense); send unknown fields, wrong types, oversized payloads, malformed cursors; walk pagination under concurrent inserts and assert no skips/dupes (Part 5); kill the connection mid-request and verify the retry path.</li>
+<li><strong>Load tests against the limits you published</strong> — the rate limits, the p99s in the SLO, the pagination depth — because a published number you've never tested is a number a customer will test for you.</li>
+</ul>
+<p><strong>Documentation as product</strong>: reference docs generated from the spec (so they cannot lie), a quickstart that demonstrates the <em>resilient</em> integration (idempotency keys, retry handling, webhook verification — what the quickstart shows is what every integration does, Part 9), runnable examples per language, a changelog consumers can subscribe to, and migration guides written before deprecation headers ship, not after the angry email.</p>
+<hr>
+<h2 id="part-13-the-platform-layer-and-the-design-review-checklist">Part 13 — The Platform Layer and the Design-Review Checklist</h2>
+<h3 id="what-belongs-in-the-gateway-vs-the-service">What belongs in the gateway vs the service</h3>
+<p>An API gateway (or LB + mesh stack) should own the <strong>uniform, policy-shaped concerns</strong>: TLS termination, authentication (validate the token, pass verified claims inward), coarse rate limiting and quota enforcement, request-ID minting, IP/geo policy, payload size caps, and the version-to-backend routing from Part 4. Services own everything requiring <strong>domain knowledge</strong>: authorization beyond "valid token" (object-level checks live next to data — Part 7), idempotency (it's transactional with the business effect — Part 3), validation, concurrency control. The failure mode to design against is the <em>smart gateway</em> that accumulates business logic in YAML — it becomes an unversioned, untested service that every team is afraid to touch. Gateway = policy; service = semantics.</p>
+<p>Internal platform glue that pays for itself: a shared service template/middleware stack so every API in the company emits the same error shape, the same headers, the same metrics (consumers of <em>your</em> APIs include your own teams — uniformity is compound interest); and golden-path SDK generation so the Part 9 client behavior ships everywhere by default.</p>
+<h3 id="the-design-review-checklist">The design-review checklist</h3>
+<p>The questions to ask of every new endpoint, in review, before it ships — each one traceable to the part that justifies it:</p>
+<p><strong>Contract</strong>
+- [ ] Resource-oriented, correct method, correct status codes? (2)
+- [ ] Errors: problem+json, stable <code>code</code>, all codes documented? (2)
+- [ ] All fields: opaque IDs, RFC 3339 times, integer money, enum-tolerance documented? (2)
+- [ ] In the OpenAPI spec, linted, breaking-change gate green? (12)</p>
+<p><strong>Correctness under failure</strong>
+- [ ] What happens when this exact request arrives twice? Concurrently? <em>(The single highest-yield review question in this guide.)</em> (3)
+- [ ] Mutations: naturally idempotent, or <code>Idempotency-Key</code> required and implemented atomically? Key propagated downstream? (3)
+- [ ] Lost-update story: ETags/<code>If-Match</code> where contested? (6)
+- [ ] Read-your-writes and staleness documented? Status transitions monotonic? (6)</p>
+<p><strong>Security</strong>
+- [ ] Object-level authorization through the chokepoint — and the cross-tenant test exists? (7, 12)
+- [ ] Scope defined? 404-not-403 for foreign objects? No secrets in URLs or logs? (7, 11)</p>
+<p><strong>Scale and resilience</strong>
+- [ ] Cursor pagination with stable unique sort key? Filters allowlisted and indexed? (5)
+- [ ] Rate-limit class assigned; 429 carries <code>Retry-After</code>? (8)
+- [ ] Timeout set and inside the caller's budget? Retry-safe and marked so in the spec? (9)
+- [ ] Long-running? Then 202 + operation resource, not a 90-second request. (10)</p>
+<p><strong>Operations</strong>
+- [ ] Request ID in, through, and out; RED metrics; audit events for writes? (11)
+- [ ] SDK updated; quickstart still shows the resilient path; changelog entry? (9, 12)</p>
+<h3 id="the-closing-thesis">The closing thesis</h3>
+<p>Every part of this guide is one idea applied to a different layer: <strong>assume the failure, then make it boring.</strong> Assume the response is lost — idempotency makes the retry boring. Assume two writers — ETags make the race boring. Assume the dependency dies — breakers and budgets make it boring. Assume the client never upgrades — compatibility discipline makes the decade boring. Demo APIs are built for the run where everything works; enterprise-grade APIs are built so that the runs where things break are indistinguishable, from the consumer's ledger, from the runs where they didn't.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

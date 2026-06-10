@@ -71,6 +71,7 @@ GUIDES = [
     ("LLM_APP_DEV_STUDY_GUIDE.md", "html/llm-app-dev-study-guide.html", {"auto": True}),
     ("NETWORKING_FUNDAMENTALS.md", "html/networking-fundamentals.html", {"auto": True}),
     ("EBPF_STUDY_GUIDE.md", "html/ebpf-study-guide.html", {"auto": True}),
+    ("ENTERPRISE_API_STUDY_GUIDE.md", "html/enterprise-api-study-guide.html", {"auto": True}),
     ("README.md", "html/readme.html", {"title": "Study Guides", "brand": "SG", "auto": True}),
     ("TOPICS.md", "html/topics.html", {"title": "Study Guide Topics", "brand": "SG", "auto": True}),
     ("ToDo.md", "html/todo.html", {"title": "Study Guide Conversion ToDo", "brand": "TODO", "auto": True}),
@@ -122,6 +123,7 @@ CATEGORIES = [
     ("Architecture, security, and AI", [
         "ai-agents-study-guide.html", "auth-study-guide.html",
         "crypto-fundamentals.html", "distributed-systems-study-guide.html",
+        "enterprise-api-study-guide.html",
         "kali-linux-study-guide.html", "llm-app-dev-study-guide.html",
         "web-llm-security-study-guide.html",
         "networking-fundamentals.html", "testing-study-guide.html",
