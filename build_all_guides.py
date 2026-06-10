@@ -25,6 +25,7 @@ GUIDES = [
     ("SWIFT_STUDY_GUIDE.md", "html/swift-study-guide.html", {"accent": "#f05138", "brand": "Swift"}),
     ("IOS_DEVELOPMENT_STUDY_GUIDE.md", "html/ios-development-study-guide.html", {"accent": "#f05138", "brand": "iOS"}),
     ("CB8_IOS_STUDY_GUIDE.md", "html/cb8-ios-study-guide.html", {"accent": "#f05138", "brand": "CB8"}),
+    ("CB8_ANDROID_STUDY_GUIDE.md", "html/cb8-android-study-guide.html", {"accent": "#3ddc84", "brand": "CB8"}),
     ("DJANGO_STUDY_GUIDE.md", "html/django-study-guide.html", {"accent": "#ffd43b"}),
     ("ELECTRON_STUDY_GUIDE.md", "html/electron-study-guide.html", {"auto": True}),
     ("NEXTJS_STUDY_GUIDE.md", "html/nextjs-study-guide.html", {"auto": True}),
@@ -92,6 +93,7 @@ CATEGORIES = [
         "sveltekit-study-guide.html", "vue-study-guide.html",
         "webgl-opengl-study-guide.html", "webgpu-study-guide.html", "websockets-study-guide.html",
         "ios-development-study-guide.html", "cb8-ios-study-guide.html",
+        "cb8-android-study-guide.html",
     ]),
     ("Creative and 3D", [
         "blender-study-guide.html",
