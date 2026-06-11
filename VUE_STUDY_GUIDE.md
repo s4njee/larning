@@ -1,1366 +1,1601 @@
-# Vue.js Mastery Study Guide
+# Vue 3 in Depth
 
-A comprehensive, job-focused guide to mastering Vue.js (Vue 3 + Composition API). Each section builds on the previous one. Build real features, not toy examples.
+A study guide to modern Vue — Vue 3, the Composition API, and the ecosystem that surrounds it (Vite, Vue Router, Pinia, Vitest, Nuxt) — written for an engineer who is already fluent in JavaScript and TypeScript and wants to understand Vue *as a system*, not as a pile of API names. If you've worked through the [TypeScript guide](TYPESCRIPT_STUDY_GUIDE.md) in this repo, you'll feel at home: the same approach applies here. We build one central mental model — **Vue's reactivity system, a Proxy-based dependency-tracking engine in which effects automatically re-run when the data they read changes** — and then show that almost everything else in Vue (computed properties, watchers, component re-rendering, Pinia stores, composables) is just that one engine wearing different clothes. Once you can answer "what is being tracked, and which effect will re-run?" for any line of Vue code, the framework stops being magic.
 
----
+The guide is honest about trade-offs. Vue has two component-authoring styles (Options and Composition), two reactive container types (`ref` and `reactive`), and at least three reasonable ways to share state across components — and the community has converged on clear defaults for each, for reasons worth understanding rather than memorizing. Where a comparison to React clarifies a design decision (and your mental model may be contaminated by React habits like dependency arrays and `useMemo`), we make the comparison explicit. Where Vue's official position is "either is fine," we say so instead of inventing a rule.
 
-## Phase 1: Core Foundations
-
-### 1.1 Project Setup & Tooling
-
-- **`create-vue`** (official scaffolding via `npm create vue@latest`): Vite-based, replaces Vue CLI
-  - Use this to start from the current Vue team defaults instead of backfilling tooling later; docs: [Quick Start](https://vuejs.org/guide/quick-start.html).
-- **Vite**: Why it's fast (native ESM in dev, Rollup for production). `vite.config.ts` configuration
-  - Learn where Vite stops and Vue begins so you know whether a problem belongs in app code, plugin config, or the build pipeline; docs: [Vite Guide](https://vite.dev/guide/).
-- **Project structure conventions**:
-  - Treat this layout as a maintainability baseline so features, shared logic, and route-level code stay easy to find as the app grows.
-  ```
-  src/
-    assets/          # Static assets processed by Vite
-    components/      # Reusable UI components
-    composables/     # Composition API logic (use*.ts)
-    layouts/         # Page layout wrappers
-    pages/ or views/ # Route-level components
-    router/          # Vue Router config
-    stores/          # Pinia stores
-    services/        # API clients, external service wrappers
-    types/           # TypeScript type definitions
-    utils/           # Pure utility functions
-    App.vue
-    main.ts
-  ```
-- **TypeScript**: Use it from day one. Vue 3 is written in TS and has first-class support. `<script setup lang="ts">`
-  - The biggest win is safer refactors across props, emits, stores, and API models before those mistakes reach the browser; docs: [TypeScript Overview](https://vuejs.org/guide/typescript/overview.html).
-- **VS Code + Volar**: The official Vue language extension. Disable Vetur if migrating from Vue 2
-  - Volar understands SFC syntax, template type-checking, and `<script setup>`, so it gives much more accurate feedback than generic TS tooling; docs: [Tooling](https://vuejs.org/guide/scaling-up/tooling.html).
-- **ESLint + `eslint-plugin-vue`**: Enforce Vue-specific linting rules. Use `plugin:vue/vue3-recommended`
-  - Favor lint rules that catch real correctness issues first, then add style rules only if they reduce review noise for your team; docs: [`eslint-plugin-vue`](https://eslint.vuejs.org/).
-- **Prettier**: Format `.vue` files. Configure to work with ESLint (`eslint-config-prettier`)
-  - Let formatting be automatic so code reviews stay focused on state flow, rendering behavior, and architecture instead of whitespace; docs: [Prettier](https://prettier.io/docs/en/), [`eslint-config-prettier`](https://github.com/prettier/eslint-config-prettier).
-
-**Practice**: Scaffold a new project with `create-vue`, selecting TypeScript, Vue Router, Pinia, ESLint, and Prettier. Understand every file in the generated project.
+Primary references: the [official Vue guide](https://vuejs.org/guide/introduction.html) (genuinely one of the best-written framework docs in existence — this guide is a companion to it, not a replacement), the [Vue API reference](https://vuejs.org/api/), the [Vue Router](https://router.vuejs.org/) and [Pinia](https://pinia.vuejs.org/) docs, [Vitest](https://vitest.dev/) and [Vue Test Utils](https://test-utils.vuejs.org/) for testing, and the [SFC Playground](https://play.vuejs.org/) for trying anything in this guide instantly in the browser. For third-party depth: [Vue Mastery](https://www.vuemastery.com/) (video courses, including Evan You walking through the reactivity internals), [Michael Thiessen's blog](https://michaelnthiessen.com/) (the best prose writing on Vue patterns), and [VueUse](https://vueuse.org/) by Anthony Fu (read its source — it is a masterclass in composable design). Companion guides in this repo: [TypeScript](TYPESCRIPT_STUDY_GUIDE.md), [Electron](ELECTRON_STUDY_GUIDE.md) (which uses Vue for its renderer), and [GitHub Actions](GITHUB_ACTIONS_STUDY_GUIDE.md) (for CI).
 
 ---
 
-### 1.2 Single-File Components (SFCs)
+## Table of Contents
 
-- **Anatomy of a `.vue` file**: `<script setup>`, `<template>`, `<style scoped>`
-  - Each block has a clear job: logic, markup, and styling, which makes SFCs easier to reason about than spreading one component across multiple files; docs: [Single-File Components](https://vuejs.org/guide/scaling-up/sfc.html).
-- **`<script setup>`**: The modern default. Top-level bindings are automatically available in the template. No `export default`, no `setup()` function
-  - This syntax removes ceremony and makes composables feel like plain functions, which is why it is the default style in most Vue 3 codebases; docs: [Script Setup](https://vuejs.org/api/sfc-script-setup.html).
-- **`<style scoped>`**: CSS scoped to the component via data attributes. Understand specificity implications
-  - Scoped styles reduce accidental leakage, but you still need to understand how selectors compile so you do not fight specificity in larger components; docs: [SFC CSS Features](https://vuejs.org/api/sfc-css-features.html).
-- **`<style module>`**: CSS Modules support — `$style.className` in templates
-  - This is useful when you want explicit class-name isolation without depending on global naming conventions or utility classes.
-- **`defineProps()`**: Declare component props with full TypeScript type inference
-  - Strong prop types pay off most when components become shared building blocks across many routes or feature areas; docs: [Props](https://vuejs.org/guide/components/props.html).
-- **`defineEmits()`**: Declare emitted events with type-safe payloads
-  - Treat emits like a public component API so parents can rely on stable event names and payload shapes; docs: [Events](https://vuejs.org/guide/components/events.html).
-- **`defineExpose()`**: Explicitly expose properties to parent components via template refs
-  - Reach for this sparingly because it creates tighter parent-child coupling than props, slots, or events.
-- **`defineModel()`**: Two-way binding macro (Vue 3.4+) — simplifies `v-model` on custom components
-  - It removes boilerplate around `modelValue` and `update:modelValue`, which is especially nice in reusable form components; docs: [Component v-model](https://vuejs.org/guide/components/v-model.html).
-- **`defineOptions()`**: Set component options like `name`, `inheritAttrs` without a separate `<script>` block
-  - This keeps component metadata close to the rest of the setup logic when you still need classic options in `<script setup>`; docs: [Script Setup](https://vuejs.org/api/sfc-script-setup.html).
-- **`defineSlots()`**: Type-safe slot definitions
-  - Use it in component libraries and shared UI primitives where slot props are part of the public contract.
+1. [Part 1 — Orientation: What Vue Is](#part-1--orientation-what-vue-is)
+2. [Part 2 — Tooling: Vite and the Modern Vue Project](#part-2--tooling-vite-and-the-modern-vue-project)
+3. [Part 3 — Single-File Components and How They Compile](#part-3--single-file-components-and-how-they-compile)
+4. [Part 4 — The Reactivity System (The Central Mental Model)](#part-4--the-reactivity-system-the-central-mental-model)
+5. [Part 5 — Templates and Rendering](#part-5--templates-and-rendering)
+6. [Part 6 — Components: Props, Events, v-model, and Slots](#part-6--components-props-events-v-model-and-slots)
+7. [Part 7 — The Component Lifecycle and provide/inject](#part-7--the-component-lifecycle-and-provideinject)
+8. [Part 8 — Composables: Vue's Unit of Logic Reuse](#part-8--composables-vues-unit-of-logic-reuse)
+9. [Part 9 — Vue Router](#part-9--vue-router)
+10. [Part 10 — State Management with Pinia](#part-10--state-management-with-pinia)
+11. [Part 11 — Data Fetching and Forms](#part-11--data-fetching-and-forms)
+12. [Part 12 — Transitions, Teleport, and the Other Built-ins](#part-12--transitions-teleport-and-the-other-built-ins)
+13. [Part 13 — Testing: Vitest and Vue Test Utils](#part-13--testing-vitest-and-vue-test-utils)
+14. [Part 14 — Performance](#part-14--performance)
+15. [Part 15 — TypeScript Integration](#part-15--typescript-integration)
+16. [Part 16 — Nuxt and When You Need It](#part-16--nuxt-and-when-you-need-it)
+17. [Appendix — Common Pitfalls, Collected](#appendix--common-pitfalls-collected)
+18. [Coda — How to Actually Learn This](#coda--how-to-actually-learn-this)
 
 ---
 
-### 1.3 Reactivity System (Deep Dive)
+## Part 1 — Orientation: What Vue Is
 
-#### Core Primitives
-- **`ref()`**: Reactive reference for any value. Access via `.value` in script, auto-unwrapped in templates
-  - Default to `ref()` because it works consistently for primitives, objects, and composable return values; docs: [Reactivity Fundamentals](https://vuejs.org/guide/essentials/reactivity-fundamentals.html).
-- **`reactive()`**: Reactive proxy for objects. No `.value` needed but can't reassign the whole object. Use `ref()` by default, `reactive()` for deeply nested state you mutate often
-  - The tradeoff is convenience versus reassignment safety, so choose it intentionally instead of mixing both styles randomly; docs: [Reactivity Fundamentals](https://vuejs.org/guide/essentials/reactivity-fundamentals.html).
-- **`computed()`**: Derived reactive values. Cached — only re-evaluates when dependencies change. Read-only by default, writable with `get`/`set`
-  - If you catch yourself repeating the same derivation in multiple places, it is usually a sign that the logic belongs in a computed; docs: [Computed Properties](https://vuejs.org/guide/essentials/computed.html).
-- **`watch()`**: Run side effects when reactive sources change. Options: `immediate`, `deep`, `once`, `flush` (`pre`, `post`, `sync`)
-  - Use `watch()` for effects that touch the outside world, such as storage, network calls, or imperative DOM logic; docs: [Watchers](https://vuejs.org/guide/essentials/watchers.html).
-- **`watchEffect()`**: Automatically tracks dependencies and re-runs. Runs immediately. Use when you have many dependencies and don't need the old value
-  - It is best for small reactive effects where manually listing sources would be noisier than helpful; docs: [Watchers](https://vuejs.org/guide/essentials/watchers.html).
-- **`watchPostEffect()` / `watchSyncEffect()`**: Shorthand for `watchEffect` with different flush timing
-  - Flush timing mostly matters when coordinating DOM reads, transitions, or third-party libraries that care about exact update order.
+Guide: [Introduction](https://vuejs.org/guide/introduction.html)
 
-#### Reactivity Gotchas
-- **Destructuring breaks reactivity**: `const { count } = reactive({ count: 0 })` — `count` is NOT reactive. Use `toRefs()` or stick with `ref()`
-  - This is one of the most common Composition API bugs, especially when passing store or prop state into helpers; docs: [Reactivity in Depth](https://vuejs.org/guide/extras/reactivity-in-depth.html).
-- **`toRef()` / `toRefs()`**: Create refs that stay connected to a reactive source. Essential for destructuring props in composables
-  - Reach for these when you need ergonomic destructuring but still want updates to flow both ways from the source object.
-- **`toValue()` / `toRaw()`**: Unwrap refs/reactive proxies to get the raw value
-  - These helpers are useful at the boundaries where Vue state has to interact with plain functions or non-reactive libraries.
-- **`shallowRef()` / `shallowReactive()`**: Only track top-level changes. Use for large objects where deep tracking is expensive (e.g., large lists, external library instances)
-  - They are performance tools, not defaults, and they work best when you control update boundaries deliberately.
-- **`triggerRef()`**: Manually trigger watchers on a shallow ref after mutating its `.value` deeply
-  - This is the escape hatch when you choose shallow tracking but still need to notify Vue after an internal mutation.
-- **`readonly()`**: Create a read-only proxy. Use to expose store state without allowing direct mutation
-  - It helps you separate who can observe state from who is allowed to change it.
-- **`markRaw()`**: Exclude an object from reactivity. Use for third-party class instances (Chart.js, map instances) that should never be reactive
-  - Marking objects raw avoids both overhead and subtle bugs caused by proxy-wrapping objects that expect normal identity semantics; docs: [Chart.js](https://www.chartjs.org/docs/latest/).
+Vue calls itself "the progressive framework," and the phrase is load-bearing. It means Vue is designed to be adopted incrementally: you can sprinkle it onto a server-rendered page as a script tag, build a full single-page application with routing and stores, or render on the server with Nuxt — and the core programming model is the same at every scale. In practice, this guide targets the middle of that spectrum, which is also where the jobs are: a Vite-built single-page application written in TypeScript with `<script setup>` components, Vue Router, and Pinia.
 
-#### How Reactivity Works Under the Hood
-- **Proxy-based tracking**: Vue 3 uses ES6 `Proxy` to intercept get/set operations
-  - Understanding the proxy layer makes it easier to reason about why some patterns stay reactive and others do not; docs: [Reactivity in Depth](https://vuejs.org/guide/extras/reactivity-in-depth.html).
-- **Dependency tracking**: When a computed/watcher reads a reactive value, it's registered as a dependency
-  - This is the mental model behind why Vue can update only what changed instead of re-running everything blindly.
-- **Batched updates**: Multiple state changes in the same tick are batched into a single re-render
-  - Batched rendering is why several `.value` assignments in a row usually produce one DOM update, not many.
-- **`nextTick()`**: Wait for the DOM to update after a state change. Essential when you need to read DOM after reactive changes
-  - Use it when your code depends on rendered output, such as measuring size, focusing elements, or syncing scroll position; docs: [Reactivity Fundamentals](https://vuejs.org/guide/essentials/reactivity-fundamentals.html).
+At its core, Vue is two cooperating systems, and keeping them separate in your head pays off constantly:
 
-**Practice**: Build a reactive shopping cart. Use `ref` for simple values, `reactive` for the cart object, `computed` for totals, `watch` to persist to localStorage. Deliberately trigger every gotcha above and fix it.
+1. **A reactivity system** — a standalone library (`@vue/reactivity`, usable entirely without components) that lets you declare *state* and *effects*, and guarantees that when state changes, exactly the effects that read that state re-run. This is Part 4, and it is the heart of everything.
+2. **A renderer** — a virtual-DOM engine that knows how to turn a component's *render function* into real DOM nodes and patch them efficiently when they change. You almost never interact with this directly; the template compiler (Part 3) writes render functions for you, and the reactivity system decides when they re-run.
 
----
+The marriage of the two is the whole framework: **a component's render function is just a reactive effect.** It reads reactive state while producing the virtual DOM; the reactivity system records what it read; when any of that state changes, the render effect is queued to re-run, the renderer diffs old against new, and the DOM updates. Every Vue feature you will meet — `computed`, `watch`, Pinia stores, the reactive `route` object — is either a kind of reactive state or a kind of effect.
 
-### 1.4 Template Syntax
+### Vue and React, Framed Honestly
 
-- **Interpolation**: `{{ expression }}` — any valid JS expression
-  - Keep expressions lightweight and move branching or heavy derivation into computed state so templates stay readable; docs: [Template Syntax](https://vuejs.org/guide/essentials/template-syntax.html).
-- **Directives**:
-  - `v-bind` (`:attr`): Dynamic attribute binding. `:class` and `:style` have special object/array syntax
-  - `v-on` (`@event`): Event handling. Modifiers: `.prevent`, `.stop`, `.once`, `.capture`, `.self`, `.passive`
-  - `v-model`: Two-way binding. Modifiers: `.lazy`, `.number`, `.trim`. Works on inputs, selects, textareas, and custom components
-  - `v-if` / `v-else-if` / `v-else`: Conditional rendering (adds/removes from DOM)
-  - `v-show`: Toggle visibility via CSS `display`. Use when toggling frequently
-  - `v-for`: List rendering. **Always use `:key`** with a unique, stable identifier (never use index as key for dynamic lists)
-  - `v-slot` (`#slotName`): Named and scoped slots
-  - `v-memo`: Memoize a sub-tree (performance optimization, rarely needed)
-  - `v-once`: Render once, never update
-  - Learn the directives as a system because most template bugs come from choosing the wrong rendering or binding primitive for the job; docs: [Template Syntax](https://vuejs.org/guide/essentials/template-syntax.html), [Form Input Bindings](https://vuejs.org/guide/essentials/forms.html), [List Rendering](https://vuejs.org/guide/essentials/list.html).
-- **Key attribute**: How Vue's diffing algorithm uses keys for efficient updates. Why wrong keys cause bugs
-  - Stable keys preserve component identity, local state, and DOM position, which is why index keys break dynamic lists so easily; docs: [List Rendering](https://vuejs.org/guide/essentials/list.html).
-- **Template refs**: `ref="myRef"` + `const myRef = ref<HTMLElement | null>(null)` — direct DOM access
-  - Template refs are for imperative escape hatches like focus, measurement, and third-party widgets, not for normal data flow; docs: [Template Refs](https://vuejs.org/guide/essentials/template-refs.html).
+You will likely interview with people who know React, so it's worth being able to articulate the real differences rather than the tribal ones. Both are component-based virtual-DOM libraries with one-way data flow. The deep difference is the **change-detection model**:
 
-**Practice**: Build a filterable, sortable data table component using every directive above. Include column-level slot customization.
-
----
-
-## Phase 2: Component Architecture
-
-### 2.1 Props
-
-- **Declaration**: `defineProps<{ title: string; count?: number }>()` — full TypeScript generics
-  - Prefer explicit prop contracts even in small components so reuse does not gradually turn into guesswork; docs: [Props](https://vuejs.org/guide/components/props.html).
-- **Validation**: Type checking, `required`, `default`, custom `validator` functions
-  - Validation is most helpful at component boundaries where the calling code may come from many different parents or teams.
-- **One-way data flow**: Props flow down, events flow up. Never mutate a prop directly
-  - This rule keeps component ownership clear and prevents child components from silently fighting parent state; docs: [Props](https://vuejs.org/guide/components/props.html).
-- **Boolean casting**: `<MyComponent disabled />` — boolean props have special shorthand behavior
-  - Know the casting rules so your component API behaves like native HTML elements instead of surprising consumers.
-- **Object/array defaults**: Must use factory functions: `default: () => []`
-  - Factory defaults prevent shared mutable state across component instances, which is a classic bug source.
-
-### 2.2 Events
-
-- **`defineEmits<{ (e: 'update', id: number): void }>()`**: Type-safe event declarations
-  - Strongly typed emits make parent-child communication easier to refactor and easier to document; docs: [Events](https://vuejs.org/guide/components/events.html).
-- **`emit('eventName', payload)`**: Trigger events from child to parent
-  - Emit semantic events like `save` or `close` instead of leaking internal UI details such as `button-clicked`.
-- **Naming convention**: `kebab-case` in templates (`@my-event`), `camelCase` in script
-  - Consistent event naming reduces friction when scanning templates versus implementation code in the same component.
-- **`v-model` on components**: `modelValue` prop + `update:modelValue` emit. Multiple `v-model` bindings: `v-model:title`, `v-model:content`
-  - Custom `v-model` is best when the component really owns an editable value, not just because two-way binding feels convenient; docs: [Component v-model](https://vuejs.org/guide/components/v-model.html).
-- **`.sync` replacement**: Vue 3 uses `v-model:propName` instead of Vue 2's `.sync`
-  - This makes the contract more explicit by naming the synced prop directly instead of hiding it behind special syntax.
-
-### 2.3 Slots
-
-- **Default slot**: `<slot />` — render parent's children
-  - Default slots are the simplest way to let a wrapper component stay flexible without growing a huge prop surface area; docs: [Slots](https://vuejs.org/guide/components/slots.html).
-- **Named slots**: `<slot name="header" />` — `<template #header>...</template>`
-  - Named slots work well when the child owns layout but the parent should control specific regions like headers or actions.
-- **Scoped slots**: Pass data from child to parent's slot content. `<slot :item="item" />` — `<template #default="{ item }">`. The key pattern for renderless/headless components
-  - Scoped slots are where Vue component composition gets powerful because logic and rendering can be owned by different components.
-- **Dynamic slot names**: `<template #[dynamicSlotName]>`
-  - Use dynamic slot names sparingly because they add flexibility at the cost of making the component API harder to discover.
-- **Slot fallback content**: `<slot>Default content here</slot>`
-  - Good fallback content makes components easier to adopt because the simplest usage still renders something sensible.
-- **`useSlots()`**: Programmatic access to check if slots are provided
-  - This is handy for conditional wrappers, spacing, and accessibility markup that should only render when slot content exists.
-
-### 2.4 Provide / Inject
-
-- **`provide(key, value)`**: Make data available to all descendants (any depth)
-  - Provide/inject is best for low-level shared context where prop drilling would make the tree noisy; docs: [Provide / Inject](https://vuejs.org/guide/components/provide-inject.html).
-- **`inject(key, defaultValue)`**: Consume provided data
-  - Use explicit defaults so a component can fail gracefully or stay testable outside its normal provider tree.
-- **Typed injection keys**: `const key: InjectionKey<Type> = Symbol()` — type-safe provide/inject
-  - Symbols plus TypeScript protect you from key collisions and mismatched value shapes in larger apps.
-- **Reactive provide**: Provide `ref` or `reactive` values for reactive injection
-  - The value stays live only if you provide a reactive source, so be deliberate about whether consumers should observe updates.
-- **When to use**: Theme config, locale, authenticated user, shared services. Avoid for general state management (use Pinia instead)
-  - A good rule is to use provide/inject for ambient context and Pinia for cross-feature application state.
-
-### 2.5 Component Patterns
-
-- **Presentational vs container components**: Presentational = pure UI (props in, events out). Container = data fetching, state management
-  - This separation keeps reusable UI components simple while isolating data concerns near the route or feature boundary.
-- **Renderless / headless components**: Logic only, delegate rendering to scoped slots. Pattern used by headless UI libraries
-  - Headless patterns are ideal when multiple screens need the same interaction logic but different markup or styling.
-- **Compound components**: Related components that work together (`<Tabs>`, `<Tab>`, `<TabPanel>`) using provide/inject
-  - This pattern gives consumers a natural template API while still letting the internal pieces share coordinated state.
-- **Recursive components**: Components that render themselves (tree views, nested comments). Use `name` option or filename-based self-reference
-  - Recursive rendering is easy to write in Vue, but you need clear base cases to avoid infinite loops or very deep trees.
-- **Dynamic components**: `<component :is="currentComponent" />` — switch between components dynamically
-  - Use dynamic components when the view shape changes, not just to avoid writing a couple of `v-if` branches.
-- **Async components**: `defineAsyncComponent(() => import('./MyComponent.vue'))` — lazy-loaded with loading/error states
-  - Async components are especially useful for rarely visited panels or heavyweight widgets that would otherwise bloat the initial bundle; docs: [Async Components](https://vuejs.org/guide/components/async.html).
-- **`<Teleport>`**: Render content in a different DOM location (modals, tooltips, toasts)
-  - Teleport solves layering and overflow issues without giving up the logical ownership of the component that opened the UI; docs: [Teleport](https://vuejs.org/guide/built-ins/teleport.html).
-- **`<Suspense>`**: Handle async dependencies in component tree. Show fallback while loading. Still experimental but widely used
-  - It can simplify loading coordination, but use it intentionally because async boundaries affect perceived responsiveness; docs: [Suspense](https://vuejs.org/guide/built-ins/suspense.html).
-- **`<KeepAlive>`**: Cache component instances when toggling. `include`/`exclude`/`max` props. `onActivated`/`onDeactivated` lifecycle hooks
-  - Caching is great for tabs, wizards, and route shells where re-creating the component would be needlessly expensive; docs: [KeepAlive](https://vuejs.org/guide/built-ins/keep-alive.html).
-
-**Practice**: Build a headless `Dropdown` component using scoped slots that handles all keyboard navigation, open/close state, and positioning — but lets the consumer fully control rendering.
-
----
-
-## Phase 3: Composition API & Composables
-
-### 3.1 Lifecycle Hooks
-
-- **`onMounted()`**: DOM is available. Fetch data, initialize third-party libraries, set up event listeners
-  - Reach for this when you truly need rendered DOM or browser-only APIs, not just because "component startup" feels like the right place; docs: [Lifecycle Hooks](https://vuejs.org/guide/essentials/lifecycle.html).
-- **`onUnmounted()`**: Clean up. Remove event listeners, cancel timers, abort fetch requests, disconnect observers
-  - Cleanup discipline is what keeps composables and long-lived views from leaking work after a user navigates away.
-- **`onBeforeMount()`** / **`onBeforeUnmount()`**: Before DOM insertion / removal
-  - These are niche hooks, but they matter when you have setup or teardown that must happen before the rendered tree changes.
-- **`onUpdated()`** / **`onBeforeUpdate()`**: After/before reactive state change triggers re-render
-  - Use update hooks carefully because they can run often and are easy places to create accidental render loops.
-- **`onActivated()`** / **`onDeactivated()`**: For `<KeepAlive>` cached components
-  - These hooks matter when a view should pause and resume work rather than fully mounting and unmounting each time.
-- **`onErrorCaptured()`**: Catch errors from descendant components. Return `false` to stop propagation
-  - It is most useful for graceful UI fallbacks around unstable child trees or third-party integrations.
-- **No `created`/`beforeCreate`**: In `<script setup>`, top-level code IS the setup phase. These hooks are unnecessary
-  - Internalizing this helps Vue 2 developers stop searching for lifecycle hooks when plain top-level setup code already does the job.
-
-### 3.2 Composables (The Core Pattern)
-
-- **Convention**: Functions named `use*` that encapsulate reactive state and logic
-  - The `use*` naming pattern signals that the function participates in Vue's reactive and lifecycle model; docs: [Composables](https://vuejs.org/guide/reusability/composables.html).
-- **Structure**:
-  - A good composable exposes a small public surface area, hides implementation details, and returns predictable reactive primitives.
-  ```typescript
-  // composables/useCounter.ts
-  export function useCounter(initial = 0) {
-    const count = ref(initial)
-    const doubled = computed(() => count.value * 2)
-    
-    function increment() { count.value++ }
-    function decrement() { count.value-- }
-    function reset() { count.value = initial }
-    
-    return { count: readonly(count), doubled, increment, decrement, reset }
-  }
-  ```
-- **Rules**:
-  - Call composables at the top level of `<script setup>` (not inside conditionals or loops)
-  - Return reactive refs, not raw values (so consumers stay reactive)
-  - Use `readonly()` for state you don't want consumers to mutate directly
-  - Accept `ref` or plain values as arguments using `toValue()` for flexibility
-  - Clean up side effects in `onUnmounted()` inside the composable
-  - Treat these as design guardrails so composables stay reusable, testable, and safe to compose together; docs: [Composables](https://vuejs.org/guide/reusability/composables.html).
-
-### 3.3 Essential Composables to Build
-
-Build these yourself before using libraries:
-
-| Composable | Purpose | Key Concepts |
+| | React | Vue |
 |---|---|---|
-| `useFetch()` | Data fetching with loading/error states | Async, abort controller, reactive URL |
-| `useLocalStorage()` | Sync ref with localStorage | Serialization, storage events, SSR safety |
-| `useDebounce()` | Debounce a ref value | Timers, cleanup |
-| `useThrottle()` | Throttle function calls | Timing control |
-| `useEventListener()` | Auto-cleaned event listeners | `onUnmounted` cleanup, target refs |
-| `useIntersectionObserver()` | Lazy loading, infinite scroll | Browser APIs, cleanup |
-| `useMediaQuery()` | Responsive logic in JS | `matchMedia`, listener cleanup |
-| `useClickOutside()` | Close dropdowns/modals | Event delegation, template refs |
-| `useForm()` | Form state, validation, submission | Reactive validation, error tracking |
-| `useAuth()` | Auth state, login/logout, token management | Provide/inject, router guards |
-| `usePagination()` | Paginated data fetching | Computed pages, reactive params |
-| `useWebSocket()` | Real-time data | Connection lifecycle, reconnection |
+| How change is detected | You call `setState`/`setX`; React re-renders the component and its children by default | You mutate reactive state; Vue's Proxies *observe* the mutation |
+| Granularity | Whole component subtree re-renders unless you memoize (`memo`, `useMemo`, `useCallback`) | Only components whose render effect actually *read* the changed state re-render |
+| Derived state | `useMemo` with a manually maintained dependency array | `computed()` — dependencies tracked automatically |
+| Performance tuning | Opt *out* of re-rendering (memoization) | Mostly automatic; opt out of *tracking* in rare cases (`shallowRef`, `v-memo`) |
 
-### 3.4 VueUse
+React's model is "re-run everything and make it cheap"; Vue's is "know precisely what changed and re-run only that." The cost of Vue's model is the machinery you must understand — Proxies, refs, `.value` — which is exactly why Part 4 of this guide is the longest. The payoff is that there is no Vue equivalent of dependency-array bugs or `useCallback` ceremony: the framework tracks dependencies *at runtime, by observing actual reads*, so it is never wrong about them.
 
-- **What it is**: The standard library of Vue composables (200+ functions). Don't reinvent the wheel after you understand the patterns
-  - VueUse becomes much more valuable after you can recognize which helpers are just wrappers around patterns you already understand; docs: [VueUse](https://vueuse.org/).
-- **Essential functions**: `useStorage`, `useFetch`, `useDebounce`, `useThrottleFn`, `useEventListener`, `useIntersectionObserver`, `useBreakpoints`, `useDark`, `useClipboard`, `useVModel`, `onClickOutside`, `useInfiniteScroll`
-  - Focus on the helpers that remove repetitive browser API glue first, because they tend to create the biggest productivity gains.
-- **When to use**: After you've built the composable yourself at least once. Understand what VueUse does before depending on it
-  - That way you can debug edge cases, SSR issues, and lifecycle behavior instead of treating the library like magic.
+The other visible difference is templates versus JSX. Vue templates are constrained — they're declarative HTML with directives, not arbitrary code — and that constraint is a feature: because the compiler can statically analyze a template, it emits pre-optimized render code (Part 3) that a hand-written or JSX render function can't match without manual effort. Vue *supports* JSX when you genuinely need dynamic render logic, but idiomatic Vue uses templates, and you should too.
 
-**Practice**: Build all 12 composables in the table above from scratch. Then compare your implementations with VueUse's source code to learn from the differences.
+### Options API vs Composition API
 
----
+Guide: [API Styles](https://vuejs.org/guide/introduction.html#api-styles), FAQ: [Composition API FAQ](https://vuejs.org/guide/extras/composition-api-faq.html)
 
-## Phase 4: Vue Router
+Vue 3 supports two ways to author a component. The **Options API** organizes a component into named option buckets — `data()`, `computed`, `methods`, `watch`, lifecycle options like `mounted()` — and exposes state on `this`. The **Composition API** organizes a component as ordinary function code: you call `ref()`, `computed()`, `watch()`, and lifecycle hooks inside a single `setup` scope (in practice, the body of `<script setup>`), and what you declare is what the template sees.
 
-### 4.1 Core Routing
+This guide teaches the Composition API exclusively, because that is what the ecosystem has converged on for new code — Pinia's setup stores, VueUse, Nuxt's conventions, and TypeScript inference all assume it. But the honest accounting:
 
-- **`createRouter()`**: History mode (`createWebHistory()`) vs hash mode (`createWebHashHistory()`). Always use history mode for production apps
-  - Learn the history choice early because it affects server config, deep linking, and how your URLs behave in production; docs: [Vue Router Guide](https://router.vuejs.org/guide/).
-- **Route definitions**: `path`, `name`, `component`, `redirect`, `alias`, `children`
-  - Clean route records turn routing into declarative app structure instead of scattered navigation rules.
-- **Dynamic routes**: `/users/:id` — accessed via `route.params.id`
-  - Dynamic segments are the bridge between URL design and data fetching, so name them clearly and validate them.
-- **`<RouterView />`**: Renders the matched component. Nested `<RouterView>` for nested routes
-  - Think of each `RouterView` as a layout slot where the router decides which feature component should live.
-- **`<RouterLink />`**: Declarative navigation. `to` prop (string or object), `active-class`, `exact-active-class`
-  - Prefer `RouterLink` over raw anchors inside the app so navigation stays SPA-friendly and active-state aware.
-- **Programmatic navigation**: `router.push()`, `router.replace()`, `router.go()`, `router.back()`
-  - Use imperative navigation after actions like save, login, or wizard steps where the route change depends on app logic.
-- **`useRoute()`**: Access current route (params, query, path, name, meta). Reactive
-  - Because the route object is reactive, it can drive computed state, fetch keys, and watchers without extra plumbing.
-- **`useRouter()`**: Access router instance for programmatic navigation
-  - Keep direct router access near the component or composable that owns the navigation decision instead of passing it around.
+- **The Options API is not deprecated and is genuinely fine** for small-to-medium components. It enforces an organization (state here, methods there) that beginners and teams with rotating contributors sometimes benefit from, and it's what you'll find in older codebases you may be asked to maintain.
+- **The Composition API wins as logic grows**, for two reasons. First, *colocation*: a feature's state, derived values, watchers, and cleanup can sit together instead of being smeared across five option buckets. Second — and this is the decisive one — *extraction*: any chunk of that code can be cut and pasted into a plain function (a composable, Part 8) and reused across components. The Options API's only reuse mechanism was mixins, which suffered from invisible property merging and name collisions; composables make data flow explicit.
+- TypeScript support is dramatically better with Composition: types flow through ordinary function calls, whereas typing `this` in the Options API requires compiler heroics.
 
-### 4.2 Advanced Routing
+The pragmatic rule: read both fluently (you will encounter Options API code), write Composition API with `<script setup>` for everything new, and don't refactor working Options API components just for style points.
 
-- **Nested routes**: Parent route with `children` array. Parent component has `<RouterView>` for child rendering
-  - Nested routes are a strong fit for dashboards and settings areas where a shared shell should survive page changes.
-- **Named views**: Multiple `<RouterView name="sidebar">` on the same page. Route maps `components: { default: Main, sidebar: Sidebar }`
-  - Named views are useful when the route controls more than one region of the screen at once.
-- **Route params validation**: Custom regex in params: `/users/:id(\\d+)`. Catch-all: `/:pathMatch(.*)*`
-  - Validate route shapes at the router boundary so invalid URLs fail predictably instead of reaching component code.
-- **Lazy loading routes**: `component: () => import('./views/UserList.vue')` — Vite automatically code-splits
-  - Route-level lazy loading is one of the easiest performance wins because users rarely need every screen up front.
-- **Route-level code splitting**: Group chunks with `/* webpackChunkName: "group" */` (Webpack) or Rollup manual chunks (Vite)
-  - Chunk strategy matters when related screens should download together instead of creating many small network requests.
+Since you'll need read-fluency, here is the same counter in both dialects, with the mapping made explicit — this is the only Options API code in the guide, and it's enough to decode any you encounter:
 
-### 4.3 Navigation Guards
+```vue
+<!-- Options API -->
+<script>
+export default {
+  props: { step: { type: Number, default: 1 } },
+  data() { return { count: 0 } },                  // → ref()
+  computed: { doubled() { return this.count * 2 } }, // → computed()
+  watch: { count(val) { console.log(val) } },       // → watch()
+  mounted() { console.log('ready') },               // → onMounted()
+  methods: { increment() { this.count += this.step } }, // → plain functions
+}
+</script>
+```
 
-- **Global guards**: `router.beforeEach()`, `router.afterEach()`, `router.beforeResolve()`
-  - Global guards are best for cross-cutting rules like auth checks, analytics, and document title behavior; docs: [Navigation Guards](https://router.vuejs.org/guide/advanced/navigation-guards.html).
-- **Per-route guards**: `beforeEnter` in route definition
-  - Use per-route guards when a rule belongs to one route branch rather than the whole app.
-- **In-component guards**: `onBeforeRouteLeave()`, `onBeforeRouteUpdate()`
-  - These hooks shine when the component owns unsaved state or needs to react to param changes without remounting.
-- **Guard patterns**:
-  - **Authentication**: Check auth state in `beforeEach`, redirect to `/login` if unauthenticated
-  - **Authorization**: Check user roles/permissions against `route.meta.requiredRole`
-  - **Data fetching**: Fetch data in guard (wait before rendering) vs in component (render loading state)
-  - **Unsaved changes**: Warn on `beforeRouteLeave` if form has unsaved changes
-  - The main design choice is whether to block navigation before render or let the view load and show its own pending state.
-- **Return values**: Return `false` to cancel, return a route location to redirect, return nothing (or `true`) to proceed
-  - Internalizing guard return values helps you avoid mixing old `next()`-style habits with the modern API.
+```vue
+<!-- Composition API, <script setup> -->
+<script setup>
+import { ref, computed, watch, onMounted } from 'vue'
 
-### 4.4 Route Meta & Transitions
+const props = defineProps({ step: { type: Number, default: 1 } })
+const count = ref(0)
+const doubled = computed(() => count.value * 2)
+watch(count, (val) => console.log(val))
+onMounted(() => console.log('ready'))
+function increment() { count.value += props.step }
+</script>
+```
 
-- **`meta` fields**: Attach arbitrary data to routes: `meta: { requiresAuth: true, title: 'Dashboard', layout: 'admin' }`
-  - Route meta is where routing decisions meet app-level concerns like auth, layout, and page titles; docs: [Route Meta Fields](https://router.vuejs.org/guide/advanced/meta.html).
-- **Dynamic document title**: Set `document.title` in `afterEach` from `route.meta.title`
-  - A consistent title pattern improves accessibility, browser history clarity, and SEO for SSR or hybrid apps.
-- **Route-based layouts**: Use `route.meta.layout` with dynamic `<component :is>` wrapper
-  - Layout metadata keeps page components focused on feature logic instead of shell selection.
-- **Route transitions**: `<RouterView v-slot="{ Component }">` + `<Transition>` for animated page transitions
-  - Keep route transitions subtle so they support orientation without making navigation feel slower.
-- **Scroll behavior**: `scrollBehavior(to, from, savedPosition)` in router config — restore scroll position on back, scroll to top on forward
-  - Good scroll behavior is easy to overlook, but it has a huge effect on whether navigation feels polished.
-
-**Practice**: Build a multi-section app with authentication, role-based routes, nested layouts, lazy-loaded pages, and animated transitions. Include a "unsaved changes" guard on form pages.
+Same component, same reactivity engine underneath — the Options API is, in fact, *implemented on top of* the Composition API in Vue 3. The translation table is nearly mechanical (`data` → `ref`s, option buckets → function calls, `this.x` → `x` or `x.value`), which is also why migrating a component is usually an hour of typing, not a redesign.
 
 ---
 
-## Phase 5: State Management with Pinia
+## Part 2 — Tooling: Vite and the Modern Vue Project
 
-### 5.1 Store Fundamentals
+Guide: [Quick Start](https://vuejs.org/guide/quick-start.html), [Tooling](https://vuejs.org/guide/scaling-up/tooling.html), Vite: [Why Vite](https://vite.dev/guide/why.html)
 
-- **Why Pinia**: Official Vue state management. Replaces Vuex. TypeScript-first, Composition API-native, devtools integration
-  - Pinia fits Vue 3 naturally because stores feel like composables with devtools and shared state built in; docs: [Pinia Core Concepts](https://pinia.vuejs.org/core-concepts/).
-- **Defining stores**: Two syntaxes:
-  - Understand both syntaxes so you can read community examples, but default to the one that matches how your team structures logic.
-  ```typescript
-  // Option syntax (simpler)
-  export const useCounterStore = defineStore('counter', {
-    state: () => ({ count: 0 }),
-    getters: { doubled: (state) => state.count * 2 },
-    actions: { increment() { this.count++ } }
-  })
+Modern Vue projects are scaffolded with one command:
 
-  // Setup syntax (more flexible, composable-like)
-  export const useCounterStore = defineStore('counter', () => {
-    const count = ref(0)
-    const doubled = computed(() => count.value * 2)
-    function increment() { count.value++ }
-    return { count, doubled, increment }
-  })
-  ```
-- **Setup syntax advantages**: Use any composable inside stores, more natural async handling, better TypeScript inference. **Prefer this for production apps**
-  - Setup stores scale better once you need watchers, injected services, or logic shared with other composables.
-- **Accessing stores**: Call the store function in `<script setup>`. Properties are reactive. Destructure with `storeToRefs()` to maintain reactivity
-  - Store access is simple, but destructuring incorrectly is a frequent source of “why didn’t my UI update?” bugs.
+```bash
+npm create vue@latest
+```
 
-### 5.2 State Patterns
+This runs [create-vue](https://github.com/vuejs/create-vue), the official scaffolding tool (it replaced the old webpack-based Vue CLI years ago), and walks you through prompts for TypeScript, Vue Router, Pinia, Vitest, ESLint, and Prettier. Say yes to TypeScript, Router, Pinia, and Vitest — those are the assumed stack for the rest of this guide and for most job postings. What comes out is a [Vite](https://vite.dev/) project.
 
-- **`$reset()`**: Reset state to initial values (option stores only). For setup stores, write your own reset function
-  - Reset behavior matters for logout flows, multi-step forms, and tests where state should return to a known baseline.
-- **`$patch()`**: Batch multiple state changes into a single reactive update. Object syntax and function syntax
-  - `$patch()` is useful when several related mutations should appear as one logical update in both the UI and devtools.
-- **`$subscribe()`**: Watch for state changes. `detached: true` to persist after component unmount
-  - Subscriptions are a clean place for persistence, analytics, or syncing with external systems.
-- **`$onAction()`**: Hook into action calls. `after` and `onError` callbacks
-  - Action hooks are valuable for cross-cutting concerns like logging, tracing, and optimistic rollback behavior.
-- **`storeToRefs()`**: Destructure store state/getters while keeping reactivity. Actions don't need `storeToRefs`
-  - Make this a habit whenever you destructure state out of a store in setup code.
+### Why Vite Is Fast (and Why You Should Care)
 
-### 5.3 Store Architecture
+Vite's speed isn't an implementation detail to shrug at; it shapes how you work. Traditional bundlers (webpack) build a complete dependency graph and bundle *before* the dev server can respond. Vite inverts this: in development it serves your source files **as native ES modules**, transforming each file on demand the moment the browser requests it. Dependencies from `node_modules` are pre-bundled once with esbuild (written in Go, ~100x faster than JS-based tooling) and cached. The result is a dev server that starts in milliseconds regardless of app size, and hot module replacement (HMR) that stays instant at 10 or 10,000 components — when you edit a `.vue` file, Vite swaps just that module, and Vue's HMR integration preserves component state where it can.
 
-- **Store per domain**: `useUserStore`, `useCartStore`, `useProductStore`, `useNotificationStore`
-  - Domain-based stores map better to business concepts than “one giant global store” and are easier to test.
-- **Store composition**: Stores can use other stores. Import and call inside actions/getters
-  - Composition is powerful, but use it to express real dependencies rather than tangling every store together.
-- **Avoid circular dependencies**: Structure stores in a dependency tree. If A depends on B, B should never depend on A
-  - Circular store usage creates boot-order and testing headaches that are painful to unwind later.
-- **Thin stores**: Keep stores focused on state and simple mutations. Put complex business logic in services/composables that USE the store
-  - Thin stores are easier to reason about because they expose state transitions without becoming a dumping ground.
-- **Normalized state**: Don't nest deeply. Use IDs and maps: `{ byId: { '1': {...} }, allIds: ['1', '2'] }`
-  - Normalized shapes make updates cheaper and reduce bugs caused by duplicating the same entity in several places.
+For production, `vite build` switches to [Rollup](https://rollupjs.org/) for a traditional optimized bundle: tree-shaking, minification, asset hashing, and automatic code-splitting at every dynamic `import()` (which is what makes lazy-loaded routes in Part 9 a one-line change). The dev/prod asymmetry occasionally matters — always run `vite preview` against a production build before shipping, because dev mode's unbundled serving can mask issues like circular imports or incorrect asset paths.
 
-### 5.4 Plugins
+Configuration lives in `vite.config.ts`, and the part you'll touch most is the `@` path alias (pointing at `src/`, set up by create-vue) and `server.proxy` for forwarding `/api` requests to a backend during development to avoid CORS pain.
 
-- **Persistence**: `pinia-plugin-persistedstate` — automatically sync stores with localStorage/sessionStorage
-  - Persist only the state that must survive reloads, because stale cached data can become a bug just as easily as a convenience; docs: [`pinia-plugin-persistedstate`](https://prazdevs.github.io/pinia-plugin-persistedstate/).
-- **Custom plugins**: `pinia.use(({ store }) => { ... })` — add properties, wrap actions, subscribe to changes
-  - Plugins are best for cross-store behavior that should feel native everywhere, not for one-off feature logic.
-- **Undo/redo**: Plugin pattern that snapshots state on each action
-  - This pattern is especially helpful in editors, dashboards, and complex forms where users make many reversible changes.
-- **Devtools**: Pinia integrates with Vue DevTools. Time-travel debugging, state inspection, action tracking
-  - Devtools visibility is one of the fastest ways to understand whether a bug is in the store, the component, or the API layer; docs: [Vue DevTools](https://devtools.vuejs.org/).
+### Project Structure
 
-**Practice**: Build a store architecture for an e-commerce app: `useAuthStore`, `useProductStore`, `useCartStore`, `useCheckoutStore`. Implement persistence for the cart, optimistic updates for the wishlist, and loading/error state patterns.
+There is no enforced layout, but the community convention is stable enough to treat as a default:
+
+```
+src/
+  assets/          # Static assets processed by Vite (images, global CSS)
+  components/      # Reusable UI components
+  composables/     # Shared Composition API logic (useX.ts files)
+  layouts/         # Page-shell wrapper components
+  views/ (pages/)  # Route-level components, one per route
+  router/          # createRouter() and route definitions
+  stores/          # Pinia stores
+  services/        # API clients and external-service wrappers
+  types/           # Shared TypeScript types
+  utils/           # Pure, framework-free utility functions
+  App.vue          # Root component
+  main.ts          # createApp(), plugin installation, mount
+```
+
+Two boundaries in this layout deserve respect. **`views/` versus `components/`**: route-level components own data fetching and page composition; reusable components receive props and emit events. Keeping that line crisp is the cheapest architecture decision you'll ever make. **`services/` and `utils/` are framework-free**: code in them imports nothing from Vue, which keeps it trivially testable and portable. If a "utility" needs `ref` or lifecycle hooks, it's a composable and belongs in `composables/`.
+
+`main.ts` is short and worth reading once in full, because it's the only imperative bootstrapping in the app:
+
+```ts
+import { createApp } from 'vue'
+import { createPinia } from 'pinia'
+import App from './App.vue'
+import router from './router'
+
+const app = createApp(App)
+app.use(createPinia())   // installs Pinia (Part 10)
+app.use(router)          // installs Vue Router (Part 9)
+app.mount('#app')        // renders App into <div id="app"> in index.html
+```
+
+`createApp` returns an application instance; `use()` installs plugins; `mount()` kicks off the first render. Everything after this line is reactive and declarative.
+
+### Environment Variables and Modes
+
+Vite loads `.env` files per mode — `.env` always, `.env.development` and `.env.production` by build mode — and exposes variables to your code as `import.meta.env.VITE_API_URL`. The prefix rule is a security boundary, not a naming convention: **only `VITE_`-prefixed variables reach client code**, and everything that does reach client code ships, readable, in your bundle. So `VITE_*` is for *configuration* (API origins, feature flags, public keys); secrets have no legitimate home in a frontend build, full stop — anything secret belongs behind your API. The TypeScript types for your variables go in `env.d.ts` (augmenting `ImportMetaEnv`), which turns a typo'd variable name into a compile error instead of an `undefined` baked into production.
+
+### Editor and Lint Tooling
+
+Use VS Code with the official **Vue extension** (formerly called Volar; the marketplace name is simply "Vue"). It understands `.vue` files end-to-end — template expressions are type-checked against your script types, so a typo'd prop name or a `string` passed to a `number` prop is a red squiggle, not a runtime mystery. For CLI type-checking (CI, pre-commit), the scaffold wires up `vue-tsc`, a `tsc` wrapper that understands SFCs. Add [eslint-plugin-vue](https://eslint.vuejs.org/) with the `flat/recommended` config to catch Vue-specific correctness issues (missing `:key`, mutated props, mis-ordered SFC blocks), and let Prettier own formatting so reviews stay about substance. None of this is optional ceremony: Vue's template DSL only stays honest if tooling checks it.
 
 ---
 
-## Phase 6: API Integration & Data Fetching
+## Part 3 — Single-File Components and How They Compile
 
-### 6.1 HTTP Clients
+Guide: [SFC Syntax](https://vuejs.org/api/sfc-spec.html), [`<script setup>`](https://vuejs.org/api/sfc-script-setup.html), [SFC CSS Features](https://vuejs.org/api/sfc-css-features.html)
 
-- **Axios**: Interceptors for auth tokens, request/response transformation, error handling
-  - Axios is still common in Vue codebases because interceptors give you one place to standardize auth and error behavior; docs: [Axios](https://axios-http.com/docs/intro).
-- **`ofetch` / `ky`**: Modern, lighter alternatives with TypeScript support
-  - These are good fits when you want a smaller surface area and less framework baggage than Axios; docs: [`ofetch`](https://github.com/unjs/ofetch), [`ky`](https://github.com/sindresorhus/ky).
-- **API service layer pattern**:
-  - A service layer keeps components from knowing endpoint details, which makes testing and future API changes much easier.
-  ```typescript
-  // services/api.ts
-  const api = axios.create({
-    baseURL: import.meta.env.VITE_API_URL,
-    timeout: 10000,
+A Vue component is usually authored as a **Single-File Component** — a `.vue` file with three blocks:
+
+```vue
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const count = ref(0)
+function increment() {
+  count.value++
+}
+</script>
+
+<template>
+  <button @click="increment">Count is {{ count }}</button>
+</template>
+
+<style scoped>
+button {
+  font-weight: 600;
+}
+</style>
+```
+
+The blocks map to the three concerns of any UI: logic, structure, presentation. The SFC's bet — opposite to React's "everything is JS" bet — is that these concerns belong in *one file per component* but in *separate languages within it*, each language being the best tool for its concern. After a few weeks this feels less like a constraint and more like a relief: you always know where to look.
+
+### `<script setup>`: What the Macros Really Are
+
+`<script setup>` is the modern authoring style, and it's worth understanding what it actually *is*: syntactic sugar, applied at compile time, for a component with a `setup()` function. Every top-level binding — variables, functions, imports — is automatically exposed to the template. There is no `export default`, no `return { count, increment }` boilerplate, no `this`. The compiler does that wiring.
+
+Inside `<script setup>` you'll meet a family of **compiler macros**: `defineProps`, `defineEmits`, `defineModel`, `defineExpose`, `defineOptions`, `defineSlots`. These look like functions but *are not imported and do not exist at runtime* — the compiler recognizes them, extracts their type arguments or options into the component definition, and deletes the calls. This is why `defineProps<{ title: string }>()` can do something no real function can: turn a pure TypeScript type into runtime prop validation. We'll use each macro in context (props and emits in Part 6); for now, just internalize that they are compile-time declarations, not calls.
+
+Two macros are worth flagging early because they answer "where did the old options go?": `defineOptions({ name: 'MyComponent', inheritAttrs: false })` covers the rare component options that have no macro of their own, and `defineExpose({ focus })` controls what a parent holding a template ref to your component can see (by default, `<script setup>` components are sealed — nothing is exposed, which is the right default).
+
+An SFC may also carry a *second*, plain `<script>` block alongside `<script setup>` — it runs once at module load (not per instance) and is the home for module-scope exports like constants or helper types that other files import from the component. Rare, but when you see both blocks in one file, that's what's happening.
+
+### The Compilation Pipeline: Template → Render Function
+
+This is the second mental model of the guide (after reactivity), and it demystifies a lot. **Vue templates are not interpreted at runtime — they are compiled, at build time, into JavaScript render functions.** When Vite processes an SFC, `@vue/compiler-sfc` parses the template into an AST, applies transforms, and emits a function that builds virtual DOM nodes. Conceptually:
+
+```html
+<div class="card">
+  <h2>{{ title }}</h2>
+  <button @click="save">Save</button>
+</div>
+```
+
+becomes (simplified):
+
+```js
+function render(_ctx) {
+  return h('div', { class: 'card' }, [
+    h('h2', null, toDisplayString(_ctx.title)),
+    h('button', { onClick: _ctx.save }, 'Save'),
+  ])
+}
+```
+
+Each `h()` call creates a **vnode** — a plain object describing an element. When state changes, the render function re-runs, produces a new vnode tree, and the renderer diffs it against the previous tree to compute minimal DOM patches.
+
+But the *actual* output is smarter than the simplified version, and this is where the template constraint pays off. Because the compiler can see that `class="card"` is static and only `{{ title }}` and the children can change, it emits **patch flags** — bitmasks attached to vnodes saying "only the text content of this node is dynamic" — and **hoists/caches static subtrees** so they're created once and reused on every re-render. It also organizes output into **block trees**: a block collects only its *dynamic* descendants into a flat array, so diffing skips static structure entirely instead of walking it. The result is that Vue's diff cost scales with the amount of *dynamic* content in a template, not its total size. This "compiler-informed virtual DOM" is the answer to "isn't virtual DOM diffing wasteful?" — Vue's compiler removes most of the waste because templates are analyzable. (The logical endpoint of this direction is **Vapor mode**, an experimental compilation strategy that skips the virtual DOM entirely and compiles templates to direct DOM operations — worth knowing the name, not worth waiting for.) You can watch all of this happen in the [Template Explorer](https://template-explorer.vuejs.org/) or the [SFC Playground](https://play.vuejs.org/), and you should spend ten minutes doing so; seeing the generated code once permanently grounds your model of what a template *is*.
+
+The practical consequences: template expressions must be expressions (no statements — complex logic belongs in `computed`), templates can be statically validated by tooling (Part 2), and there is no runtime template-parsing cost in production builds.
+
+### Scoped Styles
+
+`<style scoped>` makes a component's CSS apply only to its own elements. The mechanism is simple and worth knowing because you'll eventually fight it: the compiler adds a unique data attribute (e.g. `data-v-7ba5bd90`) to every element rendered by the component, and rewrites your selectors to require it (`button` becomes `button[data-v-7ba5bd90]`). It is *compile-time scoping*, not shadow DOM — global CSS can still reach in, and specificity rules still apply.
+
+The edges: a child component's *root* element receives the parent's scope attribute too (so the parent can set layout-ish styles on it), but nothing deeper. When you legitimately need to style a child's internals — a third-party component, say — use `:deep(.inner-class)` to opt one selector out of the rewrite. `:slotted()` targets content passed into your slots, and `:global()` escapes scoping entirely. There is also `<style module>` (CSS Modules, classes accessed as `$style.card`), which is preferable for library code where consumers shouldn't depend on your class names. For application code, `scoped` plus a utility framework like Tailwind covers nearly everything; the deeper trade-offs are a styling-architecture question, not a Vue question.
+
+One more SFC trick that punches above its weight: `v-bind()` in CSS. Writing `color: v-bind(accentColor)` in a `<style>` block wires a CSS property to reactive state via a CSS custom property — the compiled output updates a `--xxxx` variable on the component root whenever `accentColor` changes. It's the cleanest way to drive styles from state without inline-style soup.
+
+---
+
+## Part 4 — The Reactivity System (The Central Mental Model)
+
+Guide: [Reactivity Fundamentals](https://vuejs.org/guide/essentials/reactivity-fundamentals.html), [Reactivity in Depth](https://vuejs.org/guide/extras/reactivity-in-depth.html)
+
+Everything in this part repays careful reading. Reactivity is the one piece of Vue you cannot fake your way through: every confusing Vue bug you will ever debug — "why didn't my UI update?", "why did this watcher fire twice?", "why is my destructured value stale?" — is a reactivity question, and every one of them has a precise answer once you hold the model.
+
+### The Problem Reactivity Solves
+
+Start from first principles. In plain JavaScript, assignments are inert:
+
+```js
+let price = 10
+let quantity = 2
+let total = price * quantity   // 20
+
+price = 20
+console.log(total)             // still 20 — nothing "re-ran"
+```
+
+`total` was computed once; JavaScript has no notion of "keep this up to date." A UI framework's whole job is to fix this: when `price` changes, everything *derived from* `price` — computed totals, the DOM showing them — should update. There are two requirements hiding in that sentence:
+
+1. **Detect** that `price` changed (interception).
+2. **Know what depends on** `price`, so we re-run exactly that and nothing else (dependency tracking).
+
+Vue solves (1) with Proxies and (2) with effects. Take them in turn.
+
+### Interception: Proxies and Why `ref` Needs `.value`
+
+JavaScript gives you exactly one general tool for observing property access on an object: the ES2015 [`Proxy`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy). A Proxy wraps a target object and lets you intercept operations on it — every property read hits your `get` trap, every write hits your `set` trap. This is what `reactive()` returns:
+
+```js
+import { reactive } from 'vue'
+
+const state = reactive({ count: 0 })
+// `state` is NOT the plain object — it's a Proxy around it.
+// state.count        → get trap fires → Vue records "someone read 'count'"
+// state.count = 1    → set trap fires → Vue notifies everyone who read 'count'
+```
+
+Crucially, a Proxy can only wrap an **object**. There is no mechanism in JavaScript to intercept reads and writes of a standalone primitive — `let count = 0; count = 1` is invisible to everyone. This single language limitation explains `ref`, the API that confuses every newcomer:
+
+```js
+import { ref } from 'vue'
+
+const count = ref(0)
+console.log(count.value)  // read through .value
+count.value++             // write through .value
+```
+
+A `ref` is a tiny container object — conceptually `{ value: 0 }` — whose `value` property has a getter and setter. The getter *tracks* (records who's reading), the setter *triggers* (re-runs the readers). **`.value` is not bureaucracy; it is the interception point.** A primitive can't be observed, so Vue puts it in a box that can be. Once you see `.value` as "the door reactivity walks through," it stops feeling like noise — every `.value` in your code marks a spot where dependency tracking happens, which is genuinely useful information when reading code.
+
+Two refinements complete the picture. First, refs holding **objects** get the best of both: `ref({ a: 1 })` stores a `reactive()` proxy of the object in `.value`, so deep mutations (`obj.value.a = 2`) are tracked too. Second, in **templates**, refs are auto-unwrapped — you write `{{ count }}`, not `{{ count.value }}` — because the compiler knows top-level bindings from `<script setup>` and inserts `.value` for you. The asymmetry (`.value` in script, bare in template) is the price of templates staying clean; you'll stop noticing it within a week.
+
+### Dependency Tracking: Effects
+
+The second half of the engine. An **effect** is a function that Vue runs while keeping a global note of "this effect is currently running." Every reactive read that happens during the run — every `get` trap, every ref `.value` getter — looks up that note and records the running effect as a **subscriber** of that particular object-property pair. When a `set` later fires on that pair, Vue re-runs the subscribed effects. In pseudocode, the entire mental model fits in a few lines:
+
+```js
+let activeEffect = null
+
+function track(target, key) {           // called by every get trap
+  if (activeEffect) subscribers(target, key).add(activeEffect)
+}
+
+function trigger(target, key) {          // called by every set trap
+  for (const effect of subscribers(target, key)) effect.run()
+}
+
+function watchEffect(fn) {
+  const effect = { run() { activeEffect = effect; fn(); activeEffect = null } }
+  effect.run()                           // run once to collect dependencies
+}
+```
+
+Three properties of this design are worth dwelling on, because they explain Vue's ergonomics:
+
+- **Dependencies are discovered by running, not declared.** There is no dependency array to maintain and therefore no stale-dependency bug. If your effect reads `a.value` this run, it depends on `a` — period.
+- **Dependencies are re-collected on every run.** If an effect has a branch — `if (show.value) text.value else 'hidden'` — then while `show` is false, the effect *isn't subscribed to `text` at all*, because it didn't read it. Changing `text` triggers nothing. This is exactly right (why re-run for a value you're not displaying?) and exactly the kind of behavior you can only predict by holding the model.
+- **Tracking is per-property, not per-object.** An effect that reads `user.name` does not re-run when `user.email` changes. This is the fine granularity that lets Vue skip the manual memoization React requires.
+
+And now the punchline from Part 1, stated precisely: **a component's render function runs inside an effect.** Rendering reads reactive state → the render effect subscribes to exactly those properties → mutating any of them queues a re-render of exactly the components that read them. `computed` and `watch` are the same machinery with different scheduling. There is one engine; everything is a client of it.
+
+For the genuinely curious: the real implementation (rewritten in Vue 3.4 and again in 3.5 for memory and speed) lives in [`@vue/reactivity`](https://github.com/vuejs/core/tree/main/packages/reactivity) and is readable in an afternoon. Vue Mastery's [Vue 3 Reactivity course](https://www.vuemastery.com/courses/vue-3-reactivity/vue3-reactivity/) walks Evan You building this exact pseudocode up into the real thing.
+
+### Why Destructuring Breaks Reactivity
+
+This is the most common Composition API bug, and with the model in hand it isn't mysterious — it's obvious:
+
+```js
+const state = reactive({ count: 0 })
+const { count } = state   // ❌ count is now a plain number: 0
+
+count                      // no get trap — nothing is tracked
+state.count = 5            // count is still 0; nothing observed this read
+```
+
+Destructuring is just property access plus assignment: it reads `state.count` **once** (firing the get trap once, during the destructure — uselessly, since no effect is collecting) and copies the *current value* into a new local binding. That local `count` is a plain number with no connection to the proxy. All future reads of it bypass the proxy entirely, so no effect ever subscribes, so nothing ever updates. The same applies to passing `state.count` as a function argument: the function receives `0`, not a reactive thing.
+
+The rule that falls out: **reactivity lives in object property access (or `.value` access) — sever the property access and you sever the reactivity.** The fixes all preserve a trackable container:
+
+```js
+const { count } = toRefs(state)  // count is a Ref linked to state.count — reads/writes pass through
+const count = toRef(state, 'count')  // same, for one property
+// or simply: keep state.count access, or use ref() in the first place
+```
+
+`toRefs` converts each property of a reactive object into a ref whose getter/setter delegate to the original — destructuring refs is safe, because a ref *is itself* the trackable container; copying the ref copies the box, not the value. This, finally, is the deep reason the community default is `ref`:
+
+### `ref` vs `reactive` — and Why `ref` Won
+
+Both create reactive state; the API surface differs:
+
+| | `ref(value)` | `reactive(obj)` |
+|---|---|---|
+| Holds | Anything, including primitives | Objects/arrays/Maps only |
+| Access | `count.value` (auto-unwrapped in templates) | `state.count` directly |
+| Replace wholesale | `count.value = newThing` ✅ | ❌ `state = newObj` disconnects the proxy |
+| Destructure / pass around | Safe — the ref is the container | Breaks reactivity (above) |
+| Return from composables | Natural | Hazardous (consumers will destructure) |
+
+`reactive` reads more cleanly — no `.value` — and is tempting for grouped state like form models. But it has three sharp edges that `ref` doesn't: it can't hold primitives; it can't be reassigned (replacing a fetched object wholesale, a constant need in real apps, silently breaks every existing subscription); and it invites destructuring, which silently breaks reactivity. `ref`'s one cost is `.value`, which is visible, mechanical, and — per the model above — *informative*.
+
+The community and the official docs have landed on the same default: **use `ref` for everything; reach for `reactive` only for a cohesive group of properties you will always access through the object and never replace** (a form model you mutate field-by-field is the classic legitimate case). Consistency matters more than the choice: a codebase that mixes both styles per-variable makes every reader re-derive which access pattern applies.
+
+Round out the toolbox with the escape hatches, each comprehensible from the model: `shallowRef`/`shallowReactive` track only the top level (use for large data structures or class instances where deep proxying is wasted cost — pair `shallowRef` with `triggerRef` to notify manually after deep mutation); `readonly()` wraps a proxy whose set trap warns instead of triggering (expose state without granting mutation); `markRaw()` brands an object "never proxy this" (essential for third-party instances — a Chart.js chart or a Map from a mapping library will misbehave if its internal identity checks meet a proxy wrapper); and `toRaw()` recovers the original target from a proxy at interop boundaries.
+
+A last set of mechanics worth pinning down precisely, because they generate quiz-grade confusion: **when do refs unwrap?** Three rules cover it. In *templates*, only top-level bindings auto-unwrap — `{{ count }}` works, and so does `{{ obj.count }}` when `obj` is reactive, but a ref *inside a plain object* (`{{ wrapper.countRef }}`) does not unwrap unless it's also the whole expression. In *`reactive` objects*, nested refs unwrap transparently — `reactive({ count: ref(0) }).count` is `0`, not a ref, and assigning to it writes through to the ref (this is what makes `toRefs` round-trip cleanly). In *arrays and collections*, refs do **not** unwrap — `reactiveArr[0]` can be a ref you must `.value`. You don't need to engineer around these rules; you need to recognize them when an expression is mysteriously a `RefImpl` or mysteriously a number.
+
+### `computed`: Derived State, Cached
+
+Guide: [Computed Properties](https://vuejs.org/guide/essentials/computed.html)
+
+A `computed` is a ref whose value is *defined by a function over other reactive state*:
+
+```ts
+const items = ref<CartItem[]>([])
+
+const total = computed(() =>
+  items.value.reduce((sum, i) => sum + i.price * i.qty, 0)
+)
+```
+
+In the engine's terms, a computed is both an effect and a source: its getter runs as an effect (subscribing to `items`), and its result is a trackable ref that *other* effects can subscribe to. Three behaviors follow. It is **cached** — reading `total.value` ten times runs the getter once. It is **lazy** — the getter doesn't run until something reads it. And since Vue 3.4 it only notifies *its* subscribers when its computed value **actually changed**, so a re-derivation that lands on the same result doesn't ripple further.
+
+The discipline: computed getters must be **pure** — no mutations, no async, no side effects. If you catch yourself wanting a side effect "when this derived value changes," that's a watcher. And whenever you find the same derivation expression in two places (template and script, or two templates), that's the signal it should be a computed. A writable computed (`computed({ get, set })`) exists for the narrow case of a two-way binding that translates between representations — useful with `v-model`, otherwise rare.
+
+### `watch` vs `watchEffect`: Effects You Write Yourself
+
+Guide: [Watchers](https://vuejs.org/guide/essentials/watchers.html)
+
+Computeds *derive data*; watchers *perform side effects* — persist to localStorage, fire a network request, drive an imperative library. Vue gives you two shapes of the same underlying effect, and choosing between them is about how you want dependencies determined:
+
+```ts
+// watch: explicit source(s), lazy by default, gives old + new values
+watch(searchQuery, async (newQuery, oldQuery) => {
+  results.value = await api.search(newQuery)
+})
+
+// watchEffect: dependencies auto-tracked from whatever the body reads; runs immediately
+watchEffect(() => {
+  localStorage.setItem('draft', JSON.stringify(form.value))
+})
+```
+
+**`watch`** is for "when *this specific thing* changes, do X." You name the source (a ref, a getter like `() => props.userId`, or an array of either); the callback gets old and new values; nothing runs until a change occurs (add `{ immediate: true }` to also run at setup). Because the *callback's* reads are not tracked — only the declared source is — `watch` cleanly separates "what I react to" from "what I use while reacting," which is usually what you want for data fetching.
+
+**`watchEffect`** is for "keep this side effect in sync with whatever it reads." It runs once immediately, auto-tracks every reactive read in its body, and re-runs when any of them change. It shines when the trigger set and the used set are the same (the localStorage sync above) and gets dangerous when they aren't — an incidental read deep in the body silently becomes a trigger.
+
+The options matter in practice. `{ deep: true }` on `watch` recursively touches every property of an object source so any nested change triggers (expensive on big structures — prefer watching a specific getter). `{ once: true }` (3.4+) self-disposes after the first trigger. `{ flush: 'post' }` defers the callback until after the DOM has updated — necessary when the watcher reads the DOM (`watchPostEffect` is the shorthand). And **cleanup**: a watcher callback receives an `onCleanup` registrar that runs before the *next* invocation and on stop — the correct home for aborting a stale fetch:
+
+```ts
+watch(searchQuery, async (query, _old, onCleanup) => {
+  const controller = new AbortController()
+  onCleanup(() => controller.abort())          // cancel if query changes again first
+  results.value = await api.search(query, { signal: controller.signal })
+})
+```
+
+Watchers created inside a component are stopped automatically when it unmounts. The decision heuristic, condensed: deriving a value → `computed`; reacting to a named change, especially async → `watch`; syncing a side effect with its own inputs → `watchEffect`. If you're using a watcher to compute state from other state, you've picked the wrong tool.
+
+### Watching the Engine Work: Debugging Reactivity
+
+Because tracking happens at runtime, you can *observe* it — and when a component re-renders mysteriously, observation beats theorizing. Two component hooks expose the render effect's bookkeeping in development builds:
+
+```ts
+import { onRenderTracked, onRenderTriggered } from 'vue'
+
+onRenderTracked((e) => {
+  // fires once per dependency the render effect subscribes to
+  console.log('tracked', e.target, e.key)
+})
+onRenderTriggered((e) => {
+  // fires when a dependency change queues a re-render — answers "why did it re-render?"
+  console.log('triggered by', e.key, e.type)   // 'set' | 'add' | 'delete'
+})
+```
+
+`watch` and `watchEffect` accept the same pair as `onTrack`/`onTrigger` options. [Vue DevTools](https://devtools.vuejs.org/) offers the no-code version: the component inspector shows live reactive state (editable in place — the fastest way to test "would the UI respond if this changed?"), and the timeline records re-renders with their triggers. Between the hooks and the devtools, "this updates too often" and "this doesn't update" both become five-minute investigations instead of console.log archaeology.
+
+One more piece of machinery matters when you build abstractions: the **effect scope**. Every component implicitly creates one — a bag holding all effects (render, computeds, watchers) created during its setup — and unmounting disposes the whole bag at once, which is *why* watchers auto-stop with their component. The standalone API ([`effectScope()`](https://vuejs.org/api/reactivity-advanced.html#effectscope)) gives non-component code — a Pinia store, a long-lived composable — the same collect-and-dispose-together behavior; VueUse's safe-cleanup helpers are built on it. You'll rarely call it directly, but the concept answers "where do effects live, and who stops them?"
+
+### Batching and `nextTick`
+
+One last gear in the engine. Triggered effects do not run synchronously at the moment of the write — they are **queued and deduplicated**, then flushed on the next microtask. Mutate three refs in one handler and a component reading all three re-renders once, not three times. The consequence: immediately after a mutation, the DOM is stale.
+
+```ts
+import { nextTick } from 'vue'
+
+showPanel.value = true
+// document.querySelector('.panel')  → null! DOM not updated yet
+await nextTick()
+panelEl.value?.focus()               // now the DOM reflects the new state
+```
+
+`await nextTick()` resumes after the pending flush — it is the bridge you cross whenever post-update DOM access (focus, measurement, scroll) follows a state change. If you remember one thing from Part 4: **state is read through traps, effects subscribe by reading, writes trigger subscribed effects on the next microtask — and `.value` exists because primitives can't be trapped.** Every reactivity behavior in Vue is a corollary.
+
+---
+
+## Part 5 — Templates and Rendering
+
+Guide: [Template Syntax](https://vuejs.org/guide/essentials/template-syntax.html), [Conditional Rendering](https://vuejs.org/guide/essentials/conditional.html), [List Rendering](https://vuejs.org/guide/essentials/list.html)
+
+With compilation (Part 3) and reactivity (Part 4) in place, template syntax is mostly vocabulary — but a few constructs hide real semantics worth more than a flashcard.
+
+The basics in one breath: `{{ expression }}` interpolates text (auto-escaped — XSS-safe by default); `v-bind:attr`, universally shortened to `:attr`, binds an attribute to an expression; `v-on:event`, shortened to `@event`, attaches a handler. Any single JavaScript *expression* is legal in these positions, but the working rule is to keep templates declarative: the moment an expression grows a ternary-inside-a-ternary or a method call chain, move it into a `computed` where it gains a name, a cache, and testability.
+
+`:class` and `:style` get special treatment — they accept objects and arrays, which composes beautifully with reactive state:
+
+```html
+<button
+  class="btn"
+  :class="{ 'btn--primary': isPrimary, 'btn--loading': pending }"
+  :disabled="pending"
+>
+```
+
+Static `class` and bound `:class` merge; the object syntax reads as "apply this class when this condition holds," which is exactly how you think about it. Event modifiers fold common imperative noise into declarative suffixes — `@submit.prevent="save"` replaces a `preventDefault()` call, `@click.stop`, `@keyup.enter`, `@click.once` likewise — and are worth skimming [the full list](https://vuejs.org/guide/essentials/event-handling.html#event-modifiers) once so you stop writing event plumbing by hand.
+
+### `v-if` vs `v-show`
+
+Both conditionally display content; they do categorically different things. `v-if` is **structural**: when false, the subtree is not rendered at all — no vnodes, no component instances, no mounted hooks. Toggling it destroys and recreates components, with all the lifecycle and state-loss implications. `v-show` is **cosmetic**: the subtree always renders and mounts; toggling flips `display: none`. So: `v-if` for branches that are rarely shown or expensive to keep alive (it also short-circuits — guarded content like `v-if="user"` makes `user.name` inside safe); `v-show` for things toggled frequently where re-creation cost or state loss would hurt (tab panels, dropdown contents). If a component inside the branch must keep its state across toggles, that alone decides it: `v-show` (or `<KeepAlive>`, Part 12).
+
+### `v-for` and Why Keys Actually Matter
+
+```html
+<li v-for="todo in todos" :key="todo.id">
+  <input type="checkbox" v-model="todo.done" />
+  {{ todo.text }}
+</li>
+```
+
+The `:key` is not a lint formality; it is the identity hint the diffing algorithm uses to match old vnodes to new ones across re-renders. With stable keys (`todo.id`), reordering the array *moves DOM nodes*, preserving each row's element state (focus, checkbox state, child component state) along the way. With index keys — or no keys — Vue matches rows *positionally*: delete the first item and every row gets the *next* row's data patched into it, while any state that lives in the DOM or in child components stays behind in its old position. The classic bug is a list of items with input fields where deleting row 1 makes row 2's text appear in row 1's input. The rule is absolute for any list that can reorder, insert, or delete: **key by stable identity, never by index.** Index keys are acceptable only for lists that are append-only and never reorder.
+
+### A Note on `v-html`
+
+Interpolation (`{{ }}`) HTML-escapes its output, which is why Vue templates are XSS-safe by default — user content renders as text, never as markup. `v-html` is the deliberate exception: it assigns raw HTML to `innerHTML`, scripts-and-all semantics included. The rule is short because it must be absolute: **never feed `v-html` content a user influenced**, directly or through your database, unless it has passed through a real sanitizer ([DOMPurify](https://github.com/cure53/DOMPurify)) on the way. Rendering trusted, server-generated rich text (a CMS body, rendered Markdown) is the legitimate use; "it's just our users' comments" is the famous last words. Also note `v-html` content is invisible to scoped styles (it isn't compiled by Vue), which is your reminder that it's a hole in the template model, not part of it. More in [Security Best Practices](https://vuejs.org/guide/best-practices/security.html).
+
+### Template Refs
+
+Guide: [Template Refs](https://vuejs.org/guide/essentials/template-refs.html)
+
+Sometimes you need the actual DOM element — to focus it, measure it, or hand it to a non-Vue library. Template refs are the sanctioned escape hatch:
+
+```vue
+<script setup lang="ts">
+import { useTemplateRef, onMounted } from 'vue'
+
+const input = useTemplateRef('search')   // Vue 3.5+; before: const input = ref<HTMLInputElement|null>(null)
+
+onMounted(() => input.value?.focus())    // only populated after mount
+</script>
+
+<template>
+  <input ref="search" placeholder="Search…" />
+</template>
+```
+
+`useTemplateRef('search')` (Vue 3.5) returns a ref that Vue populates with the element matching `ref="search"` once the component mounts — before 3.5, the convention was a plain `ref(null)` whose *variable name* matched the attribute, which worked but was easy to get subtly wrong. Two rules keep refs honest: they are `null` until `onMounted` (and again after unmount), and they are for *imperative escape hatches only* — if you find yourself reading or writing application state through the DOM, you've abandoned the declarative model and the framework will fight you. A ref on a *component* yields the component's exposed instance instead of an element, which is rarer and gated by `defineExpose` (Part 3).
+
+---
+
+## Part 6 — Components: Props, Events, v-model, and Slots
+
+Guide: [Component Basics](https://vuejs.org/guide/essentials/component-basics.html), [Props](https://vuejs.org/guide/components/props.html), [Events](https://vuejs.org/guide/components/events.html), [Slots](https://vuejs.org/guide/components/slots.html)
+
+A component is a unit of UI with a **contract**: data flows in through props, notifications flow out through events, and markup flows in through slots. Vue enforces the direction — props down, events up — and almost every component-design question reduces to "which side of the contract does this belong on?" This part walks the contract surface in the order you'll use it, with the TypeScript forms that production code actually uses.
+
+### Props: Typed Inputs
+
+In `<script setup lang="ts">`, props are declared with the `defineProps` macro and a type argument — recall from Part 3 that this is a compile-time declaration, so the TypeScript type *becomes* the runtime prop definition:
+
+```vue
+<script setup lang="ts">
+interface Props {
+  title: string
+  items: Item[]
+  dense?: boolean          // optional prop
+}
+
+const { title, items, dense = false } = defineProps<Props>()
+</script>
+```
+
+Two things in this snippet deserve attention. First, the destructure: since Vue 3.5, destructured props are **reactive** — the compiler rewrites every use of `title` in the file into `props.title`, so reactivity survives. (Before 3.5 this destructure would have produced stale values, for exactly the Part 4 reasons; you'd keep `const props = defineProps<Props>()` and access `props.title`. Both styles are current and you'll see both.) Second, the default: `dense = false` in the destructure replaces the older, clunkier `withDefaults()` wrapper. One sharp edge survives the 3.5 sugar: passing a destructured prop *into* a function or watcher source still detaches it — `watch(dense, …)` watches a plain boolean; write `watch(() => dense, …)` so the getter re-reads the prop each time.
+
+The semantics to internalize: **props are one-way and read-only.** Mutating a prop is a warning in development and a design smell always — the child would be silently fighting the parent, and the next parent re-render would stomp the change. When a child needs to *derive* from a prop, use a `computed`; when it needs to *change* the value, it must ask the parent via an event. Also remember props are matched camelCase in script, kebab-case in templates (`greetingMessage` ↔ `:greeting-message`), and that a bare attribute (`<Modal closable>`) means `closable: true`, matching HTML's boolean-attribute convention.
+
+### Events: Typed Outputs
+
+The mirror-image macro is `defineEmits`. The modern (3.3+) tuple syntax:
+
+```vue
+<script setup lang="ts">
+const emit = defineEmits<{
+  save: [draft: Draft]              // event name → payload tuple
+  cancel: []
+  'page-change': [page: number]
+}>()
+
+function onSubmit() {
+  emit('save', currentDraft.value)   // payload type-checked
+}
+</script>
+```
+
+Emitting a misspelled event name or a wrong payload type is now a compile error — which matters because events, unlike props, would otherwise fail *silently*: an unlistened event just disappears. Name events by **semantic intent** (`save`, `page-change`), not by mechanism (`button-clicked`); the parent cares what happened, not which element was involved. In the parent's template, listeners attach with `@save="onSave"` and the payload arrives as the handler's argument.
+
+### `v-model` on Components
+
+Guide: [Component v-model](https://vuejs.org/guide/components/v-model.html)
+
+On a native input, `v-model="text"` is sugar for binding `:value` and listening for `input`. On a *component*, it's sugar for a prop/event pair — and since Vue 3.4, the `defineModel` macro collapses the whole pattern into one line:
+
+```vue
+<!-- SearchBox.vue -->
+<script setup lang="ts">
+const query = defineModel<string>({ required: true })
+</script>
+
+<template>
+  <input :value="query" @input="query = ($event.target as HTMLInputElement).value" />
+</template>
+```
+
+```html
+<!-- Parent -->
+<SearchBox v-model="searchText" />
+```
+
+`defineModel` returns a ref that *feels* writable — but writing to it doesn't mutate parent state directly; under the hood it's still the `modelValue` prop plus an `update:modelValue` emit, so one-way data flow is preserved and the parent remains the owner of the state. Knowing the desugared form matters both for reading pre-3.4 code (where you'll see the prop/emit pair written out) and for understanding multiple models: `defineModel('title')` pairs with `v-model:title` on the parent, so a form component can expose several independent two-way bindings. Reach for `v-model` only when the component genuinely *edits a value the parent owns* — inputs, toggles, selects. For anything else, explicit props and events communicate intent better.
+
+### Attribute Fallthrough
+
+One contract detail that saves real debugging time: attributes a parent passes that match *no declared prop or emit* — `class`, `style`, `id`, `data-*`, listeners like `@focus` — automatically **fall through** to the component's single root element, with `class`/`style` merging rather than replacing. This is why `<SearchBox class="mt-4" />` just works without `class` being a prop. The mechanism needs your attention in two cases. A *multi-root* component has no obvious target, so Vue warns and you bind explicitly: `v-bind="$attrs"` on the element of your choosing. And a *wrapper* component (your `BaseInput` wrapping an `<input>` inside a styled `<div>`) usually wants the fallthrough redirected to the inner element — declare `defineOptions({ inheritAttrs: false })` and place `v-bind="$attrs"` on the `<input>`, so consumers' `placeholder`, `@blur`, and `aria-*` attributes land where they belong. Guide: [Fallthrough Attributes](https://vuejs.org/guide/components/attrs.html).
+
+### Slots: Markup as Input
+
+Props pass *data*; slots pass *markup*. A component with a `<slot/>` renders whatever children the parent placed between its tags, with fallback content available for when it places nothing:
+
+```vue
+<!-- Card.vue -->
+<template>
+  <div class="card">
+    <header v-if="$slots.header" class="card__header">
+      <slot name="header" />
+    </header>
+    <slot>No content provided.</slot>   <!-- default slot + fallback -->
+  </div>
+</template>
+```
+
+```html
+<!-- Parent -->
+<Card>
+  <template #header><h2>Quarterly report</h2></template>
+  <p>Body content goes in the default slot.</p>
+</Card>
+```
+
+Named slots (`#header` is shorthand for `v-slot:header`) let a component own *layout* while the parent owns *content* — the `$slots.header` check makes the wrapper element conditional on the parent actually providing content, a small touch that separates polished components from rigid ones.
+
+The crucial scoping rule: slot content is compiled in the **parent's** scope. The markup the parent writes can see the parent's state, not the child's. Which immediately raises the question scoped slots answer: what if the child has data the parent's markup *needs* — say, a list component that owns fetching and iteration, while the parent decides what each row looks like? The child passes data *out through the slot*, and the parent receives it as slot props:
+
+```vue
+<!-- FilteredList.vue — owns the logic -->
+<template>
+  <ul>
+    <li v-for="item in filtered" :key="item.id">
+      <slot :item="item" :index="item.id" />   <!-- data flows out through the slot -->
+    </li>
+  </ul>
+</template>
+```
+
+```html
+<!-- Parent — owns the rendering -->
+<FilteredList :source="users">
+  <template #default="{ item }">
+    <UserAvatar :user="item" /> {{ item.name }}
+  </template>
+</FilteredList>
+```
+
+This is the **scoped slot**, and it is Vue's most powerful composition primitive: it splits a component along the logic/rendering axis instead of the usual parent/child axis. Taken to its limit you get the **renderless component** — a component that renders *nothing itself*, only a slot with data — which is the architecture behind headless UI libraries ([Headless UI](https://headlessui.com/), [Reka UI](https://reka-ui.com/)): all the keyboard handling, ARIA wiring, and state machines of a dropdown, with every pixel of rendering delegated to you. When you find yourself copying interaction logic between visually different components, a renderless component (or its sibling, the composable — Part 8 discusses when to prefer which) is the answer.
+
+Two slot footnotes complete the picture. In templates, `$slots` exposes which slots the parent filled (the `v-if="$slots.header"` trick above); in script, the same information comes from `useSlots()` — occasionally needed when logic, not just markup, depends on slot presence. And slot names can be dynamic (`<template #[slotName]>`), which enables table components whose column slots are data-driven (`#cell-${column.key}`) — powerful, and best confined to that kind of genuinely dynamic API, since discoverability drops fast.
+
+### The Patterns Built on the Contract
+
+A few recurring compositions of the above are worth recognizing by name. **Presentational vs. container**: dumb components take props and emit events; smart ones (usually route-level views) fetch data and wire stores — keeping most of your tree dumb keeps most of it trivially testable. **Compound components** (`<Tabs>`/`<Tab>`) coordinate through provide/inject (Part 7) so the consumer composes them naturally in the template. **Dynamic components** — `<component :is="currentView" />` — switch what renders based on state, useful for polymorphic rows and wizard steps. And **async components** — `defineAsyncComponent(() => import('./HeavyChart.vue'))` — defer a heavy component's code to a separate chunk loaded on first render, the component-granular version of route lazy-loading (Parts 9 and 14).
+
+---
+
+## Part 7 — The Component Lifecycle and provide/inject
+
+Guide: [Lifecycle Hooks](https://vuejs.org/guide/essentials/lifecycle.html), [Provide / Inject](https://vuejs.org/guide/components/provide-inject.html)
+
+### The Instance Lifecycle
+
+Every time a component appears in the rendered tree, Vue creates a **component instance** and walks it through a fixed lifecycle. The stations: the instance is created and its `setup` runs (your entire `<script setup>` body — this is why there are no `created`/`beforeCreate` hooks in Composition API; top-level setup code *is* that phase); the render effect runs for the first time and DOM is created (**mount**); reactive changes re-run the render effect and patch the DOM (**update**, zero or more times); and when the component leaves the tree — a `v-if` turns false, a route changes, a parent re-renders it away — the instance is torn down (**unmount**), watchers stopped, children unmounted.
+
+You register interest in these moments by calling lifecycle hooks during setup:
+
+```vue
+<script setup lang="ts">
+import { onMounted, onUnmounted } from 'vue'
+
+let socket: WebSocket | undefined
+
+onMounted(() => {
+  socket = new WebSocket('wss://example.com/feed')   // DOM exists; browser APIs safe
+  socket.addEventListener('message', handleMessage)
+})
+
+onUnmounted(() => {
+  socket?.close()                                     // ALWAYS pair acquisition with release
+})
+</script>
+```
+
+Note the shape: `onMounted(fn)` is a plain function call that registers `fn` against the *currently initializing instance* (Vue tracks which instance is running setup — the same "who is currently active?" trick the reactivity system uses for effects). This is why hooks must be called synchronously during setup, never inside an `await`, a callback, or a condition: after setup finishes, there is no current instance to register against.
+
+In practice you need surprisingly few hooks. `onMounted` is for things that need real DOM or should only happen client-side: measuring, focusing, initializing third-party libraries (a chart, a map, an editor), subscribing to browser events. `onUnmounted` is its non-negotiable shadow: every listener, timer, socket, and observer acquired must be released, or you leak — and the leak is invisible until a user navigates back and forth a few dozen times. The rest are situational: `onUpdated` (post-DOM-patch — rarely correct; a `flush: 'post'` watcher targeting the specific state is usually better), `onActivated`/`onDeactivated` (for `<KeepAlive>`-cached components, Part 12), and `onErrorCaptured` (catch descendant errors — the building block for error-boundary components that show a fallback instead of a blank page).
+
+One ordering fact prevents a classic confusion: for nested components, setup runs parent-first but **mounting completes child-first** (a parent isn't "mounted" until its subtree is). If a parent needs to do DOM work that depends on children being present, `onMounted` already guarantees it.
+
+### provide/inject: Escaping Prop Drilling
+
+Props serve parent→child handoff. But some values are *ambient* — the current theme, locale, authenticated user, or the coordination state of a compound component — and threading them as props through five intermediate layers that don't care ("prop drilling") couples everything to everything. `provide`/`inject` creates a direct channel from an ancestor to any depth of descendant:
+
+```ts
+// types/injection-keys.ts — typed keys make injection safe
+import type { InjectionKey, Ref } from 'vue'
+export const ThemeKey: InjectionKey<Ref<'light' | 'dark'>> = Symbol('theme')
+```
+
+```ts
+// Ancestor
+import { provide, ref } from 'vue'
+const theme = ref<'light' | 'dark'>('dark')
+provide(ThemeKey, theme)
+```
+
+```ts
+// Any descendant, however deep
+import { inject } from 'vue'
+const theme = inject(ThemeKey)          // typed as Ref<'light'|'dark'> | undefined
+const theme2 = inject(ThemeKey, ref('light'))  // with default: no undefined
+```
+
+Three notes of craft. **Use `InjectionKey` symbols, not strings** — you get collision-proof keys and full type inference at the inject site for free. **Provide reactive values** (a ref, as above) when consumers should see updates; providing a plain value is a one-time snapshot. And **keep mutation with the provider**: if descendants need to change the value, provide a mutator function alongside a `readonly()` view of the state, so the data-flow direction stays legible:
+
+```ts
+provide(ThemeKey, { theme: readonly(theme), setTheme: (t: Theme) => (theme.value = t) })
+```
+
+Where does provide/inject sit versus Pinia? The honest boundary: provide/inject is **scoped context** — it serves a *subtree*, can have different values in different subtrees (two `<Tabs>` instances each provide their own coordination state), and is invisible outside its subtree. Pinia is **application state** — global, devtools-inspectable, importable from anywhere including the router. Theme/locale/compound-component-internals → provide/inject; cart/session/cross-page data → Pinia. Using provide/inject as a poor man's global store gives you Pinia's coupling without its tooling; the full three-way comparison (including module-state composables) is in Part 10.
+
+One scoping detail completes the picture: `app.provide(key, value)` in `main.ts` provides to *every* component — the mechanism plugins use to expose their services (Vue Router's `useRouter` and Pinia's stores both resolve through app-level injection under the hood). When a value is genuinely app-wide *and* has no reason to vary by subtree, app-level provide is lighter than a wrapper component.
+
+---
+
+## Part 8 — Composables: Vue's Unit of Logic Reuse
+
+Guide: [Composables](https://vuejs.org/guide/reusability/composables.html)
+
+The Composition API's payoff, promised in Part 1, is this: because component logic is just function calls in a setup scope, *any coherent chunk of it can be extracted into a plain function and reused*. Such a function — one that uses reactive state and/or lifecycle hooks, named `useX` by convention — is a **composable**. Composables are to Vue what hooks are to React, minus the rules about call order across re-renders (a composable runs *once* per component, during setup; there is no "every render" to worry about).
+
+The pattern is best learned by building one properly, with every discipline included. Here is `useEventListener` — small, but it exhibits the full shape:
+
+```ts
+// composables/useEventListener.ts
+import { toValue, watchEffect, type MaybeRefOrGetter } from 'vue'
+
+export function useEventListener<K extends keyof WindowEventMap>(
+  target: MaybeRefOrGetter<EventTarget | null | undefined>,
+  event: K,
+  handler: (e: WindowEventMap[K]) => void,
+) {
+  watchEffect((onCleanup) => {
+    const el = toValue(target)            // unwrap ref | getter | raw value
+    if (!el) return
+    el.addEventListener(event, handler)
+    onCleanup(() => el.removeEventListener(event, handler))
   })
+}
+```
 
-  api.interceptors.request.use((config) => {
-    const auth = useAuthStore()
-    if (auth.token) config.headers.Authorization = `Bearer ${auth.token}`
-    return config
-  })
+Unpack the disciplines, because they generalize to every composable you'll write:
 
-  api.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-      if (error.response?.status === 401) {
-        await useAuthStore().refresh()
-        return api(error.config) // Retry
-      }
-      return Promise.reject(error)
+- **Flexible inputs via `toValue`.** The `MaybeRefOrGetter` type plus `toValue()` lets callers pass a raw value, a ref, or a getter — and because the unwrapping happens *inside* a reactive effect, a ref or getter input makes the composable *re-reactive to its arguments*: pass a template ref as `target` and the listener automatically re-attaches when the element appears or changes.
+- **Cleanup is built in, not optional.** The `onCleanup` registrar (or `onUnmounted`, for setup-scoped resources) means no consumer of this composable can ever leak a listener. A composable that acquires without releasing is a bug factory with a nice name.
+- **It composes.** This composable can be called by other composables; effect scope and lifecycle registration flow through transparently because it's all just setup-time function calls.
+
+Now a state-owning composable — the canonical `useFetch` shape, demonstrating the return-refs contract and stale-response safety:
+
+```ts
+// composables/useFetch.ts
+import { ref, watchEffect, toValue, type MaybeRefOrGetter } from 'vue'
+
+export function useFetch<T>(url: MaybeRefOrGetter<string>) {
+  const data = ref<T | null>(null)
+  const error = ref<Error | null>(null)
+  const pending = ref(false)
+
+  watchEffect(async (onCleanup) => {
+    const controller = new AbortController()
+    onCleanup(() => controller.abort())     // a newer request cancels this one
+
+    pending.value = true
+    error.value = null
+    try {
+      const res = await fetch(toValue(url), { signal: controller.signal })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      data.value = await res.json()
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') error.value = e as Error
+    } finally {
+      pending.value = false
     }
-  )
+  })
 
-  // services/users.ts
-  export const userService = {
-    list: (params?: UserListParams) => api.get<User[]>('/users', { params }),
-    get: (id: string) => api.get<User>(`/users/${id}`),
-    create: (data: CreateUserDTO) => api.post<User>('/users', data),
-    update: (id: string, data: UpdateUserDTO) => api.put<User>(`/users/${id}`, data),
-    delete: (id: string) => api.delete(`/users/${id}`),
-  }
-  ```
+  return { data, error, pending }           // refs out — consumers stay reactive
+}
+```
 
-### 6.2 TanStack Query (Vue Query)
+```vue
+<script setup lang="ts">
+const userId = ref(1)
+// reactive URL: changing userId aborts the in-flight request and refetches
+const { data: user, pending, error } = useFetch<User>(() => `/api/users/${userId.value}`)
+</script>
+```
 
-- **Why**: Caching, deduplication, background refetching, optimistic updates, pagination, infinite scroll — all handled
-  - TanStack Query is worth learning because server state has very different failure modes from local component state; docs: [TanStack Query for Vue](https://tanstack.com/query/latest/docs/framework/vue/overview).
-- **`useQuery()`**: Declarative data fetching with caching. `queryKey` for cache identity, `queryFn` for the fetch function
-  - Good query keys are the foundation, because everything else in the cache model depends on them.
-- **`useMutation()`**: For create/update/delete with `onSuccess`, `onError`, `onSettled` callbacks
-  - Mutations are where optimistic UI, rollback logic, and invalidation strategy come together.
-- **`queryClient.invalidateQueries()`**: Refetch after mutations
-  - Invalidation is the simplest way to keep data honest when the server remains your source of truth.
-- **Stale-while-revalidate**: Serve cached data immediately, refetch in background
-  - This pattern improves perceived performance because the UI can stay responsive while newer data loads.
-- **Optimistic updates**: Update cache before server confirms. Roll back on error
-  - Use optimism on flows where the success rate is high and the rollback path is easy to explain to users.
-- **`useInfiniteQuery()`**: Infinite scroll with `getNextPageParam`
-  - Infinite queries are great for feeds and activity logs, but they add complexity around cache shape and scrolling.
-- **Query keys**: Hierarchical arrays `['users', userId, 'posts']` for granular cache invalidation
-  - Consistent key structure is what makes partial invalidation and debugging manageable in larger apps.
-- **`enabled` option**: Conditional/dependent queries
-  - This is the cleanest way to express “fetch only when the required input exists” without manual watcher code.
-- **Placeholder data and initial data**: Show something immediately while fetching
-  - These options let you reduce loading jank without pretending the app already has fresh server truth.
-- **Devtools**: `@tanstack/vue-query-devtools` for cache inspection
-  - Query devtools are invaluable when a bug is really stale cache behavior rather than a rendering problem.
+The contract on the way out mirrors the one on the way in: **return refs** (individually destructurable without losing reactivity — Part 4 — which is precisely why composables return an object of refs rather than a `reactive()` object), and return `readonly(...)` views of any state consumers must not mutate directly. Internally, note how naturally the Part 4 primitives compose: a reactive input, an auto-tracking effect, abort-on-restale cleanup. Every loading/error/data pattern in every Vue app you'll ever work on is some elaboration of these twenty lines.
 
-### 6.3 Data Fetching Patterns
+The rules that keep composables honest are few: call them at the top level of setup (or of another composable), never conditionally — they register against the current instance, per Part 7; keep them focused on one concern, composing small ones into larger ones (`useAuth` calling `useFetch` calling `useEventListener`); and name them `useX` so readers know lifecycle and reactivity are in play.
 
-- **Loading/error/data states**: Every fetch needs all three. Never ignore error states
-  - Thinking in these three states prevents “happy path only” UIs that fall apart under real network conditions.
-- **Retry logic**: Exponential backoff for transient failures
-  - Retries should help with flaky networks, not hide persistent backend failures from the user forever.
-- **Request cancellation**: `AbortController` for cancelled navigations / stale requests
-  - Cancellation prevents slow responses from overwriting newer state after the user has already moved on.
-- **Polling**: `refetchInterval` in Vue Query, or manual `setInterval` with cleanup
-  - Poll only when freshness matters enough to justify extra server load and client work.
-- **Debounced search**: Debounce input, fetch on debounced value
-  - Debouncing keeps typing smooth and reduces redundant requests for intermediate input states.
-- **Parallel requests**: `Promise.all()` for independent fetches
-  - Parallelize anything without a hard dependency so the UI waits on the slowest request only once.
-- **Dependent queries**: Fetch B only after A completes (use `enabled: computed(() => !!userQuery.data.value)`)
-  - This pattern keeps sequencing explicit instead of scattering fetch order across watchers and lifecycle hooks.
+### VueUse, and Composable vs. Renderless Component
 
-**Practice**: Build a user management dashboard with search, filters, pagination, create/edit forms with optimistic updates, and proper loading/error states using TanStack Query.
+[VueUse](https://vueuse.org/) is the de facto standard library of composables — 200+ of them: `useLocalStorage`, `useDebouncedRef`, `useIntersectionObserver`, `onClickOutside`, `useDark`, `useWebSocket`. The right way to use it: build `useFetch`, `useLocalStorage`, and `useEventListener` yourself once (you just did one), so the patterns are yours; then depend on VueUse in real projects, because its versions handle SSR, edge cases, and cleanup more thoroughly than your first draft will. Its [source code](https://github.com/vueuse/vueuse) is the single best corpus of composable craft to read — Anthony Fu's patterns (`MaybeRefOrGetter` everywhere, configurable targets, `tryOnScopeDispose` for safe cleanup) are the idiom the ecosystem follows.
+
+Finally, the design question Part 6 deferred: logic reuse via composable or via renderless component? The modern answer leans strongly composable — it imposes no component boundary, returns plain reactive values you can combine freely, and is cheaper (no extra instance). Renderless components earn their keep when the reused thing is intrinsically tied to *template structure* — it must wrap children, manage slots, or place itself in the tree (e.g., a `<DropZone>` that needs to be an element with listeners and render different slot content per drag state). Rule of thumb: state and behavior → composable; behavior that owns markup structure → renderless component.
 
 ---
 
-## Phase 7: Forms & Validation
+## Part 9 — Vue Router
 
-### 7.1 Form Handling Approaches
+Docs: [Vue Router](https://router.vuejs.org/guide/) — read the Essentials section in full; it's short and precise.
 
-- **Native `v-model` + manual validation**: Fine for simple forms (1-3 fields)
-  - Start simple when the form is small, because adding a full validation framework too early can create unnecessary ceremony; docs: [Form Input Bindings](https://vuejs.org/guide/essentials/forms.html).
-- **VeeValidate**: Full-featured form validation library. `useForm()`, `useField()`. Schema-based validation with Zod/Yup
-  - VeeValidate shines when form state, validation messages, and submission flow would otherwise become repetitive boilerplate; docs: [VeeValidate](https://vee-validate.logaretm.com/v4/).
-- **FormKit**: Form framework with built-in inputs, validation, and generation from schema
-  - This is a stronger fit when the product has many internal CRUD forms and consistency matters more than bespoke markup; docs: [FormKit](https://formkit.com/).
+A single-page application replaces the browser's page-per-URL model with one long-lived page that swaps views. Vue Router restores the part of the old model you actually want to keep: **the URL as the canonical, shareable, bookmarkable description of what the user is looking at.** Internalize that framing and most routing decisions make themselves — if a piece of view state matters enough that a reload or a shared link should restore it, it belongs in the URL (path or query); if not, it belongs in component or store state.
 
-### 7.2 VeeValidate + Zod (Production Pattern)
+### Setup and Core Concepts
 
-Reference docs: [VeeValidate](https://vee-validate.logaretm.com/v4/), [Zod](https://zod.dev/).
+```ts
+// router/index.ts
+import { createRouter, createWebHistory } from 'vue-router'
 
-```typescript
+const router = createRouter({
+  history: createWebHistory(import.meta.env.BASE_URL),
+  routes: [
+    { path: '/', name: 'home', component: HomeView },
+    {
+      path: '/users/:id(\\d+)',                       // param with regex constraint
+      name: 'user-detail',
+      component: () => import('@/views/UserDetail.vue'),  // lazy-loaded chunk
+      props: true,                                     // params become props
+    },
+    {
+      path: '/settings',
+      component: () => import('@/views/SettingsShell.vue'),
+      children: [                                      // nested: shell + <RouterView/>
+        { path: '', name: 'settings-profile', component: ProfilePane },
+        { path: 'security', name: 'settings-security', component: SecurityPane },
+      ],
+      meta: { requiresAuth: true },
+    },
+    { path: '/:pathMatch(.*)*', name: 'not-found', component: NotFoundView },
+  ],
+  scrollBehavior(to, from, savedPosition) {
+    return savedPosition ?? { top: 0 }   // restore on back/forward, top on new nav
+  },
+})
+
+export default router
+```
+
+This one block carries most of the router's ideas, so walk it. `createWebHistory` uses the History API for clean URLs (`/users/42`); the alternative `createWebHashHistory` (`/#/users/42`) exists only for hosting that can't be configured — history mode requires the server to serve `index.html` for unknown paths (a one-line config on Netlify/nginx/Cloudflare Pages), and is what you should always ship. The `:id(\\d+)` segment is a **dynamic param** with an inline regex, so `/users/abc` falls through to the catch-all instead of rendering a broken page — validate URL shape at the router boundary, not inside components. The `() => import(...)` component is **route-level code splitting**: Vite turns each one into a separate chunk fetched on first navigation, the single highest-leverage bundle optimization available (Part 14). `children` define **nested routes** — the parent renders shared shell chrome plus its own `<RouterView/>` where the matched child appears, the natural fit for settings areas and dashboards. And `scrollBehavior` restores scroll position on back/forward — a polish item users feel immediately and developers forget routinely.
+
+In templates, navigate declaratively with `<RouterLink :to="{ name: 'user-detail', params: { id: user.id } }">` — prefer named routes over path strings (rename a path once and string-built URLs break silently all over the app) and `<RouterLink>` over `<a>` (no full-page reload, automatic `router-link-active` classes for nav highlighting). In script, two composables cover everything:
+
+```vue
+<script setup lang="ts">
+import { useRoute, useRouter } from 'vue-router'
+
+const route = useRoute()    // reactive description of WHERE WE ARE
+const router = useRouter()  // imperative service for GOING ELSEWHERE
+
+const userId = computed(() => Number(route.params.id))
+
+async function onSave() {
+  await save()
+  router.push({ name: 'user-detail', params: { id: userId.value } })
+}
+</script>
+```
+
+The distinction in the comments is the one to keep: `route` is **reactive state** — `route.params`, `route.query`, `route.meta` are tracked like any other reactive object, so computeds and watchers built on them update on navigation. This matters because of a behavior that surprises everyone once: navigating from `/users/1` to `/users/2` **reuses the same component instance** (same matched route, different params) — no remount, no second `onMounted`. The idiomatic fix falls straight out of Part 4: watch the param.
+
+```ts
+watch(() => route.params.id, (id) => loadUser(id), { immediate: true })
+```
+
+One `immediate` watcher handles both the first load and every param change — strictly better than an `onMounted` fetch that goes stale.
+
+### Two Refinements: Named Views and Route Transitions
+
+Occasionally a route should control *several* regions of the screen at once — main panel plus a context sidebar, say. **Named views** handle this: the route maps `components: { default: BillDetail, sidebar: RelatedBills }` and the layout renders `<RouterView />` and `<RouterView name="sidebar" />`. It's the right tool when the *pairing itself* varies by route; if the sidebar is the same everywhere, it's just layout.
+
+Animated page transitions compose `<RouterView>`'s scoped slot (Part 6's pattern, used by the router itself) with `<Transition>` (Part 12):
+
+```vue
+<RouterView v-slot="{ Component }">
+  <Transition name="fade" mode="out-in">
+    <component :is="Component" />
+  </Transition>
+</RouterView>
+```
+
+The slot hands you the matched component; you decide how it's wrapped. `mode="out-in"` finishes the old page's exit before the new page enters, avoiding the both-pages-at-once layout jumble. Keep it to ~150ms — page transitions should orient, not entertain.
+
+### Navigation Guards
+
+Docs: [Navigation Guards](https://router.vuejs.org/guide/advanced/navigation-guards.html)
+
+Guards are middleware for navigation: functions that run during a route transition and can allow it, cancel it, or redirect it — by **return value** (the modern API; the older `next()` callback style still works but don't write it):
+
+```ts
+// router/index.ts
+router.beforeEach((to) => {
+  const auth = useAuthStore()        // safe here: guards run after app setup
+  if (to.meta.requiresAuth && !auth.isAuthenticated) {
+    return { name: 'login', query: { redirect: to.fullPath } }  // redirect
+  }
+  // return nothing (undefined) → allow; return false → cancel
+})
+
+router.afterEach((to) => {
+  document.title = (to.meta.title as string | undefined) ?? 'MyApp'
+})
+```
+
+Returning a location redirects, `false` cancels, nothing allows — three outcomes, no callback bookkeeping. The auth pattern above is the canonical one: gate on `meta.requiresAuth` (declared on the route — `meta` is the router's extension point for exactly this kind of cross-cutting flag, typed app-wide by augmenting `RouteMeta`), and carry the intended destination in `query.redirect` so login can resume the journey. Three guard scopes exist for three granularities: global `beforeEach` for app-wide policy (auth, analytics), per-route `beforeEnter` for one route family's rules, and in-component `onBeforeRouteLeave` for the case only the component understands — the classic being unsaved-changes protection:
+
+```ts
+onBeforeRouteLeave(() => {
+  if (form.isDirty && !confirm('Discard unsaved changes?')) return false
+})
+```
+
+Guards can be async (return a Promise) — the router waits, which enables fetch-before-navigate flows. The trade-off versus fetch-in-component is responsiveness semantics: blocking in a guard means the old page stays visible until data is ready (no spinner, but a "dead" click if slow); fetching in the component shows the new page instantly with a loading state. Modern UX mostly prefers the latter; reserve guard-blocking for cheap checks like permissions.
+
+---
+
+## Part 10 — State Management with Pinia
+
+Docs: [Pinia](https://pinia.vuejs.org/core-concepts/) — Vuex's successor and the official state library; if you see Vuex, you're in a legacy codebase.
+
+First, deflate the topic: in Vue 3, "state management" is not a technology — it's the question *"where should this reactive state live?"* The reactivity system works identically everywhere, so the candidates are: in a component (local state); in an ancestor, shared via provide/inject (subtree context, Part 7); in a module-scoped ref inside a composable (global, DIY); or in a Pinia store (global, with tooling). Most state should stay local — lifting state to a global store "to be safe" is the most common architecture mistake in Vue apps, and it buys you action-at-a-distance for nothing. Pinia earns its place for state that is genuinely cross-cutting: the session, a cart, notifications, anything two distant routes both touch.
+
+### Stores in the Setup Syntax
+
+Pinia offers two definition styles; learn the **setup syntax**, because it is literally the Composition API you already know — a store is a composable whose state is app-scoped instead of component-scoped:
+
+```ts
+// stores/cart.ts
+import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
+
+export const useCartStore = defineStore('cart', () => {
+  // state — refs
+  const items = ref<CartItem[]>([])
+
+  // getters — computeds
+  const count = computed(() => items.value.reduce((n, i) => n + i.qty, 0))
+  const total = computed(() => items.value.reduce((s, i) => s + i.price * i.qty, 0))
+
+  // actions — functions (sync or async)
+  function add(product: Product, qty = 1) {
+    const existing = items.value.find((i) => i.id === product.id)
+    if (existing) existing.qty += qty
+    else items.value.push({ ...product, qty })
+  }
+
+  async function checkout() {
+    await api.post('/checkout', { items: items.value })
+    items.value = []
+  }
+
+  return { items, count, total, add, checkout }
+})
+```
+
+(The alternative **options syntax** — `state`/`getters`/`actions` buckets — is fine and slightly more guard-railed; it's the Options API trade-off replayed in miniature. Setup syntax wins for the same reasons as before: you can use watchers, `inject`, and other composables inside the store, and TypeScript inference is effortless.)
+
+Nothing here is new machinery — `ref`, `computed`, functions — which is exactly Pinia's appeal. What `defineStore` adds over a bare composable: the store is **instantiated once per app** (every `useCartStore()` call returns the same instance); it's registered with **Vue Devtools** (inspect state live, see which action caused each change, time-travel); it's a **plugin target** (persistence to localStorage via [pinia-plugin-persistedstate](https://prazdevs.github.io/pinia-plugin-persistedstate/) is a one-liner); and it's **SSR-safe** (state is per-request on the server and serialized to the client — the DIY pattern below is not).
+
+### Using Stores — and the One Trap
+
+```vue
+<script setup lang="ts">
+import { storeToRefs } from 'pinia'
+import { useCartStore } from '@/stores/cart'
+
+const cart = useCartStore()
+
+const { items, total } = storeToRefs(cart)   // state/getters: keep reactivity
+const { add, checkout } = cart               // actions: plain destructure is fine
+</script>
+```
+
+The trap is Part 4 verbatim: a store instance is a `reactive()` object, so `const { total } = cart` copies a dead snapshot. `storeToRefs(cart)` is `toRefs` that skips functions — use it for state and getters; actions are plain functions and destructure freely. This one line is behind a remarkable share of "my component doesn't update" questions in Vue forums.
+
+Conventions that keep stores healthy at scale: **one store per domain** (`useAuthStore`, `useCartStore`), not one mega-store; stores may call other stores (call `useOtherStore()` inside the action that needs it), but keep the dependency graph acyclic; and keep stores **thin** — state plus the transitions on that state. Complex orchestration ("submit order: validate, charge, clear cart, redirect, toast") reads better as a composable that *uses* several stores than as a store action that knows about routing and toasts.
+
+### The Store Instance API and Plugins
+
+Every Pinia store instance carries a small `$`-prefixed API beyond your own state and actions, and two of its members earn regular use. **`$subscribe`** watches the store's state as a unit — the natural seam for persistence and analytics, better than N individual watchers:
+
+```ts
+cart.$subscribe((mutation, state) => {
+  localStorage.setItem('cart', JSON.stringify(state.items))
+}, { detached: true })   // survive the subscribing component's unmount
+```
+
+**`$onAction`** wraps every action call with before/after/error hooks — cross-cutting logging, timing, and optimistic-rollback live here, written once instead of per-action. The rest is situational: `$patch` groups several mutations into one devtools entry (and one batch — though Part 4's batching means it's rarely a *performance* tool); `$reset` restores initial state in options-syntax stores (in setup syntax you write your own `reset` action — one of the few options-syntax conveniences setup gives up); `$state` swaps the whole state object, mostly for SSR hydration.
+
+**Plugins** are how behavior becomes uniform across stores: a function receiving each store as it's created, free to subscribe, wrap actions, or add properties. [pinia-plugin-persistedstate](https://prazdevs.github.io/pinia-plugin-persistedstate/) is the canonical example — `persist: true` per store, and the `$subscribe`-to-storage wiring above disappears into configuration. Persist deliberately, though: a stale cart restored from localStorage is a bug wearing a convenience costume, so whitelist paths (`pick`) rather than persisting whole stores by reflex.
+
+### The Honest Three-Way Comparison
+
+The composable pattern makes a DIY global store nearly trivial, which is why the comparison deserves real treatment rather than "always Pinia":
+
+```ts
+// composables/useNotifications.ts — module-state composable: global state, no library
+import { ref, readonly } from 'vue'
+
+const queue = ref<Notification[]>([])        // module scope = one instance per app
+
+export function useNotifications() {
+  function notify(message: string, kind: Kind = 'info') {
+    const id = crypto.randomUUID()
+    queue.value.push({ id, message, kind })
+    setTimeout(() => dismiss(id), 5000)
+  }
+  function dismiss(id: string) {
+    queue.value = queue.value.filter((n) => n.id !== id)
+  }
+  return { queue: readonly(queue), notify, dismiss }
+}
+```
+
+| | Pinia store | provide/inject | Module-state composable |
+|---|---|---|---|
+| Scope | Global | Subtree (can differ per subtree) | Global (module singleton) |
+| Devtools / time travel | ✅ | ❌ | ❌ |
+| SSR safety | ✅ built in | ✅ (per-app) | ⚠️ shared across requests — leaks state between users |
+| Plugins (persistence, etc.) | ✅ | ❌ | DIY |
+| Testability | ✅ `createTestingPinia` | ✅ provide a fake in `mount` | ⚠️ module state persists across tests; needs manual reset |
+| Dependencies / ceremony | One library, tiny | None | None |
+| Best for | App state: session, cart, cross-page data | Ambient context: theme, locale, compound components | Small self-contained globals in SPA-only apps: toasts, feature flags |
+
+All three are legitimate; the failure mode is using the wrong row. The module-state composable is the lightest and genuinely fine for a toast queue in a client-only app — but its SSR hazard is disqualifying the moment Nuxt enters (one user's "state" becomes everyone's), and its test-bleed is a slow tax. Provide/inject is unmatched for *per-subtree* context, which neither global option can express at all. Pinia is the default for everything that is truly application state, because devtools visibility and easy test seams compound over a project's life. If you can articulate this table out loud, you understand Vue state management.
+
+---
+
+## Part 11 — Data Fetching and Forms
+
+Two everyday concerns that every Vue app must solve and the core framework deliberately doesn't: talking to servers, and managing form state. Both have settled ecosystem answers.
+
+### Server State Is Different from Client State
+
+The cart in Part 10 is **client state**: your app owns it, mutations are instant and authoritative. A user list fetched from an API is **server state**: the server owns it, your copy is a *cache* that is stale the moment it arrives, and the real problems are cache invalidation, request deduplication, refetching, and races. Treating server state like client state — `data` refs scattered through Pinia stores, hand-rolled `loading` flags everywhere — is how Vue apps rot. Keep the layers distinct:
+
+**Layer 1 — a service module** isolates HTTP mechanics (base URL, auth header injection, error normalization) so components never see endpoint strings. Plain `fetch`, [ofetch](https://github.com/unjs/ofetch), or [axios](https://axios-http.com/) (whose interceptors remain the easiest way to centralize 401-refresh-retry logic) — the choice matters far less than the layer existing:
+
+```ts
+// services/api.ts — one place where every request gains auth and every 401 is handled
+import axios from 'axios'
+
+export const api = axios.create({ baseURL: import.meta.env.VITE_API_URL, timeout: 10_000 })
+
+api.interceptors.request.use((config) => {
+  const auth = useAuthStore()
+  if (auth.token) config.headers.Authorization = `Bearer ${auth.token}`
+  return config
+})
+
+api.interceptors.response.use(undefined, async (error) => {
+  if (error.response?.status === 401 && !error.config._retried) {
+    error.config._retried = true
+    await useAuthStore().refresh()      // refresh the session once,
+    return api(error.config)            // then replay the original request
+  }
+  throw error
+})
+```
+
+With the cross-cutting concerns centralized, the per-resource modules become trivially thin — and that thinness is the feature, because it's also the seam tests mock (Part 13):
+
+```ts
+// services/users.ts — components import functions, not HTTP details
+export const userService = {
+  list: (params?: UserListParams) => api.get<User[]>('/users', { params }),
+  get: (id: number) => api.get<User>(`/users/${id}`),
+  update: (id: number, patch: UpdateUserDTO) => api.patch<User>(`/users/${id}`, patch),
+}
+```
+
+**Layer 2 — a caching layer** manages the lifecycle of fetched data. For simple read-heavy apps, the `useFetch` composable from Part 8 (or VueUse's) is enough. Past a modest complexity threshold — shared data across views, pagination, mutations that must invalidate lists — reach for [TanStack Query](https://tanstack.com/query/latest/docs/framework/vue/overview) (Vue Query):
+
+```ts
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
+
+const { data: users, isPending, error } = useQuery({
+  queryKey: ['users', filters],            // reactive key: filter change → refetch
+  queryFn: () => userService.list(toValue(filters)),
+  staleTime: 30_000,
+})
+
+const queryClient = useQueryClient()
+const { mutate: updateUser } = useMutation({
+  mutationFn: ({ id, patch }: UpdateArgs) => userService.update(id, patch),
+  onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
+})
+```
+
+The conceptual core is the **query key**: a hierarchical, serializable identity for each piece of server data (`['users', filters]`, `['users', id]`). Identical keys share one cache entry and one in-flight request (deduplication); mutations invalidate by key prefix; stale-while-revalidate (serve cached instantly, refetch in background) comes free. Since query keys can contain refs, the Part 4 engine drives the cache: change a filter ref and the query refetches itself. The judgment call: a dashboard reading a handful of endpoints doesn't need it; an app with lists + detail views + edits almost certainly does, and adopting it late means unwinding a thicket of ad-hoc `loading` refs.
+
+Whichever layer you use, three disciplines are non-negotiable: **every fetch renders all three of pending/error/data** (an unhandled error state is a blank screen in production); **stale responses must not clobber fresh state** (abort on re-trigger — Part 8's pattern — or let the cache layer handle it); and **server truth wins** — optimistic updates are a UX enhancement layered on top, with rollback, not a replacement for invalidation.
+
+### Forms
+
+Guide: [Form Input Bindings](https://vuejs.org/guide/essentials/forms.html)
+
+Native `v-model` covers the mechanics — it adapts per element (text inputs bind `value`/`input`, checkboxes bind `checked`/`change`, `<select>` binds selection; the `.number`, `.trim`, `.lazy` modifiers handle the common massaging) — so a small form is honestly just a `reactive` model object and a submit handler, and adding a form library to a login form is ceremony. The complexity that justifies tooling is **validation lifecycle**: per-field error messages, validate-on-blur-then-revalidate-on-input timing, cross-field rules, dirty tracking, async submission state.
+
+The production-standard stack is [VeeValidate](https://vee-validate.logaretm.com/v4/) with a [Zod](https://zod.dev/) schema (see the schema-validation discussion in the [TypeScript guide](TYPESCRIPT_STUDY_GUIDE.md)) — one schema yields runtime validation *and* the inferred TypeScript type of the form values:
+
+```ts
 import { useForm } from 'vee-validate'
 import { toTypedSchema } from '@vee-validate/zod'
 import { z } from 'zod'
 
-const schema = toTypedSchema(z.object({
-  email: z.string().email('Invalid email'),
-  password: z.string().min(8, 'Must be at least 8 characters'),
-  confirmPassword: z.string(),
-}).refine(data => data.password === data.confirmPassword, {
-  message: 'Passwords must match',
-  path: ['confirmPassword'],
-}))
-
-const { handleSubmit, errors, isSubmitting, resetForm } = useForm({
-  validationSchema: schema,
+const schema = z.object({
+  email: z.string().email('Enter a valid email'),
+  password: z.string().min(8, 'At least 8 characters'),
+  confirm: z.string(),
+}).refine((v) => v.password === v.confirm, {
+  message: 'Passwords must match', path: ['confirm'],
 })
+
+const { handleSubmit, errors, isSubmitting, defineField } = useForm({
+  validationSchema: toTypedSchema(schema),
+})
+const [email, emailAttrs] = defineField('email')
 
 const onSubmit = handleSubmit(async (values) => {
-  // values is fully typed { email: string, password: string, confirmPassword: string }
-  await authService.register(values)
+  await authService.register(values)   // values: fully typed, fully validated
 })
 ```
 
-### 7.3 Form Patterns
-
-- **Field-level validation**: Validate as user types (with debounce) or on blur
-  - Choose the timing based on the cost of interruption: immediate feedback is helpful, but not every field needs live nagging.
-- **Form-level validation**: Cross-field validation (password confirmation, date ranges)
-  - Form-level rules matter whenever one field changes the meaning or validity of another.
-- **Dynamic forms**: Add/remove fields based on user choices. Array fields for repeatable sections
-  - Dynamic sections are where schema-driven or composable-based form structure starts to pay off.
-- **Multi-step forms (wizards)**: Validate per step, preserve state across steps, allow going back
-  - Good wizard UX depends on saved progress and predictable validation boundaries, not just splitting a long form visually.
-- **File uploads**: Preview, progress tracking, drag-and-drop zones. Use `FormData` for submission
-  - Uploads add async and browser API complexity, so isolate that logic instead of burying it in the form template.
-- **Dirty tracking**: Track which fields have been modified. Warn on navigation if dirty
-  - Dirty state protects users from losing work and pairs naturally with router leave guards.
-- **Server-side errors**: Map API error responses back to form fields
-  - The best validation UX combines local checks with precise backend feedback when the server rejects a value.
-- **Accessible forms**: Labels, error messages linked with `aria-describedby`, focus management on errors
-  - Accessibility work is what makes a form understandable under keyboards, screen readers, and error-heavy flows.
-
-**Practice**: Build a multi-step registration form with real-time validation, file upload (avatar), cross-field validation, dirty tracking, and server-side error handling.
+`handleSubmit` only invokes your callback when the schema passes, so the submit path handles *valid data by construction*. The patterns layered on this foundation are predictable once named: cross-field rules live in schema `refine`s; multi-step wizards validate per-step schemas while accumulating one model; **server-side errors map back onto fields** via `setFieldError` (the API rejecting "email already taken" should light up the email field, not a generic banner); and dirty tracking (`meta.dirty`) pairs with Part 9's `onBeforeRouteLeave` guard to protect unsaved work. Accessibility is part of correctness here, not garnish: every input labeled, every error linked via `aria-describedby`, focus moved to the first invalid field on failed submit.
 
 ---
 
-## Phase 8: Performance & Production Patterns
+## Part 12 — Transitions, Teleport, and the Other Built-ins
 
-### 8.1 Performance Optimization
+Guide: [Transition](https://vuejs.org/guide/built-ins/transition.html), [TransitionGroup](https://vuejs.org/guide/built-ins/transition-group.html), [Teleport](https://vuejs.org/guide/built-ins/teleport.html), [KeepAlive](https://vuejs.org/guide/built-ins/keep-alive.html), [Suspense](https://vuejs.org/guide/built-ins/suspense.html)
 
-#### Rendering Performance
-- **`v-once`**: Static content that never changes
-  - This is a small optimization, but it is a clean win for large chunks of truly static markup; docs: [Performance](https://vuejs.org/guide/best-practices/performance.html).
-- **`v-memo`**: Memoize list items — skip re-render if deps haven't changed
-  - Reach for `v-memo` only after profiling, because most apps get more from simpler state and rendering fixes.
-- **`shallowRef()` / `shallowReactive()`**: Avoid deep reactivity tracking for large data structures
-  - Shallow tracking works best when you control exactly when updates should propagate through the UI.
-- **Computed caching**: Prefer `computed()` over methods in templates — computeds are cached
-  - Cached derivations cut repeated work and make templates easier to scan at the same time.
-- **Virtual scrolling**: `vue-virtual-scroller` for rendering 10k+ items. Only render visible items
-  - Rendering fewer DOM nodes usually beats micro-optimizing the render function when list sizes become extreme; docs: [`vue-virtual-scroller`](https://vue-virtual-scroller-demo.netlify.app/).
-- **`<KeepAlive>`**: Cache frequently toggled component instances
-  - This is especially helpful when users switch between tabs or views that would otherwise re-fetch or re-initialize.
+Vue ships a handful of built-in components that solve problems at the seam between declarative rendering and the messy realities of the DOM. They share a theme: each one intercepts a moment the virtual DOM normally handles invisibly — an element entering or leaving, a subtree's physical location, an instance's destruction — and gives you a declarative handle on it.
 
-#### Bundle Size
-- **Lazy loading routes**: `() => import('./views/Page.vue')` — automatic code splitting
-  - Route splits are the highest-leverage bundle optimization because they align naturally with real navigation behavior.
-- **Dynamic imports**: `defineAsyncComponent()` for heavy components (charts, editors, maps)
-  - Use component-level splits for rarely opened UI that would otherwise tax the first paint budget.
-- **Tree-shaking**: Named imports from libraries. `import { debounce } from 'lodash-es'` not `import _ from 'lodash'`
-  - Tree-shaking only helps if the package supports it and your imports are granular enough for the bundler to prune.
-- **Bundle analysis**: `rollup-plugin-visualizer` to see what's in your bundle
-  - Analyze before optimizing so you spend effort on the actual heavy dependencies, not the ones you merely suspect.
-- **Dependency auditing**: Check bundle cost with `bundlephobia.com`. Prefer smaller alternatives
-  - This habit pays off most before a dependency becomes deeply embedded in the app.
+### `<Transition>`: Animating Enter and Leave
 
-#### Runtime Performance
-- **`Object.freeze()` for static data**: Large lookup tables, config data that never changes
-  - Freezing is a signal to both Vue and future readers that this data is configuration, not mutable state.
-- **Web Workers**: Offload heavy computation (`comlink` for ergonomic worker communication)
-  - Move work off the main thread when the user can feel the lag, not just because a computation sounds expensive; docs: [`comlink`](https://github.com/GoogleChromeLabs/comlink).
-- **Debounce/throttle**: Input handlers, scroll handlers, resize handlers
-  - Rate-limiting is one of the easiest ways to keep reactive UIs responsive under noisy browser events.
-- **Image optimization**: Lazy loading (`loading="lazy"`), responsive images (`srcset`), modern formats (WebP, AVIF)
-  - Image payload often dominates real-world performance more than framework code does.
+CSS can animate property *changes*, but it has no native answer for "animate this element as it's being removed" — by the time the animation would run, the element is gone. `<Transition>` solves exactly this: when its single child enters or leaves (via `v-if`/`v-show`/dynamic component), Vue applies a choreographed sequence of classes and *waits for your animation to finish before removing the element*:
 
-### 8.2 Error Handling
+```vue
+<Transition name="fade">
+  <p v-if="visible">Now you see me</p>
+</Transition>
 
-- **`app.config.errorHandler`**: Global error handler. Send to error tracking service (Sentry)
-  - Global handling gives you one last safety net for unexpected runtime failures; docs: [Error Handling](https://vuejs.org/api/application.html#app-config-errorhandler), [Sentry for Vue](https://docs.sentry.io/platforms/javascript/guides/vue/).
-- **`onErrorCaptured()`**: Per-component error boundaries
-  - Local error capture lets one unstable feature fail gracefully without taking down the whole view.
-- **Error boundary component pattern**: Wrap sections of your app to catch and display errors gracefully
-  - A reusable boundary component helps you make failure states intentional instead of ad hoc.
-- **Async error handling**: Always handle promise rejections. Vue Query's `onError`, try/catch in actions
-  - Most production bugs in data-heavy apps are async bugs, so treat rejected promises as first-class UI states.
-
-### 8.3 Security
-
-- **XSS prevention**: Vue auto-escapes template interpolation. Never use `v-html` with user input
-  - Vue protects interpolation by default, but that safety disappears the moment you opt into raw HTML; docs: [Security](https://vuejs.org/guide/best-practices/security.html).
-- **`v-html` dangers**: Only use with sanitized content. Use `DOMPurify` if you must render user HTML
-  - Raw HTML should be a deliberate exception with an explicit sanitization boundary, not a convenience shortcut; docs: [DOMPurify](https://github.com/cure53/DOMPurify).
-- **CSP compliance**: Avoid inline styles/scripts in production. Configure CSP headers
-  - CSP is easier to adopt when you plan for it early instead of retrofitting it after unsafe patterns spread.
-- **Auth token storage**: `httpOnly` cookies > localStorage for tokens. localStorage is vulnerable to XSS
-  - Security decisions around token storage should reflect your backend architecture, not just frontend convenience.
-- **CORS**: Understand preflight requests, credentials mode. Configure backend `Access-Control-*` headers
-  - CORS issues are integration problems, so learn enough to debug them without guessing blindly at headers.
-- **Environment variables**: `VITE_*` prefix makes them public. Never put secrets in frontend env vars
-  - Frontend env vars are build-time configuration, not secret storage, because the client can inspect them.
-- **Dependency security**: `npm audit`, `Snyk`, keep dependencies updated
-  - Supply-chain hygiene matters more in frontend apps than many teams realize because the browser runs everything you ship; docs: [Snyk](https://docs.snyk.io/).
-
-### 8.4 Accessibility (a11y)
-
-- **Semantic HTML**: Use `<button>`, `<nav>`, `<main>`, `<article>` — not `<div>` for everything
-  - Native semantics give you keyboard support, screen reader meaning, and browser behavior with less custom code; docs: [Accessibility](https://vuejs.org/guide/best-practices/accessibility.html).
-- **ARIA attributes**: `aria-label`, `aria-describedby`, `aria-expanded`, `aria-live`, `role`
-  - ARIA should clarify semantics that HTML cannot express, not paper over missing semantic structure.
-- **Keyboard navigation**: Every interactive element must be keyboard accessible. Focus trapping in modals
-  - Keyboard support is the fastest practical test of whether your component model respects real interaction constraints.
-- **Focus management**: Move focus after route changes, modal open/close, dynamic content insertion
-  - Good focus flow keeps dynamic Vue interfaces understandable instead of disorienting.
-- **Screen reader testing**: Use VoiceOver (macOS), NVDA (Windows). Test regularly
-  - Manual testing catches issues that lint rules and automated audits cannot fully understand; docs: [VoiceOver](https://support.apple.com/guide/voiceover/welcome/mac), [NVDA](https://www.nvaccess.org/download/).
-- **Color contrast**: WCAG AA minimum (4.5:1 for text). Use tooling to verify
-  - Contrast is a design-system concern as much as an implementation concern, so test your tokens and components together.
-- **`eslint-plugin-vuejs-accessibility`**: Catch common a11y issues at lint time
-  - Linting helps prevent regressions, but it is strongest when paired with design reviews and manual testing; docs: [`eslint-plugin-vuejs-accessibility`](https://vue-a11y.github.io/eslint-plugin-vuejs-accessibility/).
-
-**Practice**: Take your existing app and run a Lighthouse accessibility audit. Fix every issue. Add keyboard navigation to all interactive components. Test with a screen reader.
-
----
-
-## Phase 9: Testing
-
-### 9.1 Unit Testing with Vitest
-
-- **Why Vitest**: Vite-native, Jest-compatible API, fast, ESM-first. Use it over Jest for Vue 3 projects
-  - Vitest keeps the test environment close to the app's actual build tooling, which reduces config friction; docs: [Testing](https://vuejs.org/guide/scaling-up/testing.html), [Vitest](https://vitest.dev/guide/).
-- **Configuration**: `vitest.config.ts` or `vite.config.ts` with test config. `@vue/test-utils` for component testing
-  - Solid config pays off when you need aliases, DOM APIs, setup files, and consistent mocks across the whole suite.
-- **Testing composables**: Call inside a component context using `withSetup()` helper or test directly if no lifecycle hooks
-  - The main question is whether the composable relies on lifecycle, injection, or DOM context.
-- **Testing utilities/services**: Standard unit tests, no Vue-specific tooling needed
-  - Keep non-UI logic framework-agnostic so it stays cheap to test and easy to refactor.
-
-### 9.2 Component Testing with Vue Test Utils
-
-- **`mount()` vs `shallowMount()`**: `mount` renders children, `shallowMount` stubs them. Use `mount` by default for more realistic tests
-  - Full rendering catches integration mistakes earlier, while shallow rendering is mostly for isolating a component with noisy children; docs: [Vue Test Utils Guide](https://test-utils.vuejs.org/guide/).
-- **Finding elements**: `wrapper.find()`, `wrapper.findComponent()`, `wrapper.findAll()`. Use `data-testid` attributes
-  - Stable selectors make tests resilient when markup structure changes for styling reasons.
-- **User interaction**: `wrapper.trigger('click')`, `wrapper.setValue()`, `wrapper.setProps()`
-  - Favor tests that simulate user-observable behavior instead of asserting private implementation details.
-- **Asserting output**: `wrapper.text()`, `wrapper.html()`, `wrapper.classes()`, `wrapper.attributes()`, `wrapper.emitted()`
-  - Assert what matters to the user or the parent contract, not every incidental DOM detail.
-- **Async behavior**: `await nextTick()`, `await flushPromises()`, `await wrapper.vm.$nextTick()`
-  - Most flaky Vue tests come from missing the right async boundary before making assertions.
-- **Mocking**:
-  - **Props**: Pass in `mount(Component, { props: { ... } })`
-  - **Slots**: Pass in `mount(Component, { slots: { default: '...', header: MyComponent } })`
-  - **Global plugins**: `mount(Component, { global: { plugins: [router, pinia] } })`
-  - **Provide/inject**: `mount(Component, { global: { provide: { key: value } } })`
-  - **Stubs**: `mount(Component, { global: { stubs: { RouterLink: true } } })`
-  - **API calls**: Mock the service module, not axios directly
-  - Mock the boundary your component actually depends on so tests stay decoupled from lower-level implementation changes.
-
-### 9.3 E2E Testing with Playwright or Cypress
-
-- **Playwright** (recommended): Faster, multi-browser, better async handling
-  - Playwright is a strong default because it handles modern browser behavior and CI well; docs: [Playwright](https://playwright.dev/docs/intro).
-- **Cypress**: More mature ecosystem, excellent developer experience, interactive test runner
-  - Cypress still shines when fast local iteration and debugging are more important than broad browser coverage; docs: [Cypress](https://docs.cypress.io/).
-- **What to E2E test**: Critical user flows — registration, login, checkout, core feature CRUD
-  - Reserve E2E coverage for the workflows that would be most expensive to break in production.
-- **Page Object Model**: Encapsulate page selectors and actions in reusable classes
-  - Page objects help only when they reduce duplication without hiding test intent behind too much abstraction.
-- **Test isolation**: Each test should set up its own data. Never depend on test ordering
-  - Isolation is what keeps E2E suites reliable enough to trust in CI.
-- **Visual regression**: `@playwright/test` screenshot comparison, or Percy for cross-browser visual testing
-  - Visual checks are best for layout-heavy UI where DOM assertions miss obvious regressions.
-- **CI integration**: Run E2E in headless mode in CI. Use Playwright's built-in CI config
-  - CI is where flaky assumptions surface, so keep browser setup deterministic and observable.
-
-### 9.4 Testing Strategy
-
-| Layer | Tool | What to Test | Coverage Goal |
-|---|---|---|---|
-| Unit | Vitest | Composables, utilities, services, stores | High (80%+) |
-| Component | Vitest + Vue Test Utils | Component behavior, props, events, slots | Medium-high |
-| Integration | Vitest + Vue Test Utils | Connected components, store interactions | Medium |
-| E2E | Playwright | Critical user flows | Key flows only |
-
-**Practice**: Write full test coverage for a feature: unit tests for the composable/store, component tests for the UI, and an E2E test for the complete user flow.
-
----
-
-## Phase 10: Real-World Ecosystem & Deployment
-
-### 10.1 UI Component Libraries
-
-| Library | Style | Best For |
-|---|---|---|
-| [**Headless UI**](https://headlessui.com/) (`@headlessui/vue`) | Unstyled, accessible | Custom-designed apps with Tailwind |
-| [**Radix Vue**](https://www.radix-vue.com/) | Unstyled, accessible primitives | Building design systems |
-| [**shadcn-vue**](https://www.shadcn-vue.com/) | Radix Vue + Tailwind presets | Rapid development with good defaults |
-| [**PrimeVue**](https://primevue.org/) | Full-featured, themeable | Enterprise/data-heavy apps |
-| [**Vuetify**](https://vuetifyjs.com/) | Material Design | Apps following Material spec |
-| [**Naive UI**](https://www.naiveui.com/) | TypeScript-first, customizable | TypeScript-heavy projects |
-| [**Element Plus**](https://element-plus.org/) | Enterprise-focused | Admin panels, dashboards |
-
-### 10.2 CSS Approach
-
-- **Tailwind CSS**: Utility-first. Most popular choice with Vue. `@apply` for reusable component styles
-  - Tailwind works especially well in Vue because template-driven UI makes utility classes easy to co-locate with markup; docs: [Tailwind CSS](https://tailwindcss.com/docs/installation).
-- **Scoped CSS**: Vue's built-in `<style scoped>`. Good for small/medium projects
-  - Scoped CSS is often the fastest path when you want local styling without adopting a broader styling framework.
-- **CSS Modules**: `<style module>` in SFCs. Better for library authors
-  - CSS Modules are useful when consumers should not need to know or trust your class naming conventions.
-- **UnoCSS**: Faster atomic CSS engine, Tailwind-compatible. Consider for performance-critical builds
-  - UnoCSS is worth considering when you like utility workflows but want more generation flexibility or speed; docs: [UnoCSS](https://unocss.dev/).
-
-### 10.3 Meta-Frameworks
-
-- **Nuxt 3**: The full-stack Vue framework. SSR, SSG, API routes, auto-imports, file-based routing
-  - Nuxt adds conventions and server capabilities that are hard to recreate cleanly in a hand-rolled SPA; docs: [Nuxt](https://nuxt.com/docs/getting-started/introduction).
-  - **When to use Nuxt**: SEO matters, you need SSR, you want conventions over configuration, full-stack features
-  - **Key features**: `useFetch()` / `useAsyncData()`, server routes, middleware, layouts, auto-imported composables and components, Nitro server engine
-- **VitePress**: Static site generator for documentation. Markdown-based with Vue components
-  - VitePress is a great way to stay inside the Vue mental model while building docs or internal knowledge bases; docs: [VitePress](https://vitepress.dev/).
-- **Quasar**: Build desktop (Electron), mobile (Capacitor), and web from one codebase
-  - Quasar is worth studying when product requirements span platforms and you want one Vue-centric workflow; docs: [Quasar](https://quasar.dev/).
-
-### 10.4 Essential Ecosystem Packages
-
-| Package | Purpose |
-|---|---|
-| [`pinia`](https://pinia.vuejs.org/) | State management |
-| [`vue-router`](https://router.vuejs.org/) | Routing |
-| [`@tanstack/vue-query`](https://tanstack.com/query/latest/docs/framework/vue/overview) | Server state / data fetching |
-| [`vee-validate`](https://vee-validate.logaretm.com/v4/) + [`zod`](https://zod.dev/) | Form validation |
-| [`vue-i18n`](https://vue-i18n.intlify.dev/) | Internationalization |
-| [`@vueuse/core`](https://vueuse.org/) | Composable utilities |
-| [`vue-chartjs`](https://vue-chartjs.org/) / [`echarts`](https://echarts.apache.org/en/index.html) | Data visualization |
-| [`@iconify/vue`](https://iconify.design/docs/icon-components/vue/) | Icon library (access to 100k+ icons) |
-| [`nprogress`](https://ricostacruz.com/nprogress/) | Page load progress bar |
-| [`vue-toastification`](https://vue-toastification.maronato.dev/) | Toast notifications |
-| [`floating-vue`](https://floating-vue.starpad.dev/) | Tooltips, popovers, dropdowns |
-
-### 10.5 Build & Deployment
-
-- **Vite production build**: `vite build` — tree-shaking, minification, code splitting, asset hashing
-  - Learn what the production build emits so deployment bugs feel diagnosable instead of mysterious; docs: [Vite Guide](https://vite.dev/guide/).
-- **Environment modes**: `.env`, `.env.production`, `.env.staging`. Only `VITE_*` vars are exposed to client
-  - Modes let you keep environment-specific behavior explicit and reviewable without hardcoding values.
-- **Preview**: `vite preview` — serve the production build locally for verification
-  - Always preview the built app before shipping because dev mode can hide routing and asset issues.
-- **Deployment targets**:
-  - **Static hosting** ([Netlify](https://docs.netlify.com/), [Vercel](https://vercel.com/docs), [Cloudflare Pages](https://developers.cloudflare.com/pages/)): Best for SPAs and SSG
-  - **Node server** (SSR with Nuxt): Deploy to any Node host, serverless functions, or edge
-  - **Docker**: Multi-stage build (Node for build, nginx for serve); docs: [Docker](https://docs.docker.com/)
-  - Choose the target based on rendering strategy and ops constraints, not on whichever platform is most popular.
-  ```dockerfile
-  # Build stage
-  FROM node:20-alpine AS build
-  WORKDIR /app
-  COPY package*.json ./
-  RUN npm ci
-  COPY . .
-  RUN npm run build
-
-  # Production stage
-  FROM nginx:alpine
-  COPY --from=build /app/dist /usr/share/nginx/html
-  COPY nginx.conf /etc/nginx/conf.d/default.conf
-  ```
-- **CI/CD**: GitHub Actions for lint, type-check, test, build, deploy. Run all checks in parallel
-  - A dependable pipeline is what turns “works on my machine” into a repeatable team workflow; docs: [GitHub Actions](https://docs.github.com/actions).
-
-### 10.6 Monitoring & Analytics
-
-- **Sentry** (`@sentry/vue`): Error tracking with Vue-specific context (component name, props, route)
-  - Error monitoring matters most after launch, when bugs start showing up under real data and real devices; docs: [Sentry for Vue](https://docs.sentry.io/platforms/javascript/guides/vue/).
-- **Vue DevTools**: Browser extension for inspecting components, state, routes, Pinia stores, performance timeline
-  - DevTools is one of the fastest ways to build intuition about how Vue is actually updating your app; docs: [Vue DevTools](https://devtools.vuejs.org/).
-- **Lighthouse CI**: Automated performance, accessibility, SEO audits in CI
-  - Automating audits helps you catch regressions before they quietly pile up release after release; docs: [Lighthouse CI](https://github.com/GoogleChrome/lighthouse-ci).
-- **Web Vitals**: Track LCP, FID, CLS with `web-vitals` library
-  - These metrics connect frontend implementation choices to user-perceived performance in a concrete way; docs: [`web-vitals`](https://github.com/GoogleChrome/web-vitals).
-
----
-
-## Capstone Projects
-
-Build these to demonstrate job-ready Vue.js skills:
-
-### Project 1: Project Management Dashboard
-- Authentication with JWT (login, register, token refresh)
-  - This project should prove you can handle real auth flows, guarded routes, and token lifecycle edge cases.
-- Dashboard with real-time data (WebSocket updates)
-  - Real-time data makes you practice reconciliation between server pushes, local cache, and UI responsiveness.
-- Kanban board with drag-and-drop (`vue-draggable-plus`)
-  - Drag-and-drop adds interaction complexity that reveals whether your state model is truly robust; docs: [`vue-draggable-plus`](https://vue-draggable-plus.pages.dev/en/).
-- Data tables with sorting, filtering, pagination (TanStack Table)
-  - Tables are a good test of whether you can organize view state, server state, and reusable UI patterns cleanly; docs: [TanStack Table for Vue](https://tanstack.com/table/latest/docs/framework/vue/overview).
-- Charts and analytics (`vue-chartjs`)
-  - This is where you practice integrating imperative third-party visualization libraries into Vue's reactive world; docs: [`vue-chartjs`](https://vue-chartjs.org/).
-- Dark mode toggle with system preference detection
-  - Theme switching sounds small, but it exercises persistence, accessibility, and design-system discipline.
-- Full Pinia store architecture with persistence
-  - Treat this as an architecture exercise, not just a checklist item, because store shape affects the whole app.
-- Comprehensive test suite (unit + component + E2E)
-  - Aim for a feature-complete testing story that shows you know where each testing layer adds value.
-- Deploy to Vercel/Netlify with CI/CD
-  - Finishing deployment makes the project portfolio-ready instead of a local-only code sample; docs: [Vercel](https://vercel.com/docs), [Netlify](https://docs.netlify.com/).
-
-### Project 2: E-Commerce Storefront
-- Product catalog with faceted search and filters
-  - This is a strong way to demonstrate derived state, query parameters, and responsive listing UX.
-- Shopping cart with optimistic updates
-  - Cart behavior reveals whether you can balance server truth with fast-feeling UI feedback.
-- Multi-step checkout form with validation (VeeValidate + Zod)
-  - Checkout is a good pressure test for form ergonomics, validation boundaries, and error recovery; docs: [VeeValidate](https://vee-validate.logaretm.com/v4/), [Zod](https://zod.dev/).
-- User account with order history
-  - This feature lets you show route organization, authenticated API access, and reusable account layouts.
-- Responsive design with Tailwind CSS
-  - Make responsiveness a system-level concern so the layout still feels intentional on smaller screens; docs: [Tailwind CSS](https://tailwindcss.com/docs/installation).
-- Performance optimized: lazy loading, virtual scrolling, image optimization
-  - Use this project to prove you can measure and improve performance instead of just naming the techniques.
-- SEO with Nuxt 3 (SSR/SSG hybrid)
-  - Nuxt gives you a realistic venue for handling metadata, crawlability, and hybrid rendering tradeoffs; docs: [Nuxt](https://nuxt.com/docs/getting-started/introduction).
-- Accessibility audit passing WCAG AA
-  - Treat the audit as a design and implementation deliverable, not a final-day cleanup step.
-- Internationalization (i18n) with at least 2 languages
-  - i18n forces you to think about routing, formatting, layout expansion, and content architecture together.
-
-### Project 3: Real-Time Collaboration App
-- Rich text editor (`tiptap` — built on ProseMirror, has Vue integration)
-  - Editors surface hard UI problems around selection state, commands, and controlled/uncontrolled boundaries; docs: [Tiptap for Vue 3](https://tiptap.dev/docs/editor/getting-started/install/vue3), [ProseMirror](https://prosemirror.net/docs/).
-- Real-time collaboration with WebSockets and operational transforms / CRDTs
-  - This is the kind of feature that demonstrates systems thinking, not just frontend component skills.
-- Document organization with nested folders (tree component)
-  - Tree UIs are great practice for recursion, keyboard support, and deep state updates.
-- Share and permissions system (view, edit, admin)
-  - Permissions modeling shows whether you can connect product rules to both UI affordances and routing.
-- Offline support with service workers and IndexedDB
-  - Offline capability adds real-world complexity around sync, caching, and recovery after reconnect.
-- File attachments with drag-and-drop upload and preview
-  - Attachments combine browser APIs, async progress, and user feedback loops in one feature.
-- Command palette (`vue-command-palette`) for power users
-  - A command palette is a strong way to show composable search, keyboard UX, and action architecture; docs: [`vue-command-palette`](https://www.npmjs.com/package/vue-command-palette).
-- Keyboard shortcuts throughout the app
-  - Global shortcuts force you to think carefully about scope, focus, and avoiding conflicts.
-- Mobile-responsive layout
-  - Collaboration tools often get crowded quickly, so responsive behavior is a real design challenge here.
-
----
-
-## Study Methodology
-
-1. **Read the Vue 3 docs** — they're excellent and interactive. Use this guide as a roadmap, the official docs as the textbook
-   - Start with the guide sections that match your current phase so the official material reinforces what you are building; docs: [Vue Guide](https://vuejs.org/guide/introduction.html).
-2. **Use TypeScript from the start** — Vue 3's TS support is first-class. The job market expects it
-   - TypeScript is most valuable when it shapes your component APIs, store contracts, and backend data models from day one.
-3. **Master the Composition API** — the Options API still works but Composition API is the standard for new production code
-   - Composition API fluency is what lets you organize larger features without duplicating logic across components.
-4. **Build composables for everything** — the composable pattern is the single most important skill for production Vue
-   - Practice spotting repeated reactive patterns and extracting them before they turn into copy-pasted setup blocks.
-5. **Use Vue DevTools constantly** — inspect component trees, track state changes, debug reactivity
-   - DevTools shortens the feedback loop because you can inspect the live component graph instead of guessing at state flow; docs: [Vue DevTools](https://devtools.vuejs.org/).
-6. **Read source code** — VueUse, Pinia, and Vue Router are all well-written and instructive
-   - Reading good source teaches naming, API design, cleanup patterns, and TypeScript techniques you can reuse immediately.
-7. **Test as you build** — testing is a non-negotiable skill for professional Vue development
-   - Writing tests during development helps you design clearer component boundaries and catch regressions before features sprawl.
-8. **Learn Nuxt after you're solid on Vue** — Nuxt adds SSR/SSG, file-based routing, and full-stack capabilities. Most Vue job listings mention Nuxt
-   - Nuxt is much easier to absorb once core reactivity, routing, and component design already feel natural.
-
----
-
-## Additional Reference Links
-
-- **Vue core references**:
-  - [Vue API Reference](https://vuejs.org/api/)
-  - [Vue Style Guide](https://vuejs.org/style-guide/)
-  - [Vue SFC Playground](https://play.vuejs.org/)
-- **Language and platform references**:
-  - [TypeScript Handbook](https://www.typescriptlang.org/docs/)
-  - [MDN Fetch API](https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API)
-  - [MDN FormData](https://developer.mozilla.org/en-US/docs/Web/API/FormData)
-- **Browser APIs that show up throughout this guide**:
-  - [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController)
-  - [Intersection Observer API](https://developer.mozilla.org/en-US/docs/Web/API/Intersection_Observer_API)
-  - [Window.matchMedia()](https://developer.mozilla.org/en-US/docs/Web/API/Window/matchMedia)
-  - [WebSocket API](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket)
-  - [Service Worker API](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API)
-  - [IndexedDB API](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API)
-- **Accessibility standards and patterns**:
-  - [WAI-ARIA Authoring Practices Guide](https://www.w3.org/WAI/ARIA/apg/)
-  - [WCAG Overview](https://www.w3.org/WAI/standards-guidelines/wcag/)
-
----
-
-## Phase 11: Nuxt 3 In Practice — Anatomy of a Real Application
-
-This section walks through the design choices in a production Nuxt 3 application (CSearch, a congressional data explorer) and contrasts them with alternatives available in the Vue ecosystem. Each subsection maps a concrete pattern from the codebase to the broader set of options you would evaluate when building your own app.
-
-### 11.1 Why Nuxt Over Plain Vue + Vite
-
-CSearch uses Nuxt 4 (the latest major at time of writing) instead of a hand-rolled Vue + Vite SPA. The reasons are practical:
-
-- **File-based routing** eliminates manual route definitions. The `pages/` directory structure *is* the route table. Nested folders like `pages/bills/[category]/[congress]/[number].vue` produce deeply nested dynamic routes (`/bills/hr/118/1`) without writing a single `createRouter()` call.
-  - In a plain Vue app you would define these in `router/index.ts` with `children` arrays and `path: ':category'` segments. That works, but the mapping between files and routes becomes a maintenance burden once you have 10+ route-level components.
-- **Auto-imports** for composables, components, and Vue APIs. CSearch never writes `import { ref, computed, watch } from 'vue'` or `import { useRoute } from 'vue-router'` — Nuxt resolves them automatically.
-  - The tradeoff is that explicit imports make dependencies visible at a glance. Some teams prefer explicit imports for library code and auto-imports only for Vue primitives. Nuxt lets you configure this granularity in `nuxt.config.ts` via `imports.autoImport`.
-- **Hybrid rendering** via `routeRules` and `nitro.prerender`. CSearch pre-renders a set of known routes (`/`, `/votes`, `/explore`, `/committees`, all eight bill category index pages) at build time while leaving detail pages like `/bills/hr/118/1` as client-rendered SPAs. This gives search engines and first-time visitors fast static HTML for the most-visited pages without requiring a running Node server.
-  - The alternative rendering strategies in Nuxt are: full SSR (every request rendered on the server), full SSG (every page pre-rendered at build time), ISR (incremental static regeneration with a TTL), and SWR (stale-while-revalidate at the edge). Each has different infrastructure and caching implications; docs: [Nuxt Rendering Modes](https://nuxt.com/docs/guide/concepts/rendering).
-- **Nitro server engine** powers the API proxy (`routeRules: { '/api/**': { proxy: '...' } }`) and the pre-render crawler. CSearch uses this to avoid CORS issues during local development by proxying `/api/**` to the backend.
-  - In a plain Vue app you would configure Vite's `server.proxy` for dev and handle CORS headers or a reverse proxy (nginx, Cloudflare Workers) in production. Nitro unifies both under one config.
-
-**When Nuxt is overkill**: If your app is a purely client-rendered dashboard behind authentication with no SEO requirements, plain Vue + Vite is simpler. Nuxt's value scales with the number of conventions you actually use.
-
-### 11.2 Project Structure Choices
-
-CSearch's directory layout:
-
-```
-app.vue                    # Root shell — nav bar + <NuxtPage />
-pages/
-  index.vue                # Home / overview
-  explore.vue              # Explore query catalog
-  representatives.vue      # ZIP code → representatives lookup
-  bills/
-    [category]/
-      index.vue            # Bill list for a given type (hr, s, etc.)
-      [congress]/
-        [number].vue       # Individual bill detail
-  votes/
-    index.vue              # Vote list by chamber
-    [voteid].vue           # Individual vote detail
-  members/
-    [bioguide_id].vue      # Member profile
-  committees/
-    index.vue              # Committee list
-    [code].vue             # Committee detail
-components/
-  ExploreChart.client.vue  # Plotly chart (client-only)
-  VoteBreakdownChart.client.vue
-composables/
-  useApiBase.ts            # Runtime API origin resolution
-  useCongressApi.ts        # All API fetch functions
-  useFormatters.ts         # Date, chamber, party display helpers
-types/
-  congress.ts              # TypeScript interfaces + UI constants
-middleware/
-  redirect.js              # (Currently disabled) route redirect
-assets/css/
-  base.css                 # CSS custom properties, resets
-  main.css                 # All component/layout styles
-public/
-  runtime-config.js        # Injected at build time for deploy-time API override
-scripts/
-  write-runtime-config.mjs # Prebuild script that writes runtime-config.js
+<style>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>
 ```
 
-**Design choices and alternatives**:
+The class lifecycle is mechanical once seen: on enter, `fade-enter-from` is applied for one frame (the starting state), then swapped for the transition toward normal, with `fade-enter-active` present throughout carrying the `transition` property; leave mirrors it toward `fade-leave-to`. Everything else is variation: JavaScript hooks (`@enter`, `@leave`) for animation libraries, `mode="out-in"` for crossfading between two elements (the staple of animated route transitions, via `<RouterView v-slot="{ Component }">` wrapping a `<Transition>`), and `appear` to animate initial mount. `<TransitionGroup>` extends the idea to `v-for` lists and adds the famous **FLIP move transitions**: give it a `move` class and reordered items glide to their new positions — which, note, only works because your list has proper identity keys (Part 5); the keys are how Vue knows item three *moved* rather than item three *changed*.
 
-- **No `layouts/` directory**. CSearch puts the nav bar directly in `app.vue` and uses a single shell for every page. Nuxt supports a `layouts/` directory where you define named layouts (`default.vue`, `admin.vue`, `auth.vue`) and assign them per-page via `definePageMeta({ layout: 'admin' })`. Use layouts when different sections of your app need fundamentally different chrome (e.g., a marketing site vs. an authenticated dashboard).
-- **No Pinia stores**. All server state lives in composables that call `$fetch` or `useAsyncData` directly. This is a deliberate choice for a read-heavy, mostly-stateless data explorer. If CSearch had user accounts, a shopping cart, or cross-page form state, Pinia would be the right tool. The lesson: not every Nuxt app needs a store.
-- **Types and UI constants co-located in one file** (`types/congress.ts`). This file contains TypeScript interfaces, display option arrays (`BILL_TYPE_OPTIONS`, `VOTE_CHAMBER_OPTIONS`), API family metadata, and explore group definitions. An alternative is to split types from constants, but co-location works well when the constants are tightly coupled to the type definitions and both are imported together.
-- **No `server/api/` routes**. CSearch's backend is a separate Python service. Nuxt's `server/` directory supports full-stack API routes (file-based, like pages), which is powerful when you want to keep your API and frontend in one repo. CSearch only has a `server/tsconfig.json` placeholder.
+```vue
+<TransitionGroup tag="ul" name="list">
+  <li v-for="todo in sorted" :key="todo.id">{{ todo.text }}</li>
+</TransitionGroup>
 
-### 11.3 Data Fetching Patterns in Nuxt
-
-Nuxt provides two primary data-fetching composables that differ from plain Vue patterns:
-
-#### `useAsyncData` — The Nuxt Way
-
-CSearch uses `useAsyncData` for detail pages and list pages where the data depends on route params:
-
-```typescript
-const { data: bill, pending: loading, error: fetchError } = await useAsyncData<BillDetail>(
-  `bill-${billtype}-${congress}-${billnumber}`,
-  () => getBill(billtype, congress, billnumber),
-  { lazy: true }
-)
+<style>
+.list-move { transition: transform 0.3s ease; }          /* reorder glide */
+.list-enter-active, .list-leave-active { transition: all 0.3s ease; }
+.list-enter-from, .list-leave-to { opacity: 0; transform: translateX(20px); }
+.list-leave-active { position: absolute; }  /* removed items leave the layout so others can glide */
+</style>
 ```
 
-Key patterns from the codebase:
+Restraint is part of the skill: transitions should communicate state change (this appeared, that left, these reordered) in ~150–250ms, not perform. And respect [`prefers-reduced-motion`](https://developer.mozilla.org/en-US/docs/Web/CSS/@media/prefers-reduced-motion) — a media query disabling your transitions is a few lines of CSS and a real accessibility obligation.
 
-- **Cache keys derived from route params** (`bill-${billtype}-${congress}-${billnumber}`). This ensures Nuxt caches each bill separately and doesn't serve stale data when navigating between bills.
-- **`lazy: true`** defers the fetch until the component is mounted, showing a loading state instead of blocking navigation. Without `lazy`, Nuxt would await the data before rendering the page (useful for SSR, less useful for client-only detail pages).
-- **`server: false`** on the representatives page prevents the fetch from running during SSR/SSG. This makes sense when the data depends on user input (a ZIP code from the query string) that doesn't exist at build time.
-- **`watch: [zip]`** re-fetches when the reactive dependency changes, similar to a `watch` + manual fetch in plain Vue but with built-in pending/error state management.
+### `<Teleport>`: Rendering Elsewhere
 
-#### `$fetch` — Direct Fetching
+A modal logically belongs to the component that opens it — its state, its events — but *physically* it must render at the document root, or it will be clipped by some ancestor's `overflow: hidden` and stacked under someone's `z-index`. `<Teleport>` splits the difference exactly:
 
-The `useCongressApi` composable uses `$fetch` (Nuxt's enhanced fetch, powered by `ofetch`) for imperative calls triggered by user actions:
+```vue
+<Teleport to="body">
+  <div v-if="open" class="modal-backdrop" @click.self="open = false">
+    <slot />
+  </div>
+</Teleport>
+```
 
-```typescript
-async function apiFetch<T>(path: string): Promise<T> {
-  return await $fetch<T>(`${apiBase}${path}`)
+The content renders as a child of `<body>`, but its *component* relationship is unchanged — same reactive scope, same provide/inject context, events and state flow as if it were inline. Modals, toasts, tooltips, dropdown menus: anything that must escape its container's CSS context is a Teleport.
+
+### `<KeepAlive>`: Caching Instances Instead of Destroying Them
+
+When a dynamic component or `v-if` branch swaps away, the outgoing instance is unmounted — state gone, per Part 7. Sometimes that's wrong: a half-filled search form on tab A shouldn't reset because the user peeked at tab B. `<KeepAlive>` wraps the switch point and *caches* deactivated instances instead of destroying them:
+
+```vue
+<KeepAlive :max="5">
+  <component :is="activeTab" />
+</KeepAlive>
+```
+
+Cached components don't unmount when swapped out — they **deactivate**, firing `onDeactivated` instead of `onUnmounted`, and `onActivated` on return. The practical consequence: a kept-alive component that starts polling in `onMounted` must pause it in `onDeactivated` and resume in `onActivated`, or it polls invisibly forever. Use `include`/`exclude` to cache selectively and `max` to bound memory; the classic application is route-level caching of expensive list views so "back" is instant.
+
+### `<Suspense>`: Async Setup, Coordinated
+
+`<Suspense>` lets a component use `await` directly at the top level of `<script setup>` (making it an "async component" in the setup sense) while an ancestor shows fallback content until the whole async subtree resolves — one loading boundary instead of a dozen scattered spinners. It remains officially experimental: the API may change, and the ecosystem's center of gravity for loading states is the explicit `pending` ref (Parts 8 and 11) or Nuxt's wrapping of Suspense for its own data fetching (Part 16). Know what it's for; don't build your architecture on it yet.
+
+---
+
+## Part 13 — Testing: Vitest and Vue Test Utils
+
+Guide: [Testing](https://vuejs.org/guide/scaling-up/testing.html), tools: [Vitest](https://vitest.dev/), [Vue Test Utils](https://test-utils.vuejs.org/), [Testing Library Vue](https://testing-library.com/docs/vue-testing-library/intro/)
+
+The strategy before the tools. A Vue codebase has four kinds of code, and each has a natural testing altitude: **pure logic** (`utils/`, `services/`) gets plain unit tests with no Vue involved — which is precisely why Part 2 told you to keep those layers framework-free; **composables and stores** get unit tests with light Vue scaffolding; **components** get behavior tests through their public contract (props in, emitted events and rendered DOM out); and **whole user flows** get a small number of end-to-end tests in a real browser ([Playwright](https://playwright.dev/) being the current default). The center of gravity belongs in the first three — fast, deterministic, run-on-every-save — with E2E reserved for the flows whose breakage would page you: login, checkout, the core CRUD path.
+
+**Vitest** is the runner, and it's the obvious choice for a reason worth stating: it *reuses your Vite config*. The same plugins, aliases, and transforms that build your app build your tests — `.vue` files, `@/` imports, and TypeScript just work, where Jest would need a parallel universe of config to approximate. The API is Jest-compatible (`describe`/`it`/`expect`, `vi.fn()`/`vi.mock()` for mocking, fake timers via `vi.useFakeTimers()`), so existing testing knowledge transfers wholesale. Set `environment: 'jsdom'` (or `happy-dom`) in the test config so DOM APIs exist.
+
+### Testing Components
+
+[Vue Test Utils](https://test-utils.vuejs.org/) (VTU) is the official mounting library. The shape of every component test: mount with controlled inputs, interact the way a user would, assert on outputs the contract promises.
+
+```ts
+// CartLine.spec.ts
+import { describe, it, expect } from 'vitest'
+import { mount } from '@vue/test-utils'
+import CartLine from '@/components/CartLine.vue'
+
+const item = { id: 1, name: 'Coffee', price: 12, qty: 2 }
+
+describe('CartLine', () => {
+  it('renders the line total', () => {
+    const wrapper = mount(CartLine, { props: { item } })
+    expect(wrapper.text()).toContain('$24.00')
+  })
+
+  it('emits remove with the item id when the button is clicked', async () => {
+    const wrapper = mount(CartLine, { props: { item } })
+    await wrapper.find('[data-testid="remove"]').trigger('click')
+    expect(wrapper.emitted('remove')).toEqual([[1]])
+  })
+})
+```
+
+Read the second test as a statement of the component's contract from Part 6: given this prop, clicking remove emits `remove` with payload `1`. Nothing about internal refs, method names, or markup structure — those can all change in a refactor without this test flinching, which is the entire point. The disciplines that keep component tests at this altitude:
+
+- **`await` every interaction.** `trigger`, `setValue`, and `setProps` return promises that resolve after Vue's update flush (Part 4's batching, surfacing in tests). The single largest source of flaky Vue tests is asserting before the microtask queue drains; for code that resolves promises beyond Vue's own (a mocked fetch), `await flushPromises()` from VTU drains everything.
+- **Select by role, label, or `data-testid`** — not by CSS classes, which belong to styling and change for styling reasons. If you adopt [Testing Library](https://testing-library.com/docs/vue-testing-library/intro/) on top of VTU, its `getByRole`/`getByLabelText` queries enforce this and double as a lightweight accessibility audit: if your test can't find the button by role, neither can a screen reader.
+- **Prefer `mount` over `shallowMount`.** Rendering real children catches real integration; stub selectively (`global.stubs`) only when a child is genuinely disruptive — a chart binding to canvas, a heavy editor.
+- **Mock at the service boundary.** `vi.mock('@/services/users')` replaces the layer you own; mocking `fetch` or axios internals couples tests to HTTP plumbing that the service layer exists to hide.
+
+Components that touch the router or Pinia need their environment provided, and both have first-class answers — real router or a stubbed `RouterLink`, and [`createTestingPinia()`](https://pinia.vuejs.org/cookbook/testing.html), which supplies every store with writable state and auto-spied actions:
+
+```ts
+import { createTestingPinia } from '@pinia/testing'
+
+const wrapper = mount(CartBadge, {
+  global: {
+    plugins: [createTestingPinia({
+      initialState: { cart: { items: [item] } },   // arrange store state directly
+    })],
+  },
+})
+expect(wrapper.text()).toContain('2')
+```
+
+### Testing Composables and Stores
+
+A composable that uses only reactivity (no lifecycle, no inject) is just a function — call it, mutate inputs, assert on the returned refs. One that registers lifecycle hooks needs a component instance to register against (Part 7), and the standard trick is a throwaway host:
+
+```ts
+// test-utils/withSetup.ts
+import { createApp, type App } from 'vue'
+
+export function withSetup<T>(composable: () => T): [T, App] {
+  let result!: T
+  const app = createApp({ setup() { result = composable(); return () => null } })
+  app.mount(document.createElement('div'))
+  return [result, app]   // call app.unmount() to exercise cleanup paths
 }
 ```
 
-This is used for search, explore queries, and any fetch triggered by a button click or form submission rather than route navigation. The composable manages its own `loading` and `errorMessage` refs.
+`withSetup` is more useful than it looks: `app.unmount()` lets you *assert that cleanup happened* — that the listener detached, the socket closed — which is exactly the discipline Part 8 demanded and exactly what untested composables silently get wrong. Pinia stores in the setup syntax test the same way, minus the host: call `setActivePinia(createPinia())` in `beforeEach` (each test gets a fresh, isolated Pinia — note this is the test-bleed problem that module-state composables from Part 10 can't solve cleanly), then exercise the store like any object:
 
-**When to use which**:
-- `useAsyncData` / `useFetch`: Route-driven data that should integrate with Nuxt's SSR hydration, caching, and navigation lifecycle.
-- `$fetch`: User-triggered actions, mutations, or fetches inside event handlers where you manage loading state yourself.
+```ts
+beforeEach(() => setActivePinia(createPinia()))
 
-**Alternative: TanStack Query (Vue Query)**. For apps with complex caching, optimistic updates, background refetching, and pagination, TanStack Query provides a more powerful caching layer than Nuxt's built-in composables. CSearch doesn't need it because the data is read-only and the caching requirements are simple.
-
-### 11.4 Composable Architecture
-
-CSearch splits its composables into three focused modules:
-
-#### `useApiBase` — Runtime Configuration Resolution
-
-```typescript
-export function useApiBase() {
-  const config = useRuntimeConfig()
-  if (import.meta.client) {
-    const runtimeApi = window.__CSEARCH_RUNTIME_CONFIG__?.API_SERVER
-    if (runtimeApi) return runtimeApi
-  }
-  return config.public.API_SERVER
-}
+it('merges duplicate items by quantity', () => {
+  const cart = useCartStore()
+  cart.add(coffee); cart.add(coffee)
+  expect(cart.items).toHaveLength(1)
+  expect(cart.count).toBe(2)
+})
 ```
 
-This composable solves a real deployment problem: the API origin needs to be different in local dev, staging, and production, and it needs to be overridable *after* the static site is built (via a `runtime-config.js` script injected into the HTML head). The pattern is:
+The composite case — a component that fetches through the service layer on mount — brings the mocking and async disciplines together and is worth seeing whole:
 
-1. A prebuild script (`write-runtime-config.mjs`) writes a `window.__CSEARCH_RUNTIME_CONFIG__` object into `public/runtime-config.js`.
-2. `nuxt.config.ts` injects this script into the `<head>`.
-3. `useApiBase` checks the window global first (client-side), then falls back to `useRuntimeConfig().public.API_SERVER`.
+```ts
+import { vi } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import UserList from '@/views/UserList.vue'
+import { userService } from '@/services/users'
 
-This is a common pattern for static deployments (Cloudflare Pages, Netlify, S3) where you can't set environment variables at request time. The alternative in SSR mode is to use Nuxt's server-side `runtimeConfig` which reads `process.env` on every request.
+vi.mock('@/services/users')   // the boundary we own (Part 11's layer 1)
 
-#### `useCongressApi` — API Service Layer as a Composable
+it('shows users after loading resolves', async () => {
+  vi.mocked(userService.list).mockResolvedValue([{ id: 1, name: 'Ada' }])
 
-Instead of a plain service module (like the Axios pattern in Phase 6), CSearch wraps all API calls in a composable that calls `useApiBase()` internally. This means every component that needs API access just calls `const { latestBills, getBill, searchVotes } = useCongressApi()`.
+  const wrapper = mount(UserList)
+  expect(wrapper.find('[data-testid="spinner"]').exists()).toBe(true)  // pending state
 
-Notable patterns:
+  await flushPromises()                                                // drain fetch + render
+  expect(wrapper.text()).toContain('Ada')
+})
 
-- **Semantic search with retry and timeout**: The `fetchSemanticRows` function implements a 10-second timeout and one retry for the embedding endpoint, with a graceful fallback to keyword search if the semantic endpoint fails entirely. This is a production-grade resilience pattern.
-- **Response normalization**: `normalizeSemanticBill` maps snake_case API fields to the standard `BillRecord` interface. This keeps the rest of the app insulated from backend field naming.
-- **No global state**: The composable is stateless — it returns functions, not refs. State lives in the page components that call these functions. This is a valid alternative to putting everything in Pinia.
-
-**Alternative approaches**:
-- **Pinia stores with actions**: Move API calls into store actions so fetched data is globally cached and shared across components. Better when multiple components on the same page need the same data.
-- **TanStack Query**: Wrap each API call in `useQuery` for automatic caching, deduplication, and background refetching.
-- **Nuxt `useFetch` wrappers**: Create thin composables that return `useFetch` calls with pre-configured base URLs and headers.
-
-#### `useFormatters` — Pure Display Logic
-
-```typescript
-export function useFormatters() {
-  function formatDate(value?: string | null): string { /* ... */ }
-  function formatChamber(value?: string | null): string { /* ... */ }
-  function partyLabel(party?: string | null): string { /* ... */ }
-  function voteResultClass(result?: string | null): string { /* ... */ }
-  function summarizeText(value?: string | null, limit = 160): string { /* ... */ }
-  return { formatDate, formatChamber, partyLabel, voteResultClass, summarizeText }
-}
+it('shows the error state when loading fails', async () => {
+  vi.mocked(userService.list).mockRejectedValue(new Error('boom'))
+  const wrapper = mount(UserList)
+  await flushPromises()
+  expect(wrapper.find('[role="alert"]').text()).toMatch(/could not load/i)
+})
 ```
 
-These are pure functions with no reactive state. They could live in a `utils/` file instead of a composable, but wrapping them in `useFormatters()` keeps the import pattern consistent across the codebase and makes them auto-importable in Nuxt.
+Two tests, three states (Part 11's pending/error/data, verified rather than assumed), zero knowledge of HTTP. The error-path test is the one teams skip and the one production rewards.
 
-**Alternative**: Export them as named functions from `utils/formatters.ts`. The composable wrapper is a style choice, not a technical requirement.
+### End-to-End: A Few Tests in a Real Browser
 
-### 11.5 Component Design Patterns
+Everything above runs in jsdom — fast, but a simulation. The last layer runs your *built app* in a real browser and exercises whole journeys. [Playwright](https://playwright.dev/) is the current default (multi-browser, parallel, auto-waiting locators that retry instead of flaking; [Cypress](https://docs.cypress.io/) remains a fine alternative with a superb interactive runner):
 
-#### Client-Only Components (`.client.vue` Suffix)
+```ts
+// e2e/checkout.spec.ts
+import { test, expect } from '@playwright/test'
 
-CSearch's chart components use the `.client.vue` naming convention:
-
-```
-components/
-  ExploreChart.client.vue
-  VoteBreakdownChart.client.vue
-```
-
-The `.client.vue` suffix tells Nuxt to skip these components during SSR/SSG. This is essential because Plotly.js requires a DOM and `window` object that don't exist on the server. In a plain Vue SSR app, you would use `defineAsyncComponent` with a client-only wrapper or check `import.meta.client` before rendering.
-
-**Alternative approaches to client-only rendering**:
-- `<ClientOnly>` wrapper component: `<ClientOnly><ExploreChart /></ClientOnly>` — works but requires the parent to know about the rendering constraint.
-- Dynamic import with `defineAsyncComponent`: More verbose but gives you loading/error states.
-- `import.meta.client` guards: Check at the script level before initializing browser-only libraries.
-
-#### Third-Party Library Integration (Plotly)
-
-The chart components demonstrate a clean pattern for integrating imperative charting libraries into Vue's reactive world:
-
-1. **Template ref** for the DOM container: `const chartEl = ref<HTMLDivElement | null>(null)`
-2. **`onMounted`** to render the initial chart (DOM must exist).
-3. **`watch`** on props to re-render when data changes, with `nextTick()` to ensure the DOM is ready.
-4. **`onUnmounted`** to call `Plotly.purge()` and prevent memory leaks.
-5. **`Plotly.react()`** instead of `Plotly.newPlot()` for efficient updates without full re-creation.
-
-This lifecycle pattern applies to any imperative library (Chart.js, D3, Mapbox, CodeMirror). The key insight is that Vue manages *when* to render, but the library manages *how* to render.
-
-**Alternative charting approaches in Vue**:
-- `vue-chartjs`: A Vue wrapper around Chart.js that exposes charts as reactive components with props. Less control, more convenience.
-- `vue-echarts`: Apache ECharts with a Vue component wrapper. Good for complex interactive dashboards.
-- D3 + Vue: Use D3 for data transforms and Vue's template for DOM rendering, or use D3 imperatively inside a composable.
-
-#### Minimal Component Count
-
-CSearch has only two components in `components/` — both are charts. Everything else is page-level. This is a deliberate choice for a small team: extracting components adds indirection, and the pages are not large enough to benefit from decomposition.
-
-**When to extract components**:
-- When the same UI pattern appears on 3+ pages (e.g., bill cards, vote badges, member links).
-- When a section of a page has its own state and lifecycle (e.g., a search autocomplete widget).
-- When you want to test a piece of UI in isolation.
-
-CSearch could benefit from extracting a `BillCard`, `VoteCard`, and `MemberCard` component since those patterns repeat across bills, votes, members, and committee detail pages. The cosponsor grid and action timeline are also candidates.
-
-### 11.6 Routing Patterns
-
-#### Deeply Nested Dynamic Routes
-
-The bill detail route `pages/bills/[category]/[congress]/[number].vue` produces URLs like `/bills/hr/118/1`. Each bracket segment becomes a route param:
-
-```typescript
-const billtype = route.params.category as string
-const congress = route.params.congress as string
-const billnumber = route.params.number as string
+test('a user can add an item and check out', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Add to cart' }).first().click()
+  await page.getByRole('link', { name: /cart/i }).click()
+  await page.getByRole('button', { name: 'Checkout' }).click()
+  await expect(page.getByText('Order confirmed')).toBeVisible()
+})
 ```
 
-**Design choice**: Using folder nesting instead of a flat `pages/bills/[...slug].vue` catch-all. Folder nesting gives you:
-- A natural place for the category index page (`pages/bills/[category]/index.vue`).
-- Type-safe param names (each segment has its own name).
-- Easier mental mapping between URL structure and file structure.
+Note that nothing here is Vue-specific — by this altitude the framework is invisible, which is the point: E2E tests survive a rewrite of your component internals, your store layout, even your framework. The costs are speed and brittleness-at-the-edges (real network, real timing), which is why the strategy says *few*: cover the journeys whose breakage costs money, isolate each test's data (no test depends on another having run), and run them headless in CI on every PR. Resist the temptation to E2E-test what a component test already covers — you'd be buying the same confidence at fifty times the price.
 
-The catch-all alternative (`[...slug].vue`) is better when the URL depth is variable or when you want one component to handle multiple URL shapes.
+The summary heuristic for the whole part: **test each layer through its public contract, in the cheapest environment that can falsify it.** Pure logic in plain Vitest; composables via `withSetup`; components via mounted behavior; flows via Playwright — and if a test keeps breaking on refactors that didn't change behavior, it was written at the wrong altitude.
 
-#### Query Parameter–Driven State
+---
 
-The bills list page (`pages/bills/[category]/index.vue`) is a masterclass in URL-driven state management. Every filter (congress, chamber, policy area, status, sponsor party, committee, month, min cosponsors, sort mode, search query) is synced bidirectionally with the URL query string:
+## Part 14 — Performance
 
-1. **Route → Component**: A `watch` on route query params calls `syncBillFacetsFromRoute()` to update local refs.
-2. **Component → Route**: A separate `watch` on filter refs calls `router.replace()` to update the URL.
-3. **Guard against loops**: `billQueryMatchesRoute()` prevents the component→route watcher from firing when the route→component watcher already set the same values.
+Guide: [Performance Best Practices](https://vuejs.org/guide/best-practices/performance.html)
 
-This pattern means every filter combination is a shareable, bookmarkable URL. Users can share `/bills/hr?congress=118&party=D&status=introduced` and the recipient sees the exact same view.
+Begin with the calibration that the rest of this part depends on: **Vue's defaults are fast.** The compiler-optimized rendering of Part 3 and the fine-grained tracking of Part 4 mean that an idiomatic Vue app — stable keys, computeds for derivation, state at the right altitude — has no performance problem for it to solve at typical scales. When a real problem appears, it is almost always one of three things: shipping too much JavaScript up front, rendering too many DOM nodes, or paying reactivity overhead on data that didn't need it. Profile first (Chrome's Performance panel plus [Vue DevTools](https://devtools.vuejs.org/)' component render timings), then match the symptom to the section below. Optimizing without a measurement is how codebases accumulate `v-memo` cargo cult.
 
-**Alternative approaches**:
-- **Pinia store + URL sync plugin**: Store filter state in Pinia and use a plugin to sync with the URL. More structured but more moving parts.
-- **`useUrlSearchParams` from VueUse**: A composable that creates reactive refs backed by URL query params. Less boilerplate than manual sync.
-- **Component-only state**: Keep filters in local refs without URL sync. Simpler but loses shareability and back-button behavior.
+### Shipping Less: Bundle Size
 
-#### Route Middleware
+Load performance is mostly about the initial chunk, and the highest-leverage fix was already wired up in Part 9: **lazy-loaded routes**. Every `component: () => import('./views/X.vue')` becomes its own chunk, so first paint pays only for the entry route. The same move applies inside a page via `defineAsyncComponent` for components that are heavy and conditional — the chart library behind a tab, the markdown editor behind an "edit" button:
 
-CSearch has a middleware file (`middleware/redirect.js`) that is currently commented out. Nuxt middleware runs before every navigation and is the right place for:
-- Authentication checks (redirect to `/login` if not authenticated).
-- Feature flags (redirect to a maintenance page).
-- Data preloading that should block navigation.
-
-Nuxt supports both global middleware (runs on every route) and named middleware (applied per-page via `definePageMeta({ middleware: 'auth' })`).
-
-### 11.7 Styling Architecture
-
-#### CSS Custom Properties as a Design System
-
-CSearch defines its entire color palette and spacing system in `assets/css/base.css` using CSS custom properties:
-
-```css
-:root {
-  color-scheme: dark;
-  --bg-deep: #04060f;
-  --bg-panel: rgba(10, 13, 26, 0.97);
-  --border-soft: rgba(79, 142, 247, 0.14);
-  --text-main: #dde4f0;
-  --text-muted: rgba(170, 185, 210, 0.82);
-  --accent-primary: #4f8ef7;
-  --accent-senate: #4f8ef7;
-  --accent-house: #e05252;
-  /* ... */
-}
+```ts
+const HeavyChart = defineAsyncComponent({
+  loader: () => import('@/components/HeavyChart.vue'),
+  loadingComponent: ChartSkeleton,
+  delay: 200,            // don't flash the skeleton for fast loads
+})
 ```
 
-Every component references these variables instead of hardcoding colors. This makes theming (e.g., adding a light mode) a matter of redefining the variables under a different selector.
+Beyond splitting: audit what you import (a date library imported for one `format` call is a classic; prefer tree-shakeable per-function imports like `lodash-es`), and *look* at the bundle before theorizing about it — [rollup-plugin-visualizer](https://github.com/btd/rollup-plugin-visualizer) renders a treemap of exactly which dependencies cost what. Most "Vue is slow to load" investigations end at a dependency nobody remembered adding.
 
-**Design choice**: CSearch uses plain CSS with custom properties instead of Tailwind utility classes for most of its styling, despite having Tailwind installed and configured. The `tailwind.config.js` is minimal (no custom theme extensions), and the actual styles live in `main.css` with BEM-like class naming (`.result-card__header`, `.bill-suggest__item`).
+### Rendering Less: DOM Scale
 
-**Alternative CSS approaches in the Vue ecosystem**:
+The browser does not care how efficiently you *computed* ten thousand table rows; it cares that they exist. Past roughly a thousand rendered items, the answer is **virtual scrolling** — render only the visible window plus a buffer, recycling DOM nodes as the user scrolls. [vue-virtual-scroller](https://github.com/Akryum/vue-virtual-scroller) and VueUse's [`useVirtualList`](https://vueuse.org/core/useVirtualList/) both implement it; the trade is that item heights and in-page find/anchor behavior need care. Below that threshold, the cheaper wins: paginate or truncate what users will never scan, keep `v-for` keys stable so reorders move nodes instead of rebuilding them (Part 5), and use `v-show`/`<KeepAlive>` (Part 12) where toggling would otherwise re-create expensive subtrees. The micro-directives `v-once` (render once, never update) and `v-memo` (skip a subtree unless listed values changed) exist for the last few percent in profiled hot lists — they are footnotes, not strategy.
 
-| Approach | Tradeoffs |
-|---|---|
-| Tailwind utility classes | Fast prototyping, consistent spacing/color, but templates get verbose. Best when the whole team commits to utility-first. |
-| Scoped `<style>` per component | Strong isolation, co-located with logic, but harder to share patterns across components. |
-| CSS Modules (`<style module>`) | Explicit class binding (`$style.card`), good for libraries where consumers shouldn't depend on class names. |
-| UnoCSS | Faster atomic CSS generation than Tailwind, more flexible preset system. Worth evaluating for large apps. |
-| Component library (Vuetify, PrimeVue, shadcn-vue) | Pre-built accessible components. Best when you want to move fast and don't need a fully custom design. |
+### Tracking Less: Reactivity Overhead
 
-CSearch's hybrid approach (Tailwind installed for utility access, but primary styles in a global CSS file) is common in projects that started with custom design and added Tailwind later for convenience classes.
+Part 4's deep reactivity walks every nested property; that's free at form-model scale but real cost when you load a 50,000-row dataset or instantiate a third-party object graph. The escape hatches and their fit, in the order to reach for them: **`shallowRef`** for large *replace-wholesale* data — track only `.value` reassignment, and refresh by assigning a new array/object rather than mutating (which pairs naturally with the immutable-style responses you get from APIs anyway); **`markRaw`** for library instances (charts, maps, editors) that should never be proxied — both for speed and because proxy identity confuses libraries' internal checks; and plain non-reactive module constants for lookup tables the UI never mutates. The symptom that sends you here is slow *data loading or mutation* (long `reactive` setup, slow patches on big structures) rather than slow rendering — DevTools' profiler distinguishes the two.
 
-#### No Scoped Styles on Most Pages
+One performance problem doesn't belong to Vue at all: heavy *computation* — parsing a large file, crunching rows for a chart — blocks the main thread no matter how it's rendered, and the fix is a [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API) (ergonomically, via [Comlink](https://github.com/GoogleChromeLabs/comlink) or VueUse's [`useWebWorkerFn`](https://vueuse.org/core/useWebWorkerFn/)), with the result landing back in a ref. Diagnose before reaching for it: a frozen UI during *data work* is a worker problem; a frozen UI during *rendering* is a Part 14 problem.
 
-Most page components in CSearch have no `<style scoped>` block — they rely on the global `main.css` classes. Only a few pages (bill detail, representatives, vote detail) add scoped styles for page-specific layout tweaks.
+Finally, perceived performance is a budget too: skeleton screens instead of spinner-then-pop, optimistic UI where rollback is cheap (Part 11), and [`web-vitals`](https://github.com/GoogleChrome/web-vitals) measurement in production — because the metric that matters is on your users' devices, not your M-series laptop.
 
-This works because the class naming is disciplined (`.result-card`, `.detail-grid`, `.summary-strip`) and the app has a single visual language. In a larger app with multiple teams, scoped styles or CSS Modules would be safer to prevent accidental collisions.
+---
 
-### 11.8 Static Site Generation and Deployment
+## Part 15 — TypeScript Integration
 
-#### Hybrid SSG Strategy
+Guide: [Using Vue with TypeScript](https://vuejs.org/guide/typescript/overview.html), [TS with Composition API](https://vuejs.org/guide/typescript/composition-api.html)
 
-CSearch uses `nuxt generate` to produce a fully static site deployed to Cloudflare Pages. The `nitro.prerender` config explicitly lists which routes to pre-render:
+Vue 3 is written in TypeScript, and with the Composition API the integration is mostly *invisible* — which is the highest compliment a type system can earn. This part collects the places where you do write types, and the idioms that make them pay.
 
-```typescript
-nitro: {
-  prerender: {
-    crawlLinks: false,
-    routes: ['/', '/votes', '/explore', '/representatives',
-             '/bills/hr', '/bills/s', '/bills/hres', '/bills/sres',
-             '/bills/hjres', '/bills/sjres', '/bills/hconres', '/bills/sconres',
-             '/committees'],
+The baseline is inference. `ref(0)` is `Ref<number>`; `computed(() => items.value.length)` is `ComputedRef<number>`; a setup-syntax Pinia store's entire surface is inferred from its returns. You annotate only where inference can't reach — most commonly the "starts empty" cases:
+
+```ts
+const user = ref<User | null>(null)          // starts null, becomes User
+const results = ref<SearchResult[]>([])      // [] alone would infer never[]
+const status = ref<'idle' | 'loading' | 'done'>('idle')   // keep the union, not string
+```
+
+That last line matters more than it looks: `ref('idle')` infers `Ref<string>`, silently discarding the literal union that makes `if (status.value === 'laoding')` a compile error. Annotate state-machine refs explicitly. (Refresh [literal types and narrowing](TYPESCRIPT_STUDY_GUIDE.md) if that sentence didn't land.)
+
+Component contracts you've already seen typed in Part 6 — `defineProps<Props>()`, `defineEmits<{ save: [Draft] }>()`, `defineModel<string>()` — and that *is* the TypeScript story for components: types at the boundary, inference inside, with the Vue language extension type-checking template usage against those boundary types (a misspelled prop in a *consumer's template* is a squiggle in *their* file). Three more idioms complete the toolkit:
+
+**Generic components** (`<script setup generic="T">`) make container components type-flow from input to slot — the scoped-slot list from Part 6, now fully typed end to end:
+
+```vue
+<script setup lang="ts" generic="T extends { id: string | number }">
+const props = defineProps<{ items: T[] }>()
+defineSlots<{ default(props: { item: T }): unknown }>()
+</script>
+```
+
+A consumer passing `:items="users"` gets `item: User` inside their `#default="{ item }"` template — inference across a component boundary, which is the kind of thing that quietly eliminates a whole category of `as` casts. `defineSlots` is doing the declaring here: slots are part of the public contract, so they get types like props do.
+
+**Typed injection keys** (`InjectionKey<T>`, Part 7) are the only thing standing between provide/inject and stringly-typed chaos — use them every time.
+
+**Module augmentation** types the framework's extension points. Route `meta` is the canonical example — declare it once and every guard and component sees typed meta:
+
+```ts
+// types/router.d.ts
+import 'vue-router'
+declare module 'vue-router' {
+  interface RouteMeta {
+    requiresAuth?: boolean
+    title?: string
   }
 }
 ```
 
-`crawlLinks: false` prevents Nuxt from following links in the rendered HTML to discover more routes. This is intentional — there are thousands of bill and vote detail pages that would be impractical to pre-render. Those pages render client-side when visited.
+(The mechanics of `declare module` are covered in the [TypeScript guide's declaration-merging section](TYPESCRIPT_STUDY_GUIDE.md); Vue Router and Pinia plugins both rely on it.)
 
-**Alternative deployment strategies**:
-
-| Strategy | When to use |
-|---|---|
-| Full SSG (`crawlLinks: true`) | Small sites where every page can be pre-rendered. Blog, docs, marketing site. |
-| SSR on Node | When you need per-request rendering (personalization, auth, real-time data). Deploy to any Node host or serverless platform. |
-| SSR on edge (Cloudflare Workers, Vercel Edge) | Low-latency SSR close to users. Nuxt + Nitro support this natively. |
-| ISR (`routeRules: { '/bills/**': { isr: 3600 } }`) | Pre-render on first request, cache for N seconds. Good for semi-static content. |
-| SPA mode (`ssr: false`) | Pure client-side rendering. Simplest deployment (any static host), but no SEO benefit. |
-
-#### Runtime Configuration for Static Deploys
-
-The `runtime-config.js` pattern deserves attention. In a static deploy, environment variables are baked in at build time. But CSearch needs to change the API origin without rebuilding (e.g., pointing a staging deploy at a different backend). The solution:
-
-1. A prebuild script writes `window.__CSEARCH_RUNTIME_CONFIG__` into a JS file in `public/`.
-2. The script tag is injected into every page's `<head>`.
-3. `useApiBase()` reads the window global at runtime, falling back to the build-time `runtimeConfig.public.API_SERVER`.
-
-This is a well-known pattern for Docker and static deploys where you want to configure the app at deploy time, not build time.
-
-### 11.9 TypeScript Patterns
-
-#### Interface Design for API Responses
-
-CSearch's `types/congress.ts` demonstrates thoughtful optionality conventions:
-
-```typescript
-// `| null`  — the field is always present but its value can be null
-// `?`       — the field may be absent from the response entirely
-export interface BillRecord {
-  billid: string                        // always present, never null
-  shorttitle?: string | null            // may be absent OR null
-  statusat: string                      // always present, never null
-  cosponsor_count?: number | null       // may be absent OR null
-}
-```
-
-This distinction matters because `bill.shorttitle` (optional) needs an existence check before access, while `bill.statusat` (required) is always safe to use. The comment at the top of the file documents this convention for future contributors.
-
-#### UI Constants as Typed Arrays
-
-```typescript
-export const BILL_TYPE_OPTIONS: BillTypeOption[] = [
-  { code: 'hr', shortLabel: 'H.R.', longLabel: 'House bills', chamber: 'house', description: '...' },
-  // ...
-]
-```
-
-Keeping UI constants in the types file (rather than scattered across components) means every page that needs bill type metadata imports from one source of truth. The `as const` assertions on some arrays (`BILL_FILTER_OPTIONS`, `API_FAMILIES`) give TypeScript narrower literal types for better inference.
-
-### 11.10 Patterns Worth Adopting and Patterns to Reconsider
-
-#### Worth adopting in your own projects
-
-- **Composable-based API layer** with no global state for read-heavy apps. It's simpler than Pinia when you don't need cross-component state sharing.
-- **URL-driven filter state** with bidirectional sync. Every meaningful view state should be in the URL.
-- **`.client.vue` suffix** for browser-only components. Cleaner than wrapping in `<ClientOnly>`.
-- **Runtime config injection** for static deploys. Avoids rebuilding when only the API origin changes.
-- **Explicit prerender route lists** instead of crawling. Gives you control over build time and output size.
-- **CSS custom properties** as a lightweight design token system. Works without any build tooling.
-- **Typed API interfaces with documented optionality conventions**. Prevents null-reference bugs across the entire frontend.
-
-#### Worth reconsidering or evolving
-
-- **Large page components without extraction**. The bills list page (`pages/bills/[category]/index.vue`) is 400+ lines of script with complex filter logic, URL sync, and data fetching. Extracting a `useBillFilters()` composable and a `BillCard` component would improve testability and readability.
-- **Duplicated card markup**. The cosponsor card, result card, and member card patterns repeat across 4+ pages with slight variations. A shared component would reduce drift.
-- **Global CSS for everything**. As the app grows, the 600+ line `main.css` will become harder to maintain. Migrating to scoped styles or Tailwind utilities per component would improve locality.
-- **No error boundary components**. API failures show inline error text, but there's no `<ErrorBoundary>` wrapper to catch unexpected rendering errors gracefully.
-- **No loading skeletons**. Pages show "Loading..." text instead of skeleton placeholders. Skeleton screens improve perceived performance significantly.
-- **Middleware is commented out**. If the redirect logic is no longer needed, removing the file is cleaner than leaving dead code.
-
-### 11.11 The Broader Nuxt Ecosystem
-
-Beyond what CSearch uses, Nuxt has a rich module ecosystem that solves common problems:
-
-| Module | Purpose | When to reach for it |
-|---|---|---|
-| [`@nuxtjs/i18n`](https://i18n.nuxtjs.org/) | Internationalization | Multi-language support with route-based locale switching |
-| [`@nuxt/image`](https://image.nuxt.com/) | Image optimization | Automatic resizing, format conversion, lazy loading |
-| [`@nuxt/content`](https://content.nuxt.com/) | Markdown/YAML content | Documentation sites, blogs, content-driven pages |
-| [`@nuxt/fonts`](https://fonts.nuxt.com/) | Font optimization | Self-hosting Google Fonts with zero layout shift |
-| [`@sidebase/nuxt-auth`](https://sidebase.io/nuxt-auth/) | Authentication | OAuth, JWT, session-based auth with route guards |
-| [`@pinia/nuxt`](https://pinia.vuejs.org/ssr/nuxt.html) | Pinia integration | SSR-safe store hydration and auto-imports |
-| [`nuxt-security`](https://nuxt-security.vercel.app/) | Security headers | CSP, CORS, rate limiting, XSS protection |
-| [`@vueuse/nuxt`](https://vueuse.org/nuxt/README.html) | VueUse integration | Auto-imported VueUse composables |
-| [`@nuxt/test-utils`](https://nuxt.com/docs/getting-started/testing) | Testing | Nuxt-aware component and E2E testing helpers |
-| [`nuxt-og-image`](https://nuxtseo.com/og-image) | Open Graph images | Dynamic social media preview images |
-
-### 11.12 Nuxt vs. Other Vue Meta-Frameworks
-
-| Framework | Rendering | Best for |
-|---|---|---|
-| [Nuxt](https://nuxt.com/) | SSR, SSG, ISR, SPA, Edge | Full-stack Vue apps, SEO, conventions-heavy projects |
-| [VitePress](https://vitepress.dev/) | SSG (Markdown-first) | Documentation sites, knowledge bases |
-| [Quasar](https://quasar.dev/) | SPA, SSR, Electron, Capacitor | Cross-platform apps from one codebase |
-| [Analog](https://analogjs.org/) | SSR, SSG (Angular-inspired) | File-based routing with Vite, lighter than Nuxt |
-
-Nuxt is the default choice for most Vue production apps because it has the largest community, the most modules, and the deepest integration with the Vue core team's tooling.
+The judgment, condensed: put explicit types on every boundary (props, emits, slots, injection keys, service-layer DTOs, store returns if you want a narrower public surface than inference gives), and let inference own everything between boundaries. A Vue codebase with those two rules applied refactors like a statically-typed program, because it is one.
 
 ---
+
+## Part 16 — Nuxt and When You Need It
+
+Docs: [Nuxt](https://nuxt.com/docs/getting-started/introduction), concepts: [Rendering Modes](https://nuxt.com/docs/guide/concepts/rendering)
+
+Everything in this guide so far produces a **single-page application**: a static `index.html` whose JavaScript builds the entire UI in the browser. For a great deal of software — dashboards, internal tools, anything behind a login — that is exactly right, and you should resist framework-stacking reflexes that say otherwise. But the SPA model has two structural weaknesses you cannot patch from inside it: **the first paint is empty** until the bundle downloads, parses, and renders (a real cost on slow networks and devices), and **crawlers and link-unfurlers see that empty page** (a real cost when SEO or social previews matter). Fixing either requires rendering HTML *before* the browser — on a server per-request (SSR), or at build time (SSG) — and the moment you do that, you inherit a pile of problems: running your components in Node where `window` doesn't exist, serializing state from server to client, **hydration** (the client-side process of attaching reactivity and listeners to server-rendered HTML, which breaks subtly whenever server and client render differently), per-route rendering strategy, caching. [Nuxt](https://nuxt.com/) is the Vue-team-adjacent framework that owns this pile so you don't.
+
+The decision, honestly stated: **need SEO, content-driven pages, or fast first paint on the open web → Nuxt; building an authenticated app where users wait for login anyway → plain Vue + Vite, which is operationally simpler** (static files on a CDN versus a Node server or build-time pipeline). Nuxt's conventions are pleasant enough that some teams use it even for SPAs (`ssr: false` mode) just for the structure — defensible, but know that's a taste choice, not a requirement.
+
+What you get, mapped onto what you now know:
+
+- **File-based routing.** The `pages/` directory *is* the route table: `pages/bills/[category]/[congress]/[number].vue` yields `/bills/hr/118/1` with typed params — Part 9's `routes` array, generated from the filesystem. At ten routes it's a wash; at fifty it's a maintenance win.
+- **Auto-imports.** `ref`, `computed`, `useRoute`, your own `composables/` and `components/` — used without import statements. Polarizing (explicit imports document dependencies), configurable, and universal in Nuxt codebases, so read-fluency is mandatory.
+- **Server-aware data fetching.** `useAsyncData`/`useFetch` are Part 8's `useFetch` upgraded for SSR: on the server they fetch during render; the payload is serialized into the HTML so **the client doesn't refetch on hydration**; keys deduplicate across components. `$fetch` is the imperative cousin for event handlers and mutations. The discipline transfers unchanged — pending/error/data, keys as identity (they're query keys, Part 11) — only the executor moved.
+- **Nitro**, the server engine: `server/api/` file-based API routes (full-stack Vue in one repo), route rules, proxying, and deploy adapters for Node, serverless, and edge runtimes.
+- **Per-route rendering strategy** — the headline feature, because real apps are heterogeneous:
+
+| Mode | Rendered | Fits |
+|---|---|---|
+| SSR (default) | Per request, on the server | Personalized or always-fresh public pages |
+| SSG / prerender | Once, at build time | Marketing pages, docs, blogs |
+| ISR / SWR route rules | On demand, cached with TTL | Large mostly-static catalogs |
+| `ssr: false` (SPA) | Client only | Authenticated app sections |
+
+One `routeRules` map in `nuxt.config.ts` assigns these per path — `/` prerendered, `/app/**` SPA, `/products/**` ISR — which is the pragmatic answer to "but my app is several kinds of app at once."
+
+### A Real Nuxt App, Annotated
+
+Abstract feature lists undersell how these choices interact, so here is the shape of a production Nuxt app (a congressional-data explorer: read-heavy, public, SEO-relevant — previously dissected at length in this repo; this is the distillation) and the reasoning that generalizes:
+
+- **Hybrid prerendering with an explicit route list.** The dozen high-traffic index pages (`/`, `/votes`, each bill-category list) are prerendered at build time; the thousands of detail pages (`/bills/hr/118/1`) render client-side on visit, with `crawlLinks: false` so the build doesn't try to crawl them all. Lesson: choose rendering *per route class* by traffic and cardinality, not one mode globally.
+- **No Pinia at all.** Server data flows through `useAsyncData` with param-derived keys; composables expose stateless fetch functions; state lives in the pages that need it. For a read-heavy explorer this is *correct*, not lazy — Part 10's question ("where should this state live?") answered with "mostly nowhere." Stores earn their place when cross-page client state actually exists.
+- **URL-driven filter state.** Every list-page filter (chamber, status, party, sort, search) syncs bidirectionally with the query string — watchers route→refs and refs→`router.replace()`, with an equality guard to stop the loop. Every filtered view is a shareable URL: Part 9's framing taken seriously. (VueUse's [`useRouteQuery`-style helpers](https://vueuse.org/router/useRouteQuery/) or a small composable tames the boilerplate.)
+- **`.client.vue` components for browser-only libraries.** Chart components (Plotly needs `window`) are suffixed `.client.vue` so SSR skips them — Nuxt's cleanest answer to the hydration-mismatch class of bugs. The integration inside follows Part 7's lifecycle pattern exactly: template ref, init `onMounted`, `watch` props → `Plotly.react()`, destroy `onUnmounted`. Vue decides *when*; the library decides *how*.
+- **Deploy-time runtime config.** A tiny script injected into `<head>` sets `window.__RUNTIME_CONFIG__`, letting a *static* deployment point at different API origins per environment without rebuilding — the standard workaround for "env vars are baked in at build time" on static hosts.
+
+The honest critiques of the same app generalize too: 400-line page components that should have extracted a `useBillFilters()` composable and a `BillCard` component (the repetition threshold from Part 6 — three uses — was passed long ago), "Loading…" text where skeletons belong, and no error boundary (`onErrorCaptured`, Part 7) around unstable chart trees. Production code is where the patterns in this guide earn their keep — or visibly don't.
+
+For completeness, Nuxt is not the only Vue meta-framework — but the others are specialized, not competitors: [VitePress](https://vitepress.dev/) renders Markdown-first static sites and is the right tool for docs and knowledge bases (the Vue, Vite, and Pinia docs all run on it); [Quasar](https://quasar.dev/) targets web, Electron, and mobile from one codebase with its own component kit; [Analog](https://analogjs.org/) is a lighter file-routing layer. For a general-purpose application with server rendering, Nuxt is the default by community size, module ecosystem, and proximity to the core team — choosing anything else should be a positive decision, not a coin flip.
+
+### Shipping: Production Concerns in One Place
+
+A few obligations apply to every deployed Vue app, Nuxt or not, and they're cheap if installed early:
+
+- **Error handling, three tiers.** `app.config.errorHandler` as the global last resort, wired to [Sentry's Vue SDK](https://docs.sentry.io/platforms/javascript/guides/vue/) (which captures component name, props, and route per error); `onErrorCaptured`-based error-boundary components around volatile subtrees; explicit error states on every fetch (Part 11). Unhandled promise rejections are the gap to watch — Vue's handler doesn't catch them; Sentry's global hooks do.
+- **Security.** Vue auto-escapes `{{ }}` interpolation, so XSS enters through the doors you open: `v-html` is the big one — never with user content unless sanitized through [DOMPurify](https://github.com/cure53/DOMPurify) — followed by `:href` with user-supplied `javascript:` URLs. `VITE_*`/`NUXT_PUBLIC_*` env vars ship to the client: configuration, never secrets. Prefer `httpOnly` cookies over `localStorage` for session tokens — localStorage is readable by any script that achieves XSS, which is precisely the failure you're defending against.
+- **Accessibility.** Guide: [Accessibility](https://vuejs.org/guide/best-practices/accessibility.html). Vue neither helps nor hinders here — the obligations are the web's: semantic elements before ARIA (`<button>`, not a `<div @click>`; the former gives you keyboard activation, focus, and announcement for free), every interactive element reachable and operable by keyboard, and **focus management at the moments SPAs break it** — after route changes (focus the new page's heading; screen-reader users otherwise get silence where a page load used to be) and across modal open/close (trap focus inside, restore it on close — or use a headless library from Part 16's table that does this correctly). [eslint-plugin-vuejs-accessibility](https://vue-a11y.github.io/eslint-plugin-vuejs-accessibility/) catches template-level mistakes at lint time; an occasional manual pass with VoiceOver or NVDA catches what no linter can.
+- **Builds and deployment.** `vite build`, verified locally with `vite preview`. SPAs deploy as static files anywhere (with the history-mode fallback rule from Part 9); SSR Nuxt deploys via Nitro presets to Node, serverless, or edge. CI (see the [GitHub Actions guide](GITHUB_ACTIONS_STUDY_GUIDE.md)) runs lint, `vue-tsc`, Vitest, and build on every PR — four parallel jobs, no exceptions.
+- **Observability.** Vue DevTools in development (component tree, reactive state live-edit, Pinia time travel, render profiling — the fastest way to *see* Part 4 working); Sentry plus [web-vitals](https://github.com/GoogleChrome/web-vitals) in production; [Lighthouse CI](https://github.com/GoogleChrome/lighthouse-ci) to stop performance and accessibility regressions at the PR boundary rather than discovering them in quarterly audits.
+
+### The Ecosystem Shortlist
+
+The packages that turn up in real Vue codebases, beyond the core stack this guide already covered (Router, Pinia, TanStack Query, VeeValidate + Zod, VueUse):
+
+| Need | Reach for |
+|---|---|
+| Accessible unstyled primitives | [Reka UI](https://reka-ui.com/) (Radix-style), [Headless UI](https://headlessui.com/) |
+| Styled component kits | [shadcn-vue](https://www.shadcn-vue.com/), [PrimeVue](https://primevue.org/), [Vuetify](https://vuetifyjs.com/), [Naive UI](https://www.naiveui.com/) |
+| Utility CSS | [Tailwind CSS](https://tailwindcss.com/), [UnoCSS](https://unocss.dev/) |
+| i18n | [vue-i18n](https://vue-i18n.intlify.dev/) (or [@nuxtjs/i18n](https://i18n.nuxtjs.org/)) |
+| Charts | [vue-echarts](https://github.com/ecomfe/vue-echarts), [vue-chartjs](https://vue-chartjs.org/) |
+| Icons | [@iconify/vue](https://iconify.design/docs/icon-components/vue/) (every icon set, one API) |
+| Tables / virtual lists | [TanStack Table](https://tanstack.com/table/latest/docs/framework/vue/overview), [vue-virtual-scroller](https://github.com/Akryum/vue-virtual-scroller) |
+| Rich text | [Tiptap](https://tiptap.dev/docs/editor/getting-started/install/vue3) (ProseMirror-based) |
+| Drag and drop | [vue-draggable-plus](https://vue-draggable-plus.pages.dev/en/) |
+| Docs sites | [VitePress](https://vitepress.dev/) |
+| Desktop / mobile from one codebase | [Quasar](https://quasar.dev/), or Vue inside [Electron](ELECTRON_STUDY_GUIDE.md)/[Tauri](https://tauri.app/) |
+
+Selection heuristics over name-memorization: prefer headless primitives plus your own styling when design is custom and a kit when it isn't; check [bundlephobia](https://bundlephobia.com/) before adopting anything heavy; and for any imperative library without a Vue wrapper, you already own the integration pattern (template ref, `onMounted`, `watch`, `onUnmounted` — Part 16's chart example, Part 7's lifecycle).
+
+---
+
+## Appendix — Common Pitfalls, Collected
+
+Every pitfall below appears somewhere in this guide in context; here they are in one place, in roughly the order you'll meet them. Each is a one-line diagnosis plus the fix — and notice how many are Part 4's destructuring rule wearing different costumes.
+
+**1. Destructuring `reactive()` state.** `const { count } = reactive({...})` copies a dead value (Part 4). Fix: `toRefs`/`toRef`, keep property access, or use `ref` in the first place.
+
+**2. Destructuring a store without `storeToRefs`.** Same bug, Pinia costume: `const { total } = useCartStore()` is a snapshot. Fix: `storeToRefs(store)` for state and getters; plain destructure only for actions (Part 10).
+
+**3. Passing a reactive *value* where a reactive *source* is needed.**
+
+```ts
+watch(props.userId, ...)        // ❌ watches a plain number, warns and never fires
+watch(() => props.userId, ...)  // ✅ getter re-reads the prop each check
+```
+
+The same applies to composable arguments — accept `MaybeRefOrGetter` and unwrap with `toValue()` inside the effect (Part 8), so callers can hand you something that stays live.
+
+**4. Index as `v-for` key on a mutable list.** Positional matching makes row state (inputs, child components) stick to the wrong data after insert/delete/reorder (Part 5). Fix: key by stable identity, always.
+
+**5. Reading the DOM right after a state change.** Effects flush on the microtask queue (Part 4), so the DOM is stale until `await nextTick()`. Symptom: `null` template refs, measurements of the previous frame.
+
+**6. Mutating props.** It "works" until the parent re-renders and stomps it, and it inverts the data flow every reader assumes (Part 6). Fix: `computed` to derive, emit to request change, `defineModel` when two-way is the actual contract.
+
+**7. Acquiring without releasing.** Listeners, timers, sockets, observers added in `onMounted` (or in effects) without `onUnmounted`/`onCleanup` counterparts leak invisibly until navigation count makes them visible (Parts 7–8). The `withSetup` + `unmount` test (Part 13) is how you *prove* cleanup.
+
+**8. Calling composables conditionally, in callbacks, or after `await`.** Lifecycle and inject registration need the *current instance*, which only exists synchronously during setup (Part 7). Top-level `await` in `<script setup>` specifically makes the component require `<Suspense>` (Part 12) — usually you wanted an effect or an event handler instead.
+
+**9. Replacing a `reactive()` object wholesale.** `state = newObj` (or `Object.assign` patterns that drop the proxy) disconnects every subscriber silently. This is `ref`'s core advantage — `.value = newObj` is safe — and half the reason it's the default (Part 4).
+
+**10. `v-if` with `v-for` on the same element.** `v-if` evaluates *first* in Vue 3, so it can't see the loop variable. Fix: filter in a `computed` (usually what you meant), or nest the `v-if` inside.
+
+**11. Proxying objects that must not be proxied.** Third-party instances (charts, maps, editors) misbehave or crawl when deep-reactive wrapped — identity checks fail, every internal property is tracked. Fix: `shallowRef` or `markRaw` (Parts 4, 14).
+
+**12. Expecting `watchEffect` to behave like `watch`.** It runs immediately and re-runs on *anything it read* — an incidental read becomes a trigger. When the trigger set must be exact (data fetching on a specific input), name the source with `watch` (Part 4).
+
+**13. Browser APIs during SSR.** In Nuxt, `window`/`document` access at setup time crashes the server render, and divergent server/client output corrupts hydration (Part 16). Fix: move it to `onMounted` (client-only by definition), `.client.vue` components, or `import.meta.client` guards.
+
+**14. The silent event.** A typo'd emit (`@saved` listening for `save`) fails without an error — events have no required listener. Typed `defineEmits` (Part 6) makes the *emit* side safe; integration-style component tests asserting `wrapper.emitted()` (Part 13) close the loop on the listen side.
+
+And the meta-pitfall behind several of these: **treating reactivity as magic rather than mechanism.** Things are reactive because reads pass through a trap and an effect was collecting; things go stale because somewhere a value was copied out of its container. When in doubt, ask Part 4's question — *what is tracked, and which effect re-runs?* — and the bug usually answers itself.
+
+### A Task-to-API Map
+
+For review, the guide compressed into a lookup table:
+
+| You want to… | Reach for | Part |
+|---|---|---|
+| Hold reactive state | `ref()` (default), `reactive()` for cohesive never-replaced groups | 4 |
+| Derive a value from state | `computed()` | 4 |
+| Run a side effect when named state changes | `watch(source, cb)` (+ `onCleanup` for aborts) | 4 |
+| Keep an effect in sync with whatever it reads | `watchEffect()` | 4 |
+| Touch the DOM after an update | `await nextTick()` | 4 |
+| Pass data down / notify up / two-way bind | `defineProps` / `defineEmits` / `defineModel` | 6 |
+| Let the parent control markup | slots; scoped slots when child data drives it | 6 |
+| Share ambient context in a subtree | `provide`/`inject` with `InjectionKey` | 7 |
+| Run code at mount/unmount | `onMounted` / `onUnmounted` | 7 |
+| Reuse stateful logic across components | a `useX` composable; check [VueUse](https://vueuse.org/) first | 8 |
+| Reference a DOM element | `useTemplateRef` + `onMounted` | 5 |
+| Map URLs to views, guard navigation | Vue Router: routes, `meta`, `beforeEach` | 9 |
+| Hold cross-page application state | Pinia setup store + `storeToRefs` | 10 |
+| Cache and invalidate server data | TanStack Query (`useQuery`/`useMutation`) | 11 |
+| Validate a form with types | VeeValidate + Zod via `toTypedSchema` | 11 |
+| Animate enter/leave; escape an overflow container; cache an instance | `<Transition>`; `<Teleport>`; `<KeepAlive>` | 12 |
+| Test a component / composable / flow | VTU `mount` / `withSetup` / Playwright | 13 |
+| Shrink the first load | lazy routes, `defineAsyncComponent`, visualizer | 14 |
+| Render before the browser (SEO, first paint) | Nuxt, with per-route rendering rules | 16 |
+
+---
+
+## Coda — How to Actually Learn This
+
+A reading list is not a skill. The path that works, in order, with each project sized to force one part of this guide into your fingers:
+
+1. **Reactivity kata (an evening).** In the [SFC Playground](https://play.vuejs.org/), deliberately commit every Part 4 sin: destructure a `reactive`, watch a destructured prop, read the DOM before `nextTick`, mutate a `shallowRef` deeply. Predict each failure *before* you run it, from the model. This calibration pays off for years.
+2. **A composable library (a weekend).** Build `useEventListener`, `useLocalStorage`, `useDebouncedRef`, `useClickOutside`, and `useFetch` from scratch with tests (`withSetup`, Part 13) — then read VueUse's implementations and write down every edge case you missed. That diff is your curriculum.
+3. **A full SPA (two or three weeks).** A project tracker or storefront: typed components, Router with auth guards and an unsaved-changes guard, Pinia for session and cart, TanStack Query for server data, VeeValidate + Zod forms, transitions, a real test suite, deployed with CI. This is the portfolio piece, and every section of this guide gets exercised.
+4. **A Nuxt rebuild (one week).** Port the public-facing slice of project 3 to Nuxt with per-route rendering rules. The contrast teaches you more about *both* architectures than either alone.
+5. **Read source.** Pinia and VueUse are small, idiomatic, and superbly written; `@vue/reactivity` is the bonus level. An afternoon in each is worth a month of blog posts.
+
+The bookmark bar, assembled from everything cited above:
+
+- [Vue Guide](https://vuejs.org/guide/introduction.html) · [API Reference](https://vuejs.org/api/) · [Style Guide](https://vuejs.org/style-guide/) · [SFC Playground](https://play.vuejs.org/) · [Template Explorer](https://template-explorer.vuejs.org/)
+- [Vue Router](https://router.vuejs.org/) · [Pinia](https://pinia.vuejs.org/) · [Vite](https://vite.dev/guide/) · [Nuxt](https://nuxt.com/docs)
+- [Vitest](https://vitest.dev/) · [Vue Test Utils](https://test-utils.vuejs.org/) · [Testing Library Vue](https://testing-library.com/docs/vue-testing-library/intro/) · [Playwright](https://playwright.dev/)
+- [VueUse](https://vueuse.org/) · [TanStack Query](https://tanstack.com/query/latest/docs/framework/vue/overview) · [VeeValidate](https://vee-validate.logaretm.com/v4/) · [Zod](https://zod.dev/)
+- [Vue DevTools](https://devtools.vuejs.org/) · [Vue Mastery](https://www.vuemastery.com/) · [Michael Thiessen](https://michaelnthiessen.com/) · [Vue.js News](https://news.vuejs.org/)
+
+Keep the official docs open throughout — this guide told you *why*; [vuejs.org](https://vuejs.org/guide/introduction.html) remains the best reference for *what*, and its [Style Guide](https://vuejs.org/style-guide/) settles team arguments by appeal to authority. And when something doesn't update on screen, you know the question to ask now: *what was tracked, and which effect should have re-run?* Everything in Vue is downstream of the answer.
