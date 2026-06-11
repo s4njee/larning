@@ -1,0 +1,1153 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Distributed Algorithms.">
+<title>Distributed Algorithms - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#dcda4e; --accent2:#9cd64a; --accent-weak:rgba(220,218,78,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#dcda4e; --accent2:#9cd64a; --accent-weak:rgba(220,218,78,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint);pointer-events:none}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px;min-width:0;overflow-wrap:break-word}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:minmax(0,1fr)}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+  .spacer{display:none}
+  .brand{flex:1;min-width:0}
+  .brand > span:not(.logo):not(.sub){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">D</span><span>Distributed Algorithms</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#chapter-1-models-of-distributed-computation" data-target="chapter-1-models-of-distributed-computation">Chapter 1 — Models of Distributed Computation</a></li><li class="toc-l3"><a href="#11-processes-and-channels" data-target="11-processes-and-channels">1.1 Processes and channels</a></li><li class="toc-l3"><a href="#12-the-synchrony-spectrum" data-target="12-the-synchrony-spectrum">1.2 The synchrony spectrum</a></li><li class="toc-l3"><a href="#13-failure-models" data-target="13-failure-models">1.3 Failure models</a></li><li class="toc-l3"><a href="#14-safety-liveness-and-how-to-read-a-problem-specification" data-target="14-safety-liveness-and-how-to-read-a-problem-specification">1.4 Safety, liveness, and how to read a problem specification</a></li><li class="toc-l3"><a href="#exercises-1" data-target="exercises-1">Exercises 1</a></li><li class="toc-l2"><a href="#chapter-2-time-clocks-and-causality" data-target="chapter-2-time-clocks-and-causality">Chapter 2 — Time, Clocks, and Causality</a></li><li class="toc-l3"><a href="#21-the-happens-before-relation" data-target="21-the-happens-before-relation">2.1 The happens-before relation</a></li><li class="toc-l3"><a href="#22-lamport-clocks" data-target="22-lamport-clocks">2.2 Lamport clocks</a></li><li class="toc-l3"><a href="#23-vector-clocks" data-target="23-vector-clocks">2.3 Vector clocks</a></li><li class="toc-l3"><a href="#24-clocks-that-real-databases-use" data-target="24-clocks-that-real-databases-use">2.4 Clocks that real databases use</a></li><li class="toc-l3"><a href="#exercises-2" data-target="exercises-2">Exercises 2</a></li><li class="toc-l2"><a href="#chapter-3-broadcast-and-ordering" data-target="chapter-3-broadcast-and-ordering">Chapter 3 — Broadcast and Ordering</a></li><li class="toc-l3"><a href="#31-the-ladder-of-guarantees" data-target="31-the-ladder-of-guarantees">3.1 The ladder of guarantees</a></li><li class="toc-l3"><a href="#32-the-equivalence-theorem" data-target="32-the-equivalence-theorem">3.2 The equivalence theorem</a></li><li class="toc-l3"><a href="#exercises-3" data-target="exercises-3">Exercises 3</a></li><li class="toc-l2"><a href="#chapter-4-global-states-and-distributed-snapshots" data-target="chapter-4-global-states-and-distributed-snapshots">Chapter 4 — Global States and Distributed Snapshots</a></li><li class="toc-l3"><a href="#41-cuts-and-consistency" data-target="41-cuts-and-consistency">4.1 Cuts and consistency</a></li><li class="toc-l3"><a href="#42-the-chandylamport-snapshot-algorithm" data-target="42-the-chandylamport-snapshot-algorithm">4.2 The Chandy–Lamport snapshot algorithm</a></li><li class="toc-l3"><a href="#exercises-4" data-target="exercises-4">Exercises 4</a></li><li class="toc-l2"><a href="#chapter-5-impossibility-flp-and-failure-detectors" data-target="chapter-5-impossibility-flp-and-failure-detectors">Chapter 5 — Impossibility: FLP and Failure Detectors</a></li><li class="toc-l3"><a href="#51-the-consensus-problem" data-target="51-the-consensus-problem">5.1 The consensus problem</a></li><li class="toc-l3"><a href="#52-the-flp-theorem" data-target="52-the-flp-theorem">5.2 The FLP theorem</a></li><li class="toc-l3"><a href="#53-the-loopholes-catalogued" data-target="53-the-loopholes-catalogued">5.3 The loopholes, catalogued</a></li><li class="toc-l3"><a href="#54-leader-election-as-an-algorithmic-problem" data-target="54-leader-election-as-an-algorithmic-problem">5.4 Leader election as an algorithmic problem</a></li><li class="toc-l3"><a href="#exercises-5" data-target="exercises-5">Exercises 5</a></li><li class="toc-l2"><a href="#chapter-6-consensus-i-paxos" data-target="chapter-6-consensus-i-paxos">Chapter 6 — Consensus I: Paxos</a></li><li class="toc-l3"><a href="#61-the-cast-and-the-goal" data-target="61-the-cast-and-the-goal">6.1 The cast and the goal</a></li><li class="toc-l3"><a href="#62-deriving-single-decree-paxos" data-target="62-deriving-single-decree-paxos">6.2 Deriving single-decree Paxos</a></li><li class="toc-l3"><a href="#63-the-safety-proof" data-target="63-the-safety-proof">6.3 The safety proof</a></li><li class="toc-l3"><a href="#64-multi-paxos-and-the-gap-raft-filled" data-target="64-multi-paxos-and-the-gap-raft-filled">6.4 Multi-Paxos and the gap Raft filled</a></li><li class="toc-l3"><a href="#exercises-6" data-target="exercises-6">Exercises 6</a></li><li class="toc-l2"><a href="#chapter-7-consensus-ii-raft" data-target="chapter-7-consensus-ii-raft">Chapter 7 — Consensus II: Raft</a></li><li class="toc-l3"><a href="#71-terms-roles-and-the-heartbeat-skeleton" data-target="71-terms-roles-and-the-heartbeat-skeleton">7.1 Terms, roles, and the heartbeat skeleton</a></li><li class="toc-l3"><a href="#72-leader-election" data-target="72-leader-election">7.2 Leader election</a></li><li class="toc-l3"><a href="#73-log-replication-and-the-commit-rule" data-target="73-log-replication-and-the-commit-rule">7.3 Log replication and the commit rule</a></li><li class="toc-l3"><a href="#74-the-safety-argument" data-target="74-the-safety-argument">7.4 The safety argument</a></li><li class="toc-l3"><a href="#75-the-rest-of-a-real-raft" data-target="75-the-rest-of-a-real-raft">7.5 The rest of a real Raft</a></li><li class="toc-l3"><a href="#exercises-7" data-target="exercises-7">Exercises 7</a></li><li class="toc-l2"><a href="#chapter-8-replication-quorums-and-linearizability" data-target="chapter-8-replication-quorums-and-linearizability">Chapter 8 — Replication, Quorums, and Linearizability</a></li><li class="toc-l3"><a href="#81-linearizability-precisely" data-target="81-linearizability-precisely">8.1 Linearizability, precisely</a></li><li class="toc-l3"><a href="#82-readwrite-quorums-and-the-theorem-they-do-not-prove" data-target="82-readwrite-quorums-and-the-theorem-they-do-not-prove">8.2 Read/write quorums, and the theorem they do not prove</a></li><li class="toc-l3"><a href="#83-the-abd-algorithm-linearizable-registers-without-consensus" data-target="83-the-abd-algorithm-linearizable-registers-without-consensus">8.3 The ABD algorithm — linearizable registers without consensus</a></li><li class="toc-l3"><a href="#84-the-cap-theorem-as-a-theorem" data-target="84-the-cap-theorem-as-a-theorem">8.4 The CAP theorem, as a theorem</a></li><li class="toc-l3"><a href="#85-primary-backup-and-chain-replication-briefly" data-target="85-primary-backup-and-chain-replication-briefly">8.5 Primary-backup and chain replication, briefly</a></li><li class="toc-l3"><a href="#exercises-8" data-target="exercises-8">Exercises 8</a></li><li class="toc-l2"><a href="#chapter-9-atomic-commitment-2pc-3pc-and-beyond" data-target="chapter-9-atomic-commitment-2pc-3pc-and-beyond">Chapter 9 — Atomic Commitment: 2PC, 3PC, and Beyond</a></li><li class="toc-l3"><a href="#91-two-phase-commit-and-the-blocking-theorem" data-target="91-two-phase-commit-and-the-blocking-theorem">9.1 Two-phase commit, and the blocking theorem</a></li><li class="toc-l3"><a href="#92-three-phase-commit-and-why-you-dont-run-it" data-target="92-three-phase-commit-and-why-you-dont-run-it">9.2 Three-phase commit, and why you don't run it</a></li><li class="toc-l3"><a href="#93-the-modern-resolution-commit-through-consensus" data-target="93-the-modern-resolution-commit-through-consensus">9.3 The modern resolution: commit through consensus</a></li><li class="toc-l3"><a href="#exercises-9" data-target="exercises-9">Exercises 9</a></li><li class="toc-l2"><a href="#chapter-10-conflict-free-replicated-data-types" data-target="chapter-10-conflict-free-replicated-data-types">Chapter 10 — Conflict-Free Replicated Data Types</a></li><li class="toc-l3"><a href="#101-strong-eventual-consistency-and-the-lattice-theorem" data-target="101-strong-eventual-consistency-and-the-lattice-theorem">10.1 Strong eventual consistency, and the lattice theorem</a></li><li class="toc-l3"><a href="#102-the-standard-constructions-worked" data-target="102-the-standard-constructions-worked">10.2 The standard constructions, worked</a></li><li class="toc-l3"><a href="#103-what-crdts-cannot-do-stated-as-a-theorem-shaped-fact" data-target="103-what-crdts-cannot-do-stated-as-a-theorem-shaped-fact">10.3 What CRDTs cannot do, stated as a theorem-shaped fact</a></li><li class="toc-l3"><a href="#exercises-10" data-target="exercises-10">Exercises 10</a></li><li class="toc-l2"><a href="#chapter-11-gossip-and-epidemic-algorithms" data-target="chapter-11-gossip-and-epidemic-algorithms">Chapter 11 — Gossip and Epidemic Algorithms</a></li><li class="toc-l3"><a href="#111-the-convergence-mathematics" data-target="111-the-convergence-mathematics">11.1 The convergence mathematics</a></li><li class="toc-l3"><a href="#112-anti-entropy-and-merkle-trees" data-target="112-anti-entropy-and-merkle-trees">11.2 Anti-entropy and Merkle trees</a></li><li class="toc-l3"><a href="#113-swim-gossip-shaped-failure-detection" data-target="113-swim-gossip-shaped-failure-detection">11.3 SWIM: gossip-shaped failure detection</a></li><li class="toc-l3"><a href="#exercises-11" data-target="exercises-11">Exercises 11</a></li><li class="toc-l2"><a href="#chapter-12-byzantine-fault-tolerance" data-target="chapter-12-byzantine-fault-tolerance">Chapter 12 — Byzantine Fault Tolerance</a></li><li class="toc-l3"><a href="#121-the-3f1-bound" data-target="121-the-3f1-bound">12.1 The 3f+1 bound</a></li><li class="toc-l3"><a href="#122-pbft-the-practical-construction" data-target="122-pbft-the-practical-construction">12.2 PBFT, the practical construction</a></li><li class="toc-l3"><a href="#123-nakamoto-consensus-located-on-this-map" data-target="123-nakamoto-consensus-located-on-this-map">12.3 Nakamoto consensus, located on this map</a></li><li class="toc-l3"><a href="#exercises-12" data-target="exercises-12">Exercises 12</a></li><li class="toc-l2"><a href="#chapter-13-from-algorithms-to-systems" data-target="chapter-13-from-algorithms-to-systems">Chapter 13 — From Algorithms to Systems</a></li><li class="toc-l3"><a href="#131-the-map" data-target="131-the-map">13.1 The map</a></li><li class="toc-l3"><a href="#132-how-to-read-a-jepsen-report-or-your-own-incident-with-this-guide" data-target="132-how-to-read-a-jepsen-report-or-your-own-incident-with-this-guide">13.2 How to read a Jepsen report (or your own incident) with this guide</a></li><li class="toc-l3"><a href="#133-where-to-go-next" data-target="133-where-to-go-next">13.3 Where to go next</a></li></ul></nav></aside>
+  <main><h1 id="distributed-algorithms">Distributed Algorithms</h1>
+<p>A textbook-level study guide to the algorithms beneath every distributed system — written for engineers who have read the practical literature and want the level beneath it: the formal models, the impossibility results, the algorithms in full pseudocode, and the proofs (or honest proof sketches) of why they're correct. The sibling <a href="distributed-systems-study-guide.html">Distributed Systems guide</a> teaches what the CAP theorem says and which systems embody which trade-offs; this guide teaches <em>why</em> CAP is true, why consensus is impossible in the asynchronous model and how real systems sidestep the proof, what invariant makes Paxos safe, and what algebraic property lets CRDTs merge without coordination. Every chapter ends with exercises — doing them is the difference between having read this material and knowing it.</p>
+<p>The style is that of a textbook, but a readable one: definitions are precise, theorems are stated exactly, and proofs are given as arguments a working engineer can follow and reconstruct, with pointers to the full formal versions in the literature. Pseudocode is meant to be transcribable into a real implementation — MIT's 6.5840 labs are the natural companion exercise set.</p>
+<p>Primary references: Nancy Lynch, <a href="https://groups.csail.mit.edu/tds/distalgs.html"><em>Distributed Algorithms</em></a> (the rigorous standard); Cachin, Guerraoui &amp; Rodrigues, <a href="https://distributedprogramming.net/"><em>Introduction to Reliable and Secure Distributed Programming</em></a> (the modular abstractions this guide's broadcast and consensus chapters follow in spirit); Attiya &amp; Welch, <em>Distributed Computing</em>; Martin Kleppmann's <a href="https://www.cl.cam.ac.uk/teaching/2122/ConcDisSys/dist-sys-notes.pdf">Cambridge lecture notes</a>; and the primary papers linked throughout — Lamport's <a href="https://lamport.azurewebsites.net/pubs/time-clocks.pdf">Time, Clocks</a>, <a href="https://groups.csail.mit.edu/tds/papers/Lynch/jacm85.pdf">FLP</a>, <a href="https://lamport.azurewebsites.net/pubs/paxos-simple.pdf">Paxos Made Simple</a>, the <a href="https://raft.github.io/raft.pdf">Raft paper</a>, <a href="https://lamport.azurewebsites.net/pubs/chandy.pdf">Chandy–Lamport</a>, the <a href="https://hal.inria.fr/inria-00555588/document">CRDT report</a>, and <a href="http://pmg.csail.mit.edu/papers/osdi99.pdf">PBFT</a>. The empirical companion literature is <a href="https://jepsen.io/analyses">Kyle Kingsbury's Jepsen reports</a> — nearly every failure documented there is a violation of a property defined in this guide.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#chapter-1--models-of-distributed-computation">Chapter 1 — Models of Distributed Computation</a></li>
+<li><a href="#chapter-2--time-clocks-and-causality">Chapter 2 — Time, Clocks, and Causality</a></li>
+<li><a href="#chapter-3--broadcast-and-ordering">Chapter 3 — Broadcast and Ordering</a></li>
+<li><a href="#chapter-4--global-states-and-distributed-snapshots">Chapter 4 — Global States and Distributed Snapshots</a></li>
+<li><a href="#chapter-5--impossibility-flp-and-failure-detectors">Chapter 5 — Impossibility: FLP and Failure Detectors</a></li>
+<li><a href="#chapter-6--consensus-i-paxos">Chapter 6 — Consensus I: Paxos</a></li>
+<li><a href="#chapter-7--consensus-ii-raft">Chapter 7 — Consensus II: Raft</a></li>
+<li><a href="#chapter-8--replication-quorums-and-linearizability">Chapter 8 — Replication, Quorums, and Linearizability</a></li>
+<li><a href="#chapter-9--atomic-commitment-2pc-3pc-and-beyond">Chapter 9 — Atomic Commitment: 2PC, 3PC, and Beyond</a></li>
+<li><a href="#chapter-10--conflict-free-replicated-data-types">Chapter 10 — Conflict-Free Replicated Data Types</a></li>
+<li><a href="#chapter-11--gossip-and-epidemic-algorithms">Chapter 11 — Gossip and Epidemic Algorithms</a></li>
+<li><a href="#chapter-12--byzantine-fault-tolerance">Chapter 12 — Byzantine Fault Tolerance</a></li>
+<li><a href="#chapter-13--from-algorithms-to-systems">Chapter 13 — From Algorithms to Systems</a></li>
+</ol>
+<hr>
+<h2 id="chapter-1-models-of-distributed-computation">Chapter 1 — Models of Distributed Computation</h2>
+<p>Every theorem in this guide is a statement <em>about a model</em>, and every production war story is a statement about which model reality chose that day. Get the models straight first, because "consensus is impossible" and "consensus runs in my cluster right now" are both true — about different models.</p>
+<h3 id="11-processes-and-channels">1.1 Processes and channels</h3>
+<p>A <strong>distributed system</strong> is a set of <em>n</em> processes <code>p1 … pn</code>, each a deterministic state machine with local state, connected by <strong>channels</strong> over which they exchange messages. Processes share <em>nothing</em> else: no shared memory, no shared clock. An <strong>execution</strong> is an interleaved sequence of <em>events</em> — message sends, message receipts, and internal steps — one sequence per run of the system. An <strong>algorithm</strong> specifies, for each process, how its state changes and which messages it sends in response to each event.</p>
+<p>Channel assumptions must be stated, because algorithms break when they're wrong:</p>
+<ul>
+<li><strong>Reliable (perfect) link</strong>: a message sent is eventually delivered, exactly once, unmodified — but with <em>no bound on when</em>. This is the standard assumption, and it is <em>achieved</em>, not given: real networks drop and duplicate, and the transport layer (sequence numbers, retransmission, dedup) builds reliable links from fair-lossy ones. The construction matters: retransmission means <em>duplication at the application level is the default</em>, which is why idempotent message handling recurs in every later chapter.</li>
+<li><strong>FIFO link</strong>: messages between a fixed pair are delivered in send order (TCP gives you this per connection — but <em>not</em> across connection re-establishment, a gap real bugs crawl through).</li>
+<li><strong>Fair-lossy link</strong>: may drop messages, but a message sent infinitely often is delivered infinitely often. The weakest assumption under which anything works.</li>
+</ul>
+<h3 id="12-the-synchrony-spectrum">1.2 The synchrony spectrum</h3>
+<p>The single most consequential modeling decision is what you assume about <em>time</em>:</p>
+<ul>
+<li><strong>Synchronous model</strong>: there are known bounds Δ on message delay and Φ on relative process speeds. Powerful: you can detect a crash by timeout <em>with certainty</em> (no reply within Δ ⟹ dead), and algorithms can proceed in lock-step <strong>rounds</strong>. Real networks do not honor known bounds, so purely synchronous algorithms are mostly of theoretical interest — but the round structure they enable is the cleanest setting for lower bounds (Chapter 12's 3f+1 result is proved in it).</li>
+<li><strong>Asynchronous model</strong>: <em>no</em> timing assumptions at all. Messages take arbitrary finite time; processes run at arbitrary speeds. Anything proved possible here works everywhere — and the central impossibility result (FLP, Chapter 5) lives here, saying consensus is <em>not</em> possible. The deep reason: in an asynchronous system, <strong>a crashed process is indistinguishable from a slow one</strong>. Sit with that sentence; it generates half of this guide.</li>
+<li><strong>Partially synchronous model</strong> (Dwork, Lynch, Stockmeyer 1988): bounds exist but are unknown, or hold only after some unknown <strong>Global Stabilization Time (GST)</strong>. This is the model that matches production: networks are <em>usually</em> timely, <em>occasionally</em> arbitrary. It is exactly the modeling sweet spot in which Paxos, Raft, and PBFT live — <strong>safe always</strong> (under asynchrony), <strong>live whenever the network behaves</strong> (after GST). That phrase, <em>safety unconditionally, liveness conditionally</em>, is the design signature of every consensus algorithm you will ever run.</li>
+</ul>
+<h3 id="13-failure-models">1.3 Failure models</h3>
+<p>What can go wrong with a process, in increasing order of malice:</p>
+<ul>
+<li><strong>Crash-stop</strong>: a faulty process halts at some point and does nothing further. The default model for Chapters 5–9. "Up to <em>f</em> of <em>n</em> processes may crash" is the standard parameterization.</li>
+<li><strong>Crash-recovery</strong>: processes crash and may return, having kept only what they wrote to stable storage. This is the <em>actual</em> model your deployment lives in, and it's why Paxos acceptors and Raft servers must fsync their promises before answering — an in-memory promise that dies with the process silently converts crash-recovery into something worse than crash-stop.</li>
+<li><strong>Omission</strong>: a process may fail to send or receive some messages (a crashed-and-recovered process that lost in-memory state is an omission-faulty process in disguise).</li>
+<li><strong>Byzantine</strong>: a faulty process may do <em>anything</em> — lie, equivocate (tell different things to different peers), collude. Chapter 12. Between crash and Byzantine sits the practically important <em>arbitrary-but-not-malicious</em> corruption (bit flips, fsync lies, the disk that reads back zeros) — Byzantine-tolerant protocols cover it; crash-tolerant ones silently don't, which is why "Raft plus checksums" is not paranoia.</li>
+</ul>
+<p>A <strong>correct</strong> process is one that is never faulty in the given execution. Theorems are stated as "tolerates f faults among n processes": the resilience bounds — <code>f &lt; n/2</code> for crash-tolerant consensus, <code>f &lt; n/3</code> for Byzantine — are not engineering folklore but theorems (Chapters 6, 12), and they dictate cluster sizes: 3 nodes tolerate 1 crash; 5 tolerate 2; 4 nodes tolerate 1 <em>Byzantine</em> fault, never more.</p>
+<h3 id="14-safety-liveness-and-how-to-read-a-problem-specification">1.4 Safety, liveness, and how to read a problem specification</h3>
+<p>Every property you will ever want from a distributed algorithm decomposes into two kinds (Alpern &amp; Schneider proved the decomposition is fully general):</p>
+<ul>
+<li>A <strong>safety property</strong> says <em>nothing bad ever happens</em>. Formally: if it's violated, it's violated at a finite point in the execution, and no continuation can un-violate it. "No two nodes decide different values." "The lock is never held twice." Safety violations are forever — the duplicate payment cleared, the split-brain wrote both halves.</li>
+<li>A <strong>liveness property</strong> says <em>something good eventually happens</em>. "Every request eventually gets a response." A liveness violation can never be exhibited by a finite prefix — there's always hope. Stalls are liveness failures; they're the <em>recoverable</em> kind of failure.</li>
+</ul>
+<p>The engineering asymmetry follows from the logic: <strong>algorithms are designed to preserve safety under all conditions and achieve liveness under reasonable ones</strong> — never the reverse trade. When you read any specification in this guide (consensus: <em>Agreement</em>, <em>Validity</em>, <em>Termination</em>), sort the clauses into safety (Agreement, Validity) and liveness (Termination) first; the algorithm's structure will mirror the sort, and impossibility results (FLP) are invariably about the liveness clause, because safety alone is trivially achievable by doing nothing forever.</p>
+<p><strong>Complexity measures</strong>, for comparing algorithms: <em>message complexity</em> (total messages), <em>round/time complexity</em> (in synchronous models, rounds; in asynchronous ones, longest causal chain), and — often dominant in practice — <em>message delays on the critical path of one client request</em> (Multi-Paxos and Raft both answer in one round trip from leader to majority; that, not asymptotics, is why they won).</p>
+<h3 id="exercises-1">Exercises 1</h3>
+<ol>
+<li>Reliable links are built from fair-lossy links by retransmit-until-ack plus dedup at the receiver. Show that without the dedup half, the construction delivers every message at least once; show by example that an application-level operation ("append item to list") behaves differently under at-least-once than exactly-once delivery. Which later-chapter concept repairs this without exactly-once delivery?</li>
+<li>In the asynchronous model, prove there is no algorithm by which a process can decide "p has crashed" that is never wrong. (Hint: take an execution where p crashed and the detector fires; build an indistinguishable execution where p is merely slow.)</li>
+<li>Classify each as safety or liveness: (a) "no committed transaction is lost"; (b) "every replica eventually reflects every write"; (c) "reads return the value of the latest completed write"; (d) "the leader lease is held by at most one node at a time". For each, describe what its violation looks like in a production incident report.</li>
+<li>A 5-node cluster is deployed across 2 datacenters (3+2). Using only the definition of "tolerates f crash faults," explain why no placement makes the cluster survive the loss of either datacenter, and what n and placement would.</li>
+</ol>
+<hr>
+<h2 id="chapter-2-time-clocks-and-causality">Chapter 2 — Time, Clocks, and Causality</h2>
+<p>Physical clocks on different machines disagree, drift, and jump. The foundational move of the field — Lamport, 1978 — is to replace "when did it happen" with "what could have caused what," and then to build <em>logical</em> clocks that measure exactly that and nothing more.</p>
+<h3 id="21-the-happens-before-relation">2.1 The happens-before relation</h3>
+<p><strong>Definition.</strong> The <strong>happens-before</strong> relation <code>→</code> on events is the smallest transitive relation such that:</p>
+<ol>
+<li>If a and b are events at the same process and a comes first, then <code>a → b</code>.</li>
+<li>If a is the send of a message and b is its receipt, then <code>a → b</code>.</li>
+</ol>
+<p>If neither <code>a → b</code> nor <code>b → a</code>, then a and b are <strong>concurrent</strong>, written <code>a ∥ b</code>. Concurrency here has nothing to do with wall-clock simultaneity: two events years apart are "concurrent" if no chain of messages connects them. <code>→</code> captures <em>potential causality</em> — the only ordering a distributed system can actually know about itself, because influence travels only by messages.</p>
+<h3 id="22-lamport-clocks">2.2 Lamport clocks</h3>
+<p>Assign each event a number such that causality implies order:</p>
+<pre><code class="language-text">on local event or send at process p:
+    t_p := t_p + 1                      # tag the event (and message) with t_p
+on receive of message carrying t_m:
+    t_p := max(t_p, t_m) + 1            # tag the receive event with t_p
+</code></pre>
+<p><strong>Theorem (Lamport).</strong> If <code>a → b</code> then <code>L(a) &lt; L(b)</code>.</p>
+<p><em>Proof sketch.</em> Induction along the definition of →: a process-local step increments the clock, so clause 1 holds; a receive sets the clock above the message's timestamp, so clause 2 holds; transitivity follows because &lt; is transitive. ∎</p>
+<p><strong>The converse is false</strong>, and this is the crucial limitation: <code>L(a) &lt; L(b)</code> does <em>not</em> imply <code>a → b</code> — two concurrent events can carry any pair of timestamps. Lamport clocks give you a <em>consistent</em> order (extendable to a total order by tie-breaking on process ID — used for fairness in Lamport's own mutual-exclusion algorithm and in many "highest timestamp wins" schemes), but they <strong>cannot detect concurrency</strong>: looking at <code>L(a) = 5, L(b) = 9</code>, you cannot tell whether b causally followed a or never heard of it. Detecting concurrency is precisely what replicated data needs (is this write a successor of that one, or a <em>conflict</em>?), which motivates:</p>
+<h3 id="23-vector-clocks">2.3 Vector clocks</h3>
+<p>Each process keeps a vector <code>V_p[1..n]</code>, one entry per process:</p>
+<pre><code class="language-text">on local event or send at process p:
+    V_p[p] := V_p[p] + 1                # attach the whole vector to messages
+on receive of message carrying V_m:
+    V_p[i] := max(V_p[i], V_m[i])  for all i
+    V_p[p] := V_p[p] + 1
+</code></pre>
+<p>Order vectors componentwise: <code>V ≤ W</code> iff <code>V[i] ≤ W[i]</code> for all i; <code>V &lt; W</code> iff <code>V ≤ W</code> and <code>V ≠ W</code>.</p>
+<p><strong>Theorem (Fidge, Mattern).</strong> <code>a → b</code> <strong>iff</strong> <code>V(a) &lt; V(b)</code>.</p>
+<p><em>Proof sketch.</em> (⇒) is the same induction as before, componentwise. (⇐) is the direction Lamport clocks lack: suppose <code>V(a) &lt; V(b)</code> and let a be at process p. Then <code>V(b)[p] ≥ V(a)[p]</code>, and the only way information about p's local counter reaching value <code>V(a)[p]</code> can arrive at b's process is along a chain of messages departing p at or after event a — such a chain is exactly a causal path, so <code>a → b</code>. ∎</p>
+<p>So vector clocks decide, for any two tagged events, <em>which of three relations holds</em>: <code>a → b</code>, <code>b → a</code>, or <code>a ∥ b</code> (vectors incomparable). That third verdict is conflict detection. Dynamo-style stores attach version vectors to objects: a write that supersedes (<code>&gt;</code>) the stored version replaces it; incomparable versions are <em>siblings</em> — true concurrent conflicts — kept for the application or a CRDT (Chapter 10) to merge. (Pedantic but consequential distinction: <strong>version vectors</strong> count <em>writes to one object</em> per replica rather than all events per process, and only writes increment them; the comparison theory is identical.)</p>
+<p>The costs, honestly: O(n) space per tag, the requirement that the set of participants be known and stable (dynamic membership needs dotted version vectors or ID retirement — a real engineering literature), and the fact that vectors grow with actor count, which is why Dynamo pruned them (trading away some causality information, documented in the paper) and why per-client-ID vectors blow up in web-scale systems.</p>
+<h3 id="24-clocks-that-real-databases-use">2.4 Clocks that real databases use</h3>
+<ul>
+<li><strong>Last-writer-wins on physical timestamps</strong> is the seductive wrong default: clock skew means the "last" writer can be the earlier event, silently discarding causally <em>later</em> writes. Cassandra's LWW is exactly this trade, made deliberately and documented; Jepsen reports are full of systems that made it accidentally.</li>
+<li><strong>Hybrid Logical Clocks</strong> (Kulkarni et al.) embed a Lamport clock in the low bits of a physical timestamp: timestamps stay close to wall time (useful for humans, TTLs, debugging) while preserving <code>a → b ⟹ HLC(a) &lt; HLC(b)</code> exactly. CockroachDB's timestamps are HLCs.</li>
+<li><strong>TrueTime</strong> (Spanner) is the hardware route: GPS+atomic clocks expose an <em>interval</em> [earliest, latest] guaranteed to contain real time; Spanner orders transactions by intervals and <strong>waits out the uncertainty</strong> (commit-wait) before acknowledging, buying linearizability from physics plus patience. The lesson generalizes: you can substitute engineering (bounded clock error) for coordination, but the bound must be <em>guaranteed</em>, not observed-in-practice.</li>
+</ul>
+<h3 id="exercises-2">Exercises 2</h3>
+<ol>
+<li>Three processes; messages m1: p1→p2 and m2: p2→p3, where p2 sends m2 after receiving m1. Tag every event with Lamport and vector clocks. Exhibit two concurrent events whose Lamport timestamps differ by at least 3.</li>
+<li>Prove from the definitions that <code>a ∥ b</code> iff <code>V(a)</code> and <code>V(b)</code> are incomparable. Then explain in one paragraph why no scalar clock (any function from events to a totally ordered set satisfying the Lamport condition) can decide concurrency.</li>
+<li>A replicated counter uses LWW with NTP-synced clocks (max error 50ms observed, not bounded). Construct an execution in which a user's increment is lost even though every message is delivered and no process crashes. Which property from Chapter 1 (safety/liveness) did the system violate, and against what specification?</li>
+<li>Design the vector-clock pruning rule you'd use for a shopping-cart store where clients are browsers (unbounded actor set). What causality errors does your rule admit, and what is the user-visible symptom?</li>
+</ol>
+<hr>
+<h2 id="chapter-3-broadcast-and-ordering">Chapter 3 — Broadcast and Ordering</h2>
+<p>Point-to-point links plus an application that wants "tell everyone" yields the broadcast abstractions — and a ladder of strengthening guarantees that ends, surprisingly, at consensus itself. This modular ladder (following Cachin–Guerraoui–Rodrigues) is the cleanest way to see what each increment of ordering <em>costs</em>.</p>
+<h3 id="31-the-ladder-of-guarantees">3.1 The ladder of guarantees</h3>
+<p><strong>Best-effort broadcast</strong>: sender sends to all; if the <em>sender</em> doesn't crash, all correct processes deliver. One crash at the wrong moment and some processes have the message, others never will.</p>
+<p><strong>Reliable broadcast</strong> adds <em>all-or-nothing among correct processes</em>: if <strong>any correct process delivers m, every correct process delivers m</strong> — even if the sender crashed mid-send. The classic implementation is elegant and brutal: every process that delivers a message for the first time <em>re-broadcasts it</em> before delivering ("eager reliable broadcast") — O(n²) messages, and the reason gossip (Chapter 11) exists as the probabilistic discount version. Note what is <em>not</em> promised: nothing about order, and a faulty process may deliver things correct ones don't (closing <em>that</em> gap is <strong>uniform</strong> reliable broadcast, which matters when delivery has external side effects — a crashed process that emailed a customer first still emailed the customer).</p>
+<p><strong>FIFO broadcast</strong>: messages from the <em>same sender</em> deliver in send order. Cheap: sequence numbers per sender, hold back gaps.</p>
+<p><strong>Causal broadcast</strong>: if <code>broadcast(m1) → broadcast(m2)</code> (happens-before, Chapter 2), every process delivers m1 before m2. Implementation = reliable broadcast + vector-clock hold-back:</p>
+<pre><code class="language-text">state: V[1..n] := all zeros          # deliveries seen from each sender
+on broadcast(m) at p:
+    rb_broadcast(⟨m, W := V with W[p] := V[p]+1⟩)   # plus pending self-delivery
+on rb_deliver(⟨m, W⟩ from sender q):
+    add to pending
+    while ∃⟨m', W', q'⟩ in pending such that
+          W'[q'] = V[q'] + 1  and  W'[i] ≤ V[i] for all i ≠ q':
+        deliver(m');  V[q'] := V[q'] + 1
+</code></pre>
+<p>The guard reads as: deliver q's next message only once you've delivered everything q had delivered when it sent. <strong>Theorem</strong>: this delivers in causal order. <em>Proof sketch</em>: the guard ensures a message is delivered only when the local vector dominates its causal dependencies; induction on → does the rest. Causal broadcast is the strongest ordering achievable <em>without consensus</em> — it never blocks on remote coordination (you can always deliver your own messages immediately), which is why collaborative editors and causal-consistency stores (COPS, the academic line behind several products) build on it.</p>
+<p><strong>Total order broadcast</strong> (= <strong>atomic broadcast</strong>): all correct processes deliver <em>all</em> messages in the <em>same</em> order (whether or not causally related). This is the abstraction that state machine replication actually consumes: same start state + same deterministic state machine + same total order of inputs = same state everywhere — the <strong>state machine replication theorem</strong>, one line of argument and the architecture of etcd, ZooKeeper, Kafka's controller quorum, and every Raft-replicated store.</p>
+<h3 id="32-the-equivalence-theorem">3.2 The equivalence theorem</h3>
+<p><strong>Theorem.</strong> Total order broadcast and consensus are interreducible (in the crash-stop asynchronous model).</p>
+<p><em>Proof sketch.</em> (TOB ⇒ consensus): to reach consensus, TOB-broadcast your proposal and decide the first value TOB-delivered — agreement on order of the first message <em>is</em> agreement. (Consensus ⇒ TOB): run a sequence of consensus instances, the k-th deciding the <em>batch</em> of messages occupying slot k; deliver slots in order. ∎</p>
+<p>The corollary sets the price list for the whole field: <strong>FLP (Chapter 5) applies to total order broadcast verbatim</strong> — deterministic TOB is impossible in the asynchronous model — and everything in the ladder <em>below</em> total order (FIFO, causal) is FLP-free and therefore cheap. When a design review asks "do we need total order here, or just causal?", it is asking "do we need to pay for consensus?", and the honest answer changes architectures: shopping carts don't need it; replicated logs do; a surprising amount of middle ground (counters, sets, presence) can drop to Chapter 10 and pay nothing.</p>
+<h3 id="exercises-3">Exercises 3</h3>
+<ol>
+<li>Show by explicit 3-process execution that FIFO broadcast does not imply causal broadcast (find the causal violation that sequence-numbers-per-sender admit).</li>
+<li>Prove the safety half of the causal-broadcast algorithm above: if <code>broadcast(m1) → broadcast(m2)</code>, no process delivers m2 first. Where exactly does the proof use reliability of the underlying broadcast?</li>
+<li>The TOB⇒consensus reduction decides the first delivered value. Verify each consensus clause (validity, agreement, termination) against the TOB properties; which TOB property carries each clause?</li>
+<li>Your team replicates a counter by causal-broadcasting <code>increment</code> operations. Does every replica converge to the same value? Does the same hold for <code>set(x)</code> operations? Reconcile the two answers, and name the Chapter 10 concept lurking in the first one.</li>
+</ol>
+<hr>
+<h2 id="chapter-4-global-states-and-distributed-snapshots">Chapter 4 — Global States and Distributed Snapshots</h2>
+<p>"What is the current state of the system?" is, in a distributed system, not a well-posed question — there is no instant, no global observer. The well-posed replacement is a <strong>consistent global state</strong>, and the Chandy–Lamport algorithm captures one while the system keeps running. This chapter is short, beautiful, and the direct ancestor of how Flink checkpoints a streaming job under load.</p>
+<h3 id="41-cuts-and-consistency">4.1 Cuts and consistency</h3>
+<p>A <strong>cut</strong> assigns to each process a prefix of its execution; the cut's <em>frontier</em> is "where we pretend to stop each process." A cut is <strong>consistent</strong> if it is closed under happens-before: if event e is in the cut and <code>e' → e</code>, then e' is in the cut too. The litmus violation: a cut containing the <em>receipt</em> of a message but not its <em>send</em> describes a state in which a message materialized from nowhere — no global observer could ever have seen it. (The reverse — send included, receipt not — is fine: the message is "in the channel," and channel contents are part of global state.)</p>
+<p><strong>Theorem (Mattern).</strong> A cut is consistent iff its frontier events are pairwise concurrent — equivalently, iff it could have been an instantaneous snapshot in <em>some</em> execution indistinguishable from the real one. Consistent cuts are exactly the states the system "might have been in"; any predicate you evaluate on one (deadlock, total money in the bank, lag) is meaningful; anything evaluated on an inconsistent cut is fiction (the classic demo: count money in flight between bank accounts with an inconsistent cut and watch conservation fail).</p>
+<h3 id="42-the-chandylamport-snapshot-algorithm">4.2 The Chandy–Lamport snapshot algorithm</h3>
+<p>Assumes reliable <strong>FIFO</strong> channels, crash-free run during the snapshot. The idea: flood a <em>marker</em> that acts as a dye separating "before the snapshot" from "after" on every channel.</p>
+<pre><code class="language-text">initiator (any process, spontaneously):
+    record own state
+    send MARKER on every outgoing channel
+    start recording arrivals on every incoming channel
+
+every process p, on first receiving MARKER on channel c:
+    record own state
+    record channel c as EMPTY
+    send MARKER on every outgoing channel
+    start recording arrivals on all other incoming channels
+
+on receiving MARKER on channel c, not the first marker:
+    stop recording c; channel c's state := messages recorded on c
+    (snapshot at p complete when markers received on all incoming channels)
+</code></pre>
+<p><strong>Theorem.</strong> The recorded process states plus recorded channel states form a consistent global state.</p>
+<p><em>Proof sketch.</em> Orient every event as pre-snapshot (before its process recorded) or post-snapshot. Suppose the cut were inconsistent: some message m is sent post-snapshot but received pre-snapshot. The sender recorded before sending m, hence sent a marker on that channel before m; FIFO delivers the marker first; so the receiver had recorded before receiving m — contradiction with "received pre-snapshot." Channel recordings capture exactly the messages that crossed the dye line (sent pre, received post). ∎</p>
+<p>Two properties worth internalizing: the snapshot is consistent but may correspond to <em>no instant that actually occurred</em> — it is a state from an indistinguishable reordering of the real execution, and Mattern's theorem says that's the most any observer can have; and the algorithm is <strong>non-blocking</strong> — the application never pauses, which is the entire point.</p>
+<p><strong>Where you run this today</strong>: Flink's <em>asynchronous barrier snapshots</em> are Chandy–Lamport with markers renamed "barriers," channel recording replaced by barrier <em>alignment</em>, and the snapshot shipped to object storage — that's "exactly-once state" in stream processing, demystified. The other classic consumer is <strong>stable-property detection</strong>: a predicate that, once true, stays true (deadlock, termination, "log fully replicated") and that is true in a consistent snapshot is true <em>now</em> — the snapshot may be stale, but stability makes staleness harmless.</p>
+<h3 id="exercises-4">Exercises 4</h3>
+<ol>
+<li>Two bank accounts on two processes, transfers in flight. Construct an inconsistent cut in which total money ≠ invariant, then run Chandy–Lamport by hand on the same execution and verify the recorded state conserves money (count the channel recordings).</li>
+<li>Where exactly does the proof use FIFO? Exhibit a non-FIFO execution in which the algorithm records an inconsistent state.</li>
+<li>Explain why "is there currently a deadlock" is answerable from a snapshot but "is the system currently idle" is not. (Name the property of the predicate that makes the difference.)</li>
+<li>Flink aligns barriers (pausing one input of a two-input operator until the other's barrier arrives) instead of recording channel state. Argue that alignment computes the same cut with empty channel recordings; what does the pause cost, and what does Flink's "unaligned checkpoint" mode trade to remove it?</li>
+</ol>
+<hr>
+<h2 id="chapter-5-impossibility-flp-and-failure-detectors">Chapter 5 — Impossibility: FLP and Failure Detectors</h2>
+<p>This chapter is the intellectual center of the guide: the theorem that says the thing every datacenter does is impossible, the precise sense in which that's true, and the exact loopholes through which Paxos and Raft escape. Engineers who internalize FLP stop being surprised by leader-election flapping and start designing for it.</p>
+<h3 id="51-the-consensus-problem">5.1 The consensus problem</h3>
+<p>Each process starts with an input value. <strong>Consensus</strong> requires:</p>
+<ul>
+<li><strong>Agreement</strong> (safety): no two correct processes decide different values.</li>
+<li><strong>Validity</strong> (safety): the decided value was some process's input (rules out the trivial "always decide 0").</li>
+<li><strong>Termination</strong> (liveness): every correct process eventually decides.</li>
+</ul>
+<h3 id="52-the-flp-theorem">5.2 The FLP theorem</h3>
+<p><strong>Theorem (Fischer, Lynch, Paterson 1985).</strong> In the asynchronous model, no deterministic algorithm solves consensus while tolerating even <strong>one</strong> crash failure.</p>
+<p>The proof is a masterpiece of adversary argument; here is its skeleton, faithful enough to reconstruct:</p>
+<p><em>Proof sketch.</em> Call a global configuration <strong>bivalent</strong> if both decisions (0 and 1) are still reachable from it, <strong>univalent</strong> if only one is. The adversary's goal: keep the system bivalent forever — an infinite undecided execution violates Termination.</p>
+<p><strong>Step 1 (a bivalent start exists).</strong> Consider initial configurations along a chain that flips inputs one process at a time from all-0 to all-1. Adjacent configurations differ at one process p; if every initial configuration were univalent, somewhere along the chain valence flips between neighbors, and an execution in which p crashes immediately is identical from both — so both must decide the same way, contradicting opposite valences. Hence some initial configuration is bivalent.</p>
+<p><strong>Step 2 (bivalence can always be preserved).</strong> From any bivalent configuration, take any enabled event e (delivery of some message to some process). One shows — this is the heart, a case analysis on commuting independent events — that there is always a finite schedule after which applying e <em>still</em> leaves the system bivalent. The crux case: if applying e now leads univalent-0 and applying it after some other event leads univalent-1, the two diverging configurations differ only in the state of <em>one</em> process; crash that process, and the rest of the system, unable to distinguish the two, must decide both 0 and 1 from indistinguishable states — contradiction with Agreement.</p>
+<p><strong>Step 3.</strong> Iterate step 2 fairly (every message eventually considered): an infinite execution, every step bivalent, no decision ever — and crucially, an execution in which every message is delivered and at most the one adversarially-chosen process is slow. Termination fails. ∎</p>
+<p>Read the theorem precisely — three readings, two of them wrong:</p>
+<ul>
+<li><em>Wrong</em>: "consensus is impossible, so etcd is doing something fake." FLP is about the <strong>fully asynchronous</strong> model with a <strong>deterministic</strong> algorithm and <strong>guaranteed</strong> termination. Real networks are partially synchronous; real algorithms give up <em>guaranteed</em> termination.</li>
+<li><em>Wrong</em>: "consensus randomly fails, so expect data loss." The execution FLP constructs is a <em>liveness</em> failure — eternal indecision — not a safety failure. Paxos and Raft never violate Agreement, in any execution whatsoever; what they inherit from FLP is the possibility of (vanishingly rare, adversarially-scheduled) <em>non-termination</em>.</li>
+<li><em>Right</em>: <strong>any consensus protocol has executions in which it makes no progress, and the adversary that produces them is "unlucky timing."</strong> Raft's dueling-candidates livelock — two candidates splitting votes forever in lockstep — is not a bug in Raft; it is FLP, visiting. Raft's randomized election timeouts make the lockstep measure-zero. That's the loophole, used.</li>
+</ul>
+<h3 id="53-the-loopholes-catalogued">5.3 The loopholes, catalogued</h3>
+<ol>
+<li><strong>Partial synchrony</strong> (the production answer): assume timing bounds hold <em>eventually</em> (after GST). Safety is proven without any timing assumption; termination is proven under the eventual bound. Paxos, Raft, Zab, PBFT.</li>
+<li><strong>Randomization</strong>: with coin flips, consensus terminates <em>with probability 1</em> in the asynchronous model (Ben-Or's algorithm — exponential expected rounds in the naive form, but the door FLP leaves open since it only bars <em>deterministic</em> algorithms; modern shared-coin protocols and Nakamoto-style longest-chain consensus both live here).</li>
+<li><strong>Failure detectors</strong> (the abstraction that <em>measures</em> the loophole): augment the model with an oracle giving (unreliable) crash hints. Chandra &amp; Toueg's hierarchy classifies them by how wrong they may be; the celebrated result names the <em>weakest</em> one that suffices:</li>
+</ol>
+<p><strong>Theorem (Chandra, Hadzilacos, Toueg).</strong> <strong>Ω</strong> — the <em>eventual leader elector</em>, guaranteeing only that eventually all correct processes trust the same correct process — is the weakest failure detector for consensus (with f &lt; n/2).</p>
+<p>Ω is exactly what timeout-based leader election implements <em>in the good case</em>: it may flap arbitrarily during chaos (and consensus stalls, harming no safety), but once the network calms down, one stable leader emerges and consensus terminates. Every "leader lease," "election timeout," and "heartbeat interval" knob in your etcd config is tuning the real-world quality of an Ω implementation — and FLP is why the knob exists.</p>
+<h3 id="54-leader-election-as-an-algorithmic-problem">5.4 Leader election as an algorithmic problem</h3>
+<p>Beyond its role as Ω, election in its own right, two classics worth knowing:</p>
+<ul>
+<li><strong>Chang–Roberts ring election</strong>: processes in a logical ring forward the highest ID seen; a process receiving its own ID is leader. O(n log n) messages expected, O(n²) worst case. Mostly pedagogical — rings are fragile — but the "highest ID circulates" pattern recurs.</li>
+<li><strong>Bully algorithm</strong> (Garcia-Molina): on suspecting the leader, a process challenges all higher IDs; any live higher ID takes over the election; the highest live ID wins and announces. Synchronous-model assumptions (timeouts as proof of death) — which is exactly its production weakness: a <em>slow</em> highest-ID node and a fast one bully-elect a split brain. The lesson generalizes and matters: <strong>election without quorum acknowledgment is unsafe under asynchrony</strong>; Raft's election (Chapter 7) is "bully with votes and a majority rule," and the majority is what converts it from heuristic to theorem.</li>
+</ul>
+<h3 id="exercises-5">Exercises 5</h3>
+<ol>
+<li>In FLP Step 1, write out the 3-process case concretely: list the input configurations, and exhibit the crash execution that forces a contradiction between adjacent univalent configurations of opposite valence.</li>
+<li>Explain why FLP does not apply to the <em>synchronous</em> model — which step of the proof breaks, and what algorithm (sketch one in rounds: exchange values for f+1 rounds, decide min) solves synchronous consensus with f crash faults?</li>
+<li>Raft with fixed (non-random) election timeouts: construct the infinite dueling-candidates execution explicitly (message schedule per round). Verify no safety property is violated along the way.</li>
+<li>Ω only requires <em>eventual</em> agreement on a <em>correct</em> leader. Show by execution that a system can have two simultaneous self-believed leaders for an arbitrary finite duration without violating Ω — and name the Chapter 7/8 mechanism that keeps such periods harmless to the data.</li>
+</ol>
+<hr>
+<h2 id="chapter-6-consensus-i-paxos">Chapter 6 — Consensus I: Paxos</h2>
+<p>Paxos (Lamport, "The Part-Time Parliament," then mercifully "Paxos Made Simple") is the historically first practical answer to FLP and still the conceptual core of half the consensus systems running. The way to understand Paxos is not to memorize the two phases but to <em>derive</em> them — each rule is forced by a failure scenario, and the proof is one invariant.</p>
+<h3 id="61-the-cast-and-the-goal">6.1 The cast and the goal</h3>
+<p>Roles (one machine usually plays all three): <strong>proposers</strong> push values, <strong>acceptors</strong> vote (the fault-tolerant memory of the protocol — f &lt; n/2 may crash), <strong>learners</strong> observe what was chosen. A value is <strong>chosen</strong> when a <strong>majority of acceptors</strong> accept it. Majorities are the load-bearing choice: <em>any two majorities intersect</em>, so two different values can't both be chosen by disjoint juries, and the protocol survives minority crashes. (Generalization: any <em>quorum system</em> with pairwise intersection works — Chapter 8.)</p>
+<h3 id="62-deriving-single-decree-paxos">6.2 Deriving single-decree Paxos</h3>
+<p>Try the naive protocol: acceptors accept the first value they hear; chosen = majority accepted. It fails immediately — two proposers, votes split three ways, nothing has a majority, and <em>acceptors can never change their vote</em> (changing votes lets a second value get chosen after a first — safety violation). So acceptors must be able to accept <em>again</em> — but then late proposals can overwrite a chosen value. The escape: number proposals, and force a proposer to <em>learn about possibly-chosen values before proposing</em>. That is the two-phase structure:</p>
+<pre><code class="language-text"># Phase 1 — prepare/promise
+proposer:  choose unique ballot n; send PREPARE(n) to acceptors
+acceptor on PREPARE(n):
+    if n &gt; maxBallotPromised:
+        maxBallotPromised := n                        # persist before replying!
+        reply PROMISE(n, lastAcceptedBallot, lastAcceptedValue)
+    else: reject (hint current ballot)
+
+# Phase 2 — propose/accept
+proposer on PROMISE from a majority:
+    v := value of the highest-ballot acceptance reported in promises,
+         or proposer's own value if none reported          # ← the crux rule
+    send ACCEPT(n, v) to acceptors
+acceptor on ACCEPT(n, v):
+    if n ≥ maxBallotPromised:
+        accept: persist (n, v); reply ACCEPTED(n)
+learner: value chosen when some ballot's ACCEPTED reaches a majority
+</code></pre>
+<p>Every line is forced. The promise ("I will never accept anything numbered &lt; n") freezes the past so the proposer's read of it stays true. The crux rule — <em>adopt the highest-ballot accepted value you heard, propose your own only if you heard none</em> — is what makes a new proposer the <em>servant</em> of any possibly-chosen earlier value instead of its overwriter. And persistence before replying is the crash-recovery model (Chapter 1) collecting its toll: an acceptor that forgets a promise un-freezes the past.</p>
+<h3 id="63-the-safety-proof">6.3 The safety proof</h3>
+<p><strong>Invariant P2c.</strong> If a proposal with ballot n and value v is issued, then there is a majority S such that either (a) no acceptor in S has accepted any proposal numbered &lt; n, or (b) v equals the value of the highest-numbered proposal below n accepted within S.</p>
+<p>The crux rule <em>is</em> P2c restated as code. From it:</p>
+<p><strong>Theorem (Agreement).</strong> If value v is chosen at ballot n, every proposal issued at any ballot n' &gt; n has value v.</p>
+<p><em>Proof sketch.</em> Strong induction on n'. v chosen at n means a majority C accepted (n, v). Consider proposal (n', v') with n' &gt; n, justified by its promise-majority S. S ∩ C ≠ ∅; pick a ∈ S ∩ C. Acceptor a accepted (n, v) and promised n'; by the promise rule it accepted (n, v) <em>before</em> promising n' (afterward it would refuse ballots &lt; n' — and n &lt; n'). So a's promise reported an acceptance with ballot ≥ n. By induction hypothesis every acceptance in S with ballot in (n, n') also carries value v; the highest one reported is therefore v; the crux rule forces v' = v. Two chosen values are impossible: each would propagate itself up all higher ballots. ∎</p>
+<p>Notice what the proof never mentions: time. No step depends on message delay or speed — Agreement holds in the raw asynchronous model. What <em>can</em> fail without timing luck is termination: two proposers can alternate PREPAREs forever, each invalidating the other's ballot — FLP's shadow, in the flesh. The standard fix is the standard loophole: elect a distinguished proposer (an Ω implementation via timeouts) and let only it propose in the steady state.</p>
+<h3 id="64-multi-paxos-and-the-gap-raft-filled">6.4 Multi-Paxos and the gap Raft filled</h3>
+<p>Consensus on <em>one</em> value generalizes to a replicated log by running an instance per log slot — and the steady-state optimization is the entire reason the protocol is deployable: a stable leader runs Phase 1 <em>once</em> for its ballot across all future slots, then commits each client command with a single Phase-2 round trip to a majority. One round trip per operation, plus fsyncs — the same wire cost as Raft, because at this layer they are the same algorithm.</p>
+<p>What "Paxos Made Simple" famously does <em>not</em> specify is everything between the invariant and a running system: log gaps and their repair, leader change choreography, membership change, snapshotting, state transfer to lagging replicas. Every production Paxos (Chubby, Spanner's, etc.) filled the gap with bespoke, subtly different engineering — Google's "Paxos Made Live" paper is the honest war diary. That under-specification is the actual problem statement of the next chapter: Raft is best read not as a different algorithm but as <strong>Multi-Paxos with all engineering decisions made, in the order that makes the safety argument teachable</strong>.</p>
+<h3 id="exercises-6">Exercises 6</h3>
+<ol>
+<li>Run single-decree Paxos by hand: 3 acceptors, proposers P1 (ballot 1, value A) and P2 (ballot 2, value B), where P1 completes Phase 1, then P2 completes both phases, then P1 resumes. What does P1 end up proposing/achieving? Now reorder so P1's ACCEPT reaches 2 acceptors before P2's PREPARE — trace how P2 is forced to adopt A.</li>
+<li>The acceptor persists <code>maxBallotPromised</code> before replying. Construct the safety violation if it replies first and crashes/restarts in between.</li>
+<li>Why must ballot numbers be unique across proposers (e.g., round-robin or ⟨counter, proposerID⟩)? Exhibit the bad execution with duplicate ballots.</li>
+<li>Prove that Paxos still satisfies Agreement if "majority" is replaced by any quorum system in which every two quorums intersect; identify each proof step that uses intersection. Give a non-majority quorum system over 6 nodes and discuss what it trades.</li>
+<li>(Termination) Describe the dueling-proposers livelock precisely, and explain why adding randomized proposal backoff yields termination with probability 1 under partial synchrony.</li>
+</ol>
+<hr>
+<h2 id="chapter-7-consensus-ii-raft">Chapter 7 — Consensus II: Raft</h2>
+<p>Raft (Ongaro &amp; Ousterhout, 2014) solves exactly Multi-Paxos's problem — a fault-tolerant replicated log — decomposed for understandability: leader election, log replication, and a safety argument hinging on one voting restriction. This chapter walks the protocol at the message level, because the message level is where operators live.</p>
+<h3 id="71-terms-roles-and-the-heartbeat-skeleton">7.1 Terms, roles, and the heartbeat skeleton</h3>
+<p>Time divides into <strong>terms</strong>, numbered monotonically; each term has at most one leader. Every server is <strong>follower</strong>, <strong>candidate</strong>, or <strong>leader</strong>, and carries persistent state — <code>currentTerm</code>, <code>votedFor</code>, and the log (entries <code>⟨term, command⟩</code>) — fsynced before any reply (Chapter 1's crash-recovery toll, again). Every RPC carries the sender's term; <strong>any server seeing a higher term adopts it and reverts to follower</strong> — this one rule retires stale leaders the moment they hear from the future.</p>
+<p>Followers expect periodic <code>AppendEntries</code> heartbeats from the leader. A follower hearing nothing for a randomized <strong>election timeout</strong> (e.g., 150–300ms) assumes the leader dead and stands for election. The randomization is, as established in Chapter 5, the anti-FLP measure: it breaks symmetric candidate duels with probability 1.</p>
+<h3 id="72-leader-election">7.2 Leader election</h3>
+<pre><code class="language-text">candidate, on election timeout:
+    currentTerm += 1; vote for self; reset timeout
+    send RequestVote(term, candidateId, lastLogIndex, lastLogTerm) to all
+
+server, on RequestVote(t, c, lli, llt):
+    if t &lt; currentTerm: refuse
+    if votedFor in this term ∉ {null, c}: refuse        # one vote per term
+    if candidate's log is not at least as up-to-date as mine: refuse   # §7.4
+       (&quot;up-to-date&quot;: higher lastLogTerm wins; ties → longer log wins)
+    else: grant vote (persist votedFor first)
+
+candidate: majority of votes → leader (send heartbeats immediately)
+           AppendEntries from a leader with term ≥ mine → follower
+           timeout again → new term, retry
+</code></pre>
+<p>One vote per term plus majority-to-win yields, immediately: <strong>at most one leader per term</strong> (two majorities would share a voter who voted twice). This is the bully algorithm cured of its split-brain disease by quorum (Chapter 5's closing lesson, realized) — and note it does <em>not</em> prevent two simultaneous self-believed leaders of <em>different</em> terms; the old one is harmless because it can no longer commit (it can't assemble a majority that hasn't moved on — §7.3).</p>
+<h3 id="73-log-replication-and-the-commit-rule">7.3 Log replication and the commit rule</h3>
+<p>The leader appends client commands to its log and replicates:</p>
+<pre><code class="language-text">AppendEntries(term, leaderId,
+              prevLogIndex, prevLogTerm,     # the consistency check
+              entries[], leaderCommit)
+
+follower:
+    if term &lt; currentTerm: refuse
+    if log lacks an entry at prevLogIndex with term prevLogTerm: refuse
+    delete any conflicting suffix; append entries
+    commitIndex := min(leaderCommit, index of last new entry)
+</code></pre>
+<p>The <code>prevLogIndex/prevLogTerm</code> check is an induction in protocol form: if a follower's log matches the leader's at one position, it matches at all earlier positions (<strong>Log Matching property</strong> — provable by induction on appends, since a leader creates at most one entry per index per term and never overwrites its own log). A refused AppendEntries makes the leader decrement that follower's <code>nextIndex</code> and retry — walking back to the divergence point, then overwriting the follower's conflicting suffix with the leader's truth.</p>
+<p><strong>Commit rule</strong>: an entry is committed when the leader has replicated it on a majority <em>and</em> the entry's term is the leader's <strong>current</strong> term. Committed entries are applied to the state machine and acknowledged to clients. The italicized clause is the subtlest sentence in the paper (its Figure 8): a leader must never count replicas of an <em>earlier term's</em> entry toward commitment, because such an entry — majority-replicated or not — can still be overwritten by a later-term leader elected on a different majority; the new leader commits old entries only <em>indirectly</em>, by committing one entry of its own term on top (production Rafts append a no-op at election for exactly this).</p>
+<h3 id="74-the-safety-argument">7.4 The safety argument</h3>
+<p>The voting restriction (§7.2) — <em>grant votes only to candidates whose log is at least as up-to-date as yours</em> — is Raft's entire replacement for Paxos's Phase 1 value adoption. It buys:</p>
+<p><strong>Leader Completeness theorem.</strong> If an entry is committed in term T, it is present in the log of every leader of every term &gt; T.</p>
+<p><em>Proof sketch.</em> The entry was replicated to a majority C (and counted in term T, by the commit rule). A leader of any later term won a majority of votes V. C ∩ V ≠ ∅: some voter holds the committed entry <em>and</em> judged the winner's log at-least-as-up-to-date. Induct on terms: the winner's log either has higher last term — but any entry of a term between T and it sits atop a chain rooted in a leader that (by induction) held the committed entry, and Log Matching propagates it down — or equal last term and ≥ length, which contains the entry directly by Log Matching. Either way the new leader has it. ∎</p>
+<p>From Leader Completeness, the safety chain is short: leaders never overwrite their own logs and followers are forced into agreement with leaders (Log Matching + the walk-back), so a committed entry can never be replaced — <strong>State Machine Safety</strong>: no two servers apply different commands at the same log index. That, plus the equivalence theorem of Chapter 3, is total order broadcast, is state machine replication, is etcd not losing your Kubernetes cluster.</p>
+<p>Compare the philosophies, because the exam question writes itself: <strong>Paxos lets anyone lead and forces the new leader to adopt the past (Phase 1); Raft only elects leaders that already contain the past (vote restriction).</strong> Same invariant — "the chosen survives" — enforced at proposal time vs. at election time. Raft's choice makes logs flow strictly leader→follower (never backward), which is most of why it's easier to implement and verify.</p>
+<h3 id="75-the-rest-of-a-real-raft">7.5 The rest of a real Raft</h3>
+<ul>
+<li><strong>Membership change</strong>: switching configurations naively lets old-majority and new-majority elect two leaders. The paper's joint-consensus approach (decisions require majorities of <em>both</em> configs during transition) and the simpler now-standard <strong>single-server changes</strong> (alter membership one node at a time — old and new majorities of configs differing by one node necessarily intersect) are both quorum-intersection arguments in disguise.</li>
+<li><strong>Log compaction</strong>: snapshot the state machine at index k, truncate the log; lagging followers receive <code>InstallSnapshot</code> instead of ancient entries.</li>
+<li><strong>Linearizable reads without log writes</strong>: a leader may serve reads locally only after confirming leadership against a majority (ReadIndex) or within a clock-based <strong>lease</strong> — note the lease quietly reintroduces a timing assumption into a protocol whose safety needed none; bounded clock error becomes part of the TCB. (This exact corner is where more than one production system met Jepsen.)</li>
+<li><strong>Pre-vote and check-quorum</strong>: a partitioned node otherwise increments its term forever and, on heal, disrupts a healthy leader; pre-vote asks "would you vote for me?" without incrementing terms. The lesson: term inflation is harmless to safety but costly to liveness — and production Raft is largely liveness engineering.</li>
+</ul>
+<h3 id="exercises-7">Exercises 7</h3>
+<ol>
+<li>Five servers, leader L1 of term 2 replicates index 5 to itself + S2, then partitions away. Trace the election that follows (who can win, who can't, and why, citing the vote restriction), the repair of S2's log if a new leader L2 of term 3 has a different entry at index 5, and the fate of L1's entry.</li>
+<li>Reconstruct the Figure-8 scenario: build the 5-server execution in which an entry replicated on a majority is later overwritten. Identify the exact step the commit rule's current-term clause forbids.</li>
+<li>Prove Log Matching by induction on AppendEntries, from: leaders create ≤1 entry per index per term; the prevLog check.</li>
+<li>Why is <code>votedFor</code> persisted? Construct the double-vote (and resulting two-leaders-one-term) execution if a server votes, crashes, restarts, and votes again.</li>
+<li>A leader serving lease-based reads has a clock running 2× fast. Construct the stale read. Which Jepsen-style consistency violation is this, and what does ReadIndex cost instead?</li>
+</ol>
+<hr>
+<h2 id="chapter-8-replication-quorums-and-linearizability">Chapter 8 — Replication, Quorums, and Linearizability</h2>
+<p>Consensus replicates a <em>log</em>; this chapter studies replicating <em>data</em> directly — the quorum systems beneath Dynamo-style stores, the precise definition of the consistency level everyone names and few define, an algorithm (ABD) that achieves it <em>without</em> consensus, and the theorem (CAP) that bounds the whole design space.</p>
+<h3 id="81-linearizability-precisely">8.1 Linearizability, precisely</h3>
+<p><strong>Definition (Herlihy &amp; Wing).</strong> An execution of operations (each an invocation→response interval in real time) on an object is <strong>linearizable</strong> if each operation can be assigned a <em>linearization point</em> inside its interval such that the results are exactly those of executing the operations sequentially in linearization-point order.</p>
+<p>Operationally: every operation appears to take effect atomically at some instant between its start and its completion. The two clauses to respect: <strong>real-time order</strong> (if op A completed before op B began, A's effect is visible to B — this is what makes "I wrote it, then my other client read it" hold) and <strong>single order</strong> (all clients agree on it). Linearizability is <em>composable</em> (objects linearizable separately are linearizable jointly — not true of weaker conditions) and is the strongest practical single-object guarantee; it is what "strong consistency" should mean when a vendor says it, and what Jepsen's Knossos checker tests by searching for a valid assignment of linearization points. Weaker named points on the spectrum, for calibration: <strong>sequential consistency</strong> (single order, but not real-time — a fresh write may be invisible to a <em>later</em>-starting read), <strong>causal consistency</strong> (Chapter 2's → respected; achievable without consensus via causal broadcast), <strong>eventual consistency</strong> (replicas converge if writes stop — a liveness-only promise; alone, it permits almost anything in the meantime).</p>
+<h3 id="82-readwrite-quorums-and-the-theorem-they-do-not-prove">8.2 Read/write quorums, and the theorem they do <em>not</em> prove</h3>
+<p>N replicas; writes go to W of them, reads consult R. The folklore condition:</p>
+<p><strong>Quorum intersection.</strong> If <code>R + W &gt; N</code>, every read quorum intersects every write quorum, so a read sees at least one replica bearing the latest completed write (pick the value with the highest version among the R replies).</p>
+<p>Necessary — and <strong>not sufficient for linearizability</strong>, a gap worth understanding exactly because most "tunable consistency" stores live in it. Two canonical violations with <code>R + W &gt; N</code>:</p>
+<ol>
+<li><strong>Read-during-write skew</strong>: a write is in flight (landed on 1 of 3 replicas). Reader X reads {replica with new value}, returns new; later reader Y reads {two stale replicas}, returns old. New-then-old violates any single order respecting real time.</li>
+<li><strong>Failed/partial writes leave siblings</strong>: a write that died after one replica has no defined outcome, and later reads flip-flop depending on quorum composition.</li>
+</ol>
+<p>The repair is <strong>read repair done synchronously as part of the read</strong>: before returning a value, write it back to a quorum. That is precisely:</p>
+<h3 id="83-the-abd-algorithm-linearizable-registers-without-consensus">8.3 The ABD algorithm — linearizable registers without consensus</h3>
+<p>Attiya, Bar-Noy, Dolev (1995): a single-writer (extendable to multi-writer) read/write register, linearizable, in the <em>fully asynchronous</em> model, tolerating f &lt; n/2 crashes. Pseudocode for the multi-writer form:</p>
+<pre><code class="language-text">write(v) at client:
+    phase 1: query a quorum for current ⟨ts, _⟩ pairs;
+             ts := ⟨max timestamp + 1, clientId⟩
+    phase 2: send ⟨ts, v⟩ to all; wait for W=majority acks
+replica on store⟨ts, v⟩: keep iff ts &gt; local ts; ack regardless
+
+read() at client:
+    phase 1: query a majority; pick ⟨ts*, v*⟩ with maximal ts*
+    phase 2 (the crux): write ⟨ts*, v*⟩ back to a majority; then return v*
+</code></pre>
+<p><strong>Theorem.</strong> Every execution is linearizable. <em>Proof sketch.</em> Order operations by timestamp (reads adopt the timestamp they return). Real-time order is respected: a completed operation placed ⟨ts, v⟩ on a majority; any later-starting operation's phase-1 majority intersects it and thus observes ts or higher — so no later operation returns or writes anything older. The write-back is what extends this to read/read pairs: once a read returns v<em>, v</em> sits on a majority, and no subsequent read can return anything older. ∎</p>
+<p>Two morals. First, FLP is not violated — registers are weaker than consensus (Herlihy's consensus hierarchy: read/write registers have consensus number 1; you cannot build consensus from them — so "linearizable storage without consensus" is consistent with everything in Chapter 5). Second, the cost is visible: <strong>reads write</strong>. Every linearizable read costs a round trip <em>plus</em> a write-back (skippable only when the read quorum is already unanimous). Dynamo-style stores that do asynchronous, best-effort read repair instead are choosing to be non-linearizable; ABD is the price tag that makes the choice legible.</p>
+<h3 id="84-the-cap-theorem-as-a-theorem">8.4 The CAP theorem, as a theorem</h3>
+<p><strong>Theorem (Gilbert &amp; Lynch 2002).</strong> No read/write register implementation in an asynchronous network can guarantee all three of: <strong>C</strong>onsistency (linearizability), <strong>A</strong>vailability (every request to a non-failed node eventually receives a response), and <strong>P</strong>artition tolerance (the guarantees hold even when the network drops all messages between two groups).</p>
+<p><em>Proof — and it is short.</em> Partition nodes into G1, G2 with all cross-messages lost. A client writes v (replacing v0) at a node in G1: by Availability it must complete, having touched only G1. A client then reads at a node in G2: by Availability it must respond, having seen only G2 — necessarily v0. The read began after the write completed yet returned the older value: linearizability violated. ∎</p>
+<p>Reading it honestly: P is not a knob — partitions happen, so the real choice is <strong>what to do during one</strong>: refuse some requests (CP: the minority side of a Raft cluster stalls — correct and unavailable) or answer from what you have (AP: Dynamo serves both sides — available and divergent, repaying the debt later via Chapter 10 machinery). And CAP says nothing about the 99.9% of life <em>without</em> partitions — <strong>PACELC</strong> completes it: if Partitioned, A-vs-C; <strong>E</strong>lse, <strong>L</strong>atency-vs-<strong>C</strong>onsistency (linearizable operations cost quorum round trips even on a healthy network — ABD made that concrete). The theorem's practical residue is a design question you can now phrase precisely per data item: <em>which side of Gilbert–Lynch's partition do these bytes sit on?</em></p>
+<h3 id="85-primary-backup-and-chain-replication-briefly">8.5 Primary-backup and chain replication, briefly</h3>
+<p>Two non-quorum schemes worth having in the catalog: <strong>primary-backup</strong> (writes through a primary, synchronously copied to backups; consistency hinges entirely on safe failover, i.e., on the election problem — done without quorum it's the split-brain generator of Chapter 5) and <strong>chain replication</strong> (van Renesse &amp; Schneider: nodes in a chain, writes enter at the head and flow down, reads served at the tail — linearizable by construction since the tail sees only fully-replicated writes; throughput-friendly; reconfiguration delegated to an external Raft/ZK "configuration master," a clean division of labor that CRAQ and several object stores inherit).</p>
+<h3 id="exercises-8">Exercises 8</h3>
+<ol>
+<li>Decide linearizability (find linearization points or prove none exist): W(x=1) by A during [0,10]; R(x)→1 by B during [2,4]; R(x)→0 by C during [5,7].</li>
+<li>With N=3, R=2, W=2, construct the read-during-write execution above in full message detail; then re-run it under ABD and show where the write-back blocks the anomaly.</li>
+<li>Prove that single-writer ABD reads can skip the write-back when all R replies carry the same timestamp. Why does the optimization not extend to the multi-writer case as stated?</li>
+<li>In Gilbert–Lynch, weaken C to <em>sequential consistency</em>. Does the proof survive? (Careful: the read no longer must see the write merely because it started later in real time.) What does this say about systems claiming "sequential but not linearizable" under partition?</li>
+<li>Compute, for a 5-replica system, all (R, W) pairs with R+W&gt;N, and for each: tolerated crash faults for writes, for reads, and the PACELC latency profile. Which pair is etcd, and which is Cassandra QUORUM/QUORUM?</li>
+</ol>
+<hr>
+<h2 id="chapter-9-atomic-commitment-2pc-3pc-and-beyond">Chapter 9 — Atomic Commitment: 2PC, 3PC, and Beyond</h2>
+<p>Consensus decides <em>one value among proposals</em>; <strong>atomic commitment</strong> decides <em>commit vs. abort, unanimously</em>: a transaction touching several nodes must either happen everywhere or nowhere. The constraint that distinguishes it from consensus — <em>any single NO vote forces abort</em> — is what makes it, in a precise sense, harder under failure.</p>
+<h3 id="91-two-phase-commit-and-the-blocking-theorem">9.1 Two-phase commit, and the blocking theorem</h3>
+<pre><code class="language-text">coordinator:                          participant:
+  send PREPARE to all                   on PREPARE: if able to commit,
+  collect votes                            persist undo/redo state and vote,
+  if all YES: decide COMMIT;              fsync VOTE-YES (the point of no return:
+  else:       decide ABORT                 may no longer unilaterally abort)
+  fsync decision; send to all           on decision: fsync; apply; ack
+</code></pre>
+<p>Safety (all-or-nothing) is easy to argue and genuinely holds, crashes included, given write-ahead logging at every step. The problem is liveness, and it is not an implementation defect:</p>
+<p><strong>Theorem (blocking).</strong> A participant that has voted YES and then observes the coordinator fail cannot decide — it must wait, holding its locks.</p>
+<p><em>Why, in one execution</em>: you voted YES and hear nothing. World A: the coordinator committed (some other participant may already have applied) and crashed mid-broadcast. World B: another participant voted NO, the coordinator decided ABORT and crashed. Your local state is <em>identical in both worlds</em>, and the two safe actions differ. Polling other participants helps only if one of them knows the decision; if the coordinator crashed before telling anyone — or the only-told participant crashed too — every survivor is in your position, and the protocol is <strong>blocked</strong> on the coordinator's recovery, in-flight transactions pinning locks across the fleet. (This is not hypothetical; "XA coordinator crashed, database full of in-doubt transactions, on-call paged" is a genre.)</p>
+<p><strong>Theorem (Skeen).</strong> No atomic commitment protocol with a single coordinator round avoids blocking under coordinator + participant failure; more generally, non-blocking atomic commit in the crash-stop asynchronous model is exactly as hard as consensus.</p>
+<h3 id="92-three-phase-commit-and-why-you-dont-run-it">9.2 Three-phase commit, and why you don't run it</h3>
+<p>3PC inserts a <strong>pre-commit</strong> phase between vote-collection and commit, establishing "everyone knows that everyone voted YES" before anyone commits; survivors of a coordinator crash can then elect a recovery coordinator and decide from their phase-states without waiting. The theorem it proves: non-blocking atomic commit is possible — <strong>in the synchronous, no-partition model</strong>. Under real conditions (timeouts that fire on slow-not-dead nodes, partitions that split the survivors), the two sides of a partition can reconstruct <em>opposite</em> decisions — a safety violation, which is strictly worse than 2PC's liveness violation. 3PC's enduring value is pedagogical: it marks precisely where the synchrony assumption does the work, and why the production answer went a different way:</p>
+<h3 id="93-the-modern-resolution-commit-through-consensus">9.3 The modern resolution: commit <em>through</em> consensus</h3>
+<p>The blocking analysis localizes the disease: the <strong>decision lived in one mortal place</strong>. The cure is mechanical once Chapters 6–7 exist — make the decision durable and highly available by <em>replicating the coordinator's decision via consensus</em>:</p>
+<ul>
+<li><strong>Replicated coordinator</strong>: the coordinator is a Raft/Paxos group; "decide COMMIT" means "commit record committed to the group's log." Coordinator crash = leader failover, decision survives, nobody blocks (modulo consensus's own conditional liveness — FLP is conserved, never destroyed). This is <strong>Paxos Commit</strong> (Gray &amp; Lamport), and in production dress it is <strong>Spanner</strong>: 2PC across shards, where every participant <em>and</em> the coordinator is itself a Paxos-replicated group; locks are held by groups, not machines.</li>
+<li><strong>Transaction-as-log-entry</strong>: where one consensus group spans the relevant data (CockroachDB ranges, etcd, FoundationDB's resolver design), the commit <em>is</em> a log entry, and "atomic commitment" dissolves into Chapter 7 entirely; cross-group transactions reintroduce 2PC-over-consensus as above.</li>
+<li><strong>Deterministic databases</strong> (Calvin): order transactions <em>first</em> via consensus/total-order broadcast, then execute deterministically everywhere — no per-transaction commit protocol at all; the trade is that transactions must be known/declared up front (no interactive sessions).</li>
+</ul>
+<p>The compact way to file this chapter: 2PC answers "did everyone agree?", consensus answers "what is the durable truth?", and reliable distributed transactions need the first question's answer stored in the second question's machinery.</p>
+<h3 id="exercises-9">Exercises 9</h3>
+<ol>
+<li>Write out 2PC's coordinator-recovery procedure from its log (cases: no record, PREPARE sent, decision logged). Which case leaves participants in doubt, for how long, and holding what?</li>
+<li>Make the indistinguishability argument of §9.1 fully formal: define the two executions, show the YES-voted participant has identical views, conclude no deterministic rule decides both safely.</li>
+<li>Trace 3PC's safety violation under partition: 5 participants, coordinator crashes after pre-committing to 2 of them, network splits 2/3. Show both sides deciding, differently, each following the recovery rule correctly.</li>
+<li>In Spanner-style 2PC-over-Paxos, enumerate which failure of which role still stalls a transaction, and for how long (relate each to a Chapter 7 timeout). What survives a whole-region loss that plain 2PC would not survive losing one machine for?</li>
+<li>A team proposes "2PC, but participants auto-commit YES-voted transactions after a 30s timeout if the coordinator is silent." Construct the atomicity violation, and name the consistency debt this turns into (which later chapter would have to repay it?).</li>
+</ol>
+<hr>
+<h2 id="chapter-10-conflict-free-replicated-data-types">Chapter 10 — Conflict-Free Replicated Data Types</h2>
+<p>Chapters 6–9 bought agreement with coordination: quorums, leaders, round trips. CRDTs are the other deal — <strong>no coordination on the write path at all</strong>, every replica accepts updates locally (AP under CAP, available even when partitioned), and convergence is guaranteed by <em>algebra</em> instead of protocol. The trick is to restrict what "merge" can mean until conflict is mathematically impossible.</p>
+<h3 id="101-strong-eventual-consistency-and-the-lattice-theorem">10.1 Strong eventual consistency, and the lattice theorem</h3>
+<p><strong>Definition.</strong> A replicated object is <strong>strongly eventually consistent (SEC)</strong> if (i) updates eventually reach all replicas (eventual delivery), and (ii) any two replicas that have received the <em>same set</em> of updates are in the <em>same state</em> (confluence) — regardless of arrival order. SEC upgrades eventual consistency's "they'll converge eventually, somehow" to a <em>safety</em> property: same knowledge ⟹ same state, no reconciliation step, no sibling resolution left to the app.</p>
+<p><strong>State-based CRDTs (CvRDTs).</strong> Let the state space S form a <strong>join-semilattice</strong>: a partial order ⊑ in which every pair has a least upper bound (join, ⊔). Require: updates only move state <em>upward</em> (monotone: s ⊑ update(s)), and replicas exchange states, merging by <code>merge(s1, s2) = s1 ⊔ s2</code>.</p>
+<p><strong>Theorem (Shapiro, Preguiça, Baquero, Zawirski).</strong> A state-based object whose states form a join-semilattice, whose updates are inflations, and whose merge is the join, is SEC.</p>
+<p><em>Proof sketch.</em> Join is associative, commutative, idempotent — therefore the merged result of any set of states is independent of merge order and of duplication. A replica's state is always the join of (its own updates' contributions and every state it merged); two replicas having received the same updates hold joins of the same set, hence equal states. Duplicate delivery is literally absorbed by idempotence (<code>x ⊔ x = x</code>) — which is why CRDT replication runs happily over at-least-once, unordered transport (Chapter 1's cheap links, gossip from Chapter 11) with no dedup machinery. ∎</p>
+<p>That theorem is the entire magic. Everything else is constructing useful lattices.</p>
+<h3 id="102-the-standard-constructions-worked">10.2 The standard constructions, worked</h3>
+<p><strong>G-Counter</strong> (grow-only). State: vector <code>c[1..n]</code>, one slot per replica; <code>increment</code> at replica i bumps <code>c[i]</code>; <code>value = Σ c[i]</code>; <code>merge</code> = pointwise max. (Pointwise max over vectors is a join-semilattice; increments inflate. Note why the naive single integer with max fails: two concurrent increments 5→6, merged by max, lose one — the per-replica vector is exactly what makes "sum of maxes" count every event once.)</p>
+<p><strong>PN-Counter</strong>: two G-Counters, P and N; <code>value = ΣP − ΣN</code>. Decrements are <em>additions to N</em> — the trick of recasting a non-monotone operation as growth of a different component recurs everywhere in CRDT design.</p>
+<p><strong>LWW-Register</strong>: state ⟨value, timestamp⟩, merge keeps the larger timestamp (ties by replica ID). A legitimate lattice — and a deliberate <em>semantic</em> loss: concurrent writes are resolved by clock, so one user's write silently vanishes; with skewed physical clocks, possibly the causally later one (Chapter 2's warning, now in the data type). LWW is the CRDT that admits "we drop conflicts" in its name; use it where that's true (config flags, presence) and not where it isn't (carts — famously).</p>
+<p><strong>OR-Set</strong> (observed-remove). The problem: naive two-set add/remove (G-Set of adds, G-Set of tombstones) makes removal <em>final</em> — re-adding after a remove is impossible, and concurrent add∥remove resolves arbitrarily. OR-Set's resolution: every <code>add(e)</code> generates a unique tag; <code>remove(e)</code> tombstones <em>exactly the tags it has observed</em>:</p>
+<pre><code class="language-text">state:  A = set of ⟨element, unique-tag⟩      # adds
+        T = set of tags                        # removed (observed) tags
+add(e):     A := A ∪ {⟨e, newTag()⟩}
+remove(e):  T := T ∪ { t : ⟨e,t⟩ ∈ A }         # kills only what it has seen
+lookup(e):  ∃t: ⟨e,t⟩ ∈ A ∧ t ∉ T
+merge:      pointwise union (a product of grow-only sets — a lattice)
+</code></pre>
+<p>The semantics this buys: <strong>add wins over concurrent remove</strong> — a remove cannot kill a tag it never observed, so an element added concurrently with a remove survives the merge. That is a <em>choice</em> (the sane one for carts: concurrent "add item" beats "empty cart"), and the worked example to do by hand is replica 1 <code>remove(x)</code> ∥ replica 2 <code>add(x)</code>: merge leaves the new tag alive, x present. Cost: tombstones and tags grow forever; the production fix (causal-context compression / dotted version vectors — Riak's implementation) bounds metadata to O(replicas) by tracking observed-event <em>ranges</em> per replica instead of individual tags — Chapter 2's machinery, redeployed as garbage collection.</p>
+<p><strong>Sequence CRDTs</strong> (collaborative text: RGA, Treedoc, LSEQ, Yjs/Automerge's internals): assign each character a stable, totally ordered, dense identifier so concurrent inserts at "the same place" commute; deletion tombstones. The identifiers are where all the difficulty hides (interleaving anomalies, identifier growth) — the honest summary is that sequences are the frontier where CRDT elegance meets real pain, and the engineering literature (Automerge's columnar encoding, Yjs's optimizations) is as important as the math.</p>
+<p><strong>Op-based CRDTs (CmRDTs)</strong>: replicate <em>operations</em> instead of states; require concurrent operations to commute, and demand more from transport — <strong>causal delivery</strong> (Chapter 3's causal broadcast) and exactly-once (or operation dedup). Same expressive power as state-based (formally interconvertible); the trade is bandwidth (small ops vs. whole states — mitigated on the state side by <strong>delta-CRDTs</strong>, which gossip only recent inflations) versus transport strength.</p>
+<h3 id="103-what-crdts-cannot-do-stated-as-a-theorem-shaped-fact">10.3 What CRDTs cannot do, stated as a theorem-shaped fact</h3>
+<p>Confluence has a price: any <em>global invariant that concurrent updates could jointly violate</em> is unenforceable. "Account balance never negative," "username unique," "at most N seats sold" all require an arbiter between concurrent updates — that arbiter is consensus, by Chapter 3's equivalence (deciding which of two conflicting updates "came first" <em>is</em> total ordering). The design method that follows is the <strong>CALM principle</strong> (consistency as logical monotonicity): the parts of your domain expressible as monotone accumulation of facts (sets that grow, counters that sum, registers where any winner is acceptable) replicate coordination-free as CRDTs; the non-monotone residue (invariants, uniqueness, exactly-N) is the part — and <em>only</em> the part — for which you pay Chapters 6–7 prices. Drawing that line through a data model is the most directly applicable skill this guide teaches.</p>
+<h3 id="exercises-10">Exercises 10</h3>
+<ol>
+<li>Verify the three join properties (associative, commutative, idempotent) for pointwise-max vectors, and exhibit the lost-increment execution for the naive max-of-one-integer counter.</li>
+<li>Two replicas of an OR-Set: r1 does add(x), syncs to r2; then concurrently r1 remove(x), r2 add(x). Compute A and T at each step and the merged lookup(x). Now redo it with remove-wins semantics (tombstone by element, not tag) and compare cart behavior.</li>
+<li>Design a bounded counter CRDT enforcing value ≤ 100 — or prove informally you can't without coordination, then design the standard escrow compromise (pre-partition the budget across replicas; local spend against local escrow; coordinate only on rebalance). Which operations remained monotone?</li>
+<li>Show that op-based counters lose increments under at-least-once delivery without dedup, while state-based G-Counters don't. Which lattice property is doing the work?</li>
+<li>Take your product's data model and apply CALM: list three fields that are monotone (name their CRDT) and one invariant that is not (name where the consensus hides in your current architecture — there is one, even if it's "the single Postgres primary").</li>
+</ol>
+<hr>
+<h2 id="chapter-11-gossip-and-epidemic-algorithms">Chapter 11 — Gossip and Epidemic Algorithms</h2>
+<p>Reliable broadcast's O(n²) eager flood (Chapter 3) buys certainty with bandwidth. Gossip buys <em>near</em>-certainty with O(n log n) and randomness: each node periodically tells a few random peers what it knows, and information spreads like infection — which is not a metaphor but the actual mathematical model (Demers et al., the classic Xerox PARC paper, borrowed epidemiology wholesale).</p>
+<h3 id="111-the-convergence-mathematics">11.1 The convergence mathematics</h3>
+<p><strong>Push gossip</strong>: each round, every <em>infected</em> (informed) node sends the rumor to one uniformly random peer. Starting from one infected node among n: while the infected fraction is small, each round nearly doubles it (every push likely hits a fresh node) — exponential growth phase, reaching half the cluster in ≈ log₂ n rounds. In the endgame the dynamics flip: pushes mostly hit already-infected nodes, and the <em>susceptible</em> fraction decays by the factor e⁻¹ per round — finishing costs another O(log n) rounds, and pure push provably leaves stragglers with non-negligible probability if stopped early. <strong>Pull gossip</strong> (uninformed nodes ask random peers) has the mirror profile — slow start, ferocious endgame: the uninformed fraction squares each round once most nodes know (a node stays ignorant only if its pull target was also ignorant), which is super-exponential decay. <strong>Push–pull</strong> combines both phases' strengths: Θ(log n) rounds to full dissemination with high probability, robust to message loss (a dropped message delays; the next round retries by construction) and to node failure (no node is structurally special). Those two robustness properties — no critical path, no critical node — are why gossip is the substrate for the <em>unglamorous-but-vital</em> layer of real clusters: membership, failure detection, and metadata in Cassandra, Riak, Consul (Serf), and DynamoDB-internals.</p>
+<p>The knobs and their trades, honestly: <strong>fanout</strong> (peers per round) divides latency but multiplies bandwidth; <strong>round period</strong> trades the same pair; <strong>rumor death</strong> (stop forwarding after k contacts with already-informed peers — "rumor mongering") caps traffic at the price of probabilistic incompleteness, which is why rumor mongering is always backstopped by:</p>
+<h3 id="112-anti-entropy-and-merkle-trees">11.2 Anti-entropy and Merkle trees</h3>
+<p><strong>Anti-entropy</strong> is gossip of <em>state</em> rather than rumors: periodically, pairs of replicas reconcile their full datasets, guaranteeing (slowly, surely) that nothing is ever permanently missed — the eventual-delivery half of SEC (Chapter 10) in production form. Comparing full datasets naively is O(data); the standard fix is the <strong>Merkle tree</strong>: hash the key-range leaves, hash the hashes up to a root; two replicas compare roots and descend only into subtrees whose hashes differ — O(log n + δ) comparisons for δ actual differences. This is Cassandra repair and Riak AAE, and the operational folklore (repairs are expensive, schedule them, watch for over-streaming when trees are built at different times) is the engineering shadow of the same math.</p>
+<h3 id="113-swim-gossip-shaped-failure-detection">11.3 SWIM: gossip-shaped failure detection</h3>
+<p>Heartbeat-to-everyone failure detection is O(n²) per period and conflates one slow link with one dead node. <strong>SWIM</strong> (Das, Gupta, Motivala — the protocol inside Serf/Consul memberlist) restructures it:</p>
+<ul>
+<li><strong>Probe</strong>: each period, each node pings one <em>random</em> member.</li>
+<li><strong>Indirect probe</strong>: on timeout, ask k other members to ping the suspect on your behalf — distinguishing "the suspect is dead" from "my link to it is bad" before accusing.</li>
+<li><strong>Suspicion</strong>: a failed probe yields <em>suspected</em>, disseminated by gossip (piggybacked on the probe traffic itself — the protocol gossips its own metadata); the suspect, seeing its own accusation, refutes it with a higher <strong>incarnation number</strong>. Only an un-refuted suspicion times out into <em>confirmed dead</em>.</li>
+<li>Detection latency averages one probe period regardless of n; load is O(1) messages per node per period; false positives decay exponentially in k.</li>
+</ul>
+<p>The incarnation-number refutation is a Chapter-2 idea in disguise (a per-node logical clock establishing which assertion about me is newest), and the whole protocol is a worked example of this guide's recurring trade: SWIM's verdicts are <em>eventually accurate, probabilistically fast</em> — exactly an Ω-grade oracle (Chapter 5), suitable for routing and membership, <strong>not</strong> a license to make safety-critical decisions (that still takes quorum: Consul gossips membership via Serf but stores the catalog and elects leaders via Raft — both layers, each doing the job priced for it).</p>
+<h3 id="exercises-11">Exercises 11</h3>
+<ol>
+<li>Simulate (or compute) push gossip on n = 1024 from one source, fanout 1: expected infected counts per round through round 12. Where does growth visibly leave the doubling regime, and why?</li>
+<li>Prove the pull endgame: if a fraction s of nodes is susceptible and the rest informed, the expected susceptible fraction next round is s² (uniform random pulls). How many rounds from s = 1/2 to s &lt; 1/n for n = 10⁶?</li>
+<li>Two replicas hold 10⁶ keys differing in 3; depth-20 binary Merkle trees. Count hash comparisons exchanged. Now let one replica's tree be built mid-write-burst — explain over-streaming.</li>
+<li>In SWIM, node A's link to B is broken but both are alive and k = 3. Walk the protocol: who pings whom, what gets gossiped, why B does not get marked dead. Then break enough links to <em>make</em> SWIM wrongly confirm B dead — what does this cost the system above it (relate to which layer holds safety)?</li>
+<li>Design the gossip payload for cluster-wide config distribution with last-writer-wins per key, node restarts, and at-least-once delivery. Which chapter-2 and chapter-10 pieces are you obligated to include, and what breaks without each?</li>
+</ol>
+<hr>
+<h2 id="chapter-12-byzantine-fault-tolerance">Chapter 12 — Byzantine Fault Tolerance</h2>
+<p>Everything so far trusted processes to fail <em>honestly</em> — by stopping. Byzantine fault tolerance drops that courtesy: a faulty process may lie, send conflicting messages to different peers (<strong>equivocation</strong> — the signature Byzantine move), or collude. The chapter's three landmarks: the resilience bound (3f+1), the protocol that made BFT practical (PBFT), and the line connecting it to blockchains.</p>
+<h3 id="121-the-3f1-bound">12.1 The 3f+1 bound</h3>
+<p><strong>Theorem (Pease, Shostak, Lamport 1980).</strong> Byzantine agreement among n processes tolerating f Byzantine faults requires <strong>n ≥ 3f + 1</strong> (without message signatures; and the bound persists for <em>asynchronous</em> BFT consensus even with them).</p>
+<p><em>The intuition that is almost the proof</em> (n = 3, f = 1, the "Byzantine generals" triangle): commander C orders lieutenant A "attack" and lieutenant B "retreat" (C is the traitor). A and B compare notes; each hears from the other a report conflicting with its own order. From A's chair, the world where C is loyal-but-B-lies is <em>indistinguishable</em> from the world where C lies — same two messages in hand. Any rule that makes A obey C in the first world makes A attack while B retreats in the second: agreement broken. The general impossibility lifts this triangle by partitioning n ≤ 3f processes into three groups of ≤ f and letting each group play one corner. ∎</p>
+<p>The quorum-arithmetic restatement, which is how the bound shows up in protocol design: with n = 3f+1, quorums of size <strong>2f+1</strong> guarantee that (i) any two quorums intersect in ≥ f+1 processes, hence in <strong>at least one honest one</strong> (intersection minus f traitors) — the honest witness that prevents two conflicting decisions each backed by a quorum; and (ii) a quorum can always be assembled from honest processes alone (2f+1 ≤ n−f), so progress never waits on traitors. Compare Chapter 6: crash tolerance needed majorities so quorums merely <em>intersect</em>; Byzantine tolerance needs the intersection to <em>outvote the liars</em>. Same idea, one notch stronger arithmetic — f+1 more processes per fault tolerated, and that's the whole price difference between Raft (2f+1 nodes) and PBFT (3f+1 nodes).</p>
+<h3 id="122-pbft-the-practical-construction">12.2 PBFT, the practical construction</h3>
+<p>Castro &amp; Liskov (1999) — Byzantine state machine replication in the partial-synchrony mold of Chapters 6–7: safety unconditional, liveness after GST, leader ("primary") based, view-changed when the primary misbehaves. The normal-case flow for n = 3f+1, quorum q = 2f+1:</p>
+<pre><code class="language-text">client  → primary:     REQUEST(op)
+primary → all:         PRE-PREPARE(view v, sequence k, op)      # primary proposes order
+replica → all:         PREPARE(v, k, digest)                    # round 1 of agreement
+  ... on collecting 2f+1 matching PREPAREs (incl. own): &quot;prepared&quot;
+replica → all:         COMMIT(v, k, digest)                     # round 2
+  ... on collecting 2f+1 matching COMMITs: execute op, reply to client
+client:  accepts result on f+1 matching replies                 # ≥1 honest replica
+</code></pre>
+<p>Why <em>two</em> all-to-all rounds where Raft needs one leader round-trip — the question that decodes the protocol: PREPARE quorums stop a Byzantine <em>primary</em> from equivocating within a view (two conflicting assignments of sequence k would each need 2f+1 PREPAREs; the honest process in the quorum intersection won't sign both). But a view change can occur mid-protocol, and the new primary reconstructs what was in flight from 2f+1 replicas' claims; the COMMIT round establishes "2f+1 replicas <em>know</em> the prepare-quorum existed," which is exactly the strength needed so that anything <em>executed</em> by anyone provably survives into every later view (the BFT analogue of Raft's Leader Completeness, proved with the honest-witness arithmetic above). One round establishes a fact; the second establishes that the fact is <em>known widely enough to survive amnesia about the leader</em>. The view change itself — the protocol's notorious complexity — is the same reconstruction discipline, certificates all the way down.</p>
+<p>Costs, honestly: O(n²) messages per operation (every replica multicasts to every replica — modern descendants attack exactly this: <strong>HotStuff</strong> linearizes communication through the leader with threshold signatures, O(n) per round, three leader rounds, and is the design inside several proof-of-stake chains), MACs/signatures on everything, and 3f+1 replicas <em>with independent failure modes</em> — which is the deployment rub: four replicas running the same code in the same cloud account fail Byzantine-<em>correlated</em>, and the model's independence assumption quietly evaporates. BFT in production is for <em>trust</em> boundaries (multiple organizations, consortium ledgers, firmware roots) more than for bit flips.</p>
+<h3 id="123-nakamoto-consensus-located-on-this-map">12.3 Nakamoto consensus, located on this map</h3>
+<p>Bitcoin's longest-chain protocol is BFT consensus with the cast changed: open membership (no fixed n — Sybil resistance via proof-of-work makes <em>identities</em> expensive instead of counting them), probabilistic finality (a block's reversal probability decays exponentially with confirmations — never zero; PBFT's finality is absolute the moment the quorum certificate exists), and a different tolerance currency (&gt;50% of <em>hashpower</em> honest, vs. &gt;2/3 of <em>replicas</em>). The trade is the open-vs-closed membership axis, and the modern synthesis — proof-of-stake chains running HotStuff-family protocols among stake-weighted validators — is literally the Chapter-12 lineage deployed at planetary scale: the most widely run consensus code on earth now descends from PBFT, a sentence that would have sounded absurd when Castro &amp; Liskov published.</p>
+<h3 id="exercises-12">Exercises 12</h3>
+<ol>
+<li>Work the n=4, f=1 generals case to a <em>positive</em> result: give the message pattern (one round of relaying — "C told me X") by which the three lieutenants agree despite any one traitor among the four, and show where n=3 made the same pattern fail.</li>
+<li>From q = 2f+1 and n = 3f+1, derive both quorum properties (honest intersection; honest availability) and show each fails at n = 3f.</li>
+<li>PBFT executes at 2f+1 COMMITs but the client accepts at f+1 matching replies. Why are the thresholds different? What does each one defend against?</li>
+<li>Construct the equivocation attempt: a Byzantine primary sends PRE-PREPARE(v, k, op₁) to one half and (v, k, op₂) to the other, n = 7, f = 2. Trace the PREPARE counts and show neither operation reaches <em>prepared</em> — then show what <em>does</em> happen (timeout → view change) and why liveness, not safety, paid.</li>
+<li>Your company runs 4 PBFT replicas: same binary, same cloud region, same ops team with root on all four. Enumerate which Byzantine faults the deployment actually tolerates, and re-derive what independence would require. At what point does this become "Raft plus an audit log," and is that wrong?</li>
+</ol>
+<hr>
+<h2 id="chapter-13-from-algorithms-to-systems">Chapter 13 — From Algorithms to Systems</h2>
+<p>The final chapter closes the loop with the practical literature: which algorithm is running where, how to read an incident through this guide's lenses, and where to go next.</p>
+<h3 id="131-the-map">13.1 The map</h3>
+<table>
+<thead>
+<tr>
+<th>System</th>
+<th>What this guide calls it</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>etcd, Consul (catalog), TiKV's PD</td>
+<td>Raft (Ch. 7) → total order broadcast (Ch. 3) → state machine replication; lease reads = Ch. 7's timing caveat</td>
+</tr>
+<tr>
+<td>ZooKeeper</td>
+<td>Zab — a Raft sibling (primary-order atomic broadcast); the differences from Raft are real but Chapter-7-shaped</td>
+</tr>
+<tr>
+<td>Kafka (KRaft mode)</td>
+<td>Raft for the controller; per-partition leader/ISR replication = primary-backup with quorum-ish acks (Ch. 8)</td>
+</tr>
+<tr>
+<td>CockroachDB, TiDB, Spanner</td>
+<td>Per-range Raft/Paxos (Ch. 7/6) + 2PC over consensus groups for cross-range transactions (Ch. 9) + HLC/TrueTime timestamps (Ch. 2)</td>
+</tr>
+<tr>
+<td>Cassandra, Riak, Dynamo</td>
+<td>Quorum replication without ABD's write-back (Ch. 8 — hence not linearizable at tunable levels), LWW or vector-clock versions (Ch. 2), anti-entropy with Merkle trees + gossip membership (Ch. 11); Riak data types / Cassandra counters = CRDTs (Ch. 10)</td>
+</tr>
+<tr>
+<td>Consul/Serf membership, Cassandra gossip</td>
+<td>SWIM and friends (Ch. 11) feeding, but never replacing, the quorum layer</td>
+</tr>
+<tr>
+<td>Flink checkpoints</td>
+<td>Chandy–Lamport (Ch. 4)</td>
+</tr>
+<tr>
+<td>Automerge/Yjs, Redis CRDTs, Riak DTs</td>
+<td>Chapter 10, shipped</td>
+</tr>
+<tr>
+<td>Tendermint/CometBFT, Aptos/Sui-style PoS, consortium ledgers</td>
+<td>PBFT lineage / HotStuff (Ch. 12)</td>
+</tr>
+<tr>
+<td>Your Postgres primary + sync replica + failover scripts</td>
+<td>Primary-backup (Ch. 8) whose correctness is exactly the quality of its election; if the scripts don't take a quorum, Chapter 5 names the day they split-brain</td>
+</tr>
+</tbody>
+</table>
+<h3 id="132-how-to-read-a-jepsen-report-or-your-own-incident-with-this-guide">13.2 How to read a Jepsen report (or your own incident) with this guide</h3>
+<p>The Jepsen corpus is the field's empirical literature, and after this guide it reads as a taxonomy of chapter violations: <em>stale reads</em> under "strong consistency" → linearizability's real-time clause (Ch. 8), usually via lease/clock shortcuts (Ch. 7§7.5); <em>lost updates with R+W&gt;N</em> → the missing ABD write-back (Ch. 8§8.2); <em>split-brain after failover</em> → election without quorum (Ch. 5/7); <em>aborted-then-visible transactions</em> → 2PC in-doubt handling (Ch. 9); <em>divergent replicas that never converge</em> → SEC promised, lattice absent (Ch. 10); <em>cluster amnesia after restart</em> → unfsynced promises (the crash-recovery toll, Ch. 1/6/7). The diagnostic method is always the same three questions, and they are this guide in miniature: <strong>What was the safety property, exactly?</strong> (If it can't be stated, that's the finding.) <strong>What did the algorithm assume</strong> — about synchrony, clocks, fsync, independence — <strong>and which assumption did reality decline?</strong> <strong>Was the failure safety or liveness</strong> — and if a liveness mechanism (timeout, lease, retry) caused a safety violation, which chapter's price was being dodged?</p>
+<h3 id="133-where-to-go-next">13.3 Where to go next</h3>
+<p>In rough order: do the <a href="https://pdos.csail.mit.edu/6.824/">MIT 6.5840 labs</a> (implement Raft, then a KV store, then sharding on top — there is no substitute); read <a href="https://distributedprogramming.net/">Cachin–Guerraoui–Rodrigues</a> for the modular abstraction stack this guide compressed; Lynch's <em>Distributed Algorithms</em> for the full proofs (especially FLP and the synchronous lower bounds); the primary papers linked in each chapter — they are almost all shockingly readable, Lamport especially; <a href="https://lamport.azurewebsites.net/tla/tla.html">TLA⁺</a> when you want to <em>check</em> an algorithm instead of trusting prose (the Raft and Paxos specs are published; industrial use at AWS is documented in "How Amazon Web Services Uses Formal Methods"); and the <a href="https://jepsen.io/analyses">Jepsen analyses</a> continuously, as they publish — they are the ongoing exam.</p>
+<p>The single-sentence summary of the field, to leave with: <strong>distributed algorithms are the discipline of buying exactly as much agreement as your invariants require — and the bill, denominated in round trips, replicas, and assumptions, is non-negotiable; the only choice you have is whether to pay it on purpose.</strong></p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>
