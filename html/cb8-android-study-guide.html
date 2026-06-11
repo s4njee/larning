@@ -1,0 +1,1430 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: CB8 on Android.">
+<title>CB8 on Android - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#3ddc84; --accent2:#3ddc84; --accent-weak:rgba(61,220,132,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#3ddc84; --accent2:#3ddc84; --accent-weak:rgba(61,220,132,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint);pointer-events:none}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px;min-width:0;overflow-wrap:break-word}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:minmax(0,1fr)}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+  .spacer{display:none}
+  .brand{flex:1;min-width:0}
+  .brand > span:not(.logo):not(.sub){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">CB8</span><span>CB8 on Android</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#part-1-same-codebase-different-rules-the-android-delta" data-target="part-1-same-codebase-different-rules-the-android-delta">Part 1 — Same Codebase, Different Rules: The Android Delta</a></li><li class="toc-l3"><a href="#thirty-second-recap-of-what-cb8-is" data-target="thirty-second-recap-of-what-cb8-is">Thirty-second recap of what CB8 is</a></li><li class="toc-l3"><a href="#the-delta-table" data-target="the-delta-table">The delta table</a></li><li class="toc-l3"><a href="#what-this-means-structurally" data-target="what-this-means-structurally">What this means structurally</a></li><li class="toc-l2"><a href="#part-2-choosing-a-porting-strategy-the-android-version" data-target="part-2-choosing-a-porting-strategy-the-android-version">Part 2 — Choosing a Porting Strategy (the Android Version)</a></li><li class="toc-l3"><a href="#option-0-revisited-run-the-node-backend-on-the-device" data-target="option-0-revisited-run-the-node-backend-on-the-device">Option 0 revisited: run the Node backend on the device</a></li><li class="toc-l3"><a href="#option-1-webview-wrapper-capacitor-twa" data-target="option-1-webview-wrapper-capacitor-twa">Option 1: WebView wrapper / Capacitor / TWA</a></li><li class="toc-l3"><a href="#option-2-react-native-flutter" data-target="option-2-react-native-flutter">Option 2: React Native / Flutter</a></li><li class="toc-l3"><a href="#option-3-recommended-native-kotlin-jetpack-compose-two-phases" data-target="option-3-recommended-native-kotlin-jetpack-compose-two-phases">Option 3 (recommended): native Kotlin + Jetpack Compose, two phases</a></li><li class="toc-l3"><a href="#strategy-decision-table-android-edition" data-target="strategy-decision-table-android-edition">Strategy decision table (Android edition)</a></li><li class="toc-l2"><a href="#part-3-project-setup-and-the-dependency-map" data-target="part-3-project-setup-and-the-dependency-map">Part 3 — Project Setup and the Dependency Map</a></li><li class="toc-l3"><a href="#creating-the-project" data-target="creating-the-project">Creating the project</a></li><li class="toc-l3"><a href="#the-dependency-map" data-target="the-dependency-map">The dependency map</a></li><li class="toc-l2"><a href="#part-4-the-kotlin-api-client" data-target="part-4-the-kotlin-api-client">Part 4 — The Kotlin API Client</a></li><li class="toc-l3"><a href="#models" data-target="models">Models</a></li><li class="toc-l3"><a href="#the-retrofit-surface" data-target="the-retrofit-surface">The Retrofit surface</a></li><li class="toc-l3"><a href="#the-part-ios-got-for-free-cookie-persistence" data-target="the-part-ios-got-for-free-cookie-persistence">The part iOS got for free: cookie persistence</a></li><li class="toc-l3"><a href="#cleartext-http-on-the-lan" data-target="cleartext-http-on-the-lan">Cleartext HTTP on the LAN</a></li><li class="toc-l2"><a href="#part-5-the-library-ui" data-target="part-5-the-library-ui">Part 5 — The Library UI</a></li><li class="toc-l3"><a href="#paging-3-the-react-query-replacement-thats-actually-better-here" data-target="paging-3-the-react-query-replacement-thats-actually-better-here">Paging 3: the react-query replacement that's actually better here</a></li><li class="toc-l3"><a href="#the-grid-and-thumbnails" data-target="the-grid-and-thumbnails">The grid and thumbnails</a></li><li class="toc-l2"><a href="#part-6-the-comic-reader" data-target="part-6-the-comic-reader">Part 6 — The Comic Reader</a></li><li class="toc-l3"><a href="#pager-zoom-dont-hand-roll-the-gesture-arbitration" data-target="pager-zoom-dont-hand-roll-the-gesture-arbitration">Pager + zoom: don't hand-roll the gesture arbitration</a></li><li class="toc-l3"><a href="#the-page-pipeline" data-target="the-page-pipeline">The page pipeline</a></li><li class="toc-l2"><a href="#part-7-epub-and-pdf" data-target="part-7-epub-and-pdf">Part 7 — EPUB and PDF</a></li><li class="toc-l3"><a href="#epub-readium-has-a-kotlin-toolkit-too" data-target="epub-readium-has-a-kotlin-toolkit-too">EPUB: Readium has a Kotlin toolkit too</a></li><li class="toc-l3"><a href="#pdf-the-one-regression-relative-to-ios" data-target="pdf-the-one-regression-relative-to-ios">PDF: the one regression relative to iOS</a></li><li class="toc-l3"><a href="#mobi" data-target="mobi">MOBI</a></li><li class="toc-l2"><a href="#part-8-going-standalone-the-on-device-library" data-target="part-8-going-standalone-the-on-device-library">Part 8 — Going Standalone: The On-Device Library</a></li><li class="toc-l3"><a href="#getting-files-in-saf-instead-of-bookmarks" data-target="getting-files-in-saf-instead-of-bookmarks">Getting files in: SAF instead of bookmarks</a></li><li class="toc-l3"><a href="#the-room-schema" data-target="the-room-schema">The Room schema</a></li><li class="toc-l3"><a href="#scanning-with-workmanager" data-target="scanning-with-workmanager">Scanning with WorkManager</a></li><li class="toc-l2"><a href="#part-9-archives-and-the-shared-logic-ports" data-target="part-9-archives-and-the-shared-logic-ports">Part 9 — Archives and the Shared-Logic Ports</a></li><li class="toc-l3"><a href="#cbz-the-jdk-already-ships-it" data-target="cbz-the-jdk-already-ships-it">CBZ: the JDK already ships it</a></li><li class="toc-l3"><a href="#cbr-more-options-than-ios-same-conclusion-shape" data-target="cbr-more-options-than-ios-same-conclusion-shape">CBR: more options than iOS, same conclusion shape</a></li><li class="toc-l3"><a href="#image-format-coverage" data-target="image-format-coverage">Image format coverage</a></li><li class="toc-l3"><a href="#porting-naturalsortts" data-target="porting-naturalsortts">Porting naturalSort.ts</a></li><li class="toc-l2"><a href="#part-10-progress-sync-and-offline" data-target="part-10-progress-sync-and-offline">Part 10 — Progress Sync and Offline</a></li><li class="toc-l2"><a href="#part-11-testing-porting-the-vitest-suite" data-target="part-11-testing-porting-the-vitest-suite">Part 11 — Testing: Porting the Vitest Suite</a></li><li class="toc-l2"><a href="#part-12-distribution-play-f-droid-and-the-sideload-channel" data-target="part-12-distribution-play-f-droid-and-the-sideload-channel">Part 12 — Distribution: Play, F-Droid, and the Sideload Channel</a></li><li class="toc-l2"><a href="#appendix-webview-wrappers-and-the-on-device-node-experiment" data-target="appendix-webview-wrappers-and-the-on-device-node-experiment">Appendix — WebView Wrappers and the On-Device Node Experiment</a></li><li class="toc-l3"><a href="#the-webview-wrapper-the-shippable-stopgap" data-target="the-webview-wrapper-the-shippable-stopgap">The WebView wrapper (the shippable stopgap)</a></li><li class="toc-l3"><a href="#the-on-device-node-experiment-the-instructive-dead-end" data-target="the-on-device-node-experiment-the-instructive-dead-end">The on-device Node experiment (the instructive dead end)</a></li><li class="toc-l2"><a href="#closing-one-codebase-three-platforms-two-ports" data-target="closing-one-codebase-three-platforms-two-ports">Closing: one codebase, three platforms, two ports</a></li></ul></nav></aside>
+  <main><h1 id="cb8-on-android">CB8 on Android</h1>
+<p>A practical, depth-first guide to bringing <a href="https://github.com/s4njee/CB8">CB8</a> — a comic and book reader built as an Electron app with an embedded web server and a React web GUI — to Android phones and tablets. This is the sibling of the <a href="cb8-ios-study-guide.html">CB8 on iOS guide</a>: same source codebase, same two-phase strategy (native client for CB8 servers first, on-device library second), deliberately parallel part structure — but nearly every platform decision lands differently, because Android's sandbox, review process, and ecosystem are different in ways that matter for exactly this kind of port. Where the reasoning is identical to iOS, this guide says so and moves on; where Android changes the answer, it slows down.</p>
+<p>Assumes you can read TypeScript (CB8's language) and have basic Kotlin exposure. The <a href="cb8-ios-study-guide.html">iOS sibling guide</a> Part 1 contains the full anatomy of the CB8 codebase; Part 1 here recaps it briefly and then focuses on the Android delta.</p>
+<p>Primary references: the <a href="https://github.com/s4njee/CB8">CB8 repository</a>, <a href="https://developer.android.com/develop/ui/compose">Jetpack Compose</a>, <a href="https://developer.android.com/training/data-storage/room">Room</a>, the <a href="https://developer.android.com/guide/topics/providers/document-provider">Storage Access Framework</a>, the <a href="https://github.com/readium/kotlin-toolkit">Readium Kotlin Toolkit</a>, <a href="https://coil-kt.github.io/coil/">Coil</a>, and the <a href="https://play.google/developer-content-policy/">Google Play policy center</a>.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#part-1--same-codebase-different-rules-the-android-delta">Part 1 — Same Codebase, Different Rules: The Android Delta</a></li>
+<li><a href="#part-2--choosing-a-porting-strategy-the-android-version">Part 2 — Choosing a Porting Strategy (the Android Version)</a></li>
+<li><a href="#part-3--project-setup-and-the-dependency-map">Part 3 — Project Setup and the Dependency Map</a></li>
+<li><a href="#part-4--the-kotlin-api-client">Part 4 — The Kotlin API Client</a></li>
+<li><a href="#part-5--the-library-ui">Part 5 — The Library UI</a></li>
+<li><a href="#part-6--the-comic-reader">Part 6 — The Comic Reader</a></li>
+<li><a href="#part-7--epub-and-pdf">Part 7 — EPUB and PDF</a></li>
+<li><a href="#part-8--going-standalone-the-on-device-library">Part 8 — Going Standalone: The On-Device Library</a></li>
+<li><a href="#part-9--archives-and-the-shared-logic-ports">Part 9 — Archives and the Shared-Logic Ports</a></li>
+<li><a href="#part-10--progress-sync-and-offline">Part 10 — Progress Sync and Offline</a></li>
+<li><a href="#part-11--testing-porting-the-vitest-suite">Part 11 — Testing: Porting the Vitest Suite</a></li>
+<li><a href="#part-12--distribution-play-f-droid-and-the-sideload-channel">Part 12 — Distribution: Play, F-Droid, and the Sideload Channel</a></li>
+<li><a href="#appendix--webview-wrappers-and-the-on-device-node-experiment">Appendix — WebView Wrappers and the On-Device Node Experiment</a></li>
+</ol>
+<hr>
+<h2 id="part-1-same-codebase-different-rules-the-android-delta">Part 1 — Same Codebase, Different Rules: The Android Delta</h2>
+<h3 id="thirty-second-recap-of-what-cb8-is">Thirty-second recap of what CB8 is</h3>
+<p>CB8 runs three ways from one codebase — Electron desktop app, Docker container, plain Node standalone — and all three host the same embedded Fastify HTTP server, which serves the compiled React SPA and a JSON API under <code>/api/*</code>. Library state lives in SQLite (<code>better-sqlite3</code>); CBZ/CBR pages are extracted by spawning a 7-Zip executable (<code>node-7z</code>); EPUB renders client-side with <code>epubjs</code> and PDF with <code>pdfjs-dist</code>; auth is better-auth with signed session cookies; and <code>src/shared/</code> holds small, pure, vitest-covered logic modules (<code>naturalSort</code>, <code>imageFilter</code>, <code>scaleFit</code>, <code>coverSelection</code>, <code>lru</code>) that act as portable specifications. The deep tour — module map, endpoint inventory, what-survives-the-port table — is <a href="cb8-ios-study-guide.html#part-1--reading-the-cb8-codebase-what-youre-actually-porting">Part 1 of the iOS guide</a>; everything there about <em>CB8 itself</em> applies verbatim, because the codebase doesn't care which phone you hold.</p>
+<p>What changes is the platform's rulebook. Five rules that drove the iOS port flip or soften on Android:</p>
+<h3 id="the-delta-table">The delta table</h3>
+<table>
+<thead>
+<tr>
+<th>Constraint</th>
+<th>iOS</th>
+<th>Android</th>
+<th>Consequence for the port</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Spawning processes</td>
+<td>Forbidden — <code>node-7z</code>'s design is dead on arrival</td>
+<td><strong>Allowed</strong> — binaries shipped in the APK's native-library dir are executable (API 29+ only blocks exec from <em>writable</em> app storage)</td>
+<td>Bundling a 7-Zip binary is <em>possible</em>; Part 9 weighs whether it's <em>wise</em></td>
+</tr>
+<tr>
+<td>JIT compilation</td>
+<td>Forbidden outside WebKit</td>
+<td><strong>Allowed</strong> — writable+executable pages are fine</td>
+<td>Node-on-device (nodejs-mobile) runs at full speed; the Appendix gives it an honest hearing instead of a flat no</td>
+</tr>
+<tr>
+<td>Filesystem reach</td>
+<td>Sandbox + security-scoped bookmarks</td>
+<td>Sandbox + <strong>Storage Access Framework</strong> (persistable tree grants); broad "All files access" exists but is Play-restricted</td>
+<td>Scanning a NAS-synced folder works, but SAF traversal performance is a real engineering topic (Part 8)</td>
+</tr>
+<tr>
+<td>Background work</td>
+<td>Tightly budgeted (<code>BGProcessingTask</code> roulette)</td>
+<td><strong>WorkManager</strong> — long scans and bulk downloads are first-class citizens</td>
+<td>Library scans and offline syncs get dramatically simpler (Parts 8, 10)</td>
+</tr>
+<tr>
+<td>Store review</td>
+<td>Guideline 4.2 looms over wrappers; review gates every build</td>
+<td>Play review is lighter; <strong>and the store is optional</strong> — direct APK and F-Droid are real channels</td>
+<td>Distribution strategy actually changes shape (Part 12), not just paperwork</td>
+</tr>
+</tbody>
+</table>
+<p>Two deltas cut the other way — Android is <em>harder</em> here:</p>
+<ul>
+<li><strong>Session cookies are not free.</strong> iOS's <code>URLSession</code> persists and replays cookies automatically; OkHttp's default <code>CookieJar</code> is a no-op, and the JDK <code>CookieManager</code> is in-memory only. CB8's better-auth session cookie needs a small persistent cookie store you write yourself (Part 4).</li>
+<li><strong>PDF is not free.</strong> iOS has PDFKit, a complete reader widget in the OS. Android's <code>PdfRenderer</code> rasterizes pages to bitmaps and does nothing else — no text selection, no search, no links. Closing the gap means Jetpack's new <code>androidx.pdf</code>, a Pdfium binding, or accepting bitmap-only rendering (Part 7).</li>
+</ul>
+<p>And one delta is a wash that surprises people: <strong>device fragmentation matters less than feared for this app.</strong> A reader's hard problems — image memory, archive I/O, gesture feel — are the same on every device; what fragmentation actually costs you here is testing low-RAM behavior (Part 6's bitmap budget) and minding API-level gates on image codecs (Part 9).</p>
+<h3 id="what-this-means-structurally">What this means structurally</h3>
+<p>The two-phase plan survives unchanged, because it was derived from CB8's architecture, not from iOS: <strong>Phase 1</strong>, a native Kotlin client speaking the existing <code>/api</code> to a CB8 server the user already runs (the Docker/standalone deployments exist precisely to serve remote clients); <strong>Phase 2</strong>, an on-device library with local scanning, indexing, and in-process archive reading. The endpoint table, the <code>WebComicRecord</code> wire shape, the progress-write semantics, the thumbnail cache-buster contract — all established in iOS guide Parts 4–6 — are the same contract here, and this guide references rather than re-derives them.</p>
+<hr>
+<h2 id="part-2-choosing-a-porting-strategy-the-android-version">Part 2 — Choosing a Porting Strategy (the Android Version)</h2>
+<p>Same four candidate strategies as iOS, three of them landing differently.</p>
+<h3 id="option-0-revisited-run-the-node-backend-on-the-device">Option 0 revisited: run the Node backend on the device</h3>
+<p>On iOS this was a trap with four independent fatal wounds. On Android, two of the four heal:</p>
+<ul>
+<li><strong>JIT is legal</strong>, so nodejs-mobile runs V8 at full speed rather than in a crippled interpreter mode.</li>
+<li><strong>Process spawning is legal</strong>, so <code>node-7z</code> could genuinely shell out to a 7-Zip binary shipped in <code>jniLibs</code> (the <code>lib*.so</code> trick: name the executable like a shared library, and <code>applicationInfo.nativeLibraryDir</code> provides an exec-permitted path — the same mechanism Termux-adjacent apps and bundled-ffmpeg apps use).</li>
+</ul>
+<p>What doesn't heal: native Node addons (<code>better-sqlite3</code>, <code>sharp</code>) still need cross-compiling against nodejs-mobile's headers for four ABIs, with every upstream bump repeating the ceremony; the app becomes a ~40MB-heavier WebView-plus-server sandwich; Android's process-death model (the OS kills your process freely and restores activities later) is hostile to a stateful in-process server; and battery review on Play flags long-running local servers. It graduates from "impossible" to "a fascinating weekend that you will not ship." The Appendix walks through it because on Android it's at least <em>instructive</em>; the recommendation is unchanged.</p>
+<h3 id="option-1-webview-wrapper-capacitor-twa">Option 1: WebView wrapper / Capacitor / TWA</h3>
+<p>Materially more attractive than on iOS:</p>
+<ul>
+<li><strong>Policy risk is lower.</strong> Play has no 4.2-style hostility to wrappers; its minimum-functionality and spam policies target low-effort website rebundles, and a self-hosted-server client with a settings UI and native niceties clears that bar in practice. Thousands of WebView-shell apps live on Play.</li>
+<li><strong>The platform embraces the pattern.</strong> Trusted Web Activities exist specifically to ship a (HTTPS, public) web app as an Android app. TWA doesn't fit CB8 — it requires a public origin with digital asset links, and CB8 servers are private LAN hosts — but plain WebView and Capacitor work the same as on iOS.</li>
+<li>The <em>product</em> objections survive intact: no on-device library, webview reader feel, no offline story. They're the reason this is still a stopgap, not the destination.</li>
+</ul>
+<h3 id="option-2-react-native-flutter">Option 2: React Native / Flutter</h3>
+<p>The same calculus as iOS, with one Android-specific addendum: if the <em>real</em> goal is "CB8 on both mobile platforms with one team," the cross-platform conversation is worth having <em>before</em> building either native app, because having shipped a Swift app first is the worst time to adopt Flutter. The counterweights also repeat: the reader still wants platform-grade gesture/image work, the archive and SQLite layers are native regardless, and the UI rewrite happens in any case since shadcn/Tailwind components don't transfer. For a personal project shipping sequentially, per-platform native remains the recommendation; the closing section names the middle path (Kotlin Multiplatform for the non-UI core) if both ports become real.</p>
+<h3 id="option-3-recommended-native-kotlin-jetpack-compose-two-phases">Option 3 (recommended): native Kotlin + Jetpack Compose, two phases</h3>
+<p>The same shape as the iOS plan: Phase 1 is a Compose client for existing CB8 servers — login, library grid, reader, progress — requiring zero upstream changes; Phase 2 adds the on-device library via SAF, Room, and in-process archive readers. Compose is assumed throughout (this is a new app in 2026; the View system earns no place here), minimum SDK 26 (covers effectively the whole fleet while keeping <code>java.time</code> and adaptive icons unconditional), target SDK current per Play's annual requirement.</p>
+<h3 id="strategy-decision-table-android-edition">Strategy decision table (Android edition)</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>WebView / Capacitor</th>
+<th>RN / Flutter</th>
+<th>On-device Node</th>
+<th>Native Kotlin + Compose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>UI reuse from CB8</td>
+<td>~100%</td>
+<td>~0%</td>
+<td>~100%</td>
+<td>0%</td>
+</tr>
+<tr>
+<td>Offline / local library</td>
+<td>No</td>
+<td>With native modules</td>
+<td>Theoretically</td>
+<td>First-class</td>
+</tr>
+<tr>
+<td>Reader feel</td>
+<td>Webview-grade</td>
+<td>Good with effort</td>
+<td>Webview-grade</td>
+<td>Native</td>
+</tr>
+<tr>
+<td>Play policy risk</td>
+<td>Low (unlike iOS)</td>
+<td>Low</td>
+<td>Battery/process flags</td>
+<td>Low</td>
+</tr>
+<tr>
+<td>Maintenance tail</td>
+<td>Low</td>
+<td>Toolchain-sized</td>
+<td>Severe (addon cross-compiles)</td>
+<td>Normal</td>
+</tr>
+<tr>
+<td>Verdict</td>
+<td>Legitimate stopgap</td>
+<td>Only if going cross-platform first</td>
+<td>Don't ship it</td>
+<td><strong>Build this</strong></td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="part-3-project-setup-and-the-dependency-map">Part 3 — Project Setup and the Dependency Map</h2>
+<h3 id="creating-the-project">Creating the project</h3>
+<p>Android Studio → New Project → Empty Activity (Compose). Kotlin DSL build scripts, version catalog (<code>libs.versions.toml</code>), <code>minSdk 26</code>. Single-module is fine to start; if you want structure that mirrors CB8's separation the way the iOS guide's target layout did:</p>
+<pre><code class="language-text">app/src/main/java/com/example/cb8/
+  api/            # Part 4 — server client (CB8's webServer, consumed)
+  library/        # Part 5 — browse UI (CB8's renderer/pages)
+  reader/         # Parts 6–7 — comic/EPUB/PDF readers
+  locallibrary/   # Part 8 — Room store, SAF scanner, importer (CB8's src/main)
+  archives/       # Part 9 — CBZ/CBR access (CB8's archiveLoader)
+  shared/         # Part 9 — naturalSort, imageFilter, lru ports (mirror src/shared names)
+app/src/test/     # Part 11 — ported vitest suites (JVM, no emulator)
+</code></pre>
+<p>Keeping <code>shared/</code> file names parallel to CB8's <code>src/shared/</code> (<code>NaturalSort.kt</code> ↔ <code>naturalSort.ts</code>) preserves the same upstream-diffing benefit the iOS guide established.</p>
+<h3 id="the-dependency-map">The dependency map</h3>
+<p>The same <code>package.json</code> inventory as the iOS guide's Part 3 table, with the Android column filled in:</p>
+<table>
+<thead>
+<tr>
+<th>CB8 dependency</th>
+<th>Role in CB8</th>
+<th>Android replacement</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>electron</code> + Forge</td>
+<td>Shell, packaging</td>
+<td>— (Gradle, APK/AAB)</td>
+<td>Does not port</td>
+</tr>
+<tr>
+<td><code>fastify</code> + plugins</td>
+<td>Embedded HTTP server</td>
+<td>— (consumed remotely in Phase 1; unnecessary in Phase 2)</td>
+<td>See Appendix for the contrarian path</td>
+</tr>
+<tr>
+<td><code>better-auth</code>, <code>bcryptjs</code></td>
+<td>Sessions, hashing</td>
+<td>OkHttp + a small persistent <code>CookieJar</code>; credentials in <code>EncryptedSharedPreferences</code>/Keystore</td>
+<td>Hashing stays server-side; cookie persistence is on you (Part 4)</td>
+</tr>
+<tr>
+<td><code>better-sqlite3</code></td>
+<td>Library index</td>
+<td><strong>Room</strong> (SQLDelight is the fine alternative)</td>
+<td>Same SQLite underneath; Room adds compile-checked queries, migrations, Flow observation</td>
+</tr>
+<tr>
+<td><code>node-7z</code> + 7-Zip binary, <code>yauzl</code></td>
+<td>CBZ/CBR extraction</td>
+<td><code>java.util.zip.ZipFile</code> for CBZ; <code>junrar</code> / libarchive-NDK for CBR</td>
+<td>Part 9 — including the RAR5 problem and the bundled-7z temptation</td>
+</tr>
+<tr>
+<td><code>sharp</code>, <code>@napi-rs/canvas</code></td>
+<td>Thumbnails, resize</td>
+<td><code>BitmapFactory</code> with <code>inSampleSize</code> (+ Coil for the UI layer)</td>
+<td>Subsampled decode = ImageIO downsampling's equivalent</td>
+</tr>
+<tr>
+<td><code>@jsquash/jxl</code></td>
+<td>JPEG XL decode</td>
+<td>No platform decoder — needs libjxl via JNI, or skip</td>
+<td>AVIF <em>is</em> platform-decoded on API 31+; JXL is the gap (Part 9)</td>
+</tr>
+<tr>
+<td><code>pdfjs-dist</code></td>
+<td>PDF rendering</td>
+<td><code>PdfRenderer</code> / <code>androidx.pdf</code> / Pdfium binding</td>
+<td>Part 7 — the one place Android is behind iOS</td>
+</tr>
+<tr>
+<td><code>epubjs</code></td>
+<td>EPUB rendering</td>
+<td><a href="https://github.com/readium/kotlin-toolkit">Readium Kotlin Toolkit</a>, or WebView + epub.js</td>
+<td>Same trade-off as iOS, same CFI-compatibility caveat</td>
+</tr>
+<tr>
+<td><code>react</code>, <code>react-router-dom</code></td>
+<td>UI, navigation</td>
+<td>Jetpack Compose, Navigation-Compose</td>
+<td>Pages map 1:1 to destinations</td>
+</tr>
+<tr>
+<td><code>zustand</code></td>
+<td>Client state</td>
+<td><code>ViewModel</code> + <code>StateFlow</code> (or plain <code>mutableStateOf</code> holders)</td>
+<td>Same role</td>
+</tr>
+<tr>
+<td><code>@tanstack/react-query</code></td>
+<td>Server cache, pagination</td>
+<td><strong>Paging 3</strong> for the grid; plain suspend calls + small caches elsewhere</td>
+<td>CB8's offset/limit API is exactly Paging 3's home turf (Part 5)</td>
+</tr>
+<tr>
+<td>Tailwind/shadcn/radix, <code>lucide-react</code>, <code>sonner</code></td>
+<td>Components, icons, toasts</td>
+<td>Material 3 Compose, <code>Icons.*</code>, <code>SnackbarHost</code></td>
+<td>—</td>
+</tr>
+<tr>
+<td><code>vitest</code>, <code>fast-check</code></td>
+<td>Tests</td>
+<td>JUnit 5 / kotest (+ kotest property testing — a genuine fast-check equivalent)</td>
+<td>Part 11</td>
+</tr>
+</tbody>
+</table>
+<p>Gradle additions for Phase 1: <code>retrofit</code> + <code>kotlinx-serialization</code> converter (or Ktor client if you prefer — either is fine; the examples use Retrofit/OkHttp because its interceptor/cookie ecosystem is deeper), <code>coil-compose</code>, <code>androidx.paging:paging-compose</code>, <code>androidx.navigation:navigation-compose</code>. Phase 2 adds <code>room-runtime</code>/<code>room-ktx</code> (+ ksp compiler), <code>androidx.work:work-runtime-ktx</code>, <code>androidx.documentfile:documentfile</code>, and your chosen RAR dependency.</p>
+<hr>
+<h2 id="part-4-the-kotlin-api-client">Part 4 — The Kotlin API Client</h2>
+<p>The contract is the one transcribed in <a href="cb8-ios-study-guide.html#part-4--the-swift-api-client">iOS guide Part 4</a>: the endpoint table compiled from <code>src/main/webServer/routes/</code>, the <code>WebComicRecord</code> shape from <code>mapping.ts</code>, the <code>?width=</code> server-side resize with day-long cache headers, and the progress auto-complete rule that clients must <em>not</em> duplicate. None of that changes per platform. What changes is the plumbing.</p>
+<h3 id="models">Models</h3>
+<p><code>kotlinx.serialization</code> mirrors of <code>mapping.ts</code> and <code>src/shared/types.ts</code>:</p>
+<pre><code class="language-kotlin">@Serializable
+enum class MediaType { @SerialName(&quot;comic&quot;) COMIC, @SerialName(&quot;book&quot;) BOOK }
+
+/** Mirrors WebComicRecord in src/main/webServer/mapping.ts. */
+@Serializable
+data class ComicRecord(
+    val id: Int,
+    val title: String,
+    val pageCount: Int,
+    val fileSize: Long,
+    val dateAdded: String,
+    val tags: List&lt;String&gt;,
+    val lastPage: Int? = null,
+    val lastLocation: String? = null,   // EPUB CFI / PDF position for books
+    val lastRead: String? = null,
+    val mediaType: MediaType,
+    val thumbnailUrl: String,           // relative: /api/comics/7/thumbnail?v=...
+    val fileExt: String,                // &quot;cbz&quot; | &quot;cbr&quot; | &quot;epub&quot; | &quot;pdf&quot; | &quot;mobi&quot;
+    val favorited: Boolean? = null,
+)
+
+/** Mirrors QueryResult in src/shared/types.ts. */
+@Serializable
+data class ComicQueryResult(val records: List&lt;ComicRecord&gt;, val totalCount: Int)
+</code></pre>
+<p>Configure <code>Json { ignoreUnknownKeys = true }</code> — upstream CB8 adding a field to <code>mapping.ts</code> must not crash deployed clients (the Swift <code>JSONDecoder</code> ignores unknowns by default; kotlinx throws by default — a classic cross-platform drift bug, caught here instead of in production).</p>
+<h3 id="the-retrofit-surface">The Retrofit surface</h3>
+<pre><code class="language-kotlin">interface CB8Api {
+    @POST(&quot;api/auth/login&quot;)
+    suspend fun login(@Body body: LoginRequest): LoginResponse
+
+    @GET(&quot;api/auth/session&quot;)
+    suspend fun session(): SessionResponse
+
+    @GET(&quot;api/comics&quot;)
+    suspend fun comics(@QueryMap query: Map&lt;String, String&gt;): ComicQueryResult
+
+    @GET(&quot;api/comics/{id}&quot;)
+    suspend fun comic(@Path(&quot;id&quot;) id: Int): ComicRecord
+
+    @PUT(&quot;api/comics/{id}/progress&quot;)
+    suspend fun saveProgress(@Path(&quot;id&quot;) id: Int, @Body body: ProgressUpdate): OkResponse
+
+    @GET(&quot;api/continue-reading&quot;)
+    suspend fun continueReading(@Query(&quot;limit&quot;) limit: Int = 20): List&lt;ComicRecord&gt;
+}
+
+@Serializable
+data class LoginRequest(val username: String = &quot;admin&quot;, val password: String)
+
+@Serializable
+data class ProgressUpdate(
+    val page: Int? = null,
+    val location: String? = null,
+    // Deliberately no `completed`: the server auto-completes on the final
+    // page (routes/progress.ts) — don't duplicate that rule client-side.
+)
+</code></pre>
+<p>The <code>LibraryQuery</code> type from the iOS guide ports as a data class with a <code>toQueryMap()</code> that emits the same parameter names (<code>search</code>, <code>tag</code>, <code>sortBy</code>, <code>sortOrder</code>, <code>offset</code>, <code>limit</code>, <code>mediaType</code>, <code>fileExt</code>, <code>readStatus</code>, <code>favorites</code>) — keep <code>limit = 50</code> to match the server default and the web client's behavior.</p>
+<h3 id="the-part-ios-got-for-free-cookie-persistence">The part iOS got for free: cookie persistence</h3>
+<p>CB8's better-auth session rides a signed cookie (prefix <code>cb8</code>, 30-day sliding window). OkHttp will neither store nor replay it unless you give it a <code>CookieJar</code>, and the stock options are in-memory. A reader app whose login evaporates on process death is broken, so write the small persistent jar once:</p>
+<pre><code class="language-kotlin">/**
+ * Persistent CookieJar for the CB8 session cookie. better-auth issues a
+ * signed session token cookie (30-day sliding expiry, refreshed ~daily by
+ * the server) — losing it across process death logs the user out.
+ */
+class PersistentCookieJar(context: Context) : CookieJar {
+    private val prefs = context.getSharedPreferences(&quot;cb8_cookies&quot;, Context.MODE_PRIVATE)
+    private val cache = ConcurrentHashMap&lt;String, Cookie&gt;()
+
+    init {
+        prefs.all.forEach { (_, v) -&gt;
+            (v as? String)?.let { serialized -&gt;
+                deserialize(serialized)?.takeIf { it.expiresAt &gt; System.currentTimeMillis() }
+                    ?.let { cache[key(it)] = it }
+            }
+        }
+    }
+
+    override fun saveFromResponse(url: HttpUrl, cookies: List&lt;Cookie&gt;) {
+        for (cookie in cookies) {
+            cache[key(cookie)] = cookie
+            prefs.edit().putString(key(cookie), serialize(cookie)).apply()
+        }
+    }
+
+    override fun loadForRequest(url: HttpUrl): List&lt;Cookie&gt; =
+        cache.values.filter { it.matches(url) &amp;&amp; it.expiresAt &gt; System.currentTimeMillis() }
+
+    fun clear() { cache.clear(); prefs.edit().clear().apply() }
+
+    private fun key(c: Cookie) = &quot;${c.domain}|${c.path}|${c.name}&quot;
+    // serialize/deserialize: name, value, domain, path, expiresAt, flags —
+    // a pipe-joined string or a small @Serializable; ~15 lines either way.
+}
+</code></pre>
+<p>Wire it in once and the auth story collapses to the iOS shape — login sets the cookie, every later call replays it, <code>401</code> means "session lapsed, re-login from Keystore-protected credentials":</p>
+<pre><code class="language-kotlin">val cookieJar = PersistentCookieJar(context)
+val client = OkHttpClient.Builder()
+    .cookieJar(cookieJar)
+    .build()
+
+val retrofit = Retrofit.Builder()
+    .baseUrl(serverUrl)        // e.g. http://192.168.1.20:8008/
+    .client(client)
+    .addConverterFactory(json.asConverterFactory(&quot;application/json&quot;.toMediaType()))
+    .build()
+</code></pre>
+<p>Store the password for silent re-login in <code>EncryptedSharedPreferences</code> (Keystore-backed), keyed by server URL — the Keychain advice from the iOS guide, translated. Treat <code>401</code> as a state, not an error: an <code>Authenticator</code> or a central interceptor that funnels to the login screen, with <code>GET /api/auth/session</code> on cold start deciding the first screen.</p>
+<h3 id="cleartext-http-on-the-lan">Cleartext HTTP on the LAN</h3>
+<p>Self-hosted CB8 is typically <code>http://</code> on a LAN, and Android blocks cleartext by default since API 28 — the ATS story with different XML. Scope the exception instead of flipping the global <code>usesCleartextTraffic</code> switch:</p>
+<pre><code class="language-xml">&lt;!-- res/xml/network_security_config.xml --&gt;
+&lt;network-security-config&gt;
+    &lt;base-config cleartextTrafficPermitted=&quot;false&quot; /&gt;
+    &lt;!-- User-entered self-hosted servers: permit cleartext only for
+         private-range hosts the user explicitly configured. --&gt;
+    &lt;domain-config cleartextTrafficPermitted=&quot;true&quot;&gt;
+        &lt;domain includeSubdomains=&quot;false&quot;&gt;192.168.1.20&lt;/domain&gt;
+    &lt;/domain-config&gt;
+&lt;/network-security-config&gt;
+</code></pre>
+<p>One wrinkle iOS doesn't have: <code>domain-config</code> entries are static XML, but CB8 server addresses are user-entered at runtime. The honest options are (a) permit cleartext for the app while documenting why (<code>base-config cleartextTrafficPermitted="true"</code> — defensible for a self-hosted-only client, and Play does not reject it the way App Review interrogates <code>NSAllowsArbitraryLoads</code>), or (b) keep the default and require HTTPS for non-RFC1918 hosts in your own URL validation, permitting cleartext only when the resolved host is private-range. Option (b) is the better product: it nudges remote access toward the reverse-proxy setups CB8's deployment docs already describe.</p>
+<hr>
+<h2 id="part-5-the-library-ui">Part 5 — The Library UI</h2>
+<p>CB8's renderer pages map onto a bottom-bar Compose app the same way they mapped onto a <code>TabView</code>: Library (grid + search + filters), Home (continue-reading / recently-read shelves from the purpose-built endpoints), Organize (tags/folders/series), Settings. Navigation-Compose destinations stand in for react-router routes.</p>
+<h3 id="paging-3-the-react-query-replacement-thats-actually-better-here">Paging 3: the react-query replacement that's actually better here</h3>
+<p>The iOS guide hand-rolled offset pagination in an <code>@Observable</code> model. Android has a first-class library for exactly CB8's API shape — <code>GET /api/comics</code> with <code>offset</code>/<code>limit</code>/<code>totalCount</code> is a textbook <code>PagingSource</code>:</p>
+<pre><code class="language-kotlin">class ComicsPagingSource(
+    private val api: CB8Api,
+    private val query: LibraryQuery,
+) : PagingSource&lt;Int, ComicRecord&gt;() {
+
+    override suspend fun load(params: LoadParams&lt;Int&gt;): LoadResult&lt;Int, ComicRecord&gt; =
+        try {
+            val offset = params.key ?: 0
+            val result = api.comics(
+                query.copy(offset = offset, limit = params.loadSize).toQueryMap())
+            LoadResult.Page(
+                data = result.records,
+                prevKey = if (offset == 0) null else (offset - params.loadSize).coerceAtLeast(0),
+                nextKey = (offset + result.records.size)
+                    .takeIf { it &lt; result.totalCount &amp;&amp; result.records.isNotEmpty() },
+            )
+        } catch (e: Exception) {
+            LoadResult.Error(e)
+        }
+
+    override fun getRefreshKey(state: PagingState&lt;Int, ComicRecord&gt;) =
+        state.anchorPosition?.let { (it - state.config.pageSize / 2).coerceAtLeast(0) }
+}
+
+class LibraryViewModel(private val api: CB8Api) : ViewModel() {
+    val query = MutableStateFlow(LibraryQuery())
+
+    val comics: Flow&lt;PagingData&lt;ComicRecord&gt;&gt; = query
+        .debounce(250)          // search-as-you-type without hammering the server
+        .flatMapLatest { q -&gt;
+            Pager(PagingConfig(pageSize = 50)) {   // matches the server default
+                ComicsPagingSource(api, q)
+            }.flow
+        }
+        .cachedIn(viewModelScope)
+}
+</code></pre>
+<p><code>flatMapLatest</code> over the query flow gives you what react-query's key invalidation gave the web client: change a filter, the old pager is cancelled, a fresh one starts at offset 0.</p>
+<h3 id="the-grid-and-thumbnails">The grid and thumbnails</h3>
+<pre><code class="language-kotlin">@Composable
+fun LibraryGrid(viewModel: LibraryViewModel, onOpen: (ComicRecord) -&gt; Unit) {
+    val comics = viewModel.comics.collectAsLazyPagingItems()
+
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 110.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+    ) {
+        items(count = comics.itemCount, key = comics.itemKey { it.id }) { index -&gt;
+            comics[index]?.let { comic -&gt; CoverCell(comic, onClick = { onOpen(comic) }) }
+        }
+    }
+}
+
+@Composable
+fun CoverCell(comic: ComicRecord, onClick: () -&gt; Unit) {
+    Column(Modifier.clickable(onClick = onClick)) {
+        Box {
+            AsyncImage(
+                model = serverUrl + comic.thumbnailUrl,   // ?v= cache-buster intact
+                contentDescription = comic.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .aspectRatio(2f / 3f)
+                    .clip(RoundedCornerShape(8.dp)),
+            )
+            comic.lastPage?.let { last -&gt;
+                if (comic.pageCount &gt; 0) LinearProgressIndicator(
+                    progress = { (last + 1f) / comic.pageCount },
+                    modifier = Modifier.align(Alignment.BottomStart).fillMaxWidth(),
+                )
+            }
+        }
+        Text(comic.title, style = MaterialTheme.typography.bodySmall, maxLines = 2)
+    }
+}
+</code></pre>
+<p>Coil honors the thumbnail contract from <code>mapping.ts</code> for free: it keys its memory/disk caches by full URL, so the <code>?v=&amp;lt;dateAdded&amp;gt;</code> cache-buster does the invalidation exactly as designed, and its OkHttp-backed disk cache respects the server's cache headers. Give the shared <code>ImageLoader</code> a sized disk cache (<code>diskCache { maxSizeBytes(512L * 1024 * 1024) }</code>) and pass it the same OkHttp client from Part 4 — <strong>this matters</strong>: the thumbnail endpoint sits behind the same session auth, so Coil's requests need the cookie jar.</p>
+<p>Filters are the same <code>FilterPreset</code> mapping as iOS (read status / extension / tag / sort, persisted as small <code>@Serializable</code>s in DataStore). Shelves are <code>GET /api/continue-reading</code> and <code>/api/recently-read</code>, rendered as horizontal <code>LazyRow</code>s on Home.</p>
+<hr>
+<h2 id="part-6-the-comic-reader">Part 6 — The Comic Reader</h2>
+<p>Same interaction contract as the iOS guide Part 6 — page-at-a-time, pinch/pan/zoom, tap zones, progress on every turn, RTL as pure presentation — with Compose mechanics and one Android-specific discipline (bitmap memory on low-RAM devices).</p>
+<h3 id="pager-zoom-dont-hand-roll-the-gesture-arbitration">Pager + zoom: don't hand-roll the gesture arbitration</h3>
+<p>Compose's <code>HorizontalPager</code> is the paging container. The hard part — pinch-zoom <em>inside</em> a pager, where a zoomed-in pan must scroll the image and only flip pages at the edge — is the same gesture-arbitration problem <code>UIScrollView</code> solved on iOS. In Compose, the well-trodden answer is <a href="https://saket.github.io/telephoto/">Telephoto</a>'s <code>ZoomableAsyncImage</code> (built on Coil), which implements exactly this pager-aware behavior plus double-tap-to-zoom:</p>
+<pre><code class="language-kotlin">@Composable
+fun ComicReader(viewModel: ReaderViewModel) {
+    val state = rememberPagerState(
+        initialPage = viewModel.startPage,        // comic.lastPage ?? 0 — resume
+        pageCount = { viewModel.comic.pageCount },
+    )
+
+    LaunchedEffect(state.settledPage) {
+        viewModel.onPageSettled(state.settledPage) // progress write + prefetch
+    }
+
+    HorizontalPager(
+        state = state,
+        reverseLayout = viewModel.rightToLeft,     // manga mode = one boolean
+        beyondViewportPageCount = 1,               // keep neighbors composed
+    ) { page -&gt;
+        ZoomableAsyncImage(
+            model = viewModel.pageRequest(page),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+</code></pre>
+<p><code>reverseLayout</code> is the entire RTL feature — the iOS guide's observation that CB8 tracks page indexes, not directions, pays off identically here: index <code>n</code> is index <code>n</code>, progress stays interoperable with the web UI.</p>
+<h3 id="the-page-pipeline">The page pipeline</h3>
+<p>Pages come from <code>GET /api/comics/:id/pages/:n</code> with <code>?width=</code> at device-pixel size — the same two reasons as iOS (don't decode 4000px scans; hit the server's per-width resize cache, which serves <code>Cache-Control: max-age=86400</code>):</p>
+<pre><code class="language-kotlin">class ReaderViewModel(
+    val comic: ComicRecord,
+    private val api: CB8Api,
+    private val imageLoader: ImageLoader,
+    private val serverUrl: String,
+    displayMetrics: DisplayMetrics,
+) : ViewModel() {
+    private val pixelWidth = displayMetrics.widthPixels
+    val startPage = comic.lastPage ?: 0
+    val rightToLeft = false   // user setting in real code
+
+    fun pageUrl(page: Int) =
+        &quot;$serverUrl/api/comics/${comic.id}/pages/$page?width=$pixelWidth&quot;
+
+    fun pageRequest(page: Int) = ImageRequest.Builder(appContext)
+        .data(pageUrl(page))
+        .build()
+
+    fun onPageSettled(page: Int) {
+        // Prefetch the window ahead — Coil dedupes in-flight requests,
+        // so this is the whole prefetcher (CB8's shared/lru.ts role is
+        // played by Coil's memory cache + the pager's viewport retention).
+        viewModelScope.launch {
+            for (ahead in (page + 1)..minOf(page + 3, comic.pageCount - 1)) {
+                imageLoader.enqueue(
+                    ImageRequest.Builder(appContext).data(pageUrl(ahead)).build())
+            }
+        }
+        // Progress write-through on every turn — the same PUT the web UI
+        // sends; the server owns the auto-complete rule.
+        viewModelScope.launch {
+            runCatching { api.saveProgress(comic.id, ProgressUpdate(page = page)) }
+        }
+    }
+}
+</code></pre>
+<p>The iOS guide's three pipeline disciplines carry over with Android spellings:</p>
+<ul>
+<li><strong>Memory budget.</strong> Android's spread of 3GB phones to 16GB tablets means the bitmap budget must be conservative <em>by default</em>: cap Coil's memory cache (<code>memoryCache { maxSizePercent(0.25) }</code>), let <code>?width=</code> keep decoded sizes screen-bounded, and request full resolution only for the currently-zoomed page. <code>ComponentCallbacks2.onTrimMemory</code> is the jetsam warning iOS never gives you — clear the memory cache when it fires.</li>
+<li><strong>Flush progress on backgrounding.</strong> The unthrottled write-through usually suffices; if you debounce for cellular politeness, flush in <code>onStop</code> via a lifecycle observer — an unflushed final page breaks "continue on the desktop," the bug class the iOS guide flagged.</li>
+<li><strong>Decode off the main thread</strong> is free — Coil decodes on workers — but <em>uploads</em> of huge bitmaps can still jank the first frame; <code>crossfade(false)</code> in the reader avoids paying an animation on every turn.</li>
+</ul>
+<p>Reader chrome: tap-zone arbitration (center toggles chrome, edges page) via a <code>pointerInput</code> overlay that checks tap x-position; immersive mode with <code>WindowInsetsControllerCompat.hideSystemBars()</code>; a <code>Slider</code> bound to the pager with <code>animateScrollToPage</code>; hardware keys (arrows/space — and <strong>volume keys</strong>, an Android comic-reader tradition worth honoring) via <code>onKeyEvent</code>. Keep the screen on while reading: <code>FLAG_KEEP_SCREEN_ON</code> scoped to the reader destination only.</p>
+<hr>
+<h2 id="part-7-epub-and-pdf">Part 7 — EPUB and PDF</h2>
+<p>The architecture transfers from CB8 unchanged, as it did on iOS: books are fetched whole (<code>GET /api/comics/:id/file</code>), rendered client-side, and progress is a string <code>location</code> through the same progress endpoint.</p>
+<h3 id="epub-readium-has-a-kotlin-toolkit-too">EPUB: Readium has a Kotlin toolkit too</h3>
+<p>The Readium project's <a href="https://github.com/readium/kotlin-toolkit">kotlin-toolkit</a> is the Android twin of the Swift toolkit the iOS guide recommended — same architecture (publication parsing, navigator fragment, locators, theming). The decision and its caveat are identical: Readium's <code>Locator</code> JSON won't match epub.js CFIs, so <strong>cross-client EPUB resume needs translation or a per-client-positions truce</strong>; comics (page indexes) interoperate regardless. If byte-identical CFI compatibility with the web UI is non-negotiable, the WebView + epub.js option exists on Android exactly as Option B did on iOS — a bundled HTML page, a <code>@JavascriptInterface</code> bridge instead of <code>WKScriptMessageHandler</code>, the same inherited webview trade-offs.</p>
+<p>Port the theme palette from <code>src/shared/epubTheme.ts</code> into Readium's theme settings so dark/sepia match the web client, and map font-size adjustment onto Readium preferences. The Google Fonts integration becomes bundled fonts, same as iOS.</p>
+<h3 id="pdf-the-one-regression-relative-to-ios">PDF: the one regression relative to iOS</h3>
+<p>PDFKit gave iOS a complete reader widget. Android's options, honestly ranked:</p>
+<ol>
+<li><strong><code>androidx.pdf</code></strong> (Jetpack's PDF library, building on the modernized platform renderer): an embeddable viewer fragment with search/selection on recent APIs. It is the designated future and the right default <em>if</em> its API-level floor and maturity fit your audience when you build — check its current release status; it has been moving from alpha toward stable through 2025–2026.</li>
+<li><strong>Pdfium via a binding</strong> (the engine Chrome uses; bindings like <code>pdfium-android</code> wrap it): full rendering fidelity, render-to-bitmap API, no built-in chrome — you wrap pages in the same Telephoto zoomable pager as comics, which for <em>comic-style</em> PDFs (scanned volumes — most of what a CB8 library holds) is actually the best reading experience of the three.</li>
+<li><strong><code>PdfRenderer</code></strong> (platform, API 21+): zero dependencies, renders pages to bitmaps, nothing else. Fine for a v1 whose PDFs are scanned comics; insufficient for text PDFs the moment users want search.</li>
+</ol>
+<p>The pragmatic call for CB8's audience: route PDFs through the comic-reader pager rendering via Pdfium or <code>PdfRenderer</code> (treating each page as an image — <code>?width=</code>-style downsampling by rendering into a right-sized bitmap), and store the 0-based page index as the <code>location</code> string. The iOS guide's off-by-one warning applies verbatim: pdf.js positions are 1-based, <code>PdfRenderer</code>/Pdfium are 0-based — normalize in one place or cross-device resume drifts.</p>
+<h3 id="mobi">MOBI</h3>
+<p>Same verdict as iOS: no maintained native renderer, treat as download-and-hand-off in v1 (<code>Intent.ACTION_VIEW</code> to whatever handles it), and if it ever matters, solve it server-side with a conversion path that benefits every client.</p>
+<hr>
+<h2 id="part-8-going-standalone-the-on-device-library">Part 8 — Going Standalone: The On-Device Library</h2>
+<p>Phase 2: the local library that makes the app whole without a server. The Room schema decisions mirror the iOS guide's GRDB ones (same deliberate subset of <code>db/schema/create.ts</code>, same reasons); folder access and background work are where Android diverges, mostly favorably.</p>
+<h3 id="getting-files-in-saf-instead-of-bookmarks">Getting files in: SAF instead of bookmarks</h3>
+<p>Android's equivalent of the iOS document picker + security-scoped bookmark is the Storage Access Framework with persistable URI grants:</p>
+<pre><code class="language-kotlin">// Launching the tree picker
+val pickFolder = registerForActivityResult(
+    ActivityResultContracts.OpenDocumentTree()
+) { uri: Uri? -&gt;
+    uri?.let {
+        // The Android analog of a security-scoped bookmark: persist the
+        // grant, then store the Uri string in Room (CB8 persists scan
+        // paths in its DB the same way).
+        contentResolver.takePersistableUriPermission(
+            it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        viewModel.addLibraryFolder(it)
+    }
+}
+</code></pre>
+<p>Three Android-specific realities to design around:</p>
+<ul>
+<li><strong>SAF traversal is slow</strong> — <code>DocumentFile.listFiles()</code> does a content-provider round trip per directory, and naive recursion over a 5,000-file library takes minutes. Use <code>DocumentsContract.buildChildDocumentsUriUsingTree</code> with a projection of just <code>DOCUMENT_ID</code>, <code>DISPLAY_NAME</code>, <code>MIME_TYPE</code>, <code>SIZE</code>, <code>LAST_MODIFIED</code> and query each directory in one cursor pass. This is the difference between a scan that feels indexed and one that feels broken; it's the Android counterpart of the iOS guide's ImageIO-downsampling "hum vs. jetsam" point.</li>
+<li><strong>App-private storage needs no permissions at all</strong> — files imported into <code>filesDir</code>/<code>getExternalFilesDir</code> are simply yours. Offer "import a copy" (owned) vs "index in place" (SAF reference), the same owned/referenced split as iOS, and keep CB8's README promise: removing a library item deletes the row, never the file.</li>
+<li><strong>"All files access" (<code>MANAGE_EXTERNAL_STORAGE</code>) is the tempting wrong answer.</strong> It would make scanning trivial and Play restricts it to app categories CB8 doesn't fit; a file-manager-style permission declaration will bounce. SAF is the supported path; spend the effort on making it fast rather than on the appeal process. (For the F-Droid/sideload build flavor, this constraint relaxes — Part 12.)</li>
+</ul>
+<h3 id="the-room-schema">The Room schema</h3>
+<p>Same subset logic as the iOS port — library tables yes, better-auth tables no, per-user progress collapsed into the comic row:</p>
+<pre><code class="language-kotlin">@Entity(tableName = &quot;comics&quot;,
+        indices = [Index(&quot;treeUri&quot;, &quot;documentId&quot;, unique = true)])
+data class LocalComic(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val treeUri: String?,        // SAF tree the file came from (null = owned copy)
+    val documentId: String?,     // stable within the tree — replaces file_path
+    val relativePath: String?,   // for owned copies under filesDir
+    val title: String,
+    val pageCount: Int,
+    val fileSize: Long,
+    val dateAdded: Long,         // epoch millis; Room has no datetime affinity games
+    val lastPage: Int? = null,
+    val lastLocation: String? = null,
+    val lastRead: Long? = null,
+    val mediaType: String,       // 'comic' | 'book'
+    val seriesName: String? = null,
+    val volumeNumber: Double? = null,  // REAL in CB8's schema — &quot;vol 1.5&quot; exists
+    val chapterNumber: Double? = null,
+    val completed: Boolean = false,
+)
+
+@Dao
+interface ComicDao {
+    // The Flow return is the IPC-change-notification replacement, same as
+    // GRDB's ValueObservation on iOS: scans write rows, the grid recomposes.
+    @Query(&quot;&quot;&quot;SELECT * FROM comics
+              WHERE (:search IS NULL OR title LIKE '%' || :search || '%')
+              ORDER BY dateAdded DESC LIMIT :limit OFFSET :offset&quot;&quot;&quot;)
+    fun page(search: String?, limit: Int, offset: Int): Flow&lt;List&lt;LocalComic&gt;&gt;
+
+    @Query(&quot;SELECT COUNT(*) FROM comics&quot;)
+    fun count(): Flow&lt;Int&gt;
+
+    @Upsert suspend fun upsert(comic: LocalComic): Long
+}
+</code></pre>
+<p>Tags, comic-tag join, and bookmarks tables port from the schema the same way the iOS guide's GRDB migration did. The two iOS departures repeat for the same reasons: thumbnails as files in <code>cacheDir/thumbnails/&amp;lt;id&amp;gt;.jpg</code> (purgeable, regenerable) instead of CB8's <code>cover_thumbnail BLOB</code>; identity as <code>(treeUri, documentId)</code> instead of <code>file_path</code>. Room's <code>Migration</code> list is the <code>migrations.ts</code> discipline (CB8 is at schema v6; start your version counting on day one). Also expose the local library through a <code>PagingSource</code> from Room (<code>@Query</code> returning <code>PagingSource&lt;Int, LocalComic&gt;</code>) so Part 5's grid is data-source-blind.</p>
+<h3 id="scanning-with-workmanager">Scanning with WorkManager</h3>
+<p>Here Android simply wins: a library scan is a <code>CoroutineWorker</code>, and the OS will run it to completion, in the background, with a progress notification — no <code>BGProcessingTask</code> lottery:</p>
+<pre><code class="language-kotlin">class ScanWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx, params) {
+    override suspend fun doWork(): Result {
+        val folders = db.folderDao().all()
+        var processed = 0
+        for (folder in folders) {
+            scanTree(folder.treeUri.toUri()) { file -&gt;     // cursor-based walk
+                if (file.name.hasComicExtension()) {        // .cbz/.cbr/.epub/.pdf/.mobi
+                    indexFile(file)                         // parse, count pages, thumbnail
+                    processed++
+                    setProgress(workDataOf(&quot;processed&quot; to processed,
+                                           &quot;currentFile&quot; to file.name))
+                }
+            }
+        }
+        return Result.success()
+    }
+}
+</code></pre>
+<p><code>setProgress</code> feeds a <code>ScanProgress</code>-shaped UI state (<code>discovered</code>/<code>processed</code>/<code>currentFile</code> — keep CB8's field names from <code>types.ts</code>). Run import-triggered scans as expedited work for immediacy; schedule periodic re-scans of referenced folders with <code>PeriodicWorkRequest</code> — which is CB8's <code>folderScheduler.ts</code> (auto-rescan interval) reborn with OS backing. Port <code>seriesParser.ts</code> alongside the scanner, as on iOS; it's regex work with a test file.</p>
+<p>Thumbnails: <code>BitmapFactory.Options</code> two-pass decode — bounds first, then <code>inSampleSize</code> to land near 480px — is the <code>sharp</code>-replacement; compress to JPEG ~80 into the cache dir. PDF covers render page 0 via <code>PdfRenderer</code> into a right-sized bitmap (the whole of <code>pdfCoverExtractor.ts</code>); EPUB covers come from Readium's publication metadata or an OPF parse over the zip (an EPUB is a zip). Cover <em>selection</em> for archives is <code>coverSelection.ts</code> — port, don't improvise, or local covers diverge from server covers for the same file.</p>
+<hr>
+<h2 id="part-9-archives-and-the-shared-logic-ports">Part 9 — Archives and the Shared-Logic Ports</h2>
+<p>Replacing <code>archiveLoader.ts</code> + node-7z. The contract from <code>src/shared/types.ts</code> stands: an archive opens to natural-sorted, image-filtered entries with random page access.</p>
+<h3 id="cbz-the-jdk-already-ships-it">CBZ: the JDK already ships it</h3>
+<p>No dependency needed — <code>java.util.zip.ZipFile</code> reads the central directory and gives random per-entry access:</p>
+<pre><code class="language-kotlin">class ComicArchive private constructor(
+    private val zip: ZipFile,
+    /** Sorted, filtered image entries — index n IS page n, the same
+     *  invariant the server's ArchiveLoader maintains. */
+    val pages: List&lt;ZipEntry&gt;,
+) : Closeable {
+
+    companion object {
+        fun open(file: File): ComicArchive {
+            val zip = ZipFile(file)
+            val pages = zip.entries().asSequence()
+                .filter { !it.isDirectory &amp;&amp; isImageFile(it.name) }
+                .sortedWith { a, b -&gt; naturalCompare(a.name, b.name) }
+                .toList()
+            return ComicArchive(zip, pages)
+        }
+    }
+
+    val pageCount get() = pages.size
+
+    fun pageData(index: Int): ByteArray =
+        zip.getInputStream(pages[index]).use { it.readBytes() }
+
+    override fun close() = zip.close()
+}
+</code></pre>
+<p>One SAF wrinkle: <code>ZipFile</code> wants a <code>File</code>, but SAF hands you a <code>Uri</code>. For <em>owned</em> copies you have a real path; for <em>referenced</em> files, get a file descriptor (<code>contentResolver.openFileDescriptor(uri, "r")</code>) and use a zip reader that accepts FDs/channels (Apache Commons Compress's <code>ZipFile</code> takes a <code>SeekableByteChannel</code>), or fall back to copying into the cache dir on first open for files on providers that can't seek. Keep open archives in a small LRU keyed by comic id — <code>archiveCache.ts</code>'s pattern, ported via your <code>lru.ts</code> port.</p>
+<h3 id="cbr-more-options-than-ios-same-conclusion-shape">CBR: more options than iOS, same conclusion shape</h3>
+<ul>
+<li><strong>junrar</strong> (pure Java/Kotlin, Apache-licensed): zero NDK, handles RAR4 — <strong>but not RAR5</strong>, and RAR5 has been WinRAR's default since 2013, so modern CBRs will fail. Fine as a first tier, not a solution.</li>
+<li><strong>libarchive via NDK</strong>: reads RAR4 and most RAR5, BSD-licensed (F-Droid-friendly), but you own the JNI wrapper and per-ABI builds.</li>
+<li><strong>The bundled-7z move (Android-only option):</strong> ship <code>7zz</code> per-ABI in <code>jniLibs</code> as <code>lib7zz.so</code>, exec it from <code>nativeLibraryDir</code> with output to your cache dir. This is the closest possible port of CB8's actual architecture — it <em>is</em> node-7z's design, legally re-homed — and it genuinely works. Costs: ~6MB across ABIs, process-spawn latency per archive open (mitigate by extracting whole archives once into cache rather than per page), and the 7-Zip RAR codec's licensing rider (7-Zip is LGPL but its RAR extraction code carries the unrar license clause — same acknowledgement obligations as UnrarKit on iOS, and a problem for an F-Droid flavor).</li>
+<li><strong>Convert at the edge</strong>: detect CBR on import, repack to CBZ. Same trade as iOS; strongest in combination ("junrar for RAR4; offer convert-via-libarchive for RAR5").</li>
+</ul>
+<p>Recommendation: libarchive via a maintained binding if you want one path that handles both RAR generations in-process; junrar + convert-on-import if you want to stay NDK-free. Reserve the bundled-7z trick for the sideload flavor where APK size and licensing review matter less. As on iOS, hide the choice behind the <code>ComicArchive</code> interface so the reader stays format-blind — and remember Phase 1 sidesteps all of this: server libraries deliver decoded images over <code>/pages/:n</code>, CBR included.</p>
+<h3 id="image-format-coverage">Image format coverage</h3>
+<p>CB8's <code>imageFilter.ts</code> set is <code>jpg jpeg png webp gif bmp jxl avif</code>. Android platform decoding: JPEG/PNG/WebP/GIF/BMP always; <strong>AVIF from API 31</strong>; <strong>JPEG XL not at all</strong> (as of current API levels). Coil + a libjxl-JNI decoder plugs the JXL gap if your library actually contains JXL pages (CB8 bundles <code>@jsquash/jxl</code> for the same reason — the web platform lacks JXL too, which is a hint about how often this matters: it does, for some manga archives). Keep the extension in the filter either way — a page you can't decode should surface as a broken-page error, not silently vanish from the page count, or page indexes drift from the server's and progress interop breaks. That invariant — <strong>filter by the shared extension list, not by what the device can decode</strong> — is exactly the kind of subtle contract the shared-spec porting discipline exists to protect.</p>
+<h3 id="porting-naturalsortts">Porting <code>naturalSort.ts</code></h3>
+<p>Same spec, same fidelity stakes as the iOS port (an "almost right" comparator misorders pages 2/10). Kotlin port:</p>
+<pre><code class="language-kotlin">/**
+ * Port of src/shared/naturalSort.ts — behavior-identical, including
+ * numeric-before-text at the same position and the &quot;01&quot; vs &quot;1&quot;
+ * equal-number fall-through.
+ */
+fun naturalCompare(a: String, b: String): Int {
+    fun chunks(s: String): List&lt;String&gt; {
+        val out = ArrayList&lt;String&gt;()
+        var i = 0
+        while (i &lt; s.length) {
+            val digit = s[i].isDigit()
+            var j = i
+            while (j &lt; s.length &amp;&amp; s[j].isDigit() == digit) j++
+            out.add(s.substring(i, j))
+            i = j
+        }
+        return out
+    }
+
+    val ca = chunks(a); val cb = chunks(b)
+    for (i in 0 until minOf(ca.size, cb.size)) {
+        val x = ca[i]; val y = cb[i]
+        val xNum = x[0].isDigit(); val yNum = y[0].isDigit()
+        when {
+            xNum &amp;&amp; yNum -&gt; {
+                val dx = x.toBigIntegerOrNull() ?: BigInteger.ZERO
+                val dy = y.toBigIntegerOrNull() ?: BigInteger.ZERO
+                val cmp = dx.compareTo(dy)
+                if (cmp != 0) return cmp
+                // numerically equal (&quot;01&quot; vs &quot;1&quot;) — fall through
+            }
+            xNum != yNum -&gt; return if (xNum) -1 else 1   // numbers before text
+            else -&gt; {
+                val cmp = x.lowercase().compareTo(y.lowercase())
+                if (cmp != 0) return cmp
+            }
+        }
+    }
+    return ca.size - cb.size   // shorter first on full tie
+}
+</code></pre>
+<p>(<code>BigInteger</code> sidesteps overflow on absurd digit runs — the TS original's <code>parseInt</code> saturates differently, but both agree on every filename that fits in a <code>Long</code>; add the pathological case to the tests if you care.) The locale caveat from the iOS guide applies identically: the original's <code>localeCompare</code> vs. this port's plain lowercase comparison agree on ASCII and can diverge on non-ASCII titles — if web/Android page-order parity on Japanese filenames matters, use <code>Collator</code> pinned to the same locale and add the test.</p>
+<p><code>imageFilter.ts</code> is the same one-liner (<code>setOf("jpg","jpeg","png","webp","gif","bmp","jxl","avif")</code> against the lowercased final extension), and <code>lru.ts</code> ports to a <code>LinkedHashMap</code> with <code>accessOrder = true</code> and a size-bounded <code>removeEldestEntry</code> — a dozen lines, kept honest by its ported test file.</p>
+<hr>
+<h2 id="part-10-progress-sync-and-offline">Part 10 — Progress Sync and Offline</h2>
+<p>The policy layer is platform-independent and the iOS guide's Part 10 stands word-for-word: server is truth while online (write-through per page turn); offline writes queue locally and replay last-write-wins on reconnect, guarded against stale replays by skipping queued writes older than the server's <code>lastRead</code>; local comics have no sync target; and <strong>do not</strong> mirror whole libraries bidirectionally — the server is already the multi-device coordinator, and a reader app should not accidentally become a distributed system.</p>
+<p>The Android mechanics are pleasantly boring:</p>
+<ul>
+<li><strong>Downloads</strong> (<code>GET /api/comics/:id/file</code>) run as WorkManager jobs with a foreground-service notification for big files — survives process death, retries with backoff, constrainable to unmetered networks (<code>Constraints.Builder().setRequiredNetworkType(NetworkType.UNMETERED)</code> for an "only on Wi-Fi" setting, which a comics app should ship — archives are hundreds of MB and users have caps). Store under <code>getExternalFilesDir("offline/&amp;lt;serverId&amp;gt;/")</code>: app-scoped (auto-cleaned on uninstall), user-visible via USB, no permissions. A <code>downloads</code> Room table maps <code>(serverUrl, remoteId) → localPath</code>; the reader checks it first and serves pages from <code>ComicArchive</code> or <code>/pages/:n</code> behind one interface — the same two-sources-one-protocol shape as iOS, which is itself the same shape as CB8 serving identical UIs from Electron and Docker.</li>
+<li><strong>The progress replay queue</strong> is a <code>pendingProgress</code> table plus a network-constrained worker with <code>ExistingWorkPolicy.APPEND</code>. WorkManager's persistence means the queue drains even if the user doesn't reopen the app — a small real win over the iOS version, where replay waits for a launch.</li>
+</ul>
+<hr>
+<h2 id="part-11-testing-porting-the-vitest-suite">Part 11 — Testing: Porting the Vitest Suite</h2>
+<p>The strategy is the iOS guide's Part 11 with better ergonomics: the <code>shared/</code> ports and their transcribed tests run as <strong>plain JVM unit tests</strong> — no emulator, no Robolectric, milliseconds per suite — because the ports are pure Kotlin with no Android imports (keep them that way; it's also what makes them KMP-extractable later).</p>
+<pre><code class="language-kotlin">// Ported from src/shared/naturalSort.test.ts
+class NaturalSortTest {
+    @Test fun `sorts page2 before page10`() {
+        assertTrue(naturalCompare(&quot;page2.jpg&quot;, &quot;page10.jpg&quot;) &lt; 0)
+    }
+
+    @Test fun `numbers sort before text at the same position`() {
+        assertTrue(naturalCompare(&quot;2.jpg&quot;, &quot;cover.jpg&quot;) &lt; 0)
+    }
+
+    @ParameterizedTest
+    @MethodSource(&quot;orderingCases&quot;)
+    fun `orders like the server`(input: List&lt;String&gt;, expected: List&lt;String&gt;) {
+        assertEquals(expected, input.sortedWith(::naturalCompare))
+    }
+
+    companion object {
+        @JvmStatic fun orderingCases() = listOf(
+            arguments(listOf(&quot;page1.jpg&quot;, &quot;page10.jpg&quot;, &quot;page2.jpg&quot;),
+                      listOf(&quot;page1.jpg&quot;, &quot;page2.jpg&quot;, &quot;page10.jpg&quot;)),
+            arguments(listOf(&quot;ch1/p1.png&quot;, &quot;ch1/p10.png&quot;, &quot;ch1/p2.png&quot;),
+                      listOf(&quot;ch1/p1.png&quot;, &quot;ch1/p2.png&quot;, &quot;ch1/p10.png&quot;)),
+        )
+    }
+}
+</code></pre>
+<p>Where CB8 uses fast-check, Android has a <em>real</em> equivalent: kotest's property testing. Generate filename lists and assert the comparator's contract (totality, antisymmetry, transitivity, integer-aware ordering) — a closer port of the fast-check suites than the iOS guide's parameterized approximation.</p>
+<p>Beyond the ports, the same three layers as iOS, translated: <strong>API client tests</strong> against OkHttp's <code>MockWebServer</code> (made by the OkHttp team; enqueue captured CB8 JSON fixtures, assert models decode — refreshing fixtures <em>is</em> the upstream-compatibility audit, and <code>ignoreUnknownKeys</code> gets exercised here); <strong>archive tests</strong> with fixtures the test builds itself (<code>ZipOutputStream</code> a 4-page CBZ with a non-image entry and misordered names, prove filtering and ordering end-to-end through <code>ComicArchive</code>); <strong>reader-logic tests</strong> on <code>ReaderViewModel</code> with a fake api (opening at <code>lastPage = 41</code> requests pages 41–44; progress PUTs fire per settled page) — plain coroutine tests with <code>runTest</code>, no UI. Room DAO tests and any Compose UI tests run instrumented, but notice the design pressure: everything this guide put in <code>shared/</code> and the view models stays JVM-testable, which is the same "test the math, not the pixels" line the iOS guide drew.</p>
+<hr>
+<h2 id="part-12-distribution-play-f-droid-and-the-sideload-channel">Part 12 — Distribution: Play, F-Droid, and the Sideload Channel</h2>
+<p>On iOS, distribution was a compliance chapter. On Android it's a <em>strategy</em> chapter, because CB8's audience — people who run Docker containers on NASes — overlaps heavily with people who install APKs from GitHub Releases, which CB8 already publishes for desktop.</p>
+<p><strong>Google Play</strong> is the mainstream channel: app signing by Google, AAB upload, the Data Safety form (truthful answers are easy — the app talks only to user-configured servers; declare what you store locally), and a review that is faster and less adversarial than Apple's for this category. The iOS guide's review-prep list translates thinner: no demo-server requirement in practice (but having one ready never hurts), cleartext policy documented in the listing notes if you went with option (a) from Part 4, and the unrar/7-Zip license acknowledged in-app if you ship that codec.</p>
+<p><strong>Direct APK via GitHub Releases</strong> is the channel that matches CB8's existing release culture 1:1 — the desktop app ships there; the Android APK can ride the same release pipeline (a <code>gradle assembleRelease</code> job next to the Forge makers in CI, signed with a keystore in repo secrets). Users get it with one toggle ("install unknown apps"); you owe them an update path — at minimum a "check GitHub releases" tap, or wire in a self-updater library. This channel has no content police and no codec-license anxiety; it's where the bundled-7z flavor can live.</p>
+<p><strong>F-Droid</strong> fits the project's self-hosted ethos and its MIT license, with one sharp constraint: builds must be reproducible from FOSS sources, which disqualifies the unrar-licensed RAR codec paths. The clean answer is build flavors — <code>fdroid</code> (libarchive-only CBR, no proprietary bits) and <code>full</code> (everything) — declared once in Gradle and diverging only in the <code>archives/</code> dependency set. Decide this <em>before</em> the RAR choice in Part 9 hardens, because retrofitting flavor separation around a license is miserable.</p>
+<p>Mechanical notes that round out the release: <code>minifyEnabled</code> with R8 plus keep-rules for kotlinx-serialization models; per-ABI splits if you ship NDK bits (libarchive/Pdfium) to keep the APK lean; and a <code>network_security_config</code> audit before each release — the debug-build cleartext allowances must not leak into release.</p>
+<hr>
+<h2 id="appendix-webview-wrappers-and-the-on-device-node-experiment">Appendix — WebView Wrappers and the On-Device Node Experiment</h2>
+<h3 id="the-webview-wrapper-the-shippable-stopgap">The WebView wrapper (the shippable stopgap)</h3>
+<p>Same role as the iOS appendix: a weekend proof, or a stopgap while Phase 1 bakes — and on Android, a lower-risk one to actually publish.</p>
+<pre><code class="language-kotlin">@Composable
+fun ServerWebView(url: String) {
+    AndroidView(factory = { ctx -&gt;
+        WebView(ctx).apply {
+            settings.javaScriptEnabled = true          // the SPA requires it
+            settings.domStorageEnabled = true           // zustand persists here
+            settings.mediaPlaybackRequiresUserGesture = false
+            webViewClient = object : WebViewClient() {
+                override fun onReceivedError(
+                    view: WebView, request: WebResourceRequest, error: WebResourceError
+                ) { /* swap in a native retry screen — not WebView's error page */ }
+            }
+            loadUrl(url)
+        }
+    })
+}
+</code></pre>
+<p>The session cookie persists in the WebView's own cookie store (<code>CookieManager.getInstance()</code> — flush on pause), so login survives restarts with no work. The polish list from the iOS appendix applies: native unreachable-server screen, insets that let the reader go immersive, and don't double-handle pinch (the SPA owns zoom). Capacitor works identically to the iOS description — bundle <code>dist/web</code>, point it at a configurable server URL, inherit the CORS/<code>SameSite</code> homework upstream — and on Android it additionally clears Play review with little drama.</p>
+<h3 id="the-on-device-node-experiment-the-instructive-dead-end">The on-device Node experiment (the instructive dead end)</h3>
+<p>Because Android removes iOS's hard blockers, it's worth being precise about why this still loses. The recipe that <em>works</em>: nodejs-mobile as the runtime (full V8, JIT intact); CB8's <code>standalone.mjs</code> bundle as the payload; <code>7zz</code> shipped per-ABI in <code>jniLibs</code> as <code>lib7zz.so</code> with <code>CB8_SEVENZIP_PATH</code> pointed at <code>nativeLibraryDir</code> (CB8's own env-var escape hatch, doing exactly its job); <code>better-sqlite3</code> and <code>sharp</code> cross-compiled per ABI — this step is days, not hours, and recurs on every upstream bump; the server bound to <code>127.0.0.1:8008</code> inside the app's network namespace; a WebView on top. You will see the real CB8 web UI served by the real CB8 server from your pocket, scanning a folder of CBZs. It is a deeply satisfying demo.</p>
+<p>Then the model breaks down: Android kills the process under memory pressure and restores your Activity <em>without</em> the server (every screen needs a "wait for backend" state); a foreground service keeps it alive at the cost of a permanent notification and battery-usage flags; scans that WorkManager would run politely now contend with the foreground app for the process's resources; and the maintenance tail — four-ABI native-addon builds against a community Node fork — is the kind of debt that ends hobby ports. The experiment's real value is what it proves: every piece of CB8 that <em>can</em> run on Android this way is a piece whose native replacement (Room, ZipFile, BitmapFactory) is <em>smaller</em> than the scaffolding needed to avoid replacing it.</p>
+<hr>
+<h2 id="closing-one-codebase-three-platforms-two-ports">Closing: one codebase, three platforms, two ports</h2>
+<p>The condensed sequence mirrors the iOS checklist — read the routes; ship the server client (login → grid → reader → progress); pick the PDF/EPUB trade-offs; port <code>src/shared/</code> with its tests; build the SAF + Room local library; choose the CBR path with distribution flavors in mind; wire WorkManager downloads and the stale-guarded progress replay; then pick channels (Play and GitHub Releases, F-Droid if the flavors are clean).</p>
+<p>If both this port and the iOS one become real, the duplication you'll feel first is exactly the code this guide and its sibling kept platform-free: the API models, the query types, the progress policy, the <code>shared/</code> ports and their tests. That set has a name — a <strong>Kotlin Multiplatform core</strong> consumed by the Compose app directly and by the SwiftUI app as a framework — and the migration is mechanical <em>because</em> both guides kept those layers free of platform imports. Whether that consolidation is worth it for two hobby clients is a judgment call; that it remains <em>available</em> is a direct payoff of porting CB8's <code>src/shared/</code> discipline instead of just its features. CB8 made its GUI portable by putting HTTP between the interface and the engine; the mobile ports stay maintainable by the same move, one layer down.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>
