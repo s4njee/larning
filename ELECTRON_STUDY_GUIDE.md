@@ -63,7 +63,7 @@ If you remember one thing from Part 1: **Electron lets you reuse your web (UI) a
 
 ## Part 2 — The Multi-Process Architecture
 
-Electron's architecture is the first thing to internalize, and your distributed-systems background makes it easy: **an Electron app is a tiny client-server system running on one machine.** There is one privileged "server," one or more sandboxed "clients," and a carefully controlled boundary between them.
+Electron's architecture (the official [Process Model docs](https://www.electronjs.org/docs/latest/tutorial/process-model) are the canonical reference) is the first thing to internalize, and your distributed-systems background makes it easy: **an Electron app is a tiny client-server system running on one machine.** There is one privileged "server," one or more sandboxed "clients," and a carefully controlled boundary between them.
 
 ### The Three Kinds of Code
 
@@ -79,7 +79,7 @@ Every Electron app has three distinct execution contexts. Confusing which code r
 
 **A renderer process** runs a web page inside a Chromium instance — one renderer per `BrowserWindow`. This is where your Vue/React/Svelte app lives. Critically, **by modern defaults a renderer has no Node.js access at all** — it's as sandboxed as a normal web page in a browser. It cannot read files, spawn processes, or touch the OS. It can only render UI and ask the main process to do privileged things, through the boundary. Treat it exactly as you'd treat an untrusted browser client: it might be compromised by malicious content or XSS, so it gets no direct power.
 
-**The preload script** is the clever bit and the part with no web analogue. It runs *in the renderer's context* but *before your web page loads*, and it has access to a limited set of Node/Electron APIs **and** the page's `window` object. Its job is to be the **bridge**: it uses `contextBridge` to expose a small, specific, validated API to the renderer — never raw power, only named functions. It's the API contract / gateway between your untrusted UI and your privileged backend. (Security details in Part 7; for now, just know the preload is *where you decide exactly what the UI is allowed to ask for*.)
+**The preload script** is the clever bit and the part with no web analogue. It runs *in the renderer's context* but *before your web page loads*, and it has access to a limited set of Node/Electron APIs **and** the page's `window` object. Its job is to be the **bridge**: it uses [`contextBridge`](https://www.electronjs.org/docs/latest/api/context-bridge) to expose a small, specific, validated API to the renderer — never raw power, only named functions. It's the API contract / gateway between your untrusted UI and your privileged backend. (Security details in Part 7; for now, just know the preload is *where you decide exactly what the UI is allowed to ask for*.)
 
 ### Why Three Processes? (The Reason Maps to Your Instincts)
 
@@ -176,7 +176,7 @@ The renderer can't touch the OS; the main process can. So everything privileged 
 
 ### The Mental Model: It's an API
 
-Treat IPC exactly as you'd treat a client-server API (the [API design instincts](DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md) you have all apply):
+Treat IPC ([official IPC tutorial](https://www.electronjs.org/docs/latest/tutorial/ipc)) exactly as you'd treat a client-server API (the [API design instincts](DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md) you have all apply):
 
 - The renderer is the **client**; the main process is the **server**.
 - Messages are **serialized** (via the structured clone algorithm — same as `postMessage` and Web Workers), so you can pass plain objects, arrays, numbers, strings, `ArrayBuffer`s — but **not** functions, class instances with methods, DOM nodes, or anything with behavior. If it doesn't survive `JSON`-ish serialization (plus a few extras like `Date` and `ArrayBuffer`), it can't cross.
@@ -427,7 +427,7 @@ A web app's data lives in a database you control on a server. A desktop app's da
 
 ### Where Data Goes: `app.getPath`
 
-Never hardcode paths — every OS has different conventions for where app data belongs, and writing to the wrong place breaks on locked-down systems. `app.getPath` gives you the correct, per-OS location:
+Never hardcode paths — every OS has different conventions for where app data belongs, and writing to the wrong place breaks on locked-down systems. [`app.getPath`](https://www.electronjs.org/docs/latest/api/app#appgetpathname) gives you the correct, per-OS location:
 
 ```javascript
 import { app } from "electron";
@@ -503,7 +503,7 @@ If you remember one thing from Part 6: **data lives on the user's disk under `ap
 
 ## Part 7 — Security
 
-This is the chapter where your backend instincts make you *better* than the average Electron developer. Electron is web code with operating-system access, which means a web vulnerability can become a native compromise — an XSS that would merely deface a website can, in a misconfigured Electron app, read every file on the user's disk or run arbitrary commands. The good news: the threat model is one you already think in (*never trust the client*), and the defaults are now safe. Your job is to not turn them off and to guard the boundary you control.
+This is the chapter where your backend instincts make you *better* than the average Electron developer (read the official [Security checklist](https://www.electronjs.org/docs/latest/tutorial/security) in full — it's the page this part operationalizes). Electron is web code with operating-system access, which means a web vulnerability can become a native compromise — an XSS that would merely deface a website can, in a misconfigured Electron app, read every file on the user's disk or run arbitrary commands. The good news: the threat model is one you already think in (*never trust the client*), and the defaults are now safe. Your job is to not turn them off and to guard the boundary you control.
 
 ### The Threat Model
 
@@ -621,8 +621,8 @@ Here is the part that genuinely shocks every web developer, and the reason deskt
 
 You don't assemble installers by hand. Two tools dominate:
 
-- **Electron Forge** — the official, all-in-one toolchain (scaffolding, dev server, native-module rebuilding, packaging, and publishing in one config). **Recommended default**, especially for a first app.
-- **electron-builder** — the most popular community tool, extremely powerful and configurable (more target formats, finer control over signing and updates). Reach for it when Forge's defaults aren't enough.
+- **[Electron Forge](https://www.electronforge.io/)** — the official, all-in-one toolchain (scaffolding, dev server, native-module rebuilding, packaging, and publishing in one config). **Recommended default**, especially for a first app.
+- **[electron-builder](https://www.electron.build/)** — the most popular community tool, extremely powerful and configurable (more target formats, finer control over signing and updates). Reach for it when Forge's defaults aren't enough.
 
 Both turn your built main/preload/renderer bundles into platform installers. The packaging step bundles your app source into an **ASAR archive** — a single concatenated file (`app.asar`) that slightly speeds loading and provides mild tamper-resistance (it is *not* encryption or real security — anyone can extract an ASAR; never put secrets in your bundle).
 
@@ -640,7 +640,7 @@ Both turn your built main/preload/renderer bundles into platform installers. The
 
 On Windows and macOS, **an unsigned app is treated as malware by the OS**, and your users will see frightening warnings (or be blocked outright). Signing is not optional for real distribution:
 
-- **macOS** is the strictest. You need an Apple Developer account ($99/yr). You sign with a **Developer ID** certificate, enable the **hardened runtime** with the right **entitlements**, then submit the build to Apple for **notarization** (an automated malware scan via `notarytool`) and **staple** the result. Without notarization, Gatekeeper refuses to launch your app on a normal user's Mac. This pipeline is fiddly and is the #1 source of "it works on my machine but won't open on theirs."
+- **macOS** is the strictest. You need an Apple Developer account ($99/yr). You sign with a **Developer ID** certificate, enable the **hardened runtime** with the right **entitlements**, then submit the build to Apple for **[notarization](https://developer.apple.com/documentation/security/notarizing-macos-software-before-distribution)** (an automated malware scan via `notarytool`) and **staple** the result. Without notarization, Gatekeeper refuses to launch your app on a normal user's Mac. This pipeline is fiddly and is the #1 source of "it works on my machine but won't open on theirs."
 - **Windows** needs an Authenticode certificate. A standard cert still accumulates SmartScreen warnings until your app builds "reputation"; an **EV (Extended Validation) certificate** (pricier, often on a hardware token or cloud HSM) grants instant SmartScreen trust. Signing cleanly in CI with a token-based cert is its own minor saga (cloud signing services like Azure Trusted Signing help).
 - **Linux**, refreshingly for you, has **no OS-level signing mandate** — AppImage just runs, and `.deb`/`.rpm`/Flatpak rely on repository or Flatpak signing instead. Given your Linux background, Linux distribution will feel the most natural of the three.
 
@@ -696,7 +696,7 @@ Two final operational concerns that distinguish a hobby build from a shippable p
 
 On the web, every user gets your latest code on the next page load. On the desktop, **users run whatever version they installed until something updates it** — and "something" is your job. Without auto-updates, your bug fixes and *security patches* (Part 7) never reach the people running old versions. This is not a nice-to-have; it's how you stay patched.
 
-The standard mechanism is **`electron-updater`** (from electron-builder; more flexible than the built-in `autoUpdater`). It checks an update server, downloads new signed builds in the background, and installs on restart:
+The standard mechanism is **[`electron-updater`](https://www.electron.build/auto-update)** (from [electron-builder](https://www.electron.build/); more flexible than the built-in [`autoUpdater`](https://www.electronjs.org/docs/latest/api/auto-updater)). It checks an update server, downloads new signed builds in the background, and installs on restart:
 
 ```javascript
 // main process
@@ -761,7 +761,7 @@ You should never reach for a tool without knowing when *not* to. This closing pa
 
 ### Electron vs. Tauri
 
-**Tauri** is the alternative you should care about most, both because it's the strongest competitor and because it's built in Rust — the language you're learning. The core difference: where Electron *bundles* Chromium, Tauri uses the **operating system's built-in webview** (WebView2/Chromium on Windows, WebKitGTK on Linux, WKWebView on macOS) and a Rust backend instead of Node.js.
+**[Tauri](https://tauri.app/)** is the alternative you should care about most, both because it's the strongest competitor and because it's built in Rust — the language you're learning. The core difference: where Electron *bundles* Chromium, Tauri uses the **operating system's built-in webview** (WebView2/Chromium on Windows, WebKitGTK on Linux, WKWebView on macOS) and a Rust backend instead of Node.js.
 
 | | **Electron** | **Tauri** |
 |---|---|---|
@@ -877,6 +877,14 @@ That's a complete, secure, locally-persistent, auto-updating desktop app — bui
 ### The Closing Take
 
 Desktop GUI development feels intimidating from the outside, but for a web and backend engineer the intimidation is misplaced. The *UI* is web (you know it), the *privileged layer* is Node (you know it), and the *boundary* between them is a client-server API (you know it). What's genuinely new is a contained, learnable set: the multi-process lifecycle, native OS integration, the heightened security model, and — the real work — packaging, signing, and shipping software to machines you don't control. Electron is the right framework to learn all of that on, precisely because it lets you spend your effort on what's new instead of relearning how to build a UI.
+
+## Where to Go Next
+
+- **Read the official [Process Model](https://www.electronjs.org/docs/latest/tutorial/process-model) and [Security](https://www.electronjs.org/docs/latest/tutorial/security) pages in full** — they are the two best pages in the Electron docs and the canonical statements of Parts 2 and 7.
+- **Work through the [official tutorial](https://www.electronjs.org/docs/latest/tutorial/tutorial-prerequisites)** end to end — it walks scaffold → preload → IPC → packaging → publishing with auto-update, the exact arc of this guide, with runnable checkpoints.
+- **Use [Electron Fiddle](https://www.electronjs.org/fiddle)** as your scratchpad while reading API docs — every `Menu`/`Tray`/`dialog` API is two minutes from a running experiment.
+- **Ship one app for real.** Build the walkthrough app, sign it (at minimum the Linux AppImage to yourself; the macOS notarization gauntlet if you have an Apple account), and wire `electron-updater`. The signing-and-shipping experience is the part no amount of reading conveys.
+- **Adjacent guides in this repo:** [Advanced Node.js](ADVANCED_NODEJS_STUDY_GUIDE.md) (the main process *is* Node), [Vue](VUE_STUDY_GUIDE.md) and [TypeScript](TYPESCRIPT_STUDY_GUIDE.md) (the renderer), [GitHub Actions](GITHUB_ACTIONS_STUDY_GUIDE.md) (the CI release matrix), [Qt](QT_STUDY_GUIDE.md) (the native-toolkit alternative), and the [CB8 iOS](CB8_IOS_STUDY_GUIDE.md)/[Android](CB8_ANDROID_STUDY_GUIDE.md) guides (porting an Electron app to mobile).
 
 That's the guide. From here the highest-leverage next step is to build the walkthrough app above for real, ship the Linux AppImage to yourself, and feel the one thing no guide can convey: the difference between `git push` and watching a signed installer land on a machine you'll never see again. Once you've shipped one, the model is yours — and Tauri, Qt, and native are all just variations on the architecture you now understand.
 
