@@ -124,7 +124,7 @@ Part, click-to-reveal explanation included.
 - [x] `CLOUDFLARE_STUDY_GUIDE.md` — 5 quizzes (15 questions; anycast/proxy-pipeline, cache decision/Cache-Everything sin, Workers isolate model/CPU-billing/bindings, KV-vs-DO-vs-R2 storage, Zero Trust/Tunnel inversion/JWT verification)
 - [x] `AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md` — 5 quizzes (15 questions; tenant/MG/subscription/RG hierarchy & regional subnets, Entra-vs-RBAC split & managed identities, NSG/Front-Door/L7-vs-L4, Cosmos consistency & partition keys, Key Vault/WAF-on-edge/Defender)
 - [x] `GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md` — 5 quizzes (15 questions; project hierarchy/labels-vs-tags/multi-region, resource-bound IAM/no-users/actAs, global VPC/SA-targeted firewall/global LB, Spanner+TrueTime/Firestore-vs-Bigtable, BigQuery bytes-scanned/partitioning/Omni)
-- [ ] `GIT_STUDY_GUIDE.md`
+- [x] `GIT_STUDY_GUIDE.md` — 6 quizzes (17 questions; content-addressed object model, three-trees index & conflict stages, rebase rehashing & rebase-onto, reset/restore/revert, remote snapshot/fetch-vs-pull/force-with-lease, reflog recovery)
 - [ ] `VIM_STUDY_GUIDE.md`
 
 ## Batch 4 — Languages and runtimes
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 32/65 (Batch 1 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 33/65 (Batch 1 complete).
