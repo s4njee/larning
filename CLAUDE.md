@@ -163,10 +163,50 @@ Match the model's register:
 - Worked examples, decision trees, and "walkthrough" sections that trace one
   real operation end-to-end are the house specialty — include at least one.
 
+## Quizzes
+
+Guides include interactive self-check quizzes (the quiz pass is tracked in
+`todo4.md`). Author them as a fenced block with language `quiz`; the build
+compiles it to the click-to-reveal widget already shipped on every page:
+
+````markdown
+```quiz
+Q: Why does replication lag cause stale reads?
+- [ ] Because the network is encrypted
+- [x] Followers apply the leader's log asynchronously
+- [ ] Because SQL is eventually consistent
+> Commit on the leader doesn't wait for followers, so a read
+> against a replica races the replication log.
+```
+````
+
+Rules, enforced by the build (malformed blocks fail loudly):
+
+- `Q:` starts a question; one or more questions per block.
+- `- [x]`/`- [ ]` are the options — exactly one `[x]`, at least 2 options
+  (prefer 4; vary the correct answer's position).
+- `>` lines are the explanation (joined into one paragraph); required.
+- Backtick spans in any quiz text render as `<code>`; other Markdown is not
+  processed inside quiz blocks.
+
+Placement and quality:
+
+- **3–5 questions at the end of each major Part**, just before the `---`
+  rule. Short guides (< ~400 lines) may use one 5–8 question quiz before the
+  closing sections instead. Don't quiz the intro, the takeaways list, or
+  Where to Go Next.
+- **Test the why, not trivia** — consequences, trade-offs, "what happens
+  when"; never dates or verbatim-quotable definitions.
+- **Distractors must be plausible**: true-but-irrelevant statements or
+  misconceptions the guide explicitly corrects. No joke options.
+- **The explanation teaches**: why the right answer is right *and* why the
+  tempting wrong one is wrong — worth reading even after answering correctly.
+
 ## Markdown conventions
 
 - ATX headings (`#`/`##`/`###`), `---` rules between major parts.
 - Fenced code blocks with a language tag.
+- Self-check quizzes are fenced `quiz` blocks (see the Quizzes section).
 - Raw `<angle-bracket>` tokens in prose (generics, placeholders) are
   HTML-escaped by the build, but inside backticks or fences they pass
   through — prefer backticks for them anyway.

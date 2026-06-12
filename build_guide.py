@@ -32,6 +32,7 @@ Examples:
 import argparse
 import colorsys
 import hashlib
+import html as _html
 import os
 import re
 import sys
@@ -158,6 +159,125 @@ def escape_raw_html_tags(md_text):
 
 
 # --------------------------------------------------------------------------- #
+# Quiz blocks
+# --------------------------------------------------------------------------- #
+#
+# A fenced block with language `quiz` compiles to the same interactive markup
+# the bespoke Caddy page emits (the .quiz-item CSS/JS already ships on every
+# page). Authoring format, one or more questions per block:
+#
+#     ```quiz
+#     Q: What does X do?
+#     - [x] The correct option
+#     - [ ] A plausible distractor
+#     - [ ] Another distractor
+#     > Explanation shown after answering; say why right is right
+#     > and why the tempting wrong one is wrong.
+#     ```
+#
+# Exactly one `[x]` per question; `>` lines join into one explanation.
+# Malformed blocks fail the build rather than emitting broken markup.
+
+QUIZ_FENCE_RE = re.compile(r"^```quiz[ \t]*\r?\n(.*?)^```[ \t]*$", re.S | re.M)
+
+
+def _quiz_inline(text):
+    """HTML-escape quiz text, rendering `backtick` spans as <code>."""
+    parts = re.split(r"`([^`]+)`", text)
+    return "".join(
+        f"<code>{_html.escape(p)}</code>" if i % 2 else _html.escape(p)
+        for i, p in enumerate(parts)
+    )
+
+
+def parse_quiz_block(block):
+    """Parse quiz source into [{'q', 'opts': [(text, correct)], 'explain'}]."""
+    questions = []
+    cur = None
+    for raw in block.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("Q:"):
+            cur = {"q": line[2:].strip(), "opts": [], "explain": []}
+            questions.append(cur)
+        elif line.startswith("- ["):
+            m = re.match(r"^- \[([ xX])\]\s+(\S.*)$", line)
+            if cur is None or not m:
+                raise ValueError(f"quiz block: bad option line {line!r}")
+            cur["opts"].append((m.group(2).strip(), m.group(1).lower() == "x"))
+        elif line.startswith(">"):
+            if cur is None:
+                raise ValueError(f"quiz block: explanation before any Q: {line!r}")
+            cur["explain"].append(line.lstrip(">").strip())
+        else:
+            raise ValueError(f"quiz block: unrecognized line {line!r}")
+    if not questions:
+        raise ValueError("quiz block: no questions")
+    for q in questions:
+        n_correct = sum(1 for _, correct in q["opts"] if correct)
+        if len(q["opts"]) < 2:
+            raise ValueError(f"quiz block: question needs >= 2 options: {q['q']!r}")
+        if n_correct != 1:
+            raise ValueError(f"quiz block: need exactly one [x] option: {q['q']!r}")
+        if not q["explain"]:
+            raise ValueError(f"quiz block: missing > explanation: {q['q']!r}")
+    return questions
+
+
+def render_quiz_html(questions):
+    """Emit the same markup as render_quiz() in build_caddy_html.py."""
+    rows = []
+    for i, q in enumerate(questions, 1):
+        opts = []
+        for text, correct in q["opts"]:
+            opts.append(
+                f'<li><button class="quiz-opt" data-correct="{"true" if correct else "false"}">'
+                '<span class="quiz-mark" aria-hidden="true"></span>'
+                f'<span class="quiz-opt-text">{_quiz_inline(text)}</span></button></li>'
+            )
+        rows.append(
+            '<div class="quiz-item">'
+            f'<p class="quiz-q"><span class="quiz-n">Q{i}</span>{_quiz_inline(q["q"])}</p>'
+            f'<ul class="quiz-opts">{"".join(opts)}</ul>'
+            f'<div class="quiz-explain" hidden>{_quiz_inline(" ".join(q["explain"]))}</div>'
+            "</div>"
+        )
+    return (
+        '<div class="addon quiz">'
+        '<div class="addon-head"><span class="addon-kicker">Self-check</span>'
+        "<h3>Test yourself</h3>"
+        '<p class="addon-sub">Pick an answer to reveal the explanation.</p></div>'
+        f'{"".join(rows)}</div>'
+    )
+
+
+def extract_quiz_blocks(md_text):
+    """Replace ```quiz fences with placeholder tokens; return (text, rendered).
+
+    Runs before escape_raw_html_tags() and Markdown conversion so quiz source
+    never hits the rest of the pipeline; the plain-alphanumeric tokens survive
+    both untouched and are swapped for the rendered markup afterwards.
+    """
+    rendered = []
+
+    def repl(m):
+        html_block = render_quiz_html(parse_quiz_block(m.group(1)))
+        token = f"QUIZPLACEHOLDER{len(rendered)}QUIZ"
+        rendered.append(html_block)
+        return f"\n\n{token}\n\n"
+
+    return QUIZ_FENCE_RE.sub(repl, md_text), rendered
+
+
+def restore_quiz_blocks(body, rendered):
+    for i, html_block in enumerate(rendered):
+        token = f"QUIZPLACEHOLDER{i}QUIZ"
+        body = body.replace(f"<p>{token}</p>", html_block).replace(token, html_block)
+    return body
+
+
+# --------------------------------------------------------------------------- #
 # Markdown -> HTML transform (shared with the bespoke builders)
 # --------------------------------------------------------------------------- #
 
@@ -203,6 +323,7 @@ def rewrite_local_markdown_links(body, link_rewrites):
 
 
 def transform(md_text, link_rewrites=None):
+    md_text, quizzes = extract_quiz_blocks(md_text)
     md_text = escape_raw_html_tags(md_text)
     md = markdown.Markdown(
         extensions=["fenced_code", "tables", "toc", "attr_list", "sane_lists"],
@@ -223,6 +344,7 @@ def transform(md_text, link_rewrites=None):
 
     body = re.sub(r'<pre><code class="([^"]*)">', norm_code, body)
     body = body.replace("<pre><code>", '<pre><code class="language-text">')
+    body = restore_quiz_blocks(body, quizzes)
     body = rewrite_local_markdown_links(body, link_rewrites)
 
     # Build sidebar TOC from h2/h3 headings.

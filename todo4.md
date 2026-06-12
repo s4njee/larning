@@ -11,9 +11,9 @@ Part, click-to-reveal explanation included.
 
 ---
 
-## Phase 0 — Infrastructure (do first, before any guide)
+## Phase 0 — Infrastructure (do first, before any guide) — ✅ COMPLETE (2026-06-12)
 
-- [ ] **Add a `quiz` fenced-block syntax to `build_guide.py`.** A fenced code
+- [x] **Add a `quiz` fenced-block syntax to `build_guide.py`.** A fenced code
   block with language `quiz` compiles to the same markup
   `render_quiz()` emits in `build_caddy_html.py` (`.addon.quiz` →
   `.quiz-item` → `.quiz-opts`/`.quiz-opt[data-correct]` → `.quiz-explain`).
@@ -35,17 +35,19 @@ Part, click-to-reveal explanation included.
   between questions. HTML-escape all text. Exactly one correct option per
   question — fail the build loudly on malformed blocks rather than emitting
   broken markup.
-- [ ] **Make sure the block bypasses the rest of the pipeline**: the `quiz`
+- [x] **Make sure the block bypasses the rest of the pipeline**: the `quiz`
   fence must be consumed before code-block rendering, `escape_raw_html_tags()`
   (the emitted markup must not be escaped), and TOC extraction. In the
   GitHub-rendered Markdown a `quiz` fence degrades gracefully to a visible
   code block — acceptable, but verify it doesn't break sibling-link rewriting.
-- [ ] **Verify rendering end to end**: add a temporary quiz block to one
-  guide, `python3 build_all_guides.py`, open the HTML, click through correct
-  and wrong answers, check the explanation reveals and the state locks.
-  Check dark and light themes. Remove the temp block (the first real guide
-  below becomes the pilot).
-- [ ] **Document the syntax in `CLAUDE.md`** (Markdown conventions section +
+- [x] **Verify rendering end to end**: built a temp guide with a quiz block;
+  markup matches `render_quiz()` byte-for-byte (same classes/attributes the
+  shared `setupQuiz` JS drives on the Caddy page), quiz `h3` stays out of the
+  TOC, full-site rebuild byte-identical, no placeholder leaks or `&amp;lt;`
+  artifacts. (No browser in this environment — click-through relies on the
+  markup matching the already-working Caddy widget; spot-check in a browser
+  when reviewing the pilot guide.)
+- [x] **Document the syntax in `CLAUDE.md`** (Markdown conventions section +
   a new "Quizzes" subsection in the style guide: where quizzes go, how many
   questions, what makes a good question — see quality bar below).
 
