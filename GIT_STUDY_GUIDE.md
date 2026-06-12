@@ -925,6 +925,8 @@ Worktrees are strictly better for anything more than a 30-second context switch.
 
 Reference: [Working with Remotes](https://git-scm.com/book/en/v2/Git-Basics-Working-with-Remotes)
 
+The single idea that demystifies all of Git's remote handling is that **a remote-tracking branch like `origin/main` is a local snapshot, not a live connection.** It is an ordinary ref in your own repository that records "where `main` was on the remote *the last time I checked*," and it changes only when you explicitly sync. Git is fundamentally distributed — your clone is a complete repository with its own full history, not a thin view onto a server — so there is no continuous link to the remote, and every interaction with it is a discrete, manual transfer. Hold that and the otherwise-confusing distinctions below become obvious: they are all just questions of *when* you copy commits between your repository and the remote's, and *what* you do with them once copied.
+
 ### Remote Tracking Branches
 
 When you clone a repo, Git creates **remote-tracking branches** — read-only refs like `origin/main` that represent the state of branches on the remote as of the last fetch:
@@ -962,7 +964,7 @@ git fetch origin
 git rebase origin/main
 ```
 
-**Fetch is always safe.** It never modifies your local branches or working tree. Pull can cause merge conflicts.
+The distinction between fetch and pull is worth understanding rather than memorizing, because it is the source of most remote-related confusion. **`git fetch` is always safe** precisely because of the snapshot model above: it downloads new commits from the remote and updates your remote-tracking branches (`origin/main` moves forward), but it touches *nothing* you're working on — not your local `main`, not your working tree, not your index. After a fetch, your work is exactly as it was, and you've simply learned what the remote now looks like; you can inspect the difference (`git log main..origin/main`) and decide what to do at your leisure. **`git pull` is fetch plus an immediate integration** — it fetches and then merges (or, with `--rebase`, rebases) the remote's new commits into your current branch in one step, which is convenient but conflates "find out what changed" with "integrate it now," and the integration is where conflicts and surprises live. The professional habit many engineers adopt is to `fetch` first, look at what arrived, then integrate deliberately — turning one unpredictable command into two predictable ones. The choice between `pull`'s merge and `pull --rebase` is the same merge-vs-rebase decision from sections 5 and 6, applied to keeping your branch current: merge preserves the true history with a merge commit, rebase replays your local commits on top of the remote's for a linear history; `git config --global pull.rebase true` makes rebase the default if you prefer linear.
 
 ### Remote Management
 
@@ -1232,7 +1234,9 @@ git shortlog v1.0.0..HEAD
 
 Reference: [git-bisect](https://git-scm.com/docs/git-bisect)
 
-Binary search through history to find which commit introduced a bug:
+`git bisect` is one of Git's most underused power tools, and understanding the algorithm behind it is what makes you reach for it instead of squinting at diffs for an afternoon. The problem it solves: a bug exists now, you know it didn't exist at some older commit, and somewhere in the hundreds of commits between "known good" and "known bad" is the one that introduced it. Reading every commit is O(n); **bisect finds the culprit in O(log n)** by binary search over history. You tell it one good commit and one bad commit, and it checks out the commit *halfway* between them; you test, tell it `good` or `bad`, and it halves the remaining range again — so 1,000 commits is found in about 10 tests instead of 1,000 reads. The conceptual requirement is that the bug be *monotonic* — once introduced it stays present — so that history divides cleanly into a "good" prefix and a "bad" suffix with a single boundary, which is the assumption binary search needs. The real multiplier is automation: if you can write a script that exits 0 when the code is good and non-zero when it's bad (a failing test, a reproduction command), `git bisect run ./test.sh` performs the entire search unattended and hands you the exact offending commit. The mental shift bisect teaches is that "which change broke this?" is not a question you answer by *reading* — it is a search you *run*, and Git turns your version history into the search space.
+
+The mechanics — binary search through history to find which commit introduced a bug:
 
 ```bash
 # start bisect
@@ -1352,7 +1356,7 @@ Useful for emergencies, but if you're bypassing hooks regularly, the hooks are e
 
 Reference: [Git Submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules)
 
-Submodules embed one Git repository inside another at a pinned commit:
+Submodules are Git's most notoriously confusing feature, and the confusion evaporates once you understand precisely what the parent repository stores: **not the submodule's code, but a single pinned commit hash pointing into the submodule's separate history.** The parent repo records "at this path, check out the other repository *at exactly this commit*," and that's all — the two repositories remain entirely independent histories, and the parent just holds a pointer (a *gitlink*) to one specific commit in the child. Every famous submodule pain follows directly from this design. A fresh `git clone` of the parent gets the pointer but *not* the submodule's contents, leaving you with empty directories until you `git submodule update --init` to actually fetch the pinned commits — the "I cloned the repo but it's broken" surprise. Updating is two-sided: pulling the parent updates the *pointer* but not the checked-out submodule content unless you run `submodule update`, and changing the submodule means committing *inside* the submodule first and *then* committing the moved pointer in the parent — two commits in two repositories for one logical change. The reason to accept this complexity is exactly the pinning: a submodule locks a dependency to an audited, exact commit that cannot drift, which is genuinely valuable for vendored libraries or shared code where reproducibility matters. The reason teams often avoid it is that the two-repository dance is easy to get wrong, which is why the package-manager and monorepo alternatives exist. Knowing that the parent stores only a commit pointer is the whole mental model; every command below is just managing that pointer and the separate repository it points into.
 
 ```bash
 # add a submodule
@@ -1413,6 +1417,10 @@ Subtrees are simpler for most cases. Submodules are better when you need the ext
 ---
 
 ## 19. Rewriting History
+
+Rewriting history feels dangerous because it *is* — but understanding exactly *why* turns it from a thing to fear into a tool with a clear rule for when it's safe. The object model from section 1 is the key: a commit is immutable and identified by the hash of its contents *including its parent*, so you can never truly "edit" a commit — every operation here (`amend`, `rebase`, `filter-repo`) actually creates *new* commits with new hashes and moves a branch ref to point at them, abandoning the old commits (which the reflog can still recover, section 10). Because the hash includes the parent, rewriting one commit changes the hash of *every commit after it*, since each descendant's parent pointer now refers to a different hash — which is why rebasing a ten-commit branch rewrites all ten.
+
+This is also exactly why the cardinal rule exists: **never rewrite history that others have based work on.** When you rewrite commits you've already pushed and someone has pulled, you create a fork — they have the old commits, you have new ones with different hashes representing the "same" changes, and Git cannot tell they're related, so reconciling becomes a mess of duplicated commits and conflicts. The safe boundary is therefore *publication*: rewriting your own local, unpushed commits (tidying messages, squashing work-in-progress, reordering) is harmless and good practice, because nobody else has seen them; rewriting shared history is the act that breaks collaborators. The whole discipline reduces to that one line — clean up freely before you push, treat history as immutable after — and once you see that rewriting is really "make new commits and move the ref," both the power and the danger become concrete rather than mysterious.
 
 ### Amending the Last Commit
 
