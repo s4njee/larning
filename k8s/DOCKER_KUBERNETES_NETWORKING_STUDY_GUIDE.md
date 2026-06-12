@@ -84,6 +84,36 @@ Official docs: [Docker port publishing](https://docs.docker.com/engine/network/p
 - In Docker, networking is usually about **containers on one host**.
 - In Kubernetes, networking is usually about **Pods, Services, and policies across a cluster**.
 
+```quiz
+Q: What does `docker run -p 8080:80` actually install at the Linux level?
+- [x] An iptables DNAT rule in the host's nat table — packets arriving at host port 8080 get their destination rewritten to the container's IP:80 and forwarded across the docker0 bridge
+- [ ] It moves the container's process onto the host
+- [ ] It creates a new veth pair per request
+- [ ] It opens a proxy process listening on 8080
+> Publishing is destination NAT, visible via iptables -t nat -L. The whole difference between Docker and Kubernetes networking comes down to *how much NAT there is* — Docker NATs at every boundary; Kubernetes avoids NAT between Pods.
+
+Q: What's the single demanding rule the Kubernetes network model imposes?
+- [x] Every Pod gets its own IP and can reach every other Pod's IP directly, on any node, without NAT — a deliberate rejection of Docker's publish-ports-across-boundaries model
+- [ ] Every Pod must publish its ports explicitly
+- [ ] Pods can only talk within one node
+- [ ] All Pods share one IP per node
+> This flat, NAT-free network is the conceptual hurdle from Docker. Within one Pod the model goes further — all containers share one network namespace (localhost, Pod IP, port space), which is why "must talk over localhost" means same Pod.
+
+Q: A Service's ClusterIP belongs to no Pod and no interface. How does traffic to it reach a Pod?
+- [x] kube-proxy on every node programs the kernel (iptables/IPVS/eBPF) to intercept packets for the ClusterIP and DNAT them to a random healthy Pod IP — there's no proxy process in the data path, just kernel packet-mangling
+- [ ] A load-balancer Pod forwards each request
+- [ ] CoreDNS routes the packets
+- [ ] The kubelet proxies the connection
+> The ClusterIP is a fiction maintained by kube-proxy rules — which is why Services are fast and why debugging them means reading those rules. CoreDNS resolves the *name* to the ClusterIP; kube-proxy takes over from there.
+
+Q: Why is a NetworkPolicy on a cluster whose CNI ignores policy "a dangerous illusion"?
+- [x] A NetworkPolicy is just a desired rule — it does nothing unless the CNI translates it into actual packet filtering (iptables/eBPF); a non-enforcing CNI silently leaves all traffic allowed
+- [ ] NetworkPolicies are enforced by the API server directly
+- [ ] The kubelet enforces them regardless of CNI
+- [ ] They always work but log-only
+> Kubernetes delegates the flat network *and* policy enforcement to the pluggable CNI (Calico, Cilium, Flannel). "Networking depends on your cluster" because the CNI is where Pod IP routing and policy enforcement actually live.
+```
+
 ---
 
 ## Phase 2: Common Docker Patterns and Kubernetes Equivalents
@@ -849,6 +879,29 @@ Common root causes:
 - `postgres` resolves only inside the same namespace by default
 - `postgres.data` or `postgres.data.svc.cluster.local` is safer when crossing namespaces
 
+```quiz
+Q: An API can't reach its database Service. What's the first thing to check that's unique to the Kubernetes (vs Docker) failure mode?
+- [x] Whether the Service has EndpointSlices — no endpoints usually means the Service's label selector doesn't match ready Pods, or the Pods aren't passing readiness
+- [ ] Whether both are on the same Docker network
+- [ ] Whether the database container is published
+- [ ] Whether docker0 is up
+> An empty EndpointSlice is the canonical Service-debug finding. Other K8s-specific causes: app using a Pod IP instead of the Service name, DB on the wrong targetPort, or a NetworkPolicy blocking the flow.
+
+Q: A web app works via kubectl port-forward to the Pod but not from a browser. What's the isolation strategy?
+- [x] Work outward: port-forward to the Pod (works → Pod is fine), then check the Service (wrong targetPort?), then the Ingress (wrong Service port, hostname/TLS rule) — each layer narrows the fault
+- [ ] Restart the Pod
+- [ ] Check docker0 NAT rules
+- [ ] Increase the readiness probe timeout
+> port-forward bypasses Service and Ingress, so a working forward isolates the fault to those layers. A failing readiness probe also removes the Pod as a backend — a common "Pod healthy but no traffic" cause.
+
+Q: A Pod resolves `postgres` in its own namespace but not from another namespace. Why?
+- [x] The short name `postgres` resolves only within the same namespace by default; crossing namespaces needs `postgres.<namespace>` or the FQDN `postgres.<namespace>.svc.cluster.local`
+- [ ] CoreDNS is down
+- [ ] The Service is headless
+- [ ] The Pod's /etc/resolv.conf is misconfigured
+> CoreDNS gives Services names like postgres.data.svc.cluster.local, and the Pod's search path makes the short name work *within* the namespace. Hardcoded short names break when a workload moves namespaces.
+```
+
 ### 3.4 Practice Labs
 
 Official docs: [Docker Engine networking](https://docs.docker.com/engine/network/), [Compose networks](https://docs.docker.com/reference/compose-file/networks/), [Kubernetes Services and Networking concepts](https://kubernetes.io/docs/concepts/services-networking/), [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/)
@@ -951,6 +1004,22 @@ Clients can then resolve names like:
 **When to use it**
 
 Use it when application-level clustering expects stable peer names. Do not use it just because it sounds advanced.
+
+```quiz
+Q: Why is a normal Service wrong for a Kafka/Cassandra/ZooKeeper cluster, and what's the fix?
+- [x] A normal Service load-balances to *any* healthy backend, but these systems need clients to reach *specific* replicas by stable name — a headless Service (clusterIP: None) plus a StatefulSet gives DNS records pointing directly to each Pod (broker-0.broker..., broker-1...)
+- [ ] Normal Services don't support TCP
+- [ ] StatefulSets can't have Services
+- [ ] The fix is a LoadBalancer Service
+> Headless Services skip the ClusterIP/kube-proxy load-balancing and return per-Pod DNS instead — exactly when ordinal identity and stable peer addressing matter. Use it only when application-level clustering needs it, not because it sounds advanced.
+
+Q: What does Gateway API offer over Ingress for a platform team?
+- [x] Clear separation of duties — the platform team owns the Gateway (shared edge infrastructure), app teams attach HTTPRoute objects to it — plus richer routing than "annotations on Ingress"
+- [ ] It's faster than Ingress
+- [ ] It eliminates the need for a controller
+- [ ] It replaces Services
+> Ingress crammed routing policy into vendor-specific annotations; Gateway API models the roles explicitly (GatewayClass/Gateway for ops, HTTPRoute/GRPCRoute for app teams) with first-class L4+L7 support.
+```
 
 ### 4.2 Gateway API for Shared Traffic Management
 
