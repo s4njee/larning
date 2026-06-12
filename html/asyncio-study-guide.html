@@ -693,7 +693,7 @@ async def handler_fixed():
 # or: set the env var PYTHONASYNCIODEBUG=1
 # or: tune the threshold — loop.slow_callback_duration = 0.05  (50ms)
 </code></pre>
-<p>When something blocks, you'll see: <code>Executing &amp;lt;Task ...&amp;gt; took 2.003 seconds</code>. That line is gold — it points straight at the blocking call. Make a habit of running your test suite or a load test with debug mode on; it surfaces blocking before production does. For deeper digging, a sampling profiler like <a href="https://github.com/benfred/py-spy"><code>py-spy</code></a> can show where the loop thread spends time without modifying your code (Part 11).</p>
+<p>When something blocks, you'll see: <code>Executing &lt;Task ...&gt; took 2.003 seconds</code>. That line is gold — it points straight at the blocking call. Make a habit of running your test suite or a load test with debug mode on; it surfaces blocking before production does. For deeper digging, a sampling profiler like <a href="https://github.com/benfred/py-spy"><code>py-spy</code></a> can show where the loop thread spends time without modifying your code (Part 11).</p>
 <p>References: <a href="https://docs.python.org/3/library/asyncio-dev.html#asyncio-debug-mode">asyncio debug mode</a>.</p>
 <h3 id="63-offloading-blocking-work-to_thread-and-executors">6.3 Offloading Blocking Work: <code>to_thread</code> and Executors</h3>
 <p>When you <em>must</em> call blocking code (a library with no async version, an unavoidable CPU step), don't run it on the loop — push it to a thread or process so the loop stays free.</p>
@@ -1096,7 +1096,7 @@ start = time.perf_counter()
 await do_the_work()
 print(f&quot;{time.perf_counter() - start:.2f}s&quot;)     # compare against expected concurrent time
 </code></pre>
-<p>For production or hard-to-reproduce cases, <a href="https://github.com/benfred/py-spy"><code>py-spy</code></a> samples a running process without code changes — <code>py-spy top --pid &amp;lt;pid&amp;gt;</code> shows where the loop thread spends time, and <code>py-spy dump</code> shows what every task is stuck on. <strong>Don't tune blind:</strong> a guessed <code>uvloop</code> install won't help if your real problem is a <code>requests.get</code> blocking the loop.</p>
+<p>For production or hard-to-reproduce cases, <a href="https://github.com/benfred/py-spy"><code>py-spy</code></a> samples a running process without code changes — <code>py-spy top --pid &lt;pid&gt;</code> shows where the loop thread spends time, and <code>py-spy dump</code> shows what every task is stuck on. <strong>Don't tune blind:</strong> a guessed <code>uvloop</code> install won't help if your real problem is a <code>requests.get</code> blocking the loop.</p>
 <h3 id="102-uvloop-a-faster-event-loop">10.2 uvloop — A Faster Event Loop</h3>
 <p><a href="https://uvloop.readthedocs.io/"><code>uvloop</code></a> is a drop-in replacement for asyncio's event loop, built on libuv (the same engine behind Node.js). It's a genuine, free speedup for I/O-heavy workloads — commonly <strong>2–4× higher throughput</strong> on network benchmarks — with a one-line change:</p>
 <pre><code class="language-python">import asyncio, uvloop

@@ -123,22 +123,37 @@ def escape_raw_html_tags(md_text):
     Python-Markdown passes raw HTML through by default. That is nice for trusted
     authored HTML, but bad for study-guide prose like `<script setup>` or
     `<button>`: one unclosed raw tag can consume the rest of the generated page.
-    Fenced code blocks are left untouched because Markdown already escapes them.
+    Fenced code blocks and inline code spans are left untouched because Markdown
+    already escapes them; escaping again would double-encode angle brackets in
+    things like `Vec<Box<dyn Shape>>`, surfacing literal `&lt;`/`&gt;` text.
     """
     tag_re = re.compile(r"</?[A-Za-z][A-Za-z0-9-]*(?:\s[^<>]*)?>")
     fence_re = re.compile(r"^\s*(```|~~~)")
+    # Inline code span: a run of backticks, then anything, then a matching run.
+    code_span_re = re.compile(r"(`+)(?:.*?[^`])??\1(?!`)")
     in_fence = False
     out = []
 
     def esc_tag(m):
         return m.group(0).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
+    def esc_outside_code(line):
+        # Escape tag-like prose, but leave inline code spans untouched.
+        result = []
+        pos = 0
+        for span in code_span_re.finditer(line):
+            result.append(tag_re.sub(esc_tag, line[pos:span.start()]))
+            result.append(span.group(0))
+            pos = span.end()
+        result.append(tag_re.sub(esc_tag, line[pos:]))
+        return "".join(result)
+
     for line in md_text.splitlines(keepends=True):
         if fence_re.match(line):
             in_fence = not in_fence
             out.append(line)
             continue
-        out.append(line if in_fence else tag_re.sub(esc_tag, line))
+        out.append(line if in_fence else esc_outside_code(line))
     return "".join(out)
 
 

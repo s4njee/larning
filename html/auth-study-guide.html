@@ -315,7 +315,7 @@ def authenticate(request) -&gt; int | None:
 <ol>
 <li>User logs in.</li>
 <li>Server builds a <strong>JWT</strong> containing the user ID, roles, and expiry, and <strong>signs</strong> it (Part 4).</li>
-<li>Client stores the token and sends it as <code>Authorization: Bearer &amp;lt;token&amp;gt;</code>.</li>
+<li>Client stores the token and sends it as <code>Authorization: Bearer &lt;token&gt;</code>.</li>
 <li>Server <strong>verifies the signature mathematically</strong> — no database lookup.</li>
 </ol>
 <table>
@@ -806,13 +806,13 @@ Question: &quot;can user:alice view document:1?&quot; → traverse the graph →
 <h3 id="the-trust-boundary">The Trust Boundary</h3>
 <p>The principle underneath that pattern: <strong>establish a trust boundary at the edge, and define what "trusted" means inside it.</strong> Inside the boundary, services trust the gateway-minted JWT and don't re-authenticate the <em>user</em> on every hop — but in a zero-trust deployment they still authenticate <em>each other</em> (Part 9's mTLS) so a compromised internal service can't impersonate others. "Authenticate the user once at the edge; authenticate services on every hop" is the modern shape.</p>
 <h3 id="the-websockets-problem">The WebSockets Problem</h3>
-<p>A specific, common snag also covered from the protocol side in the <a href="websockets-study-guide.html">WebSockets guide</a>: the browser <code>WebSocket</code> API <strong>cannot set custom headers</strong> on the handshake, so you can't send <code>Authorization: Bearer &amp;lt;token&amp;gt;</code> the way you do for HTTP. Three options, in order of preference:</p>
+<p>A specific, common snag also covered from the protocol side in the <a href="websockets-study-guide.html">WebSockets guide</a>: the browser <code>WebSocket</code> API <strong>cannot set custom headers</strong> on the handshake, so you can't send <code>Authorization: Bearer &lt;token&gt;</code> the way you do for HTTP. Three options, in order of preference:</p>
 <ol>
 <li><strong>Cookie-based</strong> — if the WS endpoint shares the domain, the browser sends the auth cookie automatically on the handshake (the cleanest path, and another point for cookies over <code>localStorage</code>).</li>
 <li><strong>Ticket pattern</strong> — the client makes a normal authenticated <code>POST /ws-ticket</code>, gets a short-lived (~10s) single-use ticket, and connects to <code>wss://.../stream?ticket=...</code>. The server consumes the ticket to establish the session. Safe because the ticket is ephemeral and single-use.</li>
 <li><strong>First-message auth</strong> — open the socket unauthenticated, require <code>{"type":"auth","token":"..."}</code> as the first frame within a few seconds, and drop the connection otherwise.</li>
 </ol>
-<p><strong>Avoid</strong> putting a long-lived token directly in the URL query string (<code>?token=&amp;lt;jwt&amp;gt;</code>) — URLs land in access logs, proxy logs, and browser history, leaking the credential. The ticket pattern exists precisely to make the query-string approach safe by making the value worthless after one use.</p>
+<p><strong>Avoid</strong> putting a long-lived token directly in the URL query string (<code>?token=&lt;jwt&gt;</code>) — URLs land in access logs, proxy logs, and browser history, leaking the credential. The ticket pattern exists precisely to make the query-string approach safe by making the value worthless after one use.</p>
 <p>If you remember one thing from Part 10: <strong>terminate external auth at an API gateway (the Phantom Token pattern — opaque revocable tokens outside, fast signed JWTs inside) so internal services stay simple; define a clear trust boundary (authenticate the user once at the edge, services on every hop); and for WebSockets, use cookies or the single-use ticket pattern, never a long-lived token in the URL.</strong></p>
 <hr>
 <h2 id="part-11-passkeys-pitfalls-a-walkthrough">Part 11 — Passkeys, Pitfalls &amp; a Walkthrough</h2>

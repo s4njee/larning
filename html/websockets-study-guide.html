@@ -502,7 +502,7 @@ ws.send(blob);                              // binary frame
 // vs the default:
 ws.binaryType = &quot;blob&quot;;         // event.data will be a Blob (better for large data / files)
 </code></pre>
-<p>Use <code>"arraybuffer"</code> when you want to parse the bytes immediately (e.g. decode a MessagePack or Protobuf message); use <code>"blob"</code> for large opaque payloads you'll hand to something else (an <code>&amp;lt;img&amp;gt;</code>, a download, the File API).</p>
+<p>Use <code>"arraybuffer"</code> when you want to parse the bytes immediately (e.g. decode a MessagePack or Protobuf message); use <code>"blob"</code> for large opaque payloads you'll hand to something else (an <code>&lt;img&gt;</code>, a download, the File API).</p>
 <h3 id="24-readystate-and-closing">2.4 readyState and Closing</h3>
 <pre><code class="language-javascript">// readyState is one of these constants
 WebSocket.CONNECTING; // 0
@@ -1350,9 +1350,9 @@ server {
 <h2 id="part-8-production-concerns">Part 8 — Production Concerns</h2>
 <p>The gap between a working WebSocket demo and a production service is mostly this part: authentication, origin security, limits, heartbeats, and getting the connection cleanly through your proxies.</p>
 <h3 id="81-authentication-the-header-problem">8.1 Authentication: The Header Problem</h3>
-<p>Recall the constraint from <a href="#part-2--the-browser-client-api">Part 2</a>: the browser <code>WebSocket</code> constructor <strong>cannot set custom headers</strong>, so the usual <code>Authorization: Bearer &amp;lt;token&amp;gt;</code> is simply unavailable. There are four real options, each with trade-offs:</p>
+<p>Recall the constraint from <a href="#part-2--the-browser-client-api">Part 2</a>: the browser <code>WebSocket</code> constructor <strong>cannot set custom headers</strong>, so the usual <code>Authorization: Bearer &lt;token&gt;</code> is simply unavailable. There are four real options, each with trade-offs:</p>
 <p><strong>1. Cookie-based.</strong> The handshake <em>is</em> an HTTP request, so the browser attaches cookies for the target origin automatically. If your users already have a session cookie, the WebSocket handshake carries it for free, and you authenticate in the upgrade handler. The catch is cross-site request forgery — because cookies are sent automatically, you <strong>must</strong> also validate the <code>Origin</code> header (Section 8.2) to prevent the hijacking attack below. Use <code>SameSite</code> cookies as defense in depth.</p>
-<p><strong>2. Token in the query string.</strong> <code>wss://example.com/ws?token=&amp;lt;jwt&amp;gt;</code>. Simple and works everywhere. The downside is that URLs (including query strings) tend to be logged — by proxies, load balancers, server access logs — so a token here can leak into logs. Mitigate by using <strong>short-lived, single-use tokens</strong>: the client fetches a 30-second connect-token from an authenticated HTTP endpoint, then immediately uses it for the WebSocket handshake.</p>
+<p><strong>2. Token in the query string.</strong> <code>wss://example.com/ws?token=&lt;jwt&gt;</code>. Simple and works everywhere. The downside is that URLs (including query strings) tend to be logged — by proxies, load balancers, server access logs — so a token here can leak into logs. Mitigate by using <strong>short-lived, single-use tokens</strong>: the client fetches a 30-second connect-token from an authenticated HTTP endpoint, then immediately uses it for the WebSocket handshake.</p>
 <p><strong>3. Subprotocol smuggling.</strong> The <code>Sec-WebSocket-Protocol</code> header <em>is</em> settable from the browser (it's the one application-controlled handshake header). You can pass a token as a fake subprotocol — the trick the Kubernetes API server uses. It's a bit of a hack but keeps the token out of the URL:</p>
 <pre><code class="language-javascript">// Token rides in the subprotocol list; the server reads and validates it,
 // then echoes back the &quot;real&quot; subprotocol it selected.
@@ -1479,7 +1479,7 @@ function sendOrDrop(ws, data) {
 <ul>
 <li>The server tags every message in a stream with a monotonically increasing sequence number (or uses an event-store offset).</li>
 <li>The client remembers the last sequence number it successfully processed.</li>
-<li>On reconnect, the client sends <code>{"type": "resume", "since": &amp;lt;lastSeq&amp;gt;}</code>, and the server replays everything after that point before resuming live delivery.</li>
+<li>On reconnect, the client sends <code>{"type": "resume", "since": &lt;lastSeq&gt;}</code>, and the server replays everything after that point before resuming live delivery.</li>
 </ul>
 <pre><code class="language-javascript">// Client: remember progress, request a resume on reconnect
 let lastSeq = 0;
@@ -1767,7 +1767,7 @@ server.on(&quot;upgrade&quot;, (req, socket, head) =&gt; {
 });
 </code></pre>
 <h3 id="step-3-rooms-with-a-redis-backplane">Step 3 — Rooms with a Redis Backplane</h3>
-<p>Each chat room is a topic. Locally we keep <code>room → Set&amp;lt;ws&amp;gt;</code> (<a href="#part-6--message-patterns--application-design">Part 6</a>); to reach clients on other servers we publish every chat message to a Redis channel and relay what we receive (<a href="#part-7--scaling-websockets">Part 7</a>). Authorization happens at join time — we check the user may enter the room before adding them (<a href="#part-8--production-concerns">Part 8</a>).</p>
+<p>Each chat room is a topic. Locally we keep <code>room → Set&lt;ws&gt;</code> (<a href="#part-6--message-patterns--application-design">Part 6</a>); to reach clients on other servers we publish every chat message to a Redis channel and relay what we receive (<a href="#part-7--scaling-websockets">Part 7</a>). Authorization happens at join time — we check the user may enter the room before adding them (<a href="#part-8--production-concerns">Part 8</a>).</p>
 <pre><code class="language-javascript">import { createClient } from &quot;redis&quot;;
 
 const rooms = new Map();                       // room → Set&lt;ws&gt; (this process only)
