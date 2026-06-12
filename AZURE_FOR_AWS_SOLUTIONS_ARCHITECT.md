@@ -138,6 +138,29 @@ az group create -n rg-app-prod     -l eastus --tags env=prod owner=appteam
 - Decide where management groups stop and subscriptions begin.
 - Write down when you would separate workloads by subscription instead of only by resource group.
 
+```quiz
+Q: An AWS architect treats a resource group like a tag for organizing workloads. Why is that the most common early Azure mistake?
+- [ ] Resource groups can't hold more than 100 resources
+- [x] A resource group is a hard lifecycle container — every resource belongs to exactly one, and `az group delete` cascades to everything inside
+- [ ] Tags are cheaper than resource groups
+- [ ] Resource groups are billing boundaries, tags are not
+> A resource group is a deployment scope and lifecycle boundary, not a label: a resource lives in exactly one, and deleting the group destroys everything in it. The idiomatic Azure split is one *subscription* per environment, then many *resource groups* by workload — the resource group becomes the unit you create and destroy together, replacing the AWS "CloudFormation stack plus tag conventions" approximation with a first-class, enforced container.
+
+Q: How does Azure's subnet model differ from AWS, and why does it change HA design?
+- [ ] Azure subnets are smaller, so you need more of them
+- [x] Azure subnets are regional (spanning all AZs), so you place one subnet and make zone-redundancy a property of the resources, rather than one subnet per AZ
+- [ ] Azure subnets are pinned to a single AZ like AWS
+- [ ] Azure has no concept of availability zones
+> An AWS architect places one subnet per AZ and distributes resources across them. In Azure a subnet spans every availability zone in the region, so you place one regional subnet and achieve high availability by making the *resources* zone-redundant, then layer paired regions for DR. Carrying the AWS one-subnet-per-AZ habit over leads to designs that fight the platform.
+
+Q: What is the management group layer in Azure's hierarchy, and what AWS concept is it closest to?
+- [ ] A billing account, like an AWS account
+- [ ] A tag policy, like AWS Resource Groups
+- [x] A governance grouping that nests above subscriptions, closest to AWS Organizations OUs
+- [ ] An identity directory, like an Entra tenant
+> The hierarchy is tenant (identity boundary) → management groups (nest to organize governance) → subscriptions (billing/quota boundary, the closest match to an AWS account) → resource groups. Management groups are the analog of AWS Organizations OUs: you attach policy and RBAC at that level and it inherits down the chain through ARM's scope model. The Entra tenant is the identity boundary above it all, not the governance grouping.
+```
+
 ---
 
 ## 2. Identity and Access Management
@@ -201,6 +224,29 @@ resource kvRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 - Recreate an AWS admin, read-only, and platform-ops model using Azure RBAC scopes.
 - Identify where you would use Entra roles versus Azure RBAC roles.
 
+```quiz
+Q: AWS IAM does identity and authorization in one service. How does Azure split that, and why does the seam matter?
+- [ ] Entra does authorization; RBAC does identity
+- [x] Entra ID owns identity/authentication; Azure RBAC owns authorization to resources — so "who are you and may you sign in?" and "may you act on this resource?" live in separate systems
+- [ ] Both jobs stay in a single service called Azure IAM
+- [ ] RBAC handles both, Entra is only for external users
+> Entra ID is the directory and sign-in/MFA/Conditional-Access layer; Azure RBAC answers whether a principal may perform an action on a resource at an ARM scope. The seam is the key insight for AWS architects: identity questions and resource-permission questions are administered separately, often by different teams, which is more verbose than an IAM policy but cleaner to reason about.
+
+Q: What is an Azure RBAC permission grant always composed of?
+- [ ] A policy document attached to a resource
+- [x] A triple: a principal (from Entra), a role (set of allowed actions), and a scope (MG/subscription/RG/resource) that inherits downward
+- [ ] A user and a password
+- [ ] A managed identity and a secret
+> Unlike attaching an IAM policy, an Azure grant binds an Entra principal to a built-in or custom role at a specific ARM scope, and the grant inherits down the hierarchy from that scope. Thinking in this principal-role-scope triple is what makes Azure authorization click — and the managed identity is the secret-free principal you'd use wherever AWS uses an instance profile or IRSA.
+
+Q: How does Azure Policy go beyond what an AWS Organizations SCP can do?
+- [ ] It can only deny actions, like an SCP
+- [ ] It replaces Entra for authentication
+- [x] Beyond preemptive deny, it can audit existing resources and even remediate them (add a missing tag, deploy a diagnostic setting)
+- [ ] It assigns RBAC roles automatically
+> An SCP is a guardrail at the door — it denies actions preemptively. Azure Policy does that *and* continuously audits already-deployed resources for compliance and can auto-remediate drift, making it a continuous compliance engine rather than only an entry gate. That audit-and-remediate capability is the main direction in which it's more capable than an SCP.
+```
+
 ---
 
 ## 3. Networking, Connectivity, and Edge Delivery
@@ -251,6 +297,29 @@ az network vnet subnet update -g rg-network-prod --vnet-name vnet-prod -n snet-w
 - Translate a three-tier VPC design into a hub-spoke Azure network.
 - Decide when to use `Front Door`, `Application Gateway`, `Load Balancer`, or `Traffic Manager`.
 - Rebuild an AWS `PrivateLink` pattern using `Private Endpoint`.
+
+```quiz
+Q: In AWS you debug "did I open it in the security group or the NACL?" What does Azure do differently?
+- [ ] It has three filtering layers instead of two
+- [x] It collapses both into one stateful construct, the NSG, attached to a subnet or NIC — one mental model instead of two
+- [ ] It removes packet filtering entirely
+- [ ] NSGs are stateless like NACLs
+> AWS gives you stateful security groups on instances *and* stateless NACLs on subnets — two layers to reason about. Azure's Network Security Group is a single stateful construct you attach to a subnet or NIC, eliminating the whole "which layer blocked it?" category of debugging. It's one of the welcome simplifications when moving from AWS networking.
+
+Q: An AWS team wants CloudFront + Global Accelerator + an internet-facing ALB + WAF for global delivery. Which single Azure product covers that ground?
+- [ ] Application Gateway
+- [ ] Traffic Manager
+- [x] Front Door — anycast edge, CDN, WAF, and global HTTP load balancing in one
+- [ ] Azure Load Balancer
+> Route 53's job splits three ways in Azure (Azure DNS for hosting, Traffic Manager for DNS-level global routing, Front Door for modern global app delivery), and Front Door specifically absorbs what AWS assembles from CloudFront, Global Accelerator, and an internet-facing load balancer plus WAF. Application Gateway (L7) and Azure Load Balancer (L4) are *regional* load balancers, not global edge delivery.
+
+Q: For regional load balancing, how do Application Gateway and Azure Load Balancer divide the work?
+- [ ] By region, not by layer
+- [x] By OSI layer — Application Gateway is L7 (HTTP-aware, path routing, WAF), the ALB analog; Azure Load Balancer is L4 (TCP/UDP), the NLB analog
+- [ ] Application Gateway is L4; Load Balancer is L7
+- [ ] They're interchangeable
+> The regional split is clean once stated: Application Gateway operates at L7, understanding HTTP for path-based routing and WAF, matching an ALB; Azure Load Balancer operates at L4 for raw TCP/UDP, matching an NLB. Picking the right one is just asking whether you need HTTP-aware routing or plain transport-layer balancing.
+```
 
 ---
 
@@ -440,6 +509,29 @@ az cosmosdb sql container create -g rg-app-prod -a cosmos-app-prod -d appdb -n o
 - Design a Cosmos DB data model for an app you would normally put on DynamoDB.
 - Pick a partition key and explain the tradeoffs.
 - Decide whether a given workload belongs on `Cosmos DB`, `Redis`, or a relational database.
+
+```quiz
+Q: What is the most distinctive design decision Cosmos DB forces that DynamoDB does not?
+- [ ] Choosing a region for the table
+- [x] Picking among five tunable consistency levels (strong, bounded-staleness, session, consistent-prefix, eventual) where DynamoDB offers essentially two
+- [ ] Whether to use SQL or NoSQL
+- [ ] Provisioning IOPS per partition
+> Cosmos puts hard guarantees in the SLA and exposes a five-level consistency spectrum, with session consistency (the default) giving read-your-writes per client at much lower cost than strong. DynamoDB never made you choose along this spectrum, so a DynamoDB design doesn't port cleanly — the consistency model, APIs, and throughput accounting all differ enough to re-examine.
+
+Q: Why is partition-key choice described as *critical* in Cosmos DB, even more than in DynamoDB?
+- [ ] Cosmos charges per partition key created
+- [x] A hot partition caps your throughput and inflates your bill, so a poor key directly throttles and over-costs the workload
+- [ ] Partition keys can't be changed after creation, unlike DynamoDB
+- [ ] Cosmos requires the partition key to be a GUID
+> Both stores are partition-key-driven, but Cosmos is extremely sensitive to the choice: an uneven key creates a hot partition that limits the throughput you can actually achieve and raises cost. The partition-key modeling that's important in DynamoDB becomes the number-one design decision in Cosmos, which is why you can't assume a DynamoDB schema transplants without re-evaluating the key.
+
+Q: An AWS team maps all of OpenSearch to one Azure product. What's the better-informed split?
+- [ ] Everything maps to Azure AI Search
+- [x] App search → Azure AI Search; log/time-series analytics → Azure Data Explorer; self-managed cluster → Elastic on Azure
+- [ ] Everything maps to Cosmos DB
+- [ ] App search → Redis; logs → Cosmos DB
+> AWS lumps several jobs under OpenSearch, but Azure answers them with different products: the in-product search box maps to Azure AI Search (which bundles vector/semantic search for RAG), large-scale log and time-series analytics maps to Azure Data Explorer, and owning a full Elasticsearch cluster maps to Elastic on Azure. Choosing is just asking whether the problem is app search, log search, or cluster ownership.
+```
 
 ---
 
@@ -752,6 +844,29 @@ resource waf 'Microsoft.Network/FrontDoorWebApplicationFirewallPolicies@2022-05-
 - Replace an `AWS KMS + Secrets Manager` design with Azure services and access controls.
 - Decide whether WAF belongs on `Application Gateway`, `Front Door`, or both.
 - Explain how you would centralize cloud security posture across multiple subscriptions.
+
+```quiz
+Q: AWS uses KMS, Secrets Manager, and ACM as three services. How does Azure handle the same jobs?
+- [ ] Three separate Azure services mirror them one-to-one
+- [x] Azure Key Vault is one service holding keys, secrets, *and* certificates, with one access model and audit trail
+- [ ] Entra ID stores all three
+- [ ] Each goes in a different storage account
+> Security is the category where Azure consolidates rather than splits: Key Vault holds keys, secrets, and certificates together, with Managed HSM as the FIPS hardware-backed tier for the CloudHSM case. One vault, one RBAC access model, one audit trail for everything cryptographic — and an app reads a secret at runtime via its managed identity, so no secret lands in code or config.
+
+Q: Why is the Azure WAF described as "not a standalone product" and how does that couple it to your networking choice?
+- [ ] It only runs on VMs you manage
+- [x] The WAF is a feature you enable on your edge, so it lives on Application Gateway (regional) or Front Door (global) — choosing your edge chooses where the WAF runs
+- [ ] It must be bought separately from a marketplace
+- [ ] It replaces DDoS Protection
+> Azure splits edge defense correctly by concern — DDoS Protection for volumetric L3/L4, WAF for L7 application attacks — but the WAF isn't something you point at resources independently; it's enabled on an edge. So WAF-on-Application-Gateway is your regional option and WAF-on-Front-Door your global one, which is exactly why the Section 3 edge decision and the security decision are coupled and best made together.
+
+Q: How does Microsoft Defender for Cloud map onto AWS security services?
+- [ ] It replaces IAM
+- [x] It unifies what AWS splits across Security Hub (posture management) and GuardDuty (threat detection) into one product doing both
+- [ ] It only does compliance scoring, not threat detection
+- [ ] It's the Azure equivalent of CloudTrail
+> Defender for Cloud combines continuous security-posture scoring against benchmarks ("are my resources misconfigured?" — the Security Hub role) with runtime threat detection across VMs, containers, databases, and storage ("is something attacking me?" — the GuardDuty role). It's another instance of Azure consolidating two AWS services into one control plane.
+```
 
 ---
 
