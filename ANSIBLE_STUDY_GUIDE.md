@@ -141,6 +141,29 @@ ssh_args = -o ControlMaster=auto -o ControlPersist=60s -o UserKnownHostsFile=/de
 
 References: [Installing Ansible](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html), [ansible.cfg reference](https://docs.ansible.com/ansible/latest/reference_appendices/config.html).
 
+```quiz
+Q: Why is the `file` module idempotent but the `shell` module is not?
+- [ ] `shell` runs as root by default, so it always changes state
+- [x] `file` checks current state and converges; `shell` just runs your command blindly
+- [ ] `shell` is written in Bash and Bash cannot be idempotent
+- [ ] `file` caches its result and `shell` disables caching
+> Idempotency is a property of the module, not of YAML. `file` inspects the target and no-ops when it's already in the declared `state`, reporting `changed: false`. `shell` has no idea what "already done" means — it just executes — so you own restoring the contract with `creates:`, `removes:`, `changed_when:`, or `failed_when:`.
+
+Q: In 2026 you need to create a VPC and load balancer and then configure the OS on the resulting VMs. What's the idiomatic split?
+- [ ] Ansible for both — it has cloud modules
+- [ ] Terraform for both — it can run shell on hosts
+- [x] Terraform to create the infrastructure, Ansible to configure the OS
+- [ ] cloud-init for both, with no Terraform or Ansible
+> Ansible's cloud modules exist, but provisioning cloud infrastructure is Terraform's job — it tracks state, plans diffs, and manages dependencies between resources. Ansible's sweet spot is configuring the OS, packages, service files, and app deployment *after* the box exists. Using each for the other's job means fighting the tool.
+
+Q: A task uses `shell: /opt/app/bin/import-data` and reports `changed: true` on every run, breaking your "no changes = converged" check. What's the right fix?
+- [ ] Wrap it in a `block`/`rescue`
+- [ ] Switch the strategy to `free`
+- [x] Add `creates:` or a `changed_when:` so it reports change accurately
+- [ ] Set `gather_facts: false` on the play
+> The problem is that `shell` always reports a change because it has no notion of prior state. `creates: /path/to/marker` makes it skip (and report no change) when the work is already done, and `changed_when:` lets you derive "did anything actually change" from the command's output or return code. That's how you put a raw command back inside the idempotency contract.
+```
+
 ---
 
 ## Phase 2: Inventories
@@ -615,6 +638,29 @@ Special tags: `always` (always runs), `never` (only runs if explicitly requested
 
 References: [Tags](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_tags.html).
 
+```quiz
+Q: Two tasks in a play both `notify: Restart nginx` and both report a change. How many times does nginx restart?
+- [x] Once, at the end of the play, after all notifying tasks have run
+- [ ] Twice — once per notifying task
+- [ ] Zero — handlers only run with `--force-handlers`
+- [ ] Once per host per task, so twice per host
+> A handler runs at most once per play no matter how many tasks notify it, and it fires at the *end* of the play's tasks, not inline. That's exactly why it's the right tool for "restart after any of several config files changed": you batch the expensive restart into a single action. If you need it sooner, `meta: flush_handlers` forces queued handlers to run immediately.
+
+Q: A play fails on a task that came *after* a template task already notified `Restart nginx`. By default, does the handler run?
+- [ ] Yes — handlers always run on the host that notified them
+- [x] No — the play aborted before reaching the handler-flush point, so the restart is skipped
+- [ ] Yes, but only if `gather_facts` was true
+- [ ] No, and there is no way to make it run
+> Handlers run at the end of the play, so a failure before that point leaves them queued but never executed — a classic source of "config changed but service still running the old config" bugs. `force_handlers: true` (or `--force-handlers`) makes queued handlers run even when the play fails.
+
+Q: What does a `block` with `rescue` and `always` give you that ordinary tasks don't?
+- [ ] Parallel execution of the grouped tasks
+- [ ] Automatic idempotency for `shell` tasks inside it
+- [x] Try/catch/finally semantics — `rescue` runs on failure, `always` runs regardless
+- [ ] A separate SSH connection per task in the block
+> Blocks are Ansible's only real exception handling: `rescue` is the catch (runs only if a task in the block failed) and `always` is the finally (runs no matter what). They also let you attach a shared `when`, `become`, or tags to a group of tasks. Use them sparingly — they fragment the otherwise linear top-to-bottom reading of a play.
+```
+
 ---
 
 ## Phase 5: Variables and Jinja2
@@ -757,6 +803,22 @@ ansible-playbook site.yml --vault-id prod@prompt --vault-id staging@~/.vault_pas
 The honest reality of `ansible-vault` in 2026: it's a passable secret store *if* the passphrase is handled by a real secret manager. In greenfield work, prefer a lookup against HashiCorp Vault, AWS Secrets Manager, or 1Password — keep secrets at rest in the system designed for them, not in the playbook repo.
 
 References: [Encrypting content with Ansible Vault](https://docs.ansible.com/ansible/latest/vault_guide/index.html).
+
+```quiz
+Q: You `register` a command's output in a play, then a later play targeting the same hosts references that variable. What happens?
+- [ ] It works — registered vars persist for the whole run
+- [x] It's undefined — `register` scope is the current play and host, not the run
+- [ ] It works only if `fact_caching` is enabled
+- [ ] It silently uses the value from the first host
+> `register` captures a module's return value as a per-host variable scoped to the play it ran in. It does not survive into a later play. If you need a value to persist across plays, promote it with `set_fact` (which writes a host fact for the remainder of the run) or cache it — but don't assume a registered variable is visible outside its play.
+
+Q: What does `ansible-vault` actually protect, and what's the honest 2026 recommendation?
+- [ ] It protects secrets in transit; for storage use plaintext group_vars
+- [x] It encrypts values at rest with AES-256; greenfield work should still prefer a real secret manager via lookup
+- [ ] It encrypts the SSH session so secrets never touch disk
+- [ ] It rotates secrets automatically on every playbook run
+> Vault gives you AES-256 encryption of strings or whole files, keyed by a passphrase — genuinely useful, but only as strong as how you handle that passphrase. In greenfield work the better pattern is a runtime `lookup` against HashiCorp Vault, AWS Secrets Manager, or 1Password, keeping secrets in a system built to store, audit, and rotate them rather than committing ciphertext to the playbook repo.
+```
 
 ---
 
@@ -1413,6 +1475,29 @@ The `profile_tasks` callback is genuinely worth always running — it tells you 
 
 References: [Callback plugins](https://docs.ansible.com/ansible/latest/plugins/callback.html), [Strategies for rolling updates](https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_delegation.html).
 
+```quiz
+Q: A play targets 50 webservers with `serial: "20%"` and `max_fail_percentage: 0`. What does this combination do?
+- [ ] Deploys to all 50 at once but tolerates 20% failures
+- [x] Deploys 10 hosts at a time and halts the whole rollout if any host in a batch fails
+- [ ] Deploys to one host, then all remaining 49
+- [ ] Runs the play 20% faster by skipping fact gathering
+> `serial: "20%"` processes the fleet in batches of 10 (20% of 50), and `max_fail_percentage: 0` means a single failure in a batch stops the rollout before it touches the next batch. That's the core safety property of a rolling deploy: you blast-radius-limit a bad release to one batch instead of the whole fleet. A canary variant like `serial: [1, "10%", "50%"]` starts even smaller.
+
+Q: You need to run a database migration exactly once even though the play targets all dbservers. Which directive expresses that?
+- [ ] `serial: 1`
+- [ ] `delegate_to: localhost`
+- [x] `run_once: true` (typically with `delegate_to` to pin the host)
+- [ ] `gather_facts: false`
+> `run_once: true` makes a task execute a single time for the whole play regardless of how many hosts are targeted, which is exactly what a migration needs — running it per host would corrupt the database. `serial: 1` only changes batch size (it would still run once per host), and `delegate_to` alone just changes *where* a task runs, not how many times.
+
+Q: Why does `delegate_to: localhost` matter for the load-balancer drain/re-add tasks in a rolling deploy?
+- [ ] It makes the task idempotent automatically
+- [ ] It runs the task as root on the target
+- [x] The LB API call must originate from a host that can reach the API — the control node — not from the target being drained
+- [ ] It caches the API response for the rest of the play
+> Tasks that talk to external APIs (load balancers, DNS, monitoring) shouldn't run *on* the host being deployed — that host may be drained, restarting, or unable to reach the control plane. `delegate_to: localhost` runs the task on the control node while still iterating per target host, so the drain/health-check/re-add dance works even as the target goes in and out of rotation.
+```
+
 ---
 
 ## Phase 12: Ansible vs. The Alternatives
@@ -1543,6 +1628,29 @@ You should consider AWX (open source) or Ansible Automation Platform (Red Hat's 
 For solo work or small teams running playbooks from their laptops and CI, AWX is overkill. The break-even is somewhere around "5+ engineers regularly run playbooks" or "we need an audit trail for compliance."
 
 References: [AWX](https://github.com/ansible/awx), [Ansible Automation Platform](https://www.redhat.com/en/technologies/management/ansible), [Semaphore](https://semaphoreui.com/) (the lighter-weight community alternative).
+
+```quiz
+Q: Why does enabling SSH pipelining give a 30–50% speedup with no behavioral change?
+- [ ] It compresses module output over the wire
+- [x] It cuts the number of SSH operations per task by avoiding writing modules to a temp file on the target
+- [ ] It runs tasks in parallel across hosts
+- [ ] It caches facts between runs
+> Without pipelining, each task transfers the module to a temp file on the target, executes it, then cleans up — several SSH round trips per task. Pipelining streams the module straight to the remote Python interpreter over the existing connection, roughly halving SSH operations. It's behavior-neutral; the only prerequisite is that `requiretty` is off in sudoers, which it usually already is.
+
+Q: What is the fundamental thing the `mitogen` strategy plugin changes to get 2–7× speedups?
+- [ ] It rewrites your playbook into compiled bytecode
+- [ ] It increases `forks` automatically
+- [x] It replaces "fresh Python per task" with a persistent Python process per target
+- [ ] It disables fact gathering
+> Stock Ansible starts a new Python interpreter on the target for every task, which dominates runtime on task-heavy plays. Mitogen keeps a persistent interpreter per host and routes calls to it, eliminating that per-task startup cost. The tradeoff is that Mitogen's development has slowed, so you must verify compatibility with your Ansible version before depending on it.
+
+Q: With `gathering = smart` and fact caching configured, when does Ansible actually re-run the `setup` module?
+- [ ] On every play, ignoring the cache
+- [ ] Never, until you manually clear the cache
+- [x] Only when the cached facts for a host are missing or stale past the timeout
+- [ ] Only on the first host in each batch
+> `smart` gathering means "use the cache if it's fresh, otherwise gather and refresh it." Fact gathering costs 1–3 seconds per host, so caching (jsonfile locally, Redis for shared/AWX setups) eliminates that cost on repeat runs while still picking up changes once the `fact_caching_timeout` expires. That's the cheap structural win before you reach for forks or mitogen.
+```
 
 ---
 

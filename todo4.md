@@ -118,7 +118,7 @@ Part, click-to-reveal explanation included.
 - [x] `k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md` — 3 quizzes (9 questions; mental models, troubleshooting, advanced patterns)
 - [x] `DOCKER_STUDY_GUIDE.md` — 5 quizzes (13 questions; isolation primitives, layers/cache, multi-stage, security, health/restart)
 - [x] `TERRAFORM_STUDY_GUIDE.md` — 6 quizzes (12 questions; declarative/DAG/diff-as-contract, for_each vs count, what state is, remote backend locking, module-as-typed-function, sensitive vs ephemeral/write-only)
-- [ ] `ANSIBLE_STUDY_GUIDE.md`
+- [x] `ANSIBLE_STUDY_GUIDE.md` — 5 quizzes (14 questions; idempotency/module contract, handlers & blocks, register/set_fact & vault, serial/run_once/delegate_to, pipelining/mitogen/fact-caching)
 - [ ] `GITHUB_ACTIONS_STUDY_GUIDE.md`
 - [ ] `OBSERVABILITY_STUDY_GUIDE.md`
 - [ ] `CLOUDFLARE_STUDY_GUIDE.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 26/65 (Batch 1 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 27/65 (Batch 1 complete).
