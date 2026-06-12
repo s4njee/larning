@@ -1,19 +1,40 @@
 # Advanced Rust Study Guide
 
-A depth-first guide to the Rust that senior work actually demands: **async and the runtime model, concurrency, the type-system machinery, and unsafe/FFI**. It is the sequel to [Rust for Python Developers](RUST_FOR_PYTHON_DEVS.md) — this guide assumes you already own the fundamentals (ownership and borrowing, `Result`/`Option`, traits, enums, pattern matching, `cargo`) and goes after the parts that take Rust from "I can write a CLI" to "I can build a correct concurrent service and reason about why it's correct."
+A depth-first guide to the Rust that senior work actually demands: **the type-system machinery, concurrency, async and the runtime model, unsafe/FFI, and production engineering**. It is the sequel to [Rust for Python Developers](RUST_FOR_PYTHON_DEVS.md) — this guide assumes you already own the fundamentals (ownership and borrowing, `Result`/`Option`, traits, enums, pattern matching, `cargo`) and goes after the parts that take Rust from "I can write a CLI" to "I can build a correct concurrent service and explain why it's correct."
 
-The throughline: in Python you fight the GIL and in Go you fight the garbage collector, but in Rust **the compiler makes you prove your concurrency is sound before it runs**. Async, `Send`/`Sync`, `Pin`, and `unsafe` are all the same story — encoding invariants in the type system so that whole classes of bugs become compile errors. Master that lens and the hard parts stop feeling arbitrary.
+The throughline: in Python you fight the GIL and in Go you fight the garbage collector, but in Rust **the compiler makes you prove your concurrency is sound before it runs**. Async, `Send`/`Sync`, `Pin`, lifetimes, and `unsafe` are all the same story — *encode the invariant in the type system so violations don't compile*. Each "hard" topic in this guide is that one move at a different layer, and once you see it, the language stops feeling like a pile of special cases. The corollary that shapes how you should read: when the compiler rejects your concurrent design, it is almost never being pedantic — it has found a bug that other languages would have let you ship.
 
-Every section includes compilable code. Build real things, not toy examples.
+Every section includes compilable code, embedded in the explanation rather than substituting for it. Primary references throughout: [The Rust Programming Language](https://doc.rust-lang.org/book/), the [Rustonomicon](https://doc.rust-lang.org/nomicon/) (unsafe), the [Async Book](https://rust-lang.github.io/async-book/), Mara Bos's [*Rust Atomics and Locks*](https://marabos.nl/atomics/) (free online, and the best book on Part 5's material), and the [Tokio tutorial](https://tokio.rs/tokio/tutorial).
 
 ---
 
-## Phase 1: The Type System, Deepened
+## Table of Contents
 
-### 1.1 Static vs Dynamic Dispatch
+1. [Part 1 — The Type System as a Proof Engine](#part-1--the-type-system-as-a-proof-engine)
+2. [Part 2 — Lifetimes, Variance, and the Shape of Borrowing](#part-2--lifetimes-variance-and-the-shape-of-borrowing)
+3. [Part 3 — Memory Layout and Smart Pointers](#part-3--memory-layout-and-smart-pointers)
+4. [Part 4 — Threads, Send/Sync, and Data Parallelism](#part-4--threads-sendsync-and-data-parallelism)
+5. [Part 5 — Atomics and the Memory Model](#part-5--atomics-and-the-memory-model)
+6. [Part 6 — Async I: The Model](#part-6--async-i-the-model)
+7. [Part 7 — Async II: Tokio in Production](#part-7--async-ii-tokio-in-production)
+8. [Part 8 — Unsafe Rust](#part-8--unsafe-rust)
+9. [Part 9 — FFI: Crossing the C Boundary](#part-9--ffi-crossing-the-c-boundary)
+10. [Part 10 — Performance Engineering](#part-10--performance-engineering)
+11. [Part 11 — Errors, Testing, and Verification](#part-11--errors-testing-and-verification)
+12. [Part 12 — Macros](#part-12--macros)
+13. [Part 13 — Production Service Patterns](#part-13--production-service-patterns)
+14. [Capstone Projects](#capstone-projects)
+15. [Study Methodology](#study-methodology)
 
-- **What it is**: The two ways Rust turns a trait call into machine code — **monomorphization** (a specialized copy per concrete type, resolved at compile time) and **dynamic dispatch** (one copy, a vtable lookup at run time via `dyn Trait`); docs: [Trait objects](https://doc.rust-lang.org/book/ch17-02-trait-objects.html).
-- **Why it matters**: This is the single most common "which do I reach for" decision in Rust API design, and it trades binary size and indirection against flexibility and heterogeneity.
+---
+
+## Part 1 — The Type System as a Proof Engine
+
+Everything advanced in Rust routes through the trait system, so this is where the guide starts — not with a feature tour, but with the handful of mechanisms that decide how every API you write will compile, perform, and compose.
+
+### 1.1 Static vs. dynamic dispatch: the decision underneath every API
+
+Rust has exactly two ways to turn a trait call into machine code, and choosing between them is the most common design decision in the language. **Monomorphization** — the generics path — stamps out a specialized copy of your function for every concrete type it's used with, resolved entirely at compile time. **Dynamic dispatch** — the [`dyn Trait`](https://doc.rust-lang.org/book/ch17-02-trait-objects.html) path — compiles one copy that looks the method up in a vtable at run time.
 
 ```rust
 trait Shape {
@@ -30,33 +51,129 @@ fn total_area<S: Shape>(shapes: &[S]) -> f64 {
     shapes.iter().map(|s| s.area()).sum()
 }
 
-// Dynamic dispatch: ONE function, a vtable lookup per call — but it can hold a
-// heterogeneous mix of shapes behind a pointer.
+// Dynamic dispatch: ONE compiled function, a vtable lookup per call — but it can
+// hold a heterogeneous mix of shapes behind pointers.
 fn total_area_dyn(shapes: &[Box<dyn Shape>]) -> f64 {
     shapes.iter().map(|s| s.area()).sum()
 }
 ```
 
-- **Choose generics (`impl Trait` / `<T>`)** when the type is known at the call site, the call is hot, or you want inlining. **Choose `dyn Trait`** when you need a collection of mixed types, want to keep code size down, or need to store a trait in a struct field without making the whole struct generic.
-- **Object safety** is the catch: a trait is only usable as `dyn Trait` if its methods don't return `Self` and aren't generic. The compiler enforces this, and the error ("the trait cannot be made into an object") confuses everyone the first time.
-- **`impl Trait`** in argument position is sugar for a generic bound; in return position it means "one concrete type I'm not naming" — essential for returning closures and futures.
+The mental model that makes the trade-off predictable: a generic function is a *template* the compiler stamps out; a `dyn` value is a **fat pointer** — two machine words, a data pointer plus a vtable pointer (Part 3 returns to fat pointers as a layout fact). From that, everything follows. Monomorphization gives the optimizer a concrete type to inline through — this is why iterator chains compile to tight loops — at the cost of compile time and binary size (every instantiation is more code, and a heavily-generic crate can bloat both badly enough that *de*-generifying internals behind a `dyn` boundary is a real optimization). Dynamic dispatch costs an indirect call and blocks inlining, but compiles once, erases the type (so a `Vec<Box<dyn Shape>>` can mix circles and squares), and keeps trait machinery out of your struct signatures — a field of type `Box<dyn Database>` doesn't force a generic parameter onto every type that contains it.
 
-The bullets undersell the mental model: a generic function is a *template* the compiler stamps out, while a `dyn` value is a *fat pointer* (data pointer + vtable pointer). Once you can predict which one a given signature produces, surprises about binary size, inlining, and "why can't I put these in a `Vec`" mostly evaporate.
+The practical defaults: **generics for hot paths and known-at-call-site types; `dyn` for heterogeneous collections, plugin-style seams, and keeping public APIs and compile times sane.** And one idiom worth knowing by name — the *hybrid*: take generics in the public signature for ergonomics, immediately convert to `dyn` internally to avoid monomorphizing your whole implementation per caller type (`fn run(f: impl FnMut() + 'static)` calling `run_dyn(Box::new(f))`). The standard library does this in `std::thread::spawn`'s internals; it's the professional compromise between the two costs.
 
-### 1.2 Lifetimes Beyond the Basics
+Two pieces of fine print complete the picture. **Dyn-compatibility** (long called "object safety", [reference](https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility)): a trait is only usable as `dyn Trait` if its methods don't return `Self` by value and aren't generic — both would require knowing the concrete type, which is exactly what `dyn` erased. The error ("the trait cannot be made into an object") confuses everyone once; the standard fixes are splitting the offending methods into a separate trait, or the `where Self: Sized` escape hatch that removes a method from the `dyn` vtable. And **`impl Trait`** is two features wearing one syntax: in *argument* position it's sugar for a generic parameter; in *return* position it means "one concrete type I decline to name" — which is not dynamic dispatch but type inference, and is the only way to return closures and async blocks, whose types are unnameable compiler inventions.
 
-- **What it is**: The compile-time region analysis that proves no reference outlives its referent. You know elision and `&'a T`; the advanced surface is **`'static`**, **variance**, and **higher-ranked trait bounds**; docs: [Lifetimes (Nomicon)](https://doc.rust-lang.org/nomicon/lifetimes.html).
-- **`'static`** means "lives for the entire program *or* owns all its data" — it is a bound (`T: 'static`), not just a literal. `thread::spawn` requires it because the thread may outlive the spawning frame.
-- **Higher-ranked trait bounds (HRTB)** — `for<'a> Fn(&'a str) -> &'a str` — express "this holds for *every* lifetime," which is what you need for closures that accept a borrow of any duration:
+### 1.2 Associated types vs. generic parameters: how many implementations?
+
+The question that decides between `trait Iterator { type Item; }` and `trait From<T>` is always the same: **for a given implementing type, how many implementations should exist?** An associated type says *one* — a type iterates over one `Item` type, a future resolves to one `Output`; the relationship is a function from implementer to type, and users never have to annotate it. A generic parameter says *many* — `String` implements `From<&str>` *and* `From<char>` *and* `From<Cow<str>>`, and the compiler selects among them per call site.
+
+Get this wrong and the pain is immediate: model `Iterator` with a generic parameter and every bound becomes `I: Iterator<u32>` with inference ambiguities everywhere ("which Iterator impl did you mean?"); model `From` with an associated type and a type could only ever convert from one source. The standard library's choices are a curriculum in themselves — read [`Add`](https://doc.rust-lang.org/std/ops/trait.Add.html) (generic in the right-hand side, associated in the output: you can add many types to a `Duration`, but `Duration + Duration` has exactly one result type) until the pattern is reflexive.
+
+**Generic associated types (GATs)**, stable since 1.65, complete the system: an associated type that is itself generic over a lifetime or type. The canonical unlock is the **lending iterator** — an iterator whose items borrow from the iterator itself:
 
 ```rust
-// The bound must hold for ANY 'a the caller picks, not one fixed lifetime.
+trait LendingIterator {
+    type Item<'a> where Self: 'a;          // the GAT: Item borrows from &mut self
+    fn next(&mut self) -> Option<Self::Item<'_>>;
+}
+
+// A windows-iterator over a slice that yields overlapping &[T] views — impossible
+// to express with std Iterator (each item would need to borrow from the iterator,
+// but Iterator::Item can't mention the &mut self lifetime).
+struct Windows<'s, T> { slice: &'s [T], size: usize, pos: usize }
+
+impl<'s, T> LendingIterator for Windows<'s, T> {
+    type Item<'a> = &'a [T] where Self: 'a;
+    fn next(&mut self) -> Option<&[T]> {
+        let w = self.slice.get(self.pos..self.pos + self.size)?;
+        self.pos += 1;
+        Some(w)
+    }
+}
+```
+
+You won't write GATs weekly, but you will *read* them — they're load-bearing in async traits' desugaring and across the ecosystem's zero-copy parsing crates — and knowing the lending-iterator example by heart converts an opaque feature into one sentence: *GATs let an associated type depend on the lifetime of the borrow that produced it.* ([RFC 1598](https://rust-lang.github.io/rfcs/1598-generic_associated_types.html), [stabilization post](https://blog.rust-lang.org/2022/10/28/gats-stabilization.html).)
+
+### 1.3 Coherence, the orphan rule, and the newtype escape
+
+Rust enforces **coherence**: for any (type, trait) pair there is at most one implementation in the universe, so trait resolution never depends on which crates happen to be linked. The enforcement mechanism is the **orphan rule** — you may `impl Trait for Type` only if the trait or the type is local to your crate ([reference](https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules)). This is why you cannot `impl serde::Serialize for chrono::DateTime` in your application: both halves are foreign, and if two crates did that with different behavior, the program's meaning would depend on link order.
+
+The standard escape is the **newtype pattern**: wrap the foreign type in a local tuple struct and implement away. The wrapper is zero-cost (same layout, Part 3), and `Deref` or delegated methods recover ergonomics where appropriate:
+
+```rust
+struct Meters(f64);                       // local type — implement anything for it
+
+impl std::fmt::Display for Meters {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} m", self.0)
+    }
+}
+```
+
+Newtypes earn a second, bigger job in serious codebases: **making invariants unrepresentable**. `UserId(u64)` and `OrderId(u64)` cannot be swapped at a call site even though both are u64s underneath; `Validated<Email>` can only be constructed by the validation function. This is the cheapest formal method in industry — the type system refusing to compile confused code — and the natural segue to its maximal form, the **typestate pattern**: encode a state machine's states as types so that invalid transitions are not runtime errors but missing methods (`Connection<Idle>` has `connect()`, only `Connection<Established>` has `send()`; the builder pattern that won't `build()` until required fields are set is the everyday instance). You don't need typestate often; you need to *recognize* it, because the best Rust APIs you'll consume (embedded HALs, protocol libraries) are built from it.
+
+### 1.4 Const generics and compile-time evaluation
+
+Types can be parameterized by *values*: `[T; N]` was always magic, and since 1.51 your own types can do it — `struct Matrix<const R: usize, const C: usize>([f32; R * C])`-style APIs where dimension mismatches are compile errors rather than runtime panics ([reference](https://doc.rust-lang.org/reference/items/generics.html#const-generics)). Combined with `const fn` — functions executable at compile time, an ever-growing subset of the language — you get lookup tables computed at build, sizes checked before run, and parsers that reject invalid static configuration during compilation. The discipline: const generics shine for *small, structural* values (sizes, flags); resist encoding business data into types — monomorphization multiplies code per distinct value, and the error messages multiply with it.
+
+### 1.5 Closures: structs the compiler writes for you
+
+A closure is an anonymous struct holding its captured variables as fields, plus an implementation of one of three traits — and *which* trait is determined by **how the body uses the captures**: [`Fn`](https://doc.rust-lang.org/std/ops/trait.Fn.html) (reads them: captures by `&`), `FnMut` (mutates them: by `&mut`), `FnOnce` (consumes them: by value). Every `Fn` is also `FnMut` is also `FnOnce` — calling through a shared borrow is strictly more permissive than consuming — so the API rule is to **bound with the weakest trait that works**: `FnOnce` if you call once, `FnMut` for a loop, `Fn` only if you genuinely call through a shared reference.
+
+```rust
+// `impl Fn` returns the closure by value; `move` makes it own `x` so it can outlive this frame.
+fn make_adder(x: i32) -> impl Fn(i32) -> i32 {
+    move |y| x + y
+}
+
+fn main() {
+    let add5 = make_adder(5);
+    assert_eq!(add5(10), 15);
+
+    // FnMut: mutates captured state between calls.
+    let mut count = 0;
+    let mut tick = || { count += 1; count };
+    assert_eq!((tick(), tick()), (1, 2));
+
+    // FnOnce: moves a capture out — callable exactly once, enforced at compile time.
+    let name = String::from("rust");
+    let consume = move || name;
+    let _owned: String = consume();    // a second call would not compile
+}
+```
+
+Two details carry the rest of the guide. First, **`move` is the bridge to concurrency**: `thread::spawn` and `tokio::spawn` require the closure to own everything it touches, because the spawning stack frame may be gone before the closure runs — that's the `'static` bound made concrete (Part 2), and it's why spawn closures are almost always `move`. Second, **an `async` block is the same compiler trick** — a generated struct holding captured state, implementing `Future` instead of `Fn` — which is why every question you learn to ask about a closure (*what does it capture? by value or reference? is it `Send`?*) will be asked again, verbatim, about futures in Parts 6–7. Closures are the rehearsal; async is the performance.
+
+---
+
+## Part 2 — Lifetimes, Variance, and the Shape of Borrowing
+
+You know elision and `&'a T`. The advanced surface is small but load-bearing: `'static` as a bound, higher-ranked bounds, variance, and the one thing lifetimes *cannot* express — which is precisely the thing async needs (and Part 6's `Pin` exists to recover).
+
+### 2.1 Lifetimes are proofs, not annotations
+
+The reframe that dissolves most lifetime fights: lifetime parameters don't *do* anything — they are the vocabulary in which the compiler states its proof that no reference outlives its referent. When a signature won't compile, the compiler isn't asking for different annotations; it's telling you the ownership story your annotations claim is not the one your code enacts. The productive response is never "sprinkle `'static`"; it's to ask *who owns this data, and how long do I actually need to view it?* — and then make the signature say that. (Reference: [the Nomicon's lifetime chapters](https://doc.rust-lang.org/nomicon/lifetimes.html), which are written exactly in this proofs-first spirit.)
+
+Modern borrow checking is **non-lexical** (NLL): a borrow ends at its *last use*, not at the closing brace. This is why most "fighting the borrow checker" folklore from pre-2018 posts no longer reproduces — and why, when you do hit a residual limitation (conditional returns of borrows from a match are the famous one, addressed by the in-progress Polonius work), the right move is a small restructure rather than a fight.
+
+### 2.2 `'static`: the most misread bound in Rust
+
+`T: 'static` does **not** mean "T lives forever." It means **"T contains no non-`'static` borrows"** — T is self-sufficient: either it owns all its data (a `String`, a `Vec<u8>`, an `Arc<Config>`) or any references inside it point at process-lifetime data (string literals). `thread::spawn` and `tokio::spawn` require it because a spawned task may run *arbitrarily later*, after the spawning frame's locals are gone; the bound is the compiler's way of saying "hand me something that doesn't dangle, however long I hold it." An owned `String` created two milliseconds ago satisfies `'static` perfectly. Misreading this bound as "must be a global" sends people to `Box::leak` and `lazy_static` contortions when the actual fix was a `.clone()` or an `Arc`.
+
+### 2.3 Higher-ranked trait bounds: "for every lifetime"
+
+Sometimes a bound must hold not for one lifetime the caller picks, but for *all of them*. That's a **higher-ranked trait bound** (HRTB), written `for<'a>` ([Nomicon](https://doc.rust-lang.org/nomicon/hrtb.html)):
+
+```rust
+// F must accept a borrow of ANY duration — including one created inside `apply`,
+// which no single caller-chosen lifetime could name.
 fn apply<F>(f: F)
 where
     F: for<'a> Fn(&'a str) -> &'a str,
 {
     let owned = String::from("hello world");
-    println!("{}", f(&owned));      // works no matter how long `owned` lives
+    println!("{}", f(&owned));      // `owned` lives only inside apply — and that's fine
 }
 
 fn main() {
@@ -64,21 +181,59 @@ fn main() {
 }
 ```
 
-- **The wall you'll hit**: returning a reference into something you own (a self-referential struct) is *impossible* in safe Rust, because moving the struct would invalidate the internal pointer. That limitation is exactly what `Pin` (Phase 3) exists to manage for async state machines.
-- **Variance** rarely needs explicit thought, but knowing it exists explains why `&'long T` coerces to `&'short T` (covariance) while `&mut T` does not vary in `T` (invariance) — the root cause of many "lifetime mismatch" errors around mutable references.
+You mostly *encounter* HRTBs rather than write them — closure bounds over references elide to them automatically, and serde's `Deserialize<'de>` machinery is built on them — but recognizing `for<'a>` in an error message converts a wall of text into one idea: *the function demands a callback that works for every lifetime, and yours only works for one.*
 
-The deeper point is that lifetimes are not annotations you sprinkle to satisfy the compiler; they are the *proof* that your reference graph is acyclic and well-ordered. When a lifetime error feels arbitrary, the fix is almost never "add `'static`" — it's to ask what ownership relationship you're actually trying to express.
+### 2.4 Variance: why `&mut` is stricter than `&`
 
-### 1.3 Smart Pointers and Interior Mutability
+Variance answers a question you've been benefiting from without asking: when is `Thing<'long>` usable where `Thing<'short>` is expected? For shared references, always — `&'long T` **coerces** to `&'short T` (covariance: shortening a view is harmless). For mutable references, the lifetime is still covariant but the *pointee type* is **invariant** — `&mut Vec<&'long str>` is *not* usable as `&mut Vec<&'short str>` — and the reason is an actual exploit: if it were allowed, the callee could *write* a short-lived reference into your long-lived vector, which you'd later read as long-lived. Dangling pointer, by type-system sleight of hand. (The [Nomicon's variance table](https://doc.rust-lang.org/nomicon/subtyping.html) is the reference; `Cell<T>` and friends are likewise invariant for the same writes-allowed reason.)
 
-- **What it is**: The toolbox for shared ownership and for mutating through a shared reference — `Box`, `Rc`/`Arc`, and the interior-mutability cells `Cell`/`RefCell`/`Mutex`/`RwLock`; docs: [`std::cell`](https://doc.rust-lang.org/std/cell/), [`Rc`](https://doc.rust-lang.org/std/rc/struct.Rc.html).
-- **The decision table** is worth memorizing:
-  - `Box<T>` — single owner, heap allocation, the simplest indirection.
-  - `Rc<T>` — multiple owners, **single-threaded**, reference-counted.
-  - `Arc<T>` — multiple owners, **thread-safe** (atomic refcount).
-  - `RefCell<T>` — single-threaded interior mutability, borrow rules checked **at runtime** (panics on violation).
-  - `Mutex<T>` / `RwLock<T>` — thread-safe interior mutability via locking.
-- **The two canonical combos**: `Rc<RefCell<T>>` for shared mutable state on one thread (graphs, observers), and `Arc<Mutex<T>>` for shared mutable state across threads:
+You need variance actively in two situations: deciphering the otherwise-mystifying class of errors where a `&mut` nested borrow "should obviously work" (it shouldn't — now you know the attack it prevents), and choosing `PhantomData` markers when building unsafe abstractions (Part 8), where *you* declare your raw-pointer type's variance and the soundness of client code rides on the choice.
+
+### 2.5 The wall: self-reference, and why it matters more than it looks
+
+One ownership shape is flatly inexpressible in safe Rust: **a struct holding a reference into itself**. The borrow checker has no vocabulary for "field b borrows from field a of the same value," and there's a hard mechanical reason beneath the syntactic one — Rust values are *movable by memcpy, always*; a move would copy the struct while its internal pointer kept aiming at the old address. Every workaround is really a redesign: store indices instead of references, split the owner and the view into separate structs, or use `Rc` to make the "self"-reference an ordinary shared owner.
+
+File this limitation carefully rather than as trivia, because it is **the** reason async Rust has `Pin`: an `async fn`'s generated state machine routinely holds borrows across `.await` points — references into its own captured locals — making it exactly the self-referential struct safe Rust forbids. The language's solution was not to allow self-reference generally, but to make *not-moving* a checkable promise. That story is Part 6.2; the groundwork is laid here.
+
+---
+
+## Part 3 — Memory Layout and Smart Pointers
+
+Senior Rust work means knowing what your types *are* in memory — both because performance lives there (Part 10) and because unsafe code (Part 8) is downstream of layout facts.
+
+### 3.1 What types look like
+
+The compiler lays out a default (`repr(Rust)`) struct however it likes — typically sorting fields to minimize padding, which is why field order in source doesn't reliably predict layout and why FFI structs need `#[repr(C)]` (Part 9). The sizes worth knowing cold: references and `Box` are one machine word; **fat pointers** — `&[T]`, `&str`, `&dyn Trait`, and their `Box`ed forms — are two (pointer + length, or pointer + vtable); `Vec<T>` is three (pointer, length, capacity); `String` is a `Vec<u8>` with a UTF-8 invariant. [`std::mem::size_of`](https://doc.rust-lang.org/std/mem/fn.size_of.html) answers any dispute in one line, and disputes are worth having — a struct that's 40 bytes when it could be 24 is a cache-line tax on every collection that holds it.
+
+Enums are where Rust's layout gets genuinely clever. A `Result<T, E>` is tag + payload — but the **niche optimization** routinely deletes the tag: `Option<&T>`, `Option<Box<T>>`, `Option<NonZeroU64>` are all *pointer-sized*, because the compiler smuggles the `None` case into the payload's forbidden value (null, zero). This is why "nullable pointer" in Rust costs exactly what it costs in C while being impossible to dereference unchecked — the zero-cost-abstraction promise, delivered by layout — and why [`NonZeroU64`](https://doc.rust-lang.org/std/num/struct.NonZeroU64.html) and friends exist: they *donate a niche* to every `Option` that wraps them.
+
+### 3.2 The ownership toolbox, completed
+
+The decision table you must know reflexively:
+
+| Type | Owners | Threads | Mutation through `&` | Cost |
+|---|---|---|---|---|
+| `Box<T>` | one | — | no | allocation |
+| `Rc<T>` | many | **single-threaded** | no | non-atomic refcount |
+| `Arc<T>` | many | thread-safe | no | atomic refcount |
+| `Cell<T>` | (wrapper) | single-threaded | yes — by *copy/swap* only | zero |
+| `RefCell<T>` | (wrapper) | single-threaded | yes — borrow rules checked **at runtime**, panics on violation | flag check |
+| `Mutex<T>` / `RwLock<T>` | (wrapper) | thread-safe | yes — by blocking | lock |
+| `OnceLock<T>` / `LazyLock<T>` | (wrapper) | thread-safe | write-once / lazy-init | one-time sync |
+
+([`std::cell`](https://doc.rust-lang.org/std/cell/) · [`Rc`](https://doc.rust-lang.org/std/rc/struct.Rc.html) · [`std::sync`](https://doc.rust-lang.org/std/sync/).)
+
+Three additions to the table everyone learns late and wishes they'd learned early:
+
+**`Weak<T>`** ([docs](https://doc.rust-lang.org/std/rc/struct.Weak.html)) — the non-owning companion to `Rc`/`Arc`, and the answer to the question reference counting always raises: cycles. Two `Rc`s pointing at each other never hit refcount zero — a leak with no error message. The pattern: ownership edges are strong, *back*-edges are weak (a tree's children are `Rc`, the parent pointer is `Weak`; `upgrade()` returns `Option<Rc<T>>` because the parent may be gone). If your design has `Rc`s in both directions and no `Weak`, you have written a leak.
+
+**`OnceLock` and `LazyLock`** ([docs](https://doc.rust-lang.org/std/sync/struct.LazyLock.html)) — the modern, std-only answer to "global initialized once" (configuration, compiled regexes, connection pools), retiring the `lazy_static!`/`once_cell` crates for new code: `static CONFIG: LazyLock<Config> = LazyLock::new(load_config);` is thread-safe, lazy, and lock-free after initialization.
+
+**`Cow<'a, T>`** ([docs](https://doc.rust-lang.org/std/borrow/enum.Cow.html)) — clone-on-write: an enum of `Borrowed(&'a T)` / `Owned(T)` that lets a function return a borrow when no modification was needed and an owned value when it was (the canonical example: a sanitizer that returns the input string untouched 99% of the time, allocating only for the 1% that needed escaping). `Cow` in a signature is a precision instrument: it documents "I allocate only when I must."
+
+### 3.3 Interior mutability: moving the check, not breaking the rule
+
+`Rc<RefCell<T>>` (single-threaded shared mutability — graphs, observer lists) and `Arc<Mutex<T>>` (the cross-thread version) are the two canonical compositions, and the composition is the lesson: **`Arc` and `Mutex` are orthogonal**. `Arc` gives shared *ownership*; `Mutex` gives safe *mutation*; you combine them because thread-shared mutable state needs both — but plenty of designs want only one (an `Arc<Config>` of read-only settings needs no lock; a `Mutex<Cache>` owned by one struct needs no `Arc`).
 
 ```rust
 use std::sync::{Arc, Mutex};
@@ -88,9 +243,9 @@ let counter = Arc::new(Mutex::new(0u64));
 let mut handles = vec![];
 
 for _ in 0..10 {
-    let counter = Arc::clone(&counter);          // bump the refcount, not the data
+    let counter = Arc::clone(&counter);          // bumps the refcount, not the data
     handles.push(thread::spawn(move || {
-        let mut n = counter.lock().unwrap();     // lock; guard unlocks on drop
+        let mut n = counter.lock().unwrap();     // guard unlocks on drop (RAII)
         *n += 1;
     }));
 }
@@ -98,59 +253,23 @@ for h in handles { h.join().unwrap(); }
 assert_eq!(*counter.lock().unwrap(), 10);
 ```
 
-- **Interior mutability is the escape hatch** from "shared XOR mutable," and it does not break the rule — it *moves the check*. `RefCell` enforces it at runtime; `Mutex` enforces it by blocking. Reach for it deliberately, not to dodge the borrow checker.
-
-What's easy to miss is that `Arc` and `Mutex` are orthogonal: `Arc` gives you *shared ownership*, `Mutex` gives you *safe mutation*. You combine them because thread-shared mutable state needs both, but plenty of code wants only one — `Arc<T>` for shared read-only config, `Mutex<T>` inside a struct that already has a single owner.
-
-### 1.4 Closures and the `Fn` Traits
-
-- **What it is**: A closure is an anonymous function that *captures its environment*. Which of three traits it implements is determined by **how** it captures: `Fn` (by shared reference `&`), `FnMut` (by unique reference `&mut`), `FnOnce` (by value / move); docs: [Closures](https://doc.rust-lang.org/book/ch13-01-closures.html).
-- **Why it matters**: Every async combinator, iterator adapter, and `spawn` takes a closure, and the trait bound you write (`F: Fn` vs `F: FnOnce`) decides whether the caller can invoke it once or many times. This is also where the HRTB bounds from 1.2 show up in practice.
-- **The hierarchy**: every `Fn` is also `FnMut` is also `FnOnce` (calling by `&` is stricter than by value). Bound your generic with the *weakest* trait that does the job — `FnOnce` if you only call once, `Fn` if many times.
-
-```rust
-// `impl Fn` returns a closure; `move` captures `x` by value so it outlives this frame.
-fn make_adder(x: i32) -> impl Fn(i32) -> i32 {
-    move |y| x + y
-}
-
-// `Fn` bound: callable repeatedly through a shared borrow.
-fn apply_twice<F: Fn(i32) -> i32>(f: F, v: i32) -> i32 {
-    f(f(v))
-}
-
-fn main() {
-    let add5 = make_adder(5);
-    assert_eq!(apply_twice(&add5, 10), 20);
-
-    // FnMut: mutates captured state between calls.
-    let mut count = 0;
-    let mut tick = || { count += 1; count };
-    assert_eq!(tick(), 1);
-    assert_eq!(tick(), 2);
-
-    // FnOnce: moves a captured value out, so it can only be called once.
-    let name = String::from("rust");
-    let consume = move || name;        // takes ownership of `name`
-    let owned: String = consume();     // calling it a second time would not compile
-    assert_eq!(owned, "rust");
-}
-```
-
-- **`move` is the bridge to concurrency**: `thread::spawn` and `tokio::spawn` require the closure to own everything it touches (the spawning frame may be long gone), which is why those closures are almost always `move`.
-- **Returning closures** needs `impl Fn` for the static, monomorphized case (no allocation) or `Box<dyn Fn>` when you need to store closures of different shapes in one collection — the same static-vs-dynamic tradeoff from 1.1.
-
-The point that ties Phase 1 together: closures are just structs the compiler writes for you, holding the captured variables as fields and implementing one of the `Fn` traits. Seeing them that way demystifies both the move semantics (it's field ownership) and why an async block — which is also a compiler-generated struct holding its captured state — needs the exact same reasoning about `Send` and `'static` when you `spawn` it.
+Interior mutability does not repeal "shared XOR mutable" — it **relocates the check**. `RefCell` enforces the borrow rules at runtime (and a violation is a *panic*, which is the trade you accepted); `Mutex` enforces them by making violators wait; `Cell` enforces them by never handing out a reference at all (you can only copy values in and out, which is also why it's zero-cost). Two production notes that separate journeyman from senior usage: a `Mutex` poisoned by a panicking thread returns `Err` from `lock()` forever after — decide a policy (`.unwrap()` to propagate the panic is usually right; `.lock().unwrap_or_else(|e| e.into_inner())` to shrug is sometimes right) instead of discovering the question in production; and `RefCell` in a struct is a design smell *exactly when* the struct is also `Send`-adjacent — it's the single most common reason a type mysteriously stops being `Sync` (Part 4 explains why).
 
 ---
 
-## Phase 2: Concurrency
+## Part 4 — Threads, Send/Sync, and Data Parallelism
 
-### 2.1 Fearless Concurrency: `Send` and `Sync`
+### 4.1 `Send` and `Sync`: the whole safety claim in two traits
 
-- **What it is**: The two marker traits that make Rust's concurrency safety claims real. **`Send`** = safe to *move* to another thread; **`Sync`** = safe to *share* (`&T`) across threads. They are **auto traits**: the compiler derives them structurally, so a type is `Send`/`Sync` iff all its fields are; docs: [`Send`/`Sync`](https://doc.rust-lang.org/nomicon/send-and-sync.html).
-- **Why it matters**: "Fearless concurrency" is not a slogan — it's these two traits plus the borrow checker. Data races become *type errors*. `Rc<T>` is deliberately **not** `Send` (its refcount isn't atomic), so the moment you try to move one into a thread, the compiler stops you and points you at `Arc`.
-- **Threads can borrow local data** with scoped threads (stable since 1.63), which join before the scope ends — no `'static`, no `Arc` needed:
+Rust's "fearless concurrency" is not a slogan; it is two **auto traits** plus the borrow checker. [`Send`](https://doc.rust-lang.org/nomicon/send-and-sync.html) means *safe to move to another thread*; `Sync` means *safe to share by reference across threads* (`T: Sync` ⟺ `&T: Send`). The compiler derives both **structurally**: a type is `Send`/`Sync` iff all its fields are. No annotations, no registry — your design either composes from thread-safe parts or it doesn't, and the answer is computed, not declared.
+
+This is the mechanism that turns data races into *type errors*. `Rc<T>` is deliberately not `Send` — its refcount is non-atomic, so moving one across threads would race the count itself — and the moment you try, the compiler stops you and (in so many words) tells you to use `Arc`. A `RefCell<T>` is `Send` but not `Sync` — its runtime borrow flag isn't atomic either — which is why it's fine inside one task and rejected the moment a reference would cross threads, with `Mutex` as the prescribed upgrade. Read those rejections as **design feedback with a fix attached**: a struct that "suddenly isn't `Send`" has a stray `Rc`, a raw pointer, or a `RefCell` where a `Mutex` belongs, and the error message names the field.
+
+The two traits are also *contagious in the useful direction*: they flow through your whole composition automatically (an `Arc<Mutex<HashMap<K, V>>>` is `Send + Sync` because every layer is), and the rare cases where you implement them *by hand* — wrapping a raw pointer you know to be thread-safe — are `unsafe impl`s precisely because you're asserting what the compiler can't verify (Part 8.4).
+
+### 4.2 Threads that borrow: `thread::scope`
+
+The classic friction — `thread::spawn` needs `'static`, so threads can't borrow locals — has a stable, ergonomic answer since 1.63: [**scoped threads**](https://doc.rust-lang.org/std/thread/fn.scope.html). The scope guarantees every spawned thread joins before the scope returns, which is exactly the proof the borrow checker needs to allow borrows of the enclosing frame:
 
 ```rust
 use std::thread;
@@ -158,21 +277,18 @@ use std::thread;
 let mut data = vec![1, 2, 3];
 
 thread::scope(|s| {
-    s.spawn(|| println!("read borrow: {:?}", &data));   // borrow local data directly
-    s.spawn(|| println!("len = {}", data.len()));
-});                                                      // all scoped threads joined HERE
+    s.spawn(|| println!("read borrow: {:?}", &data));   // borrows local data directly
+    s.spawn(|| println!("len = {}", data.len()));       // multiple shared borrows: fine
+});                                                      // ← all scoped threads joined HERE
 
-data.push(4);                                            // safe: the borrows have ended
+data.push(4);                                            // borrows ended; mutation OK again
 ```
 
-- You almost never `impl Send`/`Sync` by hand; the few times you do (wrapping a raw pointer in a sound abstraction) require `unsafe` because you're asserting a property the compiler can't verify.
+This is the same "structure guarantees lifetime" move you'll meet again in async structured concurrency (Part 7), and it should be your default for fork-join work on borrowed data — reaching for `Arc` to share something that a scope could simply borrow is a tell that the tool ordering is off.
 
-The non-obvious lesson is that `Send`/`Sync` are *contagious and free*. You get them automatically when your design is sound, and you lose them automatically when it isn't. A struct that suddenly "isn't `Send`" is a design signal — usually a stray `Rc`, a raw pointer, or a `RefCell` where a `Mutex` belongs.
+### 4.3 Channels vs. shared state
 
-### 2.2 Message Passing vs Shared State
-
-- **What it is**: The two coordination styles. Rust supports both, but channels ("do not communicate by sharing memory; share memory by communicating") often produce cleaner designs; docs: [`std::sync::mpsc`](https://doc.rust-lang.org/std/sync/mpsc/).
-- **Channels** move ownership between threads, so there's nothing to lock:
+Rust supports both coordination styles and is opinionated about neither, but the design pressure is real: **channels move ownership, so there is nothing to lock and no lock order to get wrong**. A pipeline of stages connected by channels cannot deadlock the way two mutexes acquired in different orders can — the hardest classical concurrency bug class is structurally absent.
 
 ```rust
 use std::sync::mpsc;
@@ -183,24 +299,72 @@ let (tx, rx) = mpsc::channel();
 for id in 0..3 {
     let tx = tx.clone();                    // multiple producers
     thread::spawn(move || {
-        tx.send(format!("hello from {id}")).unwrap();
+        tx.send(format!("hello from {id}")).unwrap();   // send = transfer ownership
     });
 }
-drop(tx);                                   // drop the last sender so rx ends
+drop(tx);                                   // last sender gone ⇒ the iterator below ends
 
-for msg in rx {                             // iterates until all senders are gone
+for msg in rx {                             // blocks until a message or all senders dropped
     println!("{msg}");
 }
 ```
 
-- **Use shared state (`Arc<Mutex>`)** when many workers genuinely operate on one structure (a cache, a connection pool); **use channels** when you can model the work as a pipeline of owned messages. The latter scales better and deadlocks less.
+The honest decision rule: **channels when the work decomposes into a flow of owned messages** (pipelines, work queues, event streams — most services); **shared state (`Arc<Mutex>`) when many workers genuinely converge on one structure** (a cache, a connection pool, a metrics registry). And a practical upgrade note: the std [`mpsc`](https://doc.rust-lang.org/std/sync/mpsc/) channel is fine, but the ecosystem standard is [`crossbeam-channel`](https://docs.rs/crossbeam-channel/) — faster, multi-consumer, and with a `select!` over multiple channels that std lacks; for bounded async channels see Part 7.
 
-The subtle win of message passing is that it sidesteps the hardest part of locks — *lock ordering*. A pipeline of channels has no ordering to get wrong, which is why it's the default for most concurrent Rust services until a profiler says otherwise.
+### 4.4 Data parallelism: Rayon
 
-### 2.3 Atomics and Lock-Free Programming
+Whole category, one crate: when the problem is "do this CPU-bound thing to a million items," the answer is not hand-rolled threads or async — it's [**Rayon**](https://docs.rs/rayon/), the work-stealing data-parallelism library. Its headline API is almost insultingly small: change `.iter()` to `.par_iter()` and the iterator chain runs across all cores, with Rayon's scheduler splitting the work adaptively and the type system (those same `Send`/`Sync` bounds) guaranteeing the closure is race-free:
 
-- **What it is**: The lowest level — `AtomicUsize`, `AtomicBool`, and friends, mutated with an explicit **memory `Ordering`** instead of a lock; docs: [`std::sync::atomic`](https://doc.rust-lang.org/std/sync/atomic/).
-- **The orderings**, from weakest to strongest: `Relaxed` (atomicity only, no ordering between other variables), `Acquire`/`Release` (pair up to establish happens-before across a lock/handoff), and `SeqCst` (a single global order — safe default, but the slowest). A plain counter needs only `Relaxed`:
+```rust
+use rayon::prelude::*;
+
+let total: u64 = (0..10_000_000u64)
+    .into_par_iter()
+    .map(|n| expensive_hash(n))
+    .sum();                                  // all cores, no unsafe, no locks
+```
+
+What makes this safe where the equivalent OpenMP pragma is a prayer: the closure must be `Send + Sync`-compatible, captured borrows are checked, and any attempt to mutate shared state without synchronization simply doesn't compile. The mental sorting that should become reflex — and that Part 7 will sharpen from the other side: **Rayon for CPU-bound parallelism, async for I/O-bound concurrency.** They compose (a Tokio service handing image-resize work to a Rayon pool via `spawn_blocking`), but using either for the other's job produces the two classic performance bug reports: "async made my number crunching slower" and "my web server has 10,000 threads."
+
+---
+
+## Part 5 — Atomics and the Memory Model
+
+The lowest level of the concurrency stack: lock-free primitives and the memory-ordering model that governs them. The essential reference for this entire part is Mara Bos's [*Rust Atomics and Locks*](https://marabos.nl/atomics/) — free online, and the rare book that makes orderings genuinely click.
+
+### 5.1 The uncomfortable truth orderings encode
+
+Modern hardware does not present memory as one coherent array that all cores see identically. Stores buffer, caches negotiate, compilers reorder — and *single-threaded* code never notices, because every reordering preserves single-threaded meaning. The moment two threads communicate through memory, "what happened before what" becomes a question with no default answer, and the [`Ordering`](https://doc.rust-lang.org/std/sync/atomic/enum.Ordering.html) you pass to every atomic operation is how you buy exactly as much ordering as you need:
+
+- **`Relaxed`** — the operation is atomic (no torn reads, no lost updates), and *nothing else*: no ordering relationship with any other memory access. Correct for self-contained values — counters, statistics, IDs.
+- **`Acquire` / `Release`** — the handshake. A `Release` store publishes; an `Acquire` load that sees that store *also sees everything the storing thread did before it*. This pair is how every lock, channel, and `Arc` actually works underneath.
+- **`SeqCst`** — acquire/release plus one single global order over all `SeqCst` operations. The safe-by-default choice, the slowest, and — the expert consensus — usually a sign the author didn't identify which weaker guarantee they needed. Use it when you genuinely need a total order (rare), not as a talisman.
+
+The acquire/release handshake deserves the canonical demonstration, because once you can narrate this example you understand every lock you'll ever use:
+
+```rust
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread;
+
+static READY: AtomicBool = AtomicBool::new(false);
+static mut DATA: u64 = 0;                    // the payload being published
+
+fn main() {
+    thread::spawn(|| {
+        unsafe { DATA = 42 };                 // (1) write the data...
+        READY.store(true, Ordering::Release); // (2) ...then publish the flag.
+    });
+
+    while !READY.load(Ordering::Acquire) {}  // (3) spin until the flag is seen
+    println!("{}", unsafe { DATA });         // (4) GUARANTEED to print 42
+}
+```
+
+The `Release`/`Acquire` pair is what makes step (4) sound: it forbids the hardware and compiler from reordering (1) after (2), or (4) before (3). Make both orderings `Relaxed` and this program is **undefined behavior** — the reader can legally observe `READY == true` while seeing the *old* `DATA`, because you never asked for the data write to be ordered with the flag. Every "works on my machine, corrupts on the ARM server" story at this level is a missing or mismatched half of this handshake — x86's strong hardware ordering masks the bug; weaker architectures execute the freedom you accidentally granted.
+
+### 5.2 Compare-and-swap: the lock-free building block
+
+A `Relaxed` counter is the easy case:
 
 ```rust
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -219,7 +383,7 @@ for h in handles { h.join().unwrap(); }
 assert_eq!(hits.load(Ordering::Relaxed), 10);
 ```
 
-- **Compare-and-swap loops** are how you build lock-free updates. Read, compute, and try to swap; if someone beat you, retry with their value:
+Anything cleverer than `fetch_add` is built from the **compare-and-swap loop**: read the current value, compute the desired one, attempt to install it *conditional on nobody having changed it*, and retry on failure with the fresh value:
 
 ```rust
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -232,32 +396,38 @@ fn store_max(slot: &AtomicUsize, candidate: usize) {
             current, candidate, Ordering::Release, Ordering::Relaxed,
         ) {
             Ok(_) => break,                  // we won the race
-            Err(actual) => current = actual, // lost; retry against the new value
+            Err(actual) => current = actual, // lost it; retry against the new value
         }
     }
 }
 ```
 
-- **Honest guidance**: reach for atomics for counters, flags, and the occasional lock-free hot path — and reach for a `Mutex` for everything else. Hand-rolled lock-free data structures are genuinely hard (the ABA problem, reclamation); when you need them, use a vetted crate like `crossbeam` rather than rolling your own.
+(`compare_exchange_weak` may fail spuriously on some architectures in exchange for being cheaper in a loop — in a retry loop you were handling failure anyway, so prefer it there.)
 
-The thing the orderings teach, once they click, is that "memory" on a modern CPU is not a single coherent array — it's a negotiated view across cores. `Acquire`/`Release` is how you draw a line that says "everything before this publish is visible after that consume." Most concurrency bugs at this level are missing or mismatched fences, not logic errors.
+### 5.3 Where the honest line sits
+
+Atomics are the right tool for **counters, flags, sequence numbers, and the occasional published pointer** ([`arc-swap`](https://docs.rs/arc-swap/) packages the read-mostly-config case properly). Full lock-free *data structures* are a different sport: the ABA problem (the value you compare against was changed and changed *back* — your CAS succeeds, your invariant doesn't), memory reclamation (when may a removed node be freed, given lock-free readers may still hold it — the problem epoch-based schemes in [`crossbeam-epoch`](https://docs.rs/crossbeam-epoch/) exist to solve), and orderings interacting across multiple locations. The senior move is almost always a vetted crate — [`crossbeam`](https://docs.rs/crossbeam/)'s queues and deques, `arc-swap`, a sharded counter — and a `Mutex` for everything that profiling hasn't proven hot. An uncontended `Mutex` lock is ~20 nanoseconds; the bar for "the lock is the bottleneck" is higher than intuition suggests, and Part 10's tools tell you whether you've cleared it. When you *do* write lock-free code, Part 11's `loom` is how you test it against every legal interleaving rather than the ones your laptop happened to schedule.
 
 ---
 
-## Phase 3: Async Rust
+## Part 6 — Async I: The Model
 
-### 3.1 The `Future` Trait and the Async Model
+Async Rust earns its reputation in this part and loses it in the next: the *model* is small and rigorous; the *ecosystem reality* is conventions layered on it. Learn the model first and the conventions become predictable.
 
-- **What it is**: `async`/`await` is sugar. An `async fn` compiles into a **state machine** that implements the `Future` trait; awaiting it advances the machine. Crucially, **futures are lazy** — an `async` block does nothing until something polls it; docs: [Async Book](https://rust-lang.github.io/async-book/), [`Future`](https://doc.rust-lang.org/std/future/trait.Future.html).
-- **The trait** is small. `poll` returns `Ready(value)` or `Pending`; when `Pending`, the future has stashed the `Waker` from the `Context` so it can notify the executor when it can make progress:
+### 6.1 Futures are state machines, and they are lazy
+
+`async`/`await` is sugar over one small trait ([`Future`](https://doc.rust-lang.org/std/future/trait.Future.html)). An `async fn` compiles into an anonymous struct — a **state machine** whose states are "between which `.await`s am I," holding whatever locals are alive across each await — and `await`ing it advances the machine. Two consequences define everything downstream.
+
+**Futures do nothing until polled.** `async fn` desugars to `fn(...) -> impl Future<Output = ...>`: calling it constructs the state machine and returns instantly; the body has not begun. Python's coroutines behave similarly, but Rust's laziness is total — no executor sees your future until you `.await` it or `spawn` it, which is why "I called the async function and nothing happened" is the first async bug everyone files against themselves.
+
+**The contract is `poll`, `Pending`, and the `Waker`.** An executor drives a future by calling `poll`; the future either completes (`Ready(value)`) or — having arranged for the [`Waker`](https://doc.rust-lang.org/std/task/struct.Waker.html) in the `Context` to be invoked when progress becomes possible — parks itself (`Pending`). The waker is the entire notification system: I/O readiness, timer expiry, a channel receiving a message — all of them end in "call the waker, so the executor re-polls the task."
 
 ```rust
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
-// Yields control to the executor exactly once, then completes.
-// This is the whole async model in miniature: Pending + a wake, then Ready.
+// The whole async model in miniature: yield once (Pending + wake), then complete.
 struct YieldNow(bool);
 
 impl Future for YieldNow {
@@ -267,36 +437,33 @@ impl Future for YieldNow {
             Poll::Ready(())
         } else {
             self.0 = true;
-            cx.waker().wake_by_ref();     // "poll me again" — without this we'd hang forever
+            cx.waker().wake_by_ref();     // "poll me again" — omit this and we hang forever
             Poll::Pending
         }
     }
 }
 ```
 
-- **The model is cooperative**: a task runs until it hits a `Pending` (an `.await` that isn't ready), then *yields* the thread back to the executor. This is why a blocking call or a long CPU loop inside async code is poison — it never yields, starving every other task on that thread.
-- **`async fn` desugars** to `fn(...) -> impl Future<Output = ...>`. That's why an async function returns instantly with a future and why the body doesn't run until awaited.
+From the contract, the scheduling model: **cooperative**. A task runs from one `poll` until it returns — it yields *only* at `.await` points that come up `Pending`. A blocking syscall or a long CPU loop inside async code never yields, and on a runtime multiplexing thousands of tasks over a handful of threads, one such task starves the rest. This is the async cardinal sin, and Part 7 gives it the full treatment because production incident reports give it one monthly.
 
-The insight worth internalizing: Rust async has **no built-in runtime**. The language gives you the `Future` trait and `await`; an executor (Tokio) supplies the thread pool, the timer, and the I/O reactor that actually polls your futures and responds to wakers. Python's `asyncio` bundles all of that; Rust deliberately unbundles it, which is why you pick a runtime.
+The last structural fact: **Rust ships no runtime.** The language defines `Future` and the awaiting machinery; *executors* (Tokio, and alternatives like [smol](https://docs.rs/smol/)) supply the scheduler, timers, and I/O reactor. Python bundles `asyncio`; Rust unbundles deliberately — embedded targets run futures on bare-metal executors with no OS, while servers run work-stealing thread pools, all against one trait. The cost of that generality is the next section.
 
-### 3.2 `Pin` and `Unpin`
+### 6.2 `Pin`: the self-reference problem, solved by promise
 
-- **What it is**: The mechanism that makes self-referential futures safe. A state machine generated from `async` can hold a reference into its own data (a borrow held across an `.await`). If that future were *moved*, the internal pointer would dangle — so such futures must not move once polled. `Pin<P>` is the type-level promise "this won't move"; docs: [`Pin`](https://doc.rust-lang.org/std/pin/).
-- **`Unpin`** is the auto trait for types that *don't care* about being moved (almost everything — `i32`, `String`, `Vec`). For `Unpin` types, `Pin` is a no-op you can ignore. Pinning only bites for the compiler-generated futures and hand-written self-referential types.
-- **You rarely write `Pin` by hand**; you pin a future to the stack to poll it, or you use the `pin!` macro:
+Part 2.5 established the wall: safe Rust forbids self-referential structs because every value must survive being moved by `memcpy`. Now watch async run straight into it — *any borrow held across an `.await` is a self-reference*:
 
 ```rust
-use std::pin::pin;
-
-async fn run() {
-    let fut = async { 1 + 1 };
-    let mut fut = pin!(fut);     // pin to the stack so a manual poll loop can drive it in place
-    // ... a custom executor would now call fut.as_mut().poll(cx) repeatedly
-    let _ = fut;
+async fn example() {
+    let data = vec![1u8, 2, 3];
+    let view = &data[1..];              // borrows data...
+    something().await;                  // ...and is alive ACROSS this await
+    println!("{view:?}");
 }
 ```
 
-- **For structs that wrap futures**, the `pin-project` crate generates safe pinned access to fields, distinguishing structurally-pinned fields from freely-movable ones:
+Both `data` and `view` must be stored in the state machine while it's suspended — making it a struct containing a pointer into itself. Move that struct after polling begins and `view` dangles. The language's answer is not to forbid such futures (they're the *common case*) but to make immobility a typed promise: [`Pin<P>`](https://doc.rust-lang.org/std/pin/) wraps a pointer and guarantees the pointee **will never move again**. Executors only ever poll through `Pin<&mut F>`, so by the time a future can possibly become self-referential, the type system has already extracted the no-move promise.
+
+What keeps `Pin` from infecting all your code is its escape valve: [`Unpin`](https://doc.rust-lang.org/std/marker/trait.Unpin.html), an auto trait marking types that *don't care* about moving — which is almost every type you'll ever write (`i32`, `String`, your structs). For `Unpin` types, `Pin` is a transparent no-op. The only types that are `!Unpin` in practice are the compiler-generated futures themselves and deliberately self-referential unsafe constructions. So the working rules are short: you'll *consume* `Pin` (the `pin!` macro to poll a future in place; `Box::pin` to heap-pin one you need to store or send), and you'll *produce* pinned access only when writing future combinators — where [`pin-project`](https://docs.rs/pin-project/) generates the safe field-projection boilerplate, distinguishing structurally-pinned fields from movable ones:
 
 ```rust
 use pin_project::pin_project;
@@ -304,17 +471,26 @@ use std::time::Instant;
 
 #[pin_project]
 struct Timed<F> {
-    #[pin] future: F,    // structurally pinned: pinning Self pins this field
-    started: Instant,    // not pinned: an ordinary movable field
+    #[pin] future: F,    // structurally pinned: pinning Timed pins this field
+    started: Instant,    // ordinary field: freely movable even when Timed is pinned
 }
 ```
 
-The reason `Pin` feels alien is that it solves a problem most languages never expose you to: in a GC'd language, objects never move and self-reference is free; in C, you simply promise not to move things and hope. Rust makes the promise *checkable*, and `Pin` is the type that carries it. You mostly consume it (via Tokio) rather than produce it.
+Why `Pin` feels alien is worth saying out loud: it solves a problem most languages never surface. In a GC'd language objects never move (or the GC fixes pointers up), so self-reference is free; in C you simply promise not to move things, unverified. Rust is the language that makes the promise *checkable* — `Pin` is ownership-thinking applied to *location*, the same invariants-in-types move as everything else in this guide.
 
-### 3.3 The Tokio Runtime
+### 6.3 Reading async signatures like a professional
 
-- **What it is**: The de-facto async runtime — an executor (multi-threaded, work-stealing scheduler), a reactor (epoll/kqueue/IOCP via `mio`), and a timer wheel; docs: [Tokio](https://tokio.rs/), [Tokio tutorial](https://tokio.rs/tokio/tutorial).
-- **`#[tokio::main]`** sets up the runtime and blocks on your async `main`. `tokio::spawn` hands a future to the scheduler as a concurrent **task** (a green thread), returning a `JoinHandle`:
+Assemble Parts 1, 2, and 6, and async type errors become legible. An `async` block is a compiler-generated struct capturing its environment (closure rules, 1.5). It is `Send` iff everything held across its awaits is `Send` (auto-trait structural rule, 4.1) — *held across awaits*, not merely used: a non-`Send` value created and dropped between awaits is fine. It satisfies `'static` iff it captures no borrows (2.2) — hence `move` blocks and cloned `Arc`s before a `spawn`. The notorious error — *"future cannot be sent between threads safely"* with three screens of types — is the compiler walking that structural derivation and showing you the path; the actionable line is the one naming **which value** is `!Send` and **which await** it lives across. The fix is almost always one of three: scope the value to end before the await, replace it with a `Send` equivalent (`Rc` → `Arc`, `RefCell` → `Mutex`), or — when the task genuinely needn't move threads — run it on a `LocalSet` (Part 7.6).
+
+---
+
+## Part 7 — Async II: Tokio in Production
+
+[Tokio](https://tokio.rs/) is the de-facto runtime: a multi-threaded, work-stealing **executor**, an I/O **reactor** wired to `epoll`/`kqueue`/IOCP via [`mio`](https://docs.rs/mio/), and a hierarchical timer wheel — plus the [`tokio::sync`](https://docs.rs/tokio/latest/tokio/sync/) toolbox and the ecosystem standard position. This part is the working knowledge: what the runtime actually does, and the five disciplines that separate services that stay up from services that mysteriously stall.
+
+### 7.1 The runtime's anatomy, briefly but honestly
+
+`#[tokio::main]` builds a runtime (one worker thread per core by default) and blocks on your async `main`. `tokio::spawn` hands a future to the scheduler as a **task** — the async analog of a green thread, ~hundreds of bytes of overhead rather than a thread's megabytes, which is the entire reason async exists: a thread-per-connection server tops out where an async one is warming up. Each worker runs tasks from its local queue and **steals** from siblings when idle, so load balances without your involvement; the reactor thread(s) sleep in `epoll_wait`, translating OS readiness events into waker calls (Part 6.1's contract, operationalized); expired timers do the same. Two scheduler facts with operational consequences: spawned tasks require **`Send + 'static`** (any worker may run the task, at any time — Part 6.3's checklist), and Tokio implements **cooperative budgeting** (a task that keeps polling ready resources is forced to yield every ~128 operations, so a hot connection can't monopolize a worker — but this only helps between `.await`s; it cannot rescue you from blocking, which is the next section).
 
 ```rust
 use tokio::time::{sleep, Duration};
@@ -325,27 +501,27 @@ async fn main() {
     let a = tokio::spawn(async { sleep(Duration::from_millis(50)).await; 1 });
     let b = tokio::spawn(async { sleep(Duration::from_millis(30)).await; 2 });
 
-    let total = a.await.unwrap() + b.await.unwrap();   // ~50ms total, not 80ms
+    let total = a.await.unwrap() + b.await.unwrap();   // ~50ms total, not 80
     println!("{total}");
 }
 ```
 
-- **The cardinal rule: never block the executor.** A multi-threaded runtime has a small pool (one thread per core by default), and a blocking call parks one of those threads. Offload blocking or CPU-heavy work to a dedicated pool:
+### 7.2 Discipline #1: never block the executor
+
+The cardinal rule, with its reasons now visible: workers are few and tasks are many, so a worker thread parked in a blocking syscall or grinding a CPU loop removes 1/Nth of your entire service's capacity until it returns. The symptoms are characteristic — latency cliffs under load, timers firing late, health checks timing out while CPU sits idle — and the offending call is usually innocent-looking: `std::fs` anything, a synchronous database client, `reqwest::blocking`, a CPU-heavy serde of a 50 MB payload, even a surprisingly contended `std::sync::Mutex`.
+
+The prescribed escape hatches, in order: [`tokio::task::spawn_blocking`](https://docs.rs/tokio/latest/tokio/task/fn.spawn_blocking.html) ships the closure to a dedicated, elastic blocking pool (default cap 512 threads) and returns a future for its result — correct for file I/O, sync clients, and *bounded* CPU bursts; **Rayon** (Part 4.4) for sustained data-parallel compute, bridged back via a oneshot channel; and `block_in_place` as the narrow expert tool (it converts the *current* worker to a blocking thread, stealing its queue first — fewer copies, more sharp edges). For finding violations rather than guessing: `tokio-console` (7.7) flags tasks with pathological poll times, and a `current_thread` test runtime makes blocking hangs reproduce deterministically.
 
 ```rust
-// Blocking file read or heavy compute belongs on the blocking pool, not the async pool.
+// Blocking work belongs on the blocking pool, not the async workers.
 let contents = tokio::task::spawn_blocking(|| std::fs::read("big.bin"))
     .await
-    .unwrap();
+    .expect("blocking task panicked")?;
 ```
 
-- **`spawn` requires `'static + Send`** futures, because the scheduler may run them on any worker thread at any time. This is where the famous "future cannot be sent between threads safely" error comes from — usually a non-`Send` value (an `Rc`, a `RefCell` guard) held across an `.await`.
+### 7.3 Discipline #2: cancellation is everywhere, design for it
 
-What the API hides is how much the runtime is doing: parking idle worker threads, stealing tasks from busy ones, multiplexing thousands of sockets onto one `epoll` call, and firing timers — all so your code can read like straight-line `await`s. Understanding that there's a scheduler underneath is what lets you reason about fairness, starvation, and why `spawn_blocking` exists.
-
-### 3.4 Async Patterns and Pitfalls
-
-- **`join!` vs `select!`** are the core combinators. `join!` waits for *all* futures; `select!` races them and takes the first to finish, **dropping the losers** — and in async Rust, **drop means cancel**:
+The combinators first, because they're where cancellation enters. [`join!`](https://docs.rs/tokio/latest/tokio/macro.join.html) runs futures concurrently and waits for **all**; [`select!`](https://docs.rs/tokio/latest/tokio/macro.select.html) races them and takes the **first** — *dropping the losers*. And in async Rust, **drop means cancel**: a dropped future simply never gets polled again, evaporating at whatever `.await` it last parked on.
 
 ```rust
 use tokio::time::{sleep, Duration};
@@ -356,13 +532,16 @@ async fn main() {
 
     tokio::select! {
         res = work => println!("finished: {res}"),
-        _ = sleep(Duration::from_secs(1)) => println!("timed out"),  // wins; `work` is dropped
+        _ = sleep(Duration::from_secs(1)) => println!("timed out"),  // wins; `work` is DROPPED
     }
 }
 ```
 
-- **Cancellation is implicit and pervasive**: dropping a future stops it at its last `.await`. This is powerful (timeouts are trivial) and sharp (a future cancelled mid-update can leave state half-written). Code that must not be interrupted at an await point needs to be **cancellation-safe** — a property you design for, not assume.
-- **Structured concurrency** via `JoinSet` lets you spawn a dynamic group and collect results as they finish, with clean shutdown:
+This design is why timeouts in Rust are one line ([`tokio::time::timeout`](https://docs.rs/tokio/latest/tokio/time/fn.timeout.html) is just this pattern packaged) and also why **cancellation safety** is a first-class engineering property with no equivalent in most languages. A future cancelled between "removed the message from the internal buffer" and "returned it to the caller" has *lost the message* — and `select!` in a loop creates exactly that window every iteration. The Tokio docs mark each API's cancel-safety: `mpsc::Receiver::recv` is cancel-safe (a message is either delivered or still queued — nothing is lost by dropping the future mid-wait); `tokio::io::AsyncReadExt::read_exact` is *not* (partially read bytes are gone). The working rules: in every `select!` arm, ask "if this future is dropped *right now*, what state is half-mutated?"; prefer cancel-safe primitives in select loops; and for must-complete sequences, either spawn them as their own task (spawned tasks aren't cancelled by a `select!` — only their `JoinHandle` is) or guard cleanup in a `Drop` impl. Treat every `.await` in cancellable code as a possible last line of the function, because it is.
+
+### 7.4 Discipline #3: structured concurrency over loose spawns
+
+`spawn` is cheap, and unbounded spawning is how services die slowly: every "fire and forget" task is memory, scheduler pressure, and — worse — an untracked failure domain whose panics vanish into a `JoinHandle` nobody awaits. The structured tools: [`JoinSet`](https://docs.rs/tokio/latest/tokio/task/struct.JoinSet.html) owns a dynamic group of tasks, yields results as they complete, and **aborts all members when dropped** (the async sibling of `thread::scope`'s guarantee):
 
 ```rust
 use tokio::task::JoinSet;
@@ -375,81 +554,73 @@ async fn main() {
     }
     let mut sum = 0;
     while let Some(res) = set.join_next().await {
-        sum += res.unwrap();          // arrive as they complete, not in spawn order
+        sum += res.expect("task panicked");     // completion order, not spawn order
     }
-    println!("{sum}");                // 30
+    println!("{sum}");                          // 30
 }
 ```
 
-- **`async fn` in traits** stabilized in 1.75 for many cases; for object-safe (`dyn`) async traits or public APIs you'll still meet the `#[async_trait]` crate. The recurring friction is the **`Send` bound**: futures crossing `spawn` must be `Send`, which ripples through trait definitions as `+ Send` requirements.
-- **Streams** are the async analog of iterators — `next().await` in a loop, via `tokio-stream` / `futures`:
+— while a [`Semaphore`](https://docs.rs/tokio/latest/tokio/sync/struct.Semaphore.html) caps concurrency ("at most 64 in-flight upstream calls": acquire a permit before, drop it after), and `FuturesUnordered`/[`StreamExt::buffer_unordered`](https://docs.rs/futures/latest/futures/stream/trait.StreamExt.html#method.buffer_unordered) handle the "N-at-a-time over a big list" shape *within* one task. The decision smell to internalize: if you can't answer "who awaits this task, and what happens when it fails?", the spawn is unstructured and will eventually page someone.
 
-```rust
-use tokio_stream::StreamExt;
+### 7.5 Channels, locks, and the one footgun everyone fires
 
-#[tokio::main]
-async fn main() {
-    let mut stream = tokio_stream::iter(vec![1, 2, 3]);
-    while let Some(n) = stream.next().await {
-        println!("{n}");
-    }
-}
-```
+[`tokio::sync`](https://docs.rs/tokio/latest/tokio/sync/) gives you the async-aware coordination set, and channel selection is a vocabulary question: **`mpsc`** (bounded work queues — the default), **`oneshot`** (single request/response handoff, the reply-envelope of actor-ish designs), **`watch`** (latest-value broadcast — config reloads, shutdown signals), **`broadcast`** (fan-out to many subscribers, with lagging receivers handled by ring-buffer eviction). All the useful ones are *bounded*, which is Part 13's backpressure story showing up early: a bounded channel makes a slow consumer slow the producers down — the truthful behavior — where an unbounded one converts the same situation into an OOM kill an hour later.
 
-The hardest-won lesson here is that **cancellation safety is a first-class design concern** in async Rust, with no equivalent in most languages. Every `.await` inside a `select!` branch is a point where your function might simply stop and be discarded. Robust services treat each await as a potential exit and keep invariants intact across them.
-
-### 3.5 Shared State in Async
-
-- **What it is**: The async-aware synchronization primitives in `tokio::sync` — `Mutex`, `RwLock`, plus the channels `mpsc`, `oneshot`, `watch`, and `broadcast`; docs: [`tokio::sync`](https://docs.rs/tokio/latest/tokio/sync/).
-- **The #1 async footgun: holding a `std::sync::Mutex` guard across an `.await`.** The guard isn't `Send`, so the task can't be scheduled — and even if it compiled, you'd risk deadlock by holding a lock while suspended. Scope the guard, or use `tokio::sync::Mutex`:
+The footgun: **holding a `std::sync::Mutex` guard across an `.await`**.
 
 ```rust
 use std::sync::Mutex;
 
-// ❌ Wrong: the std guard is alive across the await point.
+// ❌ The guard lives across the await: the future is no longer Send (compile error
+// when spawned) — and conceptually you'd be holding a blocking lock while suspended
+// for an unbounded time, inviting deadlock.
 async fn bad(state: &Mutex<Vec<u8>>, client: &Client) {
     let mut g = state.lock().unwrap();
     g.push(1);
-    client.fetch().await;        // guard still held — not Send, blocks the runtime
+    client.fetch().await;
     g.push(2);
 }
 
-// ✅ Right: release the lock before awaiting; re-acquire after.
+// ✅ Scope the guard so it drops before the await; re-acquire after.
 async fn good(state: &Mutex<Vec<u8>>, client: &Client) {
-    { state.lock().unwrap().push(1); }   // guard dropped at the brace
+    { state.lock().unwrap().push(1); }
     client.fetch().await;
     { state.lock().unwrap().push(2); }
 }
 ```
 
-- **Pick the right channel**: `mpsc` for work queues (many producers, one consumer), `oneshot` for a single request/response handoff, `watch` for "latest value" broadcast (config reloads), and `broadcast` for fan-out to many subscribers.
-- **Use `tokio::sync::Mutex` only when you must hold a lock across an await.** Otherwise prefer a short `std::sync::Mutex` critical section — it's faster and the scoped pattern above keeps it correct.
+The compiler usually catches this (the guard is `!Send`, so the spawned future is too — Part 6.3's derivation working in your favor), and the *fix hierarchy* matters: first, restructure so the lock isn't held across the await (almost always possible, fastest); second, [`tokio::sync::Mutex`](https://docs.rs/tokio/latest/tokio/sync/struct.Mutex.html) — whose guard *is* designed to be held across awaits — accepting that it's slower and that long hold times now block tasks instead of threads; third, reconsider whether the shared state should be a channel-owned actor instead. The underlying principle: **a lock assumes a bounded critical section; an await is unbounded**. Designs that minimize their overlap are the designs that don't deadlock at 4 a.m.
 
-The principle underneath all of it: **locks and await don't mix well**, because a lock assumes bounded hold time and an await is unbounded. The cleanest async designs minimize shared mutable state entirely, moving data through channels so each piece has a single owner at a time.
+### 7.6 The rest of the working surface
+
+**Streams** — async iterators ([`tokio-stream`](https://docs.rs/tokio-stream/), the `futures` crate's [`StreamExt`](https://docs.rs/futures/latest/futures/stream/trait.StreamExt.html)) — `while let Some(x) = stream.next().await` plus combinators, with `buffer_unordered` as the workhorse for bounded concurrent fan-out over a stream of jobs. **Async traits**: native `async fn` in traits landed in 1.75; the remaining seam is dyn-compatibility and the `Send` bound on returned futures, which is why public interfaces still often use [`#[async_trait]`](https://docs.rs/async-trait/) or explicit `-> impl Future + Send` ([the 1.75 announcement](https://blog.rust-lang.org/2023/12/21/async-fn-rpit-in-traits.html) explains the trade space). **`!Send` work**: [`LocalSet`](https://docs.rs/tokio/latest/tokio/task/struct.LocalSet.html) runs tasks pinned to one thread, the sanctioned home for `Rc`-laden code; and `flavor = "current_thread"` builds a single-threaded runtime outright — the right choice for CLIs and tests more often than people expect. **Async drop doesn't exist**: `Drop` is synchronous, so "async cleanup on the way out" needs an explicit `shutdown().await` method or a drop-spawned task — design resource teardown with that limitation in front of you, not as a surprise.
+
+### 7.7 Seeing into the runtime
+
+When "it's slow" arrives without a stack trace: [`tokio-console`](https://github.com/tokio-rs/console) is the async profiler — live per-task poll counts, poll durations, and wake patterns that make a blocking task or a busy-loop waker glow on the screen; the [`tracing`](https://docs.rs/tracing/) crate (Part 13) gives you structured, span-scoped causality through async boundaries where thread-based loggers produce confetti; and runtime metrics ([`Handle::metrics`](https://docs.rs/tokio/latest/tokio/runtime/struct.Handle.html#method.metrics)) expose queue depths and blocking-pool counts to your dashboards. Instrument before you have the incident; the async runtime is exactly the part of your system that a conventional profiler sees worst.
 
 ---
 
-## Phase 4: Unsafe Rust and FFI
+## Part 8 — Unsafe Rust
 
-### 4.1 The `unsafe` Contract
+### 8.1 The contract: five powers, zero exemptions
 
-- **What it is**: `unsafe` unlocks exactly **five** extra powers: dereference a raw pointer, call an `unsafe` function, implement an `unsafe` trait, access/modify a `static mut`, and access a `union` field. That's the whole list; docs: [Unsafe Rust](https://doc.rust-lang.org/book/ch20-01-unsafe-rust.html), [Rustonomicon](https://doc.rust-lang.org/nomicon/).
-- **What it does *not* do**: turn off the borrow checker, the type system, or lifetimes. `unsafe` means "the compiler can't verify this is sound, so *I* am vouching for it" — and if you vouch wrong, you get undefined behavior, the one thing safe Rust promised to abolish.
+The `unsafe` keyword unlocks exactly **five** operations ([the book](https://doc.rust-lang.org/book/ch20-01-unsafe-rust.html), [Rustonomicon](https://doc.rust-lang.org/nomicon/)): dereference a raw pointer, call an `unsafe` function, implement an `unsafe` trait, access or modify a `static mut`, and access a `union` field. That's the entire list — and just as important is what `unsafe` does **not** do: it does not disable the borrow checker, the type system, lifetimes, or any other check. Inside an `unsafe` block, every safe-Rust rule still applies; you've merely been *permitted to also do five things the compiler cannot verify*. The keyword's real meaning is a transfer of proof obligation: "the compiler can't show this is sound, so *I* am vouching for it" — and if you vouch wrongly, the result is **undefined behavior**, the one outcome safe Rust exists to abolish.
 
 ```rust
 let mut x = 42;
-let ptr = &mut x as *mut i32;     // creating a raw pointer is SAFE
+let ptr = &mut x as *mut i32;     // creating a raw pointer is SAFE — it's inert
 unsafe {
-    *ptr += 1;                    // dereferencing it is UNSAFE — you assert it's valid & aligned
+    *ptr += 1;                    // dereferencing asserts: valid, aligned, not aliased
 }
 assert_eq!(x, 43);
 ```
 
-- **The discipline**: keep `unsafe` blocks tiny, document the invariant each one relies on, and never let UB be *reachable* from safe code. An `unsafe` block is a proof obligation; write the proof in a comment.
+Be concrete about what UB means, because "it crashes" undersells it: UB licenses the *optimizer* to assume the violating execution never happens, and to transform your program under that assumption. Symptoms range from nothing (today, this compiler) to wrong values, vanished checks, and security holes that appear only at `-O2` on the release build. The principal sins: dereferencing dangling or unaligned pointers, **violating aliasing** (constructing two live `&mut` to one location, or mutating behind a live `&` — the rules safe Rust enforces remain *facts* unsafe code must respect, not suggestions it may waive), reading uninitialized memory, producing invalid values (a `bool` of 3, a bad enum tag — this is why [`transmute`](https://doc.rust-lang.org/std/mem/fn.transmute.html) is the most dangerous function in the language), and data races (Part 5's model still governs).
 
-### 4.2 Building Safe Abstractions
+### 8.2 The discipline: safe abstractions over audited cores
 
-- **The whole point of `unsafe`** is to build a *safe* API on top of it — unsafe inside, safe contract outside. The canonical example is `split_at_mut`, which hands out two mutable slices into one buffer (the borrow checker can't see they're disjoint, but you can prove it):
+Production `unsafe` has one legitimate shape: **a small unsafe core wrapped in an API that safe code cannot misuse**. The classic teaching example is `split_at_mut` — two disjoint `&mut` views into one slice, which the borrow checker can't verify (it doesn't reason about ranges) but you can prove:
 
 ```rust
 use std::slice;
@@ -457,67 +628,97 @@ use std::slice;
 fn split_at_mut(v: &mut [i32], mid: usize) -> (&mut [i32], &mut [i32]) {
     let len = v.len();
     let ptr = v.as_mut_ptr();
-    assert!(mid <= len);                 // the invariant that makes the unsafe sound
+    assert!(mid <= len);                 // ← the runtime check that makes the proof total
     unsafe {
+        // SAFETY: [0, mid) and [mid, len) are disjoint ranges of one valid
+        // allocation, so the two &mut never alias; lengths are in bounds by
+        // the assert above.
         (
             slice::from_raw_parts_mut(ptr, mid),
-            slice::from_raw_parts_mut(ptr.add(mid), len - mid),  // disjoint range
+            slice::from_raw_parts_mut(ptr.add(mid), len - mid),
         )
     }
 }
 ```
 
-- The safe signature (`&mut [i32]` in, two `&mut [i32]` out) means callers can never misuse it: the `assert!` rules out the one input that would break soundness, and the disjoint ranges guarantee the two `&mut` never alias. *That* is idiomatic unsafe — a small, audited core under a totally safe surface.
+Read the shape, not just the code: the *signature* is fully safe (no caller, however adversarial, can cause UB through it); the `assert!` closes the one hole; the `// SAFETY:` comment states the invariant being relied on — a convention enforced by `#[deny(clippy::undocumented_unsafe_blocks)]` in serious codebases, and the right habit from day one. If you cannot write the SAFETY comment, you are not ready to write the block. Two more tools belong in the same toolbox: [`MaybeUninit<T>`](https://doc.rust-lang.org/std/mem/union.MaybeUninit.html) is the sanctioned way to work with uninitialized memory (building a buffer before initializing it — the old `mem::uninitialized` is UB-on-arrival and deprecated for it), and [`PhantomData`](https://doc.rust-lang.org/std/marker/struct.PhantomData.html) is how a raw-pointer-holding type *declares* its ownership and variance to the compiler so that drop-checking and Part 2.4's variance come out right.
 
-The mindset shift is that `unsafe` is not "Rust with the safety off"; it's "Rust where *you* supply the safety proof the compiler couldn't." Good unsafe code is rarer and more carefully reviewed than anything in C, precisely because the boundary is explicit and everything outside it stays checked.
+### 8.3 Miri: the UB detector you must run
 
-### 4.3 FFI: Talking to C
+You no longer have to *wonder* whether your unsafe code is sound on the cases you exercise: [**Miri**](https://github.com/rust-lang/miri) (`cargo +nightly miri test`) interprets your program against Rust's experimental-but-enforced aliasing models (Stacked Borrows / Tree Borrows) and reports UB *as an error with a trace* — dangling dereferences, aliasing violations, invalid values, leaks. It's slow (an interpreter) and can't see FFI, but the policy writes itself: **any crate containing `unsafe` runs its tests under Miri in CI.** The ecosystem's serious unsafe code (the standard library included) is developed this way; matching that bar is table stakes, not extra credit.
 
-- **What it is**: The C ABI is Rust's interop lingua franca. `extern "C"` declares foreign functions and exports Rust ones; `#[repr(C)]` gives structs a stable, C-compatible layout; docs: [FFI](https://doc.rust-lang.org/nomicon/ffi.html).
-- **Calling C** (every foreign call is `unsafe` — the compiler can't check the other side):
+### 8.4 `unsafe impl Send`/`Sync`: vouching at the type level
 
-```rust
-extern "C" {
-    fn abs(input: i32) -> i32;     // from the C standard library
-}
-
-fn main() {
-    let n = unsafe { abs(-5) };    // foreign calls are unsafe by definition
-    println!("{n}");               // 5
-}
-```
-
-- **Being called from C** — export with `#[no_mangle]` and `extern "C"`, and give shared structs `#[repr(C)]`:
-
-```rust
-#[no_mangle]
-pub extern "C" fn add(a: i32, b: i32) -> i32 {
-    a + b
-}
-
-#[repr(C)]
-pub struct Point { pub x: f64, pub y: f64 }   // predictable layout, no field reordering
-```
-
-- **The hazards at the boundary**: ownership (who frees memory — `CString::into_raw` / `from_raw` to pass owned strings), null and validity of incoming pointers, and **never unwinding across the boundary** (wrap Rust panics with `std::panic::catch_unwind` before returning to C). Tools `bindgen` (C headers → Rust) and `cbindgen` (Rust → C headers) automate the declarations.
-
-The reframing that helps: FFI is the one place Rust's guarantees genuinely stop at a line, and that line is the C ABI. The professional move is to make the unsafe `extern` surface as thin as possible and wrap it immediately in a safe Rust module, so the rest of your codebase never sees a raw pointer.
+Implementing the Part 4 marker traits by hand is the type-level version of the same contract — you're asserting a thread-safety property the structural derivation couldn't see (typical case: a struct holding a raw pointer into a C library you know to be thread-safe). The assertion is load-bearing for every downstream user, so it earns the same SAFETY-comment treatment, plus an honest check of *both* claims separately: `Send` (may the value move threads? — not if the C library uses thread-local state) and `Sync` (may two threads call through `&self` concurrently? — not unless the C side is internally synchronized). Wrong answers here are the worst kind of unsoundness: invisible locally, and they convert your users' safe code into data races.
 
 ---
 
-## Phase 5: Performance and Production
+## Part 9 — FFI: Crossing the C Boundary
 
-### 5.1 Zero-Cost Abstractions (and Where They Leak)
+The C ABI is Rust's interop lingua franca — to C itself, and through it to Python, Node, Java, and every language with a C FFI. Rust's guarantees genuinely stop at this line, so professional FFI is about making the line thin, explicit, and immediately re-wrapped in safety.
 
-- **The promise**: iterators, closures, generics, `async`, and `Option`/`Result` compile down to what you'd write by hand — a `.iter().map().filter().sum()` chain becomes the same loop, with no allocation or indirection.
-- **Where it leaks** (the costs that *aren't* free, and worth watching): `Box<dyn Trait>` adds a vtable indirection, `Arc::clone` is an atomic increment (cheap but not nothing — don't clone in a tight loop), and every `.collect()` / `String` / `Vec::push`-past-capacity is an allocation. Async adds a state-machine size cost: large futures bloat and pulling a big future behind `Box::pin` trades size for an allocation.
-- **Measure, don't guess**: `cargo flamegraph` for where time goes, `criterion` for statistically-sound microbenchmarks, and `cargo build --release` always when benchmarking (debug builds are 10–100× slower and meaningless for perf).
+### 9.1 The mechanics in both directions
 
-The honest framing: "zero-cost" means *zero overhead versus the equivalent hand-written code*, not *zero cost in absolute terms*. The abstraction is free; the allocation, the atomic, and the dynamic dispatch you asked for are not. Senior Rust performance work is mostly about *not allocating* and *not indirecting* on hot paths.
+Calling C ([Nomicon: FFI](https://doc.rust-lang.org/nomicon/ffi.html)): declare the foreign signatures in an `extern "C"` block; every call is `unsafe` because the compiler cannot check the other side's contract.
 
-### 5.2 Error Handling at Scale
+```rust
+extern "C" {
+    fn abs(input: i32) -> i32;     // from libc
+}
 
-- **The two-crate convention**: use `thiserror` to define precise error *enums* in **libraries** (callers can match on variants), and `anyhow` for ergonomic, context-rich error *propagation* in **applications** (where you mostly just bubble up and log); docs: [`thiserror`](https://docs.rs/thiserror/), [`anyhow`](https://docs.rs/anyhow/).
+fn main() {
+    let n = unsafe { abs(-5) };    // SAFETY: abs is total for all i32 except i32::MIN — handle it
+    println!("{n}");
+}
+```
+
+Being called *from* C: export with `#[no_mangle] pub extern "C"`, and give every shared struct `#[repr(C)]` — without it, Rust's field-reordering layout freedom (Part 3.1) makes the struct's bytes mean different things on each side:
+
+```rust
+#[no_mangle]
+pub extern "C" fn add(a: i32, b: i32) -> i32 { a + b }
+
+#[repr(C)]
+pub struct Point { pub x: f64, pub y: f64 }   // C-stable layout: declared order, C padding rules
+```
+
+Don't hand-write declarations at scale: [`bindgen`](https://rust-lang.github.io/rust-bindgen/) generates Rust `extern` blocks from C headers (typically in a `build.rs`, with the system library located via [`pkg-config`](https://docs.rs/pkg-config/) and linked via `cargo:rustc-link-lib` directives), and [`cbindgen`](https://github.com/mozilla/cbindgen) generates C headers from your Rust exports. The ecosystem convention worth following: a raw `-sys` crate containing only the generated bindings and link logic, and a safe wrapper crate on top — so consumers, including future-you, never touch the unsafe surface directly.
+
+### 9.2 The three hazards that account for most FFI bugs
+
+**Ownership across the line.** Every pointer crossing the boundary needs an agreed answer to "who frees this, with which allocator?" — Rust memory must be freed by Rust (export a `free_foo` function; the pattern is `Box::into_raw` to hand ownership out and `Box::from_raw` to take it back), C memory by C, and strings get the dedicated [`CString`/`CStr`](https://doc.rust-lang.org/std/ffi/) pair (NUL-terminated, no interior NULs — `CString::into_raw`/`from_raw` for the owned handoff). Mixing allocators "works" right up until it corrupts a heap on a platform where the allocators differ.
+
+**Unwinding.** A Rust panic unwinding into C frames is undefined behavior. Every exported function must contain panics — wrap fallible bodies in [`std::panic::catch_unwind`](https://doc.rust-lang.org/std/panic/fn.catch_unwind.html) and convert to an error code; the modern `extern "C-unwind"` ABI ([RFC 2945](https://rust-lang.github.io/rfcs/2945-c-unwind-abi.html)) exists for the narrower case of deliberately propagating unwinds through C++-style frames, not as an excuse to skip the catch.
+
+**Validity of incoming data.** Every pointer from C is a claim, not a fact: null-check, respect alignment, and treat lengths as untrusted. The wrapper layer's job is converting C's "trust me" into Rust types that *can't* lie — `Option<&T>` instead of a nullable pointer (they're layout-identical, Part 3.1's niche optimization at work), slices built with explicit, checked lengths.
+
+For specific high-level targets, skip raw C glue entirely: [PyO3](https://pyo3.rs/) (Python), [napi-rs](https://napi.rs/) (Node), [UniFFI](https://mozilla.github.io/uniffi-rs/) (mobile) generate the boundary with the hazards above already handled — the same thin-unsafe-core principle, industrialized.
+
+---
+
+## Part 10 — Performance Engineering
+
+### 10.1 What "zero-cost" actually promises
+
+The promise — iterators, closures, generics, `async`, `Option`/`Result` compile to what you'd have written by hand — is real and load-bearing: a `.iter().filter().map().sum()` chain monomorphizes and inlines into the same loop as the manual version, with no allocation and no indirection. What the promise does *not* cover is the costs you explicitly order: `Box<dyn Trait>` buys flexibility with a vtable call and an allocation; `Arc::clone` is an atomic RMW (cheap, but contended atomics ping-pong cache lines — don't clone in the hot loop, clone once outside it); `.collect()`, `format!`, and `Vec` growth allocate; async's state machines have a *size* (a future holding a 16 KB buffer across an await is a 16 KB struct — `Box::pin` the big ones, or restructure so the buffer doesn't span the await). "Zero-cost abstraction" means zero *overhead versus equivalent hand-written code*, never zero cost in absolute terms; senior Rust performance work is mostly noticing which costs you ordered without meaning to.
+
+The practical allocation discipline, in descending payoff order: **reuse buffers** across iterations (`Vec::clear` keeps capacity; the `String` you pass back in beats the one you allocate fresh); **pre-size** with `with_capacity` when the length is knowable; **borrow instead of owning** in APIs (`&str` over `String` parameters; return `Cow` when mutation is conditional — Part 3.2); and for the structures profiling actually indicts, the specialized crates: [`smallvec`](https://docs.rs/smallvec/) (inline storage below a threshold — wins when most instances are small, *measure* because the branch isn't free), [`bytes`](https://docs.rs/bytes/) (reference-counted byte buffers for network code, making "slice this packet without copying" safe and cheap).
+
+### 10.2 The knobs outside your code
+
+Release-profile settings in `Cargo.toml` that move real numbers ([profiles reference](https://doc.rust-lang.org/cargo/reference/profiles.html)): `lto = "thin"` (cross-crate inlining at link time — frequently several percent for almost-free build-time cost; `"fat"` squeezes a bit more for a lot slower links), `codegen-units = 1` (stops parallel codegen from fragmenting optimization regions — slower builds, faster code), `panic = "abort"` where unwinding isn't needed (smaller, slightly faster, but no `catch_unwind` — mind Part 9.2). Beyond rustc: `-C target-cpu=native` for machines you control (vectorization unlocked by newer ISAs), **PGO** ([rustc book](https://doc.rust-lang.org/rustc/profile-guided-optimization.html)) for the dedicated (profile a representative run, recompile against it — low single-digit percent for real pipelines), and the **allocator swap**: the system allocator is replaceable in two lines (`#[global_allocator]`) with [jemalloc](https://docs.rs/tikv-jemallocator/) or [mimalloc](https://docs.rs/mimalloc/), and for allocation-heavy multithreaded services this is routinely a 5–20% throughput win — the highest return-on-effort optimization in this part. Measure on *your* workload; allocators trade memory footprint for speed differently.
+
+### 10.3 Measurement, or it didn't happen
+
+The toolchain: [`criterion`](https://docs.rs/criterion/) for microbenchmarks (statistically sound, regression-detecting; [`divan`](https://docs.rs/divan/) is the lighter modern alternative), [`cargo flamegraph`](https://github.com/flamegraph-rs/flamegraph) for where wall-time goes, [`dhat`](https://docs.rs/dhat/) for where *allocations* come from (the flamegraph of the other resource), `perf stat` for IPC and cache misses when you're optimizing seriously, and `cargo build --timings` when the thing that's slow is the build itself (monomorphization bloat shows up here — Part 1.1's hybrid trick is the cure). The two rules that prevent self-deception: **always `--release`** (debug builds are 10–100× slower and differently shaped — every conclusion drawn from one is noise), and **benchmark the realistic case** (criterion's micro-numbers on hot loops are honest; your service's p99 is governed by allocator behavior, cache pressure, and contention that micros don't see — close the loop with the flamegraph under production-shaped load).
+
+---
+
+## Part 11 — Errors, Testing, and Verification
+
+### 11.1 The two-crate error convention
+
+The ecosystem settled the error-handling question into one sentence: **[`thiserror`](https://docs.rs/thiserror/) for libraries, [`anyhow`](https://docs.rs/anyhow/) for applications.** A library's errors are part of its contract — callers match on them — so they're precise enums with derived `Display`/`From`:
 
 ```rust
 use thiserror::Error;
@@ -527,24 +728,22 @@ pub enum StoreError {
     #[error("item not found: {0}")]
     NotFound(String),
     #[error("backing store unavailable")]
-    Io(#[from] std::io::Error),     // generates From<io::Error>, so `?` just works
+    Io(#[from] std::io::Error),     // generates From<io::Error>, so `?` converts automatically
 }
 
 fn load(path: &str) -> Result<String, StoreError> {
-    let data = std::fs::read_to_string(path)?;   // io::Error auto-converts via #[from]
-    Ok(data)
+    Ok(std::fs::read_to_string(path)?)   // io::Error → StoreError via #[from]
 }
 ```
 
-- **The `?` operator** is the workhorse — it returns early on `Err`, applying any `From` conversion in scope. `#[from]` wiring is what makes one function return a clean unified error from many sources.
-- **In application code, `anyhow` goes the other way** — it erases the concrete error type and lets you attach human context as the error bubbles up:
+An application mostly *propagates* — what it needs is ergonomics and a readable causal trail, which is `anyhow`'s type-erased `Result` plus `.context()`:
 
 ```rust
 use anyhow::{Context, Result};
 
 fn start() -> Result<()> {
     let raw = std::fs::read_to_string("config.toml")
-        .context("reading config.toml")?;          // any error type gains a readable trail
+        .context("reading config.toml")?;
     let port: u16 = raw.trim().parse()
         .context("config must contain a port number")?;
     println!("listening on :{port}");
@@ -552,11 +751,62 @@ fn start() -> Result<()> {
 }
 ```
 
-The design principle is **typed errors at boundaries, opaque errors in the middle**: a library exposes a precise enum so consumers can react, while an application's internals lean on `anyhow` to add context (`.context("loading config")`) without ceremony. Mixing the two — `anyhow` inside, `thiserror` at the public edge — is the mainstream pattern.
+The composed pattern — **typed at the boundaries, opaque in the middle** — is mainstream for a reason: the `?` operator with `#[from]` conversions makes the library side nearly ceremony-free, while `context` strings give operators error messages that read like a story instead of a type name. Two design notes that separate good error enums from noisy ones: model errors by *what the caller can do about them* (retryable vs. fatal vs. caller-bug), not by which function threw; and don't `#[from]` two sources of the same underlying type into one variant — you lose the distinction the enum exists to make.
 
-### 5.3 Production Async Concerns
+### 11.2 Testing, the Rust-shaped parts
 
-- **Graceful shutdown**: wire a cancellation signal to every long-lived task so the process drains instead of dropping work. `tokio_util::sync::CancellationToken` plus `select!` is the standard shape:
+The basics are built in (`#[test]`, `cargo test`, integration tests in `tests/`, and **doctests** — examples in doc comments that compile and run, keeping documentation honest by construction). The advanced surface is what differs from other languages:
+
+**Async tests** run under [`#[tokio::test]`](https://docs.rs/tokio/latest/tokio/attr.test.html), and the headline feature is **paused time**: `#[tokio::test(start_paused = true)]` makes timers virtual — `sleep(Duration::from_secs(3600))` advances instantly to the next timer rather than waiting — so timeout logic, retry backoff, and heartbeat code get *fast, deterministic* tests instead of flaky sleeps. This single feature removes the classic excuse for not testing time-dependent behavior.
+
+**Concurrency tests** have a real answer: [`loom`](https://docs.rs/loom/) runs your lock-free or intricate-locking code under a model checker that explores *every legal interleaving and memory-model outcome* the orderings permit — the Part 5 bugs your laptop's scheduler would exhibit once a quarter become deterministic test failures. The cost is structure (loom shims `std::sync` types; the code under test imports them conditionally) and it's mandatory exactly where it's mandatory: any hand-written atomics deserve a loom test or they're untested by definition.
+
+**Property-based testing** with [`proptest`](https://docs.rs/proptest/) (generate inputs, assert invariants, auto-shrink failures to minimal cases) covers the input space unit tests can't; **fuzzing** with [`cargo-fuzz`](https://rust-fuzz.github.io/book/) does the adversarial version against parsers and decoders — and the pairing with Rust is special: in C, a fuzzer finds crashes; in Rust, anything the fuzzer finds in safe code is by definition a logic bug or a panic, and anything it finds in `unsafe` is a soundness bug you absolutely wanted to know about. **Miri** (Part 8.3) completes the verification ladder for unsafe code.
+
+### 11.3 The static layer
+
+[Clippy](https://doc.rust-lang.org/clippy/) is not optional equipment: `cargo clippy -- -D warnings` in CI, with the lint groups tuned per project (the `pedantic` group has real signal for libraries; `undocumented_unsafe_blocks` should be `deny` anywhere Part 8 applies). `cargo fmt --check` ends formatting discussions. [`cargo-audit`](https://docs.rs/cargo-audit/)/[`cargo-deny`](https://embarkstudios.github.io/cargo-deny/) gate known-vulnerable and license-incompatible dependencies. The principle uniting this part with the rest of the guide: Rust's culture pushes *every* property it can — memory safety, thread safety, API misuse, even style — to the earliest checkable moment. Your test suite is for the properties that remain.
+
+---
+
+## Part 12 — Macros
+
+Macros are the part of advanced Rust most people use daily (`#[derive(...)]`, `println!`, `#[tokio::main]`) and write rarely — the right ratio. This part is sized accordingly: enough to write declarative macros confidently, read procedural ones, and know when each is the wrong tool.
+
+### 12.1 Declarative macros: `macro_rules!`
+
+A [`macro_rules!`](https://doc.rust-lang.org/book/ch20-05-macros.html) macro is pattern-matching over *token trees*: each rule matches a syntax shape (with typed fragments — `$x:expr`, `$name:ident`, `$t:ty`) and expands to code, with `$( ... )*` repetition handling variadic shapes — the reason `vec![1, 2, 3]` can exist in a language with no variadic functions:
+
+```rust
+// A tiny DSL: build a HashMap from key => value pairs.
+macro_rules! map {
+    ( $( $k:expr => $v:expr ),* $(,)? ) => {{      // $(,)? permits a trailing comma
+        let mut m = std::collections::HashMap::new();
+        $( m.insert($k, $v); )*                     // expand once per matched pair
+        m
+    }};
+}
+
+let scores = map! { "ada" => 95, "grace" => 97 };
+```
+
+Two properties make these safer than C's text macros: they're **hygienic** (identifiers introduced inside the macro can't capture or collide with the caller's variables) and they operate on parsed tokens, not strings. The legitimate uses are *removing structural duplication that functions and generics can't* — implementing a trait for many primitive types, table-driven test cases, small DSLs. The misuse is reaching for a macro where a function or generic would do: macros don't typecheck until expansion, produce worse errors, and resist refactoring tools. Exhaust the type system first; that's not a platitude, it's the order that keeps codebases readable. ([The Little Book of Rust Macros](https://veykril.github.io/tlborm/) is the standard deep reference.)
+
+### 12.2 Procedural macros: how the magic you depend on works
+
+Proc macros are *compiler plugins*: functions from `TokenStream` to `TokenStream`, living in a dedicated crate, in three flavors — **derive** (`#[derive(Serialize)]` — by far the most important: serde, thiserror, clap all live here), **attribute** (`#[tokio::main]`, rewriting the item they adorn), and **function-like** (`sqlx::query!`, which famously checks your SQL against a live database *at compile time*). The universal implementation stack is [`syn`](https://docs.rs/syn/) (parse the tokens into a syntax tree) + [`quote`](https://docs.rs/quote/) (template the output tokens), and the shape is always the same: parse the input item, walk its fields/variants, generate an impl.
+
+You should be able to *read* a derive macro before you ever write one — pick `thiserror`'s source over a lunch break; it's a few hundred lines and demystifies the whole genre. Write one when, and only when, you find yourself maintaining the same impl by hand across many types: the cost side of the ledger (a separate crate, `syn`'s compile-time weight, opaque error spans unless you work at them, and tooling that can't see through you) is real, which is why the ecosystem's pattern is a few excellent proc-macro crates used by everyone rather than proc macros sprinkled through application code.
+
+---
+
+## Part 13 — Production Service Patterns
+
+The last mile: the patterns that keep a correct async service *operable*. The throughline is **bounding things** — bounded queues, bounded concurrency, bounded lifetimes, bounded shutdown time. The type system bought you correctness; ceilings buy you survivability.
+
+### 13.1 Graceful shutdown
+
+A production service drains instead of dropping: stop accepting new work, let in-flight work finish (with a deadline), then exit. The standard machinery is [`CancellationToken`](https://docs.rs/tokio-util/latest/tokio_util/sync/struct.CancellationToken.html) (clonable, hierarchical — cancel a parent, every child token fires) wired into each long-lived task's `select!`:
 
 ```rust
 use tokio_util::sync::CancellationToken;
@@ -571,91 +821,65 @@ async fn main() {
         loop {
             tokio::select! {
                 _ = worker_token.cancelled() => break,          // shutdown requested
-                _ = sleep(Duration::from_millis(100)) => { /* do a unit of work */ }
+                _ = sleep(Duration::from_millis(100)) => { /* one unit of work */ }
             }
         }
+        // post-loop: flush buffers, ack in-flight items — the DRAIN step
     });
 
-    tokio::signal::ctrl_c().await.unwrap();   // wait for Ctrl-C
-    token.cancel();                           // ask all workers to stop at their next await
-    worker.await.unwrap();                    // let them finish draining
+    tokio::signal::ctrl_c().await.unwrap();
+    token.cancel();                           // ask everyone to stop at their next await
+    worker.await.unwrap();                    // and wait for the drain (add a timeout in prod)
 }
 ```
 
-- **Backpressure**: prefer **bounded** channels (`mpsc::channel(capacity)`). An unbounded queue turns a slow consumer into an out-of-memory crash; a bounded one makes producers wait, which is the system telling you the truth about its throughput.
-- **Observability**: instrument with the `tracing` crate (structured, async-aware spans), and reach for `tokio-console` to *see* your tasks live — which are stalled, which are busy, where the runtime is contended. It's the async equivalent of a thread profiler and indispensable when "it's slow" needs a cause.
-- **Avoid task explosion**: `spawn` is cheap but not free; spawning per-item without bound creates scheduling pressure and unbounded memory. Use a `JoinSet`, a `Semaphore`, or a worker pool to cap concurrency.
+Note how Part 7's themes pay off: the shutdown branch is a `select!` arm, so the loop body must be cancellation-safe; the drain step after the loop is the must-complete work that lives *outside* the cancellable region; and the final `await` with a deadline (wrap it in `tokio::time::timeout`) is the ceiling that turns a stuck task into a logged forced-exit instead of a hung deploy.
 
-The throughline of productionizing async Rust is **bounding things**: bounded queues, bounded concurrency, bounded task lifetimes via cancellation. The language gives you fearless concurrency for correctness; staying up under load is about putting ceilings on everything so load translates into backpressure instead of collapse.
+### 13.2 Backpressure: make load tell the truth
+
+Every queue in the system is a policy decision. **Bounded channels** (`mpsc::channel(capacity)`) make a slow consumer slow its producers — latency rises, throughput honestly saturates, and the system *signals* its limit; an unbounded channel converts the identical situation into unbounded memory growth and an OOM kill, hours later, far from the cause. The same principle at each tier: cap in-flight requests with a `Semaphore` (return 429/503 when full — load shedding is backpressure at the edge), cap connection pools, and put deadlines on everything that waits (`timeout` around every upstream call — an unbounded await is an unbounded queue of one). When the system is saturated, these ceilings are what make it degrade *predictably* — the difference between "p99 doubled" and "the service fell over."
+
+### 13.3 Observability
+
+[`tracing`](https://docs.rs/tracing/) is the standard: structured events inside **spans** that follow causality across `.await`s and `spawn`s (the `#[instrument]` attribute macro gives a function a span with its arguments as fields for one line of code), with subscribers fanning out to JSON logs, OpenTelemetry, or the console. Add `tokio-console` (Part 7.7) in staging for runtime-level visibility, and a metrics facade ([`metrics`](https://docs.rs/metrics/) or OpenTelemetry) for the dashboards. The async-specific discipline: never log-and-drop a `JoinHandle`'s error — task panics that vanish silently are the async equivalent of an empty `catch` block, and wiring `JoinSet` results into error logs is what makes 3 a.m. debuggable.
 
 ---
 
 ## Capstone Projects
 
-Build these to turn the concepts into instincts. Each forces a different hard part to be correct.
+Build these to turn the concepts into instincts. Each forces a different hard part to be correct, and each names the parts it exercises.
 
-### Project 1: Concurrent TCP Chat Server
+**Project 1: Concurrent TCP chat server** — Tokio, `tokio::net::TcpListener`, a `broadcast` channel, `select!`, graceful shutdown. Accept many clients; fan each message out to all others; shut down cleanly on Ctrl-C, *draining* in-flight messages. Each connection is a task `select!`-ing between socket readability and the broadcast — which makes every Part 7 discipline load-bearing at once: cancellation safety in the select loop, `Send + 'static` bounds on the per-connection task, lagging-receiver policy on the broadcast channel, and a shutdown that proves your drain logic instead of asserting it.
 
-- **Stack**: Tokio, `tokio::net::TcpListener`, `broadcast` channel, `select!`, graceful shutdown.
-- **Build**: Accept many clients, fan out each message to all others via a `broadcast` channel, and shut down cleanly on Ctrl-C. Each connection is a spawned task that `select!`s between "socket has data" and "broadcast has a message for me."
-- **Why it matters**: It exercises the real async core — per-connection tasks, shared broadcast state, cancellation safety, and the `Send` bounds that `spawn` imposes — in the canonical networked shape.
+**Project 2: Bounded job processor** — bounded `mpsc`, a fixed worker pool, `Semaphore` concurrency caps, `CancellationToken`, and `criterion` benchmarks of throughput under saturation. This is Part 13 made concrete: when the queue is full, producers must *feel* it; when shutdown fires, in-flight jobs finish and queued jobs drain to a deadline. Extend it with per-job timeouts and retry-with-backoff to meet cancellation safety again from the other side.
 
-### Project 2: Bounded Job Processor
+**Project 3: Safe wrapper over a C library** — `bindgen`, a `-sys` crate, `CString`/`CStr`, `catch_unwind` at every export, and a safe API that makes misuse unrepresentable. Bind a small real library (compression or hashing); the deliverable that matters is the *boundary design*: raw unsafe surface in one module, SAFETY comments on every block, Miri on the test suite, and a public API through which no sequence of safe calls can reach UB. This is Parts 8–9 as a single discipline.
 
-- **Stack**: `mpsc` bounded channel, a fixed worker pool, `Semaphore` for concurrency limits, `CancellationToken`.
-- **Build**: A queue that accepts jobs over a bounded channel, processes them across N workers with a concurrency cap, applies backpressure when full, and drains on shutdown.
-- **Why it matters**: This is the backpressure-and-shutdown pattern every production service needs, and it makes the "bound everything" lesson concrete.
-
-### Project 3: Safe Wrapper over a C Library
-
-- **Stack**: `extern "C"`, `#[repr(C)]`, `bindgen`, `CString`/`CStr`, a safe module boundary.
-- **Build**: Bind a small C library (e.g., a compression or hashing lib), then wrap its raw `unsafe` calls in a safe Rust API that handles allocation, null checks, and error codes.
-- **Why it matters**: It teaches the discipline of confining `unsafe` to a thin, audited layer — the single most valuable unsafe skill.
-
-### Project 4: Lock-Free Metrics Counter
-
-- **Stack**: `AtomicU64`, `Ordering`, `Arc`, a benchmark against `Mutex<u64>` with `criterion`.
-- **Build**: A sharded, lock-free counter that many threads bump concurrently, then benchmark it against the naive `Mutex` version under contention.
-- **Why it matters**: It makes the atomics-vs-locks tradeoff empirical instead of theoretical, and shows when lock-free actually wins (and when it doesn't).
-
-The capstones matter because async and unsafe Rust are easiest to *misunderstand* in isolation and easiest to *internalize* under real constraints. A chat server that must not drop messages on shutdown teaches cancellation safety more durably than any explanation.
+**Project 4: Lock-free metrics registry** — sharded `AtomicU64` counters, `Ordering` choices you can justify in comments, a `loom` test of the interesting interleavings, and a `criterion` comparison against `Mutex<HashMap>` under 1, 4, and 16 threads of contention. The goal is calibration, not just code: discover empirically where the lock actually loses (it's later than you think), and exit with the Part 5 honest line — atomics for counters and flags, locks for everything unproven — written in your own benchmark numbers.
 
 ---
 
 ## Study Methodology
 
-1. **Walk the ladder in order**: type system → threads → async → unsafe. Async builds on `Send`/`Sync`; `Pin` builds on lifetimes; FFI builds on raw pointers. Skipping ahead is why async feels like magic — the foundations explain it.
-2. **Read the errors as design feedback**: "not `Send`," "does not live long enough," and "cannot be made into an object" are the compiler telling you a real thing about your design. Treat each as a question about ownership, not a syntax puzzle.
-3. **Pick one runtime and learn it deeply**: Tokio is the default. Learn its scheduler, `spawn_blocking`, and `tokio-console` before exploring alternatives.
-4. **Benchmark in `--release`, always**: debug-build performance numbers are noise. Use `criterion` for micro and `flamegraph` for macro.
-5. **Confine `unsafe` and prove it**: every `unsafe` block gets a comment stating the invariant it relies on. If you can't write the invariant, you can't write the block.
-6. **Default to message passing**: reach for channels before shared `Mutex` state; it deadlocks less and scales better. Add shared state only when a profiler justifies it.
-7. **Bound everything in production**: bounded channels, capped concurrency, cancellation on shutdown. Correctness comes from the type system; staying up comes from ceilings.
+1. **Walk the ladder in order**: type system → lifetimes/layout → threads → atomics → async → unsafe/FFI. Async builds on `Send`/`Sync` and closures; `Pin` builds on the self-reference wall; FFI builds on layout and unsafe. Skipping ahead is why async feels like magic — the foundations *are* the explanation.
+2. **Read compiler errors as design feedback.** "Not `Send`," "does not live long enough," "cannot be made into an object" — each is a true statement about your ownership story with a fix attached. Treat them as questions about the design, not syntax puzzles to appease.
+3. **Pick one runtime and learn it deeply.** Tokio: its scheduler, `spawn_blocking`, cancellation behavior, and `tokio-console` — before touching alternatives. Runtime knowledge compounds; runtime tourism doesn't.
+4. **Make verification a habit, scaled to the risk**: clippy everywhere; `--release` for every benchmark; Miri on any crate with `unsafe`; `loom` on any hand-written atomics; proptest/fuzzing on any parser. The tools exist so that "I think it's correct" can be upgraded sentence by sentence to "it's checked."
+5. **Confine `unsafe` and prove it.** Every block gets a `// SAFETY:` comment stating the invariant it relies on. If you can't write the comment, you can't write the block.
+6. **Default to ownership-moving designs**: channels before shared locks, scoped threads before `Arc`, structured task groups before loose spawns. Add shared mutable state when a profiler — not a hunch — justifies it.
+7. **Bound everything in production**: queues, concurrency, timeouts, shutdown. Correctness comes from the type system; staying up comes from ceilings.
 
-The point of the sequence is that Rust's "hard" topics are one idea wearing four costumes: **encode the invariant in the type system so violations don't compile.** Once you see `Send`, `Pin`, lifetimes, and `unsafe` as that same move at different layers, the language stops feeling like a pile of special cases.
+The point of the sequence, one last time: Rust's "hard" topics are one idea wearing different costumes — **encode the invariant in the type system so violations don't compile**, and where the type system can't reach (memory orderings, unsafe contracts, cancellation windows), *name the invariant explicitly and test it with the tool built for exactly that gap*. Once you see `Send`, `Pin`, lifetimes, `unsafe`, and even `loom` as that same move at different layers, the language stops feeling like a pile of special cases and starts feeling like one design, applied relentlessly.
 
 ---
 
 ## Additional Reference Links
 
-- **Core & official**:
-  - [The Rust Programming Language ("the book")](https://doc.rust-lang.org/book/)
-  - [The Rustonomicon (unsafe)](https://doc.rust-lang.org/nomicon/)
-  - [The Async Book](https://rust-lang.github.io/async-book/)
-  - [Rust by Example](https://doc.rust-lang.org/rust-by-example/)
-  - [Rust Reference](https://doc.rust-lang.org/reference/)
-- **Concurrency & async**:
-  - [`std::sync`](https://doc.rust-lang.org/std/sync/) · [`std::sync::atomic`](https://doc.rust-lang.org/std/sync/atomic/)
-  - [Tokio docs](https://docs.rs/tokio/) · [Tokio tutorial](https://tokio.rs/tokio/tutorial)
-  - [`std::pin`](https://doc.rust-lang.org/std/pin/) · [`pin-project`](https://docs.rs/pin-project/)
-  - [`crossbeam`](https://docs.rs/crossbeam/) (lock-free building blocks)
-  - [tokio-console](https://github.com/tokio-rs/console)
-- **Errors, FFI, perf**:
-  - [`thiserror`](https://docs.rs/thiserror/) · [`anyhow`](https://docs.rs/anyhow/)
-  - [`bindgen`](https://rust-lang.github.io/rust-bindgen/) · [`cbindgen`](https://github.com/mozilla/cbindgen)
-  - [`criterion`](https://docs.rs/criterion/) · [`cargo-flamegraph`](https://github.com/flamegraph-rs/flamegraph)
-- **Deepen further**:
-  - [Rust Atomics and Locks (Mara Bos, free online)](https://marabos.nl/atomics/)
-  - [Jon Gjengset — "Crust of Rust" / Decrusted videos](https://www.youtube.com/c/JonGjengset)
+- **Core & official**: [The Rust Programming Language](https://doc.rust-lang.org/book/) · [The Rustonomicon](https://doc.rust-lang.org/nomicon/) · [The Async Book](https://rust-lang.github.io/async-book/) · [Rust Reference](https://doc.rust-lang.org/reference/) · [Rust API Guidelines](https://rust-lang.github.io/api-guidelines/) · [std docs](https://doc.rust-lang.org/std/)
+- **Concurrency & async**: [*Rust Atomics and Locks*](https://marabos.nl/atomics/) (Mara Bos, free online) · [Tokio tutorial](https://tokio.rs/tokio/tutorial) · [Tokio docs](https://docs.rs/tokio/) · [`std::sync`](https://doc.rust-lang.org/std/sync/) / [`std::sync::atomic`](https://doc.rust-lang.org/std/sync/atomic/) · [`std::pin`](https://doc.rust-lang.org/std/pin/) · [`pin-project`](https://docs.rs/pin-project/) · [`rayon`](https://docs.rs/rayon/) · [`crossbeam`](https://docs.rs/crossbeam/) · [tokio-console](https://github.com/tokio-rs/console) · [`loom`](https://docs.rs/loom/)
+- **Errors, testing, verification**: [`thiserror`](https://docs.rs/thiserror/) · [`anyhow`](https://docs.rs/anyhow/) · [Miri](https://github.com/rust-lang/miri) · [`proptest`](https://docs.rs/proptest/) · [cargo-fuzz / Rust Fuzz Book](https://rust-fuzz.github.io/book/) · [Clippy lint list](https://rust-lang.github.io/rust-clippy/master/)
+- **FFI & macros**: [Nomicon FFI chapter](https://doc.rust-lang.org/nomicon/ffi.html) · [`bindgen`](https://rust-lang.github.io/rust-bindgen/) · [`cbindgen`](https://github.com/mozilla/cbindgen) · [PyO3](https://pyo3.rs/) · [The Little Book of Rust Macros](https://veykril.github.io/tlborm/) · [`syn`](https://docs.rs/syn/) / [`quote`](https://docs.rs/quote/)
+- **Performance**: [The Rust Performance Book](https://nnethercote.github.io/perf-book/) (Nethercote — read it cover to cover) · [`criterion`](https://docs.rs/criterion/) · [cargo-flamegraph](https://github.com/flamegraph-rs/flamegraph) · [`dhat`](https://docs.rs/dhat/)
+- **Deepen further**: [Jon Gjengset — *Rust for Rustaceans* and the "Crust of Rust" series](https://www.youtube.com/c/JonGjengset) · [This Week in Rust](https://this-week-in-rust.org/) for tracking the language's motion
 
-Use the references as a map, not a substitute for the compiler. The fastest way to learn advanced Rust is to write code that doesn't compile, read what the compiler says, and fix the *design* it's pointing at — then confirm your mental model against the docs above.
+Use the references as a map, not a substitute for the compiler. The fastest way to learn advanced Rust remains: write code that doesn't compile, read what the compiler says, fix the *design* it's pointing at — then confirm your mental model against the docs above.
