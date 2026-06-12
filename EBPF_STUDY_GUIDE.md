@@ -134,7 +134,7 @@ The 512-byte stack limit is a hard constraint — it prevents kernel stack overf
 
 ### Helper Functions
 
-eBPF programs can't call arbitrary kernel functions. Instead, they call **helper functions** — a curated, stable API of kernel operations:
+eBPF programs can't call arbitrary kernel functions. Instead, they call **helper functions** — a curated, stable API of kernel operations, all documented in [`bpf-helpers(7)`](https://man7.org/linux/man-pages/man7/bpf-helpers.7.html):
 
 ```c
 // examples of BPF helper functions
@@ -333,7 +333,7 @@ int dispatcher(struct xdp_md *ctx) {
 
 ## Part 5 — The Verifier: Why eBPF Is Safe
 
-The verifier is what makes eBPF fundamentally different from kernel modules, and understanding *how* it proves safety — not just that it does — is what turns "fighting the verifier" from mystifying into tractable. A kernel module runs with full kernel privileges and a single bug crashes the machine; eBPF instead lets *untrusted* code run in the kernel by demanding a proof of safety *before* the code ever executes. The verifier is that proof checker, and the mechanism it uses is **abstract interpretation**: it symbolically executes the program, exploring every possible path from entry to exit, and at each instruction it tracks not the concrete value of every register but an *abstraction* of it — is this register a scalar or a pointer? if a pointer, into what (the stack, a map value, the packet) and with what known bounds? is it possibly null? what range of values could the scalar hold?
+The [verifier](https://docs.kernel.org/bpf/verifier.html) is what makes eBPF fundamentally different from kernel modules, and understanding *how* it proves safety — not just that it does — is what turns "fighting the verifier" from mystifying into tractable. A kernel module runs with full kernel privileges and a single bug crashes the machine; eBPF instead lets *untrusted* code run in the kernel by demanding a proof of safety *before* the code ever executes. The verifier is that proof checker, and the mechanism it uses is **abstract interpretation**: it symbolically executes the program, exploring every possible path from entry to exit, and at each instruction it tracks not the concrete value of every register but an *abstraction* of it — is this register a scalar or a pointer? if a pointer, into what (the stack, a map value, the packet) and with what known bounds? is it possibly null? what range of values could the scalar hold?
 
 The power and the pain both come from "every possible path." At each conditional branch, the verifier *forks* its analysis, refining its knowledge along each side — after `if (x < 100)`, the true branch knows `x` is in `[0, 99]` and the false branch knows it's `[100, ∞)`, which is exactly how it later proves an array access is in bounds. It walks every such path to the program's exit, and a property is proven only if it holds on *all* of them. This is why the verifier's cost explodes with branching: n sequential branches can mean 2ⁿ paths, so the verifier uses **state pruning** (if it reaches an instruction in a state it has already proven safe from, it stops re-exploring) to keep the analysis finite — and why a program that's logically simple but branch-heavy can blow the one-million-instruction verification budget even though it would run instantly. When you "restructure working code to satisfy the verifier," what you're really doing is making the safety property *provable by this path-exploring abstract interpreter* — adding the explicit bounds check that gives it the range fact it needs, or simplifying control flow so the state space stays small enough to explore.
 
@@ -395,7 +395,7 @@ For complex programs, satisfying the verifier is the hardest part of eBPF develo
 
 ## Part 6 — bpftrace: The Tracing Swiss Army Knife
 
-`bpftrace` is a high-level tracing language for eBPF — think `awk` for kernel events. It's the fastest way to answer "what is the kernel doing right now?" in production.
+[`bpftrace`](https://bpftrace.org/) is a high-level tracing language for eBPF — think `awk` for kernel events. It's the fastest way to answer "what is the kernel doing right now?" in production (the [one-liner tutorial](https://github.com/bpftrace/bpftrace/blob/master/docs/tutorial_one_liners.md) is the best on-ramp).
 
 ### One-Liner Recipes
 
@@ -510,7 +510,7 @@ aggregation functions:
 
 ## Part 7 — BCC Tools: The Pre-Built Toolkit
 
-BCC (BPF Compiler Collection) provides **100+ ready-made eBPF tools** — the "top" and "vmstat" of the eBPF era. These are production-ready, battle-tested, and installed on most Linux distributions.
+[BCC](https://github.com/iovisor/bcc) (BPF Compiler Collection) provides **100+ ready-made eBPF tools** — the "top" and "vmstat" of the eBPF era. These are production-ready, battle-tested, and installed on most Linux distributions.
 
 ### Essential BCC Tools
 
@@ -634,13 +634,13 @@ memleak -p 12345 -a 30     # track allocations for PID 12345, report every 30s
 
 ## Part 8 — Writing eBPF Programs
 
-When bpftrace and BCC tools aren't enough, you write your own eBPF programs. The modern approach is **libbpf + CO-RE** (C), **cilium/ebpf** (Go), or **aya** (Rust).
+When bpftrace and BCC tools aren't enough, you write your own eBPF programs. The modern approach is **[libbpf](https://libbpf.readthedocs.io/en/latest/) + CO-RE** (C), **[cilium/ebpf](https://github.com/cilium/ebpf)** (Go), or **[aya](https://aya-rs.dev/)** (Rust).
 
 ### CO-RE: Compile Once, Run Everywhere
 
 CO-RE is the mechanism that took eBPF from "recompile against every kernel you deploy to" to "build one binary that runs everywhere," and it is worth understanding in mechanism because it is the reason the modern tooling exists at all. The historic pain: an eBPF program reads kernel data structures by *byte offset* — "the PID is at offset 0x4d0 in `struct task_struct`" — but those offsets differ between kernel versions, because a field added or removed anywhere earlier in the struct shifts everything after it. So a program compiled against 5.15 headers read the wrong bytes on 6.1, which meant the old approach (BCC) shipped the *compiler* to every target machine and rebuilt the program at runtime against the local kernel's headers — slow, fragile, and requiring a full toolchain on production boxes.
 
-**CO-RE** (Compile Once – Run Everywhere) solves this with a two-part mechanism. First, **BTF (BPF Type Format)** is compact type information describing the kernel's exact struct layouts, embedded in the kernel binary itself (`/sys/kernel/btf/vmlinux`) — so the running kernel carries a precise description of where every field actually lives. Second, when you compile your program, the Clang compiler doesn't hardcode the offsets; it emits **relocations** — annotations that say "here I'm accessing `task_struct->pid`; patch in whatever offset that field has on the target." At load time, the libbpf loader reads the target kernel's BTF, looks up the *actual* offset of each accessed field, and rewrites your program's instructions to use it before handing the program to the verifier. The result is that "access `task_struct->pid`" is resolved against the kernel you're *actually running on*, at load time, with no compiler present — so one compiled `.o` file runs correctly across kernel versions whose struct layouts differ, which is exactly the portability that early eBPF lacked and the foundation everything in this section builds on.
+**CO-RE** (Compile Once – Run Everywhere) solves this with a two-part mechanism. First, **[BTF (BPF Type Format)](https://docs.kernel.org/bpf/btf.html)** is compact type information describing the kernel's exact struct layouts, embedded in the kernel binary itself (`/sys/kernel/btf/vmlinux`) — so the running kernel carries a precise description of where every field actually lives. Second, when you compile your program, the Clang compiler doesn't hardcode the offsets; it emits **relocations** — annotations that say "here I'm accessing `task_struct->pid`; patch in whatever offset that field has on the target." At load time, the libbpf loader reads the target kernel's BTF, looks up the *actual* offset of each accessed field, and rewrites your program's instructions to use it before handing the program to the verifier. The result is that "access `task_struct->pid`" is resolved against the kernel you're *actually running on*, at load time, with no compiler present — so one compiled `.o` file runs correctly across kernel versions whose struct layouts differ, which is exactly the portability that early eBPF lacked and the foundation everything in this section builds on.
 
 ```bash
 # check if your kernel has BTF
@@ -750,7 +750,7 @@ pub fn trace_exec(ctx: TracePointContext) -> u32 {
 
 ### bpftool: The Inspector
 
-`bpftool` is the command-line tool for inspecting eBPF state on a running system:
+[`bpftool`](https://man7.org/linux/man-pages/man8/bpftool.8.html) is the command-line tool for inspecting eBPF state on a running system:
 
 ```bash
 # list loaded eBPF programs
@@ -787,7 +787,7 @@ bpftool net attach xdp id 42 dev eth0
 
 ### Cilium: eBPF-Native Kubernetes Networking
 
-Cilium is the dominant Kubernetes CNI (Container Network Interface) in 2026, used by AWS EKS, Google GKE, and most enterprise clusters. It replaces the entire `kube-proxy` component with eBPF programs.
+[Cilium](https://docs.cilium.io/en/stable/) is the dominant Kubernetes CNI (Container Network Interface) in 2026, used by AWS EKS, Google GKE, and most enterprise clusters. It replaces the entire `kube-proxy` component with eBPF programs.
 
 **What Cilium replaces:**
 
@@ -887,7 +887,7 @@ ip link show eth0
 
 ### Tetragon: Runtime Security Enforcement
 
-Tetragon (by Isovalent/Cilium) is an eBPF-based security tool that doesn't just *detect* threats — it **enforces policy in the kernel**. Unlike traditional security tools that stream events to userspace for analysis (introducing latency), Tetragon's eBPF programs make decisions and take action directly in the kernel.
+[Tetragon](https://tetragon.io/docs/) (by Isovalent/Cilium) is an eBPF-based security tool that doesn't just *detect* threats — it **enforces policy in the kernel**. Unlike traditional security tools that stream events to userspace for analysis (introducing latency), Tetragon's eBPF programs make decisions and take action directly in the kernel.
 
 **Capabilities:**
 - **Detect and kill** processes that attempt privilege escalation.
@@ -932,7 +932,7 @@ In practice, many organizations run **both**: Tetragon for enforcement (block th
 
 ### Falco: Behavioral Threat Detection
 
-Falco uses eBPF (or a kernel module) to stream syscall events to a userspace rule engine. Rules are written in a YAML-based DSL:
+[Falco](https://falco.org/docs/) uses eBPF (or a kernel module) to stream syscall events to a userspace rule engine. Rules are written in a YAML-based DSL:
 
 ```yaml
 # alert when a shell is spawned inside a container
@@ -967,7 +967,7 @@ eBPF enables **zero-instrumentation observability** — deep telemetry without m
 
 ### Grafana Beyla: Auto-Instrumented Application Metrics
 
-Beyla uses eBPF (uprobes and kprobes) to automatically detect and instrument HTTP, gRPC, SQL, and Redis traffic for any application — regardless of language or framework:
+[Beyla](https://grafana.com/docs/beyla/latest/) uses eBPF (uprobes and kprobes) to automatically detect and instrument HTTP, gRPC, SQL, and Redis traffic for any application — regardless of language or framework:
 
 ```bash
 # run Beyla alongside your application
@@ -984,7 +984,7 @@ This works because eBPF can trace the kernel's TCP/socket layer — it sees ever
 
 ### Continuous Profiling: Parca and Pyroscope
 
-eBPF-based continuous profiling captures CPU flame graphs for every process, all the time, with <1% overhead:
+eBPF-based continuous profiling ([Parca](https://www.parca.dev/docs/overview/), [Grafana Pyroscope](https://grafana.com/docs/pyroscope/latest/)) captures CPU flame graphs for every process, all the time, with <1% overhead:
 
 ```bash
 # Parca agent: continuously profile all processes on the node
@@ -1011,7 +1011,7 @@ Pixie (by New Relic, CNCF project) uses eBPF to provide instant Kubernetes obser
 
 ## Part 12 — sched_ext: Custom Schedulers in eBPF
 
-`sched_ext` (kernel 6.12+, 2024) is arguably the most exciting eBPF development: it lets you write **custom CPU schedulers** as eBPF programs that can be loaded and replaced at runtime, without recompiling the kernel.
+[`sched_ext`](https://docs.kernel.org/scheduler/sched-ext.html) (kernel 6.12+, 2024) is arguably the most exciting eBPF development: it lets you write **custom CPU schedulers** as eBPF programs that can be loaded and replaced at runtime, without recompiling the kernel.
 
 ### Why Custom Schedulers?
 
@@ -1225,5 +1225,13 @@ bpftool feature probe kernel | grep helper
 ```
 
 ---
+
+## Where to Go Next
+
+- **Read Liz Rice's [*Learning eBPF*](https://www.oreilly.com/library/view/learning-ebpf/9781098135119/)** — the best structured introduction, free as a PDF from Isovalent, covering Parts 1–8 here with runnable examples. Brendan Gregg's [*BPF Performance Tools*](https://www.brendangregg.com/bpf-performance-tools-book.html) is the follow-up for the tracing/performance side.
+- **Work the [bpftrace one-liner tutorial](https://github.com/bpftrace/bpftrace/blob/master/docs/tutorial_one_liners.md)** on a live machine — each one-liner is two minutes of typing and a real lesson in what the kernel exposes.
+- **Read the primary docs while they're fresh:** [ebpf.io](https://ebpf.io/what-is-ebpf/) for the conceptual map, the [kernel BPF docs](https://docs.kernel.org/bpf/) (especially the [verifier](https://docs.kernel.org/bpf/verifier.html) and [BTF](https://docs.kernel.org/bpf/btf.html) pages), and [`bpf-helpers(7)`](https://man7.org/linux/man-pages/man7/bpf-helpers.7.html).
+- **Write one program end to end.** Scaffold a libbpf or [cilium/ebpf](https://github.com/cilium/ebpf) project, trace a syscall, push events through a ring buffer, and get rejected by the verifier at least once — fixing that rejection is where Part 5 becomes real knowledge.
+- **Adjacent guides in this repo:** [Advanced Linux](ADVANCED_LINUX_STUDY_GUIDE.md) (the kernel context around every hook point), [Kubernetes](k8s/KUBERNETES_STUDY_GUIDE.md) and [Docker & Kubernetes Networking](k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md) (where Cilium lives), [Kubernetes Security](k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md) (Tetragon/Falco in cluster context), and [Observability](OBSERVABILITY_STUDY_GUIDE.md) (where Beyla's metrics go).
 
 If you remember one thing from this guide: **eBPF is the mechanism that lets you run safe, sandboxed, JIT-compiled programs inside the Linux kernel at specific hook points — without modifying the kernel or rebooting. In 2026, it is the foundational technology beneath Kubernetes networking (Cilium replaces iptables/kube-proxy with O(1) eBPF lookups), runtime security (Tetragon enforces policy in-kernel, Falco detects threats), zero-instrumentation observability (Hubble, Beyla, Pixie provide metrics and traces without code changes), and custom scheduling (sched_ext lets you hot-swap CPU schedulers at runtime). The tools are mature, the ecosystem is production-ready, and every major cloud provider has adopted it. If you operate Linux infrastructure, eBPF is no longer optional knowledge — it's the substrate your stack runs on.**
