@@ -141,7 +141,7 @@ Part, click-to-reveal explanation included.
 
 ## Batch 5 — Web, frontend, and apps
 
-- [ ] `NEXTJS_STUDY_GUIDE.md`
+- [x] `NEXTJS_STUDY_GUIDE.md` — 5 quizzes (15 questions; app-router filesystem/persistent-layouts/route-groups, use-client-door/serialization/children-slot, rendering-inference/ISR/streaming-Suspense, four-caches/tag-invalidation/use-cache, server-actions-public-endpoint/forms-progressive/route-handlers)
 - [ ] `VUE_STUDY_GUIDE.md`
 - [ ] `SVELTEKIT_STUDY_GUIDE.md`
 - [ ] `DJANGO_STUDY_GUIDE.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 43/65 (Batches 1–4 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 44/65 (Batches 1–4 complete).

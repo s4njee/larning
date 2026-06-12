@@ -311,6 +311,29 @@ Finally, every segment can export configuration constants — the [Route Segment
 
 If you remember one thing from Part 2: **folders are URL segments, `page.tsx` makes a segment public, layouts nest and persist across navigations, and state describing what the user sees belongs in the URL where the server can read it.**
 
+```quiz
+Q: In the App Router, what makes a route folder publicly accessible as a URL?
+- [ ] Any file inside it
+- [x] A `page.tsx` (or `route.ts`) in the folder — other files (components, tests, fixtures) colocated there aren't routable
+- [ ] Adding it to a router config
+- [ ] A `layout.tsx`
+> The router *is* the `app/` directory: folders are URL segments, but a segment only becomes a public route when it contains a `page.tsx` (or a `route.ts` for an API endpoint). This is why colocation is safe — any non-special file in `app/` is simply not routable, so you can keep a feature's private components next to the route that owns them.
+
+Q: Why is "layouts persist across navigations" the App Router's headline property?
+- [ ] It makes pages load slower but look nicer
+- [x] Navigating between routes under a layout reconciles only the changed page, so the layout doesn't remount — sidebar scroll position and client state survive the navigation
+- [ ] Layouts re-render on every navigation to stay fresh
+- [ ] It disables client-side routing
+> When you go from `/dashboard` to `/dashboard/settings`, React reconciles only the part of the tree that changed (the page), leaving the dashboard layout mounted — so its sidebar keeps scroll position and any client state. That's why you model real UI shells as nested layouts rather than copying wrapper components into each page. When you specifically *want* a reset/remount per navigation, that's `template.tsx`.
+
+Q: What problem do route groups like `(marketing)` and `(app)` solve?
+- [ ] They add a URL prefix
+- [x] They organize the tree and scope different layouts to different sections *without* affecting the URL — `(marketing)/about` still serves `/about`
+- [ ] They make routes private
+- [ ] They cache routes separately
+> A folder named in parentheses is omitted from the URL, so `app/(marketing)/about/page.tsx` still resolves to `/about` while letting marketing routes use one layout and `(app)` routes use the authenticated shell. It's how you give sections of the app distinct chrome without contorting the URL structure or duplicating wrappers.
+```
+
 ---
 
 ## Part 3 — The Server/Client Component Boundary
@@ -455,6 +478,29 @@ Two mechanical notes that prevent late-night confusion. First, **Client Componen
 Honest trade-offs in the other direction: client components are *simpler to reason about* for highly interactive UI (no boundary to negotiate), libraries that predate RSC often require them, and per-interaction updates (typeahead, drag-and-drop, optimistic UI) are inherently client work. RSC is not "client components are bad"; it's "stop paying the client-component tax for the 80% of your tree that's just data presentation." Dan Abramov's framing in [The Two Reacts](https://overreacted.io/the-two-reacts/) is the right one: the two kinds of components are answers to two different questions — *what does this UI look like given the data* (server) versus *how does this UI behave under interaction* (client) — and a real product is always both.
 
 If you remember one thing from Part 3: **`'use client'` marks a door in the module graph, only serializable data fits through the door, and `children` lets you pass finished server-rendered UI through a client component without opening the door any wider.**
+
+```quiz
+Q: What does `'use client'` at the top of a module actually mark?
+- [ ] That this one component is a client component
+- [x] The server/client boundary — this module *and everything it transitively imports* belongs to the client bundle; it marks a door in the module graph, not a property of one component
+- [ ] That the component can't use hooks
+- [ ] That the component is server-rendered only
+> `'use client'` doesn't label a single component; it moves the boundary. Every module imported (transitively) by a `'use client'` file becomes client code, even without its own directive. That's why one careless directive near the root drags half the tree and its dependencies into the browser bundle — and why the discipline is to push client boundaries to the leaves (small interactive islands) and keep the data-shaped middle on the server.
+
+Q: Why does passing `onDelete={() => db.delete(id)}` from a Server Component to a Client Component throw "Functions cannot be passed directly to Client Components"?
+- [ ] Functions are too large to serialize
+- [x] Client Component props are written into the serialized RSC payload and shipped over the network, and arbitrary functions (and class instances) aren't serializable — only things like primitives, plain objects, Dates, Promises, and JSX cross
+- [ ] The database isn't available on the client
+- [ ] onDelete is a reserved prop name
+> A Server Component passes props to a client island by serializing them into the payload sent to the browser, so the values must be serializable by React's serializer. Functions, ORM entities, and other class instances aren't — pass a plain DTO instead of an entity, and a Server Function (Part 7) or an in-island handler instead of a closure. The error is the serialization boundary speaking.
+
+Q: A Client Component can't *import* a Server Component, yet the ThemeProvider example renders server-rendered content inside a client wrapper. How?
+- [ ] It uses dynamic import
+- [x] The server creates the JSX (`<ServerRenderedNav />`) and passes it as the `children` prop — the client component receives already-rendered UI to slot in, rather than importing and executing server code
+- [ ] The server component is secretly a client component
+- [ ] It disables the boundary
+> Importing a Server Component into a client module would pull server code into the bundle (the door swings one way). But *rendering* a server component passed as `children` is fine: the server evaluates it to finished UI, and the client component places that slot inside itself like a picture frame. This children-as-props pattern is how context providers and interactive shells wrap server content without surrendering the subtree to the client bundle.
+```
 
 ---
 
@@ -686,6 +732,29 @@ Because the boundary is segment-local, a crashing dashboard widget degrades the 
 
 If you remember one thing from Part 5: **rendering mode is inferred per route from what the code touches — keep routes as static as their data allows, use ISR to give static pages a freshness contract, and when a route must be dynamic, stream it with Suspense so the slow parts can't hold the fast parts hostage.**
 
+```quiz
+Q: In the App Router, how is a route's rendering mode (static vs dynamic) usually determined?
+- [ ] You set it globally in next.config
+- [x] It's inferred per route from what the code touches — awaiting `cookies()`/`headers()`, reading `searchParams`, or an uncached `fetch` flips the route to dynamic; otherwise it's prerendered static at build
+- [ ] Every route is dynamic by default
+- [ ] You annotate every component
+> Next.js prerenders each route as static at `next build` *unless* rendering touches request-time information (cookies, headers, searchParams, uncached fetch, or `force-dynamic`). This inference is elegant but can bite: a helper reading `cookies()` deep in a utility silently makes a whole route dynamic. The build output table (`○` static, `ƒ` dynamic) is your audit — an unexpected `ƒ` is a regression to investigate.
+
+Q: What does ISR (`export const revalidate = 3600`) give you that pure static and pure dynamic don't?
+- [ ] Per-user fresh HTML every request
+- [x] CDN economics with bounded staleness — requests serve the static copy instantly, and after the window the next request gets stale-while-revalidate regeneration in the background
+- [ ] It disables caching
+- [ ] It renders on the client
+> ISR keeps the near-zero per-request cost of a static page while attaching a freshness contract: the page may be up to an hour stale, served instantly from cache, and the first request after the window triggers a background regeneration (stale-while-revalidate) so later requests get fresh HTML. On-demand revalidation can purge a specific page immediately when "an hour stale" is unacceptable for a particular edit.
+
+Q: Why split a dynamic page into independent `<Suspense>` boundaries rather than one big `await`?
+- [ ] It makes the queries faster
+- [x] Without it the whole page is as slow as its slowest query; streaming sends the shell and fast regions immediately and fills slow regions in as they finish, so the slow parts can't hold the fast parts hostage
+- [ ] Suspense caches the data
+- [ ] It avoids server rendering
+> A plain dynamic render blocks the entire page on its slowest data dependency, leaving the user staring at a blank tab. Wrapping each slow region in its own `<Suspense>` lets the server stream HTML in chunks as parts of the tree finish, so the header and fast data appear at once while the slow chart and feed stream in independently. It fixes the *experience* without fixing the query.
+```
+
 ---
 
 ## Part 6 — The Caching Layers (Why Everyone Is Confused)
@@ -803,6 +872,29 @@ If you can narrate that sequence unprompted, you understand Next.js caching bett
 However you spell it, the discipline that actually tames this part is not technical: **write the freshness contract down.** For each route or data family: how stale may it be, what user/system action must refresh it, and who sees stale data in the window? A team that can answer those three questions per feature has no caching problems, only caching *decisions* — and the four layers become implementation details of a policy you chose on purpose.
 
 If you remember one thing from Part 6: **four caches — memoization (per render), Data Cache (ingredients), Full Route Cache (the finished dish), Router Cache (the browser's copy) — and since Next 15 the server-side data caches are opt-in. Tag your reads, invalidate by tag inside the mutation, and document staleness budgets like the architecture decisions they are.**
+
+```quiz
+Q: Why prefer `revalidateTag("post:42")` over `revalidatePath("/blog")` as the default invalidation strategy?
+- [ ] Paths are deprecated
+- [x] Tags map to domain entities, so one call invalidates that data wherever it appears (detail page, listing, sitemap, OG image); path invalidation over-refreshes whole subtrees and requires you to remember every URL the data leaks into
+- [ ] revalidateTag is faster to type
+- [ ] Paths can't be used in Server Actions
+> Tagging reads by entity ("post:42") lets a mutation say "invalidate this post everywhere" with one call, and the tags age well as the app grows. Path invalidation is blunter — it refreshes everything under a URL and forces you to enumerate every place a piece of data surfaces. Tags are the entity-centric default; paths are the fallback when no tags exist yet.
+
+Q: "The page won't update after I edited it." What's the ordered checklist the guide gives to diagnose it?
+- [ ] Restart the server, clear cookies, redeploy, file a bug
+- [x] Is the route static when you assumed dynamic (build output)? Is a fetch cached with no tag/revalidate (Data Cache)? Did the mutation revalidate the right tag/path? Is it just the browser's copy (does a hard refresh fix it → Router Cache)?
+- [ ] Check the database, then the CDN, then DNS
+- [ ] Disable all four caches permanently
+> Walking the four layers in order — Full Route Cache (static vs dynamic), Data Cache (untagged fetch), invalidation (right tag/path in the mutation), Router Cache (does a hard refresh fix it) — pinpoints nearly every caching mystery. A hard refresh fixing it implicates the client-side Router Cache, which no server API can purge on clients that haven't talked to the server — the residual staleness window your budget should account for.
+
+Q: What does the newer `'use cache'` directive (with `cacheLife`/`cacheTag`) change conceptually about caching?
+- [ ] It removes all caching
+- [x] Caching becomes something you *declare in the code that is cached* — visible next to the query/component with its freshness contract — rather than an emergent property of defaults and render modes; it also covers DB reads and component subtrees, not just `fetch`
+- [ ] It only works on fetch calls
+- [ ] It caches everything forever
+> The fetch-centric model only natively covered `fetch`, leaving database reads and component subtrees without a first-class cache story, and caching behavior was an emergent property of defaults. `'use cache'` makes caching explicit: applied to a function, component, or route, it declares the result cacheable with a named `cacheLife` profile and `cacheTag` handles right there in the code — so a reviewer sees the freshness contract, and a dynamic page can embed a shared, hours-fresh cached subtree.
+```
 
 ---
 
@@ -978,6 +1070,29 @@ When to use which is one of the cleaner decisions in the framework:
 The first row decides 90% of cases: **if the caller is your own UI, use an action; if the caller is the outside world, use a handler.** The most common architecture smell from the SPA era is building a REST layer in `app/api/` and `fetch`ing it from your own components — you're hand-rolling, without types and without cache coordination, what actions do natively. (The notable exception: GET-shaped *client-side* data needs — polling, infinite scroll, search-as-you-type — where a GET handler plus a client fetching library is legitimately the right tool; actions are POSTs and queue sequentially, which makes them wrong for reads.)
 
 If you remember one thing from Part 7: **mutations are Server Actions invoked by real forms — authorize, validate, write, revalidate, redirect — and every action is a public endpoint no matter how local it looks. Route Handlers are for callers that aren't your own UI.**
+
+```quiz
+Q: A Server Action's call site looks like a local function call. Why must you still authorize and validate inside it?
+- [ ] To improve performance
+- [x] The compiler turns it into a public POST endpoint with a generated ID, so anyone with a network tab can invoke it with arbitrary arguments — "the button is only shown to admins" is not authorization
+- [ ] Because actions run on the client
+- [ ] Validation is optional for actions
+> A Server Action compiles to a real, unauthenticated-by-default HTTP endpoint; the local-function appearance is an abstraction over a POST route. So you must check permissions and validate every argument inside the action, treating `formData` like a raw request body. UI-level gating (hiding the button) controls nothing — the canonical shape is authorize, validate, write, revalidate, redirect, with the first two non-negotiable.
+
+Q: What does invoking a Server Action through a real `<form action={...}>` give you that an `onClick`-plus-`fetch` cannot?
+- [ ] Faster network requests
+- [x] Progressive enhancement — the basic submit works before hydration via native browser form submission — plus no manual JSON contract, and `useFormStatus` pending state for double-submit protection
+- [ ] Automatic authorization
+- [ ] Client-side caching
+> Because it's a genuine form with a real action, submission works even before JavaScript hydrates (the browser carries it natively), which `onClick`+`fetch` can never do. You also drop the hand-managed `isSubmitting`/errors state machine and the client/server JSON contract: `useActionState` threads return values back as data, and `useFormStatus` exposes pending state to disable the button. Expected failures stay in the data flow instead of detonating an error boundary.
+
+Q: When should you build a Route Handler instead of a Server Action?
+- [ ] Always — actions are deprecated
+- [x] When the caller isn't your own UI — webhooks, public/mobile/third-party clients, OAuth callbacks, file downloads — or for client-side GET-shaped reads like polling/infinite-scroll
+- [ ] For all form submissions
+- [ ] Only for database writes
+> The first-row rule decides most cases: own UI → action; outside world → handler. Building a REST layer in `app/api/` just to fetch it from your own components is the SPA-era smell — you're hand-rolling, without types or cache coordination, what actions do natively. The legitimate exception is GET-shaped client reads (search-as-you-type, infinite scroll), since actions are POSTs that queue sequentially and are wrong for reads.
+```
 
 ---
 
