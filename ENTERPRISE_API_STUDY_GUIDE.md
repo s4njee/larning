@@ -529,3 +529,13 @@ The questions to ask of every new endpoint, in review, before it ships — each 
 ### The closing thesis
 
 Every part of this guide is one idea applied to a different layer: **assume the failure, then make it boring.** Assume the response is lost — idempotency makes the retry boring. Assume two writers — ETags make the race boring. Assume the dependency dies — breakers and budgets make it boring. Assume the client never upgrades — compatibility discipline makes the decade boring. Demo APIs are built for the run where everything works; enterprise-grade APIs are built so that the runs where things break are indistinguishable, from the consumer's ledger, from the runs where they didn't.
+
+---
+
+## Where to Go Next
+
+- **Read the [Stripe API reference](https://stripe.com/docs/api) like a design document**, not a lookup table — its idempotency, versioning, pagination, and error conventions are the working answer key to Parts 3–6, refined by a decade of other people's money.
+- **Read [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110) §9 (methods) and [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)** while the safe/idempotent table and Problem Details format are fresh — they're short, and they are the contract everything here builds on. Google's [AIPs](https://google.aip.dev/) are the equivalent corpus for resource-oriented design.
+- **Work the [OWASP API Security Top 10](https://owasp.org/API-Security/)** against an API you own — BOLA (broken object-level authorization) alone accounts for most real-world API breaches, and Part 7's per-object checks are the fix.
+- **Implement the idempotency middleware from Part 3 for real** — key storage, body fingerprinting, in-progress locking, TTL — and then kill the process mid-request and verify the retry behaves. That one exercise turns the guide's central concept into reflex.
+- **Adjacent guides in this repo:** [Auth](AUTH_STUDY_GUIDE.md) (Part 7 at full depth), [Distributed Systems](DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md) (why exactly-once delivery doesn't exist — the reason idempotency matters), [Observability](OBSERVABILITY_STUDY_GUIDE.md) (Part 11 at full depth), and [Testing](TESTING_STUDY_GUIDE.md) (contract tests in CI).

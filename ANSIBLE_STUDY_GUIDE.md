@@ -2245,3 +2245,5 @@ You're solid on Ansible when you can, without looking anything up:
 8. **[The Ansible Mailing List Archives](https://groups.google.com/g/ansible-project)** and **[Reddit r/ansible](https://www.reddit.com/r/ansible/)** — for when the docs don't cover the edge case you've hit.
 9. **[HashiCorp Vault + Ansible](https://www.hashicorp.com/blog/managing-secrets-with-vault-and-ansible)** — when ansible-vault stops being enough.
 10. **[Mitogen for Ansible](https://mitogen.networkgenomics.com/ansible_detailed.html)** — read when you have a slow playbook and need the speedup.
+
+**Adjacent guides in this repo:** [Linux Fundamentals](LINUX_FUNDAMENTALS_STUDY_GUIDE.md) (the systems Ansible configures), [Terraform](TERRAFORM_STUDY_GUIDE.md) (provisioning vs configuration — the boundary worth getting right), [Docker](DOCKER_STUDY_GUIDE.md), and [GitHub Actions](GITHUB_ACTIONS_STUDY_GUIDE.md) (running playbooks in CI).

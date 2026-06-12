@@ -1758,3 +1758,13 @@ A 5-second wait for a response feels broken. The same content streamed token-by-
 | Measure quality | Evals (automated + LLM-as-judge) |
 | Prevent misuse | Input/output moderation + guardrails |
 | Improve quality on a specific task | Few-shot → prompt chaining → fine-tuning (in that order) |
+
+---
+
+## Where to Go Next
+
+- **Read the provider docs as engineering references:** the [Anthropic docs](https://docs.anthropic.com/) (especially the [prompt-engineering guide](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview) and tool-use pages) and the [OpenAI API reference](https://platform.openai.com/docs/api-reference) — capabilities, parameters, and pricing change fast, and the docs are the only current source.
+- **Read Anthropic's [Building Effective Agents](https://www.anthropic.com/research/building-effective-agents)** — the short essay that separates workflows from agents and argues for the simplest pattern that works; it's the design philosophy this guide's architecture sections assume.
+- **Build the eval harness before the feature.** Take one real task, write 20–50 graded examples, and wire a scoring loop — the discipline that separates teams that improve their prompts from teams that vibe-edit them. [promptfoo](https://www.promptfoo.dev/docs/intro/) or a 100-line script both work.
+- **Ship one RAG app end to end** — chunking, embeddings, retrieval, citations, and the injection defenses from the security section — against your own documents. Every hard problem in this guide shows up in miniature.
+- **Adjacent guides in this repo:** [AI Agents](AI_AGENTS_STUDY_GUIDE.md) (the autonomy layer on top), [Web & LLM Security](WEB_LLM_SECURITY_STUDY_GUIDE.md) (the attack surface you just created), [Enterprise APIs](ENTERPRISE_API_STUDY_GUIDE.md) (rate limits, retries, idempotency for provider calls), and [Observability](OBSERVABILITY_STUDY_GUIDE.md) (tracing multi-step LLM pipelines).

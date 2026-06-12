@@ -759,5 +759,13 @@ If you remember one thing from Part 10: **the recipes are short because the mode
 
 ---
 
+## Where to Go Next
+
+- **Watch David Beazley's [GIL talks](https://www.dabeaz.com/GIL/)** — still the clearest explanation of the convoy effects and scheduling behavior Part 2 summarizes, and genuinely entertaining.
+- **Read the stdlib docs as designed wholes:** [`concurrent.futures`](https://docs.python.org/3/library/concurrent.futures.html) (short, and the API you should default to), the [`multiprocessing` programming guidelines](https://docs.python.org/3/library/multiprocessing.html#programming-guidelines) (the official list of fork/pickle gotchas), and the [asyncio docs](https://docs.python.org/3/library/asyncio.html).
+- **Track the GIL's endgame:** [PEP 703](https://peps.python.org/pep-0703/) (free-threading) and [PEP 684](https://peps.python.org/pep-0684/) (per-interpreter GIL) are the primary sources, and each release's [What's New](https://docs.python.org/3/whatsnew/) reports the current state.
+- **Run the classification experiment.** Take a slow script, watch CPU usage while it runs, classify it I/O- or CPU-bound, then implement it twice — `ThreadPoolExecutor` and `ProcessPoolExecutor` — and time both. Seeing threads *lose* on CPU-bound work (and win on I/O) makes Part 2 permanent.
+- **Siblings in this repo:** the [Asyncio & aiohttp guide](ASYNCIO_STUDY_GUIDE.md) (async at full depth), [Advanced Python](ADVANCED_PYTHON_STUDY_GUIDE.md) (the runtime underneath), and [Python vs Node.js Async](PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md) (the comparison).
+
 That's the guide. It's deliberately the *map* — the model picker — and it hands off to its siblings for depth: the [Asyncio & aiohttp guide](ASYNCIO_STUDY_GUIDE.md) for mastering async, the [Advanced Python guide](ADVANCED_PYTHON_STUDY_GUIDE.md) for the runtime underneath, and the [Python vs Node.js async guide](PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md) for how Python's model compares. From here the highest-leverage next step is to take the slowest thing you've written, watch a CPU monitor while it runs to classify it I/O- or CPU-bound, and apply the one matching model from Part 7 — because in Python concurrency, that single classification is most of the battle, and everything else is detail on top of it.
 

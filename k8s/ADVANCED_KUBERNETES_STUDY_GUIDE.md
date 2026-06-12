@@ -76,7 +76,7 @@ If you remember one thing from Part 1: **Kubernetes is etcd (a consensus-replica
 
 ## Part 2 — The API Machinery & Extension Model
 
-The Kubernetes API is not a fixed set of endpoints — it's a framework for *adding new endpoints*. Understanding the machinery is what lets you extend Kubernetes with your own resources and controllers (Part 3), and it explains the structure behind every manifest you've ever written.
+The Kubernetes API is not a fixed set of endpoints — it's a framework for *adding new endpoints* (the official [API concepts page](https://kubernetes.io/docs/reference/using-api/api-concepts/) is the canonical reference). Understanding the machinery is what lets you extend Kubernetes with your own resources and controllers (Part 3), and it explains the structure behind every manifest you've ever written.
 
 ### Groups, Versions, and Resources (GVR)
 
@@ -175,7 +175,7 @@ If you remember one thing from Part 2: **the Kubernetes API is an extensible fra
 
 ## Part 3 — Building Operators
 
-An operator is a **custom controller that encodes domain knowledge** — "how to run and operate a specific application" — into software that watches CRDs and drives the application's lifecycle automatically. The Prometheus Operator, the Cert-Manager, the Postgres Operator, the Kafka Operator — each replaces runbooks with reconciliation loops. This is the part where you go from *using* Kubernetes to *programming* it, and your [Advanced Go](../ADVANCED_GO_STUDY_GUIDE.md) skills apply directly.
+An operator ([official operator pattern docs](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)) is a **custom controller that encodes domain knowledge** — "how to run and operate a specific application" — into software that watches CRDs and drives the application's lifecycle automatically. The Prometheus Operator, the Cert-Manager, the Postgres Operator, the Kafka Operator — each replaces runbooks with reconciliation loops. This is the part where you go from *using* Kubernetes to *programming* it, and your [Advanced Go](../ADVANCED_GO_STUDY_GUIDE.md) skills apply directly.
 
 ### The Operator Pattern
 
@@ -360,7 +360,7 @@ VPA and HPA **should generally not target the same metric** (e.g., both scaling 
 
 ### KEDA: Event-Driven Scaling
 
-**KEDA** (Kubernetes Event-Driven Autoscaling) extends HPA with **ScaledObjects** that scale on external event sources — Kafka consumer lag, RabbitMQ queue depth, AWS SQS length, Prometheus queries, cron schedules, and 50+ scalers. It scales to *zero* when idle (HPA can't) and from zero when events arrive — critical for cost-effective serverless-style workloads on Kubernetes:
+**[KEDA](https://keda.sh/docs/)** (Kubernetes Event-Driven Autoscaling) extends HPA with **ScaledObjects** that scale on external event sources — Kafka consumer lag, RabbitMQ queue depth, AWS SQS length, Prometheus queries, cron schedules, and 50+ scalers. It scales to *zero* when idle (HPA can't) and from zero when events arrive — critical for cost-effective serverless-style workloads on Kubernetes:
 
 ```yaml
 apiVersion: keda.sh/v1alpha1
@@ -455,7 +455,7 @@ The **pull model**: the cluster pulls its desired state from Git, not the other 
 
 ### Argo CD
 
-The most popular GitOps engine. Core concepts:
+The most popular GitOps engine ([docs](https://argo-cd.readthedocs.io/en/stable/)). Core concepts:
 
 - **Application** — a CRD that maps a **Git source** (repo + path + revision) to a **destination** (cluster + namespace). Argo CD watches the source, computes the diff, and syncs.
 - **Sync** — apply the manifests from Git to the cluster. **Auto-sync** does this on every Git commit; manual sync requires a human click.
@@ -464,7 +464,7 @@ The most popular GitOps engine. Core concepts:
 
 ### Flux
 
-The CNCF alternative, more Kubernetes-native (everything is CRDs, no UI by default):
+The CNCF alternative ([docs](https://fluxcd.io/flux/)), more Kubernetes-native (everything is CRDs, no UI by default):
 
 - **GitRepository** — points at a Git repo. Flux polls or receives webhooks.
 - **Kustomization** — reconciles a path of manifests (native Kustomize support). Flux applies it and reports health.
@@ -544,7 +544,7 @@ Two complementary topics: hardening what goes *into* your cluster (the software 
 
 The software you deploy is only as trustworthy as the pipeline that built it and the base images it rests on. The 2020s wave of supply-chain attacks (SolarWinds, Codecov, xz) has made this a first-class production concern:
 
-- **Sign and verify container images.** **Cosign** (from the Sigstore project) signs images and stores signatures alongside them in the registry. **Kyverno** or a Gatekeeper policy can then *verify signatures at admission* — rejecting any unsigned or untrusted image before it runs. This is the container equivalent of code signing from the [Electron guide](../ELECTRON_STUDY_GUIDE.md), enforced at the cluster gate.
+- **Sign and verify container images.** **[Cosign](https://docs.sigstore.dev/cosign/signing/overview/)** (from the [Sigstore](https://www.sigstore.dev/) project) signs images and stores signatures alongside them in the registry. **Kyverno** or a Gatekeeper policy can then *verify signatures at admission* — rejecting any unsigned or untrusted image before it runs. This is the container equivalent of code signing from the [Electron guide](../ELECTRON_STUDY_GUIDE.md), enforced at the cluster gate.
 - **Generate and attach SBOMs (Software Bills of Materials).** Tools like `syft` (Anchore) scan your images and produce an SBOM listing every dependency — which you sign and attach with Cosign. SBOMs are becoming a regulatory requirement and are the foundation for vulnerability response ("does this CVE affect any of our running images?").
 - **SLSA (Supply-chain Levels for Software Artifacts).** A framework of progressively stronger guarantees about build provenance and integrity. At its core: "can you prove *who* built this artifact, *from what source*, on *what build system*?" Achieving SLSA Level 2+ means your CI produces signed, verifiable **provenance attestations** that the cluster can validate at admission.
 - **Scan images for vulnerabilities.** Integrate **Trivy** or **Grype** into CI (scan before push) *and* runtime (continuous scanning of running images). Block deployments of images with critical CVEs via admission policies.
@@ -605,7 +605,7 @@ Two implementation patterns:
 
 ### Backstage: The Developer Portal
 
-**Backstage** is the leading open-source **Internal Developer Portal (IDP)**. It provides:
+**[Backstage](https://backstage.io/docs/overview/what-is-backstage)** is the leading open-source **Internal Developer Portal (IDP)**. It provides:
 
 - A **service catalog** — every service, its owner, its docs, its APIs, its deployment status, its on-call, in one place.
 - **Software templates** — "create a new microservice" scaffolds a repo with CI, Dockerfiles, manifests, and GitOps wiring. A new service goes from "I want it" to "it's deploying" in minutes.
@@ -658,5 +658,13 @@ Most teams should aim for **level 3** (templates + guardrails) before investing 
 If you remember one thing from Part 10: **platform engineering is the discipline of making Kubernetes invisible to application developers through golden paths, templates, policy guardrails, and self-service abstractions — it's the operational endgame, built from the operators, GitOps, policy engines, and multi-cluster strategies in the rest of this guide.**
 
 ---
+
+## Where to Go Next
+
+- **Do [Kubernetes the Hard Way](https://github.com/kelseyhightower/kubernetes-the-hard-way)** once — bootstrapping the control plane by hand (certs, etcd, kube-apiserver, kubelet) makes Part 1 permanent in a way no diagram can.
+- **Work through the [Kubebuilder book](https://book.kubebuilder.io/)** — it scaffolds a CRD + controller and walks you through your first reconcile loop, which is Part 3 as a hands-on afternoon. [*Programming Kubernetes*](https://www.oreilly.com/library/view/programming-kubernetes/9781492047094/) (Hausenblas & Schimanski) is the book-depth companion on the API machinery.
+- **Read the primary docs while they're fresh:** [API concepts](https://kubernetes.io/docs/reference/using-api/api-concepts/), the [operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/), and the [Argo CD](https://argo-cd.readthedocs.io/en/stable/) or [Flux](https://fluxcd.io/flux/) docs for whichever GitOps engine you adopt.
+- **Run one upgrade and one failure drill** on a non-production cluster: upgrade a minor version following Part 9's order, then delete a node and watch PDBs, rescheduling, and reconciliation do their jobs. Operating knowledge is acquired in drills, not incidents.
+- **Sibling guides in this repo:** [Kubernetes Mastery](KUBERNETES_STUDY_GUIDE.md) (the foundation), [Kubernetes Security](KUBERNETES_SECURITY_STUDY_GUIDE.md), [Docker & Kubernetes Networking](DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md), plus [Distributed Systems](../DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md) (etcd/consensus) and [Advanced Go](../ADVANCED_GO_STUDY_GUIDE.md) (the language of operators).
 
 That's the guide. From here the highest-leverage next step depends on where you are: if you're operating clusters, set up `GOMEMLIMIT` on your Go services (Part 4 of the [Advanced Go guide](../ADVANCED_GO_STUDY_GUIDE.md)), add PodDisruptionBudgets to every workload that doesn't have one, and get GitOps running with Argo CD or Flux — those three are the highest-return, lowest-cost production improvements. If you're building platforms, scaffold an operator with Kubebuilder and write your first reconcile loop — it will permanently change how you think about Kubernetes, because you'll see that you've been *using* a reconciliation engine and now you're *programming* one.

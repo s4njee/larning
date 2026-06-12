@@ -1477,3 +1477,13 @@ jobs:
 Read it as a flow: `test` → `image` (build, push, expose the tag as a job output) → `deploy-staging` → `deploy-production`. The only manual step is approving the production environment; everything else is automatic and repeatable. Combine it with Recipe 3's provenance and Recipe 1's PR gate and you have a pipeline that is fast, safe, and auditable — exactly the three properties from Part 1: a tight feedback loop, repeatability, and an enforceable gate.
 
 That's the guide. From here the highest-leverage next steps are the three from Part 7 that most improve a real pipeline: default `permissions` to read-only, SHA-pin your actions, and move cloud deploys to OIDC.
+
+---
+
+## Where to Go Next
+
+- **Keep the [workflow syntax reference](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax) and [contexts reference](https://docs.github.com/en/actions/reference/contexts-reference) open while writing workflows** — most YAML frustration is answered on those two pages, and the [expressions reference](https://docs.github.com/en/actions/reference/evaluate-expressions-in-workflows-and-actions) covers the `${{ }}` language.
+- **Read GitHub's [security hardening guide](https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions)** — it is the official version of Part 7, including script-injection, `pull_request_target`, and OIDC; pair it with [zizmor](https://github.com/zizmorcore/zizmor) to statically audit your existing workflows.
+- **Apply the big three to a real repo:** default `permissions: read-all`, SHA-pin third-party actions, and replace any stored cloud keys with [OIDC federation](https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/about-security-hardening-with-openid-connect). These are the highest-return changes per minute spent.
+- **Build one composite action and one reusable workflow** for something your team repeats — the refactor from copy-pasted YAML to shared building blocks is where Actions stops being scripting and starts being engineering.
+- **Adjacent guides in this repo:** [Git](GIT_STUDY_GUIDE.md) (the substrate), [Docker](DOCKER_STUDY_GUIDE.md) (image builds in CI), [Kubernetes](k8s/KUBERNETES_STUDY_GUIDE.md)/[Advanced Kubernetes](k8s/ADVANCED_KUBERNETES_STUDY_GUIDE.md) (GitOps — where CI hands off to CD), and [Auth](AUTH_STUDY_GUIDE.md) (the OIDC mechanics behind keyless deploys).

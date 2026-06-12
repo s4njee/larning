@@ -42,7 +42,7 @@ Almost every process you care about runs in the **fair** class. Real-time and de
 
 ### CFS (Completely Fair Scheduler)
 
-CFS has been the default fair scheduler since kernel 2.6.23 (2007). Its design principle: **give every task its fair share of CPU time, weighted by priority (nice value).**
+[CFS](https://docs.kernel.org/scheduler/sched-design-CFS.html) has been the default fair scheduler since kernel 2.6.23 (2007). Its design principle: **give every task its fair share of CPU time, weighted by priority (nice value).**
 
 CFS doesn't use time slices in the traditional sense. Instead, it tracks how much CPU time each task has consumed (**virtual runtime**, `vruntime`) and always picks the task with the **lowest vruntime** — the task that has been treated most unfairly. Tasks that have used less CPU get picked sooner; tasks that have used more get delayed.
 
@@ -71,12 +71,12 @@ renice -n -5 -p 12345           # increase priority of a running process
 
 ### EEVDF (Earliest Eligible Virtual Deadline First)
 
-Kernel 6.6 (October 2023) replaced CFS with **EEVDF** as the default fair scheduler. EEVDF adds a **virtual deadline** to each task: `deadline = eligible_time + (slice / weight)`. The scheduler picks the eligible task with the earliest virtual deadline.
+Kernel 6.6 (October 2023) replaced CFS with **[EEVDF](https://docs.kernel.org/scheduler/sched-eevdf.html)** as the default fair scheduler. EEVDF adds a **virtual deadline** to each task: `deadline = eligible_time + (slice / weight)`. The scheduler picks the eligible task with the earliest virtual deadline.
 
 The practical difference from CFS:
 
 - **Better latency fairness.** CFS could starve short-running tasks when long-running tasks monopolized the leftmost position in the tree. EEVDF's deadline mechanism ensures latency-sensitive tasks (interactive, I/O-bound) get scheduled promptly even alongside CPU hogs.
-- **The `sched_ext` hook.** EEVDF is the foundation for `sched_ext` (kernel 6.12+), which lets you write **custom schedulers in eBPF** — loaded and replaced at runtime without recompiling the kernel. This is the most exciting scheduler development in years: Google, Meta, and game developers are using it for workload-specific scheduling.
+- **The `sched_ext` hook.** EEVDF is the foundation for [`sched_ext`](https://docs.kernel.org/scheduler/sched-ext.html) (kernel 6.12+), which lets you write **custom schedulers in eBPF** — loaded and replaced at runtime without recompiling the kernel. This is the most exciting scheduler development in years: Google, Meta, and game developers are using it for workload-specific scheduling.
 - **Mostly transparent.** For typical server workloads, you won't notice the difference. EEVDF is a better CFS, not a different paradigm.
 
 ```bash
@@ -87,7 +87,7 @@ cat /proc/sched_debug | head     # scheduler debug info
 
 ### CPU Affinity and Isolation
 
-**CPU affinity** pins a process to specific CPU cores:
+**CPU affinity** pins a process to specific CPU cores with [`taskset(1)`](https://man7.org/linux/man-pages/man1/taskset.1.html):
 
 ```bash
 taskset -c 0,1 ./myapp           # run on cores 0 and 1 only
@@ -112,7 +112,7 @@ This is the gold standard for latency-sensitive workloads: isolated CPUs have ze
 
 The fundamentals guide mentioned that `--cpus 2` in Docker maps to a cgroup CPU limit. Here's exactly how it works:
 
-CFS bandwidth control enforces a **quota** of CPU time per **period**:
+[CFS bandwidth control](https://docs.kernel.org/scheduler/sched-bwc.html) enforces a **quota** of CPU time per **period**:
 
 ```
 quota = allowed CPU microseconds per period
@@ -152,7 +152,7 @@ On multi-socket servers (and increasingly on modern CPUs with chiplet architectu
 The scheduler is NUMA-aware: it tries to keep tasks running near their memory allocations. But migration between NUMA nodes is expensive — not just cache cold, but also remote memory access for all existing allocations.
 
 ```bash
-numactl --hardware               # show NUMA topology
+numactl --hardware               # show NUMA topology (man 8 numactl)
 numactl --cpunodebind=0 --membind=0 ./myapp   # pin to NUMA node 0
 lscpu | grep NUMA                # quick topology overview
 numastat                         # NUMA memory allocation statistics
@@ -216,7 +216,7 @@ cat /proc/meminfo | grep Huge
 # Hugepagesize:       2048 kB
 ```
 
-**Transparent Huge Pages (THP):** the kernel automatically promotes regular 4 KB pages to 2 MB huge pages when it detects large contiguous allocations. Enabled by default on most distros:
+**[Transparent Huge Pages (THP)](https://docs.kernel.org/admin-guide/mm/transhuge.html):** the kernel automatically promotes regular 4 KB pages to 2 MB huge pages when it detects large contiguous allocations. Enabled by default on most distros:
 
 ```bash
 cat /sys/kernel/mm/transparent_hugepage/enabled
@@ -230,7 +230,7 @@ cat /sys/kernel/mm/transparent_hugepage/enabled
 echo never > /sys/kernel/mm/transparent_hugepage/enabled
 ```
 
-**Explicit huge pages** (`hugetlbfs`) pre-allocate huge pages at boot time. No compaction needed, no latency spikes, but you must specify the count upfront. Used by databases and DPDK (network-intensive applications):
+**Explicit huge pages** ([`hugetlbfs`](https://docs.kernel.org/admin-guide/mm/hugetlbpage.html)) pre-allocate huge pages at boot time. No compaction needed, no latency spikes, but you must specify the count upfront. Used by databases and DPDK (network-intensive applications):
 
 ```bash
 # allocate 1024 × 2MB huge pages (2 GB)
@@ -267,7 +267,7 @@ When memory pressure increases (new allocations need pages), the kernel's **memo
 1. **Page cache** — file-backed pages that can be evicted and re-read from disk.
 2. **Anonymous pages** — heap, stack, mmap'd private data. These can only be reclaimed by swapping to disk (swap space).
 
-`vm.swappiness` (0–200, default 60) controls the **balance** between reclaiming page cache and swapping anonymous pages:
+[`vm.swappiness`](https://docs.kernel.org/admin-guide/sysctl/vm.html#swappiness) (0–200, default 60) controls the **balance** between reclaiming page cache and swapping anonymous pages:
 
 ```bash
 cat /proc/sys/vm/swappiness
@@ -306,7 +306,7 @@ The OOM score is based on the proportion of memory the process uses, adjusted by
 
 ### cgroups v2 Memory Controller
 
-The fundamentals guide covered `memory.max` (hard limit → OOM kill). cgroups v2 has a richer interface:
+The fundamentals guide covered `memory.max` (hard limit → OOM kill). [cgroups v2](https://docs.kernel.org/admin-guide/cgroup-v2.html#memory) has a richer interface:
 
 | File | What it does |
 |---|---|
@@ -322,7 +322,7 @@ The `memory.high` throttling (introduced in cgroups v2) is often better than `me
 
 ### PSI (Pressure Stall Information)
 
-PSI (kernel 4.20+) quantifies resource pressure — how much time processes spend stalled waiting for CPU, memory, or I/O:
+[PSI](https://docs.kernel.org/accounting/psi.html) (kernel 4.20+) quantifies resource pressure — how much time processes spend stalled waiting for CPU, memory, or I/O:
 
 ```bash
 cat /proc/pressure/memory
@@ -410,7 +410,7 @@ The critical question for data integrity: **when is my data actually on the stor
 | Call | Guarantee |
 |---|---|
 | `write()` | Data is in the page cache. Survives process crash, NOT system crash. |
-| `fsync(fd)` | Data AND metadata (size, timestamps) are on the storage device. Survives system crash. **Expensive** — waits for device to acknowledge write. |
+| [`fsync(fd)`](https://man7.org/linux/man-pages/man2/fsync.2.html) | Data AND metadata (size, timestamps) are on the storage device. Survives system crash. **Expensive** — waits for device to acknowledge write. |
 | `fdatasync(fd)` | Data is on device. Metadata only if it affects retrieval (e.g., file size changed). Slightly cheaper than `fsync`. |
 | `sync()` | Flushes ALL dirty pages for all files. Nuclear option. |
 | `O_SYNC` | Every `write()` is implicitly `fsync`'d. Very expensive. |
@@ -442,7 +442,7 @@ Modern NVMe drives have internal parallelism and their own scheduling — adding
 
 ### io_uring: The Modern I/O Interface
 
-`io_uring` (kernel 5.1+, mature by 6.x) is the biggest I/O development of the last decade. It replaces the aging `read`/`write`/`pread`/`pwrite`/`aio` interfaces with a high-performance asynchronous I/O mechanism.
+[`io_uring`](https://man7.org/linux/man-pages/man7/io_uring.7.html) (kernel 5.1+, mature by 6.x; Jens Axboe's [design document](https://kernel.dk/io_uring.pdf) is the canonical description) is the biggest I/O development of the last decade. It replaces the aging `read`/`write`/`pread`/`pwrite`/`aio` interfaces with a high-performance asynchronous I/O mechanism.
 
 The core idea: **two shared-memory ring buffers** between userspace and the kernel — a **submission queue (SQ)** and a **completion queue (CQ)**. The application pushes I/O requests to the SQ; the kernel processes them and pushes completions to the CQ. No system call overhead per I/O operation.
 
@@ -518,7 +518,7 @@ Tuning these affects the trade-off between write throughput (batch more dirty pa
 
 ### Benchmarking I/O with fio
 
-`fio` (Flexible I/O Tester) is the standard tool for I/O benchmarking:
+[`fio`](https://fio.readthedocs.io/en/latest/fio_doc.html) (Flexible I/O Tester) is the standard tool for I/O benchmarking:
 
 ```bash
 # sequential read throughput
@@ -564,7 +564,7 @@ Each stage is a hook point where you can inspect, modify, or drop packets. Under
 
 ### nftables: The Modern Firewall
 
-nftables replaced iptables starting with kernel 3.13 and is the default on modern distros. It provides a unified framework for packet filtering, NAT, and traffic classification:
+[nftables](https://wiki.nftables.org/wiki-nftables/index.php/Main_Page) replaced iptables starting with kernel 3.13 and is the default on modern distros. It provides a unified framework for packet filtering, NAT, and traffic classification:
 
 ```bash
 # list all rules
@@ -625,7 +625,7 @@ sysctl -w net.ipv4.tcp_congestion_control=bbr
 sysctl -w net.core.default_qdisc=fq   # BBR requires the fq qdisc
 ```
 
-**BBR (Bottleneck Bandwidth and Round-trip propagation time)** is a model-based congestion control algorithm developed by Google. Unlike Cubic (which reacts to packet loss), BBR probes for available bandwidth and minimum RTT, achieving better throughput on lossy networks (internet, WAN links) and faster convergence. BBR v3 (kernel 6.x+) fixes fairness issues from BBR v1.
+**[BBR](https://github.com/google/bbr) (Bottleneck Bandwidth and Round-trip propagation time)** is a model-based congestion control algorithm developed by Google (the [ACM Queue paper](https://queue.acm.org/detail.cfm?id=3022184) explains the model). Unlike Cubic (which reacts to packet loss), BBR probes for available bandwidth and minimum RTT, achieving better throughput on lossy networks (internet, WAN links) and faster convergence. BBR v3 (kernel 6.x+) fixes fairness issues from BBR v1.
 
 **`SO_REUSEPORT`:**
 
@@ -634,11 +634,11 @@ int opt = 1;
 setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
 ```
 
-Allows multiple processes/threads to bind to the same port. The kernel distributes incoming connections across the listeners using a hash. This is how Nginx and Envoy achieve per-CPU accept() parallelism — each worker binds to the same port, and the kernel load-balances at the socket level. Without `SO_REUSEPORT`, only one process can accept() at a time (the thundering-herd problem).
+Allows multiple processes/threads to bind to the same port (see [`socket(7)`](https://man7.org/linux/man-pages/man7/socket.7.html)). The kernel distributes incoming connections across the listeners using a hash. This is how Nginx and Envoy achieve per-CPU accept() parallelism — each worker binds to the same port, and the kernel load-balances at the socket level. Without `SO_REUSEPORT`, only one process can accept() at a time (the thundering-herd problem).
 
 ### IPVS (IP Virtual Server)
 
-IPVS is a transport-layer (L4) load balancer built into the Linux kernel. It's an alternative to iptables-based load balancing for Kubernetes Services:
+[IPVS](http://www.linuxvirtualserver.org/software/ipvs.html) is a transport-layer (L4) load balancer built into the Linux kernel. It's an alternative to iptables-based load balancing for [Kubernetes Services](https://kubernetes.io/docs/reference/networking/virtual-ips/):
 
 ```bash
 # Kubernetes kube-proxy in IPVS mode
@@ -661,7 +661,7 @@ For clusters with more than a few thousand Services, IPVS mode is strongly recom
 
 ### Traffic Control (tc)
 
-`tc` is the kernel's traffic control framework — it shapes, schedules, and polices network traffic using **queuing disciplines (qdiscs)**:
+[`tc`](https://man7.org/linux/man-pages/man8/tc.8.html) is the kernel's traffic control framework — it shapes, schedules, and polices network traffic using **queuing disciplines (qdiscs)**:
 
 ```bash
 # show current qdisc on an interface
@@ -683,11 +683,11 @@ tc qdisc add dev eth0 root netem delay 100ms 30ms distribution normal
 tc qdisc del dev eth0 root
 ```
 
-`netem` (Network Emulator) is particularly useful for testing how your application handles degraded networks — simulate latency, jitter, loss, and reordering in a controlled environment.
+[`netem`](https://man7.org/linux/man-pages/man8/tc-netem.8.html) (Network Emulator) is particularly useful for testing how your application handles degraded networks — simulate latency, jitter, loss, and reordering in a controlled environment.
 
 ### Conntrack (Connection Tracking)
 
-**conntrack** is the kernel's connection tracking subsystem — it tracks the state of network connections (TCP, UDP, ICMP) for stateful firewalling and NAT. Every connection passing through netfilter/nftables is tracked:
+**[conntrack](https://man7.org/linux/man-pages/man8/conntrack.8.html)** is the kernel's connection tracking subsystem — it tracks the state of network connections (TCP, UDP, ICMP) for stateful firewalling and NAT. Every connection passing through netfilter/nftables is tracked:
 
 ```bash
 # view active connections
@@ -725,7 +725,7 @@ If you remember one thing from Part 4: **nftables replaces iptables with a clean
 
 ## Part 5 — eBPF
 
-eBPF (extended Berkeley Packet Filter) is a technology that lets you run sandboxed programs in the Linux kernel — without modifying the kernel source or loading kernel modules. It's the most transformative Linux technology of the last decade, powering modern networking (Cilium), security (Falco, Tetragon), and observability (Pixie, continuous profiling).
+[eBPF](https://ebpf.io/what-is-ebpf/) (extended Berkeley Packet Filter) is a technology that lets you run sandboxed programs in the Linux kernel — without modifying the kernel source or loading kernel modules. It's the most transformative Linux technology of the last decade, powering modern networking (Cilium), security (Falco, Tetragon), and observability (Pixie, continuous profiling).
 
 ### What eBPF Is
 
@@ -765,7 +765,7 @@ eBPF (extended Berkeley Packet Filter) is a technology that lets you run sandbox
 
 ### The Verifier
 
-The verifier is what makes eBPF safe — it statically analyzes every program before loading to guarantee:
+The [verifier](https://docs.kernel.org/bpf/verifier.html) is what makes eBPF safe — it statically analyzes every program before loading to guarantee:
 
 - **Terminates.** No loops without bounded iteration counts (recently relaxed for known-bounded loops). The program cannot hang the kernel.
 - **Memory safety.** All pointer accesses are validated — no reading outside allocated buffers, no writing to read-only kernel memory.
@@ -805,7 +805,7 @@ Maps are shared data structures accessible from both eBPF programs (kernel side)
 
 ### XDP (eXpress Data Path)
 
-XDP runs eBPF programs at the **earliest possible point** in the network stack — in the network driver, before the kernel allocates an `sk_buff` (the per-packet data structure). This makes XDP extremely fast for packet filtering:
+[XDP](https://prototype-kernel.readthedocs.io/en/latest/networking/XDP/index.html) runs eBPF programs at the **earliest possible point** in the network stack — in the network driver, before the kernel allocates an `sk_buff` (the per-packet data structure). This makes XDP extremely fast for packet filtering:
 
 ```
 Without XDP:                        With XDP:
@@ -825,7 +825,7 @@ XDP can drop 10+ million packets per second per core — compared to iptables' ~
 
 ### bpftrace: The High-Level Tool
 
-`bpftrace` is a high-level tracing language (like awk for eBPF):
+[`bpftrace`](https://bpftrace.org/) is a high-level tracing language (like awk for eBPF):
 
 ```bash
 # trace all open() syscalls, showing PID and filename
@@ -853,7 +853,7 @@ bpftrace -e 'tracepoint:syscalls:sys_enter_write /args->fd == 3/ { printf("%s %d
 
 ### BCC Tools: The Pre-Built Toolkit
 
-BCC (BPF Compiler Collection) provides 100+ ready-made eBPF tools:
+[BCC](https://github.com/iovisor/bcc) (BPF Compiler Collection) provides 100+ ready-made eBPF tools:
 
 ```bash
 # trace TCP connections
@@ -886,7 +886,7 @@ biotop                           # top-like for block I/O
 
 ### CO-RE (Compile Once, Run Everywhere)
 
-eBPF programs traditionally needed to be compiled against the specific kernel headers of the target machine. **CO-RE** (kernel 5.4+, via BTF — BPF Type Format) enables compiling an eBPF program once and running it on any kernel version — the loader adjusts field offsets at load time. This is what makes production eBPF tools portable.
+eBPF programs traditionally needed to be compiled against the specific kernel headers of the target machine. **CO-RE** (kernel 5.4+, via [BTF — BPF Type Format](https://docs.kernel.org/bpf/btf.html)) enables compiling an eBPF program once and running it on any kernel version — the loader adjusts field offsets at load time. This is what makes production eBPF tools portable.
 
 ```bash
 # check if your kernel has BTF (required for CO-RE)
@@ -896,22 +896,22 @@ ls /sys/kernel/btf/vmlinux
 
 ### libbpf: The Production Library
 
-`libbpf` is the standard C library for loading and interacting with eBPF programs. The modern workflow:
+[`libbpf`](https://libbpf.readthedocs.io/en/latest/) is the standard C library for loading and interacting with eBPF programs. The modern workflow:
 
 1. Write the eBPF program in C
 2. Compile it with clang to BPF bytecode
 3. Use libbpf in userspace to load, attach, and read maps
 4. CO-RE + BTF makes it portable
 
-For Go, the `cilium/ebpf` library is the standard. For Rust, `aya`. For Python, `bcc` (easier but less portable than libbpf).
+For Go, the [`cilium/ebpf`](https://github.com/cilium/ebpf) library is the standard. For Rust, [`aya`](https://aya-rs.dev/). For Python, `bcc` (easier but less portable than libbpf).
 
 ### eBPF in Production (2026)
 
 | Project | Use Case | What It Replaces |
 |---|---|---|
-| **Cilium** | Kubernetes CNI — networking, load balancing, network policy | kube-proxy (iptables/IPVS), Calico iptables mode |
-| **Tetragon** | Runtime security — syscall monitoring, process policy | auditd, traditional LSMs for runtime detection |
-| **Falco** | Threat detection — anomaly detection at the syscall level | host-based IDS |
+| **[Cilium](https://cilium.io/)** | Kubernetes CNI — networking, load balancing, network policy | kube-proxy (iptables/IPVS), Calico iptables mode |
+| **[Tetragon](https://tetragon.io/)** | Runtime security — syscall monitoring, process policy | auditd, traditional LSMs for runtime detection |
+| **[Falco](https://falco.org/)** | Threat detection — anomaly detection at the syscall level | host-based IDS |
 | **Pixie** | Kubernetes observability — auto-instrumentation | manual instrumentation, sidecars |
 | **Parca / Pyroscope** | Continuous profiling | periodic profiling, manual perf runs |
 | **Grafana Beyla** | Auto-instrumented application observability (HTTP, gRPC, DB) | OpenTelemetry manual instrumentation |
@@ -929,7 +929,7 @@ The fundamentals guide covered `ps`, `top`, `strace`, and `ss`. This part covers
 
 ### The USE Method
 
-Brendan Gregg's **USE Method** (Utilization, Saturation, Errors) provides a systematic checklist for every resource:
+Brendan Gregg's **[USE Method](https://www.brendangregg.com/usemethod.html)** (Utilization, Saturation, Errors) provides a systematic checklist for every resource:
 
 | Resource | Utilization (busy %) | Saturation (queue depth) | Errors |
 |---|---|---|---|
@@ -953,7 +953,7 @@ USE and RED are complementary: RED tells you *what's wrong from the user's persp
 
 ### perf: The Swiss Army Knife
 
-`perf` is the kernel's built-in profiling tool, using hardware performance counters (PMU):
+[`perf`](https://perf.wiki.kernel.org/index.php/Main_Page) is the kernel's built-in profiling tool, using hardware performance counters (PMU):
 
 ```bash
 # CPU profiling — where is CPU time going?
@@ -981,7 +981,7 @@ perf list                                # hundreds of events: hardware, softwar
 
 ### Flame Graphs
 
-Flame graphs visualize **where CPU time is spent** across the entire call stack. The x-axis is not time — it's the alphabetically sorted set of stack frames. The width of a frame is the proportion of total samples that include it.
+[Flame graphs](https://www.brendangregg.com/flamegraphs.html) visualize **where CPU time is spent** across the entire call stack. The x-axis is not time — it's the alphabetically sorted set of stack frames. The width of a frame is the proportion of total samples that include it.
 
 ```bash
 # CPU flame graph (on-CPU analysis)
@@ -999,7 +999,7 @@ flamegraph.pl --color=io < offcpu.stacks > offcpu.svg
 
 ### ftrace: Kernel Function Tracing
 
-`ftrace` is the kernel's built-in tracing infrastructure:
+[`ftrace`](https://docs.kernel.org/trace/ftrace.html) is the kernel's built-in tracing infrastructure:
 
 ```bash
 # trace all kernel functions called during a command
@@ -1090,7 +1090,7 @@ The fundamentals guide covered permissions, capabilities, and the container secu
 
 Standard Unix permissions (DAC — Discretionary Access Control) have a fundamental limitation: the file owner controls access. If a process is compromised, it has all the permissions of the user it runs as. **Mandatory Access Control (MAC)** adds a second layer where the **system administrator** defines policies that even the file owner can't override.
 
-**SELinux** (Security-Enhanced Linux) — developed by the NSA, default on RHEL/Fedora/CentOS:
+**[SELinux](https://selinuxproject.org/page/Main_Page)** (Security-Enhanced Linux) — developed by the NSA, default on RHEL/Fedora/CentOS:
 
 ```bash
 # check SELinux status
@@ -1119,7 +1119,7 @@ restorecon -rv /var/www/html
 
 SELinux uses **type enforcement**: every process has a **domain** (e.g., `httpd_t`), every file has a **type** (e.g., `httpd_sys_content_t`), and the policy defines which domains can access which types. If the policy doesn't allow it, the access is denied — regardless of Unix permissions.
 
-**AppArmor** — default on Ubuntu/Debian/SUSE. Simpler than SELinux, path-based instead of label-based:
+**[AppArmor](https://apparmor.net/)** — default on Ubuntu/Debian/SUSE. Simpler than SELinux, path-based instead of label-based:
 
 ```bash
 # check AppArmor status
@@ -1149,7 +1149,7 @@ profile nginx /usr/sbin/nginx {
 
 ### seccomp-bpf: Syscall Filtering
 
-**seccomp-bpf** restricts which **system calls** a process can make. Since every kernel interaction goes through syscalls, restricting them is a powerful defense — a compromised process can't call `mount()`, `ptrace()`, or `reboot()` if the seccomp profile denies them.
+**[seccomp-bpf](https://docs.kernel.org/userspace-api/seccomp_filter.html)** restricts which **system calls** a process can make. Since every kernel interaction goes through syscalls, restricting them is a powerful defense — a compromised process can't call `mount()`, `ptrace()`, or `reboot()` if the seccomp profile denies them.
 
 ```json
 // Docker's default seccomp profile blocks ~44 dangerous syscalls:
@@ -1178,7 +1178,7 @@ securityContext:
 
 ### The Audit Framework
 
-`auditd` is the Linux kernel's audit system — it logs security-relevant events (file access, syscalls, authentication, policy changes) to an audit trail:
+[`auditd`](https://man7.org/linux/man-pages/man8/auditctl.8.html) is the Linux kernel's audit system — it logs security-relevant events (file access, syscalls, authentication, policy changes) to an audit trail:
 
 ```bash
 # watch for changes to /etc/passwd
@@ -1208,7 +1208,7 @@ Audit logs are critical for compliance (PCI-DSS, HIPAA, SOC 2) and incident resp
 
 ### SSH Hardening
 
-A hardened `/etc/ssh/sshd_config`:
+A hardened [`/etc/ssh/sshd_config`](https://man.openbsd.org/sshd_config):
 
 ```ini
 # authentication
@@ -1254,7 +1254,7 @@ auth required pam_faillock.so authfail deny=5 unlock_time=900
 
 ### systemd Sandboxing (Full Reference)
 
-The fundamentals guide showed basic systemd unit hardening. The full toolkit:
+The fundamentals guide showed basic systemd unit hardening. The full toolkit (every directive is documented in [`systemd.exec(5)`](https://www.freedesktop.org/software/systemd/man/latest/systemd.exec.html)):
 
 ```ini
 [Service]
@@ -1320,7 +1320,7 @@ Beyond inodes and mount points — the storage stack that sits under your data.
 
 ### Filesystem Comparison
 
-| Feature | ext4 | XFS | Btrfs |
+| Feature | [ext4](https://docs.kernel.org/admin-guide/ext4.html) | [XFS](https://docs.kernel.org/filesystems/xfs/index.html) | [Btrfs](https://btrfs.readthedocs.io/en/latest/) |
 |---|---|---|---|
 | **Default on** | Ubuntu, Debian | RHEL 7+, Fedora | SUSE, Fedora (optional) |
 | **Max file size** | 16 TB | 8 EB | 16 EB |
@@ -1362,7 +1362,7 @@ btrfs property set /mnt/data compression zstd  # enable compression
 
 ### LVM (Logical Volume Manager)
 
-LVM adds a layer of abstraction between physical storage and filesystems, enabling resize, snapshots, and spanning multiple disks:
+[LVM](https://man7.org/linux/man-pages/man8/lvm.8.html) adds a layer of abstraction between physical storage and filesystems, enabling resize, snapshots, and spanning multiple disks:
 
 ```
 Physical Volumes (PV)    Volume Group (VG)       Logical Volumes (LV)
@@ -1405,7 +1405,7 @@ mount /dev/vg_data/snap_app /mnt/snapshot            # mount read-only for backu
 
 ### LUKS Encryption
 
-LUKS (Linux Unified Key Setup) provides full-disk encryption:
+[LUKS](https://gitlab.com/cryptsetup/cryptsetup/-/blob/main/README.md) (Linux Unified Key Setup) provides full-disk encryption via [`cryptsetup(8)`](https://man7.org/linux/man-pages/man8/cryptsetup.8.html):
 
 ```bash
 # encrypt a partition
@@ -1430,6 +1430,8 @@ cryptsetup luksRemoveKey /dev/sdb1    # remove a key
 LUKS encryption is transparent to the filesystem and applications. Performance overhead on modern CPUs with AES-NI is minimal (1-5%).
 
 ### RAID with mdadm
+
+Software RAID via [`mdadm(8)`](https://man7.org/linux/man-pages/man8/mdadm.8.html):
 
 ```bash
 # create a RAID 1 (mirror)
@@ -1470,7 +1472,7 @@ setfacl -b /opt/app                    # remove all ACLs
 
 ### OverlayFS (How Docker Images Work)
 
-The fundamentals guide mentioned overlay filesystems. Here's the mechanics:
+The fundamentals guide mentioned overlay filesystems. Here's the mechanics ([kernel overlayfs docs](https://docs.kernel.org/filesystems/overlayfs.html)):
 
 ```bash
 # manual overlayfs mount
@@ -1485,7 +1487,7 @@ When a file in a lower layer is modified, it's **copied up** to the upper layer 
 
 ### Mount Propagation
 
-Mount propagation controls how mounts in one namespace are visible in others:
+[Mount propagation](https://docs.kernel.org/filesystems/sharedsubtree.html) controls how mounts in one namespace are visible in others:
 
 | Mode | Behavior |
 |---|---|
@@ -1523,7 +1525,7 @@ If you remember one thing from Part 8: **ext4 is the safe default, XFS for high-
 
 ## Part 9 — Kernel Tuning
 
-The kernel exposes thousands of tunable parameters through `/proc/sys/` and `sysctl`. Most should be left at defaults. This section covers the ones that actually matter for production servers.
+The kernel exposes thousands of tunable parameters through `/proc/sys/` and `sysctl` (all documented in the [kernel sysctl reference](https://docs.kernel.org/admin-guide/sysctl/index.html)). Most should be left at defaults. This section covers the ones that actually matter for production servers.
 
 ### sysctl: The Tuning Interface
 
@@ -1638,7 +1640,7 @@ kernel.core_pattern = /var/crash/core.%e.%p.%t
 
 ### Kernel Command Line Parameters
 
-Set at boot time in GRUB (`/etc/default/grub` → `GRUB_CMDLINE_LINUX`):
+Set at boot time in GRUB (`/etc/default/grub` → `GRUB_CMDLINE_LINUX`; the full list is in the [kernel parameters reference](https://docs.kernel.org/admin-guide/kernel-parameters.html)):
 
 ```ini
 # CPU isolation (Part 1)
@@ -1760,7 +1762,7 @@ efibootmgr -v
 
 ### GRUB2
 
-GRUB2 is the boot loader on most Linux distros. It presents a menu (if configured), loads the selected kernel and initramfs into memory, and transfers control to the kernel.
+[GRUB2](https://www.gnu.org/software/grub/manual/grub/grub.html) is the boot loader on most Linux distros. It presents a menu (if configured), loads the selected kernel and initramfs into memory, and transfers control to the kernel.
 
 ```bash
 # GRUB config
@@ -1891,5 +1893,13 @@ systemctl list-units --failed           # show failed units
 If you remember one thing from Part 10: **the boot sequence is firmware (UEFI) → bootloader (GRUB) → kernel → initramfs (load drivers, mount root) → systemd (PID 1, parallel service startup), and `systemd-analyze blame` shows you which services are making boot slow. When things go wrong, `journalctl -b -1` shows you the previous boot's logs.**
 
 ---
+
+## Where to Go Next
+
+- **Read Brendan Gregg's [*Systems Performance* (2nd ed.)](https://www.brendangregg.com/systems-performance-2nd-edition-book.html)** — the definitive book on Parts 1–6, with the USE method, every observability tool, and the methodology this guide compresses. His [*BPF Performance Tools*](https://www.brendangregg.com/bpf-performance-tools-book.html) is the follow-up once eBPF clicks.
+- **Read Michael Kerrisk's [*The Linux Programming Interface*](https://man7.org/tlpi/)** for the syscall-level foundations — it's the book the man pages assume you've read, and Kerrisk maintains [man7.org](https://man7.org/linux/man-pages/) itself.
+- **Work the primary docs while they're fresh:** the [kernel documentation](https://docs.kernel.org/) (especially the [scheduler](https://docs.kernel.org/scheduler/index.html), [cgroup v2](https://docs.kernel.org/admin-guide/cgroup-v2.html), and [sysctl](https://docs.kernel.org/admin-guide/sysctl/index.html) sections), [ebpf.io](https://ebpf.io/) and the [bpftrace one-liner tutorial](https://github.com/bpftrace/bpftrace/blob/master/docs/tutorial_one_liners.md).
+- **Break a system on purpose.** Spin up a VM, cap a cgroup's CPU and watch `nr_throttled` climb, fill memory until the OOM killer fires (watch with `oomkill`), saturate a disk and read the `biolatency` histogram, partition the network with `tc netem`. The tools only become instinct when you've watched them catch a problem you caused.
+- **Adjacent guides in this repo:** [Linux Fundamentals](LINUX_FUNDAMENTALS_STUDY_GUIDE.md) (the substrate this builds on), [eBPF](EBPF_STUDY_GUIDE.md) (Part 5 at full depth), [Linux Networking](LINUX_NETWORKING_STUDY_GUIDE.md) (Part 4 at full depth), and the [Observability](OBSERVABILITY_STUDY_GUIDE.md) and [Kubernetes](k8s/KUBERNETES_STUDY_GUIDE.md) guides for the production layer above.
 
 That's the guide. From here, the highest-leverage next steps are to connect these internals to your actual systems: run `perf stat` on a production service to check IPC, run `biolatency` to see your real disk latency distribution, check `cpu.stat` in your container's cgroup for throttling, and run `systemd-analyze security` on your service units to see how well they're sandboxed. Once you've seen CFS throttling flatten your p99, or watched the OOM killer fire via `oomkill` from BCC — the kernel stops being abstract and starts being the explanation for the behavior you see every day.

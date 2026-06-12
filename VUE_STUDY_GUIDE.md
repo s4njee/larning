@@ -1599,3 +1599,13 @@ The bookmark bar, assembled from everything cited above:
 - [Vue DevTools](https://devtools.vuejs.org/) · [Vue Mastery](https://www.vuemastery.com/) · [Michael Thiessen](https://michaelnthiessen.com/) · [Vue.js News](https://news.vuejs.org/)
 
 Keep the official docs open throughout — this guide told you *why*; [vuejs.org](https://vuejs.org/guide/introduction.html) remains the best reference for *what*, and its [Style Guide](https://vuejs.org/style-guide/) settles team arguments by appeal to authority. And when something doesn't update on screen, you know the question to ask now: *what was tracked, and which effect should have re-run?* Everything in Vue is downstream of the answer.
+
+---
+
+## Where to Go Next
+
+- **Read the official [Vue guide](https://vuejs.org/guide/introduction.html) end to end now that you have the mental model** — it's the best-written framework documentation in the ecosystem, and with this guide's *why* in your head, its *what* reads twice as fast. Settle team arguments with the [Style Guide](https://vuejs.org/style-guide/).
+- **Go deeper on the reactivity engine** with the [Reactivity in Depth](https://vuejs.org/guide/extras/reactivity-in-depth.html) page and the [Vue.js docs on rendering mechanism](https://vuejs.org/guide/extras/rendering-mechanism.html) — the two pages that explain what's actually tracked and when effects re-run.
+- **Learn the ecosystem pillars from their own docs:** [Pinia](https://pinia.vuejs.org/) (state), [Vue Router](https://router.vuejs.org/) (routing), [Vite](https://vite.dev/guide/) (build), and [Nuxt](https://nuxt.com/docs) when you need SSR/file-based routing.
+- **Build one non-trivial composable** — extract real shared logic (a fetch-with-cache, a form state machine) into a `useX()` with proper cleanup, then compare against [VueUse](https://vueuse.org/)'s implementation of the same idea.
+- **Adjacent guides in this repo:** [TypeScript](TYPESCRIPT_STUDY_GUIDE.md) (typed props/emits/composables), [Electron](ELECTRON_STUDY_GUIDE.md) (Vue as a desktop renderer), and [SvelteKit](SVELTEKIT_STUDY_GUIDE.md)/[Next.js](NEXTJS_STUDY_GUIDE.md) (the rival mental models — the contrast clarifies Vue's choices).

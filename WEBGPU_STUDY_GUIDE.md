@@ -2071,3 +2071,13 @@ Handle errors asynchronously.
 ```
 
 That model is the price of admission. The reward is a browser GPU API that finally matches modern hardware: graphics, compute, predictable resource binding, and enough control to build the next generation of web games, creative tools, visualization systems, and local AI experiences.
+
+---
+
+## Where to Go Next
+
+- **Work through [WebGPU Fundamentals](https://webgpufundamentals.org/)** — the same author and quality as webgl2fundamentals, covering pipelines, bind groups, and compute with live examples; it's the practice companion to this guide.
+- **Keep the primary sources open:** the [W3C WebGPU spec](https://www.w3.org/TR/webgpu/) and [WGSL spec](https://www.w3.org/TR/WGSL/) (both readable as references), and the [MDN WebGPU docs](https://developer.mozilla.org/en-US/docs/Web/API/WebGPU_API) for API-by-API detail.
+- **Write one real compute shader** — a particle system or image filter with workgroups, storage buffers, and a readback. Compute is WebGPU's genuinely new capability over WebGL, and one working dispatch teaches the binding model better than any diagram.
+- **Go native when the browser constrains you:** [wgpu](https://wgpu.rs/) (Rust) and [Dawn](https://dawn.googlesource.com/dawn) (C++, Chrome's implementation) run the same API outside the browser — your WebGPU knowledge transfers directly.
+- **Adjacent guides in this repo:** [WebGL/OpenGL](WEBGL_OPENGL_STUDY_GUIDE.md) (the predecessor model — read first if you haven't), [Advanced Rust](ADVANCED_RUST_STUDY_GUIDE.md) (the wgpu path), and [LLM App Development](LLM_APP_DEV_STUDY_GUIDE.md) (where browser GPU inference shows up).

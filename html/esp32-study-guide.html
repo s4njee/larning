@@ -439,6 +439,7 @@ mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
 <p>If you remember one thing from Part 2: <strong>"ESP32" is a family — pick a plain ESP32 or S3 to learn on, a C3 for cost/power, a C6 for Matter — and buy a <em>dev board</em> (module + USB + regulator). Prefer it over the older ESP8266 for nearly everything (Bluetooth, ~6× the RAM, two cores, real ADC, hardware security). Then respect the pin caveats: 34–39 are input-only, 6–11 are off-limits (flash), and the strapping pins must be left alone at boot.</strong></p>
 <hr>
 <h2 id="part-3-the-toolchain">Part 3 — The Toolchain</h2>
+<p><em>Docs: <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/">ESP-IDF get-started</a></em></p>
 <p>There are several ways to program an ESP32, and the choice shapes your whole experience. This part lays them out honestly so you pick the right one for your goal rather than the first one a tutorial happened to use.</p>
 <h3 id="the-three-ecosystems">The Three Ecosystems</h3>
 <p><strong>1. Arduino (the C++ framework).</strong> The <code>Arduino-ESP32</code> core brings the familiar <code>setup()</code> / <code>loop()</code> model and the vast Arduino library ecosystem to the chip. It's the <strong>easiest on-ramp</strong> — <code>digitalWrite(2, HIGH)</code> just works, and there's a library for nearly every sensor. The cost is abstraction: you're insulated from how the chip actually works, performance is "good enough" rather than optimal, and you'll eventually hit its ceiling. <strong>Best for: learning, prototyping, and most hobby projects.</strong></p>
@@ -521,6 +522,7 @@ lib_deps =                   ; dependencies, version-pinned, auto-installed
 <p>The flashing itself is done by <strong><code>esptool.py</code></strong> (Espressif's flash utility) under the hood — worth knowing the name, because when a flash fails you'll see it in the logs, and you can call it directly to read/erase flash or dump the chip.</p>
 <p>If you remember one thing from Part 3: <strong>three ecosystems — Arduino (easiest, learn here), ESP-IDF (production, full power), MicroPython (live REPL, fastest iteration) — and PlatformIO is the tooling layer that makes Arduino/IDF pleasant. Start easy, graduate to IDF when you hit a wall, and let the framework abstract the chip until you need to look under it.</strong></p>
 <h2 id="part-4-gpio-the-digital-world">Part 4 — GPIO &amp; the Digital World</h2>
+<p><em>Docs: <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/gpio.html">GPIO driver</a></em></p>
 <p>GPIO — General Purpose Input/Output — is the bedrock. Every LED, button, relay, and many sensors come down to reading or driving a voltage on a pin. This is where software meets the physical world, and the concepts here recur in every project.</p>
 <h3 id="digital-output-driving-a-pin">Digital Output: Driving a Pin</h3>
 <p>A pin configured as output is driven to one of two voltages: <strong>HIGH</strong> (3.3V on the ESP32 — <em>not</em> 5V, a critical fact below) or <strong>LOW</strong> (0V). That's the entire vocabulary of digital output, and it's enough to control an enormous amount:</p>
@@ -582,6 +584,7 @@ void loop() {
 <p>If you remember one thing from Part 4: <strong>digital I/O is just HIGH (3.3V) / LOW (0V), but the physical world demands defenses — pull resistors so inputs don't float, debouncing so one press isn't five, interrupts (tiny, <code>volatile</code>, flag-only) instead of polling for fast events — and the chip drives only milliamps, so real loads need a transistor or relay.</strong></p>
 <hr>
 <h2 id="part-5-analog-pwm-buses-adc-i2c-spi-uart">Part 5 — Analog, PWM &amp; Buses (ADC, I2C, SPI, UART)</h2>
+<p><em>Docs: <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/index.html">peripherals API reference</a></em></p>
 <p>Digital is two values; the real world is continuous, and most interesting peripherals speak a protocol rather than a single voltage. This part covers reading analog signals, <em>faking</em> analog output with PWM, and the three serial buses that connect the vast majority of sensors and displays.</p>
 <h3 id="adc-reading-analog-voltages">ADC: Reading Analog Voltages</h3>
 <p>An <strong>ADC (Analog-to-Digital Converter)</strong> turns a continuous voltage into a number. A potentiometer, a light sensor (LDR), a temperature sensor, a battery-voltage divider — all produce a voltage you read with the ADC. The ESP32's ADC is <strong>12-bit</strong>, so it maps 0–3.3V to an integer 0–4095:</p>
@@ -649,6 +652,7 @@ void setup() {
 <p>If you remember one thing from Part 5: <strong>the ADC reads voltages (0–4095 for 0–3.3V, noisy, ADC1 only with Wi-Fi), PWM fakes analog output by varying duty cycle (LEDs, servos, motors), and most sensors connect over one of three buses — I2C (two shared wires, the sensor default), SPI (fast, more wires), or UART (point-to-point) — almost always behind a library so you call <code>readTemperature()</code>, not the bus directly.</strong></p>
 <hr>
 <h2 id="part-6-freertos-tasks-dual-core">Part 6 — FreeRTOS, Tasks &amp; Dual-Core</h2>
+<p><em>Docs: <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/freertos_idf.html">FreeRTOS (IDF)</a></em></p>
 <p>Here's where the ESP32 stops being a simple Arduino and becomes a real concurrent system. Underneath even the friendly <code>setup()</code>/<code>loop()</code> model runs <strong>FreeRTOS</strong>, a real-time operating system, on <strong>two CPU cores</strong>. Understanding it is what lets you do more than one thing at once — and it explains the most common beginner bug, the frozen device.</p>
 <h3 id="delay-is-a-lie-the-cardinal-beginner-trap"><code>delay()</code> Is a Lie (The Cardinal Beginner Trap)</h3>
 <p>Start with the bug, because it teaches the whole lesson. The Part 1 blink used <code>delay(500)</code>. It works for blinking, but consider:</p>
@@ -731,6 +735,7 @@ void networkTask(void *p) {
 <p>If you remember one thing from Part 6: <strong>the ESP32 secretly runs FreeRTOS on two cores — <code>delay()</code> blocking everything is the cardinal beginner bug, fixed with the non-blocking <code>millis()</code> pattern or real FreeRTOS tasks (use <code>vTaskDelay</code> to yield, size stacks generously, pass data via queues not shared variables), and Core 0 runs the Wi-Fi stack, so don't starve it.</strong></p>
 <hr>
 <h2 id="part-7-wi-fi-bluetooth-networking">Part 7 — Wi-Fi, Bluetooth &amp; Networking</h2>
+<p><em>Docs: <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/wifi.html">Wi-Fi driver</a></em></p>
 <p>The radios are the ESP32's reason to exist — a $5 chip that puts a sensor on your Wi-Fi or talks BLE to your phone. This part covers connecting, the two roles Wi-Fi can play, the messaging protocols that make IoT work, and the security you must not skip.</p>
 <h3 id="connecting-to-wi-fi-station-mode">Connecting to Wi-Fi (Station Mode)</h3>
 <p>The common case: the ESP32 joins your existing network as a <strong>station</strong> (a client, like your laptop):</p>
@@ -777,6 +782,7 @@ client.subscribe(&quot;home/livingroom/setpoint&quot;);         // listen for co
 <p>If you remember one thing from Part 7: <strong>the ESP32 joins Wi-Fi as a station (handle the multi-second connect and inevitable drops) or hosts an AP for credential provisioning; MQTT pub/sub is the IoT messaging default (HTTP for occasional posts, WebSockets for live UIs, BLE for nearby phones); and TLS plus per-device secrets are not optional — a networked device is an attack surface.</strong></p>
 <hr>
 <h2 id="part-8-power-management-deep-sleep">Part 8 — Power Management &amp; Deep Sleep</h2>
+<p><em>Docs: <a href="https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/sleep_modes.html">sleep modes</a></em></p>
 <p>This is the part that makes battery-powered IoT actually possible, and it's where the microcontroller most dramatically beats the Pi: an ESP32 can run for <em>years</em> on a battery by being asleep ~99.9% of the time. If your device plugs into the wall, you can skim this; if it runs on a battery or solar, this part <em>is</em> the project.</p>
 <h3 id="the-power-problem">The Power Problem</h3>
 <p>A running ESP32 with Wi-Fi active draws <strong>~150–260 mA</strong> — that flattens a small battery in a day. But most sensor jobs are bursty: wake up, read a sensor, send the reading, then <em>do nothing for 10 minutes</em>. The entire game of low-power design is <strong>minimizing the time spent awake</strong> and making the idle time draw as close to zero as possible. The chip provides power modes spanning six orders of magnitude of current:</p>

@@ -1868,3 +1868,5 @@ The discipline isn't a finite body of knowledge. The fundamentals (cardinality, 
 ---
 
 *The bar to clear: someone wakes you up at 3 AM. You open one dashboard, see the symptom, click through to the trace, find the bad span, open the log line via shared `trace_id`, and have the root cause inside 15 minutes. If your stack does that for the kinds of failures you actually have, it's working. If it doesn't, find the missing piece and add it.*
+
+**Adjacent guides in this repo:** [Distributed Systems](DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md) (the failure modes you're observing), [Kubernetes](k8s/KUBERNETES_STUDY_GUIDE.md) (where the collectors run), [Enterprise APIs](ENTERPRISE_API_STUDY_GUIDE.md) (request IDs and RED metrics at the API layer), and [eBPF](EBPF_STUDY_GUIDE.md) (zero-instrumentation telemetry).

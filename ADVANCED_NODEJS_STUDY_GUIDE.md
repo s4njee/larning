@@ -33,8 +33,8 @@ Before any optimization, get the architecture right. Node.js is not "JavaScript 
 
 Node.js is three things bolted together:
 
-1. **V8** — Google's JavaScript engine (also in Chrome and Deno). It parses, compiles, and executes your JavaScript. It manages the **heap** (where objects live) and the **garbage collector.** It knows nothing about files, networks, or HTTP.
-2. **libuv** — a C library that provides the **event loop**, a **thread pool** for blocking OS operations (filesystem, DNS, some crypto), and cross-platform async I/O primitives (epoll on Linux, kqueue on macOS, IOCP on Windows). It's what makes Node.js async.
+1. **[V8](https://v8.dev/)** — Google's JavaScript engine (also in Chrome and Deno). It parses, compiles, and executes your JavaScript. It manages the **heap** (where objects live) and the **garbage collector.** It knows nothing about files, networks, or HTTP.
+2. **[libuv](https://libuv.org/)** — a C library that provides the **event loop**, a **thread pool** for blocking OS operations (filesystem, DNS, some crypto), and cross-platform async I/O primitives (epoll on Linux, kqueue on macOS, IOCP on Windows). It's what makes Node.js async.
 3. **Node.js bindings and standard library** — the C++ glue that connects V8 to libuv and wraps OS capabilities into JavaScript APIs (`fs`, `net`, `http`, `crypto`, `child_process`, `worker_threads`).
 
 The consequence: **your JavaScript runs on a single V8 thread, but I/O happens in the OS kernel (non-blocking) or on libuv's thread pool (for things the OS can't do async).** The event loop is the coordinator that dispatches JavaScript callbacks when I/O completes. That single-threaded execution is the defining constraint — and the defining strength.
@@ -44,7 +44,7 @@ The consequence: **your JavaScript runs on a single V8 thread, but I/O happens i
 A common misconception. One Node process uses **one main thread** for JavaScript execution, but the process itself has more threads:
 
 - The **main thread** — runs all your JS, the event loop, and microtask processing.
-- The **libuv thread pool** (default: 4 threads, tunable via `UV_THREADPOOL_SIZE`, max 1024) — handles file-system operations (`fs.*`), DNS lookups (`dns.lookup`, not `dns.resolve`), `zlib` compression, `crypto.pbkdf2`/`crypto.randomBytes`, and anything explicitly offloaded. These are the "blocking" calls that Node makes async by running them on a background thread and calling back to the main thread when done.
+- The **[libuv thread pool](https://docs.libuv.org/en/v1.x/threadpool.html)** (default: 4 threads, tunable via `UV_THREADPOOL_SIZE`, max 1024) — handles file-system operations (`fs.*`), DNS lookups (`dns.lookup`, not `dns.resolve`), `zlib` compression, `crypto.pbkdf2`/`crypto.randomBytes`, and anything explicitly offloaded. These are the "blocking" calls that Node makes async by running them on a background thread and calling back to the main thread when done.
 - **V8 GC threads** and **V8 compilation threads** — V8 compiles and garbage-collects on background threads, not the main thread.
 - **Worker threads** (`worker_threads`) — additional V8 isolates you spawn explicitly for CPU-bound work (Part 6).
 
@@ -69,15 +69,15 @@ V8 doesn't interpret JavaScript — it **compiles** it, twice, adaptively. Under
 When V8 first sees a function:
 
 1. **Parse** → build an Abstract Syntax Tree (AST).
-2. **Ignition (the baseline interpreter/compiler)** → compile the AST to **bytecode** and start executing immediately. Bytecode is compact and fast to generate, but interpreted execution is relatively slow. While running, V8 collects **type feedback** — it watches what types each variable actually holds, which branches are taken, which functions are called.
-3. **Maglev (mid-tier JIT, V8 12.2+ / Node 22+)** → if a function is "warm" (called enough to be worth optimizing but not yet hot), Maglev compiles it to moderately optimized machine code using the type feedback. Faster than Ignition bytecode, cheaper to compile than full optimization.
-4. **TurboFan (the optimizing compiler)** → if a function is "hot" (run many times), TurboFan compiles it to **highly optimized native machine code** — speculative, type-specialized, inlined, with register allocation. This is where JavaScript approaches C speed.
+2. **[Ignition](https://v8.dev/docs/ignition) (the baseline interpreter/compiler)** → compile the AST to **bytecode** and start executing immediately. Bytecode is compact and fast to generate, but interpreted execution is relatively slow. While running, V8 collects **type feedback** — it watches what types each variable actually holds, which branches are taken, which functions are called.
+3. **[Maglev](https://v8.dev/blog/maglev) (mid-tier JIT, V8 12.2+ / Node 22+)** → if a function is "warm" (called enough to be worth optimizing but not yet hot), Maglev compiles it to moderately optimized machine code using the type feedback. Faster than Ignition bytecode, cheaper to compile than full optimization.
+4. **[TurboFan](https://v8.dev/docs/turbofan) (the optimizing compiler)** → if a function is "hot" (run many times), TurboFan compiles it to **highly optimized native machine code** — speculative, type-specialized, inlined, with register allocation. This is where JavaScript approaches C speed.
 
 The key word is **speculative**: TurboFan compiles based on the assumption that the types it *observed* are the types it will *always* see. If that assumption is violated later (you pass a string where it saw only numbers), V8 must **deoptimize** — throw away the optimized code and fall back to Ignition or Maglev. Deoptimization is expensive and is the single most common silent performance killer.
 
 ### Hidden Classes (Maps/Shapes)
 
-JavaScript objects are bags of properties with no declared type, so V8 has to *infer* structure. It does this with **hidden classes** (V8 calls them "Maps" internally; other engines call them "Shapes"):
+JavaScript objects are bags of properties with no declared type, so V8 has to *infer* structure. It does this with **[hidden classes](https://v8.dev/docs/hidden-classes)** (V8 calls them "Maps" internally; other engines call them "Shapes"):
 
 ```javascript
 const a = {};   // V8 assigns hidden class C0 (empty)
@@ -190,7 +190,7 @@ Most event-loop explanations are wrong or dangerously oversimplified. The event 
 
 ### The Phases
 
-The event loop runs in a cycle. Each iteration ("tick") has these phases, in this order:
+The event loop runs in a cycle (the official [event loop guide](https://nodejs.org/en/learn/asynchronous-work/event-loop-timers-and-nexttick) is the canonical reference for this part). Each iteration ("tick") has these phases, in this order:
 
 ```text
    ┌───────────────────────────┐
@@ -267,7 +267,7 @@ setTimeout(() => {
   console.log(`Event loop lag: ${lag.toFixed(1)}ms`);
 }, 100);
 
-// In production, use the perf_hooks API:
+// In production, use the perf_hooks API (nodejs.org/api/perf_hooks.html):
 import { monitorEventLoopDelay } from "node:perf_hooks";
 const h = monitorEventLoopDelay({ resolution: 20 });
 h.enable();
@@ -301,7 +301,7 @@ const c = await fetchC();   // 1s
 const [a, b, c] = await Promise.all([fetchA(), fetchB(), fetchC()]);
 ```
 
-`await` *suspends* the current function until the promise resolves — so three sequential `await`s serialize three independent I/O operations. If they're independent, wrap them in **`Promise.all`**. This is the async equivalent of the Python `asyncio.gather` pattern.
+`await` *suspends* the current function until the promise resolves — so three sequential `await`s serialize three independent I/O operations. If they're independent, wrap them in **[`Promise.all`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/all)**. This is the async equivalent of the Python `asyncio.gather` pattern.
 
 ### `Promise.all` vs. `Promise.allSettled` vs. `Promise.any` vs. `Promise.race`
 
@@ -341,7 +341,7 @@ async function mapConcurrent(items, fn, concurrency) {
 const results = await mapConcurrent(urls, fetch, 20);
 ```
 
-In production, use **`p-limit`** or **`p-map`** from the `sindresorhus` ecosystem — they handle edge cases (error propagation, abort signals) correctly.
+In production, use **[`p-limit`](https://github.com/sindresorhus/p-limit)** or **[`p-map`](https://github.com/sindresorhus/p-map)** from the `sindresorhus` ecosystem — they handle edge cases (error propagation, abort signals) correctly.
 
 ### Error Handling in Async Code
 
@@ -361,7 +361,7 @@ process.on("unhandledRejection", (err) => {
 
 ### `AbortController` and Cancellation
 
-The standard cancellation primitive (shared with `fetch`, streams, and many Node APIs):
+The standard cancellation primitive ([MDN reference](https://developer.mozilla.org/en-US/docs/Web/API/AbortController); shared with `fetch`, streams, and many Node APIs):
 
 ```javascript
 const controller = new AbortController();
@@ -397,7 +397,7 @@ Streams are Node.js's answer to "process data larger than memory" — the same i
 
 ### The Pipeline: `stream.pipeline`
 
-The correct way to connect streams — it handles backpressure, error propagation, and cleanup automatically:
+The correct way to connect streams — [`stream.pipeline`](https://nodejs.org/api/stream.html#streampipelinesource-transforms-destination-callback) handles backpressure, error propagation, and cleanup automatically:
 
 ```javascript
 import { pipeline } from "node:stream/promises";
@@ -416,7 +416,7 @@ await pipeline(
 
 ### Backpressure
 
-Backpressure is the mechanism that prevents a fast producer from overwhelming a slow consumer. When a writable's internal buffer fills past its `highWaterMark`, `write()` returns `false` — a signal to stop writing until the `drain` event fires. `pipeline` handles this automatically; if you're writing manually:
+[Backpressure](https://nodejs.org/en/learn/modules/backpressuring-in-streams) is the mechanism that prevents a fast producer from overwhelming a slow consumer. When a writable's internal buffer fills past its `highWaterMark`, `write()` returns `false` — a signal to stop writing until the `drain` event fires. `pipeline` handles this automatically; if you're writing manually:
 
 ```javascript
 const writable = createWriteStream("out.dat");
@@ -478,7 +478,7 @@ Part 3 established the cardinal sin: blocking the event loop. This part is about
 
 ### Worker Threads
 
-`worker_threads` (Node 10.5+) spawn additional V8 isolates inside the same process. Each worker has **its own event loop, its own heap, its own GC** — JavaScript doesn't share memory between workers (no data races). Communication is via **message passing** (`postMessage`/`on('message')`) or, for advanced cases, `SharedArrayBuffer` with `Atomics` for true shared memory.
+[`worker_threads`](https://nodejs.org/api/worker_threads.html) (Node 10.5+) spawn additional V8 isolates inside the same process. Each worker has **its own event loop, its own heap, its own GC** — JavaScript doesn't share memory between workers (no data races). Communication is via **message passing** (`postMessage`/`on('message')`) or, for advanced cases, `SharedArrayBuffer` with `Atomics` for true shared memory.
 
 ```javascript
 // main.js
@@ -518,7 +518,7 @@ const pool = new Piscina({
 const result = await pool.run({ numbers: [1, 2, 3, 4, 5] });
 ```
 
-**`piscina`** (by Matteo Collina & James Snell) is the go-to worker pool — it handles job queueing, backpressure (it won't accept new work when all workers are busy), and `transferList` for zero-copy data transfer.
+**[`piscina`](https://github.com/piscinajs/piscina)** (by Matteo Collina & James Snell) is the go-to worker pool — it handles job queueing, backpressure (it won't accept new work when all workers are busy), and `transferList` for zero-copy data transfer.
 
 ### Transferable Objects and Zero-Copy
 
@@ -534,7 +534,7 @@ Use transfer for large typed arrays, image data, and any bulk binary data passed
 
 ### Clustering
 
-`cluster` (or running multiple Node processes behind a load balancer) is the answer to **scaling across CPU cores for I/O-bound workloads.** Each cluster worker is a separate Node.js process with its own V8, its own memory, listening on the same port (the OS load-balances incoming connections across them):
+[`cluster`](https://nodejs.org/api/cluster.html) (or running multiple Node processes behind a load balancer) is the answer to **scaling across CPU cores for I/O-bound workloads.** Each cluster worker is a separate Node.js process with its own V8, its own memory, listening on the same port (the OS load-balances incoming connections across them):
 
 ```javascript
 import cluster from "node:cluster";
@@ -557,7 +557,7 @@ if (cluster.isPrimary) {
 }
 ```
 
-In practice, **use a process manager instead of hand-rolling cluster:** `pm2` (most common), or run multiple replicas behind a reverse proxy (Nginx, Caddy — see the [Caddy guide](CADDY_STUDY_GUIDE.md)) or Kubernetes. The process manager handles restarts, log management, and graceful reloads.
+In practice, **use a process manager instead of hand-rolling cluster:** [`pm2`](https://pm2.keymetrics.io/docs/usage/quick-start/) (most common), or run multiple replicas behind a reverse proxy (Nginx, Caddy — see the [Caddy guide](CADDY_STUDY_GUIDE.md)) or Kubernetes. The process manager handles restarts, log management, and graceful reloads.
 
 ### Workers vs. Cluster: When to Use Which
 
@@ -593,7 +593,7 @@ V8 defaults to a **~1.5 GB** Old Space limit on 64-bit systems (or ~700 MB on 32
 You can raise it:
 
 ```bash
-node --max-old-space-size=4096 app.js   # 4 GB old space
+node --max-old-space-size=4096 app.js   # 4 GB old space (see nodejs.org/api/cli.html)
 ```
 
 But raising the limit is treating the symptom, not the cause. The usual cause is a **memory leak**.
@@ -607,7 +607,7 @@ The three-snapshot technique is the standard diagnostic:
 3. **Snapshot again:** compare to the baseline. Objects that grew are your suspects.
 
 ```javascript
-// Take a heap snapshot programmatically:
+// Take a heap snapshot programmatically (nodejs.org/api/v8.html):
 import v8 from "node:v8";
 import fs from "node:fs";
 
@@ -724,7 +724,7 @@ setInterval(() => {
 For microbenchmarks, use a proper harness that warms up, runs many iterations, and reports statistically:
 
 ```bash
-npm install -D tinybench   # or benchmark.js
+npm install -D tinybench   # github.com/tinylibs/tinybench — or benchmark.js
 ```
 
 ```javascript
@@ -770,14 +770,14 @@ The framework dominates HTTP throughput. A simple routing + JSON-response benchm
 | **Koa** | ~35,000 | 0.55× |
 | **Express** | ~15,000 | 0.23× |
 
-**Fastify** is the performance-oriented framework: schema-based serialization (it compiles JSON serializers from your schema at startup — Part 10), a plugin system that avoids middleware overhead, built-in validation with Ajv, and first-class TypeScript. If you're starting a new service and performance matters, Fastify is the default choice. Express is fine for low-traffic services where ecosystem and familiarity matter more than throughput.
+**[Fastify](https://fastify.dev/)** is the performance-oriented framework: schema-based serialization (it compiles JSON serializers from your schema at startup — Part 10), a plugin system that avoids middleware overhead, built-in validation with [Ajv](https://ajv.js.org/), and first-class TypeScript. If you're starting a new service and performance matters, Fastify is the default choice. Express is fine for low-traffic services where ecosystem and familiarity matter more than throughput.
 
 ### Lever 2: Serialize JSON Faster
 
 `JSON.stringify` is a top-of-profile function in most Node.js API servers — it's called on every response. The default implementation handles arbitrary shapes at runtime; if you *know* the shape (and you usually do), you can **compile a serializer from a JSON Schema** that's 2–5× faster:
 
 ```javascript
-import fastJson from "fast-json-stringify";
+import fastJson from "fast-json-stringify";  // github.com/fastify/fast-json-stringify
 
 const stringify = fastJson({
   type: "object",
@@ -844,7 +844,7 @@ Profile for event-loop lag (Part 8). The common offenders and their fixes:
 
 ### Lever 6: Cache Aggressively
 
-- **In-process LRU** (`lru-cache`, `mnemonist/lru-cache`) — for per-instance, latency-critical caching (parsed configs, compiled templates, resolved DNS).
+- **In-process LRU** ([`lru-cache`](https://github.com/isaacs/node-lru-cache), `mnemonist/lru-cache`) — for per-instance, latency-critical caching (parsed configs, compiled templates, resolved DNS).
 - **Redis** — for shared-across-instances caching. See the [Redis guide](REDIS_STUDY_GUIDE.md) for patterns (cache-aside, write-through, TTL, and eviction).
 - **HTTP caching headers** (`Cache-Control`, `ETag`, `Last-Modified`) — let the CDN or browser cache responses without hitting your server at all.
 
@@ -865,9 +865,9 @@ A single Node.js process uses one CPU core. For an I/O-bound server, running one
 
 When you've exhausted the above and the bottleneck is CPU-bound JavaScript:
 
-- **WebAssembly (Wasm):** compile C/C++/Rust to Wasm and call it from Node. Good for codecs, parsers, crypto, and any CPU-intensive algorithm. V8 runs Wasm at near-native speed with no GC.
-- **Native addons (N-API / `node-addon-api`):** write the hot function in C/C++ and call it from JS. N-API is stable across Node versions. PyO3's equivalent for Node is **Neon** (Rust → Node via N-API).
-- **Rust via Neon or `napi-rs`:** write the extension in Rust, compile to a native module. Increasingly popular — `napi-rs` is the ergonomic choice and is what powers `@swc/core`, `lightningcss`, and `@parcel/css`.
+- **WebAssembly (Wasm):** compile C/C++/Rust to Wasm and call it from Node ([Node WebAssembly docs](https://nodejs.org/en/learn/getting-started/nodejs-with-webassembly)). Good for codecs, parsers, crypto, and any CPU-intensive algorithm. V8 runs Wasm at near-native speed with no GC.
+- **Native addons ([Node-API](https://nodejs.org/api/n-api.html) / `node-addon-api`):** write the hot function in C/C++ and call it from JS. Node-API is stable across Node versions. PyO3's equivalent for Node is **[Neon](https://neon-rs.dev/)** (Rust → Node via Node-API).
+- **Rust via Neon or [`napi-rs`](https://napi.rs/):** write the extension in Rust, compile to a native module. Increasingly popular — `napi-rs` is the ergonomic choice and is what powers `@swc/core`, `lightningcss`, and `@parcel/css`.
 
 If you remember one thing from Part 9: **the levers in order of effort-to-impact are: faster framework (Fastify) → schema-compiled JSON → streams for large data → connection pooling → unblock the event loop → caching → V8 shape discipline → cluster across cores → native/Wasm for the hot path.** Profile first, fix the measured bottleneck.
 
@@ -1144,7 +1144,7 @@ const { statusCode, body } = await pool.request({
 const data = await body.json();
 ```
 
-`undici` is significantly faster than the legacy `http` module for outbound requests — it's what powers Node's built-in `fetch`, and using its `Pool` directly gives you connection-pooling tuning.
+[`undici`](https://undici.nodejs.org/) is significantly faster than the legacy `http` module for outbound requests — it's what powers Node's built-in `fetch`, and using its `Pool` directly gives you connection-pooling tuning.
 
 ### Recipe 10: Graceful Shutdown
 
@@ -1220,5 +1220,13 @@ When a Node.js service is too slow, work through this:
 If you remember one thing from Part 10: **profile first, then pick the cheapest lever — response-schema JSON compilation and connection pooling are the two highest-return, lowest-effort wins for most Node.js API servers, and `setImmediate` chunking or a `piscina` worker pool is how you keep the event loop alive when CPU work is unavoidable.**
 
 ---
+
+## Where to Go Next
+
+- **Read [*Node.js Design Patterns* (4th ed.)](https://www.nodejsdesignpatterns.com/)** (Casciaro & Mammino) — the definitive book treatment of streams, async patterns, and architecture, going deeper on Parts 4–6 than any other single source.
+- **Read the primary docs while they're fresh:** the [event loop guide](https://nodejs.org/en/learn/asynchronous-work/event-loop-timers-and-nexttick) and [backpressure guide](https://nodejs.org/en/learn/modules/backpressuring-in-streams) on nodejs.org, the [libuv design overview](https://docs.libuv.org/en/v1.x/design.html), and the [V8 blog](https://v8.dev/blog) — the hidden-classes and Maglev posts are the authoritative sources for Part 2.
+- **Watch Matteo Collina's talks** ([his channels and modules](https://github.com/mcollina)) — "the cost of logging," Fastify internals, and undici design are master classes in Node performance reasoning.
+- **Profile one real service deeply.** Run `npx clinic doctor` against production-shaped load, then chase the diagnosis with a DevTools flame chart and `monitorEventLoopDelay`. One completed find-the-blocker cycle teaches more than any amount of reading.
+- **Adjacent guides in this repo:** [Advanced Python](ADVANCED_PYTHON_STUDY_GUIDE.md) and [Advanced Go](ADVANCED_GO_STUDY_GUIDE.md) (the sibling runtime deep-dives), [Python vs Node.js Async](PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md) (the event-loop comparison), [TypeScript](TYPESCRIPT_STUDY_GUIDE.md), [WebSockets](WEBSOCKETS_STUDY_GUIDE.md), and [Observability](OBSERVABILITY_STUDY_GUIDE.md) (production monitoring of everything Part 8 measures).
 
 That's the guide. From here the highest-leverage next step is the same as every performance guide in this repo: take a service you own, run `node --inspect` and record a flame chart under realistic load, find the wide bar, and apply the cheapest matching lever from Part 9. The pattern — measure, identify the bottleneck class, apply the lever, re-measure — is the skill, and it compounds from here.

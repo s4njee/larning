@@ -159,6 +159,8 @@ If you remember one thing from Part 2: **"ESP32" is a family — pick a plain ES
 
 ## Part 3 — The Toolchain
 
+*Docs: [ESP-IDF get-started](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/)*
+
 There are several ways to program an ESP32, and the choice shapes your whole experience. This part lays them out honestly so you pick the right one for your goal rather than the first one a tutorial happened to use.
 
 ### The Three Ecosystems
@@ -244,6 +246,8 @@ The flashing itself is done by **`esptool.py`** (Espressif's flash utility) unde
 If you remember one thing from Part 3: **three ecosystems — Arduino (easiest, learn here), ESP-IDF (production, full power), MicroPython (live REPL, fastest iteration) — and PlatformIO is the tooling layer that makes Arduino/IDF pleasant. Start easy, graduate to IDF when you hit a wall, and let the framework abstract the chip until you need to look under it.**
 
 ## Part 4 — GPIO & the Digital World
+
+*Docs: [GPIO driver](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/gpio.html)*
 
 GPIO — General Purpose Input/Output — is the bedrock. Every LED, button, relay, and many sensors come down to reading or driving a voltage on a pin. This is where software meets the physical world, and the concepts here recur in every project.
 
@@ -332,6 +336,8 @@ If you remember one thing from Part 4: **digital I/O is just HIGH (3.3V) / LOW (
 
 ## Part 5 — Analog, PWM & Buses (ADC, I2C, SPI, UART)
 
+*Docs: [peripherals API reference](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/index.html)*
+
 Digital is two values; the real world is continuous, and most interesting peripherals speak a protocol rather than a single voltage. This part covers reading analog signals, *faking* analog output with PWM, and the three serial buses that connect the vast majority of sensors and displays.
 
 ### ADC: Reading Analog Voltages
@@ -392,6 +398,8 @@ If you remember one thing from Part 5: **the ADC reads voltages (0–4095 for 0�
 ---
 
 ## Part 6 — FreeRTOS, Tasks & Dual-Core
+
+*Docs: [FreeRTOS (IDF)](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/freertos_idf.html)*
 
 Here's where the ESP32 stops being a simple Arduino and becomes a real concurrent system. Underneath even the friendly `setup()`/`loop()` model runs **FreeRTOS**, a real-time operating system, on **two CPU cores**. Understanding it is what lets you do more than one thing at once — and it explains the most common beginner bug, the frozen device.
 
@@ -499,6 +507,8 @@ If you remember one thing from Part 6: **the ESP32 secretly runs FreeRTOS on two
 
 ## Part 7 — Wi-Fi, Bluetooth & Networking
 
+*Docs: [Wi-Fi driver](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/wifi.html)*
+
 The radios are the ESP32's reason to exist — a $5 chip that puts a sensor on your Wi-Fi or talks BLE to your phone. This part covers connecting, the two roles Wi-Fi can play, the messaging protocols that make IoT work, and the security you must not skip.
 
 ### Connecting to Wi-Fi (Station Mode)
@@ -561,6 +571,8 @@ If you remember one thing from Part 7: **the ESP32 joins Wi-Fi as a station (han
 ---
 
 ## Part 8 — Power Management & Deep Sleep
+
+*Docs: [sleep modes](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/system/sleep_modes.html)*
 
 This is the part that makes battery-powered IoT actually possible, and it's where the microcontroller most dramatically beats the Pi: an ESP32 can run for *years* on a battery by being asleep ~99.9% of the time. If your device plugs into the wall, you can skim this; if it runs on a battery or solar, this part *is* the project.
 

@@ -110,6 +110,8 @@ It is, by a significant margin, the most widely deployed database engine — and
 
 ## 2. Architecture & Internals
 
+*Docs: [architecture](https://www.sqlite.org/arch.html)*
+
 ### The Processing Pipeline
 
 SQL execution flows through a well-defined pipeline:
@@ -204,6 +206,8 @@ The Virtual File System (VFS) is an abstraction layer between SQLite and the ope
 ---
 
 ## 3. The Type System
+
+*Docs: [datatypes & type affinity](https://www.sqlite.org/datatype3.html)*
 
 SQLite's type system is its single most surprising design decision for anyone coming from Postgres or MySQL, and it is worth understanding *why* it works this way before reacting to it, because what looks like a bug is a deliberate fit to SQLite's purpose. In a server database, the column owns the type: a `VARCHAR(100)` column rejects an integer, and the rigidity is a feature because the database is the shared source of truth for many clients. SQLite is the opposite kind of system — an embedded library inside *one* application, usually written in a dynamically-typed language (Python, JavaScript, Ruby, Lua) where values are already loosely typed — so SQLite adopts **manifest typing**: the type belongs to the **value**, not the column, mirroring the host language's own flexibility rather than fighting it.
 
@@ -313,6 +317,8 @@ Best practice: store dates as ISO 8601 text (`'2024-01-15 14:30:00'`) or as Unix
 ---
 
 ## 4. SQL Feature Coverage
+
+*Docs: [SQL language reference](https://www.sqlite.org/lang.html)*
 
 ### DDL (Data Definition Language)
 
@@ -541,6 +547,8 @@ WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id);
 
 ## 5. Indexes & Query Planning
 
+*Docs: [query planner overview](https://www.sqlite.org/queryplanner.html)*
+
 ### Index Types
 
 SQLite supports only B-tree indexes, but with several powerful variations:
@@ -631,6 +639,8 @@ SELECT * FROM sqlite_stat1;
 
 ## 6. Transactions, Concurrency & Locking
 
+*Docs: [locking & concurrency](https://www.sqlite.org/lockingv3.html)*
+
 SQLite's concurrency model is its second great design decision, and like the type system it only makes sense once you accept what SQLite is *for*. A server database is built for many clients writing simultaneously, so it invests enormous machinery in row-level locking and multi-version concurrency to let writers proceed in parallel. SQLite makes the opposite bet: **one writer at a time, full stop.** A write transaction takes an exclusive lock on the *entire database*, and other writers wait. This sounds like a crippling limitation until you remember the use case — SQLite is embedded in one application, often on one device, where "many simultaneous writers to the same file" rarely happens and the simplicity of single-writer locking (no deadlocks between writers, no complex lock manager, transactions that are trivially serializable) is worth far more than write parallelism the workload doesn't need.
 
 The cost of that bet shows up as the `SQLITE_BUSY` error — the signal that another writer holds the lock and you must wait or retry — which is why setting a **busy timeout** (`PRAGMA busy_timeout = 5000`) so SQLite waits rather than failing instantly is essential operational hygiene, not optional tuning. The crucial refinement that makes the single-writer model practical for real applications is **WAL mode** (section 7), which decouples readers from the writer: in the default rollback-journal mode a writer blocks all readers during its commit, but in WAL mode *readers never block the writer and the writer never blocks readers* — many readers proceed concurrently while one writer appends, which is exactly the read-heavy shape most embedded applications have. The [Database Internals guide](DATABASE_INTERNALS_STUDY_GUIDE.md) covers the byte-level mechanics of both journal modes; the design lesson here is that SQLite chose single-writer simplicity deliberately and then used WAL to recover reader concurrency, giving most real workloads (many reads, occasional writes) the concurrency they actually need without the machinery they don't.
@@ -719,6 +729,8 @@ BEGIN EXCLUSIVE TRANSACTION;
 
 ## 7. WAL Mode
 
+*Docs: [write-ahead logging](https://www.sqlite.org/wal.html)*
+
 ### How It Works
 
 WAL (Write-Ahead Logging) is SQLite's most important performance feature. It fundamentally changes how reads and writes interact:
@@ -791,6 +803,8 @@ Use WAL mode **almost always**. The only reasons not to:
 ---
 
 ## 8. Performance Tuning
+
+*Docs: [pragma statements](https://www.sqlite.org/pragma.html)*
 
 ### Essential PRAGMAs
 
@@ -911,6 +925,8 @@ print(f"Query took {elapsed:.3f}s")
 
 ## 9. JSON Support
 
+*Docs: [JSON functions](https://www.sqlite.org/json1.html)*
+
 SQLite has robust JSON support, built into the amalgamation since 3.38.0 (2022). Earlier versions need the `json1` extension.
 
 ### JSON Operators (3.38.0+)
@@ -1007,6 +1023,8 @@ CREATE INDEX idx_events_product ON events(
 ---
 
 ## 10. Full-Text Search (FTS5)
+
+*Docs: [FTS5](https://www.sqlite.org/fts5.html)*
 
 FTS5 is SQLite's full-text search extension. It creates virtual tables with inverted indexes for fast text search across large document collections.
 
@@ -1117,6 +1135,8 @@ CREATE VIRTUAL TABLE t4 USING fts5(content, tokenize='trigram');
 ---
 
 ## 11. Virtual Tables
+
+*Docs: [virtual table mechanism](https://www.sqlite.org/vtab.html)*
 
 Virtual tables look like regular tables but their data comes from custom sources. They're the primary extension mechanism for SQLite.
 
@@ -1814,6 +1834,8 @@ SELECT * FROM other.some_table;
 
 ## 16. Backup, Migration & Maintenance
 
+*Docs: [backup API & VACUUM](https://www.sqlite.org/backup.html)*
+
 ### Backup Strategies
 
 ```python
@@ -2142,6 +2164,8 @@ You can attach up to 125 databases (default 10, configurable) to a single connec
 ---
 
 ## 19. Limits & Constraints
+
+*Docs: [limits](https://www.sqlite.org/limits.html)*
 
 | Limit | Value |
 |---|---|

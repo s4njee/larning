@@ -4,6 +4,8 @@ A depth-first guide to Caddy for engineers who run web services in production. A
 
 > *Caddy's thesis is that HTTPS should be the default, not the achievement. Every other design decision — the Caddyfile, the JSON API, the module system — follows from that.*
 
+Primary references: the [Caddy documentation](https://caddyserver.com/docs/) (genuinely good — the [Caddyfile concepts](https://caddyserver.com/docs/caddyfile/concepts) and [reverse_proxy](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy) pages especially), the [JSON config structure reference](https://caddyserver.com/docs/json/), the [caddy community forum](https://caddy.community/) (where the maintainers actually answer), and the [Caddy source](https://github.com/caddyserver/caddy) (small enough to read).
+
 ---
 
 ## Table of Contents
@@ -2590,3 +2592,13 @@ Scrape `http://caddy-host:9180/metrics` from your Prometheus instance. You now h
 - OCSP stapling for faster TLS handshakes.
 
 In Nginx, this setup would require certbot installation, manual certificate paths in every server block, a cron job for renewal, separate SSL configuration, and an HTTP→HTTPS redirect block per domain. In Caddy, it's 70 lines with security headers, logging, and access control included.
+
+---
+
+## Where to Go Next
+
+- **Read the official [Caddyfile concepts](https://caddyserver.com/docs/caddyfile/concepts) and [directive reference](https://caddyserver.com/docs/caddyfile/directives)** — short, current, and the answer to most "how do I express this?" questions; graduate to the [JSON structure reference](https://caddyserver.com/docs/json/) when the Caddyfile abstraction runs out.
+- **Read the [automatic HTTPS page](https://caddyserver.com/docs/automatic-https)** in full — it documents the issuance, renewal, and fallback behavior that is Caddy's whole reason for existing, including the edge cases (rate limits, internal CAs, on-demand TLS).
+- **Search the [community forum](https://caddy.community/)** before assuming a limitation — the maintainers answer there daily, and most "Caddy can't do X" beliefs are answered threads.
+- **Migrate one real Nginx config** using Part 12's comparison as the map — nothing exposes the model difference (and the lines you no longer need) like porting a production server block.
+- **Adjacent guides in this repo:** [Networking Fundamentals](NETWORKING_FUNDAMENTALS.md) (TLS/HTTP under the proxy), [Cryptography Fundamentals](CRYPTO_FUNDAMENTALS.md) (what the certificates mean), [Docker](DOCKER_STUDY_GUIDE.md) (Caddy as the container front door), and [WebSockets](WEBSOCKETS_STUDY_GUIDE.md) (proxying long-lived connections).

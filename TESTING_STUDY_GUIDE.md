@@ -2884,3 +2884,13 @@ A test earns its place when it:
 - is maintained with the same seriousness as production code.
 
 That is the real definition of comprehensive testing: not the biggest suite, but the most trustworthy feedback system.
+
+---
+
+## Where to Go Next
+
+- **Read the tool docs for your stack as designed wholes:** [pytest](https://docs.pytest.org/en/stable/) (fixtures and parametrize are the heart), [unittest.mock](https://docs.python.org/3/library/unittest.mock.html) (read "where to patch" twice), [Vitest](https://vitest.dev/guide/)/[Jest](https://jestjs.io/docs/getting-started) for JS, and [Playwright](https://playwright.dev/docs/intro) for the browser layer.
+- **Add property-based testing to one module** with [Hypothesis](https://hypothesis.readthedocs.io/) (Python) or [fast-check](https://fast-check.dev/) (JS/TS) — finding your first shrunken counterexample changes how you think about test inputs permanently.
+- **Read Kent C. Dodds' [Testing Trophy](https://kentcdodds.com/blog/the-testing-trophy-and-testing-classifications) and Google's [Software Engineering at Google testing chapters](https://abseil.io/resources/swe-book/html/ch11.html)** — the two best articulations of the "what to test at which layer" judgment this guide builds.
+- **Fix one flaky test properly.** Take the flakiest test in a suite you own, diagnose its nondeterminism class (time, ordering, shared state, network), and eliminate it — the debugging pattern generalizes to every flake after.
+- **Adjacent guides in this repo:** [GitHub Actions](GITHUB_ACTIONS_STUDY_GUIDE.md) (running all this in CI), [Enterprise APIs](ENTERPRISE_API_STUDY_GUIDE.md) (contract testing), [Django](DJANGO_STUDY_GUIDE.md)/[Next.js](NEXTJS_STUDY_GUIDE.md)/[SvelteKit](SVELTEKIT_STUDY_GUIDE.md) (framework-specific testing layers).

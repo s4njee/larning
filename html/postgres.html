@@ -237,6 +237,7 @@ mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
 <p>A reference-style tour of PostgreSQL features and the SQL you write against them. Each entry gives a short description of what the feature is and when you'd reach for it, followed by concrete, runnable examples. Read it like API docs: scan the headings, dive into what's relevant, move on. Assumes familiarity with basic SQL.</p>
 <p>This is the <strong>fundamentals + feature reference</strong> part of a three-guide set. Its companions are the <a href="advanced-postgres.html">Advanced PostgreSQL Study Guide</a> — the <em>engine</em>: MVCC internals, the query planner, <code>EXPLAIN</code>, indexing strategy, VACUUM/wraparound, locking at scale, connection pooling, the performance tuning ladder, replication/HA, backup/PITR, observability, and production pitfalls — and <a href="postgres-extensions.html">PostgreSQL Extensions in Production</a>, an opinionated tour of the ecosystem (PostGIS, pgvector, TimescaleDB, Citus, pg_cron, and more) with production verdicts and managed-service availability. When a topic here has a deeper treatment elsewhere, you'll see a → pointer.</p>
 <p>Tested against PostgreSQL 16/17. Most features work on 13+ unless noted.</p>
+<p>Primary references: the <a href="https://www.postgresql.org/docs/current/">official PostgreSQL documentation</a> (each section below links its chapter — the docs are the most complete and accurate SQL reference in any database), the <a href="https://wiki.postgresql.org/">Postgres Wiki</a> (tuning recipes, FAQs), and <a href="https://pgexercises.com/">pgexercises.com</a> (hands-on SQL practice).</p>
 <hr>
 <h2 id="how-to-use-this-pair">How to Use This Pair</h2>
 <ul>
@@ -292,6 +293,7 @@ mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
 <p><strong>In the <a href="advanced-postgres.html">Advanced guide</a>:</strong> EXPLAIN &amp; query plans · the planner &amp; statistics · indexing strategy &amp; internals · VACUUM, autovacuum &amp; wraparound · WAL, checkpoints &amp; durability · locking at scale · connection pooling · the performance tuning ladder · partitioning at scale · replication &amp; HA · backup &amp; PITR · observability · production pitfalls · benchmarking.</p>
 <hr>
 <h2 id="data-types">Data Types</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/datatype.html">PostgreSQL data types</a></em></p>
 <p>Postgres has the richest type system of any mainstream relational database, and treating that as a feature rather than trivia is the first thing that separates a Postgres schema from a port of a MySQL one. The guiding principle is to <strong>choose the most specific type that models the data</strong>, because the type is not just storage — it is a contract the database enforces, an operator set you get for free, and an index strategy you unlock. A timestamp stored as <code>timestamptz</code> rejects garbage, sorts correctly, and does time-zone math; the same data stored as <code>text</code> does none of that and pushes every one of those concerns into application code that will eventually get one of them wrong. The same logic runs through the whole catalog: <code>inet</code> for IP addresses gives you subnet containment operators, <code>jsonb</code> gives you indexed containment queries, range types give you overlap exclusion constraints, and enums give you a closed set the database guards. The reference entries below are organized from the everyday types you'll use constantly (numbers, identity columns, text, timestamps) through the distinctively-Postgres types (JSON, arrays, ranges, network, geometric) that are the reason teams choose it; the recurring lesson in each is that picking the precise type moves correctness from your code into the engine, which is exactly where it's cheapest to enforce.</p>
 <h3 id="numeric-types">Numeric types</h3>
 <p><code>smallint</code>, <code>integer</code>, <code>bigint</code> for integers; <code>numeric(p,s)</code> for exact decimals; <code>real</code> and <code>double precision</code> for floats. Use <code>numeric</code> for money — never <code>float</code>.</p>
@@ -412,6 +414,7 @@ SELECT md5('hello')::bytea;
 <p><code>tsvector</code> (lexeme bag) and <code>tsquery</code> (search expression). See <a href="#full-text-search">Full-Text Search</a>.</p>
 <hr>
 <h2 id="table-definition">Table Definition</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/ddl-basics.html">DDL basics</a></em></p>
 <h3 id="basic-create-table">Basic CREATE TABLE</h3>
 <pre><code class="language-sql">CREATE TABLE books (
   id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -463,6 +466,7 @@ ALTER TABLE books SET (fillfactor = 80);
 </code></pre>
 <hr>
 <h2 id="constraints">Constraints</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/ddl-constraints.html">constraints</a></em></p>
 <p>Constraints are where you tell the database the rules your data must always obey, and the strategic point — easy to underweight when you're moving fast — is that <strong>a constraint enforced by the database holds against every writer, forever, including the buggy migration, the manual <code>psql</code> fix at 2am, and the second application nobody told you about</strong>, whereas the same rule enforced only in application code holds exactly until one of those bypasses it. Constraints are the cheapest correctness you can buy: declared once, checked by the engine on every write, impossible to forget. The catalog below runs from the everyday (primary keys, <code>NOT NULL</code>, foreign keys) through the underused power tools — <code>CHECK</code> constraints that encode domain rules, <code>EXCLUDE</code> constraints that express "no two bookings overlap for the same room" in a way no <code>UNIQUE</code> index can, and <code>DEFERRABLE</code> constraints that let you violate a rule transiently within a transaction as long as it holds at commit. The one operational subtlety worth carrying into production, developed in the <code>NOT VALID + VALIDATE</code> entry, is that adding a constraint to a large existing table can lock it while every row is checked — so the two-step pattern (<code>ADD CONSTRAINT ... NOT VALID</code>, then <code>VALIDATE CONSTRAINT</code> in a separate, weaker-locking pass) is how you add integrity to a live table without an outage.</p>
 <h3 id="primary-keys-uniqueness">Primary keys &amp; uniqueness</h3>
 <p>Either column-level or table-level. Multi-column versions are table-level.</p>
@@ -519,6 +523,7 @@ ALTER TABLE orders VALIDATE CONSTRAINT orders_total_nonneg;
 </code></pre>
 <hr>
 <h2 id="indexes">Indexes</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/indexes.html">indexes</a></em></p>
 <p>An index is a trade: it makes reads that match it dramatically faster at the cost of slowing every write (which must now update the index too) and consuming storage. Getting indexing right is therefore the highest-leverage performance skill in Postgres, and the mental model to hold is that <strong>an index exists to let the planner avoid reading rows it doesn't need</strong> — so the question for any index is always "which query will use this, and does the planner agree it should?" (a question <code>EXPLAIN</code>, covered in the <a href="advanced-postgres.html">Advanced guide</a>, answers directly). Postgres's distinctive strength here is that it has <em>many</em> index types beyond the default, each matched to a kind of query the B-tree handles badly: <strong>B-tree</strong> for the equality and range queries that are 90% of an OLTP workload; <strong>GIN</strong> for "does this container hold this element" (the index behind fast <code>jsonb</code> containment, array membership, and full-text search); <strong>GiST</strong> for overlap and nearest-neighbor (ranges, geometry, the exclusion constraints from the previous section); <strong>BRIN</strong> for enormous append-ordered tables where a tiny index over block ranges replaces a huge B-tree; and <strong>Hash</strong> for equality-only lookups. Layered on top are the modifiers that turn a good index into the right one — <strong>partial</strong> indexes that cover only the rows you query (indexing only <code>WHERE status = 'active'</code> to keep the index small and hot), <strong>expression</strong> indexes over <code>lower(email)</code> or a <code>jsonb</code> path, and <strong>covering</strong> indexes that <code>INCLUDE</code> extra columns so the query never touches the table at all. The entries below walk each; the through-line is that the index type and modifiers should be chosen from the <em>query shape</em>, not added reflexively to columns, because every index you don't need is pure write-path tax.</p>
 <h3 id="b-tree-default">B-tree (default)</h3>
 <p>Ordered index for equality, range, and sort operations. Supports multi-column and covering indexes.</p>
@@ -582,6 +587,7 @@ REINDEX INDEX CONCURRENTLY some_idx;
 </code></pre>
 <hr>
 <h2 id="query-features">Query Features</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/queries.html">queries</a></em></p>
 <h3 id="distinct-on">DISTINCT ON</h3>
 <p>"Get one row per group, choosing the first by some ordering." Postgres-specific, indispensable.</p>
 <pre><code class="language-sql">-- Most recent order per customer
@@ -644,6 +650,7 @@ GROUP BY customer_id;
 </code></pre>
 <hr>
 <h2 id="json-jsonb">JSON &amp; JSONB</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/datatype-json.html">JSON types</a></em></p>
 <h3 id="operators">Operators</h3>
 <table>
 <thead>
@@ -751,6 +758,7 @@ CREATE INDEX events_user_id ON events ((data-&gt;&gt;'user_id'));
 </code></pre>
 <hr>
 <h2 id="arrays_1">Arrays</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/arrays.html">arrays</a></em></p>
 <h3 id="basics">Basics</h3>
 <pre><code class="language-sql">SELECT ARRAY[1,2,3];
 SELECT '{1,2,3}'::int[];
@@ -782,6 +790,7 @@ UPDATE t SET tags = array_remove(tags, 'old')   WHERE id = 1;
 </code></pre>
 <hr>
 <h2 id="ranges">Ranges</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/rangetypes.html">range types</a></em></p>
 <h3 id="construction_1">Construction</h3>
 <pre><code class="language-sql">SELECT int4range(1, 10);              -- [1,10)
 SELECT int4range(1, 10, '[]');        -- [1,10]
@@ -811,6 +820,7 @@ SELECT range_agg(during) FROM reservations WHERE room_id = 7;
 </code></pre>
 <hr>
 <h2 id="full-text-search">Full-Text Search</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/textsearch.html">full-text search</a></em></p>
 <h3 id="tsvector-and-tsquery">tsvector and tsquery</h3>
 <pre><code class="language-sql">SELECT to_tsvector('english', 'The quick brown foxes jumped');
 --&gt; 'brown':3 'fox':4 'jump':5 'quick':2
@@ -850,6 +860,7 @@ SELECT to_tsvector(language_col::regconfig, body) FROM multilingual_docs;
 </code></pre>
 <hr>
 <h2 id="pattern-matching">Pattern Matching</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/functions-matching.html">pattern matching</a></em></p>
 <h3 id="like-ilike">LIKE / ILIKE</h3>
 <pre><code class="language-sql">SELECT * FROM users WHERE email LIKE '%@example.com';
 SELECT * FROM users WHERE name ILIKE 'al%';  -- case-insensitive
@@ -876,6 +887,7 @@ SELECT name FROM users ORDER BY name &lt;-&gt; 'Alicia' LIMIT 5;
 </code></pre>
 <hr>
 <h2 id="transactions-isolation">Transactions &amp; Isolation</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/transaction-iso.html">transaction isolation</a></em></p>
 <p>A transaction is the unit of all-or-nothing work, and Postgres's MVCC implementation (from the mental model up top) gives it an unusually pleasant property: because every write creates a new row version rather than overwriting, <strong>readers never block writers and writers never block readers</strong>, so a long analytical query and a busy write workload coexist without the lock contention that defines this problem in lock-based databases. What you still must choose is the <strong>isolation level</strong> — how much the concurrent activity of <em>other</em> transactions is allowed to leak into yours — and this is a genuine engineering decision, not a knob to leave at default and forget, because the levels trade consistency against the rate at which transactions must be retried. <strong>Read Committed</strong> (the default) sees each statement against a fresh snapshot, so two statements in one transaction can see different data — fine for most OLTP, but it permits anomalies that surprise people (a row counted in one query and changed before the next). <strong>Repeatable Read</strong> gives the whole transaction one snapshot, eliminating those anomalies but introducing serialization failures you must be prepared to retry. <strong>Serializable</strong> is the strongest, guaranteeing the result is <em>as if</em> transactions ran one at a time, by detecting dangerous patterns and aborting one of the conflicting transactions with a serialization error — which means code using it must wrap transactions in a retry loop, the price of the guarantee. The mechanism beneath all of this, and the reason a forgotten open transaction is a production hazard, is that MVCC must keep old row versions alive as long as <em>any</em> transaction might still need to see them — so a transaction left open for hours blocks <code>VACUUM</code> from reclaiming dead rows across the whole database, which is the <a href="advanced-postgres.html">Advanced guide</a>'s most-repeated operational warning. The entries below cover the syntax, the levels, and savepoints; the decision to take away is that isolation level is chosen per workload from the anomalies it can tolerate and the retry logic it can afford.</p>
 <h3 id="basics_1">Basics</h3>
 <pre><code class="language-sql">BEGIN;
@@ -959,6 +971,7 @@ COMMIT;
 </code></pre>
 <hr>
 <h2 id="locking">Locking</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/explicit-locking.html">explicit locking</a></em></p>
 <h3 id="row-locks-select-for">Row locks (SELECT ... FOR ...)</h3>
 <pre><code class="language-sql">-- Strong: blocks other writers and other SELECT FOR UPDATE
 SELECT * FROM orders WHERE id = 42 FOR UPDATE;
@@ -1004,6 +1017,7 @@ JOIN pg_stat_activity blocker
 </code></pre>
 <hr>
 <h2 id="upserts-merge">Upserts &amp; MERGE</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/sql-insert.html#SQL-ON-CONFLICT">INSERT … ON CONFLICT</a></em></p>
 <h3 id="on-conflict-upsert">ON CONFLICT (UPSERT)</h3>
 <p>Idiomatic Postgres. Target a unique constraint or column list.</p>
 <pre><code class="language-sql">-- Do nothing on conflict
@@ -1036,6 +1050,7 @@ WHEN NOT MATCHED THEN
 <p>Gotcha: <code>MERGE</code> does not detect concurrent inserts like <code>ON CONFLICT</code> does. For pure upsert, <code>ON CONFLICT</code> is still the safe pick.</p>
 <hr>
 <h2 id="ctes-window-functions">CTEs &amp; Window Functions</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/queries-with.html">WITH queries</a></em></p>
 <h3 id="basic-cte">Basic CTE</h3>
 <p>Postgres 12+ treats CTEs as optimization fences only when marked <code>MATERIALIZED</code>. Plain CTEs are inlined when beneficial.</p>
 <pre><code class="language-sql">WITH recent AS (
@@ -1106,6 +1121,7 @@ WINDOW w AS (PARTITION BY customer_id ORDER BY created_at);
 </code></pre>
 <hr>
 <h2 id="lateral-joins">LATERAL Joins</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/queries-table-expressions.html#QUERIES-LATERAL">LATERAL subqueries</a></em></p>
 <p>A row-at-a-time subquery that can reference columns from earlier <code>FROM</code> items. Think "correlated subquery, but in the FROM clause."</p>
 <pre><code class="language-sql">-- Top 3 orders per customer, cheaply
 SELECT c.id, o.*
@@ -1124,6 +1140,7 @@ FROM users u, LATERAL unnest(u.tags) AS tag;
 </code></pre>
 <hr>
 <h2 id="views-materialized-views">Views &amp; Materialized Views</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/sql-creatematerializedview.html">CREATE MATERIALIZED VIEW</a></em></p>
 <h3 id="views">Views</h3>
 <p>Saved query. Always fresh.</p>
 <pre><code class="language-sql">CREATE VIEW active_users AS
@@ -1158,6 +1175,7 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY daily_revenue;
 </code></pre>
 <hr>
 <h2 id="partitioning">Partitioning</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/ddl-partitioning.html">table partitioning</a></em></p>
 <p>Partitioning splits one logically-single table into many physical child tables by a key (a date range, a tenant ID, a hash), with the parent acting as a routing template that the planner uses to skip irrelevant partitions entirely. The decision to internalize is <em>when</em> it earns its complexity, because partitioning is not a performance win you sprinkle on any large table — it pays off for two specific shapes. The first is <strong>time-series data with a retention policy</strong>: partition by month, and dropping last year's data becomes an instant <code>DROP TABLE</code> of a partition instead of a <code>DELETE</code> of millions of rows that bloats the table and thrashes <code>VACUUM</code>. The second is <strong>queries that always filter on the partition key</strong>, where the planner's <em>partition pruning</em> lets a query touch only the relevant partitions, turning a scan of the whole dataset into a scan of one slice. The cost side is real and worth respecting: partitioning complicates unique constraints (a global unique must include the partition key), foreign keys, and the planning of queries that <em>don't</em> filter on the key (which now must consider every partition), so the wrong partitioning scheme makes things slower, not faster. The entries below cover range, list, and hash partitioning and the maintenance of partition sets; the <a href="advanced-postgres.html">Advanced guide</a> develops partitioning-at-scale, including how <code>pg_partman</code> automates the create-new/drop-old lifecycle that manual partitioning eventually demands.</p>
 <h3 id="range-partitioning">Range partitioning</h3>
 <pre><code class="language-sql">CREATE TABLE events (
@@ -1209,6 +1227,7 @@ ALTER TABLE events DETACH PARTITION events_2026_01 CONCURRENTLY;
 </code></pre>
 <hr>
 <h2 id="inheritance">Inheritance</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/ddl-inherit.html">inheritance</a></em></p>
 <p>Predecessor to partitioning — still around. Children inherit columns from parent; <code>SELECT * FROM parent</code> returns from all children unless <code>ONLY</code> is used.</p>
 <pre><code class="language-sql">CREATE TABLE cities (name text, pop int);
 CREATE TABLE capitals (country text) INHERITS (cities);
@@ -1218,6 +1237,7 @@ SELECT * FROM ONLY cities;   -- excludes capitals
 <p>Limits (no FK, no unique across children) are why partitioning mostly replaced this.</p>
 <hr>
 <h2 id="functions-procedures">Functions &amp; Procedures</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/plpgsql.html">PL/pgSQL</a></em></p>
 <h3 id="sql-functions">SQL functions</h3>
 <p>Simplest form. Inlined by the planner when possible.</p>
 <pre><code class="language-sql">CREATE OR REPLACE FUNCTION full_name(u users)
@@ -1286,6 +1306,7 @@ CALL nightly_cleanup();
 <p><code>plpython3u</code>, <code>plperlu</code>, <code>plv8</code>, <code>pllua</code> — install via extension. <code>u</code> means untrusted (full host access); requires superuser.</p>
 <hr>
 <h2 id="triggers">Triggers</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/plpgsql-trigger.html">trigger functions</a></em></p>
 <h3 id="row-level-vs-statement-level">Row-level vs statement-level</h3>
 <p>Row triggers fire once per affected row; statement triggers fire once per DML statement.</p>
 <pre><code class="language-sql">CREATE OR REPLACE FUNCTION touch_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$
@@ -1332,11 +1353,13 @@ CREATE EVENT TRIGGER ddl_audit ON ddl_command_start EXECUTE FUNCTION audit_ddl()
 </code></pre>
 <hr>
 <h2 id="rules">Rules</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/rules.html">the rule system</a></em></p>
 <p>Query rewriting at parse time. Powerful and confusing — prefer triggers. Main modern use is making views writable (<code>INSTEAD OF</code> rules / triggers).</p>
 <pre><code class="language-sql">CREATE RULE no_deletes AS ON DELETE TO audit_log DO INSTEAD NOTHING;
 </code></pre>
 <hr>
 <h2 id="listen-notify">LISTEN / NOTIFY</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/sql-notify.html">NOTIFY</a></em></p>
 <p>Lightweight pub/sub inside a Postgres database. Payload limit ~8000 bytes.</p>
 <pre><code class="language-sql">-- Session A
 LISTEN orders_channel;
@@ -1360,6 +1383,7 @@ FOR EACH ROW EXECUTE FUNCTION orders_notify();
 <p>Caveats: delivered only on <code>COMMIT</code>, not durable, not replicated. Use a real queue if you need those.</p>
 <hr>
 <h2 id="row-level-security">Row-Level Security</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/ddl-rowsecurity.html">row security policies</a></em></p>
 <p>Row-Level Security (RLS) moves a tenant-isolation or per-user-visibility rule <em>into the database</em>, where it is evaluated automatically on every query against the table — and the reason that matters is the same reason constraints matter, applied to reads: a <code>WHERE tenant_id = current_setting('app.tenant')</code> filter enforced by RLS holds against <em>every</em> query from <em>every</em> code path, so the one report that forgot the tenant filter, the analyst poking at the table in <code>psql</code>, and the second service that read the table directly all get only the rows they're allowed, with no way to forget the filter because the database adds it. This is genuinely powerful for multi-tenant systems, where the alternative — relying on every query in a growing codebase to remember the isolation clause — is a cross-tenant data leak waiting for its first omission (the failure mode the <a href="web-llm-security-study-guide.html">Web Security guide</a> catalogues). The two cautions to carry into a real deployment, both developed below: policies are bypassed by the table owner and superusers unless you <code>FORCE</code> them, so the role your application connects as must not be the table owner; and because every query now carries the policy's predicate, that predicate must be indexable, or RLS turns every read into a sequential scan. The entries below show enabling RLS, writing <code>USING</code> (read) and <code>WITH CHECK</code> (write) policies, and the session-variable pattern that carries the current tenant or user into the policy.</p>
 <h3 id="enable-and-add-policies">Enable and add policies</h3>
 <pre><code class="language-sql">ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
@@ -1385,6 +1409,7 @@ SELECT * FROM documents;  -- only rows where owner_id = 42
 <p>Role attribute <code>BYPASSRLS</code> skips policies entirely (for replication tools, etc.).</p>
 <hr>
 <h2 id="roles-permissions">Roles &amp; Permissions</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/user-manag.html">database roles</a></em></p>
 <p>Postgres's permission model is built on one unifying idea that removes most of the confusion newcomers bring to it: <strong>there is no separate concept of "users" and "groups" — there are only roles</strong>, and a role is a "user" when it has the <code>LOGIN</code> attribute and a "group" when other roles are granted membership in it. That single abstraction is what lets you build a clean, maintainable access model: define group roles by <em>function</em> (<code>readers</code>, <code>writers</code>, <code>app_runtime</code>), grant the actual privileges to those groups, and then grant group membership to the login roles — so onboarding a new service is one <code>GRANT readers TO ...</code> rather than re-deriving a pile of table grants, and an access review reads as "who is a member of <code>writers</code>" instead of an audit of scattered individual permissions. The privilege system itself layers grants on objects (<code>GRANT SELECT ON orders TO ...</code>) with the subtlety that privileges on <em>future</em> objects need <code>ALTER DEFAULT PRIVILEGES</code> (a fresh table grants access to nobody by default, the source of the perennial "I granted the schema but the new table isn't readable" surprise). The principle to carry, and the one the <a href="kubernetes-security-study-guide.html">Kubernetes Security</a> and <a href="web-llm-security-study-guide.html">Web Security</a> guides echo in their own domains, is least privilege: the role your application connects as should hold exactly the rights it uses and own nothing it doesn't, so that a SQL injection or a leaked connection string is bounded by what that role can do rather than opening the whole database.</p>
 <h3 id="roles">Roles</h3>
 <p>Users and groups are both roles — differ only in the <code>LOGIN</code> attribute.</p>
@@ -1418,6 +1443,7 @@ RESET ROLE;
 <p><code>scram-sha-256</code> is the default (since PG 14). Keep it; <code>md5</code> is legacy.</p>
 <hr>
 <h2 id="schemas-search-path">Schemas &amp; Search Path</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/ddl-schemas.html">schemas</a></em></p>
 <p>Schemas are namespaces. <code>public</code> is the default. <code>search_path</code> decides how unqualified names resolve.</p>
 <pre><code class="language-sql">CREATE SCHEMA reporting;
 CREATE TABLE reporting.daily_stats (...);
@@ -1431,6 +1457,7 @@ ALTER ROLE app_user SET search_path = app, public;
 <p><code>SECURITY DEFINER</code> functions should always pin <code>search_path</code> — otherwise callers can shadow objects.</p>
 <hr>
 <h2 id="sequences">Sequences</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/sql-createsequence.html">CREATE SEQUENCE</a></em></p>
 <p>Counter objects — back IDENTITY columns and can be used directly.</p>
 <pre><code class="language-sql">CREATE SEQUENCE order_no START 1000 INCREMENT 1 CACHE 50;
 
@@ -1443,6 +1470,7 @@ ALTER SEQUENCE order_no RESTART WITH 1;
 <p>Owned-by ties a sequence to a column; <code>serial</code> did this implicitly. <code>IDENTITY</code> does it cleanly.</p>
 <hr>
 <h2 id="copy-bulk-loading">COPY &amp; Bulk Loading</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/sql-copy.html">COPY</a></em></p>
 <p>Fastest way to load/export data.</p>
 <h3 id="server-side-copy">Server-side COPY</h3>
 <p>Reads/writes files on the server; requires superuser or <code>pg_read_server_files</code> / <code>pg_write_server_files</code>.</p>
@@ -1466,6 +1494,7 @@ COMMIT;
 <p>Extra gains: drop indexes before load and recreate after; raise <code>maintenance_work_mem</code>; use <code>COPY (FREEZE)</code> inside the same transaction that created the table.</p>
 <hr>
 <h2 id="foreign-data-wrappers">Foreign Data Wrappers</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/postgres-fdw.html">postgres_fdw</a></em></p>
 <p>Query remote data as if it were local tables. Built-in FDW for other Postgres servers (<code>postgres_fdw</code>) plus extensions for MySQL, Oracle, files, S3, etc.</p>
 <pre><code class="language-sql">CREATE EXTENSION postgres_fdw;
 
@@ -1483,6 +1512,7 @@ SELECT count(*) FROM ext.orders;
 <p>Predicates and joins are pushed to the remote when possible — check <code>EXPLAIN</code>.</p>
 <hr>
 <h2 id="extensions">Extensions</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/extend-extensions.html">extensions</a></em></p>
 <p>Managed plugins; installed via <code>CREATE EXTENSION</code>.</p>
 <h3 id="catalog-high-value-extensions">Catalog high-value extensions</h3>
 <table>
@@ -1584,6 +1614,7 @@ SELECT cron.schedule('nightly-cleanup', '0 3 * * *',
 </code></pre>
 <hr>
 <h2 id="psql-essentials">psql Essentials</h2>
+<p><em>Docs: <a href="https://www.postgresql.org/docs/current/app-psql.html">psql</a></em></p>
 <h3 id="connecting">Connecting</h3>
 <pre><code class="language-bash">psql &quot;postgres://user:pass@host:5432/db?sslmode=require&quot;
 psql -h host -U user -d db
@@ -1632,11 +1663,12 @@ SELECT * FROM users WHERE id = :user_id;
 <p>You've covered the SQL surface area. To understand <em>why</em> queries are fast or slow and how to run Postgres in production, continue to the companion:</p>
 <p><strong>→ <a href="advanced-postgres.html">Advanced PostgreSQL Study Guide</a></strong> — MVCC internals &amp; bloat, WAL &amp; checkpoints, VACUUM/wraparound, the query planner &amp; statistics, reading <code>EXPLAIN</code>, indexing strategy, locking at scale, connection pooling, the performance tuning ladder, partitioning, replication &amp; HA, backup/PITR, observability, production pitfalls, benchmarking, and worked recipes.</p>
 <ul>
-<li>Official docs: https://www.postgresql.org/docs/current/</li>
-<li>Postgres Wiki (tuning, FAQs): https://wiki.postgresql.org/</li>
-<li><code>pgexercises</code> for hands-on SQL: https://pgexercises.com/</li>
-<li><code>explain.dalibo.com</code> for plan visualization</li>
-<li><code>pg_stat_statements</code> + <code>auto_explain</code> should be running on every non-trivial database (→ <a href="advanced-postgres.html#13-observability">Observability</a>)</li>
+<li><a href="https://www.postgresql.org/docs/current/">Official docs</a> — each section above links its chapter; the docs reward reading beyond the page you searched for</li>
+<li><a href="https://wiki.postgresql.org/">Postgres Wiki</a> — tuning recipes and FAQs</li>
+<li><a href="https://pgexercises.com/">pgexercises.com</a> — hands-on SQL practice with instant feedback</li>
+<li><a href="https://explain.dalibo.com/">explain.dalibo.com</a> — plan visualization</li>
+<li><a href="https://www.postgresql.org/docs/current/pgstatstatements.html"><code>pg_stat_statements</code></a> + <a href="https://www.postgresql.org/docs/current/auto-explain.html"><code>auto_explain</code></a> should be running on every non-trivial database (→ <a href="advanced-postgres.html#13-observability">Observability</a>)</li>
+<li>Companions: <a href="postgres-extensions.html">PostgreSQL Extensions</a> (the ecosystem) and <a href="database-internals-study-guide.html">Database Internals</a> (cross-engine theory)</li>
 </ul></main>
 </div>
 <button id="toTop" aria-label="Back to top">

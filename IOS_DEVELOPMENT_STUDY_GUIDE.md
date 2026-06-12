@@ -1849,3 +1849,13 @@ Stay current: apps that haven't been updated in 2+ years may be removed from the
 ---
 
 That's the guide. The 2026 iOS stack is: Swift 6 (strict concurrency, actors, `Sendable`), SwiftUI (`@Observable` macro, `NavigationStack`, declarative state), SwiftData for persistence, `async/await` for all async work, and MVVM with feature-based modularization via Swift Package Manager. UIKit is still there for interop and edge cases, but new screens should be SwiftUI. The ecosystem rewards staying on the latest Xcode and SDK — Apple actively deprecates and removes old patterns faster than most platforms.
+
+---
+
+## Where to Go Next
+
+- **Do Apple's official [SwiftUI tutorials](https://developer.apple.com/tutorials/swiftui)** — interactive, current, and the best first month of iOS practice; follow with the [develop-in-Swift tutorials](https://developer.apple.com/tutorials/develop-in-swift) for the broader platform tour.
+- **Keep three references open while you build:** the [SwiftUI documentation](https://developer.apple.com/documentation/swiftui), the [Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines) (what reviewers and users expect), and [Hacking with Swift](https://www.hackingwithswift.com/) (Paul Hudson's site — the most useful unofficial reference in the ecosystem).
+- **Watch the relevant [WWDC sessions](https://developer.apple.com/videos/)** for each framework as you reach it — Apple's session videos are the actual documentation for *why* APIs are shaped the way they are, especially for SwiftData, Observation, and Swift concurrency adoption.
+- **Ship one app through the whole gauntlet** — provisioning, TestFlight, review, release. Parts 10–12 only become real on your own bundle ID; budget a weekend for your first provisioning fight and App Store rejection.
+- **Adjacent guides in this repo:** [Swift](SWIFT_STUDY_GUIDE.md) (the language at full depth), [CB8 iOS](CB8_IOS_STUDY_GUIDE.md) (a worked, end-to-end app port using everything here), and [Electron](ELECTRON_STUDY_GUIDE.md) (the desktop contrast — same shipping problems, different gatekeeper).

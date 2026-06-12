@@ -1197,3 +1197,5 @@ You're solid on Kubernetes when you can, without looking anything up:
 4. The [Kubebuilder Book](https://book.kubebuilder.io/) — practical operator development.
 5. KubeCon talks on YouTube — current production patterns from people running clusters at scale.
 6. [Kelsey Hightower's "Kubernetes The Hard Way"](https://github.com/kelseyhightower/kubernetes-the-hard-way) — build a cluster from scratch. Nothing teaches the architecture faster.
+
+**Adjacent guides in this repo:** [Advanced Kubernetes](ADVANCED_KUBERNETES_STUDY_GUIDE.md) (operators, GitOps, platform engineering), [Kubernetes Security](KUBERNETES_SECURITY_STUDY_GUIDE.md), [Docker & Kubernetes Networking](DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md), [Docker](../DOCKER_STUDY_GUIDE.md), [Linux Fundamentals](../LINUX_FUNDAMENTALS_STUDY_GUIDE.md) (namespaces/cgroups), and [Distributed Systems](../DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md) (etcd and reconciliation theory).

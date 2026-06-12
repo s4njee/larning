@@ -1852,3 +1852,13 @@ ref (branch/tag)  →  commit  →  tree  →  blob
 ```
 
 Everything is a hash. Branches are movable pointers. Tags are fixed pointers. HEAD points to the current branch (or commit if detached). The reflog records every pointer movement.
+
+---
+
+## Where to Go Next
+
+- **Read [Pro Git](https://git-scm.com/book/en/v2)** — free, official, and the book-length version of this guide; chapters 7 (Git Tools) and 10 (Internals) reward even long-time users, and the [Git Internals chapter](https://git-scm.com/book/en/v2/Git-Internals-Plumbing-and-Porcelain) is the canonical companion to Part 1's object model.
+- **Make `git help <command>` a habit** — the [official reference pages](https://git-scm.com/docs) are dense but complete, and the ones worth reading whole are [`git-reset(1)`](https://git-scm.com/docs/git-reset) (the table of what moves), [`git-rebase(1)`](https://git-scm.com/docs/git-rebase), and [`git-log(1)`](https://git-scm.com/docs/git-log) (the pretty-format and revision-range syntax).
+- **Spelunk a repo by hand once:** `git cat-file -p HEAD`, walk the tree to a blob, inspect `.git/refs/`, then watch `git reflog` after a rebase. Thirty minutes of plumbing makes Part 1 permanent — after that no Git operation is mysterious, only inconvenient.
+- **Practice the recoveries before you need them.** Run Part 21's recipes on a throwaway repo: delete a branch and reflog it back, reset --hard and recover, rebase and abort. Recovery confidence is what makes the powerful commands usable.
+- **Adjacent guides in this repo:** [GitHub Actions](GITHUB_ACTIONS_STUDY_GUIDE.md) (CI on top of these primitives) and [Vim](VIM_STUDY_GUIDE.md) (the editor Git drops you into).

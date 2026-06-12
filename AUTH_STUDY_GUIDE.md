@@ -124,7 +124,7 @@ The critical distinction the [Crypto guide](CRYPTO_FUNDAMENTALS.md) hammers: **a
 
 Use a purpose-built password hash, in this order of preference (2026):
 
-1. **Argon2id** — the winner of the Password Hashing Competition and the current default recommendation. Memory-hard (resists GPU/ASIC cracking) and tunable along time, memory, and parallelism.
+1. **[Argon2id](https://argon2-cffi.readthedocs.io/en/stable/)** — the winner of the [Password Hashing Competition](https://www.password-hashing.net/) and the current default recommendation. Memory-hard (resists GPU/ASIC cracking) and tunable along time, memory, and parallelism.
 2. **scrypt** — also memory-hard; a solid choice where Argon2 isn't available.
 3. **bcrypt** — older but still acceptable and battle-tested; note its ~72-byte input truncation. Ubiquitous library support.
 4. **PBKDF2** — only when you need FIPS compliance; it's not memory-hard, so it's the weakest of the four.
@@ -177,7 +177,7 @@ Hashing protects you *after* a DB leak. You also have to protect the live login 
 - **Rate limiting** — cap attempts per IP *and* per account (an attacker rotating IPs against one account, or one IP spraying many accounts — **credential stuffing** — both need covering). Exponential backoff after failures.
 - **Account lockout** — temporary lock after N failures. Beware: aggressive lockout becomes a *denial-of-service* vector (an attacker locks out a victim on purpose). Prefer rate-limiting + step-up challenges (CAPTCHA, MFA) over hard lockout.
 - **Breached-password check** — reject passwords found in known breach corpora (the [Have I Been Pwned](https://haveibeenpwned.com/Passwords) k-anonymity API lets you check without sending the password). This is higher-value than most composition rules.
-- **Drop the silly rules.** Modern guidance (NIST 800-63B) is: require *length* (≥8, ideally allow long passphrases up to 64+), screen against breach lists, and **stop** forcing periodic rotation and arbitrary character-class rules — they push users toward `Password1!` and predictable mutations.
+- **Drop the silly rules.** Modern guidance ([NIST SP 800-63B](https://pages.nist.gov/800-63-3/sp800-63b.html)) is: require *length* (≥8, ideally allow long passphrases up to 64+), screen against breach lists, and **stop** forcing periodic rotation and arbitrary character-class rules — they push users toward `Password1!` and predictable mutations.
 
 If you remember one thing from Part 2: **store passwords as Argon2id (or bcrypt/scrypt) hashes — never a fast hash like SHA-256, never plaintext — let the library handle the per-password salt, tune the cost to ~100–250ms, equalize timing to prevent user enumeration, and defend the live endpoint with rate limiting and breached-password screening.**
 
@@ -192,7 +192,7 @@ A password is one factor. Real accounts need a second factor and a *lifecycle* �
 The factors, classically: **something you know** (password), **something you have** (phone, security key), **something you are** (biometric). MFA requires two of different kinds, so stealing one isn't enough. The options, weakest to strongest:
 
 - **SMS OTP — weak, but better than nothing.** Vulnerable to **SIM-swapping** (attacker ports the victim's number) and SS7 interception. NIST discourages it. Acceptable as a fallback, not as a primary second factor.
-- **TOTP (Time-based One-Time Password) — the solid default.** The RFC 6238 standard behind Google Authenticator, Authy, 1Password. Server and app share a secret at enrollment; both compute the same 6-digit code from `HMAC(secret, current_30s_window)`. No network needed, phishing-resistant only weakly (a fooled user can still type the code into a fake site).
+- **TOTP (Time-based One-Time Password) — the solid default.** The [RFC 6238](https://datatracker.ietf.org/doc/html/rfc6238) standard behind Google Authenticator, Authy, 1Password. Server and app share a secret at enrollment; both compute the same 6-digit code from `HMAC(secret, current_30s_window)`. No network needed, phishing-resistant only weakly (a fooled user can still type the code into a fake site).
 - **Push notifications** — approve/deny on a trusted device. Good UX, but beware **MFA fatigue** attacks (spam the user with prompts until they tap "approve"). Mitigate with number-matching.
 - **WebAuthn / Passkeys — the strongest, and *phishing-resistant by design*** (Part 11). The credential is cryptographically bound to your domain, so it simply won't produce a valid response on `paypa1.com`. This is the endgame; everything else is transitional.
 
@@ -279,7 +279,7 @@ eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9 . eyJzdWIiOiI0MiIsInJvbGUiOiJ1c2VyIiwiZXhwI
 ```
 
 - **Header** — `{"alg": "RS256", "typ": "JWT"}` — the signing algorithm and token type.
-- **Payload** — the **claims**, a JSON object of statements about the subject. Standard registered claims (RFC 7519) carry real security meaning:
+- **Payload** — the **claims**, a JSON object of statements about the subject. Standard registered claims ([RFC 7519](https://datatracker.ietf.org/doc/html/rfc7519#section-4.1)) carry real security meaning:
   - `sub` — subject (the user ID)
   - `iss` — issuer (who minted the token)
   - `aud` — audience (who it's *for* — which API should accept it)
@@ -295,10 +295,10 @@ eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9 . eyJzdWIiOiI0MiIsInJvbGUiOiJ1c2VyIiwiZXhwI
 How the token is signed determines who can verify it — and this choice is architectural:
 
 - **HS256 (symmetric, HMAC):** one shared secret both signs *and* verifies. Fine for a **monolith** where the same codebase mints and checks tokens. The danger: every service that needs to *verify* also holds the power to *forge*. If any holder leaks the secret, attackers mint arbitrary tokens.
-- **RS256 / ES256 (asymmetric):** a **private key signs** (held only by the auth server) and a **public key verifies** (distributed freely to every API). A verifier can check tokens but *cannot forge* them. This is the standard for **distributed systems** and any third-party scenario — and it's how OIDC works (Part 5). The public keys are published at a **JWKS** (JSON Web Key Set) endpoint that verifiers fetch and cache.
+- **RS256 / ES256 (asymmetric):** a **private key signs** (held only by the auth server) and a **public key verifies** (distributed freely to every API). A verifier can check tokens but *cannot forge* them. This is the standard for **distributed systems** and any third-party scenario — and it's how OIDC works (Part 5). The public keys are published at a **JWKS** ([JSON Web Key Set, RFC 7517](https://datatracker.ietf.org/doc/html/rfc7517)) endpoint that verifiers fetch and cache.
 
 ```python
-import jwt   # PyJWT
+import jwt   # PyJWT — pyjwt.readthedocs.io
 from datetime import datetime, timedelta, timezone
 
 # Mint (auth server, asymmetric — signs with the PRIVATE key):
@@ -360,7 +360,7 @@ Memorize these; every flow is a conversation between them:
 
 ### The Authorization Code Flow with PKCE
 
-This is *the* flow for essentially all modern apps — SPAs, mobile, and traditional web. It replaced the old Implicit Flow (now deprecated — it leaked tokens in URLs). **PKCE** ("pixie," Proof Key for Code Exchange) is the addition that makes it safe for public clients that can't keep a secret.
+This is *the* flow for essentially all modern apps — SPAs, mobile, and traditional web. It replaced the old Implicit Flow (now deprecated — it leaked tokens in URLs). **PKCE** ("pixie," [Proof Key for Code Exchange, RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636)) is the addition that makes it safe for public clients that can't keep a secret.
 
 ```text
 1. Client generates a random code_verifier, and code_challenge = SHA256(code_verifier).
@@ -433,7 +433,7 @@ The two rules that fall out: **the client must not parse the access token** (tre
 The auth-code+PKCE flow covers user-facing apps. Two others you'll meet:
 
 - **Client Credentials** — for **machine-to-machine** (no user involved): a service authenticates with its own client ID + secret to get an access token. This is the OAuth path for service-to-service auth (Part 9).
-- **Device Authorization** — for input-constrained devices (a TV, a CLI): the device shows a code, you approve it on your phone. (You've done this with `gh auth login` or a streaming-box login.)
+- **Device Authorization** ([RFC 8628](https://datatracker.ietf.org/doc/html/rfc8628)) — for input-constrained devices (a TV, a CLI): the device shows a code, you approve it on your phone. (You've done this with `gh auth login` or a streaming-box login.)
 
 The **deprecated** ones to avoid: **Implicit** (tokens in the URL fragment — replaced by auth-code+PKCE) and **Resource Owner Password Credentials** (the app collects the user's password directly — defeats the entire point of OAuth; never use it).
 
@@ -472,7 +472,7 @@ The critical hardening for public clients (SPAs, mobile) where the refresh token
    logs back in, the thief can't.
 ```
 
-This turns a stolen-and-replayed refresh token from a silent persistent compromise into a detectable, self-healing event. It's the single most valuable refresh-token feature; any serious auth server (and OAuth 2.1) builds it in.
+This turns a stolen-and-replayed refresh token from a silent persistent compromise into a detectable, self-healing event. It's the single most valuable refresh-token feature; any serious auth server (and OAuth 2.1, per the [OAuth Security BCP, RFC 9700](https://datatracker.ietf.org/doc/html/rfc9700)) builds it in.
 
 ### Revoking a Stateless Access Token — The Hard Problem
 
@@ -495,7 +495,7 @@ The moment you sell software to a company, they will demand **Single Sign-On** �
 
 ### SAML 2.0
 
-The long-standing enterprise SSO standard. It's XML-based and uses XML Digital Signatures — which are *notoriously* complex and a historical source of signature-bypass vulnerabilities, so **use a vetted library; never hand-parse SAML.**
+The long-standing enterprise SSO standard ([OASIS SAML 2.0](https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf)). It's XML-based and uses XML Digital Signatures — which are *notoriously* complex and a historical source of signature-bypass vulnerabilities, so **use a vetted library; never hand-parse SAML.**
 
 ```text
 SP-Initiated flow (your app = Service Provider, the customer's Okta = Identity Provider):
@@ -523,7 +523,7 @@ Increasingly, enterprises support **OIDC** (Part 5) for SSO instead of SAML, and
 
 ### SCIM — The Provisioning Half Everyone Forgets
 
-SSO handles **authentication** — but it doesn't answer: how does your app know a user *exists* before they first log in? How is access *revoked the instant* someone is fired? That's **provisioning**, and the standard is **SCIM** (System for Cross-domain Identity Management) — a standardized REST API for syncing users and groups:
+SSO handles **authentication** — but it doesn't answer: how does your app know a user *exists* before they first log in? How is access *revoked the instant* someone is fired? That's **provisioning**, and the standard is **SCIM** ([System for Cross-domain Identity Management, RFC 7644](https://datatracker.ietf.org/doc/html/rfc7644)) — a standardized REST API for syncing users and groups:
 
 - The IdP (Okta) is the **client**; your app implements the **SCIM server** (`POST /scim/v2/Users`, `PATCH /scim/v2/Users/{id}`, `DELETE`, plus `/Groups`).
 - HR adds an employee in Okta → Okta calls your SCIM API to **create** the account (often before the user ever logs in).
@@ -570,11 +570,11 @@ Allow  action=edit
 - **Pros:** extremely flexible and granular; expresses context-dependent rules RBAC can't.
 - **Cons:** **hard to audit.** Because decisions are computed at runtime from dynamic state, answering "*list every document Alice can access*" is difficult — you'd have to evaluate the policy against every resource. **AWS IAM is the canonical ABAC system** (policies over principals, resources, conditions), and anyone who's debugged an IAM `Deny` knows both the power and the pain.
 
-ABAC is often implemented with a policy engine — **Open Policy Agent (OPA)** with its Rego language, or **AWS Cedar** — that you query for a decision, keeping policy out of your business logic (more in Part 10).
+ABAC is often implemented with a policy engine — **[Open Policy Agent (OPA)](https://www.openpolicyagent.org/docs/latest/)** with its Rego language, or **[Cedar](https://www.cedarpolicy.com/)** (AWS) — that you query for a decision, keeping policy out of your business logic (more in Part 10).
 
 ### ReBAC: Relationship-Based Access Control (Zanzibar)
 
-The modern model for complex, hierarchical, multi-tenant apps — and the one behind Google Docs/Drive. Access is determined by **traversing a graph of relationships**, formalized in Google's **Zanzibar** paper and implemented by open-source **SpiceDB** and **OpenFGA**.
+The modern model for complex, hierarchical, multi-tenant apps — and the one behind Google Docs/Drive. Access is determined by **traversing a graph of relationships**, formalized in Google's **[Zanzibar](https://research.google/pubs/pub48190/)** paper and implemented by open-source **[SpiceDB](https://authzed.com/docs)** and **[OpenFGA](https://openfga.dev/docs/fga)**.
 
 ```text
 Relationship tuples:  Object#Relation@Subject
@@ -607,7 +607,7 @@ Everything so far assumed a human at the other end. But in a microservice or dis
 - **Shared API keys / static secrets.** The simplest: service B issues service A a long random key; A sends it on every request. Easy, but the key is a long-lived bearer credential — if it leaks (a logged header, a committed `.env`, a breached service), the attacker is indistinguishable from A until you rotate. Acceptable for low-stakes internal calls *if* you rotate regularly and scope tightly; avoid as your primary mechanism at scale.
 - **OAuth Client Credentials grant** (Part 5). Service A authenticates to an auth server with its client ID/secret and receives a *short-lived* access token for service B. Better than static keys because the token expires (bounded blast radius) and is centrally issued and auditable. The standard for M2M when you already run an OAuth server.
 - **mTLS (mutual TLS).** Both sides present X.509 certificates during the TLS handshake; each verifies the other's cert against a trusted CA. Identity *is* the certificate, authentication happens as part of establishing the connection, and traffic is encrypted in transit by definition. Strong — but you now own a **certificate lifecycle** (issuance, distribution, rotation, revocation), which is real operational weight, and exactly what service meshes automate.
-- **Workload identity (SPIFFE/SPIRE).** The modern, platform-native answer: a workload's identity is derived from *what and where it is* (its Kubernetes ServiceAccount, namespace, node) rather than a secret it carries. **SPIFFE** defines a universal identity format (the SVID — SPIFFE Verifiable Identity Document, an X.509 cert or JWT); **SPIRE** is the runtime that attests workloads and issues short-lived SVIDs automatically. No long-lived secret to leak, identity is cryptographically attested, and rotation is continuous and invisible.
+- **Workload identity (SPIFFE/SPIRE).** The modern, platform-native answer: a workload's identity is derived from *what and where it is* (its Kubernetes ServiceAccount, namespace, node) rather than a secret it carries. **[SPIFFE](https://spiffe.io/docs/latest/spiffe-about/overview/)** defines a universal identity format (the SVID — SPIFFE Verifiable Identity Document, an X.509 cert or JWT); **[SPIRE](https://spiffe.io/docs/latest/spire-about/)** is the runtime that attests workloads and issues short-lived SVIDs automatically. No long-lived secret to leak, identity is cryptographically attested, and rotation is continuous and invisible.
 
 ### How the Mesh Makes This Disappear
 
@@ -629,7 +629,7 @@ How do all these pieces assemble in a real system? This part is the architectura
 
 In a microservice architecture, you do **not** want every internal service independently fetching JWKS, validating OAuth tokens, and handling external-identity nuance — that's duplicated, error-prone, and couples every service to your IdP. Instead, **terminate external auth at the edge** (an API gateway), and pass a simpler, trusted identity inward.
 
-**The Phantom Token pattern** is the clean version of this:
+**The [Phantom Token pattern](https://curity.io/resources/learn/phantom-token-pattern/)** is the clean version of this (token introspection itself is [RFC 7662](https://datatracker.ietf.org/doc/html/rfc7662)):
 
 ```text
 1. The browser/client holds an OPAQUE access token (a random string — reveals nothing,
@@ -748,5 +748,13 @@ Notice that **every layer is defense-in-depth**: a stolen access token dies in 1
 If you remember one thing from Part 11: **passkeys/WebAuthn are the phishing-resistant, nothing-to-steal endgame — adopt them as a first-class option now — and a real auth system is defense-in-depth: short-lived tokens, MFA, per-tenant scoping, mTLS between services, and the discipline that every one of the ten pitfalls above is closed.**
 
 ---
+
+## Where to Go Next
+
+- **Read the [OAuth 2.1 draft](https://oauth.net/2.1/) and the [OAuth Security BCP (RFC 9700)](https://datatracker.ietf.org/doc/html/rfc9700)** — together they are the consolidated, current statement of how OAuth should be done, with every deprecated flow and required mitigation in one place. [OpenID Connect Core](https://openid.net/specs/openid-connect-core-1_0.html) is the companion for the identity layer.
+- **Work through the OWASP cheat sheets** — [Authentication](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html), [Session Management](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html), [Password Storage](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html), and [Forgot Password](https://cheatsheetseries.owasp.org/cheatsheets/Forgot_Password_Cheat_Sheet.html) — they are the practitioner's checklists this guide compresses.
+- **Read the [Zanzibar paper](https://research.google/pubs/pub48190/)** while Part 8 is fresh — it's short, readable, and the [OpenFGA docs](https://openfga.dev/docs/fga) let you play with the model in an afternoon.
+- **Build one flow end to end.** Stand up [Keycloak](https://www.keycloak.org/documentation) locally, implement the auth-code+PKCE flow against it by hand (no SDK), verify the ID token yourself with pinned algorithms, then add refresh rotation. Nothing exposes the gap between "I understand OAuth" and "I implemented it correctly" faster.
+- **Adjacent guides in this repo:** [Cryptography Fundamentals](CRYPTO_FUNDAMENTALS.md) (the primitives under every signature here), [Kubernetes Security](k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md) (cluster identity), [Enterprise APIs](ENTERPRISE_API_STUDY_GUIDE.md) (where these tokens get used), and [WebSockets](WEBSOCKETS_STUDY_GUIDE.md) (the browser-header problem in depth).
 
 That's the guide. From here the highest-leverage next step is to audit one real system against Part 11's pitfall list and walkthrough: confirm passwords are Argon2id, JWT verification pins the algorithm and checks `aud`, password reset invalidates sessions, every query is tenant-scoped, and no long-lived secrets sit in environment variables. Auth is the domain where "I understand it" and "I implemented it correctly" are different skills — and the gap between them is exactly where the breaches are. For the cryptographic primitives underneath all of this, see the [Cryptography Fundamentals guide](CRYPTO_FUNDAMENTALS.md); for cluster identity, the [Kubernetes Security guide](k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md); for protocol-level WebSocket and TLS detail, the [WebSockets](WEBSOCKETS_STUDY_GUIDE.md) and [Networking Fundamentals](NETWORKING_FUNDAMENTALS.md) guides.

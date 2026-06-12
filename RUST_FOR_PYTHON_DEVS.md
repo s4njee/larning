@@ -2,6 +2,8 @@
 
 A study guide that skips the basics and focuses on what actually trips up Python developers learning Rust. Covers ownership, borrowing, lifetimes, concurrency, and the mental shifts required.
 
+Primary references: [The Rust Programming Language](https://doc.rust-lang.org/book/) ("the Book" — free, official, and the canonical first read), [Rust by Example](https://doc.rust-lang.org/rust-by-example/), [Rustlings](https://github.com/rust-lang/rustlings) (the exercise set that pairs with the Book), the [std docs](https://doc.rust-lang.org/std/) (best-in-class API documentation), and [PyO3](https://pyo3.rs/) (the bridge back to Python when you want both).
+
 ---
 
 ## Table of Contents
@@ -2344,3 +2346,13 @@ These patterns from the scraper are worth internalizing for any Rust project:
 | Global mutable state | `&mut` references passed explicitly | Compiler tracks who can mutate what and when |
 
 The scraper is a good case study because it does things Python developers do every day — parse files, talk to databases, manage subprocesses, handle errors — but through Rust's ownership and type system. The patterns feel verbose at first, but they eliminate entire categories of runtime bugs that Python developers spend time debugging in production.
+
+---
+
+## Where to Go Next
+
+- **Read [the Book](https://doc.rust-lang.org/book/)** — this guide front-loads the Python-specific friction; the Book is the complete, canonical treatment, and chapters 4 (ownership), 10 (generics/traits/lifetimes), and 16 (concurrency) deserve slow reading.
+- **Drill with [Rustlings](https://github.com/rust-lang/rustlings)** — small compiler-fight exercises in exactly the order the concepts land; the borrow-checker only becomes intuitive through repetition.
+- **Treat compiler errors as the curriculum** — `rustc --explain E0502`, read what it says, fix the *design*. Rust's error messages are the best teaching tool in the language.
+- **Bridge back to Python with [PyO3](https://pyo3.rs/) + [maturin](https://www.maturin.rs/)** — rewriting one hot Python function as a Rust extension is the most motivating first project a Python developer can pick: real speedup, familiar territory, both languages in one repo.
+- **Adjacent guides in this repo:** [Advanced Rust](ADVANCED_RUST_STUDY_GUIDE.md) (the next rung: atomics, async internals, unsafe), [Advanced Python](ADVANCED_PYTHON_STUDY_GUIDE.md) (where PyO3 slots into the performance ladder), and [Golang for Python devs](GOLANG_FOR_PYTHON_DEVS.md) (the gentler systems-language alternative — the contrast is informative).

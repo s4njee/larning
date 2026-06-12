@@ -29,7 +29,8 @@ Primary references: [Blender Manual](https://docs.blender.org/manual/en/latest/)
 17. [Video Editing](#17-video-editing)
 18. [Add-ons & Scripting](#18-add-ons--scripting)
 19. [File Management & Production Workflows](#19-file-management--production-workflows)
-20. [Mastery Checklist](#20-mastery-checklist)
+20. [Where to Go Next](#20-where-to-go-next)
+21. [Mastery Checklist](#21-mastery-checklist)
 
 ---
 
@@ -229,7 +230,7 @@ New users frequently get confused because they're in the wrong mode. You're tryi
 
 ### The Mesh Primitive
 
-3D modeling in Blender starts with mesh primitives — simple shapes you add to the scene and then reshape:
+3D modeling in Blender ([manual: Modeling](https://docs.blender.org/manual/en/latest/modeling/index.html)) starts with mesh primitives — simple shapes you add to the scene and then reshape:
 
 - **Plane** — a single flat quad (4 vertices)
 - **Cube** — the most common starting point
@@ -300,7 +301,7 @@ If a face looks dark or inside-out, its normal is probably flipped. Fix with: Me
 
 ### What Modifiers Are
 
-Modifiers are **non-destructive operations** applied to an object's data. They sit in a stack (Properties → Modifier tab, the wrench icon) and are evaluated top-to-bottom. The key word is non-destructive — the original mesh is unchanged. You can adjust parameters, reorder, disable, or remove modifiers at any time.
+[Modifiers](https://docs.blender.org/manual/en/latest/modeling/modifiers/index.html) are **non-destructive operations** applied to an object's data. They sit in a stack (Properties → Modifier tab, the wrench icon) and are evaluated top-to-bottom. The key word is non-destructive — the original mesh is unchanged. You can adjust parameters, reorder, disable, or remove modifiers at any time.
 
 This is one of Blender's most powerful concepts. Instead of permanently subdividing a mesh, you add a Subdivision Surface modifier and can change the level at any time. Instead of permanently cutting a mesh in half and mirroring it, you add a Mirror modifier and model only one side.
 
@@ -371,7 +372,7 @@ Keep modifiers unapplied as long as possible to maintain flexibility.
 
 A material defines how a surface looks — its color, roughness, transparency, emission, and how it reacts to light. In Blender, materials are built using a **node-based shader system** in the Shader Editor.
 
-Every material is a tree of nodes that feeds into a **shader output**. The most common starting point is the **Principled BSDF** node — a physically-based shader that handles most real-world surfaces with a single node.
+Every material is a tree of nodes that feeds into a **shader output**. The most common starting point is the **[Principled BSDF](https://docs.blender.org/manual/en/latest/render/shader_nodes/shader/principled.html)** node — a physically-based shader that handles most real-world surfaces with a single node.
 
 ### PBR — Physically Based Rendering
 
@@ -519,8 +520,8 @@ Blender ships with three render engines:
 
 | Engine | Type | Speed | Quality | Use Case |
 |---|---|---|---|---|
-| **EEVEE** | Rasterization (real-time) | Fast (seconds) | Good, approximate | Previews, stylized work, animation, games-adjacent |
-| **Cycles** | Path tracing (physically accurate) | Slow (minutes–hours) | Photorealistic | Final renders, product viz, film, arch-viz |
+| **[EEVEE](https://docs.blender.org/manual/en/latest/render/eevee/index.html)** | Rasterization (real-time) | Fast (seconds) | Good, approximate | Previews, stylized work, animation, games-adjacent |
+| **[Cycles](https://docs.blender.org/manual/en/latest/render/cycles/index.html)** | Path tracing (physically accurate) | Slow (minutes–hours) | Photorealistic | Final renders, product viz, film, arch-viz |
 | **Workbench** | OpenGL viewport render | Instant | Basic (flat, matcap) | Clay renders, quick previews, modeling checks |
 
 **EEVEE Next** (Blender 4.2+) is a major upgrade: ray-traced shadows, reflections, and global illumination bring it much closer to Cycles quality while maintaining real-time performance.
@@ -584,7 +585,7 @@ Rigging is the process of building a control system that lets you pose and anima
 
 ### The Armature
 
-An **armature** is Blender's skeleton system — a hierarchy of **bones**. You add an armature (Shift+A → Armature), which starts as a single bone. In Edit Mode on the armature, you build out the skeleton by extruding (`E`) new bones from existing ones.
+An **[armature](https://docs.blender.org/manual/en/latest/animation/armatures/index.html)** is Blender's skeleton system — a hierarchy of **bones**. You add an armature (Shift+A → Armature), which starts as a single bone. In Edit Mode on the armature, you build out the skeleton by extruding (`E`) new bones from existing ones.
 
 Each bone has:
 - A **head** (base/root of the bone, the ball joint)
@@ -769,7 +770,7 @@ Add **bone colors** (per bone or per collection) — left side one hue, right si
 
 ### Rigify — Blender's Auto-Rig Add-on
 
-Building a full character rig from scratch is a weeks-long task for a professional. **Rigify** (bundled add-on, enable in Preferences) generates a complete, animator-friendly rig from a template:
+Building a full character rig from scratch is a weeks-long task for a professional. **[Rigify](https://docs.blender.org/manual/en/latest/addons/rigging/rigify/index.html)** (bundled add-on, enable in Preferences) generates a complete, animator-friendly rig from a template:
 
 1. Add a Rigify **meta-rig** (Shift+A → Armature → choose a template — human, cat, horse, etc.)
 2. Scale and position the meta-rig bones to fit your mesh (Edit Mode)
@@ -803,7 +804,7 @@ Animation in Blender means defining how values change over time — positions, r
 
 ### Keyframes — The Foundation
 
-A **keyframe** records a value at a specific frame in time. You set a keyframe at frame 1 with the cube at position X=0, and another keyframe at frame 30 with X=5. Blender **interpolates** (fills in) the in-between frames automatically. The cube smoothly slides from 0 to 5 over 30 frames.
+A **[keyframe](https://docs.blender.org/manual/en/latest/animation/keyframes/index.html)** records a value at a specific frame in time. You set a keyframe at frame 1 with the cube at position X=0, and another keyframe at frame 30 with X=5. Blender **interpolates** (fills in) the in-between frames automatically. The cube smoothly slides from 0 to 5 over 30 frames.
 
 Insert a keyframe: select the property, press `I` (or right-click → Insert Keyframe). The hotkey `I` in the viewport opens a menu to keyframe the current selection's location, rotation, scale, or all.
 
@@ -1022,7 +1023,7 @@ A character animation workflow in Blender typically looks like:
 
 ### The Concept
 
-Geometry Nodes is Blender's **procedural geometry system** — a visual node graph where you generate, modify, and assemble geometry using math and logic instead of manual modeling. It's Blender's answer to Houdini's procedural approach.
+[Geometry Nodes](https://docs.blender.org/manual/en/latest/modeling/geometry_nodes/index.html) is Blender's **procedural geometry system** — a visual node graph where you generate, modify, and assemble geometry using math and logic instead of manual modeling. It's Blender's answer to Houdini's procedural approach.
 
 Instead of manually placing 500 trees, you build a node tree that scatters points on a surface, instances a tree mesh at each point, randomizes scale/rotation, and removes points on steep slopes. Change the terrain → the trees automatically update.
 
@@ -1167,7 +1168,7 @@ Third-party add-ons from the **Blender Extensions Platform** or individual devel
 
 ### Python Scripting
 
-Blender is fully scriptable via Python. The `bpy` module exposes the entire data model and operator system. Use cases:
+Blender is fully scriptable via Python. The [`bpy`](https://docs.blender.org/api/current/) module exposes the entire data model and operator system. Use cases:
 
 - **Automation** — batch-rename objects, batch-export, generate reports
 - **Custom tools** — operators accessible from menus or hotkeys
@@ -1215,7 +1216,18 @@ Blender's **Asset Browser** (3.0+) lets you mark any data-block as an asset — 
 
 ---
 
-## 20. Mastery Checklist
+## 20. Where to Go Next
+
+- **Keep the [Blender Manual](https://docs.blender.org/manual/en/latest/) open while you work** — it is genuinely good, and every section of this guide maps to a manual chapter with the parameter-level detail this guide deliberately omits.
+- **Do the donut.** Blender Guru's beginner tutorial series (the famous donut) remains the best guided first project — it walks modeling → materials → lighting → rendering in order, and millions of people learned Blender through it.
+- **Study production files from [Blender Studio](https://studio.blender.org/)** — the open-movie project files (rigs, scenes, node setups) are the closest thing to reading production source code, and the training courses (especially on rigging and animation) are made by the artists who build Blender's own films.
+- **Animate a walk cycle and build one Geometry Nodes setup** — the two exercises in this guide with the highest skill-per-hour return; both force the graph editor and the node mindset to become real.
+- **Script something with [`bpy`](https://docs.blender.org/api/current/)** — batch-rename, batch-export, anything; the Info editor shows the Python for every UI action, so the API teaches itself.
+- **Adjacent guides in this repo:** [WebGL/OpenGL](WEBGL_OPENGL_STUDY_GUIDE.md) and [WebGPU](WEBGPU_STUDY_GUIDE.md) (what a renderer actually does under the hood — Cycles and EEVEE will make more sense), and [Advanced Python](ADVANCED_PYTHON_STUDY_GUIDE.md) (for serious `bpy` scripting).
+
+---
+
+## 21. Mastery Checklist
 
 ### Fundamentals
 - [ ] Navigate the 3D viewport fluently (orbit, pan, zoom, numpad views)

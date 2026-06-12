@@ -1147,3 +1147,13 @@ The condensed sequence, with the CB8 source of truth for each step:
 8. **Review prep**: demo server, ATS scoping, local-network string, licenses. *(Part 12)*
 
 The through-line: CB8's decision to put an HTTP API between its GUI and its engine — made so a desktop app could also be a Docker container — is what makes the iOS app a two-phase project instead of a rewrite-from-zero. The best time to make an Electron app portable to mobile is when you architect it; the second-best time is never needed if you did it the first way.
+
+---
+
+## Where to Go Next
+
+- **Do Apple's [SwiftUI tutorials](https://developer.apple.com/tutorials/swiftui)** if SwiftUI is new — they're genuinely good, and Parts 4–6 of this guide assume the fluency they build. The [Swift guide](SWIFT_STUDY_GUIDE.md) in this repo covers the language itself.
+- **Read the platform docs that gate this port:** [GRDB](https://github.com/groue/GRDB.swift) (the SQLite layer), [PDFKit](https://developer.apple.com/documentation/pdfkit) and [WKWebView](https://developer.apple.com/documentation/webkit/wkwebview) (the two readers), [URLSession background downloads](https://developer.apple.com/documentation/foundation/url_loading_system/downloading_files_in_the_background), and the [App Store Review Guidelines](https://developer.apple.com/app-store/review/guidelines/) before you build anything reviewers will question.
+- **Read the [CB8 source](https://github.com/s4njee/CB8) with this guide open** — `src/shared/` and the server routes define the port; the guide only maps them.
+- **Ship the Phase 1 server client first** — login → grid → reader → progress against a real CB8 server proves every architectural seam with the least code; the local library lands behind the same interfaces in Phase 2.
+- **Sibling guides in this repo:** the [CB8 Android guide](CB8_ANDROID_STUDY_GUIDE.md) (the same port, other platform — the shared-logic decisions should be made jointly), [iOS Development](IOS_DEVELOPMENT_STUDY_GUIDE.md) (the platform guide this one builds on), [Electron](ELECTRON_STUDY_GUIDE.md) (the architecture being ported), and [SQLite](SQLITE_STUDY_GUIDE.md) (what GRDB wraps).

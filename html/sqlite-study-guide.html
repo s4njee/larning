@@ -365,6 +365,7 @@ mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
 </ul>
 <hr>
 <h2 id="2-architecture-internals">2. Architecture &amp; Internals</h2>
+<p><em>Docs: <a href="https://www.sqlite.org/arch.html">architecture</a></em></p>
 <h3 id="the-processing-pipeline">The Processing Pipeline</h3>
 <p>SQL execution flows through a well-defined pipeline:</p>
 <pre><code class="language-text">SQL Text
@@ -439,6 +440,7 @@ EXPLAIN QUERY PLAN SELECT name FROM users WHERE age &gt; 30;
 </ul>
 <hr>
 <h2 id="3-the-type-system">3. The Type System</h2>
+<p><em>Docs: <a href="https://www.sqlite.org/datatype3.html">datatypes &amp; type affinity</a></em></p>
 <p>SQLite's type system is its single most surprising design decision for anyone coming from Postgres or MySQL, and it is worth understanding <em>why</em> it works this way before reacting to it, because what looks like a bug is a deliberate fit to SQLite's purpose. In a server database, the column owns the type: a <code>VARCHAR(100)</code> column rejects an integer, and the rigidity is a feature because the database is the shared source of truth for many clients. SQLite is the opposite kind of system — an embedded library inside <em>one</em> application, usually written in a dynamically-typed language (Python, JavaScript, Ruby, Lua) where values are already loosely typed — so SQLite adopts <strong>manifest typing</strong>: the type belongs to the <strong>value</strong>, not the column, mirroring the host language's own flexibility rather than fighting it.</p>
 <h3 id="manifest-typing-type-affinity">Manifest Typing &amp; Type Affinity</h3>
 <p>Concretely, this means any column can hold any type of data (the one exception is <code>INTEGER PRIMARY KEY</code>, which is special because it aliases the rowid — see the <a href="database-internals-study-guide.html">Database Internals guide</a>, which covers SQLite's storage at the byte level):</p>
@@ -567,6 +569,7 @@ SELECT datetime(1705329000, 'unixepoch'); -- back to text
 <p>Best practice: store dates as ISO 8601 text (<code>'2024-01-15 14:30:00'</code>) or as Unix timestamps (integers). Both work with SQLite's date functions and sort correctly.</p>
 <hr>
 <h2 id="4-sql-feature-coverage">4. SQL Feature Coverage</h2>
+<p><em>Docs: <a href="https://www.sqlite.org/lang.html">SQL language reference</a></em></p>
 <h3 id="ddl-data-definition-language">DDL (Data Definition Language)</h3>
 <pre><code class="language-sql">-- create table
 CREATE TABLE users (
@@ -803,6 +806,7 @@ WHERE NOT EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id);
 </table>
 <hr>
 <h2 id="5-indexes-query-planning">5. Indexes &amp; Query Planning</h2>
+<p><em>Docs: <a href="https://www.sqlite.org/queryplanner.html">query planner overview</a></em></p>
 <h3 id="index-types">Index Types</h3>
 <p>SQLite supports only B-tree indexes, but with several powerful variations:</p>
 <pre><code class="language-sql">-- basic index
@@ -900,6 +904,7 @@ SELECT * FROM sqlite_stat1;
 </ol>
 <hr>
 <h2 id="6-transactions-concurrency-locking">6. Transactions, Concurrency &amp; Locking</h2>
+<p><em>Docs: <a href="https://www.sqlite.org/lockingv3.html">locking &amp; concurrency</a></em></p>
 <p>SQLite's concurrency model is its second great design decision, and like the type system it only makes sense once you accept what SQLite is <em>for</em>. A server database is built for many clients writing simultaneously, so it invests enormous machinery in row-level locking and multi-version concurrency to let writers proceed in parallel. SQLite makes the opposite bet: <strong>one writer at a time, full stop.</strong> A write transaction takes an exclusive lock on the <em>entire database</em>, and other writers wait. This sounds like a crippling limitation until you remember the use case — SQLite is embedded in one application, often on one device, where "many simultaneous writers to the same file" rarely happens and the simplicity of single-writer locking (no deadlocks between writers, no complex lock manager, transactions that are trivially serializable) is worth far more than write parallelism the workload doesn't need.</p>
 <p>The cost of that bet shows up as the <code>SQLITE_BUSY</code> error — the signal that another writer holds the lock and you must wait or retry — which is why setting a <strong>busy timeout</strong> (<code>PRAGMA busy_timeout = 5000</code>) so SQLite waits rather than failing instantly is essential operational hygiene, not optional tuning. The crucial refinement that makes the single-writer model practical for real applications is <strong>WAL mode</strong> (section 7), which decouples readers from the writer: in the default rollback-journal mode a writer blocks all readers during its commit, but in WAL mode <em>readers never block the writer and the writer never blocks readers</em> — many readers proceed concurrently while one writer appends, which is exactly the read-heavy shape most embedded applications have. The <a href="database-internals-study-guide.html">Database Internals guide</a> covers the byte-level mechanics of both journal modes; the design lesson here is that SQLite chose single-writer simplicity deliberately and then used WAL to recover reader concurrency, giving most real workloads (many reads, occasional writes) the concurrency they actually need without the machinery they don't.</p>
 <h3 id="transaction-basics">Transaction Basics</h3>
@@ -994,6 +999,7 @@ BEGIN EXCLUSIVE TRANSACTION;
 <p><strong>Best practice for write transactions</strong>: Use <code>BEGIN IMMEDIATE</code> to fail fast if another writer holds the lock, rather than succeeding on reads and then failing when you try to write.</p>
 <hr>
 <h2 id="7-wal-mode">7. WAL Mode</h2>
+<p><em>Docs: <a href="https://www.sqlite.org/wal.html">write-ahead logging</a></em></p>
 <h3 id="how-it-works">How It Works</h3>
 <p>WAL (Write-Ahead Logging) is SQLite's most important performance feature. It fundamentally changes how reads and writes interact:</p>
 <p><strong>Rollback journal (default)</strong>:
@@ -1075,6 +1081,7 @@ PRAGMA wal_autocheckpoint = 0;     -- disable auto-checkpoint
 </ol>
 <hr>
 <h2 id="8-performance-tuning">8. Performance Tuning</h2>
+<p><em>Docs: <a href="https://www.sqlite.org/pragma.html">pragma statements</a></em></p>
 <h3 id="essential-pragmas">Essential PRAGMAs</h3>
 <p>Apply these at connection open for optimal performance:</p>
 <pre><code class="language-sql">-- WAL mode: dramatically improves concurrency
@@ -1174,6 +1181,7 @@ print(f&quot;Query took {elapsed:.3f}s&quot;)
 </code></pre>
 <hr>
 <h2 id="9-json-support">9. JSON Support</h2>
+<p><em>Docs: <a href="https://www.sqlite.org/json1.html">JSON functions</a></em></p>
 <p>SQLite has robust JSON support, built into the amalgamation since 3.38.0 (2022). Earlier versions need the <code>json1</code> extension.</p>
 <h3 id="json-operators-3380">JSON Operators (3.38.0+)</h3>
 <pre><code class="language-sql">-- extract with -&gt; (returns JSON) and -&gt;&gt; (returns SQL text/number)
@@ -1256,6 +1264,7 @@ CREATE INDEX idx_events_product ON events(
 </code></pre>
 <hr>
 <h2 id="10-full-text-search-fts5">10. Full-Text Search (FTS5)</h2>
+<p><em>Docs: <a href="https://www.sqlite.org/fts5.html">FTS5</a></em></p>
 <p>FTS5 is SQLite's full-text search extension. It creates virtual tables with inverted indexes for fast text search across large document collections.</p>
 <h3 id="creating-an-fts5-table">Creating an FTS5 Table</h3>
 <pre><code class="language-sql">-- basic FTS5 table
@@ -1351,6 +1360,7 @@ CREATE VIRTUAL TABLE t4 USING fts5(content, tokenize='trigram');
 </code></pre>
 <hr>
 <h2 id="11-virtual-tables">11. Virtual Tables</h2>
+<p><em>Docs: <a href="https://www.sqlite.org/vtab.html">virtual table mechanism</a></em></p>
 <p>Virtual tables look like regular tables but their data comes from custom sources. They're the primary extension mechanism for SQLite.</p>
 <h3 id="built-in-virtual-tables">Built-in Virtual Tables</h3>
 <pre><code class="language-sql">-- generate_series: produce a sequence of numbers
@@ -2305,6 +2315,7 @@ SELECT * FROM other.some_table;
 </code></pre>
 <hr>
 <h2 id="16-backup-migration-maintenance">16. Backup, Migration &amp; Maintenance</h2>
+<p><em>Docs: <a href="https://www.sqlite.org/backup.html">backup API &amp; VACUUM</a></em></p>
 <h3 id="backup-strategies">Backup Strategies</h3>
 <pre><code class="language-python">import sqlite3
 
@@ -2589,6 +2600,7 @@ DETACH DATABASE analytics;
 <p>You can attach up to 125 databases (default 10, configurable) to a single connection.</p>
 <hr>
 <h2 id="19-limits-constraints">19. Limits &amp; Constraints</h2>
+<p><em>Docs: <a href="https://www.sqlite.org/limits.html">limits</a></em></p>
 <table>
 <thead>
 <tr>

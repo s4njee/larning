@@ -4,6 +4,8 @@ A practical, job-focused guide to Docker and Kubernetes networking. The goal is 
 
 The most important mindset shift in this guide is this: a common Docker networking pattern often maps to multiple Kubernetes objects, not a single one. A published Docker port might become a `Service`, an `Ingress`, a `Gateway`, or a temporary `kubectl port-forward` depending on the job that pattern is doing.
 
+Primary references: the [Docker networking docs](https://docs.docker.com/engine/network/), the Kubernetes [Services](https://kubernetes.io/docs/concepts/services-networking/service/), [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/), and [NetworkPolicy](https://kubernetes.io/docs/concepts/services-networking/network-policies/) concept pages, the [Gateway API docs](https://gateway-api.sigs.k8s.io/), and the [Cilium docs](https://docs.cilium.io/en/stable/) (the eBPF dataplane direction).
+
 ---
 
 ## Table of Contents
@@ -1208,3 +1210,13 @@ The Kubernetes equivalents are usually about:
 - NetworkPolicy as the enforcement layer
 
 Once those basics feel natural, advanced Kubernetes networking stops looking magical and starts looking like a set of deliberate tools for identity, routing, locality, and policy at cluster scale.
+
+---
+
+## Where to Go Next
+
+- **Read the Kubernetes [Services](https://kubernetes.io/docs/concepts/services-networking/service/) and [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/) concept pages** after this guide — they're the official statements of the objects you've just learned to map from Docker patterns, and the [Gateway API docs](https://gateway-api.sigs.k8s.io/) cover where Ingress is headed.
+- **Trace one packet path by hand** on a real cluster: pod → Service ClusterIP → endpoint, watching `iptables -t nat -L` or Cilium's `hubble observe` — the data path stops being folklore once you've followed a single connection through it.
+- **Build the Docker-side intuition first** if it's shaky: the [Docker networking docs](https://docs.docker.com/engine/network/) plus the [Linux Networking guide](../LINUX_NETWORKING_STUDY_GUIDE.md)'s namespace labs are the substrate (veth, bridges, DNAT) everything here rides on.
+- **Run one NetworkPolicy rollout** the safe way — default-deny in a test namespace, then allow rules one at a time with a probe pod proving each — policy confidence comes from watching traffic actually stop.
+- **Adjacent guides in this repo:** [Kubernetes Mastery](KUBERNETES_STUDY_GUIDE.md), [Kubernetes Security](KUBERNETES_SECURITY_STUDY_GUIDE.md) (the policy/threat view), [Advanced Kubernetes](ADVANCED_KUBERNETES_STUDY_GUIDE.md), [Linux Networking](../LINUX_NETWORKING_STUDY_GUIDE.md) (the kernel objects), and [eBPF](../EBPF_STUDY_GUIDE.md) (Cilium's dataplane).

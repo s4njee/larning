@@ -511,3 +511,13 @@ These build the instincts the prose describes. Each is doable on a local cluster
 **Lab 6 — Audit investigation.** Enable an audit policy that logs Secret reads at `RequestResponse`. Have one identity read a Secret, then play investigator: from the audit log alone, reconstruct who read what, when, and from where — the exact exercise a real incident demands.
 
 **Lab 7 — Supply chain gate.** Sign an image with cosign in a CI step, write the admission policy that requires your signature, and prove two things: your signed image runs, and an unsigned image (or one signed by a different key) is rejected at admission — closing the loop from build to runtime.
+
+---
+
+## Where to Go Next
+
+- **Work the upstream [Security Checklist](https://kubernetes.io/docs/concepts/security/security-checklist/) against a real cluster** — it is the closest thing to an official audit script, and every line maps to a part of this guide. Pair it with the [NSA/CISA Hardening Guidance](https://media.defense.gov/2022/Aug/29/2003066362/-1/-1/0/CTR_KUBERNETES_HARDENING_GUIDANCE_1.2_20220829.PDF) for the layered rationale.
+- **Run the CIS Kubernetes Benchmark with [kube-bench](https://github.com/aquasecurity/kube-bench)** and triage the findings — the benchmark is the de facto compliance bar, and explaining *why* each finding matters (or doesn't, on your managed provider) is a better education than reading it.
+- **Do the labs.** The seven hands-on labs above are the actual curriculum — especially Lab 2 (escalate via a stolen ServiceAccount token) and Lab 7 (signature-gated admission); attack-then-defend is how this subject sticks.
+- **Read the [Kubernetes security docs section](https://kubernetes.io/docs/concepts/security/) end to end** — it's short, current, and includes the pages this guide cites (RBAC good practices, PSA, API-server bypass risks).
+- **Sibling guides in this repo:** [Kubernetes Mastery](KUBERNETES_STUDY_GUIDE.md), [Advanced Kubernetes](ADVANCED_KUBERNETES_STUDY_GUIDE.md) (supply chain + multi-tenancy at platform depth), [Docker & Kubernetes Networking](DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md) (NetworkPolicy's data path), [Linux Fundamentals](../LINUX_FUNDAMENTALS_STUDY_GUIDE.md) (the isolation primitives), [Auth](../AUTH_STUDY_GUIDE.md) (OIDC/tokens), and [eBPF](../EBPF_STUDY_GUIDE.md) (Tetragon/Falco runtime detection).

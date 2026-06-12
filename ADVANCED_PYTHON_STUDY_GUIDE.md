@@ -61,7 +61,7 @@ What the GIL **means for you**:
 - **I/O-bound multithreading works fine.** The GIL is released during blocking I/O (network, disk, `time.sleep`), so threads waiting on I/O overlap genuinely. For I/O concurrency, threading works — and `asyncio` is often better (see the [Asyncio guide](ASYNCIO_STUDY_GUIDE.md)).
 - **C extensions can release the GIL.** NumPy, pandas, scikit-learn, and other C-backed libraries release the GIL during their heavy computations, so multithreaded code that calls them *does* parallelize on the C side. This is why "use NumPy" is a real performance answer (Part 9).
 
-**The free-threaded build (PEP 703, Python 3.13+).** CPython now ships an *experimental* build without the GIL (`python3.13t`), enabling true thread-level parallelism for CPU-bound Python. It uses per-object locks, biased reference counting, and deferred refcounting instead of the GIL. As of 2026 it's maturing rapidly — more C extensions support it each release — but it's still opt-in and carries a ~5–10% single-threaded overhead on the non-free-threaded path. Know it exists, watch its progress, and test your workload before betting on it.
+**The free-threaded build ([PEP 703](https://peps.python.org/pep-0703/), Python 3.13+).** CPython now ships an *experimental* build without the GIL (`python3.13t`), enabling true thread-level parallelism for CPU-bound Python. It uses per-object locks, biased reference counting, and deferred refcounting instead of the GIL. As of 2026 it's maturing rapidly — more C extensions support it each release — but it's still opt-in and carries a ~5–10% single-threaded overhead on the non-free-threaded path. Know it exists, watch its progress, and test your workload before betting on it.
 
 ### Bytecode and the Evaluation Loop
 
@@ -210,7 +210,7 @@ If you remember one thing from Part 2: **Python dispatches operators, attribute 
 
 ## Part 3 — Descriptors, Properties & Slots
 
-Descriptors are the *implementation mechanism* behind `property`, `classmethod`, `staticmethod`, `__slots__`, and method binding itself. Understanding them is understanding how Python's attribute lookup *actually works* — Part 2's chain, made concrete.
+Descriptors are the *implementation mechanism* behind `property`, `classmethod`, `staticmethod`, `__slots__`, and method binding itself. Understanding them is understanding how Python's attribute lookup *actually works* — Part 2's chain, made concrete. (Raymond Hettinger's official [Descriptor HowTo Guide](https://docs.python.org/3/howto/descriptor.html) is the canonical companion to this part.)
 
 ### What a Descriptor Is
 
@@ -383,7 +383,7 @@ The rule of thumb: **reach for the simplest tool that solves the problem.** `__i
 
 ### `dataclasses` — The 80% Solution
 
-`@dataclass` (3.7+) auto-generates `__init__`, `__repr__`, `__eq__`, and optionally `__hash__`, `__lt__`, `__slots__`, `__match_args__` (for structural pattern matching) — all from a list of annotated fields:
+[`@dataclass`](https://docs.python.org/3/library/dataclasses.html) (3.7+) auto-generates `__init__`, `__repr__`, `__eq__`, and optionally `__hash__`, `__lt__`, `__slots__`, `__match_args__` (for structural pattern matching) — all from a list of annotated fields:
 
 ```python
 from dataclasses import dataclass, field
@@ -481,7 +481,7 @@ Without `yield from` you'd write a `for` loop with `yield` — `yield from` is s
 
 ### `itertools` — The Standard Library of Lazy Pipelines
 
-`itertools` is the module for composing lazy operations. Every function returns an iterator, so they chain with zero intermediate lists:
+[`itertools`](https://docs.python.org/3/library/itertools.html) is the module for composing lazy operations (its docs' [recipes section](https://docs.python.org/3/library/itertools.html#itertools-recipes) is a goldmine). Every function returns an iterator, so they chain with zero intermediate lists:
 
 ```python
 from itertools import islice, chain, groupby, batched, count, takewhile
@@ -542,7 +542,7 @@ If you remember one thing from Part 5: **generators and `itertools` let you proc
 
 ## Part 6 — The Type System
 
-Python's type system is **gradual**: you can add types incrementally to an untyped codebase, and typed and untyped code coexist. Types are checked by external tools (**mypy**, **pyright**, **pytype**) — the runtime ignores them almost entirely (the `typing` module is mostly for the checker's benefit). The practical value is catching bugs before they run, making IDE autocompletion precise, and documenting intent in a way that's machine-verified.
+Python's type system is **gradual**: you can add types incrementally to an untyped codebase, and typed and untyped code coexist. Types are checked by external tools (**[mypy](https://mypy.readthedocs.io/)**, **[pyright](https://microsoft.github.io/pyright/)**, **pytype**) — the runtime ignores them almost entirely (the [`typing`](https://docs.python.org/3/library/typing.html) module is mostly for the checker's benefit). The practical value is catching bugs before they run, making IDE autocompletion precise, and documenting intent in a way that's machine-verified.
 
 ### The Basics, Quickly
 
@@ -778,11 +778,11 @@ timeit.timeit('"-".join(map(str, range(100)))', number=10_000)
 # python -m timeit '"-".join(str(i) for i in range(100))'
 ```
 
-`timeit` automatically disables GC, runs multiple loops, and reports the best time. For comparing alternatives, always benchmark both on the *same machine, same data, same Python version*.
+[`timeit`](https://docs.python.org/3/library/timeit.html) automatically disables GC, runs multiple loops, and reports the best time. For comparing alternatives, always benchmark both on the *same machine, same data, same Python version*.
 
 ### Profile It: `cProfile` + Visualization
 
-When you need to know *where* a program spends its time:
+When you need to know *where* a program spends its time ([`cProfile` docs](https://docs.python.org/3/library/profile.html); for profiling a *running* production process without restarting it, [`py-spy`](https://github.com/benfred/py-spy) is the sampling-profiler companion):
 
 ```bash
 python -m cProfile -o profile.out myscript.py
@@ -808,7 +808,7 @@ Read the output columns: **`tottime`** is time spent *in* that function (excludi
 
 ### Line-Level Profiling
 
-`cProfile` is per-function. When you've found the slow function and need to know *which line*, use **`line_profiler`**:
+`cProfile` is per-function. When you've found the slow function and need to know *which line*, use **[`line_profiler`](https://kernprof.readthedocs.io/en/latest/)**:
 
 ```bash
 pip install line_profiler
@@ -832,7 +832,7 @@ kernprof -lv myscript.py
 
 When memory is the concern (leaks, bloat, OOM):
 
-- **`tracemalloc`** (stdlib) — tracks memory allocations by call site:
+- **[`tracemalloc`](https://docs.python.org/3/library/tracemalloc.html)** (stdlib) — tracks memory allocations by call site (for heavier lifting, Bloomberg's [`memray`](https://bloomberg.github.io/memray/) is the production-grade memory profiler):
 
 ```python
 import tracemalloc
@@ -900,7 +900,7 @@ Built-in functions and methods that loop in C: `sum`, `min`, `max`, `any`, `all`
 
 ### Lever 3: NumPy and Vectorization
 
-NumPy arrays (`ndarray`) are **contiguous, typed, fixed-size arrays of machine values** — not arrays of `PyObject` pointers. An array of a million `float64`s is 8 MB of contiguous memory (1M × 8 bytes), not the ~28 MB of a million Python `float` objects plus a million-pointer list. Operations on them run in C, at SIMD speed, with the GIL released:
+[NumPy](https://numpy.org/doc/stable/) arrays (`ndarray`) are **contiguous, typed, fixed-size arrays of machine values** — not arrays of `PyObject` pointers. An array of a million `float64`s is 8 MB of contiguous memory (1M × 8 bytes), not the ~28 MB of a million Python `float` objects plus a million-pointer list. Operations on them run in C, at SIMD speed, with the GIL released:
 
 ```python
 import numpy as np
@@ -915,7 +915,7 @@ result = a ** 2 + 2 * a + 1         # entire computation in C, no Python loop
 
 The principle is **vectorization**: express the operation as a whole-array transformation, not an element-at-a-time loop. If your computation fits this pattern (and numerical/data work almost always does), NumPy is the answer *before* reaching for threading, multiprocessing, or Cython.
 
-**Pandas** and **Polars** sit on top of this idea for tabular data. Polars in particular is worth calling out — it's a Rust-backed dataframe library that auto-parallelizes, uses lazy evaluation, and is often 5–10× faster than pandas for the same query.
+**[Pandas](https://pandas.pydata.org/docs/)** and **[Polars](https://docs.pola.rs/)** sit on top of this idea for tabular data. Polars in particular is worth calling out — it's a Rust-backed dataframe library that auto-parallelizes, uses lazy evaluation, and is often 5–10× faster than pandas for the same query.
 
 ### Lever 4: Caching and Memoization
 
@@ -996,7 +996,7 @@ When pure-Python hot loops can't be vectorized, you compile them:
 | **Numba** | JIT-compiles numerical Python (NumPy-heavy code) to machine code via LLVM, with a decorator | low | 10–100× for numerical loops |
 | **PyPy** | alternative Python interpreter with a tracing JIT — run your existing code 2–10× faster | zero (just switch interpreters) | 2–10× |
 
-The decision tree: **try PyPy first** (zero effort) → then **Numba** for numerical code (one decorator) → then **Mypyc** (existing typed code) → then **Cython** or **PyO3/Rust** for the truly hot path.
+The decision tree: **try [PyPy](https://pypy.org/) first** (zero effort) → then **[Numba](https://numba.readthedocs.io/)** for numerical code (one decorator) → then **[Mypyc](https://mypyc.readthedocs.io/)** (existing typed code) → then **[Cython](https://cython.readthedocs.io/)** or **[PyO3](https://pyo3.rs/)/Rust** for the truly hot path.
 
 ### Lever 9: Algorithm and Architecture
 
@@ -1290,5 +1290,13 @@ When a program is too slow, work through this:
 If you remember one thing from Part 10: **profile first, then pick the cheapest lever that fixes the measured bottleneck — right data structure beats micro-optimization, vectorization beats compiled extensions, and the best optimization is often the one that avoids the work entirely.**
 
 ---
+
+## Where to Go Next
+
+- **Read [*Fluent Python* (2nd ed.)](https://www.fluentpython.com/)** (Ramalho) — the definitive book on Parts 2–5 (the data model, descriptors, metaclasses, generators), written with the same "understand the machine" philosophy as this guide.
+- **Read the [Data Model chapter](https://docs.python.org/3/reference/datamodel.html)** of the language reference end to end — it is the most important page in the Python docs — and Hettinger's [Descriptor HowTo](https://docs.python.org/3/howto/descriptor.html) alongside Part 3.
+- **Follow CPython itself:** the [CPython source](https://github.com/python/cpython) is more readable than its reputation, the [Python Developer's Guide internals docs](https://devguide.python.org/internals/) map it, and the [What's New](https://docs.python.org/3/whatsnew/) pages for each release are the single best way to stay current (the 3.13 free-threading and JIT notes especially).
+- **Profile one real codebase deeply.** Take a service or script you own, run `cProfile` + `snakeviz` (or `py-spy` against production), find the hot spot, and apply the cheapest Part 9 lever. One completed measure-fix-remeasure cycle teaches more than any amount of reading.
+- **Adjacent guides in this repo:** [Python Concurrency](PYTHON_CONCURRENCY.md) (threading/multiprocessing/GIL at full depth), [Asyncio](ASYNCIO_STUDY_GUIDE.md), [Advanced Node.js](ADVANCED_NODEJS_STUDY_GUIDE.md) and [Advanced Go](ADVANCED_GO_STUDY_GUIDE.md) (the sibling runtime guides this one contrasts against), and [Testing](TESTING_STUDY_GUIDE.md).
 
 That's the guide. From here the highest-leverage next step is the one that sticks: take a piece of code you've written that's slower than you'd like, run `cProfile` + `snakeviz` on it, find the hot spot, and apply the cheapest lever from Part 9's list. The pattern — measure, identify the bottleneck class, apply the matching lever, re-measure — is a skill that compounds for the rest of your career, and it works in every language. Python just makes the levers especially visible because the interpreter overhead gives you so many concrete places to push.
