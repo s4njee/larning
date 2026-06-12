@@ -1,0 +1,1130 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Compiler and Language Internals.">
+<title>Compiler and Language Internals - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#4bacd8; --accent2:#476ad2; --accent-weak:rgba(75,172,216,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#4bacd8; --accent2:#476ad2; --accent-weak:rgba(75,172,216,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint);pointer-events:none}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px;min-width:0;overflow-wrap:break-word}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:minmax(0,1fr)}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+  .spacer{display:none}
+  .brand{flex:1;min-width:0}
+  .brand > span:not(.logo):not(.sub){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">C</span><span>Compiler and Language Internals</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#chapter-1-the-shape-of-a-language-implementation" data-target="chapter-1-the-shape-of-a-language-implementation">Chapter 1 — The Shape of a Language Implementation</a></li><li class="toc-l3"><a href="#11-the-pipeline" data-target="11-the-pipeline">1.1 The pipeline</a></li><li class="toc-l3"><a href="#12-the-execution-spectrum" data-target="12-the-execution-spectrum">1.2 The execution spectrum</a></li><li class="toc-l3"><a href="#13-how-to-study-an-implementation-the-tools-used-throughout" data-target="13-how-to-study-an-implementation-the-tools-used-throughout">1.3 How to study an implementation (the tools used throughout)</a></li><li class="toc-l3"><a href="#exercises-1" data-target="exercises-1">Exercises 1</a></li><li class="toc-l2"><a href="#chapter-2-lexing" data-target="chapter-2-lexing">Chapter 2 — Lexing</a></li><li class="toc-l3"><a href="#21-the-job-characters-tokens" data-target="21-the-job-characters-tokens">2.1 The job: characters → tokens</a></li><li class="toc-l3"><a href="#22-the-lab-a-lexer-in-40-lines" data-target="22-the-lab-a-lexer-in-40-lines">2.2 The lab: a lexer in 40 lines</a></li><li class="toc-l3"><a href="#23-where-real-lexers-earn-their-pay" data-target="23-where-real-lexers-earn-their-pay">2.3 Where real lexers earn their pay</a></li><li class="toc-l3"><a href="#exercises-2" data-target="exercises-2">Exercises 2</a></li><li class="toc-l2"><a href="#chapter-3-parsing" data-target="chapter-3-parsing">Chapter 3 — Parsing</a></li><li class="toc-l3"><a href="#31-grammars-and-the-tree-hiding-in-flat-text" data-target="31-grammars-and-the-tree-hiding-in-flat-text">3.1 Grammars, and the tree hiding in flat text</a></li><li class="toc-l3"><a href="#32-recursive-descent-the-technique-that-won" data-target="32-recursive-descent-the-technique-that-won">3.2 Recursive descent: the technique that won</a></li><li class="toc-l3"><a href="#33-the-landscape-beyond-honestly" data-target="33-the-landscape-beyond-honestly">3.3 The landscape beyond, honestly</a></li><li class="toc-l3"><a href="#exercises-3" data-target="exercises-3">Exercises 3</a></li><li class="toc-l2"><a href="#chapter-4-asts-names-and-semantic-analysis" data-target="chapter-4-asts-names-and-semantic-analysis">Chapter 4 — ASTs, Names, and Semantic Analysis</a></li><li class="toc-l3"><a href="#41-the-tree-as-the-program" data-target="41-the-tree-as-the-program">4.1 The tree as the program</a></li><li class="toc-l3"><a href="#42-name-resolution-from-text-to-meaning" data-target="42-name-resolution-from-text-to-meaning">4.2 Name resolution: from text to meaning</a></li><li class="toc-l3"><a href="#43-the-rest-of-semantic-analysis" data-target="43-the-rest-of-semantic-analysis">4.3 The rest of "semantic analysis"</a></li><li class="toc-l3"><a href="#exercises-4" data-target="exercises-4">Exercises 4</a></li><li class="toc-l2"><a href="#chapter-5-type-systems-i-checking" data-target="chapter-5-type-systems-i-checking">Chapter 5 — Type Systems I: Checking</a></li><li class="toc-l3"><a href="#51-what-a-type-system-is-for" data-target="51-what-a-type-system-is-for">5.1 What a type system is for</a></li><li class="toc-l3"><a href="#52-nominal-vs-structural-what-is-a-types-identity" data-target="52-nominal-vs-structural-what-is-a-types-identity">5.2 Nominal vs. structural: what is a type's identity?</a></li><li class="toc-l3"><a href="#53-soundness-and-typescripts-deliberate-unsoundness" data-target="53-soundness-and-typescripts-deliberate-unsoundness">5.3 Soundness, and TypeScript's deliberate unsoundness</a></li><li class="toc-l3"><a href="#54-the-checker-mechanically" data-target="54-the-checker-mechanically">5.4 The checker, mechanically</a></li><li class="toc-l3"><a href="#exercises-5" data-target="exercises-5">Exercises 5</a></li><li class="toc-l2"><a href="#chapter-6-type-systems-ii-inference-ownership-and-the-fancy-end" data-target="chapter-6-type-systems-ii-inference-ownership-and-the-fancy-end">Chapter 6 — Type Systems II: Inference, Ownership, and the Fancy End</a></li><li class="toc-l3"><a href="#61-hindleymilner-types-the-programmer-never-wrote" data-target="61-hindleymilner-types-the-programmer-never-wrote">6.1 Hindley–Milner: types the programmer never wrote</a></li><li class="toc-l3"><a href="#62-rusts-ownership-as-a-type-system" data-target="62-rusts-ownership-as-a-type-system">6.2 Rust's ownership as a type system</a></li><li class="toc-l3"><a href="#63-the-frontier-briefly-and-honestly" data-target="63-the-frontier-briefly-and-honestly">6.3 The frontier, briefly and honestly</a></li><li class="toc-l3"><a href="#exercises-6" data-target="exercises-6">Exercises 6</a></li><li class="toc-l2"><a href="#chapter-7-intermediate-representations-and-ssa" data-target="chapter-7-intermediate-representations-and-ssa">Chapter 7 — Intermediate Representations and SSA</a></li><li class="toc-l3"><a href="#71-why-irs-exist" data-target="71-why-irs-exist">7.1 Why IRs exist</a></li><li class="toc-l3"><a href="#72-ssa-the-representation-that-made-modern-optimization" data-target="72-ssa-the-representation-that-made-modern-optimization">7.2 SSA: the representation that made modern optimization</a></li><li class="toc-l3"><a href="#73-reading-llvm-ir" data-target="73-reading-llvm-ir">7.3 Reading LLVM IR</a></li><li class="toc-l3"><a href="#exercises-7" data-target="exercises-7">Exercises 7</a></li><li class="toc-l2"><a href="#chapter-8-optimization" data-target="chapter-8-optimization">Chapter 8 — Optimization</a></li><li class="toc-l3"><a href="#81-the-contract-as-if-and-ub-as-license" data-target="81-the-contract-as-if-and-ub-as-license">8.1 The contract: as-if, and UB as license</a></li><li class="toc-l3"><a href="#82-the-catalog-as-ir-transformations" data-target="82-the-catalog-as-ir-transformations">8.2 The catalog, as IR transformations</a></li><li class="toc-l3"><a href="#83-beyond-single-module-lto-and-pgo" data-target="83-beyond-single-module-lto-and-pgo">8.3 Beyond single-module: LTO and PGO</a></li><li class="toc-l3"><a href="#exercises-8" data-target="exercises-8">Exercises 8</a></li><li class="toc-l2"><a href="#chapter-9-code-generation" data-target="chapter-9-code-generation">Chapter 9 — Code Generation</a></li><li class="toc-l3"><a href="#91-from-infinite-registers-to-sixteen" data-target="91-from-infinite-registers-to-sixteen">9.1 From infinite registers to sixteen</a></li><li class="toc-l3"><a href="#92-calling-conventions-the-abi-as-treaty" data-target="92-calling-conventions-the-abi-as-treaty">9.2 Calling conventions: the ABI as treaty</a></li><li class="toc-l3"><a href="#exercises-9" data-target="exercises-9">Exercises 9</a></li><li class="toc-l2"><a href="#chapter-10-linking-and-loading" data-target="chapter-10-linking-and-loading">Chapter 10 — Linking and Loading</a></li><li class="toc-l3"><a href="#101-the-last-compiler-nobody-studies" data-target="101-the-last-compiler-nobody-studies">10.1 The last compiler nobody studies</a></li><li class="toc-l3"><a href="#102-dynamic-linking-and-loading" data-target="102-dynamic-linking-and-loading">10.2 Dynamic linking and loading</a></li><li class="toc-l3"><a href="#exercises-10" data-target="exercises-10">Exercises 10</a></li><li class="toc-l2"><a href="#chapter-11-interpreters-and-bytecode-vms" data-target="chapter-11-interpreters-and-bytecode-vms">Chapter 11 — Interpreters and Bytecode VMs</a></li><li class="toc-l3"><a href="#111-two-interpreter-architectures" data-target="111-two-interpreter-architectures">11.1 Two interpreter architectures</a></li><li class="toc-l3"><a href="#112-why-interpretation-is-slow-and-the-pre-jit-remedies" data-target="112-why-interpretation-is-slow-and-the-pre-jit-remedies">11.2 Why interpretation is slow, and the pre-JIT remedies</a></li><li class="toc-l3"><a href="#exercises-11" data-target="exercises-11">Exercises 11</a></li><li class="toc-l2"><a href="#chapter-12-jit-compilation" data-target="chapter-12-jit-compilation">Chapter 12 — JIT Compilation</a></li><li class="toc-l3"><a href="#121-the-tiered-architecture" data-target="121-the-tiered-architecture">12.1 The tiered architecture</a></li><li class="toc-l3"><a href="#122-hidden-classes-and-inline-caches-the-heart-of-dynamic-language-speed" data-target="122-hidden-classes-and-inline-caches-the-heart-of-dynamic-language-speed">12.2 Hidden classes and inline caches: the heart of dynamic-language speed</a></li><li class="toc-l3"><a href="#123-speculation-and-deoptimization-the-license-to-cheat" data-target="123-speculation-and-deoptimization-the-license-to-cheat">12.3 Speculation and deoptimization: the license to cheat</a></li><li class="toc-l3"><a href="#124-the-wider-jit-landscape" data-target="124-the-wider-jit-landscape">12.4 The wider JIT landscape</a></li><li class="toc-l3"><a href="#exercises-12" data-target="exercises-12">Exercises 12</a></li><li class="toc-l2"><a href="#chapter-13-garbage-collection-and-memory-runtimes" data-target="chapter-13-garbage-collection-and-memory-runtimes">Chapter 13 — Garbage Collection and Memory Runtimes</a></li><li class="toc-l3"><a href="#131-the-problem-and-the-two-classical-answers" data-target="131-the-problem-and-the-two-classical-answers">13.1 The problem and the two classical answers</a></li><li class="toc-l3"><a href="#132-the-modern-problem-pauses-and-the-concurrent-answers" data-target="132-the-modern-problem-pauses-and-the-concurrent-answers">13.2 The modern problem: pauses, and the concurrent answers</a></li><li class="toc-l3"><a href="#133-gc-pressure-is-a-language-design-and-program-design-variable" data-target="133-gc-pressure-is-a-language-design-and-program-design-variable">13.3 GC pressure is a language-design and program-design variable</a></li><li class="toc-l3"><a href="#exercises-13" data-target="exercises-13">Exercises 13</a></li><li class="toc-l2"><a href="#chapter-14-the-real-compilers-toured" data-target="chapter-14-the-real-compilers-toured">Chapter 14 — The Real Compilers, Toured</a></li><li class="toc-l3"><a href="#141-cpython-the-transparent-interpreter" data-target="141-cpython-the-transparent-interpreter">14.1 CPython: the transparent interpreter</a></li><li class="toc-l3"><a href="#142-tsc-a-checker-wearing-a-compiler-costume" data-target="142-tsc-a-checker-wearing-a-compiler-costume">14.2 tsc: a checker wearing a compiler costume</a></li><li class="toc-l3"><a href="#143-rustc-the-tower-of-irs-queried" data-target="143-rustc-the-tower-of-irs-queried">14.3 rustc: the tower of IRs, queried</a></li><li class="toc-l3"><a href="#144-llvm-and-the-contrast-case-go" data-target="144-llvm-and-the-contrast-case-go">14.4 LLVM and the contrast case, Go</a></li><li class="toc-l3"><a href="#exercises-14" data-target="exercises-14">Exercises 14</a></li><li class="toc-l2"><a href="#chapter-15-where-to-go-next" data-target="chapter-15-where-to-go-next">Chapter 15 — Where to Go Next</a></li></ul></nav></aside>
+  <main><h1 id="compiler-and-language-internals">Compiler and Language Internals</h1>
+<p>A textbook-level study guide to what compilers, interpreters, and language runtimes actually do — for engineers who use languages daily and want to understand the machine beneath them. Every language is a leaky abstraction over what its compiler produces, and the leaks are where senior work happens: why this code deoptimizes in V8, why TypeScript accepts that unsound assignment, why Rust's borrow checker rejects a program you know is fine, why <code>-O2</code> deleted your null check, why the build spends four minutes in the linker. This guide covers the full pipeline — lexing, parsing, semantic analysis, type systems and inference, intermediate representations and SSA, optimization, code generation, linking, bytecode interpreters, JIT compilation, and garbage collection — and then tours the real systems (CPython, tsc, rustc, V8, HotSpot, LLVM) so the theory attaches to the tools you actually run.</p>
+<p>The method follows this repo's <a href="distributed-algorithms-study-guide.html">Distributed Algorithms</a> and <a href="database-internals-study-guide.html">Database Internals</a> guides: precise mechanisms, worked examples you can run, claims you can verify against real tools, and exercises closing every chapter. A miniature language — <strong>Calc</strong>, an expression-and-statements toy — is built incrementally in plain Python across Chapters 2–4, 7, and 11, because thirty lines of working lexer teach more than three pages about lexing. Total lab code is a few hundred lines; type it, don't copy it.</p>
+<p>Primary references: Bob Nystrom, <a href="https://craftinginterpreters.com/"><em>Crafting Interpreters</em></a> (free online; the best first book on this material, full stop); Cooper &amp; Torczon, <em>Engineering a Compiler</em> (the modern textbook); the <a href="https://llvm.org/docs/tutorial/">LLVM Kaleidoscope tutorial</a>; Cornell's <a href="https://www.cs.cornell.edu/courses/cs6120/2020fa/self-guided/">CS 6120 self-guided course</a> (optimization and SSA, with implementation homework); the <a href="https://v8.dev/blog">V8 blog</a> and <a href="https://rustc-dev-guide.rust-lang.org/">rustc dev guide</a> for the production systems.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#chapter-1--the-shape-of-a-language-implementation">Chapter 1 — The Shape of a Language Implementation</a></li>
+<li><a href="#chapter-2--lexing">Chapter 2 — Lexing</a></li>
+<li><a href="#chapter-3--parsing">Chapter 3 — Parsing</a></li>
+<li><a href="#chapter-4--asts-names-and-semantic-analysis">Chapter 4 — ASTs, Names, and Semantic Analysis</a></li>
+<li><a href="#chapter-5--type-systems-i-checking">Chapter 5 — Type Systems I: Checking</a></li>
+<li><a href="#chapter-6--type-systems-ii-inference-ownership-and-the-fancy-end">Chapter 6 — Type Systems II: Inference, Ownership, and the Fancy End</a></li>
+<li><a href="#chapter-7--intermediate-representations-and-ssa">Chapter 7 — Intermediate Representations and SSA</a></li>
+<li><a href="#chapter-8--optimization">Chapter 8 — Optimization</a></li>
+<li><a href="#chapter-9--code-generation">Chapter 9 — Code Generation</a></li>
+<li><a href="#chapter-10--linking-and-loading">Chapter 10 — Linking and Loading</a></li>
+<li><a href="#chapter-11--interpreters-and-bytecode-vms">Chapter 11 — Interpreters and Bytecode VMs</a></li>
+<li><a href="#chapter-12--jit-compilation">Chapter 12 — JIT Compilation</a></li>
+<li><a href="#chapter-13--garbage-collection-and-memory-runtimes">Chapter 13 — Garbage Collection and Memory Runtimes</a></li>
+<li><a href="#chapter-14--the-real-compilers-toured">Chapter 14 — The Real Compilers, Toured</a></li>
+<li><a href="#chapter-15--where-to-go-next">Chapter 15 — Where to Go Next</a></li>
+</ol>
+<hr>
+<h2 id="chapter-1-the-shape-of-a-language-implementation">Chapter 1 — The Shape of a Language Implementation</h2>
+<h3 id="11-the-pipeline">1.1 The pipeline</h3>
+<p>Every language implementation — gcc, CPython, V8, tsc — is a variation on one pipeline, and fixing it in mind gives every later chapter an address:</p>
+<pre><code class="language-text">source text
+  │  lexer        → tokens                      (Ch. 2)
+  │  parser       → syntax tree                 (Ch. 3)
+  │  analysis     → resolved, typed tree        (Ch. 4–6)   ← the &quot;frontend&quot; ends here
+  │  lowering     → intermediate representation (Ch. 7)
+  │  optimizer    → better IR                   (Ch. 8)     ← the &quot;middle end&quot;
+  │  codegen      → machine code / bytecode     (Ch. 9, 11)
+  │  link/load    → a runnable program          (Ch. 10)    ← the &quot;backend&quot; ends here
+  └─ runtime      → GC, JIT, dispatch           (Ch. 11–13) ← runs alongside your program
+</code></pre>
+<p>The frontend knows everything about the language and nothing about the machine; the backend knows everything about the machine and nothing about the language; the IR in the middle is the treaty between them. This separation is not just pedagogy — it is the actual industrial structure: LLVM is a middle-and-back-end that a dozen frontends (C, C++, Rust, Swift, Zig, Julia) share, which is why "write a frontend, get world-class optimization free" has shaped two decades of language design.</p>
+<h3 id="12-the-execution-spectrum">1.2 The execution spectrum</h3>
+<p>"Compiled vs. interpreted" is a property of <em>implementations</em>, not languages, and it's a spectrum, not a binary:</p>
+<ul>
+<li><strong>Ahead-of-time (AOT) native</strong>: the whole pipeline runs before execution; the artifact is machine code. gcc/clang for C/C++, rustc, Go.</li>
+<li><strong>Bytecode interpreter</strong>: the frontend runs ahead of time (or at import time), producing <strong>bytecode</strong> — instructions for a virtual machine, not a CPU — which an interpreter loop executes. CPython, Lua, the JVM and CLR <em>before</em> their JITs kick in.</li>
+<li><strong>JIT-compiled</strong>: starts interpreting, <em>watches the program run</em>, and compiles the hot parts to machine code using what it observed — types, branch frequencies, call targets. V8, HotSpot, .NET, PyPy, LuaJIT. The defining trade: optimization decisions made with runtime knowledge AOT can never have, paid for with warmup time and the machinery to <em>undo</em> wrong guesses (deoptimization, Ch. 12).</li>
+<li><strong>Transpilers</strong> compile to another high-level language (tsc emits JavaScript; the interesting part of tsc is therefore not codegen — it has almost none — but the type checker, Ch. 5/14).</li>
+</ul>
+<p>Where each real system sits, for orientation: <strong>rustc</strong> is AOT through LLVM; <strong>CPython</strong> is a bytecode interpreter (with a young, optional JIT — Ch. 12); <strong>V8</strong> is a four-tier JIT; <strong>HotSpot</strong> interprets JVM bytecode then tier-compiles; <strong>Go</strong> is AOT with its own (non-LLVM) backend tuned for compile speed. None of these choices is "modern vs. legacy"; each is a deliberate position on the trade triangle of <em>startup time, peak speed, and implementation complexity</em>.</p>
+<h3 id="13-how-to-study-an-implementation-the-tools-used-throughout">1.3 How to study an implementation (the tools used throughout)</h3>
+<p>Like databases, language implementations are honest if you know where to look:</p>
+<pre><code class="language-bash"># CPython: every frontend stage is importable
+python -c &quot;import tokenize,io; [print(t) for t in tokenize.generate_tokens(io.StringIO('x+=1').readline)]&quot;
+python -c &quot;import ast; print(ast.dump(ast.parse('x = 1 + 2*y'), indent=2))&quot;
+python -c &quot;import dis; dis.dis(compile('x = 1 + 2*y','','exec'))&quot;
+
+# C/C++/Rust: watch the middle and back ends
+clang -O2 -S -emit-llvm f.c -o -      # LLVM IR after optimization
+rustc --emit=llvm-ir -O f.rs          # same, from Rust
+cargo rustc -- --emit=mir             # rustc's own mid-level IR
+
+# The single most useful tool in this guide:
+#   https://godbolt.org  (Compiler Explorer) — source on the left,
+#   any compiler's assembly/IR on the right, diffable across flags.
+
+# V8: watch the JIT think
+node --trace-opt --trace-deopt app.js
+node --allow-natives-syntax -e 'function f(o){return o.x}; /* %DebugPrint(obj) shows hidden classes */'
+</code></pre>
+<p>A standing instruction: when any chapter makes a claim about what a compiler does, take a five-line example to Compiler Explorer or <code>dis</code> and watch it happen. The difference between knowing <em>about</em> compilers and knowing compilers is exactly this habit.</p>
+<h3 id="exercises-1">Exercises 1</h3>
+<ol>
+<li>Classify these on the execution spectrum, with one sentence of evidence each: Java, Ruby (CRuby), Ruby (TruffleRuby), C#, Bash, TypeScript, Julia, Go, PHP 8.</li>
+<li>For one small function, collect the artifacts of every pipeline stage CPython exposes: tokens, AST, bytecode (<code>tokenize</code>, <code>ast</code>, <code>dis</code>). Label each with its pipeline stage.</li>
+<li>On Compiler Explorer, compile <code>int f(int x){return x*2;}</code> with gcc at <code>-O0</code> and <code>-O2</code>. The multiply becomes what instruction, and which chapter of this guide owns that transformation?</li>
+<li>Make the startup-vs-peak trade concrete: time <code>python -c pass</code>, <code>node -e ''</code>, and a hello-world Go binary. Explain each number's relationship to its position on the spectrum.</li>
+</ol>
+<hr>
+<h2 id="chapter-2-lexing">Chapter 2 — Lexing</h2>
+<h3 id="21-the-job-characters-tokens">2.1 The job: characters → tokens</h3>
+<p>The lexer (scanner, tokenizer) turns a character stream into a <strong>token</strong> stream — the smallest units that carry meaning: identifiers, keywords, literals, operators, punctuation. Its theoretical home is <strong>regular languages</strong>: token shapes are describable by regular expressions, recognizable by finite automata, which is why lexing needs no lookahead beyond a character or two and runs in linear time. The practical consequence of the theory: a lexer can be a single loop with a <code>switch</code> on the current character, and in production compilers it usually is (generated lexers exist — <code>flex</code>, <code>logos</code> — but hand-written dominates among major compilers because lexing is easy and error messages matter).</p>
+<p>The one universal rule worth naming: <strong>maximal munch</strong> — at each point, consume the longest token that matches. <code>&gt;=</code> is one token, not <code>&gt;</code> then <code>=</code>; <code>forty</code> is an identifier, not the keyword <code>for</code> followed by <code>ty</code>. Keywords are the standard subtlety: lex them <em>as identifiers</em>, then check against a keyword table — trying to match keywords first is how you make <code>format</code> lex as <code>for</code>+<code>mat</code>.</p>
+<h3 id="22-the-lab-a-lexer-in-40-lines">2.2 The lab: a lexer in 40 lines</h3>
+<p>Calc's tokens: numbers, identifiers, keywords (<code>let</code>, <code>if</code>, <code>else</code>, <code>while</code>, <code>print</code>), operators, punctuation.</p>
+<pre><code class="language-python">import re
+from collections import namedtuple
+
+Token = namedtuple(&quot;Token&quot;, &quot;kind value line&quot;)
+
+KEYWORDS = {&quot;let&quot;, &quot;if&quot;, &quot;else&quot;, &quot;while&quot;, &quot;print&quot;, &quot;fn&quot;, &quot;return&quot;, &quot;true&quot;, &quot;false&quot;}
+TOKEN_RE = re.compile(r&quot;&quot;&quot;
+    (?P&lt;NUMBER&gt;  \d+(\.\d+)? )
+  | (?P&lt;IDENT&gt;   [A-Za-z_]\w* )
+  | (?P&lt;OP&gt;      ==|!=|&lt;=|&gt;=|[+\-*/&lt;&gt;=(){},;] )
+  | (?P&lt;NEWLINE&gt; \n )
+  | (?P&lt;SKIP&gt;    [ \t]+ | \#[^\n]* )
+  | (?P&lt;ERROR&gt;   . )
+&quot;&quot;&quot;, re.VERBOSE)
+
+def lex(src):
+    line = 1
+    for m in TOKEN_RE.finditer(src):
+        kind, text = m.lastgroup, m.group()
+        if kind == &quot;NEWLINE&quot;: line += 1
+        elif kind == &quot;SKIP&quot;:  continue
+        elif kind == &quot;ERROR&quot;: raise SyntaxError(f&quot;line {line}: unexpected {text!r}&quot;)
+        elif kind == &quot;IDENT&quot; and text in KEYWORDS:
+            yield Token(text.upper(), text, line)         # keyword
+        else:
+            yield Token(kind, text, line)
+    yield Token(&quot;EOF&quot;, &quot;&quot;, line)
+</code></pre>
+<p>Note what even this toy must decide: comments and whitespace are <em>consumed here</em> and never reach the parser (most languages; significant-whitespace languages are next), the regex alternation order implements maximal munch for operators (<code>==</code> before <code>=</code>), and every token carries a <strong>source position</strong> — the thing that makes error messages possible, and the bookkeeping that real lexers spend half their code on (column tracking, tab policy, multi-byte characters).</p>
+<h3 id="23-where-real-lexers-earn-their-pay">2.3 Where real lexers earn their pay</h3>
+<p><strong>Significant indentation</strong> (Python): the lexer <em>synthesizes tokens that aren't in the text</em>. CPython's tokenizer maintains a stack of indentation levels and emits <code>INDENT</code>/<code>DEDENT</code> tokens as the level changes — so by the time the parser runs, Python's block structure looks exactly like curly braces. Run the <code>tokenize</code> one-liner from Ch. 1 on an indented snippet and watch them appear; "this language has no braces" is false at the token level. <strong>Lexer hacks</strong>: some grammars are not context-free at the token level — C's <code>T * x;</code> (multiplication or pointer declaration? depends on whether <code>T</code> names a type) forces the lexer/parser to consult the symbol table, a famous wart that newer languages design away. <strong>Raw/nested constructs</strong>: string interpolation (<code>"hello ${name}"</code>) makes the lexer re-entrant — modern lexers handle a stack of modes. <strong>Unicode</strong>: identifier rules (UAX #31), normalization, and the security corner (homoglyph identifiers) are why "just <code>\w+</code>" doesn't survive contact with production.</p>
+<h3 id="exercises-2">Exercises 2</h3>
+<ol>
+<li>Extend the lab lexer: string literals with escapes, and <code>**</code> (power) — placing it correctly relative to <code>*</code> in the alternation. Add a test where wrong ordering would mis-lex.</li>
+<li>Run CPython's <code>tokenize</code> on a function with nested indentation; map every <code>INDENT</code>/<code>DEDENT</code> to the brace it would be in C. What does the tokenizer do with a blank line inside a block, and why must it?</li>
+<li>Demonstrate maximal munch ambiguity: in C++, <code>&gt;&gt;</code> inside nested templates (<code>vector&lt;vector&amp;lt;int&amp;gt;&gt;</code>) was famously two tokens until C++11. Explain the original problem and what the fix traded.</li>
+<li>Write the three-line pathological case for a backtracking regex lexer (catastrophic backtracking) and explain why production lexers are written as single-pass automata instead.</li>
+</ol>
+<hr>
+<h2 id="chapter-3-parsing">Chapter 3 — Parsing</h2>
+<h3 id="31-grammars-and-the-tree-hiding-in-flat-text">3.1 Grammars, and the tree hiding in flat text</h3>
+<p>A <strong>context-free grammar</strong> assigns structure to token sequences. The grammar for Calc's expressions, written to encode precedence and associativity directly:</p>
+<pre><code class="language-text">expr     → equality
+equality → comparison ( (&quot;==&quot; | &quot;!=&quot;) comparison )*
+comparison → term ( (&quot;&lt;&quot; | &quot;&gt;&quot; | &quot;&lt;=&quot; | &quot;&gt;=&quot;) term )*
+term     → factor ( (&quot;+&quot; | &quot;-&quot;) factor )*        # lower precedence binds looser
+factor   → unary ( (&quot;*&quot; | &quot;/&quot;) unary )*
+unary    → &quot;-&quot; unary | primary
+primary  → NUMBER | IDENT | &quot;(&quot; expr &quot;)&quot; | IDENT &quot;(&quot; args &quot;)&quot;
+</code></pre>
+<p>Read the shape: each precedence level is a rule that consumes the <em>next tighter</em> level and then loops on its own operators. That layering is the entire trick for expression grammars — <code>1 + 2 * 3</code> parses as <code>1 + (2*3)</code> because <code>term</code> can only see <code>*</code>-products as atoms, never raw additions.</p>
+<p>Distinguish two trees now, permanently: the <strong>parse tree</strong> (concrete syntax tree) mirrors the grammar exactly — every rule application is a node, parentheses and semicolons included; the <strong>AST</strong> (abstract syntax tree) keeps only meaning — <code>(1 + 2)</code> and <code>1 + 2</code> produce identical ASTs, and a <code>BinaryOp(+, 1, 2)</code> node doesn't record which grammar rules built it. Parsers <em>use</em> the grammar but <em>emit</em> the AST; tools that need the original text exactly (formatters like Prettier and rustfmt, refactoring engines) use CSTs or "lossless" syntax trees with trivia attached — a real design axis in modern compiler architecture (Roslyn, rust-analyzer, swift-syntax all chose lossless).</p>
+<h3 id="32-recursive-descent-the-technique-that-won">3.2 Recursive descent: the technique that won</h3>
+<p>A <strong>recursive-descent parser</strong> is the grammar transcribed into functions — one per rule, each consuming tokens and returning a tree. It is the technique used by the production compilers you use daily (clang, rustc, tsc, V8's parser, Go), having beaten the parser generators of the textbooks (yacc/bison) on the grounds that matter industrially: error messages, error <em>recovery</em>, and freedom to handle the grammar's ugly corners by just writing code. The lab parser, with the expression levels collapsed into one <strong>precedence-climbing (Pratt)</strong> loop — the standard trick for operator expressions that turns seven near-identical functions into a table:</p>
+<pre><code class="language-python">class Parser:
+    PREC = {&quot;==&quot;:1, &quot;!=&quot;:1, &quot;&lt;&quot;:2, &quot;&gt;&quot;:2, &quot;&lt;=&quot;:2, &quot;&gt;=&quot;:2,
+            &quot;+&quot;:3, &quot;-&quot;:3, &quot;*&quot;:4, &quot;/&quot;:4}
+
+    def __init__(self, tokens):
+        self.toks = list(tokens); self.i = 0
+
+    def peek(self):  return self.toks[self.i]
+    def next(self):  t = self.toks[self.i]; self.i += 1; return t
+    def expect(self, kind):
+        t = self.next()
+        if t.kind != kind:
+            raise SyntaxError(f&quot;line {t.line}: expected {kind}, got {t.value!r}&quot;)
+        return t
+
+    # --- expressions: Pratt loop ---
+    def expr(self, min_prec=0):
+        left = self.atom()
+        while self.peek().kind == &quot;OP&quot; and self.PREC.get(self.peek().value, -1) &gt;= min_prec:
+            op = self.next().value
+            right = self.expr(self.PREC[op] + 1)      # +1 ⇒ left-associative
+            left = (&quot;binop&quot;, op, left, right)
+        return left
+
+    def atom(self):
+        t = self.next()
+        if t.kind == &quot;NUMBER&quot;: return (&quot;num&quot;, float(t.value))
+        if t.kind == &quot;IDENT&quot;:
+            if self.peek().value == &quot;(&quot;:              # call
+                self.next(); args = []
+                while self.peek().value != &quot;)&quot;:
+                    args.append(self.expr())
+                    if self.peek().value == &quot;,&quot;: self.next()
+                self.expect(&quot;OP&quot;)                     # ')'
+                return (&quot;call&quot;, t.value, args)
+            return (&quot;var&quot;, t.value)
+        if t.value == &quot;(&quot;:
+            e = self.expr(); self.expect(&quot;OP&quot;); return e
+        if t.value == &quot;-&quot;: return (&quot;neg&quot;, self.expr(5))
+        raise SyntaxError(f&quot;line {t.line}: unexpected {t.value!r}&quot;)
+
+    # --- statements: plain recursive descent ---
+    def statement(self):
+        k = self.peek().kind
+        if k == &quot;LET&quot;:
+            self.next(); name = self.expect(&quot;IDENT&quot;).value
+            self.expect(&quot;OP&quot;)                          # '='
+            return (&quot;let&quot;, name, self.expr_semi())
+        if k == &quot;PRINT&quot;:
+            self.next(); return (&quot;print&quot;, self.expr_semi())
+        if k == &quot;WHILE&quot;:
+            self.next(); cond = self.expr()
+            return (&quot;while&quot;, cond, self.block())
+        return (&quot;expr&quot;, self.expr_semi())
+
+    def expr_semi(self):
+        e = self.expr(); self.expect(&quot;OP&quot;); return e   # ';'
+
+    def block(self):
+        self.expect(&quot;OP&quot;)                              # '{'
+        stmts = []
+        while self.peek().value != &quot;}&quot;: stmts.append(self.statement())
+        self.next()
+        return stmts
+</code></pre>
+<p>Forty lines of mechanism worth internalizing: the parser is <strong>predictive</strong> (it decides what to parse from the next token, never backtracking — which is what makes it linear-time and its errors precise); <strong>left recursion</strong> is handled by the loop (a grammar rule <code>term → term "+" factor</code> would recurse infinitely as a function — the loop <em>is</em> the standard transformation); and the Pratt <code>min_prec</code> parameter is the entire precedence mechanism — trace <code>1 + 2 * 3</code> and then <code>1 * 2 + 3</code> by hand once and operator parsing is demystified for life.</p>
+<h3 id="33-the-landscape-beyond-honestly">3.3 The landscape beyond, honestly</h3>
+<p><strong>LR/LALR</strong> (yacc, bison): table-driven bottom-up parsing; accepts more grammars than LL, mathematically elegant, and largely abandoned for primary industrial frontends because shift/reduce conflict messages are miserable to debug and error recovery is hard to customize — its modern niche is languages with genuinely gnarly grammars and places where grammar-as-specification matters. <strong>PEG</strong> (parsing expression grammars): ordered choice instead of ambiguity, packrat memoization for linear time — <em>CPython switched to a PEG parser in 3.9</em> (<a href="https://peps.python.org/pep-0617/">PEP 617</a>) precisely to escape LL(1) restrictions that had warped Python's grammar evolution (match statements and parenthesized context managers arrived on the new parser's flexibility). <strong>GLR/Earley</strong>: all CFGs, ambiguity tolerated — the natural-language and many-language-tooling end (tree-sitter, the incremental GLR-ish parser inside your editor's syntax features, is the one you use daily). <strong>Hand-rolled wins anyway</strong> for compilers because of one requirement the textbooks underweight: <strong>error recovery</strong>. An IDE parser cannot stop at the first error — it must produce a <em>best-effort tree for broken code</em> (the file is broken almost continuously while you type) so completion and navigation keep working; techniques are synchronization tokens (skip to the next <code>;</code> or <code>}</code>), error nodes in the tree, and never panicking. tsc is the extreme: it produces an AST for <em>anything</em>, reserving all judgment for the checker.</p>
+<h3 id="exercises-3">Exercises 3</h3>
+<ol>
+<li>Trace the Pratt parser on <code>1 - 2 - 3</code> and on <code>2 * 3 + 4 &lt; 20</code> — write the call tree and the resulting AST. Then change <code>+1</code> to <code>+0</code> in the recursive call and show what <code>1 - 2 - 3</code> becomes (right associativity), and which real operator (exponentiation) wants exactly that.</li>
+<li>Add <code>if/else</code> to the lab parser, then construct the <strong>dangling else</strong> ambiguity (<code>if a if b print 1; else print 2;</code> in a braceless grammar). Which parse does your code produce, and what grammar rule or convention resolves it in C?</li>
+<li>Run <code>ast.dump</code> on <code>(((1)))+2</code> and <code>1+2</code> — confirm parse-tree vs. AST in one experiment. Then find what Python's AST <em>does</em> preserve that surprises you (hint: <code>ast.parse('f(x,)')</code>).</li>
+<li>Break the lab parser's input mid-statement and improve its behavior: implement panic-mode recovery (skip to the next <code>;</code>), and make it report <em>three</em> errors in a three-error file instead of dying on the first.</li>
+<li>Read <a href="https://peps.python.org/pep-0617/">PEP 617</a>'s motivation section. Which concrete Python syntax was blocked by the old LL(1) parser, and what does the PEG parser trade for the flexibility (hint: memory, and what the <code>|</code> operator means)?</li>
+</ol>
+<hr>
+<h2 id="chapter-4-asts-names-and-semantic-analysis">Chapter 4 — ASTs, Names, and Semantic Analysis</h2>
+<h3 id="41-the-tree-as-the-program">4.1 The tree as the program</h3>
+<p>After parsing, the AST <em>is</em> the program for every subsequent phase — so its design is consequential engineering, not bookkeeping. The recurring decisions: <strong>node representation</strong> (Calc's tagged tuples scale to a point; real compilers use typed node classes or, increasingly, <em>flat arrays with index-based references</em> — rustc and many modern compilers arena-allocate nodes for cache locality and trivially serializable trees); <strong>the visitor question</strong> (how does code walk a tree with thirty node kinds without thirty hand-written traversals? — OO compilers use visitor classes, functional ones pattern-match, and either way the <em>structural</em> traversal is written once and specialized); and <strong>what hangs off nodes</strong> (source spans always; later phases attach types, resolved symbols, and constant values — the AST accretes annotations as it moves down the pipeline, until many compilers re-emit it as a new, lower tree: Ch. 7's lowering).</p>
+<h3 id="42-name-resolution-from-text-to-meaning">4.2 Name resolution: from text to meaning</h3>
+<p><code>x</code> is three characters; <em>which</em> <code>x</code> is a semantic question, and answering it is <strong>name resolution</strong> — binding every identifier use to its declaration. The data structure is the <strong>symbol table</strong>: a stack of <strong>scopes</strong>, pushed at each block/function, each mapping names to symbol records (kind, type slot, declaration site). Resolution walks the AST: declarations insert; uses look up through the scope stack, innermost outward — which <em>is</em> lexical scoping, implemented:</p>
+<pre><code class="language-python">class Scopes:
+    def __init__(self): self.stack = [{}]
+    def push(self): self.stack.append({})
+    def pop(self):  self.stack.pop()
+    def declare(self, name, info):
+        if name in self.stack[-1]: raise NameError(f&quot;duplicate {name}&quot;)
+        self.stack[-1][name] = info
+    def resolve(self, name):
+        for scope in reversed(self.stack):
+            if name in scope: return scope[name]
+        raise NameError(f&quot;undefined {name}&quot;)
+</code></pre>
+<p>The interesting cases are exactly the ones that complicate this picture. <strong>Forward references</strong>: can a function call another defined later in the file? Most languages say yes for top-level items — which forces resolution to be <em>two-pass</em> (collect all declarations, then resolve bodies), the simplest instance of a pattern that recurs throughout semantic analysis. <strong>Shadowing policy</strong> is a language design choice surfaced here (Rust permits it enthusiastically; Java forbids same-scope shadowing). <strong>Hoisting</strong> is JavaScript's infamous answer (<code>var</code> declarations are resolved as if moved to function top — a pure name-resolution rule that generations of developers learned as folklore). And <strong>closures</strong> make resolution generate <em>runtime structure</em>: when an inner function captures <code>x</code> from an enclosing scope, the resolver must classify <code>x</code> as a <em>captured</em> variable — which tells the backend that <code>x</code> can't live on the stack (the frame dies; the closure survives) and must be boxed into a heap cell shared between closure and origin. CPython exposes every bit of this: the <code>symtable</code> module shows each variable classified as local/global/<strong>cell</strong>/<strong>free</strong>, and <code>LOAD_FAST</code> vs. <code>LOAD_DEREF</code> in <code>dis</code> output is the classification, executed.</p>
+<h3 id="43-the-rest-of-semantic-analysis">4.3 The rest of "semantic analysis"</h3>
+<p>Name resolution headlines a family of judgment passes between parse and codegen, all sharing its shape (walk the tree, maintain context, record or reject): definite-assignment analysis (Java/C# proving every variable is written before read; TypeScript's <code>strictPropertyInitialization</code>), reachability and dead-code checks (<code>unreachable code</code> warnings; Rust's "this match is non-exhaustive" — which is type-system-adjacent and Chapter 5's business), <code>const</code>-ness and purity checks, and control-flow legality (<code>break</code> outside a loop, <code>return</code> outside a function). They are unglamorous and they are most of a production frontend by line count — type checking gets the textbooks' attention, but the long tail of "is this program <em>well-formed</em>" lives here.</p>
+<h3 id="exercises-4">Exercises 4</h3>
+<ol>
+<li>Implement resolution for Calc: a pass that walks the AST with <code>Scopes</code>, rejects use-before-declaration, and annotates each <code>("var", x)</code> node with a (scope-depth, slot) pair. Then add blocks and prove shadowing works.</li>
+<li>Use CPython's <code>symtable</code> on a function containing a closure: classify every variable (local/free/cell/global) and match each against <code>dis</code> output's <code>LOAD_FAST</code>/<code>LOAD_DEREF</code>/<code>LOAD_GLOBAL</code>.</li>
+<li>Explain, mechanically, why this JavaScript prints <code>3 3 3</code> — and what <code>let</code>'s per-iteration binding changes in name-resolution terms:
+   <code>for (var i=0;i&lt;3;i++) setTimeout(()=&gt;console.log(i));</code></li>
+<li>Write the two-pass top-level resolver: make <code>fn even(n) { ... odd(n-1) ... } fn odd(n) { ... even(n-1) ... }</code> resolve in Calc. What goes wrong with one pass, and on which call?</li>
+</ol>
+<hr>
+<h2 id="chapter-5-type-systems-i-checking">Chapter 5 — Type Systems I: Checking</h2>
+<h3 id="51-what-a-type-system-is-for">5.1 What a type system is for</h3>
+<p>A type system is a <strong>conservative, compile-time proof procedure</strong>: it assigns types to expressions by rule, and accepts a program only if the rules compose. "Conservative" is load-bearing — by Rice's theorem, any non-trivial property of program behavior is undecidable in general, so a sound type checker must reject <em>some</em> programs that would have run fine. Every type system you'll ever use sits somewhere on the axis defined by that fact: reject more good programs (simple, restrictive) versus work harder to accept them (sophisticated, complex) versus accept some bad ones (unsound, pragmatic). Naming the axis turns type-system debates from aesthetics into engineering.</p>
+<p>Two vocabulary pairs that get conflated and shouldn't: <strong>static vs. dynamic</strong> is <em>when</em> types are checked (compile time vs. runtime — Python is strongly <em>and</em> dynamically typed); <strong>strong vs. weak</strong> is roughly <em>how much implicit conversion</em> blurs the types (C will reinterpret nearly anything; Python won't add a string to an int). And <strong>gradual typing</strong> (TypeScript, Python's hints, Sorbet) is the engineered middle: static checking where annotations exist, dynamic escape hatches (<code>any</code>) where they don't, with the known cost that an <code>any</code> is a hole the static guarantees drain out through — <code>any</code> infects what it touches, which is why <code>unknown</code> (the sound "I don't know yet": you must narrow before use) exists and is almost always what you meant.</p>
+<h3 id="52-nominal-vs-structural-what-is-a-types-identity">5.2 Nominal vs. structural: what is a type's identity?</h3>
+<p><strong>Nominal</strong> typing (Java, C#, Rust's structs): a type is its <em>name</em>; two classes with identical members are unrelated unless declared so (<code>implements</code>, inheritance). <strong>Structural</strong> typing (TypeScript, Go's interfaces, OCaml objects): a type is its <em>shape</em>; anything with the right members conforms, no declaration needed.</p>
+<pre><code class="language-typescript">interface Point { x: number; y: number }
+class Vec { constructor(public x: number, public y: number) {} }
+const p: Point = new Vec(1, 2);          // ✓ TypeScript: right shape, conforms
+</code></pre>
+<pre><code class="language-java">interface Point { double x(); double y(); }
+class Vec { double x(){...} double y(){...} }   // does NOT implement Point
+Point p = new Vec();                      // ✗ Java: no declared relationship
+</code></pre>
+<p>Neither is "better"; they encode different theories of compatibility. Structural matches how JavaScript code actually flows (objects shaped by data, not declarations) — which is <em>why</em> TypeScript chose it; it had to type-check a world that already existed. Nominal gives intent and privacy (two structurally-identical types — <code>Meters</code> and <code>Feet</code> — <em>should</em> be incompatible; in structural systems you simulate nominality with branded types, a trick worth knowing: <code>type Meters = number &amp; { __brand: "m" }</code>). Go's interfaces are the interesting hybrid: structural conformance (no <code>implements</code>), checked statically — duck typing with a proof.</p>
+<h3 id="53-soundness-and-typescripts-deliberate-unsoundness">5.3 Soundness, and TypeScript's deliberate unsoundness</h3>
+<p>A type system is <strong>sound</strong> if well-typed programs cannot exhibit type errors at runtime ("well-typed programs don't go wrong"). TypeScript is — by explicit, documented <a href="https://www.typescriptlang.org/docs/handbook/type-compatibility.html">design choice</a> — <em>unsound</em> in enumerated places, trading guarantees for usability over the existing JavaScript ecosystem. Know the big three, because each is a lesson in type-system mechanics:</p>
+<ul>
+<li><strong>Method bivariance / <code>--strictFunctionTypes</code> history</strong>: function parameter types should be checked <strong>contravariantly</strong> (a function accepting <code>Animal</code> can stand in where one accepting <code>Dog</code> is needed — it handles <em>more</em>; not vice versa). TypeScript historically checked parameters <em>bivariantly</em> (either direction OK) because real-world callback patterns (DOM event handlers) demanded it; strict mode fixed standalone function types, while <em>method</em> parameters remain bivariant to keep <code>Array&amp;lt;Dog&amp;gt;</code> assignable to <code>Array&amp;lt;Animal&amp;gt;</code>.</li>
+<li><strong>Mutable covariant arrays</strong>: <code>Dog[]</code> is assignable to <code>Animal[]</code>, after which <code>animals.push(new Cat())</code> plants a cat in your dog list with no error — the exact unsoundness Java chose at gunpoint (pre-generics arrays) and checks at <em>runtime</em> (<code>ArrayStoreException</code>); TypeScript doesn't even check. The principled rule — covariant reads, contravariant writes, invariant read-write — is the same variance logic as the <a href="advanced-rust-study-guide.html">Advanced Rust guide</a>'s <code>&amp;</code> vs. <code>&amp;mut</code>, and recognizing it as <em>one</em> principle across languages is a genuine senior-engineer unlock.</li>
+<li><strong><code>any</code>, assertions (<code>as</code>), and declaration files</strong>: trust-me constructs whose claims are never verified — the FFI boundary of the type system.</li>
+</ul>
+<p>The deep takeaway is not "TypeScript is sloppy" — it's that <strong>soundness is a dial, and tsc's designers set it deliberately</strong>: a sound TypeScript would have rejected too much working JavaScript to be adopted, and an adopted-but-unsound checker catches more real bugs than a sound-but-unused one. Type-system design is product design.</p>
+<h3 id="54-the-checker-mechanically">5.4 The checker, mechanically</h3>
+<p>Checking is a bottom-up tree walk with an environment: literals have known types; variables look up their declared/inferred type (Ch. 4's symbol table grows a type column); each operator/call node has a rule (<code>+ : (number, number) → number</code>; call: argument types must be assignable to parameter types, result is the return type); statements check their parts (an <code>if</code> condition must be <code>bool</code> — or "truthy," a <em>language</em> decision the checker merely enforces). <strong>Subtyping</strong> turns the equality checks into an <em>assignability</em> relation (is <code>T</code> usable where <code>U</code> is expected?) with variance governing how type constructors compose, and <strong>flow-sensitive narrowing</strong> — TypeScript's signature move — threads control flow through the types: after <code>if (typeof x === "string")</code>, <code>x</code>'s type <em>in that branch</em> is narrowed; discriminated unions plus exhaustiveness checking (<code>never</code> as the type of the impossible) turn the checker into a state-machine verifier. That last family — making illegal states unrepresentable and letting the checker prove you handled every case — is the highest-leverage daily payoff of understanding this chapter.</p>
+<h3 id="exercises-5">Exercises 5</h3>
+<ol>
+<li>Write the 60-line type checker for Calc (types: <code>num</code>, <code>bool</code>, <code>str</code>): annotate <code>let</code> with inferred types from initializers, check operators and <code>if</code>/<code>while</code> conditions, and produce errors with source lines. (The structure mirrors the resolver from Ex. 4.1 — that's the point.)</li>
+<li>Demonstrate both classic unsoundnesses in real TypeScript: the covariant-array cat-among-dogs, and a method-bivariance accept that <code>--strictFunctionTypes</code> would reject for standalone functions. Predict the runtime behavior of each, then run them.</li>
+<li>Implement branded types: make <code>Meters</code>/<code>Feet</code> (both <code>number</code>) mutually unassignable in TypeScript, with a constructor function each. What does this simulate, in §5.2's vocabulary?</li>
+<li>Derive the variance table from first principles: for <code>Producer&amp;lt;T&amp;gt;</code> (only returns T), <code>Consumer&amp;lt;T&amp;gt;</code> (only accepts T), and <code>Cell&amp;lt;T&amp;gt;</code> (both), argue which direction of assignability is safe — then check your answers against C#'s <code>out</code>/<code>in</code> annotations or Kotlin's declaration-site variance.</li>
+<li>Build a discriminated union state machine in TypeScript (<code>{state:"idle"} | {state:"loading", started:number} | ...</code>) with an exhaustive <code>switch</code> and a <code>never</code> default. Add a state and watch the checker find every unhandled site — then write one sentence on why this is Ch. 4's reachability analysis wearing type clothes.</li>
+</ol>
+<hr>
+<h2 id="chapter-6-type-systems-ii-inference-ownership-and-the-fancy-end">Chapter 6 — Type Systems II: Inference, Ownership, and the Fancy End</h2>
+<h3 id="61-hindleymilner-types-the-programmer-never-wrote">6.1 Hindley–Milner: types the programmer never wrote</h3>
+<p>ML-family languages (OCaml, Haskell, F#, and — locally — Rust) infer types so completely that annotations are optional. The engine is <strong>Hindley–Milner inference</strong> via <strong>unification</strong> (Algorithm W), and it is simpler than its reputation: walk the tree, assign every unknown a fresh <strong>type variable</strong>, record the <strong>equations</strong> each construct implies, and solve them by unification — the same "make these two terms syntactically equal by substituting variables" procedure as Prolog.</p>
+<p>Worked, on <code>fn twice(f, x) = f(f(x))</code>:</p>
+<pre><code class="language-text">assign:   f : α        x : β        result of twice : γ
+inner f(x):    f must be a function from typeof(x):        α = β → δ      (fresh δ)
+outer f( … ):  f must be a function from typeof(f(x)):     α = δ → ε      (fresh ε)
+unify the two views of α:   β → δ  =  δ → ε    ⇒   β = δ,  δ = ε
+so:  α = δ → δ,   x : δ,   result γ = δ
+twice : (δ → δ, δ) → δ          — i.e. ∀T. ((T→T), T) → T
+</code></pre>
+<p>No annotation anywhere, and the result is the <em>most general</em> type — HM's celebrated property: principal types, inferred in near-linear time in practice. Two refinements complete the classical picture: the <strong>occurs check</strong> (refuse to unify <code>α</code> with <code>α → β</code> — otherwise you'd build an infinite type; this is the error behind ML's famously cryptic "occurs check" messages) and <strong>let-generalization</strong> (variables bound by <code>let</code> are <em>generalized</em> to polymorphic schemes — <code>let id = fn x =&gt; x</code> gets <code>∀T. T→T</code> and can be used at two different types in the next line; lambda parameters are not generalized, which is the precise technical line between "polymorphic definition" and "monomorphic use").</p>
+<p>Why doesn't every language do this? Because HM's magic depends on the <em>absence</em> of features mainstream languages want: <strong>subtyping wrecks unification</strong> (equations become inequalities; principal types vanish), and overloading, implicit conversion, and inheritance each poke holes. Hence the industry's working compromise, <strong>local/bidirectional inference</strong> (Rust within function bodies, TypeScript, Java's <code>var</code>, C++'s <code>auto</code>): infer <em>inside</em> functions from how values are used, but require <strong>annotations at function boundaries</strong>. That requirement isn't a limitation to apologize for — boundary annotations are machine-checked documentation, error-message firewalls (inference failures stay local), and what makes separate compilation and stable APIs tractable. Rust's choice — full HM-style inference inside bodies, mandatory signatures at item boundaries — is the modern consensus position, arrived at from both directions.</p>
+<h3 id="62-rusts-ownership-as-a-type-system">6.2 Rust's ownership as a type system</h3>
+<p>The borrow checker is not an ad-hoc lint bolted onto a normal type system — it is a <strong>substructural type system</strong>, the academic lineage (linear logic, affine types) shipped industrially, and seeing it that way explains "why these exact rules."</p>
+<p>In a classical type system, a variable's type permits unlimited use. A <strong>substructural</strong> system restricts the <em>structural rules</em> — how many times and in what order assumptions may be used. <strong>Affine</strong> types allow <em>at most one</em> use: after you use (move) a value, it's gone from the static environment. That is precisely Rust's move semantics — <code>let b = a;</code> doesn't copy the binding's permissions, it <em>transfers</em> them, and a later use of <code>a</code> is not a runtime hazard but a type error ("value used after move"). References refine the discipline with the shared-XOR-mutable rule, and <strong>lifetimes</strong> make the temporal half checkable: each reference's type carries a <em>region</em> — an approximation of the span of code it may live through — and the checker verifies that no reference's region outlives its referent's. Use-after-free becomes ill-<em>typed</em>, not just ill-behaved: the same "make the invariant a type" move this guide keeps meeting (and the <a href="advanced-rust-study-guide.html">Advanced Rust guide</a> develops from the user's side).</p>
+<p>Mechanically, modern borrow checking (<strong>non-lexical lifetimes</strong>) runs not on the AST but on the <strong>MIR</strong> — rustc's mid-level IR (Ch. 7/14), a control-flow graph — computing the live range of each borrow as the set of CFG points it must remain valid through, then checking for conflicting access within ranges. Borrow-check errors are <em>dataflow analysis results</em>, which is why they speak in terms of points and paths ("borrow later used here") and why the move from lexical scopes to CFG liveness (NLL, 2018) eliminated whole classes of false rejections: the analysis got a finer notion of "where the borrow is actually alive."</p>
+<h3 id="63-the-frontier-briefly-and-honestly">6.3 The frontier, briefly and honestly</h3>
+<p><strong>Generics implementation</strong> is a type-system decision with Ch. 8–10 consequences: monomorphization (Rust/C++ — specialize per instantiation: fast code, slow compiles, big binaries) versus erasure (Java/TS — one compiled artifact, types gone at runtime) versus dictionary passing (Haskell/Swift/Go — runtime descriptors threaded through; Swift's "witness tables" and Go's "GC shape stenciling" are engineering midpoints). <strong>Dependent types</strong> (Idris, Agda, Lean) move values into types (<code>Vector n Int</code> — length in the type; out-of-bounds is ill-typed), at the price of type checking becoming theorem proving; their industrial shadow is <strong>refinement types</strong> (Liquid Haskell, F<em>) and, more diffusely, the way TypeScript's literal types + narrowing already track </em>values<em> flowing through types. </em><em>Effect systems</em><em> (Koka, OCaml 5's effects, and Java's checked exceptions as the awkward ancestor) type </em>what a function does* (IO, throws, async) — async/await coloring is an effect system that grew without the theory. None of these are daily tools; all of them are where the daily tools' next features come from.</p>
+<h3 id="exercises-6">Exercises 6</h3>
+<ol>
+<li>Run the unification algorithm by hand on <code>fn compose(f, g) = fn x =&gt; f(g(x))</code> — fresh variables, equations, solved form. Check your answer against any ML/Haskell REPL (<code>:t (.)</code>).</li>
+<li>Trigger the occurs check in OCaml or Haskell with <code>fn f =&gt; f f</code>. Write out the failing equation. Why does this <em>particular</em> program have no HM type, and what feature (rank-n types) would accept a variant of it?</li>
+<li>Demonstrate let-polymorphism's edge: in OCaml, <code>let id = fun x -&gt; x in (id 1, id "a")</code> works but <code>(fun id -&gt; (id 1, id "a")) (fun x -&gt; x)</code> doesn't. Map each to §6.1's generalization rule.</li>
+<li>Write the three smallest Rust programs that each violate exactly one rule: use-after-move, two <code>&amp;mut</code>, borrow outliving owner. For each, identify what the affine/region analysis computed, using the compiler's own error text as evidence.</li>
+<li>Monomorphization vs. erasure, empirically: compile a Rust generic used at three types and find the three symbols (<code>nm</code> or <code>cargo asm</code>); then check Java's single erased method via <code>javap -c</code>. One sentence each: who pays, and when?</li>
+</ol>
+<hr>
+<h2 id="chapter-7-intermediate-representations-and-ssa">Chapter 7 — Intermediate Representations and SSA</h2>
+<h3 id="71-why-irs-exist">7.1 Why IRs exist</h3>
+<p>The AST is the wrong data structure for optimization: it's shaped like <em>source</em> (nested, named, syntactic) when optimizers need <em>flow</em> (what computes what, what reaches where). So compilers <strong>lower</strong> the tree into an IR built around explicit, atomic operations and explicit control flow. The classic shape is <strong>three-address code</strong> organized into <strong>basic blocks</strong> (straight-line instruction runs with one entry and one exit) connected by jumps into a <strong>control-flow graph (CFG)</strong>:</p>
+<pre><code class="language-text">// while (i &lt; n) { sum = sum + i; i = i + 1; }   lowers to:
+bb0:  jump bb1
+bb1:  t0 = i &lt; n
+      branch t0 → bb2, bb3
+bb2:  sum = sum + i
+      i   = i + 1
+      jump bb1
+bb3:  ...
+</code></pre>
+<p>Real compilers run a <em>tower</em> of IRs, each lowering discarding source detail and exposing machine detail: rustc goes AST → <strong>HIR</strong> (desugared source: <code>for</code> loops become <code>loop</code>+<code>match</code> on iterators) → <strong>MIR</strong> (the CFG above; where borrow checking and Rust-specific optimization run) → <strong>LLVM IR</strong> → machine code. The design rule of thumb: each analysis runs at the <em>highest</em> level that still expresses what it needs — borrow checking needs Rust's reference semantics (MIR), vectorization needs machine-ish operations (LLVM IR), and "unused variable" warnings need the AST.</p>
+<h3 id="72-ssa-the-representation-that-made-modern-optimization">7.2 SSA: the representation that made modern optimization</h3>
+<p><strong>Static Single Assignment</strong> form adds one constraint: <strong>every variable is assigned exactly once</strong>; re-assignments become new numbered versions (<code>i1</code>, <code>i2</code>, …). Where control flow merges, a <strong>φ (phi) node</strong> selects the version by incoming edge:</p>
+<pre><code class="language-text">bb1:  i1 = φ(i0 from bb0, i2 from bb2)        // loop header merges entry + back edge
+      sum1 = φ(sum0 from bb0, sum2 from bb2)
+      t0 = i1 &lt; n
+      branch t0 → bb2, bb3
+bb2:  sum2 = sum1 + i1
+      i2 = i1 + 1
+      jump bb1
+</code></pre>
+<p>Why this bookkeeping transformed the field: in SSA, <strong>def-use chains are the representation itself</strong>. "Who computes the value <code>sum2</code> uses?" — exactly one place, by construction; no reaching-definitions dataflow needed. Constant propagation becomes "if <code>x1 = 5</code>, substitute 5 at <code>x1</code>'s uses"; dead-code elimination becomes "no uses → delete"; value numbering becomes hash-consing. A generation of optimizations that each required bespoke iterative dataflow analyses collapsed into near-graph-rewrites — which is why <strong>every serious optimizer is SSA-based</strong> (LLVM, GCC's GIMPLE, V8's TurboFan/Turboshaft, HotSpot's C2, Go's SSA backend, Cranelift). Constructing SSA efficiently (placing φs only where needed, at <strong>dominance frontiers</strong>) is the one classical algorithm here; you should know it exists and what dominance means (block A dominates B if every path to B passes A — the CFG's "happens-before"), and let [Cytron et al.] stay a citation.</p>
+<h3 id="73-reading-llvm-ir">7.3 Reading LLVM IR</h3>
+<p>LLVM IR is the lingua franca and worth being able to read — typed, SSA, with explicit memory:</p>
+<pre><code class="language-llvm">define i64 @sumto(i64 %n) {
+entry:
+  br label %loop
+loop:
+  %i   = phi i64 [ 0, %entry ], [ %i2, %loop ]      ; SSA versions + φ
+  %sum = phi i64 [ 0, %entry ], [ %sum2, %loop ]
+  %sum2 = add i64 %sum, %i
+  %i2   = add i64 %i, 1
+  %done = icmp eq i64 %i2, %n
+  br i1 %done, label %exit, label %loop
+exit:
+  ret i64 %sum2
+}
+</code></pre>
+<p>The reading keys: <code>%locals</code> are SSA values (registers without limit — Ch. 9's register allocator maps them to the real eight-to-thirty-one); memory is <em>explicit</em> (<code>alloca</code> stack slots, <code>load</code>/<code>store</code> — and the <strong>mem2reg</strong> pass's whole job is promoting memory back into SSA values, which is why <code>-O0</code> output is full of loads/stores and <code>-O1</code> output isn't); types are everywhere; and undefined behavior has first-class citizens (<code>undef</code>, <code>poison</code>) — Ch. 8 explains why the optimizer <em>wants</em> UB representable. Generate your own with <code>clang -emit-llvm</code> or <code>rustc --emit=llvm-ir</code> and diff <code>-O0</code> against <code>-O2</code> once; it permanently changes what "the compiler optimized it" means to you.</p>
+<h3 id="exercises-7">Exercises 7</h3>
+<ol>
+<li>Lower by hand: <code>if (a &gt; b) { m = a; } else { m = b; } return m * 2;</code> — first to a CFG of three-address code, then to SSA with the φ placed correctly. Verify against <code>clang -O1 -emit-llvm</code> for the equivalent C.</li>
+<li>Why does a loop need φs at its <em>header</em> and not in its body? Construct the smallest loop where a φ in the wrong block gives a wrong answer.</li>
+<li>Compile a five-line function at <code>-O0</code> and run just mem2reg (<code>opt -passes=mem2reg f.ll -S</code>). Count <code>alloca</code>/<code>load</code>/<code>store</code> before and after; describe what the pass proved about each promoted variable.</li>
+<li>Dump rustc's MIR for a function with a <code>for</code> loop (<code>cargo rustc -- --emit=mir</code> or the Rust Playground's MIR button). Find: the desugared iterator protocol, the CFG blocks, and one <code>StorageLive</code>/<code>StorageDead</code> pair — what is the <em>latter</em> bookkeeping for (hint: Ch. 6.2)?</li>
+</ol>
+<hr>
+<h2 id="chapter-8-optimization">Chapter 8 — Optimization</h2>
+<h3 id="81-the-contract-as-if-and-ub-as-license">8.1 The contract: as-if, and UB as license</h3>
+<p>An optimizer may do anything that preserves the program's <strong>observable behavior</strong> (the "as-if" rule) — and the definition of "observable" is where languages diverge consequentially. In C, C++, and Rust, <strong>undefined behavior is not observable behavior</strong>: an execution containing UB has <em>no</em> defined semantics, so the optimizer may assume UB never happens and transform accordingly. This is not compiler-writer malice; it is the mechanism by which UB <em>buys performance</em>. The canonical example: signed overflow is UB in C, therefore <code>for (int i = 0; i &lt;= n; i++)</code> lets the compiler assume <code>i</code> never wraps, therefore the trip count is computable, therefore the loop can be unrolled/vectorized — the same loop with <code>unsigned i</code> (defined wraparound) genuinely optimizes worse. The infamous corollaries follow from the same logic: a null check <em>after</em> a dereference is deleted (the dereference "proved" non-null — UB otherwise), and <code>if (x + 1 &gt; x)</code> folds to <code>true</code> for signed <code>x</code>. Once you see optimizations as <em>theorems derived from the language's axioms</em>, "the compiler broke my code" reliably decodes to "my code asserted an axiom I didn't mean" — and <code>-fsanitize=undefined</code> is the tool that finds the assertion.</p>
+<h3 id="82-the-catalog-as-ir-transformations">8.2 The catalog, as IR transformations</h3>
+<p>Each classic optimization is a small rewrite on Ch. 7's SSA, shown here in before/after spirit:</p>
+<ul>
+<li><strong>Constant folding &amp; propagation</strong>: compute at compile time (<code>x = 3*4</code> → <code>x = 12</code>), substitute known constants through def-use chains, cascading (folding exposes more folding). With branches: <strong>sparse conditional constant propagation</strong> folds <code>if (false)</code> arms away entirely.</li>
+<li><strong>Dead code elimination (DCE)</strong>: no uses → delete; unreachable blocks → delete. Mostly valuable as the <em>janitor</em> for other passes — inlining and folding leave corpses, DCE sweeps.</li>
+<li><strong>Common subexpression elimination / GVN</strong>: same operands + same operation = same value; compute once. In SSA this is value numbering — hash <code>add(%a,%b)</code> and reuse. The reason you don't hand-hoist <code>a[i]*b[i]</code> repeats.</li>
+<li><strong>Inlining</strong> — <em>the</em> enabling optimization: replace a call with the callee's body. Its direct win (call overhead) is minor; its real product is <strong>context</strong> — after inlining, constants flow into the body, branches on arguments fold, the abstraction tax of small functions drops to zero (this is why "many small functions" is free in optimized builds, and why C++/Rust iterator chains compile to loops: each closure inlines into the loop skeleton, then folding/DCE dissolve the scaffolding — "zero-cost abstraction" <em>is</em> inlining plus cleanup). The cost is code growth, hence heuristics (size budgets, call-site hotness) and the attribute escape hatches (<code>#[inline]</code>, <code>__attribute__((always_inline))</code>).</li>
+<li><strong>Loop optimizations</strong>: <strong>LICM</strong> (loop-invariant code motion — hoist computations that don't change per iteration, including bounds-check components); <strong>unrolling</strong> (replicate the body to amortize branch overhead and expose ILP); <strong>vectorization</strong> (rewrite element-at-a-time loops into SIMD lanes — the highest-payoff and most fragile transformation: one may-alias pointer or cross-iteration dependence and the vectorizer declines; <code>-Rpass=loop-vectorize</code> / <code>-Rpass-missed</code> makes clang <em>tell you why</em>, a criminally underused flag); strength reduction (multiply-by-index → running add).</li>
+<li><strong>Scalar replacement / SROA and escape analysis</strong>: prove an aggregate or allocation never escapes, then dissolve it into SSA values entirely — the pass that makes "allocate a small struct per iteration" free in Rust/C++ and (as escape analysis) lets JVMs stack-allocate objects.</li>
+</ul>
+<p>Two systemic truths complete the picture. <strong>Phase ordering</strong>: passes enable each other (inline → fold → DCE → now another inline is attractive…), there is no optimal order, and real pipelines (<code>opt -O2</code> is literally a list of ~100 passes) are tuned by benchmark archaeology. And <strong>alias analysis is the silent gatekeeper</strong>: nearly every reordering needs "do these pointers overlap?", the answer is usually "maybe," and "maybe" kills the transformation — this is why Fortran beat C at numerics for decades (no aliasing by rule), why <code>restrict</code> and Rust's <code>&amp;mut</code>-noalias guarantee matter materially, and why so many "the compiler should obviously…" complaints end at a may-alias edge.</p>
+<h3 id="83-beyond-single-module-lto-and-pgo">8.3 Beyond single-module: LTO and PGO</h3>
+<p>Inlining stops at what the compiler can see, and separate compilation traditionally blinds it at file boundaries — <strong>link-time optimization</strong> (<code>-flto</code>) defers optimization until the whole program is visible (cross-module inlining, dead-global elimination), for link-time cost. <strong>Profile-guided optimization</strong> closes the other gap — the compiler's guesses about hotness: run an instrumented build on representative input, recompile with real branch/call frequencies; typical single-digit-to-teens percent on branchy server code, and the same data JITs get <em>for free</em> by construction — which is the bridge to Chapter 12: a JIT is a compiler whose PGO run is the program's own execution, continuously.</p>
+<h3 id="exercises-8">Exercises 8</h3>
+<ol>
+<li>On Compiler Explorer: write a C function summing <code>0..n</code> with <code>int i</code> vs. <code>unsigned i</code> at <code>-O2</code> and diff the assembly. Find the transformation the UB enabled. Then add <code>-fwrapv</code> and watch it disappear.</li>
+<li>Demonstrate inlining-as-enabler: a <code>square(x)</code> helper called as <code>square(3) + square(k)</code> — show at <code>-O2</code> that one call became a constant and the other became a multiply, with no <code>call</code> anywhere. Then <code>__attribute__((noinline))</code> it and count what returns.</li>
+<li>Get the vectorizer to talk: a float-array loop with <code>-O3 -Rpass=loop-vectorize</code>, then break it three ways (potential aliasing via two pointer params; a cross-iteration dependency; an early-exit branch) and read <code>-Rpass-missed</code>'s explanation for each.</li>
+<li>Write the multiply-shift strength-reduction table empirically: compile <code>x*2</code>, <code>x*7</code>, <code>x*9</code>, <code>x/2</code> (signed!), <code>x%8</code> at <code>-O2</code> and explain each emitted sequence — the signed-division one is subtler than it looks.</li>
+<li>Run a small CPU-bound program under PGO (clang: <code>-fprofile-instr-generate</code> → run → <code>-fprofile-instr-use</code>) and measure. Then write one sentence on why V8 doesn't need this flag.</li>
+</ol>
+<hr>
+<h2 id="chapter-9-code-generation">Chapter 9 — Code Generation</h2>
+<h3 id="91-from-infinite-registers-to-sixteen">9.1 From infinite registers to sixteen</h3>
+<p>The backend's three jobs, in order: <strong>instruction selection</strong> (map IR operations to machine instructions — mostly pattern-matching over the IR DAG, where the interesting wins are fused patterns: multiply-add → <code>lea</code> or FMA, compare-and-branch fusion), <strong>instruction scheduling</strong> (order operations to keep the CPU's pipelines fed — less critical on modern out-of-order cores, still alive for in-order and GPU targets), and the star of the chapter, <strong>register allocation</strong>: the IR has unlimited SSA values; the machine has ~16 general-purpose registers; map the former onto the latter, <strong>spilling</strong> the overflow to stack slots.</p>
+<p>The classical formulation is elegant: build an <strong>interference graph</strong> (one node per live range; an edge where two ranges are simultaneously live), and <strong>color it with k colors</strong> (k = number of registers) — adjacent nodes get different colors, colors are registers, and if the graph won't k-color, pick a node to spill and retry (Chaitin's algorithm). Graph coloring is NP-complete in general, but the heuristics are excellent and this is what AOT compilers' top tiers descend from. The pragmatic alternative — <strong>linear scan</strong> — sorts live ranges by start point and greedily assigns, in near-linear time, at a few-percent code-quality cost: which is exactly the trade a JIT wants, and why baseline/mid-tier JIT compilers (and Cranelift, and LLVM's <code>-O0</code>) allocate this way while <code>-O2</code> does the expensive thing. The visible artifact of allocation pressure in any disassembly: spill/reload pairs (<code>mov [rsp+24], rax</code> … <code>mov rax, [rsp+24]</code>) — when a hot loop is full of them, the function has more live values than the machine has names, and the <em>source-level</em> fix is usually reducing simultaneously-live temporaries.</p>
+<h3 id="92-calling-conventions-the-abi-as-treaty">9.2 Calling conventions: the ABI as treaty</h3>
+<p>A <strong>calling convention</strong> is the contract that lets separately-compiled functions interoperate: where arguments go (System V x86-64: first six integer args in <code>rdi rsi rdx rcx r8 r9</code>, floats in <code>xmm0–7</code>, the rest on the stack; returns in <code>rax</code>), who saves which registers (<strong>caller-saved</strong> registers may be clobbered by any call — the caller stashes them if it cares; <strong>callee-saved</strong> must be restored — the callee stashes them if it uses them; allocation interacts with this constantly), and how stack frames are laid out (return address, saved frame pointer, locals, alignment rules). This treaty is most of what "ABI" means, it is per-OS-per-architecture (Windows x64 differs from System V), and it is why FFI (the <a href="advanced-rust-study-guide.html">Advanced Rust guide</a>'s Part 9) is a <em>binary</em> discipline, not just a header-file one. Two downstream facts worth wiring in: <strong>tail calls</strong> (a call in return position can reuse the frame — <code>jmp</code> instead of <code>call</code>; guaranteed in Scheme, opportunistic in LLVM, famously absent from CPython by design) and <strong>the frame walk</strong> (how debuggers and unwinders climb the stack — and why omitting frame pointers for one extra register made profilers' lives miserable for a decade until <code>-fno-omit-frame-pointer</code> came back into fashion).</p>
+<h3 id="exercises-9">Exercises 9</h3>
+<ol>
+<li>Read a real frame: compile a recursive factorial at <code>-O0</code>, disassemble, and annotate every prologue/epilogue instruction (push, mov, sub) with its §9.2 role. Then at <code>-O2</code> — what happened to the frame, and which optimization did it (hint: it's also in Ch. 8)?</li>
+<li>Force spills: write a function with ~20 simultaneously-live <code>int</code> temporaries, compile at <code>-O2</code>, and find the spill slots. Reduce liveness (restructure into phases) and watch them disappear.</li>
+<li>From a Compiler Explorer disassembly of <code>f(a,b,c,d,e,f,g)</code> on x86-64 Linux, label each argument's location, and explain which registers the callee saved and why those.</li>
+<li>Demonstrate tail-call optimization: a tail-recursive sum in C at <code>-O2</code> becomes a loop (find the <code>jmp</code>); the non-tail version doesn't. Then explain in two sentences why CPython refuses this on principle (tracebacks).</li>
+</ol>
+<hr>
+<h2 id="chapter-10-linking-and-loading">Chapter 10 — Linking and Loading</h2>
+<h3 id="101-the-last-compiler-nobody-studies">10.1 The last compiler nobody studies</h3>
+<p>Compilation of each source file ends in an <strong>object file</strong>: machine code and data in named <strong>sections</strong> (<code>.text</code>, <code>.data</code>, <code>.rodata</code>, <code>.bss</code>), a <strong>symbol table</strong> (names this file defines and names it needs), and <strong>relocations</strong> — "patch this placeholder with the final address of symbol X when you know it." The <strong>linker</strong> merges sections, resolves every undefined symbol to exactly one definition, applies relocations, and emits the executable. That's the whole job, and it's where a distinct class of errors lives: <code>undefined reference</code> (you declared but never linked the definition — a <em>linker</em> error, which is why the compiler happily produced your <code>.o</code>), duplicate symbols and C++'s <strong>ODR</strong> violations (two definitions that differ — UB at link granularity, the classic source of "works in debug, crashes in release" when headers drift), and the archaeology of <strong>name mangling</strong> (C++/Rust encode types and modules into symbol names — <code>_ZN3foo3barEi</code>; <code>c++filt</code>/<code>rustfilt</code> decode them; <code>extern "C"</code> exists precisely to <em>not</em> mangle, which is why it's the FFI handshake).</p>
+<p>Two link-time behaviors explain chronic build mysteries. <strong>Static archive semantics</strong>: linking against <code>.a</code> archives pulls in only the members that resolve currently-undefined symbols, <em>in command-line order</em> — the ancient "it works if I list the libraries twice / in the other order" bug. <strong>Why C++ template-heavy objects are huge</strong>: every TU instantiates the templates it uses (Ch. 6's monomorphization), so twenty <code>.o</code> files each contain <code>std::vector&amp;lt;int&amp;gt;</code>'s methods; the linker deduplicates (weak/COMDAT symbols) but compile time and object size already paid — the mechanism behind both C++ build-time pain and the <code>-ffunction-sections -Wl,--gc-sections</code> diet (and LTO, Ch. 8.3, which moves the dedup-and-optimize into the link).</p>
+<h3 id="102-dynamic-linking-and-loading">10.2 Dynamic linking and loading</h3>
+<p>Dynamic libraries (<code>.so</code>/<code>.dylib</code>/<code>.dll</code>) defer resolution to <strong>load time</strong>: the executable records dependencies (<code>ldd</code> lists them), the <strong>dynamic loader</strong> (<code>ld.so</code> — itself the interpreter named in the ELF header, <code>PT_INTERP</code>) maps them and resolves symbols at startup. Cross-library calls indirect through the <strong>PLT/GOT</strong> (procedure linkage table / global offset table): the first call through a PLT entry triggers lazy resolution, then the GOT slot caches the real address — one extra indirect jump per cross-library call forever after, which is the measurable cost of dynamic linking (and what <code>-fno-plt</code>, <code>LD_BIND_NOW</code>, and protected visibility tune). The same machinery enables the ecosystem's tricks: <code>LD_PRELOAD</code> interposition (your malloc wrapper wins symbol resolution), ASLR (everything is position-independent code anyway), <code>dlopen</code> plugins, and the versioned-symbol dance behind "glibc version <code>GLIBC_2.34</code> not found." Static-vs-dynamic is therefore a real trade, not a fashion: static (Go's default, Rust mostly) buys deployment simplicity and LTO reach at the price of binary size and library-update-requires-rebuild; dynamic buys shared memory pages and centralized security updates at the price of startup work, version skew, and the dependency archaeology this section equips you to do.</p>
+<h3 id="exercises-10">Exercises 10</h3>
+<ol>
+<li>Produce and read the artifacts: compile two C files separately, run <code>nm</code> on each <code>.o</code> (find <code>U</code> vs <code>T</code> symbols), <code>objdump -r</code> for the relocations, link, and confirm the relocation got patched (<code>objdump -d</code> the final binary).</li>
+<li>Manufacture each classic error: an undefined reference; a duplicate symbol; an ODR violation that <em>links fine</em> (two TUs, same inline function name, different bodies) — and explain why the third is the dangerous one.</li>
+<li>Trace lazy binding live: a program calling <code>puts</code>, <code>objdump -d</code> the PLT stub, then run under <code>LD_DEBUG=bindings</code> and find the moment of resolution. Re-run with <code>LD_BIND_NOW=1</code>.</li>
+<li>Use <code>LD_PRELOAD</code> to interpose <code>malloc</code> with a counting wrapper on a real program. Explain, in symbol-resolution terms, why your definition won.</li>
+<li>Measure the template tax: a C++ file using <code>std::map&lt;std::string,int&gt;</code> — compile, and count the instantiated symbols in the object (<code>nm -C | grep std::map</code>). Add a second TU using the same map; verify the duplication, then watch the final binary contain one copy.</li>
+</ol>
+<hr>
+<h2 id="chapter-11-interpreters-and-bytecode-vms">Chapter 11 — Interpreters and Bytecode VMs</h2>
+<h3 id="111-two-interpreter-architectures">11.1 Two interpreter architectures</h3>
+<p>A <strong>tree-walking interpreter</strong> executes the AST directly — <code>eval(node)</code> recursing over children. It's the natural first implementation (Crafting Interpreters' first half; Ruby pre-1.9; many template engines and DSLs today) and the slowest: every operation pays pointer-chasing through heap-allocated nodes, dynamic dispatch on node type, and re-traversal of structure that never changes. The standard upgrade compiles the AST once into <strong>bytecode</strong> — a linear array of instructions for a virtual machine — and runs a tight dispatch loop over it. Linearization is most of the win: instruction fetch becomes array indexing with hot, contiguous, cache-friendly code, and the structure-walking cost is paid once at compile time.</p>
+<p>The lab VM, completing Calc — a <strong>stack machine</strong> (operands push/pop on an evaluation stack; the alternative, register VMs like Lua's, trades fewer-but-fatter instructions):</p>
+<pre><code class="language-python"># Compiler: AST → (code, consts);  ops: PUSH,LOAD,STORE,ADD,MUL,LT,JMP,JF,PRINT
+def compile_expr(node, code, consts):
+    tag = node[0]
+    if tag == &quot;num&quot;:
+        consts.append(node[1]); code += [(&quot;PUSH&quot;, len(consts)-1)]
+    elif tag == &quot;var&quot;:   code += [(&quot;LOAD&quot;, node[1])]
+    elif tag == &quot;binop&quot;:
+        compile_expr(node[2], code, consts); compile_expr(node[3], code, consts)
+        code += [({&quot;+&quot;:&quot;ADD&quot;,&quot;*&quot;:&quot;MUL&quot;,&quot;&lt;&quot;:&quot;LT&quot;}[node[1]], None)]
+
+def run(code, consts):
+    stack, env, pc = [], {}, 0
+    while pc &lt; len(code):
+        op, arg = code[pc]; pc += 1
+        if   op == &quot;PUSH&quot;:  stack.append(consts[arg])
+        elif op == &quot;LOAD&quot;:  stack.append(env[arg])
+        elif op == &quot;STORE&quot;: env[arg] = stack.pop()
+        elif op == &quot;ADD&quot;:   b, a = stack.pop(), stack.pop(); stack.append(a + b)
+        elif op == &quot;MUL&quot;:   b, a = stack.pop(), stack.pop(); stack.append(a * b)
+        elif op == &quot;LT&quot;:    b, a = stack.pop(), stack.pop(); stack.append(a &lt; b)
+        elif op == &quot;JF&quot;:    pc = arg if not stack.pop() else pc
+        elif op == &quot;JMP&quot;:   pc = arg
+        elif op == &quot;PRINT&quot;: print(stack.pop())
+</code></pre>
+<p>This <em>is</em> CPython's architecture in miniature: <code>compile()</code> produces a code object (bytecode + constants + names), <code>ceval.c</code> runs the dispatch loop, and <code>dis.dis</code> shows you instructions that map one-to-one onto this toy's (<code>LOAD_FAST</code>, <code>BINARY_OP</code>, <code>POP_JUMP_IF_FALSE</code>). Run <code>dis</code> next to the lab VM once and the mapping locks in.</p>
+<h3 id="112-why-interpretation-is-slow-and-the-pre-jit-remedies">11.2 Why interpretation is slow, and the pre-JIT remedies</h3>
+<p>The dispatch loop's costs, in order: <strong>dispatch overhead</strong> (one indirect branch per VM instruction — historically hard for branch predictors; the classic remedy is <em>computed gotos / threaded code</em>, giving each opcode its own jump and the predictor per-opcode history — CPython uses it where the compiler allows, for double-digit-percent wins), <strong>operand boxing</strong> (every Calc/Python value is a heap object with a type tag — <code>a + b</code> on boxed floats is allocate-check-unbox-add-rebox; mainstream VMs shrink this with <em>tagged pointers</em> and <em>NaN-boxing</em>, packing small ints/floats into the pointer word itself), and <strong>generic operations</strong> (<code>BINARY_OP</code> must ask "what types?" every single time, though the answer is the same at this site for the millionth consecutive run).</p>
+<p>That last observation — <em>per-site type stability</em> — is the seam where modern CPython mines its speed without a full JIT: the <strong>specializing adaptive interpreter</strong> (<a href="https://peps.python.org/pep-0659/">PEP 659</a>, Python 3.11's headline ~25%) rewrites hot bytecode in place to specialized variants (<code>BINARY_OP</code> → <code>BINARY_OP_ADD_FLOAT</code>; <code>LOAD_ATTR</code> → a version that caches the attribute's location) with cheap inline guards that fall back when the assumption breaks. Run <code>dis.dis(f, adaptive=True)</code> after calling <code>f</code> in a loop and watch the instructions have <em>changed</em> — the interpreter is observing your program and editing itself, which is precisely the JIT idea (Ch. 12) stopping one step short of machine code.</p>
+<h3 id="exercises-11">Exercises 11</h3>
+<ol>
+<li>Finish the lab: compile <code>while</code> (backpatch the <code>JF</code>/<code>JMP</code> targets) and run a loop summing 0..99. Then implement the same program as a tree-walker and benchmark the two on 10⁷ iterations.</li>
+<li>Mirror it in CPython: <code>dis</code> the equivalent Python loop and produce a two-column table matching every CPython opcode to your VM's.</li>
+<li>Demonstrate specialization: a function adding floats in a loop; <code>dis.dis(f, adaptive=True)</code> before and after 1,000 calls. Then call it once with strings and dis again — find the de-specialization.</li>
+<li>Measure dispatch: add a <code>NOP</code>-padding option to the lab VM (every real op emits one NOP after it) and benchmark — you've isolated dispatch overhead from work. Estimate the per-instruction cost in ns.</li>
+<li>Why can't <code>env</code> be a Python dict in a <em>fast</em> VM? Sketch the slot-numbering fix (Ch. 4's resolver output) and implement <code>LOAD_SLOT n</code> — measure the win even in this toy.</li>
+</ol>
+<hr>
+<h2 id="chapter-12-jit-compilation">Chapter 12 — JIT Compilation</h2>
+<p>The chapter the topics sketch promised would change how you write hot loops. A JIT is a compiler whose profile data is the program's own execution: it watches, specializes for what it saw, and — the part that makes it an engineering discipline rather than a trick — <em>undoes</em> its bets when they go bad.</p>
+<h3 id="121-the-tiered-architecture">12.1 The tiered architecture</h3>
+<p>Modern VMs are <strong>tiered</strong>, because startup and peak speed want opposite compilers. <strong>V8</strong>'s ladder: <strong>Ignition</strong> (bytecode interpreter — also the profiler: it records, per call site and per operation, what types and targets it actually sees) → <strong>Sparkplug</strong> (baseline compiler: mechanical bytecode→machine-code transliteration, no IR, no optimization — exists purely because even dumb machine code beats dispatch overhead ~5×) → <strong>Maglev</strong> (mid-tier: SSA, the cheap high-value optimizations) → <strong>TurboFan</strong> (the optimizing tier: full SSA optimization fed by the recorded <strong>type feedback</strong>, emitting code specialized to observed reality). <strong>HotSpot</strong> runs the same play with different names (interpreter → C1 with profiling → C2/Graal), with method-entry and loop-back-edge counters deciding promotion, and <strong>on-stack replacement (OSR)</strong> handling the awkward case of a hot <em>loop</em> inside a once-called method — swapping to compiled code <em>mid-loop</em>, reconstructing the interpreter's state into the compiled frame's layout.</p>
+<p>The economics: each tier costs more to compile into and runs faster; the VM spends compile time only where running time concentrates. The numbers that make it intuitive — a function may run thousands of times in Ignition before Sparkplug touches it, and only the top sliver of hot code ever earns TurboFan — most code in a real app runs <em>forever</em> in the cheap tiers, and that's the correct allocation.</p>
+<h3 id="122-hidden-classes-and-inline-caches-the-heart-of-dynamic-language-speed">12.2 Hidden classes and inline caches: the heart of dynamic-language speed</h3>
+<p>The problem: in JavaScript (and Python and Ruby), <code>obj.x</code> is semantically a hash lookup — objects are dictionaries. Hash lookups per property access would cap the language at interpreter speed forever. The solution — descending from Smalltalk and the Self project, the research lineage V8 industrialized — has two halves:</p>
+<p><strong>Hidden classes (V8: <em>maps</em>; the literature: <em>shapes</em>).</strong> Although the language says "dictionary," real programs create objects in stereotyped ways. So the VM secretly maintains <em>classes</em> for them: an empty <code>{}</code> gets shape S0; adding <code>x</code> transitions to S1 ("has x at slot 0"); adding <code>y</code> to S2 ("x at 0, y at 1"). Every object created by the same constructor path marches through the same transition chain and ends at the same shape, holding its properties in <em>fixed slots</em> like a C struct. Property names map to offsets <em>in the shape</em>, once — not in each object, per access.</p>
+<p><strong>Inline caches (ICs).</strong> Each property-access <em>site</em> remembers the shapes it has seen and the offset each implies. The first execution of <code>return p.x</code> does the slow lookup, then caches "(shape S2 → slot 0)" <em>at that site</em>. Every later execution checks the incoming object's shape against the cache — one compare — and loads the slot directly: dictionary semantics at struct prices. Sites are <strong>monomorphic</strong> (one shape seen — the fast path: TurboFan will inline the access as compare-and-load), <strong>polymorphic</strong> (a few shapes — a small linear dispatch), or <strong>megamorphic</strong> (many shapes — the site gives up and does hash lookups forever).</p>
+<p>Now the performance folklore decodes into mechanism, which was the sketch's promise:</p>
+<ul>
+<li><em>"Initialize all properties in the constructor, in the same order"</em> — objects built identically share a shape; conditional or variably-ordered property addition forks the transition chain, and downstream sites go polymorphic.</li>
+<li><em>"Don't add properties after construction / don't <code>delete</code>"</em> — late addition transitions shapes (and <code>delete</code> typically demotes the object to actual-dictionary mode, the worst case).</li>
+<li><em>"<code>obj[key] = value</code> with dynamic keys in a hot loop is slow"</em> — dynamic keys defeat the entire mechanism: no per-site stable shape+offset to cache. A <code>Map</code> is the honest data structure for that access pattern, and now you know <em>why</em>.</li>
+<li><em>"Keep arrays packed and same-typed"</em> — arrays have element-kind shapes too (packed small-int → packed double → generic, a one-way ratchet per array); writing <code>1.5</code> into an int array, or punching a hole, permanently de-specializes its element accesses.</li>
+</ul>
+<p>CPython's 3.11+ specializing interpreter (Ch. 11.2) is this same idea — per-site caches keyed on observed types — implemented inside an interpreter; the concept is universal across dynamic-language VMs.</p>
+<h3 id="123-speculation-and-deoptimization-the-license-to-cheat">12.3 Speculation and deoptimization: the license to cheat</h3>
+<p>Type feedback makes TurboFan/C2 <em>speculative</em> compilers: "this site has only ever seen two Smis; compile an integer add and <strong>guard</strong> it." The guard is the crucial half — a cheap runtime check (shape compare, small-int tag check) that, on failure, triggers <strong>deoptimization</strong>: throw away the optimized frame, <em>reconstruct the interpreter's state</em> (every live variable mapped back to bytecode-level locations — the bookkeeping that makes speculation safe is most of its implementation cost), and resume in the interpreter, updating the feedback so the next compile is less naive. Speculation is why JITs beat AOT on dynamic languages (an AOT compiler must emit code correct for <em>all</em> inputs; a JIT emits code correct for <em>observed</em> inputs plus an escape hatch) — and deopt churn is the failure mode: a site that keeps deopting and recompiling ("deopt loops") runs slower than never optimizing. <code>node --trace-deopt</code> names the function, the reason (<code>wrong map</code>, <code>not a Smi</code>), and the bailout site; reading its output on your own hot function is the single most instructive half hour in this chapter. The same architecture explains HotSpot's famous behaviors: aggressive inlining through megamorphic-looking call sites <em>because</em> class-hierarchy analysis says only one implementation is loaded — with an <strong>uncommon trap</strong> deopt if a new class ever loads and falsifies the assumption. The JVM speculates on the <em>world</em>, not just on values.</p>
+<h3 id="124-the-wider-jit-landscape">12.4 The wider JIT landscape</h3>
+<p><strong>Method JITs</strong> (V8, HotSpot, .NET RyuJIT) compile function-at-a-time, as above. <strong>Tracing JITs</strong> (LuaJIT, PyPy) record a <em>hot loop's actual executed path</em> — across function boundaries — into a linear trace, optimize that straight line ruthlessly (no merge points = perfect knowledge), and guard every place the trace could diverge: spectacular on tight loops, fragile on branchy code (trace explosion). <strong>Meta-tracing</strong> (PyPy/RPython, GraalVM's partial evaluation) generates the JIT <em>from the interpreter</em> — write a Python interpreter, get a Python JIT — which is how PyPy stays compatible with a moving language. And <strong>CPython's own JIT</strong> (3.13+, experimental): a <strong>copy-and-patch</strong> design — precompiled machine-code templates per micro-op, stitched and patched at runtime — chosen explicitly for low engineering cost and maintainability over peak performance; modest gains so far, architecturally significant as the end of "Python will never have a JIT." The honest cross-cutting trade: JITs buy peak speed with warmup, memory (bytecode + profiles + multiple compiled copies), and complexity; AOT buys predictability and instant start. Hence the hybrid era: AOT for serverless cold starts (GraalVM native-image), JIT for long-running servers, and profile-guided AOT (Ch. 8.3) as the meeting point.</p>
+<h3 id="exercises-12">Exercises 12</h3>
+<ol>
+<li>Watch the ladder: run a hot numeric function under <code>node --trace-opt</code> and identify each tier promotion. Add <code>%OptimizeFunctionOnNextCall</code> (with <code>--allow-natives-syntax</code>) to force it, and <code>%GetOptimizationStatus</code> to interrogate it.</li>
+<li>Cause and read a deopt: optimize a two-Smi add loop, then pass <code>0.5</code>, then a string, under <code>--trace-deopt</code>. For each, write down the guard that failed in §12.3's vocabulary.</li>
+<li>Demonstrate shape discipline empirically: benchmark summing <code>.x</code> over a million objects — (a) all constructed identically, (b) half constructed with properties in swapped order, (c) keys assigned dynamically. Explain the three numbers with monomorphic/polymorphic/megamorphic.</li>
+<li>Demonstrate the array-kind ratchet: fill an array with ints, benchmark a sum; write one <code>1.5</code> into it; re-benchmark. Find the V8 element-kind documentation that names what happened.</li>
+<li>Compare the philosophies in one experiment: the same numeric loop in CPython 3.13 (<code>PYTHON_JIT=1</code> if available), PyPy, and Node. Relate the three results to method-vs-tracing-vs-copy-and-patch and to warmup.</li>
+</ol>
+<hr>
+<h2 id="chapter-13-garbage-collection-and-memory-runtimes">Chapter 13 — Garbage Collection and Memory Runtimes</h2>
+<h3 id="131-the-problem-and-the-two-classical-answers">13.1 The problem and the two classical answers</h3>
+<p>A runtime must reclaim unreachable memory. <strong>Reference counting</strong> (CPython, Swift/ARC, Rust's <code>Rc</code>) frees at the instant the last reference drops — deterministic, incremental by nature, and broken by <strong>cycles</strong> (two objects referencing each other never hit zero; CPython runs a separate generational <em>cycle collector</em> on top of refcounting for exactly this, and Swift answers with <code>weak</code>/<code>unowned</code> — the same strong-edges-vs-back-edges discipline as the <a href="advanced-rust-study-guide.html">Advanced Rust guide</a>'s <code>Weak</code>). Its hidden costs are write traffic (every pointer assignment mutates two counts — cache-line pings; this, plus the GIL story, is why CPython's counts were a multicore problem and why 3.12+ <em>immortal objects</em> and biased counting exist). <strong>Tracing</strong> (everything else): start from <strong>roots</strong> (stacks, registers, globals), walk the object graph, and everything unreached is garbage — collecting cycles for free, deferring all cost to collection time.</p>
+<p>The tracing family tree, by what they do with survivors: <strong>mark-sweep</strong> (mark reachable, sweep the rest onto free lists — no moving, fragments over time), <strong>mark-compact</strong> (slide survivors together — defragments, costs a second pass and pointer fixups), <strong>copying/semispace</strong> (copy survivors to a fresh space — allocation becomes pointer-bump, cost proportional to <em>live</em> data only, at 2× space). The performance-defining empirical fact is the <strong>generational hypothesis</strong>: most objects die young. So real collectors split the heap: a small <strong>nursery</strong> collected often with a copying collector (cheap — most of it is dead, and you only touch survivors), and a <strong>tenured</strong> space for objects that survive promotion, collected rarely with mark-sweep/compact. The price of the split is the <strong>write barrier</strong>: an old object pointing at a young one would be invisible to a nursery-only trace, so <em>every pointer store</em> runs a tiny check recording old→young edges (card tables, remembered sets) — a few percent on all mutator writes, buying order-of-magnitude cheaper collections. Barriers are the reason "GC overhead" exists even between pauses, and the hook on which all concurrent collection hangs.</p>
+<h3 id="132-the-modern-problem-pauses-and-the-concurrent-answers">13.2 The modern problem: pauses, and the concurrent answers</h3>
+<p>Stop-the-world collection scales pauses with heap size — unacceptable at multi-GB heaps and millisecond SLOs — so modern collectors run <strong>concurrently with the mutator</strong>, which immediately raises the correctness problem: the graph mutates <em>while being traced</em>. The classical framework is <strong>tri-color marking</strong> (white = unvisited, gray = found-not-scanned, black = scanned): collection is complete when no gray remains, and the invariant that must hold is <em>no black→white pointer without a gray protector</em> — which a mutator can violate in one assignment. Write barriers again, now as invariant-keepers: snapshot-at-the-beginning or incremental-update barriers intercept the dangerous stores. Production geography: <strong>V8/Orinoco</strong> (parallel nursery scavenging, concurrent marking, incremental everything — browser frame budgets drove it), <strong>HotSpot G1</strong> (region-based, pause-target-driven, the default), <strong>ZGC/Shenandoah</strong> (the low-latency end: concurrent <em>relocation</em> via colored pointers/forwarding, pauses in the ~millisecond range nearly independent of heap size — trading throughput via load barriers on reads), and <strong>Go's GC</strong> (concurrent mark-sweep, non-moving, tuned monomaniacally for low pause at the cost of throughput and compaction — a <em>values-first language</em> needs less from its GC, which is the next point).</p>
+<h3 id="133-gc-pressure-is-a-language-design-and-program-design-variable">13.3 GC pressure is a language-design and program-design variable</h3>
+<p>The collector you need depends on the garbage you make. Languages with <strong>value types</strong> (Go structs, C#/Java's incoming value classes, Rust's everything-by-default) let data live in stacks, arrays, and registers — no header, no trace, no barrier; JVM-style "everything is a heap object" maximizes allocation rate and pointer density, then asks heroic collectors to cope (and <strong>escape analysis</strong> — Ch. 8's SROA at the JIT level — to quietly un-heap what it can prove local). The program-level corollaries you can act on this week: allocation <em>rate</em> drives GC cost more than heap <em>size</em> (the per-request <code>[]byte</code> in the hot path is a nursery tax — pools and buffer reuse attack exactly this); object <em>pointer density</em> drives trace cost (a <code>[]struct</code> traces as one slab; a <code>[]*struct</code> is a pointer chase per element — the same struct-of-arrays instinct as cache optimization, because the GC is just another graph walker); and <strong>finalizers are not destructors</strong> (they run late, maybe never, on a GC thread — resource cleanup belongs to deterministic constructs: <code>defer</code>, <code>with</code>, <code>try-with-resources</code>, RAII).</p>
+<h3 id="exercises-13">Exercises 13</h3>
+<ol>
+<li>Demonstrate CPython's two-tier reality: create a reference cycle with <code>__del__</code>-free objects, show refcounting alone leaks it (<code>gc.disable()</code>, <code>gc.get_count()</code>), then <code>gc.collect()</code> it. Then give it <code>__del__</code> and read what changed in <code>gc.garbage</code> semantics across Python versions.</li>
+<li>Observe generational behavior in V8 or the JVM: allocate short-lived objects in a loop under <code>node --trace-gc</code> (or <code>-Xlog:gc</code>) and identify nursery collections vs. major ones; then retain everything in a global list and watch promotion change the log's shape.</li>
+<li>Write the write-barrier cost experiment in Go: sum over <code>[]T</code> vs <code>[]*T</code> (same data) with GC forced (<code>runtime.GC()</code> between runs, <code>GODEBUG=gctrace=1</code>). Attribute the difference between mutator and GC time.</li>
+<li>Trigger and fix allocation-rate pressure: a Go or Java hot loop allocating a buffer per iteration vs. a reused/pooled buffer — compare GC logs, not just latency. Which §13.3 lever did you pull?</li>
+<li>Explain, in tri-color terms, the exact race a concurrent collector without write barriers loses: give the three-object, two-step interleaving where a live object is freed.</li>
+</ol>
+<hr>
+<h2 id="chapter-14-the-real-compilers-toured">Chapter 14 — The Real Compilers, Toured</h2>
+<p>Theory attached to the four systems you most likely touch, each chosen because it embodies one architectural thesis.</p>
+<h3 id="141-cpython-the-transparent-interpreter">14.1 CPython: the transparent interpreter</h3>
+<p>The full pipeline, every stage importable (Ch. 1.3): PEG parser (Ch. 3) → AST (<code>ast</code>) → symbol tables (<code>symtable</code>, Ch. 4) → bytecode compiler with small peephole optimizations (<code>dis</code>, Ch. 11) → the <code>ceval.c</code> dispatch loop with adaptive specialization (Ch. 11.2) → refcounting + cycle GC (Ch. 13.1), with the experimental copy-and-patch JIT (Ch. 12.4) and free-threading both arriving via the same modernization push. The thesis CPython embodies: <strong>simplicity and introspectability as product features</strong> — the implementation is readable C, every stage is exposed to Python code, and the C-API's stability constraints (refcounts in the ABI!) are the honest reason "just add a JIT/remove the GIL" took thirty years — the lesson being that an implementation's <em>compatibility surface</em>, not its algorithms, is usually what petrifies it.</p>
+<h3 id="142-tsc-a-checker-wearing-a-compiler-costume">14.2 tsc: a checker wearing a compiler costume</h3>
+<p>TypeScript's compiler is architecturally upside-down by this guide's pipeline: scanner → parser (never rejects — error-tolerant trees for the IDE, Ch. 3.3) → <strong>binder</strong> (Ch. 4's resolution) → <strong>checker</strong> (the overwhelming bulk: structural subtyping, narrowing, inference — Ch. 5) → emitter that mostly <em>erases</em> (types vanish; downleveling old targets is the only real codegen). There is no IR, no optimizer, no SSA — JavaScript engines own performance; tsc owns <em>judgment</em>. Two architectural facts worth knowing: the checker is substantially <strong>lazy</strong> (types computed on demand, cached — why <code>--noEmit</code> type-checking dominates build time and why the <strong>language service</strong> can answer hover/completion queries on a dirty file in milliseconds), and the same codebase <em>is</em> the IDE backend (tsserver) — tsc is the clearest industrial proof that a "compiler" can be primarily an analysis engine, and that error-tolerance (Ch. 3) is a first-class architectural requirement, not polish.</p>
+<h3 id="143-rustc-the-tower-of-irs-queried">14.3 rustc: the tower of IRs, queried</h3>
+<p>rustc is the guide's Ch. 6–8 made flesh: AST → <strong>HIR</strong> (desugared; type inference and trait resolution here) → <strong>THIR/MIR</strong> (the CFG where <strong>borrow checking</strong> runs as dataflow — Ch. 6.2 — along with Rust-aware optimization and monomorphization) → LLVM IR → machine code. Its two distinctive theses: <strong>put each analysis on the right IR</strong> (the borrow checker needed a CFG, so they built MIR — most languages never give their mid-level semantics a first-class representation), and the <strong>query system</strong> — the compiler is structured not as sequential passes but as memoized queries (<code>type_of(def_id)</code>, <code>borrowck(def_id)</code>) with automatic dependency tracking, which is what makes <strong>incremental compilation</strong> sound (a change re-executes only invalidated queries) and what rust-analyzer shares conceptually. The cost ledger is honest too: monomorphization + LLVM at <code>-O2</code> + the query graph's bookkeeping = the compile times Rust is famous for; the <a href="https://rustc-dev-guide.rust-lang.org/">rustc dev guide</a> documents all of it with unusual candor.</p>
+<h3 id="144-llvm-and-the-contrast-case-go">14.4 LLVM and the contrast case, Go</h3>
+<p><strong>LLVM</strong> is the thesis "a shared, typed, SSA middle-end is a public good": frontends (clang, rustc, swiftc, Zig…) buy decades of optimization and every backend for the price of emitting IR — the reason new AOT languages are viable as small projects at all. The costs that come with the purchase: compile time (the pass pipeline is heavy), a C-centric semantic bias that other languages must encode around (UB flavors, aliasing models), and a moving API. <strong>Go</strong> is the deliberate counter-position: a from-scratch compiler with its own SSA backend, modest optimization, and a fanatical compile-speed/simplicity budget — because Go's designers priced developer iteration time above the last 10–20% of runtime performance, and <em>the build experience itself was a language goal</em>. Put side by side, rustc-on-LLVM and Go are the cleanest demonstration that compiler architecture is product strategy: the same textbook chapters, weighted by different values, produce visibly different tools.</p>
+<h3 id="exercises-14">Exercises 14</h3>
+<ol>
+<li>For one ten-line function, collect the artifact at every rustc stage: <code>--emit=hir,mir,llvm-ir,asm</code> (Playground or cargo). Annotate where inference, borrow checking, monomorphization, and vectorization each happened.</li>
+<li>Use tsserver like the IDE does: open a TypeScript file with a deliberate type error mid-function and confirm (in any editor) that completion still works <em>below</em> the error. Name the two Ch. 3/14.2 design decisions that made that possible.</li>
+<li>Demonstrate rustc's incrementality: <code>touch</code> vs. meaningful-edit a leaf function in a medium crate with <code>CARGO_INCREMENTAL=1</code> and compare rebuild times; explain in query terms.</li>
+<li>Read one real pass: pick LLVM's <code>InstCombine</code> description (or one rule in its source) and write the before/after IR for one peephole it performs. Cite the Ch. 8 category it belongs to.</li>
+</ol>
+<hr>
+<h2 id="chapter-15-where-to-go-next">Chapter 15 — Where to Go Next</h2>
+<p><strong>The build-one path</strong> (the highest-value path): finish what the lab started — <a href="https://craftinginterpreters.com/"><em>Crafting Interpreters</em></a> end to end (tree-walker in Java, bytecode VM with GC in C; the second half is the best VM-internals text ever written at any price), then Thorsten Ball's <a href="https://interpreterbook.com/"><em>Writing an Interpreter/Compiler in Go</em></a> for a second reps-building pass, then the <a href="https://llvm.org/docs/tutorial/">LLVM Kaleidoscope tutorial</a> to bolt a real backend onto your own frontend.</p>
+<p><strong>The optimize-one path</strong>: Cornell <a href="https://www.cs.cornell.edu/courses/cs6120/2020fa/self-guided/">CS 6120</a> (build passes over a teaching IR — SSA, DCE, LICM, with autograded homework), then the <em>SSA Book</em> (<a href="https://pfalcon.github.io/ssabook/latest/book-full.pdf">free draft</a>) when you want the theory load-bearing, with Cooper &amp; Torczon as the reference shelf (the Dragon Book is historically important and pedagogically obsolete for self-study — parsing-heavy in exactly the proportion modern practice isn't).</p>
+<p><strong>The runtime path</strong>: Mara Bos-grade sources for VMs are blogs and talks — the <a href="https://v8.dev/blog">V8 blog</a> (shapes/ICs/Maglev/Orinoco posts are chapter-quality), JVM internals via <a href="https://shipilev.net/">Aleksey Shipilëv's writings</a> (JMM, GC, benchmarking methodology), <em>The Garbage Collection Handbook</em> (Jones et al.) as the GC bible, and PyPy/GraalVM papers for the meta end.</p>
+<p><strong>The professional path</strong>: read production compiler code guided by its own docs — the <a href="https://rustc-dev-guide.rust-lang.org/">rustc dev guide</a> is the gold standard of compiler-internals documentation; tsc's <a href="https://github.com/microsoft/TypeScript/wiki/Architectural-Overview">architecture wiki</a> and CPython's <a href="https://devguide.python.org/internals/">internals docs</a> follow. And keep the habit this guide tried to install: <strong>Compiler Explorer open in a tab, <code>dis</code>/<code>--emit</code> one keystroke away, every performance claim taken to the tool</strong>. The single sentence to retain: a language is a UI over a pipeline of representations, and once you can name the representation a behavior lives in — token, tree, type, IR, machine code, runtime — you can predict it, measure it, and when necessary, defeat it.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>
