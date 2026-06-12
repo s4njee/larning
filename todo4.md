@@ -120,7 +120,7 @@ Part, click-to-reveal explanation included.
 - [x] `TERRAFORM_STUDY_GUIDE.md` — 6 quizzes (12 questions; declarative/DAG/diff-as-contract, for_each vs count, what state is, remote backend locking, module-as-typed-function, sensitive vs ephemeral/write-only)
 - [x] `ANSIBLE_STUDY_GUIDE.md` — 5 quizzes (14 questions; idempotency/module contract, handlers & blocks, register/set_fact & vault, serial/run_once/delegate_to, pipelining/mitogen/fact-caching)
 - [x] `GITHUB_ACTIONS_STUDY_GUIDE.md` — 5 quizzes (15 questions; ephemeral-runner execution model, triggers/contexts/$GITHUB_ENV, caching/matrix/artifacts, OIDC/environments, pull_request_target/script-injection/SHA-pinning)
-- [ ] `OBSERVABILITY_STUDY_GUIDE.md`
+- [x] `OBSERVABILITY_STUDY_GUIDE.md` — 6 quizzes (18 questions; cardinality/monitoring-vs-observability, counters/rate/histograms, traces/sampling/propagation, OTel neutrality/auto-vs-manual/gateway, SLI-SLO-SLA/error-budgets/burn-rate, symptom-vs-cause alerting)
 - [ ] `CLOUDFLARE_STUDY_GUIDE.md`
 - [ ] `AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md`
 - [ ] `GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 28/65 (Batch 1 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 29/65 (Batch 1 complete).

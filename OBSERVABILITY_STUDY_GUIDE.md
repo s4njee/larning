@@ -64,6 +64,29 @@ A working stack serves all five with one ingestion path. Failing to acknowledge 
 
 References: [Distributed Systems Observability — Cindy Sridharan](https://www.oreilly.com/library/view/distributed-systems-observability/9781492033431/), [Observability Engineering — Majors, Fong-Jones, Miranda](https://www.oreilly.com/library/view/observability-engineering/9781492076438/), [Google SRE Workbook, Ch. 5](https://sre.google/workbook/monitoring/)
 
+```quiz
+Q: What's the operative distinction between monitoring and observability?
+- [ ] Monitoring uses metrics; observability uses logs
+- [x] Monitoring answers questions you predicted in advance; observability lets you ask new ones after the fact without redeploying
+- [ ] Monitoring is real-time; observability is batch
+- [ ] Observability is just monitoring with prettier dashboards
+> Monitoring covers *known unknowns* — you pick what to measure and alert on thresholds you set ahead of time. Observability is about *unknown unknowns*: instrumenting richly enough that you can slice by a dimension you never anticipated (Android 14, EU-West, a specific flag) without shipping new code. The tools overlap, but the design goal — arbitrary questions in high cardinality, unpredicted — is what makes a system observable.
+
+Q: Why must a metric label never be a user ID or request UUID?
+- [ ] Labels can't hold strings that long
+- [ ] It would violate GDPR
+- [x] Each distinct label combination is a separate time series, so unbounded label values explode storage and query cost and can take down the whole stack
+- [ ] User IDs change too often to be useful
+> Cardinality — the number of distinct label combinations — is the central constraint. Every combination is its own time series in Prometheus, index entry in Loki, row in your TSDB, and cost grows at least linearly in active series. A UUID-shaped label is effectively infinite cardinality, the most common way to take down observability, alerting, and dashboards at once. High-cardinality dimensions belong on events/traces, where each row stands alone and you aggregate at query time.
+
+Q: You want to slice incidents by a 10,000-value tenant dimension and also by free-form request context. Where does each belong?
+- [ ] Both as metric labels — that's what labels are for
+- [ ] Both on traces only
+- [x] Bounded/sharded dimensions can sometimes be metric labels; truly high-cardinality, per-request context belongs on events/traces
+- [ ] Neither — drop them to control cost
+> The metrics-vs-events spectrum is the design question. Metrics are pre-aggregated time series, cheap but cardinality-bound, so a 10K-tenant label is borderline and needs sharding or care. Per-request, arbitrary-dimension context belongs on events/traces, which store each row independently and aggregate at query time — that's exactly the flexibility-for-storage-cost trade the whole field turns on.
+```
+
 ---
 
 ## Phase 2: Metrics
@@ -307,6 +330,29 @@ Monitor your own observability stack:
 - Top-cardinality metrics via the `/api/v1/status/tsdb` endpoint.
 
 References: [Cardinality is key (Grafana blog)](https://grafana.com/blog/2022/02/15/avoid-prometheus-high-cardinality-issues-and-fix-them-when-they-happen/)
+
+```quiz
+Q: Why do you almost never query a counter's raw value directly, reaching for `rate()` instead?
+- [ ] Raw counter values are stored compressed and unreadable
+- [x] The raw total is meaningless on its own and resets on restart; `rate()` gives a per-second delta and handles resets automatically
+- [ ] `rate()` is the only function allowed on counters by the linter
+- [ ] Counters aren't stored, only their rates are
+> A counter is a monotonically increasing total that resets to zero on process restart, so its absolute value tells you little and a naive subtraction across a restart would go negative. `rate()` computes the per-second increase over a window and transparently accounts for resets, which is why "rate of a counter" is the single most important PromQL idiom. You store totals and derive rates, never the other way around.
+
+Q: Why must you write `sum(rate(x[5m]))` and not `rate(sum(x)[5m])`?
+- [ ] `sum` is slower than `rate`
+- [x] You must rate each counter series before aggregating, because summing across counter resets behaves badly (and the latter is a syntax error)
+- [ ] `rate` can only take one series at a time
+- [ ] Aggregation must always come first in PromQL
+> `rate()` needs to see each individual counter series to detect and correct its resets. If you summed first, a single instance restarting would corrupt the aggregate, and syntactically `rate()` wants a range vector of raw series, not an aggregated instant vector. Rate-then-aggregate is the rule: it keeps reset handling correct per series and then combines the clean per-second rates.
+
+Q: Your p99 latency query always returns exactly `0.1` even as latency clearly varies. What's the likely cause?
+- [ ] `histogram_quantile` is broken on native histograms
+- [ ] You forgot to `sum by (le)`
+- [x] Your real latency exceeds your largest meaningful bucket, so the quantile interpolates into the `0.1` bucket and saturates there
+- [ ] The scrape interval is too long
+> Classic histogram quantiles are interpolated from the bucket boundaries, so accuracy depends entirely on bucket choice. If your latency lives between 50–100 ms but your buckets top out around `0.1`, p99 falls in that last bucket and you get `0.1` back every time — the histogram can't resolve detail it never bucketed. The fix is choosing buckets that bracket where your data actually lives (or moving to native histograms, which remove the tuning problem).
+```
 
 ---
 
@@ -560,6 +606,29 @@ Like Loki for logs, **Tempo** is "traces as Prometheus" — minimal indexing, tr
 
 References: [Tempo design](https://grafana.com/docs/tempo/latest/operations/architecture/), [Honeycomb tracing](https://docs.honeycomb.io/get-started/basics/tracing/)
 
+```quiz
+Q: Metrics show a checkout endpoint's p99 is 850ms but can't tell you where the time went. What does a trace add?
+- [ ] It lowers the latency by caching the slow call
+- [x] It shows the causal span breakdown across services, so you can see (e.g.) 420ms was the Stripe call
+- [ ] It counts how many checkouts happened
+- [ ] It replaces the need for metrics
+> A trace is the DAG of spans for one end-to-end request, each span timed and linked by parent. That structure turns "850ms somewhere" into "420ms in the Stripe call, 80ms in the stock SELECT" — the causal, per-request view metrics fundamentally can't give. Metrics tell you *how many* and *how slow in aggregate*; a trace tells you *which one* and *where the time went*.
+
+Q: What is the fundamental trade-off between head sampling and tail sampling?
+- [ ] Head sampling is more accurate; tail sampling is approximate
+- [x] Head decides cheaply at the start but can't keep an after-the-fact interesting trace; tail buffers every span to keep errors/slow ones but is expensive
+- [ ] Head sampling requires the OTel Collector; tail sampling doesn't
+- [ ] They produce identical results, just at different times
+> Head sampling makes the keep/drop decision at the trace's start and propagates it — cheap and coordination-free, but if the 99% you dropped contained the outlier, it's gone. Tail sampling collects and buffers every span and decides after the trace completes based on its properties (had an error, was slow), so you capture exactly the interesting traces — at the cost of buffering everything and a collector tier that groups all spans of a trace. The common hybrid head-samples a baseline and tail-samples 100% of errors/slow traces.
+
+Q: Why does cross-process context propagation (e.g. W3C `traceparent`) have to work for tracing to function at all?
+- [ ] It encrypts the spans in transit
+- [x] Without propagating the trace ID and parent span ID across service boundaries, downstream spans can't link into the same trace
+- [ ] It's only needed for tail sampling
+- [ ] It compresses span attributes
+> A trace is held together by a shared trace ID and the parent-span links between spans. When a request crosses a process boundary, those IDs must travel with it — that's what the `traceparent` header carries — or the downstream service starts an unrelated trace and the causal graph fragments. In-process propagation (thread/async-local context) and wire propagation must both agree for the spans to assemble into one trace.
+```
+
 ---
 
 ## Phase 5: OpenTelemetry
@@ -710,6 +779,29 @@ Application → OTLP/gRPC → Collector → OTLP/gRPC → Collector → backends
 Backends accept OTLP directly now: Tempo, Loki (logs), Mimir (metrics, via Prometheus remote_write or OTLP), Honeycomb, Datadog (via vendor exporter), etc. The collector is often optional — you can ship OTLP from app to backend — but the collector earns its keep for batching, sampling, redaction, and resource enrichment.
 
 References: [OTLP spec](https://github.com/open-telemetry/opentelemetry-proto)
+
+```quiz
+Q: What does instrumenting with OpenTelemetry primarily decouple?
+- [ ] Your metrics from your logs
+- [x] Your application code from your observability backend — you can swap Datadog for Tempo without touching instrumentation
+- [ ] Your services from each other
+- [ ] Your traces from their sampling decisions
+> OTel's central value is vendor neutrality: the API, SDK, OTLP protocol, and semantic conventions standardize how telemetry is produced and shipped, so the backend becomes a configuration choice rather than something baked into your code. Add in shared context across metrics/logs/traces and standardized attribute names, and you get tooling that works across stacks — which is why every major vendor accepts OTLP.
+
+Q: What's the recommended balance between auto- and manual instrumentation?
+- [ ] Manual only — auto-instrumentation is unreliable
+- [ ] Auto only — manual spans are redundant
+- [x] Both — auto for baseline HTTP/DB/gRPC coverage in days, manual for business spans and high-cardinality attributes you'll slice by
+- [ ] Neither — rely on the Collector to generate spans
+> Auto-instrumentation wraps popular libraries with no code changes, giving you broad coverage fast, but it can't know your business semantics ("which checkout flow") or attach the tenant/plan/flag dimensions you'll actually pivot on during an incident. Manual spans add exactly those. Start with auto everywhere, then layer manual instrumentation on the critical paths — the dimensions you add there are what make the system observable, not just monitored.
+
+Q: Why is a gateway tier of Collectors (not just per-host agents) required for tail sampling?
+- [ ] Gateways have more CPU
+- [x] Tail sampling must see all spans of a trace together to decide, so spans for one trace must be routed to the same collector
+- [ ] Agents can't export OTLP
+- [ ] Gateways encrypt the traces
+> The tail-sampling decision depends on properties of the *complete* trace (did any span error, was it slow), so every span belonging to a trace has to land on the same collector instance — typically via consistent hashing on trace ID at a gateway tier. A per-host agent only sees its own host's spans and can't make that whole-trace decision, which is why the agent-plus-gateway topology exists: agents attribute and batch, the gateway groups and samples.
+```
 
 ---
 
@@ -864,6 +956,29 @@ SLOs aren't just for online services. Examples from other domains (see also [DAT
 
 Define the SLI, measure it, set a target. The framework is the same.
 
+```quiz
+Q: Why insist on the SLI/SLO/SLA distinction instead of using "SLA" for everything?
+- [ ] SLAs are measured more precisely than SLOs
+- [x] An SLI is the measured number, an SLO is your internal target, an SLA is a contractual commitment with money attached — they involve different stakeholders and consequences
+- [ ] They're the same thing at different companies
+- [ ] SLOs are external and SLAs are internal
+> An SLI is the indicator (a measured ratio like "fraction of requests under 250ms"), an SLO is the internal objective over a window, and an SLA is the legal contract — usually weaker than the SLO so you keep headroom. Conflating them muddies who owns what: SLAs involve lawyers and credits, SLOs drive oncall and release decisions. The vague "SLA for everything" habit causes real org confusion.
+
+Q: What is the cultural purpose of an error budget?
+- [ ] To punish teams that cause incidents
+- [x] To convert "is it reliable?" into a signed number that governs how fast you ship — full budget means take more risk, empty means pay down reliability
+- [ ] To guarantee zero downtime
+- [ ] To set the SLA credit amount
+> The error budget is the allowed unreliability — for a 99.9% SLO, the 0.1% (about 43 minutes/30 days) you may burn. Its function is decision-making: when the budget is healthy you can ship features and take risks; when it's exhausted you slow down and invest in reliability. It turns an emotional argument about reliability into a quantitative, blameless lever.
+
+Q: Why does the multi-window burn-rate alert require *both* a long and a short window to be in violation?
+- [ ] To reduce Prometheus storage cost
+- [x] The long window confirms the trend is real; the short window confirms it's still happening, so the alert auto-resolves quickly when the incident ends
+- [ ] Short windows are more accurate than long ones
+- [ ] It's required by the W3C spec
+> A single window is either too noisy (short) or too slow (long). Requiring both means the long window establishes that you're genuinely burning budget fast enough to matter, while the short window ensures the burn is ongoing right now — so the page clears soon after the incident resolves instead of lingering. Burn rate itself (`current_error_rate / SLO_error_rate`) sets the severity: 14.4× burns the whole budget in ~2 days, which is page-worthy.
+```
+
 ---
 
 ## Phase 8: Alert Design
@@ -950,6 +1065,29 @@ Practices that keep oncall livable:
 The single most powerful org-level change is **counting and reporting page volume**. Once page count is a tracked metric, teams have permission to spend time killing noise. Without that visibility, noise wins.
 
 References: [PagerDuty Incident Response](https://response.pagerduty.com/), [Increment: On-Call](https://increment.com/on-call/)
+
+```quiz
+Q: Why does Google SRE recommend preferring symptom-based alerts over cause-based ones for paging?
+- [ ] Symptoms are cheaper to compute in PromQL
+- [x] Causes are many and often benign (95% CPU with no user impact), while symptoms are stable and map to what users actually feel
+- [ ] Cause-based alerts can't be routed to oncall
+- [ ] Symptom alerts never flap
+> One symptom (high latency) has dozens of possible causes (slow DB, backed-up queue, dependency timeout), and many "causes" like pinned CPU don't actually hurt users. Paging on symptoms means every wake-up corresponds to real user impact, and you diagnose the cause once you're already engaged. Cause-based signals still matter — as tickets and capacity-planning inputs — just not as pages.
+
+Q: An alert pages at 3 AM because "requests/sec < 100" during a natural overnight traffic dip. What's the right fix?
+- [ ] Lower the threshold to 50
+- [x] Alert on error *ratio* (or compare to the same hour last week) rather than a static raw-rate threshold against dynamic traffic
+- [ ] Route it to a different team
+- [ ] Add a longer escalation timer
+> A static threshold against traffic that naturally varies will fire on benign dips — it's measuring volume, not health. Error *ratio* (good/total) is traffic-independent, and comparing to the same hour last week (`offset 1w`) accounts for the daily cycle. The page should reflect that something is actually wrong, not that it's night.
+
+Q: Why is "disk free < 10%" a worse page than "disk will fill in 4 hours" via `predict_linear()`?
+- [ ] The first uses more storage
+- [x] The predictive form is actionable with lead time and won't page for a disk that's stably at 9% forever
+- [ ] `predict_linear()` is more accurate at measuring current usage
+- [ ] Static thresholds aren't supported in Prometheus
+> A disk parked at 9% free indefinitely will page forever under a static threshold while nothing is actually wrong, and a disk filling fast might cross 10% with almost no time to react. Alerting on the *trend* — "at the current fill rate it's full in 4 hours" — pages only when action is genuinely needed and gives the responder runway. It's alerting on the right derivative.
+```
 
 ---
 
