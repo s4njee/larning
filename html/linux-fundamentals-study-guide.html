@@ -61,6 +61,9 @@ html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
   border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
 .iconbtn:hover{border-color:var(--accent)}
 #menuBtn{display:none}
+#quizBtn.off{opacity:.45}
+#quizBtn.off:hover{opacity:.8}
+html.quiz-hidden .addon.quiz{display:none}
 
 /* layout */
 .layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
@@ -1504,6 +1507,32 @@ strace -c ./myapp                       # run myapp and summarize syscall counts
     }
   }
 
+  /* ---------- quiz visibility toggle ---------- */
+  function setupQuizToggle(){
+    if(!document.querySelector('.addon.quiz'))return;   // no quizzes on this page
+    var root=document.documentElement;
+    var btn=document.createElement('button');
+    btn.id='quizBtn'; btn.className='iconbtn';
+    btn.setAttribute('aria-label','Toggle quizzes');
+    btn.title='Show/hide quizzes (q)';
+    btn.innerHTML='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+
+      '<circle cx="12" cy="12" r="10"/>'+
+      '<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>'+
+      '<line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+    function apply(hidden){
+      root.classList.toggle('quiz-hidden',hidden);
+      btn.classList.toggle('off',hidden);
+      btn.setAttribute('aria-pressed',String(!hidden));
+    }
+    apply(localStorage.getItem('quizzes-hidden')==='1');
+    btn.addEventListener('click',function(){
+      var hidden=!root.classList.contains('quiz-hidden');
+      apply(hidden); localStorage.setItem('quizzes-hidden',hidden?'1':'0');
+    });
+    var themeBtn=document.getElementById('themeBtn');
+    themeBtn.parentNode.insertBefore(btn,themeBtn);
+  }
+
   /* ---------- theme + mobile nav + shortcuts ---------- */
   function setupChrome(){
     var root=document.documentElement;
@@ -1527,12 +1556,13 @@ strace -c ./myapp                       # run myapp and summarize syscall counts
       if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
       else if(e.key==='Escape'){close();document.getElementById('search').blur();}
       else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+      else if(e.key==='q'&&document.activeElement.tagName!=='INPUT'){var qb=document.getElementById('quizBtn');if(qb)qb.click();}
     });
   }
 
   document.addEventListener('DOMContentLoaded',function(){
     enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
-    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+    setupQuiz(); setupQuizToggle(); setupDecision(); setupSearch(); setupChrome();
   });
 })();
 </script>
