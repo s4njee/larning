@@ -8,9 +8,7 @@ This guide is updated to reflect the Google Cloud architecture and services land
 
 ## How to Use This Guide
 
-- Study the sections in order if Google Cloud is new to you.
-- In each section, anchor on the AWS mental model first, then learn the GCP service names, then internalize the architectural differences.
-- Treat the mappings as directional, not literal. Google Cloud and AWS often solve the same problem with different resource hierarchies, network structures, and service boundaries.
+Study the sections in order if Google Cloud is new to you; each opens by anchoring on the AWS mental model you already hold and then develops the genuine architectural differences rather than just listing GCP's service names — because the names are the easy part and the conceptual differences are where designs go right or wrong. Treat every mapping as *directional, not literal*: Google Cloud and AWS frequently solve the same problem with a different resource hierarchy, network structure, or service boundary, and the value here is in those differences. A few patterns recur and are worth holding up front. GCP's **project is a lightweight unit you create many of**, where an AWS account is a heavy unit you ration — which inverts how you structure an estate. GCP **collapses several AWS services into one** more often than it splits them: Pub/Sub is SQS-plus-SNS, BigQuery is Redshift-plus-Athena, Cloud Load Balancing is global where AWS needs Route 53 plus regional balancers. Its **global resources** (the VPC, the load balancer, multi-region storage) mean you reach for explicit cross-region plumbing far less than AWS trains you to. And as on every cloud, GCP offers a **managed-tier ladder** (Cloud Run before GKE, Cloud SQL before self-managed) where the right instinct is to start at the most-managed rung that meets your needs.
 
 ### Translation Rules That Matter Early
 
@@ -116,25 +114,9 @@ resource "google_storage_bucket" "assets" {
 
 ## 1. GCP Foundations: Resource Hierarchy, Billing, Regions, and Zones
 
-### AWS Mental Model
+In AWS you reason constantly about the **account** — your billing boundary, your isolation edge, the heavy unit you ration because spinning up and governing one is real work — organized into OUs under an Organization. GCP's foundational difference, the one that reshapes how you structure everything, is that it replaces the heavy account with a *lightweight project* inside a strict, mandatory hierarchy: **Organization → Folders → Projects → Resources**, with the rule that *every resource must belong to a project* — there is no equivalent of a "loose" resource floating outside the structure. A **project** is the rough analog of an AWS account as the isolation-and-billing unit, but it is so much cheaper to create and interconnect that the idiom inverts: where AWS teams ration accounts, GCP teams make *many* projects — commonly one per service per environment — because they all share a central **Billing Account**, nest under **Folders** for governance (the OU analog), and interconnect easily via Shared VPC. The mental shift to make early is "projects are cheap, make many," because designing a GCP estate as if projects were precious accounts produces a cramped, hard-to-govern structure.
 
-- `AWS Organizations`, `OUs`, `accounts`, `regions`, `availability zones`, `tags`, and the general account boundary for billing and isolation.
-
-### GCP Services and Concepts to Learn
-
-- `Organization`
-- `Folders`
-- `Projects`
-- `Billing Account`
-- `Resource Manager`
-- `Regions`, `Zones`, and `multi-regions` (e.g., US, EU)
-
-### Key Differences to Internalize
-
-- GCP has a strict, mandatory resource hierarchy: `Organization -> Folders -> Projects -> Resources`. You cannot create a resource without it belonging to a project.
-- A **Project** is a far more lightweight boundary than an AWS Account. In GCP, it is common to create many projects (e.g., per service or environment) because they share a central Billing Account and can be easily interconnected via Shared VPCs.
-- In GCP, **tags** are key-value pairs managed at the resource level, but GCP also has **labels** (used for querying and filtering) and **tags** (which are managed via Resource Manager and can be used to conditionally apply IAM policies or firewalls).
-- Regions and zones exist similarly, but GCP also defines **multi-regions** (geographic areas containing multiple regions, like `us`) which are utilized by storage and database services for out-of-the-box geo-replication.
+Two naming subtleties trip up AWS architects and are worth pinning down. First, GCP overloads the word "tags": it has **labels** (free-form key-value pairs for querying, filtering, and cost breakdown — the closest match to AWS tags) *and* **tags** (a separate Resource Manager construct that can be referenced in IAM conditions and firewall rules to apply policy conditionally) — so "tag" means two different things depending on context, and you'll use labels for organization and tags for policy. Second, the geography model adds a tier above regions and zones: GCP defines **multi-regions** (a geographic area spanning several regions, like `us` or `eu`) that storage and database services use for *out-of-the-box geo-replication* — so where an AWS architect explicitly designs cross-region replication, several GCP services offer a multi-region location that handles it for you, a genuine simplification to know exists.
 
 ### Hands-On
 
@@ -168,26 +150,9 @@ gcloud services enable compute.googleapis.com run.googleapis.com --project=app-p
 
 ## 2. Identity and Access Management
 
-### AWS Mental Model
+GCP's IAM reorganizes the same concepts AWS bundles into one service around two structural differences that, once seen, make the rest fall into place. The first is that **GCP has no native cloud-console "IAM users."** Human identities don't originate in GCP the way an `aws iam create-user` does; they live in a *directory* — **Cloud Identity** (Google's free IDaaS), **Google Workspace**, or an external IdP federated via SAML/OIDC — and GCP reasons about those directory identities. The clean path for an existing Okta or Entra shop is **Workforce Identity Federation**, which lets your users authenticate with the IdP you already run *without* syncing them into Google. The takeaway for an AWS architect: your human-identity strategy in GCP is fundamentally a choice of *which directory you point GCP at*, not a set of users you mint inside it.
 
-- `IAM users`, `IAM groups`, `IAM roles`, `IAM policies`, `IAM Identity Center (SSO)`, `STS`, and `Organizations SCPs`.
-
-### GCP Services and Concepts to Learn
-
-- `Google Workspace` / `Cloud Identity`
-- `GCP IAM` (Google Accounts, Service Accounts, Google Groups)
-- `IAM Bindings`, `IAM Policies`, and `IAM Conditions`
-- `IAM Roles` (Basic, Predefined, Custom)
-- `Service Account User` role (`iam.serviceAccounts.actAs`)
-- `Workload Identity Federation` and `Workforce Identity Federation`
-
-### Key Differences to Internalize
-
-- GCP does not have native "IAM Users" created inside the cloud console. All identities (users) must live in a directory, either **Cloud Identity** (Google's IDaaS), **Google Workspace**, or external identities federated via SAML/OIDC. You can use **Workforce Identity Federation** to let users authenticate using an external IdP (like Azure AD/Entra or Okta) without syncing their identities into Google Cloud.
-- GCP IAM policies are not attached directly to users; instead, **policies are attached to resources** (Projects, Folders, or individual services like buckets). The policy defines "Who" (member/principal) has "What" (role).
-- GCP supports **IAM Conditions**, allowing you to grant access only when specific conditions are met (e.g., specific times of day, IP ranges, or resource naming prefixes).
-- A GCP **Service Account** is both an identity (a principal that can be granted roles) and a resource (which other users can be granted permission to use, via the `Service Account User` role).
-- GCP uses **Workload Identity Federation** to allow external workloads (like AWS EC2 or GitHub Actions) to impersonate a GCP Service Account without using long-lived security keys.
+The second and more important difference is the *direction* of policy attachment. In AWS you typically attach a policy *to a principal* ("Alice may read S3"). In GCP, **policies are attached to resources** ("this project / this bucket grants the Reader role to Alice"), and a binding is a triple of *who* (a principal — a user, group, or service account), *what* (a role, which is a bag of permissions), and *where* (the resource the policy sits on, with grants inheriting down the Organization → Folder → Project → resource hierarchy). This resource-centric model pairs with **IAM Conditions** — grants that apply only when a condition holds (a time window, an IP range, a resource-name prefix) — to express fine-grained access without proliferating roles. Two GCP-specific concepts complete the picture and matter daily. A **Service Account** is the workload identity (a VM, a Cloud Run service) and is unusual in being *both a principal and a resource* — it can be granted roles, *and* other users can be granted permission to *use* it via the `Service Account User` role (`actAs`), which is the permission that lets a deploy pipeline run something *as* a service account and a frequent source of "why can't my CI deploy?" confusion. And **Workload Identity Federation** is GCP's answer to long-lived keys: an external workload (an EC2 instance, a GitHub Actions run) impersonates a GCP service account using its own platform identity, with no static credential stored anywhere — the same secret-free workload-identity pattern every cloud has converged on, and always the right choice over downloading a service-account key file.
 
 ### AWS → GCP at a Glance
 
@@ -235,34 +200,9 @@ gcloud storage buckets add-iam-policy-binding gs://app-prod-assets \
 
 ## 3. Networking, Connectivity, and Edge Delivery
 
-### AWS Mental Model
+GCP networking has one headline difference that an AWS architect must absorb before anything else, because it changes how you draw every diagram: **a GCP VPC is a global resource.** Where an AWS VPC lives in one region and a subnet is pinned to one availability zone, a GCP VPC spans *all* regions, and a subnet is *regional* (covering all zones in its region). The consequence is liberating — instances in `us-central1` and `europe-west1` on the same VPC talk to each other over Google's internal backbone with no peering, no gateway, no cross-region plumbing — and it means the multi-VPC, Transit-Gateway-stitched topologies AWS forces are often simply unnecessary in GCP. Where you *do* need to connect separate networks (multi-project, hybrid, multi-cloud), **Network Connectivity Center** provides the hub-and-spoke model, and **Shared VPC** — a host project owning a VPC whose subnets are shared with service projects — is GCP's preferred way to give many of those cheap projects (Section 1) a common, centrally-governed network.
 
-- `VPC`, `subnets` (AZ-specific), `route tables`, `internet gateways`, `NAT Gateway`, `security groups`, `NACLs`, `ALB / NLB`, `Route 53`, `CloudFront`, `Direct Connect`, `Transit Gateway`, and `VPC Peering`.
-
-### GCP Services and Concepts to Learn
-
-- `Virtual Private Cloud (VPC)` (Global scope)
-- `Subnets` (Regional scope)
-- `Cloud Router` and `Cloud NAT`
-- `VPC Firewall Rules` and `Firewall Policies`
-- `Cloud Load Balancing` (Global External HTTP(S), Regional HTTP(S), Network Load Balancing)
-- `Cloud DNS` (including Routing Policies)
-- `Cloud CDN`
-- `Shared VPC`
-- `VPC Network Peering`
-- `Network Connectivity Center (NCC)`
-- `Cloud Service Mesh` (formerly Anthos Service Mesh)
-- `Cloud Interconnect` (Dedicated and Partner)
-- `Private Service Connect (PSC)`
-
-### Key Differences to Internalize
-
-- **GCP VPCs are global resources.** When you create a VPC, it spans all regions. Subnets are regional resources, meaning a subnet covers all zones within that region. Instances in different regions can communicate over Google's internal backbone without needing gateways or peering.
-- Instead of NACLs and Security Groups, GCP uses **VPC Firewall Rules** applied directly to the network. These rules are target-based, matching instances via network tags, service accounts, or IP ranges.
-- **Shared VPC** allows an organization to designate a host project with a VPC and share subnets with service projects. This is Google Cloud's preferred multi-project networking model for internal boundaries.
-- For complex hybrid or multi-cloud topologies that mirror AWS Transit Gateway designs, GCP provides **Network Connectivity Center (NCC)**, which manages spokes (VPCs, VPNs, Interconnects) connected to a centralized hub.
-- **Cloud Load Balancing** is software-defined and global. A single Anycast external IP address can load balance traffic across multiple regions worldwide, automatically routing users to the closest healthy backend. This acts like AWS Route 53 latency routing combined with an ALB, but simplified into one global service.
-- **Private Service Connect (PSC)** allows private consumption of services across different VPC networks and projects, acting as the equivalent to AWS PrivateLink.
+The rest of the mapping rewards a few specific reframings. Instead of AWS's two filtering layers (security groups plus NACLs), GCP uses **VPC Firewall Rules** applied to the network and *targeted* at instances by network tag, service account, or IP range — one model, and notably one that can match by *identity* (service account) rather than only by network position. **Cloud Load Balancing** is the standout: it is software-defined and *global*, so a single anycast IP can balance traffic across backends worldwide, routing each user to the nearest healthy region automatically — collapsing what AWS builds from Route 53 latency routing plus regional ALBs into one service. The connectivity analogs are direct: **Cloud DNS** for Route 53, **Cloud CDN** for CloudFront, **Cloud Interconnect** for Direct Connect, and **Private Service Connect** for PrivateLink (private cross-VPC, cross-project service consumption). The throughline: GCP's global-VPC-and-global-LB design means you reach for explicit cross-region networking far less often than AWS trains you to.
 
 ### AWS → GCP at a Glance
 
@@ -312,31 +252,9 @@ gcloud compute firewall-rules create allow-https \
 
 ## 4. Compute, Virtual Machines, and Scaling
 
-### AWS Mental Model
+The compute mapping is direct — **Compute Engine** is EC2, **Managed Instance Groups** are Auto Scaling Groups, **Instance Templates** are Launch Templates, **Spot VMs** are Spot Instances, **Persistent Disk** is EBS — so the value is in a handful of genuinely better defaults that an AWS architect should adopt rather than work around. The standout is **custom machine types**: instead of choosing from a fixed menu of instance sizes and over-provisioning to the nearest fit, you specify the exact vCPU and memory your workload needs, which both saves money and removes the "no instance type is quite right" friction. Access works differently and better too: rather than EC2's static SSH key pairs (which you create, distribute, and rotate), GCP **OS Login** ties SSH directly to IAM, provisioning short-lived keys from a user's IAM role and supporting MFA — so off-boarding someone removes their server access by removing an IAM binding, not by hunting down distributed keys. Spot VMs improve on AWS Spot in two ways worth noting: no bidding (a fixed discount, up to ~91%) and no 24-hour cap (the legacy preemptible-VM limit is gone).
 
-- `EC2`, `AMI`, `Auto Scaling Groups`, `Launch Templates`, `Spot Instances`, `EBS`, and `Instance Store`.
-
-### GCP Services and Concepts to Learn
-
-- `Compute Engine`
-- `Machine Images` and `Custom Images`
-- `Instance Templates`
-- `Managed Instance Groups (MIGs)`
-- `Unmanaged Instance Groups`
-- `Spot VMs` (replacing Preemptible VMs)
-- `Sole-Tenant Nodes`
-- `Shielded VMs` and `Confidential Computing`
-- `OS Login`
-- `Persistent Disk` and `Local SSD`
-
-### Key Differences to Internalize
-
-- Compute Engine instances feature **custom machine types**, letting you tailor the exact CPU and memory configuration for your workload, rather than forcing you into rigid fixed sizes.
-- GCP fundamentally handles VM access differently. Instead of relying on static SSH key pairs (like AWS EC2 Key Pairs), GCP uses **OS Login**. This ties SSH access directly to IAM, automatically provisioning temporary SSH keys based on IAM roles and supporting two-factor authentication.
-- Compute Engine natively integrates hardware security: **Shielded VMs** offer verifiable integrity against boot- or kernel-level malware, and **Confidential VMs** encrypt data *in use* while being processed in memory (not just at rest or in transit).
-- **Managed Instance Groups (MIGs)** handle auto-scaling, auto-healing, and rolling updates. Unlike AWS ASGs, a MIG can be regional, automatically distributing VMs across zones in a region.
-- GCP **Spot VMs** have no bidding mechanism. They offer a fixed discount (up to 91% off standard rates) and can be reclaimed by GCP with a 30-second warning. Unlike legacy preemptible VMs, Spot VMs do not have a 24-hour maximum runtime limit.
-- **Sole-Tenant Nodes** provide physical isolation on dedicated hardware servers, useful for compliance, licensing (BYOL), and performance predictability.
+Two areas reward knowing the GCP-specific options exist. On resilience, a **Managed Instance Group can be regional**, automatically spreading instances across the zones of a region with auto-healing and rolling updates built in — the AWS-ASG-across-multiple-AZ pattern, but as a first-class property rather than something you configure. On security, Compute Engine bakes in hardware-rooted protections: **Shielded VMs** give verifiable boot integrity against rootkits, and **Confidential VMs** encrypt data *in use* (while being processed in memory, not just at rest and in transit) — a capability with no simple AWS one-liner equivalent and a real differentiator for regulated workloads. **Sole-Tenant Nodes** cover the dedicated-hardware case (compliance, BYOL licensing). The same most-managed-first discipline from the platform applies: reach for raw Compute Engine when you need OS control, and prefer Cloud Run or GKE (Sections 8–9) for the large fraction of workloads that don't.
 
 ### AWS → GCP at a Glance
 
@@ -383,27 +301,9 @@ gcloud compute instance-groups managed set-autoscaling web-mig --region=us-centr
 
 ## 5. Object, Block, and File Storage
 
-### AWS Mental Model
+Storage maps cleanly — **Cloud Storage (GCS)** is S3, **Persistent Disk** is EBS, **Filestore** is EFS (managed NFS) — with a few GCP characteristics that genuinely simplify designs. The most striking is **GCS storage classes share one API and one latency profile**: where AWS Glacier and Deep Archive impose a separate retrieval workflow and hours-long restore times, fetching an object from GCS's Archive class takes *milliseconds*, exactly like Standard — you pay more for the retrieval, but the access model is identical, so cold data is a pricing decision rather than an architectural one and you never write the "submit a restore job, wait, then read" code Glacier forces. GCS also matches the multi-region story from Section 1: a bucket can be regional, dual-regional, or multi-regional, getting geo-replication as a location choice rather than a replication configuration. And bucket naming is namespaced by project rather than requiring the globally-unique-across-all-customers names S3 demands.
 
-- `S3`, `EBS`, `EFS`, `FSx`, and `Glacier / Glacier Deep Archive`.
-
-### GCP Services and Concepts to Learn
-
-- `Cloud Storage (GCS)`
-- `GCS Storage Classes` (Standard, Nearline, Coldline, Archive)
-- `Persistent Disk (PD)` (Standard, Balanced, SSD, Extreme)
-- `Local SSD`
-- `Filestore`
-- `Bucket Lock` (WORM)
-- `Object Lifecycle Management`
-
-### Key Differences to Internalize
-
-- **Cloud Storage (GCS)** is a global unified object store. Unlike S3 buckets, GCS buckets can be regional, dual-regional, or multi-regional.
-- GCS does not require you to write a bucket name that is globally unique across all accounts but utilizes projects to namespace access.
-- In GCS, all storage classes share the **same API and latency profiles**. Fetching an object from the Archive class takes milliseconds, not hours as with AWS Glacier (though retrieval costs still apply).
-- **Persistent Disk (PD)** is network-attached storage. Unlike EBS, a GCP PD can be attached to multiple VMs simultaneously in read-only mode, and Regional PDs offer active-active synchronous replication across two zones in a region.
-- **Filestore** is a managed NFS server for file sharing, equivalent to AWS EFS.
+On block storage, **Persistent Disk** has two capabilities EBS lacks that occasionally matter: a PD can be attached to *multiple* VMs simultaneously in read-only mode (handy for shared reference data), and *Regional* PDs do active-active synchronous replication across two zones in a region, giving a disk that survives a zone failure with no application involvement. The storage-class ladder (Standard, Nearline, Coldline, Archive) plus Object Lifecycle Management and Bucket Lock (WORM, for compliance) round out the parity with S3's classes and Object Lock.
 
 ### AWS → GCP at a Glance
 
@@ -451,23 +351,9 @@ gcloud storage cp ./report.pdf gs://app-prod-assets/   # gcloud storage ≈ aws 
 
 ## 6. Relational Databases
 
-### AWS Mental Model
+GCP's relational lineup is a three-rung ladder by how much scale and consistency you need, and choosing the right rung is the skill. **Cloud SQL** is the straightforward RDS equivalent — managed MySQL, PostgreSQL, and SQL Server — and the right default for ordinary applications. **AlloyDB** is the Aurora-Postgres analog: a Postgres-compatible engine with a separated compute-and-storage architecture for much higher performance and faster replication, plus built-in vector-search optimization that makes it a natural fit for AI/RAG workloads — reach for it when Cloud SQL's single-node Postgres runs out of headroom but you want to stay Postgres-compatible.
 
-- `RDS`, `Aurora`, and self-managed databases on `EC2`.
-
-### GCP Services and Concepts to Learn
-
-- `Cloud SQL`
-- `AlloyDB for PostgreSQL`
-- `Cloud Spanner`
-- `Bare Metal Solution`
-
-### Key Differences to Internalize
-
-- **Cloud SQL** is the direct equivalent to AWS RDS, offering managed MySQL, PostgreSQL, and SQL Server.
-- **AlloyDB** is Google's high-performance, Postgres-compatible database engine, comparable to AWS Aurora Postgres. It utilizes a separate compute and storage architecture, offering massive scale, fast replication, and built-in vector search optimization.
-- **Cloud Spanner** is GCP’s premier database offering: a fully managed, enterprise-grade, **globally distributed, strongly consistent** relational database. It scales horizontally to thousands of nodes while maintaining ACID transactions across continents, using atomic clocks and GPS receivers (TrueTime) to coordinate transactions. There is no direct equivalent in AWS.
-- **Bare Metal Solution** provides dedicated hardware to run legacy workloads (like Oracle databases) with low latency access to GCP services.
+The rung with no AWS equivalent at all, and GCP's signature database, is **Cloud Spanner** — a fully managed relational database that is *both* globally distributed *and* strongly consistent, holding ACID transactions across continents while scaling horizontally to thousands of nodes. The reason that combination is normally considered impossible (the CAP-theorem tension the [Distributed Systems guide](DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md) and [Distributed Algorithms guide](DISTRIBUTED_ALGORITHMS_STUDY_GUIDE.md) develop) is that Spanner cheats with hardware: **TrueTime**, a globally-synchronized clock built from atomic clocks and GPS receivers in every datacenter, gives every node a tightly-bounded notion of "now," and Spanner uses that bounded uncertainty to order transactions globally without the coordination chatter that would otherwise make global strong consistency impractical. There is genuinely no AWS product like it, so a workload that needs a globally-consistent relational store at scale is a real reason to choose GCP. (**Bare Metal Solution** covers the legacy-Oracle case with dedicated hardware adjacent to GCP.)
 
 ### AWS → GCP at a Glance
 
@@ -515,23 +401,7 @@ resource "google_spanner_instance" "main" {
 
 ## 7. NoSQL, Cache, and Search
 
-### AWS Mental Model
-
-- `DynamoDB`, `ElastiCache (Redis/Memcached)`, `DocumentDB`, `Keyspaces`, and `OpenSearch`.
-
-### GCP Services and Concepts to Learn
-
-- `Firestore` (Datastore mode and Native mode)
-- `Cloud Bigtable`
-- `Memorystore` (for Redis and Memcached)
-- `Vertex AI Search` (formerly Enterprise Search)
-
-### Key Differences to Internalize
-
-- **Firestore** is a serverless document database (similar to DynamoDB or DocumentDB) offering sub-second queries, real-time sync, and offline support. It runs in two modes: Native (for mobile/web) and Datastore (for high-throughput backend services).
-- **Cloud Bigtable** is GCP's high-performance, low-latency NoSQL database designed for large analytical and operational workloads (billions of rows, petabytes of data). It is the same engine that powers Google Search and Maps, and maps to AWS Keyspaces or wide-column DynamoDB patterns.
-- **Memorystore** is a fully managed in-memory cache service compatible with Redis and Memcached, matching AWS ElastiCache.
-- **Vertex AI Search** provides out-of-the-box semantic search, retrieval-augmented generation (RAG), and enterprise search capabilities.
+GCP's NoSQL offerings split by access pattern, and the key is matching the workload's shape to the right engine rather than defaulting to one. **Firestore** is the serverless document database — the DynamoDB/DocumentDB analog — with sub-second queries, real-time sync, and offline support, running in Native mode (built for mobile and web clients) or Datastore mode (for high-throughput backend services); it's the right reach for application data with flexible documents. **Cloud Bigtable** is a different beast for a different job: a wide-column store engineered for *enormous* low-latency operational and analytical workloads (billions of rows, petabytes), and it is literally the engine behind Google Search and Maps — so it maps to AWS Keyspaces or the heaviest wide-column DynamoDB patterns, and you reach for it when the scale is extreme and the access is by row key. **Memorystore** is managed Redis and Memcached (ElastiCache), and **Vertex AI Search** provides turnkey semantic search and RAG, the retrieval layer for AI features. The decision in one line: Firestore for application documents, Bigtable for petabyte-scale key-row workloads, Memorystore for caching — chosen by data shape and scale, not by treating one as the universal NoSQL answer.
 
 ### AWS → GCP at a Glance
 
@@ -576,26 +446,9 @@ gcloud redis instances create app-cache --size=1 --region=us-central1 --tier=STA
 
 ## 8. Containers and Kubernetes
 
-### AWS Mental Model
+Containers are a GCP strength, and an AWS architect should arrive knowing that the two products to understand are GKE and Cloud Run, with the choice between them mirroring the AKS-vs-Container-Apps decision from the Azure world. **Google Kubernetes Engine (GKE)** is widely regarded as the best managed Kubernetes — unsurprising, since Google created Kubernetes — and it offers two operating modes that matter: **GKE Standard** (you manage the worker nodes, full control) and **GKE Autopilot** (Google provisions, sizes, and scales the nodes from your Pod specs and bills you only for running Pods, removing node operations entirely). For most teams Autopilot is the better starting point, the same most-managed-first instinct that runs through this guide. The networking default to know is **VPC-native clusters**, which use alias IPs so Pod addresses are natively routable in the VPC (the flat, no-NAT Pod network the [Kubernetes networking guide](../k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md) describes), and for multi-cloud or hybrid, **GKE Enterprise** (formerly Anthos) with Fleet Management applies consistent policy across clusters spanning GCP, AWS, Azure, and on-prem.
 
-- `ECR`, `ECS`, `EKS`, `Fargate`, and `App Mesh`.
-
-### GCP Services and Concepts to Learn
-
-- `Artifact Registry`
-- `Google Kubernetes Engine (GKE)` (Standard and Autopilot)
-- `GKE Enterprise` (formerly Anthos) and `Fleet Management`
-- `VPC-native clusters`
-- `Cloud Run`
-- `Service Directory`
-
-### Key Differences to Internalize
-
-- **GKE** is widely considered the industry-leading managed Kubernetes service. It offers a fully managed control plane and a choice between **GKE Standard** (you manage the worker nodes) and **GKE Autopilot** (Google provisions, configures, and scales the nodes based on your Pod specs, charging only for running pods).
-- In GCP networking, **VPC-native clusters** are the modern standard. They use alias IPs so that pod IP addresses are natively routable within the VPC, entirely distinct from legacy routes-based clusters.
-- For hybrid or multi-cloud scenarios, **GKE Enterprise** (formerly Anthos) provides a consistent Kubernetes management layer. It uses **Fleet Management** to group and apply policies (Config Sync) across clusters in GCP, AWS, Azure, and on-premises environments.
-- **Cloud Run** is GCP's premier container abstraction: a serverless compute platform that runs stateless containers, scaling them from zero to thousands of instances automatically. It handles all HTTPS routing, TLS certificates, and scales based on concurrent requests. It is the GCP equivalent of running AWS ECS with Fargate, but with far less configuration overhead.
-- **Artifact Registry** is the evolution of Container Registry, supporting Docker images, Maven, npm, Python packages, and Helm charts, equivalent to AWS ECR.
+The product that often *replaces* Kubernetes for app teams is **Cloud Run** — GCP's flagship serverless-container platform, and frequently the right first reach. It runs stateless containers, scales them from zero to thousands of instances on request volume, and handles HTTPS, TLS certificates, and routing for you, so you deploy a container and get a production HTTPS endpoint with no cluster to operate. It's the rough equivalent of ECS-on-Fargate but with dramatically less configuration, and the decision rule mirrors Azure's: start at Cloud Run, climb to GKE only when you can name the Kubernetes capability you actually need. **Artifact Registry** (the ECR analog, and broader — Docker, Maven, npm, Python, Helm) is where the images live.
 
 ### AWS → GCP at a Glance
 
@@ -642,22 +495,9 @@ gcloud container clusters create-auto app-cluster --region=us-central1
 
 ## 9. Serverless, APIs, and Workflow Orchestration
 
-### AWS Mental Model
+GCP's serverless story has a structural twist an AWS architect should grasp: **Cloud Functions (2nd gen) is built on top of Cloud Run and Eventarc**, running on standard container runtimes rather than a bespoke Lambda sandbox. That architecture gives it capabilities Lambda lacks — up to 32 GB of memory, execution times up to 60 minutes for HTTP, and, crucially, *multiple concurrent requests per instance* (where Lambda is one-invocation-per-instance, so a Lambda handling 100 simultaneous requests spins up 100 micro-VMs while a Cloud Functions/Cloud Run instance can serve many on one container). The practical consequence is that the GCP line between "function" and "container service" is blurry by design — Cloud Functions for event-driven glue, Cloud Run for request-driven services, both on the same underlying platform — and many teams simply use Cloud Run for everything.
 
-- `Lambda`, `API Gateway`, and `Step Functions`.
-
-### GCP Services and Concepts to Learn
-
-- `Cloud Functions` (2nd gen)
-- `Cloud Run` (as a serverless backend API option)
-- `API Gateway` and `Apigee`
-- `Workflows`
-
-### Key Differences to Internalize
-
-- **Cloud Functions (2nd gen)** is built on top of Cloud Run and Eventarc, running on standard container runtimes. This means it supports larger memory sizes (up to 32GB), longer execution times (up to 60 minutes for HTTP requests), and handles multiple concurrent requests on a single instance (unlike AWS Lambda's 1-invocation-per-instance model).
-- For complex API gateways, GCP offers **Apigee** (an enterprise-grade API management platform) alongside the simpler **API Gateway** (for securing and managing simple Cloud Run and Cloud Functions endpoints).
-- **Workflows** is Google's serverless state machine and orchestration engine, equivalent to AWS Step Functions, utilizing YAML or JSON to define steps, retries, and error handling.
+For the API-management layer, GCP splits by sophistication: **API Gateway** is the lightweight option for securing and managing Cloud Run and Cloud Functions endpoints (the basic API Gateway role), while **Apigee** is the enterprise API *platform* (full lifecycle, developer portal, monetization, deep policy) for organizations managing an API program rather than a single API — the same gateway-vs-platform distinction Azure draws with API Management. **Workflows** is the Step Functions analog: a serverless orchestration engine defining steps, retries, and error handling in YAML or JSON, for coordinating multi-step processes across services.
 
 ### AWS → GCP at a Glance
 
@@ -717,21 +557,7 @@ gcloud workflows run order-flow --location=us-central1
 
 ## 10. Messaging and Event Streaming
 
-### AWS Mental Model
-
-- `SQS`, `SNS`, `EventBridge`, `Kinesis Data Streams`, and `MSK`.
-
-### GCP Services and Concepts to Learn
-
-- `Pub/Sub`
-- `Pub/Sub Lite`
-- `Eventarc`
-
-### Key Differences to Internalize
-
-- **Pub/Sub** is a global, horizontal, real-time messaging service that combines the use cases of both AWS SQS (queuing) and SNS (pub/sub). Publishers send messages to a topic, and subscribers pull or receive push messages from subscriptions. There is no infrastructure to provision or scale.
-- **Pub/Sub Lite** is a lower-cost, zonal alternative to Pub/Sub designed for high-volume log ingestion where ordering and partition management can be handled by the client (similar to AWS Kinesis).
-- **Eventarc** allows you to route events from Google Cloud services, custom sources, and SaaS apps directly to Cloud Run, Cloud Functions, or GKE, acting as the direct equivalent of AWS EventBridge.
+GCP's messaging story is strikingly simpler than AWS's, and the simplification is the headline: where AWS gives you SQS for queuing *and* SNS for pub/sub *and* Kinesis for streaming as separate services, **Pub/Sub is one global service that covers queuing and pub/sub together.** Publishers send to a topic; subscribers attach subscriptions and either pull messages or have them pushed — and because each subscription gets its own copy of the topic's messages, the same topic serves both the "one consumer processes each message" (queue) pattern and the "every consumer sees every message" (fan-out) pattern, with no infrastructure to provision or scale. For an AWS architect this collapses a decision (SQS or SNS or both?) into "use Pub/Sub and choose your subscription shape." **Pub/Sub Lite** is the lower-cost, zonal variant for high-volume log/stream ingestion where you're willing to manage partitioning and ordering client-side (the Kinesis-shaped niche), and **Eventarc** is the EventBridge analog — routing events from GCP services, custom sources, and SaaS into Cloud Run, Cloud Functions, or GKE. The takeaway: reach for Pub/Sub by default, Pub/Sub Lite only when its cost/throughput profile specifically wins, and Eventarc for event-driven routing.
 
 ### AWS → GCP at a Glance
 
@@ -779,27 +605,9 @@ gcloud eventarc triggers create gcs-trigger \
 
 ## 11. Analytics, Data Lake, and AI/ML
 
-### AWS Mental Model
+Analytics is the area where GCP is widely considered to lead, and the reason is one product: **BigQuery**, Google's crown jewel and frequently the single biggest reason organizations choose GCP. It is a serverless data warehouse that separates compute from storage and runs SQL over *petabytes* in seconds with zero management — no clusters to size, no warehouse to pause, you write SQL and pay for the bytes scanned. For an AWS architect it collapses two services into one: it is Redshift (the warehouse) *and* Athena (ad-hoc SQL over data) at once, without Redshift's cluster management or Athena's separateness. The multi-cloud extensions are genuinely distinctive — **BigQuery Omni** and **BigLake** let you run BigQuery SQL over data sitting in AWS S3 or Azure Blob *without copying it into GCP*, which is a real answer to "our data is in another cloud but we want Google's analytics engine."
 
-- `Athena`, `Glue`, `EMR`, `Redshift`, `Kinesis Firehose`, `SageMaker`, and various AWS AI services.
-
-### GCP Services and Concepts to Learn
-
-- `BigQuery`
-- `BigQuery Omni` and `BigLake`
-- `Dataflow`
-- `Dataproc`
-- `Data Fusion`
-- `Vertex AI`
-- `Vertex AI Studio` (including Gemini access)
-
-### Key Differences to Internalize
-
-- **BigQuery** is Google Cloud's crown jewel. It is a serverless, highly scalable **data warehouse and analytics engine** that separates compute and storage. It allows SQL queries across petabytes of data in seconds. It combines the use cases of AWS Redshift (warehouse) and Athena (ad-hoc SQL querying) with zero management overhead.
-- **BigQuery Omni** and **BigLake** enable multi-cloud analytics. You can run BigQuery SQL over data residing in AWS S3 or Azure Blob Storage *without* moving or copying the data into GCP.
-- **Dataflow** is a managed service for executing Apache Beam pipelines for unified stream and batch data processing, equivalent to AWS Glue/Kinesis Analytics.
-- **Dataproc** is a managed Spark and Hadoop service, comparable to AWS EMR.
-- **Vertex AI** is GCP's end-to-end machine learning platform. It unifies ML models, feature stores, pipelines, training, and model deployment (comparable to AWS SageMaker). In 2026, it serves as the central hub for deploying foundation models (like Gemini) via APIs and fine-tuning.
+The supporting cast maps cleanly: **Dataflow** runs managed Apache Beam pipelines for unified stream-and-batch processing (the Glue/Kinesis-Analytics role), **Dataproc** is managed Spark and Hadoop (EMR), and **Data Fusion** is visual data integration. On AI/ML, **Vertex AI** is the end-to-end platform unifying feature stores, training, pipelines, and deployment (the SageMaker analog), and in 2026 it is also the hub for foundation models — serving and fine-tuning **Gemini** via API through Vertex AI Studio. The decision guidance, as with Azure's analytics: choose by role in the data architecture (warehouse, pipeline, Spark, ML platform), with BigQuery as the gravitational center that makes GCP analytics distinctive.
 
 ### AWS → GCP at a Glance
 
@@ -848,27 +656,9 @@ bq query --use_legacy_sql=false --dry_run 'SELECT * FROM `app-prod.sales.orders`
 
 ## 12. Observability and Operations
 
-### AWS Mental Model
+GCP's observability — unified as the **Cloud Operations Suite** (formerly Stackdriver) — splits CloudWatch's monolith into named services much as Azure does, but with two genuinely nice properties an AWS architect will appreciate. First, **Cloud Logging captures logs with little-to-no agent setup**: standard output and error from serverless runtimes, Compute Engine VMs, and GKE containers are collected automatically in many cases, indexed, and queryable with the Logging query language — so you get logs without the per-host agent fuss CloudWatch often requires. Second, the **Log Router / Log Sink** pattern is a clean, central operational idiom: all logs flow through a router, and you attach sinks that *export* them — to Pub/Sub for an external SIEM, or (the distinctive one) directly into **BigQuery** for long-term retention and SQL analysis, so "query a year of audit logs with SQL" is a sink configuration rather than a pipeline you build.
 
-- `CloudWatch Logs / Metrics`, `X-Ray`, `CloudTrail`, and `Systems Manager (SSM)`.
-
-### GCP Services and Concepts to Learn
-
-- `Cloud Logging` (including `Log Routers` and `Log Sinks`)
-- `Cloud Monitoring`
-- `Cloud Trace`
-- `Cloud Profiler`
-- `Error Reporting`
-- `VM Manager`
-
-### Key Differences to Internalize
-
-- GCP's operations suite is unified under the **Google Cloud Operations Suite** (formerly Stackdriver).
-- **Cloud Logging** is exceptionally powerful: it automatically captures all standard output/error from serverless runtimes, VMs, and Kubernetes containers without requiring log agents in many cases. Logs are indexed and searchable using the Logging query language.
-- A core operational pattern in GCP uses **Log Routers** and **Log Sinks** to export logs. You route security logs to Pub/Sub (for external SIEM integration) or export audit and application logs to BigQuery (for long-term retention and SQL analysis).
-- **Cloud Monitoring** collects metrics, dashboards, and alerts. It integrates natively with GKE and Compute Engine.
-- **Cloud Trace** and **Cloud Profiler** provide out-of-the-box distributed tracing and continuous application profiling to optimize code execution latency and memory usage.
-- **Error Reporting** automatically aggregates runtime exceptions from your applications, groups them, and alerts you when new bugs occur.
+The rest maps directly: **Cloud Monitoring** for metrics, dashboards, and alerts (natively wired to GKE and Compute Engine); **Cloud Trace** for distributed tracing (X-Ray); **Cloud Profiler** for continuous production profiling of CPU and memory (a capability with no zero-effort AWS equivalent); and **Error Reporting**, which automatically aggregates and groups runtime exceptions and alerts on new ones — turning a flood of stack traces into a deduplicated list of distinct bugs. The control-plane audit trail is in Cloud Logging's audit logs (the CloudTrail role), routable to BigQuery via the same sink pattern.
 
 ### AWS → GCP at a Glance
 
@@ -915,27 +705,9 @@ gcloud logging sinks create app-logs-bq \
 
 ## 13. Security, Secrets, and Perimeter Protection
 
-### AWS Mental Model
+GCP's security maps the familiar AWS pieces — **Cloud KMS** for key management and CMEK, **Secret Manager** for secrets, **Cloud Armor** for the edge WAF and DDoS protection (running at Google's global network edge, filtering before traffic reaches your load balancers), and **Security Command Center** unifying posture management and threat detection (Security Hub plus GuardDuty in one). But two GCP-specific products are worth understanding deeply because they have no clean AWS equivalent and embody Google's security philosophy. **Identity-Aware Proxy (IAP)** is the cornerstone of BeyondCorp, Google's zero-trust model: it lets employees reach internal web apps or SSH/RDP into VMs *from the public internet*, gated on identity and device context, with no VPN at all — so "internal app, accessible anywhere, exposed to nothing, no VPN" is a product feature rather than an architecture you assemble (the same posture the [Cloudflare guide](../CLOUDFLARE_STUDY_GUIDE.md)'s Access achieves by a different route).
 
-- `KMS`, `Secrets Manager`, `GuardDuty`, `Security Hub`, `WAF`, and `Shield`.
-
-### GCP Services and Concepts to Learn
-
-- `Identity-Aware Proxy (IAP)`
-- `Cloud KMS`
-- `Secret Manager`
-- `Cloud Armor`
-- `Security Command Center (SCC)`
-- `VPC Service Controls (VPC SC)`
-
-### Key Differences to Internalize
-
-- **Identity-Aware Proxy (IAP)** is the cornerstone of Google's BeyondCorp (Zero Trust) model. It allows employees to securely access internal web apps or SSH/RDP into VMs from the public internet based on their identity and device context, completely eliminating the need for traditional VPNs.
-- **Cloud KMS** handles cryptographic key management (symmetric/asymmetric keys, signing, rotation). It integrates seamlessly with GCP services for Customer-Managed Encryption Keys (CMEK).
-- **Secret Manager** is GCP's vault for API keys, passwords, and certificates, matching AWS Secrets Manager.
-- **Cloud Armor** is Google's WAF and DDoS protection service. It runs at the edge of Google's global network, allowing you to filter incoming traffic to Cloud Load Balancers before it reaches your backend instances.
-- **Security Command Center (SCC)** provides security posture management, vulnerability detection, and threat monitoring (similar to AWS Security Hub + GuardDuty).
-- **VPC Service Controls (VPC SC)** is a unique GCP security feature. It allows you to define a security perimeter around Google-managed resources (like Cloud Storage, BigQuery) to prevent data exfiltration. Using ingress/egress rules and Access Levels, it ensures data cannot leave your designated projects even if a user has valid IAM credentials.
+The other is **VPC Service Controls (VPC SC)**, a genuinely distinctive control that addresses a threat IAM alone can't: data exfiltration by a *legitimately authenticated* identity. IAM answers "may this principal access this resource?" — but a user with valid credentials (or stolen ones) could still copy a BigQuery dataset or a Cloud Storage bucket *out* to somewhere they shouldn't. VPC SC draws a *security perimeter* around Google-managed services and enforces ingress/egress rules and access levels at that boundary, so data physically cannot leave the designated projects even for someone holding valid IAM permissions. For regulated or high-sensitivity data this is a major capability, and it's the kind of control an AWS architect should know GCP offers because building its equivalent elsewhere is hard.
 
 ### AWS → GCP at a Glance
 
@@ -984,25 +756,9 @@ gcloud compute security-policies rules create 2000 --security-policy=app-armor \
 
 ## 14. Governance, Policy Control, and Cost Management
 
-### AWS Mental Model
+Governance in GCP turns on one clean distinction worth stating precisely: **IAM controls *who* can do things; the Organization Policy Service controls *what* can be done at all.** Where IAM grants a principal permission, an Org Policy is a constraint applied across the hierarchy (Organization → Folder → Project) that forbids a class of action regardless of permission — "no VM may have an external IP," "resources may only be created in EU regions," "service-account keys must rotate" — which is exactly the preemptive-guardrail role AWS SCPs play, inheriting down the same hierarchy that structures everything else. **Assured Workloads** extends this for regulated industries: it creates folders that *automatically* enforce a compliance regime (FedRAMP, HIPAA, data residency) on every resource beneath them, so compliance becomes a property of where you put a workload rather than a checklist you re-verify.
 
-- `Organizations SCPs`, `Config`, `Trusted Advisor`, `Cost Explorer`, and `Budgets`.
-
-### GCP Services and Concepts to Learn
-
-- `Organization Policy Service`
-- `Assured Workloads`
-- `Recommender`
-- `Cloud Billing`
-- `Resource Quotas`
-- `Asset Inventory`
-
-### Key Differences to Internalize
-
-- **Organization Policy Service** provides centralized, programmatic control over your organization's resources. Unlike IAM (which restricts *who* can do things), Org Policies restrict *what* can be done (e.g., preventing external IP addresses on VMs, enforcing key rotation, or restricting resource creation to specific regions). This maps to AWS SCPs.
-- **Assured Workloads** is crucial for compliance in regulated industries. It allows you to create specialized folders that automatically enforce data residency and compliance regimes (like FedRAMP, HIPAA, or GDPR) across all underlying resources.
-- **Recommender** is an active intelligence engine that automatically analyzes your resource usage to suggest VM sizing optimizations, detect idle disks, identify insecure IAM permissions, and find cost savings.
-- **Resource Quotas** are strictly enforced limits to prevent resource exfiltration and cost overruns. You must request quota increases via the console for large deployments.
+The intelligence and cost layers complete it. **Recommender** is an active advisor that analyzes usage to suggest right-sizing, flag idle disks, surface over-broad IAM grants, and find savings (the Trusted Advisor role, but continuous and resource-specific), and **Cloud Billing** plus **Resource Quotas** drive cost visibility and hard limits — quotas being strictly enforced ceilings (requested via the console for large deployments) that double as a guard against runaway cost and resource abuse. **Asset Inventory** gives the queryable record of everything that exists. As with the platform overall, governance leans on the Section 1 hierarchy: policy, compliance, and cost all attach to folders and projects, which is why a thoughtful folder/project structure pays off across every one of these concerns.
 
 ### AWS → GCP at a Glance
 
@@ -1047,25 +803,9 @@ gcloud billing budgets create --billing-account=<billing-id> --display-name="pro
 
 ## 15. DevOps, IaC, Migration, Backup, and Disaster Recovery
 
-### AWS Mental Model
+The one thing to know up front about IaC on GCP is a notable departure from AWS: **Terraform, not a first-party tool, is the de facto standard.** Where AWS pushes CloudFormation and CDK as the native path, GCP's own Deployment Manager exists but is rarely used, and Google instead collaborates closely with HashiCorp on the GCP Terraform provider — so the idiomatic GCP shop writes Terraform (see the [Terraform guide](../TERRAFORM_STUDY_GUIDE.md)), and an AWS architect arriving in GCP should expect to standardize on it rather than hunt for the CloudFormation equivalent. For pipelines, **Cloud Build** is the serverless CI/CD platform that runs build steps as containers (the CodeBuild role), and **Cloud Deploy** handles managed continuous delivery to GKE, Cloud Run, and Anthos with built-in release gates, approvals, and canary rollouts (the CodeDeploy/CodePipeline role for deployment).
 
-- `CloudFormation / CDK`, `CodePipeline`, `CodeBuild`, `CodeDeploy`, `Migration Hub`, `DMS`, `AWS Backup`, and `Elastic Disaster Recovery`.
-
-### GCP Services and Concepts to Learn
-
-- `Terraform` (GCP's de facto IaC standard)
-- `Deployment Manager` (First-party IaC, but less common)
-- `Cloud Build`
-- `Cloud Deploy`
-- `Database Migration Service (DMS)`
-- `Backup and DR Service`
-
-### Key Differences to Internalize
-
-- While Google has **Deployment Manager**, **Terraform** is the undisputed de facto industry standard for GCP Infrastructure as Code. Google actively collaborates with HashiCorp to maintain the GCP Terraform provider.
-- **Cloud Build** is a serverless CI/CD platform that executes builds as Docker containers, mapping to AWS CodeBuild.
-- **Cloud Deploy** handles managed continuous delivery to target environments like GKE, Cloud Run, and Anthos, providing built-in release gates, approvals, and canary rollouts.
-- **Backup and DR Service** provides centralized management of application, database, and VM backup states, matching AWS Backup.
+Migration and resilience map directly: **Database Migration Service** is DMS for databases, and the **Backup and DR Service** centralizes backup and recovery of applications, databases, and VMs (the AWS Backup role). The same Backup-vs-DR distinction the Azure guide draws applies here in spirit — point-in-time recoverable backups are a different concern from continuous replication and orchestrated regional failover, and a complete posture addresses both — so when designing for resilience on GCP, separate "recover a corrupted or deleted thing" from "survive a region loss" and confirm the chosen services cover each.
 
 ### AWS → GCP at a Glance
 
