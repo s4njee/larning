@@ -80,6 +80,36 @@ Every monitoring and debugging tool you use — `ps`, `top`, `htop`, `free`, Pro
 
 If you remember one thing from Part 1: **Linux exposes processes, devices, and kernel state as files in `/proc` and `/sys` — so the tools you use daily (ps, top, free) are just reading files, and when the tools aren't available, the files still are.**
 
+```quiz
+Q: You're in a minimal container with no ps, top, or free. How do you inspect processes and memory?
+- [ ] You can't without installing procps
+- [x] Read /proc directly — /proc/[pid]/status, /proc/meminfo, /proc/loadavg are the same data those tools read
+- [ ] Use docker exec from the host only
+- [ ] Check the container runtime's logs
+> Every monitoring tool is a formatter over /proc. The kernel exposes the state as files, so cat works where ps doesn't — one of the most practically useful consequences of "everything is a file."
+
+Q: What's the design payoff of exposing devices, pipes, sockets, and kernel state as files?
+- [x] One small set of operations — open, read, write, close — works on all of them, which is why shell pipelines compose so well
+- [ ] Files are faster than dedicated APIs
+- [ ] It makes everything persistent across reboots
+- [ ] It removes the need for permissions
+> Uniform byte-stream semantics mean any tool that handles files handles devices and process state too. That's the Unix composition model: small tools, one protocol.
+
+Q: What's special about /proc and /sys compared to /var or /etc?
+- [ ] They're read-only for root
+- [x] They're virtual filesystems with no disk backing — the kernel generates their contents on read
+- [ ] They're cleared by logrotate
+- [ ] They're tmpfs mounts that consume RAM per file
+> Reading /proc/meminfo doesn't touch a disk; the kernel synthesizes the answer. Writing /sys files (like sysctl via /proc/sys) changes live kernel state — files as a control interface, not storage.
+
+Q: A program writes a large scratch file to /tmp and the machine's RAM usage jumps. Why?
+- [ ] The file cache always doubles memory usage
+- [x] /tmp is often a tmpfs mount — RAM-backed, so "disk" writes there consume memory
+- [ ] The kernel mirrors /tmp into swap eagerly
+- [ ] It's a memory leak in the program
+> tmpfs lives in RAM (and swap) and is cleared on reboot — fast, but not free disk. The same mechanism backs Docker's --tmpfs and K8s emptyDir medium: Memory.
+```
+
 ---
 
 ## Part 2 — Processes
@@ -150,6 +180,36 @@ So when your Kubernetes pod shows `exitCode: 137`, you now know: it was killed b
 
 If you remember one thing from Part 2: **every process is born from `fork`+`exec`, lives in a tree rooted at PID 1, and dies by exiting (or being killed by a signal) — and exit code 137 means SIGKILL (probably OOM), which connects directly to container memory limits in Docker and Kubernetes.**
 
+```quiz
+Q: What do fork() and exec() each do in launching a program?
+- [ ] fork loads the binary; exec starts its main()
+- [x] fork duplicates the calling process; exec replaces the child's memory image with the new program, keeping the same PID
+- [ ] fork creates an empty process; exec copies the parent into it
+- [ ] They're two names for one syscall
+> The pair is how every launch works: bash forks itself, the child execs /usr/bin/ls. exec transforms, never creates — which is why fd inheritance and the `exec` shell built-in (replacing the shell in container entrypoints) behave the way they do.
+
+Q: A zombie process is consuming…
+- [ ] CPU, until its parent kills it
+- [ ] All its original memory
+- [x] Almost nothing — just a process-table entry holding the exit status until the parent calls wait()
+- [ ] One file descriptor per child
+> Zombies are already dead; the kernel keeps a stub so the parent can read the exit code. They become a problem only in bulk (PID exhaustion) — typically a parent that never waits, or a container whose PID 1 doesn't reap re-parented orphans (hence tini/--init).
+
+Q: Your Kubernetes pod exited with code 137. What happened?
+- [x] 137 = 128 + 9: killed by SIGKILL — most likely the OOM killer enforcing the cgroup memory limit
+- [ ] 137 is the application's own error code
+- [ ] The liveness probe failed 137 times
+- [ ] The node rebooted
+> The 128+N convention encodes the fatal signal. 143 = SIGTERM (graceful stop); 137 = SIGKILL — and since nothing sends SIGKILL casually, the memory limit is the first suspect.
+
+Q: A process is stuck in state D and even kill -9 does nothing. What does that tell you?
+- [ ] The process is ignoring signals via a handler
+- [x] It's in uninterruptible sleep — blocked on I/O (usually disk or NFS) that must complete before any signal can be delivered
+- [ ] It's a zombie
+- [ ] It's been SIGSTOPped
+> D-state is the one state SIGKILL can't touch: the kernel won't interrupt the I/O. A pile-up of D-state processes points at storage trouble — and they count toward load average, which is why load can be high with idle CPUs.
+```
+
 ---
 
 ## Part 3 — File Descriptors & I/O
@@ -207,6 +267,36 @@ A pipe is a unidirectional byte stream between two fds — one for writing, one 
 The key property: pipes have **backpressure built in.** If the reader is slow, the pipe buffer fills, and the writer's `write()` blocks (or returns `EAGAIN` for non-blocking). If the writer closes, the reader gets EOF. If the reader closes, the writer gets `SIGPIPE` (Part 4). This natural flow control is the same concept the [Advanced Node.js guide](ADVANCED_NODEJS_STUDY_GUIDE.md)'s streams chapter describes at a higher level — it's the OS primitive underneath `highWaterMark` and `drain`.
 
 If you remember one thing from Part 3: **a file descriptor is the kernel's handle for an open file/socket/pipe/device, every process starts with three (stdin/stdout/stderr), the `nofile` limit caps how many you can open (raise it for servers), and `epoll` watching many fds at once is the mechanism underneath every event loop you use — Node's, Go's, and Python's.**
+
+```quiz
+Q: What does `cmd > out.txt` actually do, mechanically?
+- [ ] Tells cmd to write to a file instead of printing
+- [x] The shell opens out.txt and makes fd 1 point at it before exec'ing cmd — the program just writes to stdout as always
+- [ ] Creates a pipe between cmd and the file
+- [ ] Buffers cmd's output and copies it after exit
+> Redirection is pure fd manipulation; the program neither knows nor cares. Pipes are the same trick doubled: cmd1's fd 1 and cmd2's fd 0 both point at a kernel pipe buffer — no temp file, no copy.
+
+Q: A busy server starts failing with EMFILE: too many open files. What's the situation?
+- [x] It hit its nofile rlimit (often a 1024 default) — each connection is an fd; raise the limit (ulimit, LimitNOFILE) or fix the fd leak
+- [ ] The disk is out of inodes
+- [ ] The kernel's global file table is full
+- [ ] Too many files exist in one directory
+> Every socket, file, and pipe costs an fd against the per-process limit. High-connection servers need 65536+; "handles tens of thousands of connections" claims are only true if the rlimit allows it.
+
+Q: How does one thread handle 10,000 connections without 10,000 threads?
+- [ ] Each read is given a short timeout
+- [x] Non-blocking fds registered with epoll — epoll_wait sleeps until any are ready and returns just the ready set
+- [ ] The kernel merges idle sockets into one fd
+- [ ] Connections are queued and served one at a time
+> This is the mechanism under every event loop: libuv (Node), Go's netpoller, asyncio. epoll's cost scales with ready fds, not total fds — which is why an idle connection is nearly free.
+
+Q: What gives shell pipes built-in backpressure?
+- [x] The pipe's kernel buffer (~64 KB) — when it fills, the writer's write() blocks until the reader drains it
+- [ ] The shell throttles the producer process
+- [ ] SIGSTOP is sent to the faster process
+- [ ] There is none; data is dropped when the buffer fills
+> A slow reader naturally stalls a fast writer — flow control with no protocol. Reader closes → writer gets SIGPIPE; writer closes → reader sees EOF. Node's highWaterMark/drain is this same idea one level up.
+```
 
 ---
 
@@ -297,6 +387,36 @@ kill -QUIT [pid]    # prints all goroutine stacks to stderr, then exits
 
 If you remember one thing from Part 4: **SIGTERM is "please stop" (catchable, your code must handle it for graceful shutdown), SIGKILL is "die now" (uncatchable), and the PID 1 signal problem in containers is why `docker stop` sometimes hard-kills your app after the grace period — fix it with `--init` or `exec` in your entrypoint.**
 
+```quiz
+Q: Why does docker stop sometimes hard-kill an app that handles SIGTERM correctly outside containers?
+- [ ] Docker sends SIGKILL first by design
+- [x] As PID 1 the app gets no default signal actions — without an explicit handler, SIGTERM is silently dropped, so Docker waits out the grace period and SIGKILLs
+- [ ] Containers block all signals from the host
+- [ ] The grace period is 0 by default
+> PID 1 is special: signals without registered handlers are ignored, not defaulted to terminate. Fixes: --init (tini becomes PID 1 and forwards), `exec` in the entrypoint so your handler-equipped app receives signals directly.
+
+Q: What's the fundamental difference between SIGTERM and SIGKILL?
+- [x] SIGTERM is catchable — your cleanup handler runs; SIGKILL cannot be caught, blocked, or ignored — instant death mid-operation
+- [ ] SIGKILL is just SIGTERM with higher priority
+- [ ] SIGTERM only works on child processes
+- [ ] SIGKILL waits for I/O to finish first
+> The whole graceful-shutdown contract lives in that difference: SIGTERM → drain and exit within the grace period (10 s Docker, 30 s K8s, 90 s systemd) or SIGKILL ends the discussion. Code that doesn't handle SIGTERM never shuts down gracefully.
+
+Q: A service crashes "randomly," and investigation shows it dies right after clients disconnect. Suspect?
+- [ ] The OOM killer
+- [x] SIGPIPE — writing to a socket whose peer closed delivers a signal whose default action is terminate
+- [ ] SIGHUP from the terminal
+- [ ] A failed health check
+> The same mechanism that cleanly ends `cmd | head -1` kills servers that write to gone clients. Go ignores SIGPIPE by default; elsewhere the framework usually handles it — but "dies after disconnect" should trigger this suspicion immediately.
+
+Q: A Go service is hung and you can't attach a debugger. What's the one-command diagnostic?
+- [x] kill -QUIT [pid] — the runtime prints every goroutine's stack trace before exiting
+- [ ] kill -9 and read the core dump
+- [ ] kill -HUP to force a config reload
+- [ ] kill -STOP then kill -CONT
+> SIGQUIT is Go's "what is everyone doing right now?" button — the fastest way to see whether goroutines are stuck on locks, channels, or I/O. (SIGHUP's convention is config reload — nginx and friends.)
+```
+
 ---
 
 ## Part 5 — Users, Permissions & Capabilities
@@ -352,6 +472,36 @@ Containers drop most capabilities by default — the [Docker guide](DOCKER_STUDY
 
 If you remember one thing from Part 5: **every process runs as a UID, every file has permission bits, UID 0 (root) bypasses them, and capabilities let you grant specific root-like powers without full root — which is exactly what your Kubernetes securityContext and Docker `--cap-add` are manipulating.**
 
+```quiz
+Q: How can any user run /usr/bin/passwd, which must modify root-owned /etc/shadow?
+- [ ] /etc/shadow is world-writable during password changes
+- [x] passwd has the SUID bit — it runs as the file's owner (root) regardless of who launched it
+- [ ] The shell elevates privileges for system binaries
+- [ ] PAM grants temporary root
+> SUID makes the executable run as its owner — necessary for passwd, and a classic attack surface (a vulnerable SUID-root binary hands out root). That's exactly what allowPrivilegeEscalation: false / NoNewPrivileges block in containers.
+
+Q: Why is /tmp's mode drwxrwxrwt — what does the t do?
+- [ ] Marks it as a tmpfs mount
+- [x] The sticky bit: anyone can create files in the world-writable directory, but only a file's owner (or root) can delete them
+- [ ] Makes files in it executable
+- [ ] Enables automatic cleanup on reboot
+> Without sticky, world-writable means anyone can delete anyone's files. The bit restricts deletion to owners — which is the only thing standing between users in a shared /tmp.
+
+Q: Your service needs to bind port 443 but you don't want it running as root. The precise fix?
+- [x] Grant CAP_NET_BIND_SERVICE — the one capability covering low ports — and run as a normal user
+- [ ] Run as root but chroot it
+- [ ] CAP_SYS_ADMIN, the networking capability
+- [ ] Bind 8443 and claim it's equivalent
+> Capabilities split root into ~40 discrete powers so you grant exactly one. CAP_SYS_ADMIN is the trap option — it's a grab-bag nearly equivalent to root and should be treated as such in any container.
+
+Q: Why is running as root inside a container still a real risk by default?
+- [ ] Containers can't run as root
+- [x] Without user namespaces, UID 0 in the container is UID 0 on the host — a container escape lands as root
+- [ ] Root containers can't be resource-limited
+- [ ] It only matters for privileged containers
+> Namespaces hide things; they don't remap identity unless the user namespace is used. runAsNonRoot, dropped capabilities, and seccomp exist because the isolation boundary is process-level, not machine-level.
+```
+
 ---
 
 ## Part 6 — The Filesystem in Depth
@@ -389,6 +539,36 @@ A `tmpfs` mount lives entirely in RAM (and swap). It's fast (no disk I/O), autom
 - Docker's `--tmpfs` flag and Kubernetes's `emptyDir: { medium: Memory }` both create tmpfs mounts — useful for scratch data that should never touch disk (secrets, temporary processing).
 
 If you remember one thing from Part 6: **a file is an inode (metadata) plus data blocks, directories are name→inode maps, hard links are multiple names for the same inode, and "deleted file but disk still full" means a process is holding the fd open — `lsof` finds it.**
+
+```quiz
+Q: You deleted a 50 GB log file but df shows the space still used. What happened?
+- [x] A process still holds the file open — deletion removed the name, but the inode and data persist until the last fd closes; lsof finds the holder
+- [ ] The filesystem needs an fsck to reclaim it
+- [ ] df caches results for an hour
+- [ ] The file went to a trash directory
+> rm removes a directory entry (name→inode mapping); the data lives while any reference — name or fd — remains. Restart or signal the process holding it (often the service that was writing the log) and the space returns.
+
+Q: What's the difference between a hard link and a symlink?
+- [ ] A hard link is read-only; a symlink is writable
+- [x] A hard link is another name for the same inode (no "original," can't cross filesystems); a symlink is a separate file containing a path (can dangle if the target moves)
+- [ ] Symlinks are faster to resolve
+- [ ] Hard links can point at directories
+> Two directory entries, one inode: both names are equally the file, and data survives until the link count hits zero. A symlink is indirection by path — flexible (cross-filesystem, directories) and breakable.
+
+Q: df -h shows 40% disk free, yet file creation fails with "No space left on device." What do you check?
+- [ ] The mount is read-only
+- [x] df -i — the filesystem may be out of inodes; millions of tiny files exhaust them before the bytes run out
+- [ ] SELinux denials in the audit log
+- [ ] The directory's sticky bit
+> Inode count is fixed at mkfs time. Package caches and build systems that spray small files hit this for real — space and inodes are separate budgets.
+
+Q: How does Docker present an image's layers as one filesystem?
+- [ ] It extracts all layers into one directory at container start
+- [x] An overlay mount: read-only lower layers composited with a writable upper layer into a single merged view
+- [ ] Each layer is a loop-mounted disk image
+- [ ] Hard links from each layer into a staging area
+> overlayfs is just another mount type: lowerdir stack (the image), upperdir (the container's writes), one merged view. It's why container writes don't touch images, and why mounts are core container machinery.
+```
 
 ---
 
@@ -494,6 +674,36 @@ The timer activates a corresponding `.service` unit (same name, or specify `Unit
 
 If you remember one thing from Part 7: **systemd is PID 1 — it starts, stops, restarts, and logs your services via unit files, and its `LimitNOFILE`, `MemoryMax`, and `CPUQuota` directives are cgroup controls that map directly to Kubernetes resource limits and Docker's `--memory`/`--cpus`.**
 
+```quiz
+Q: You edited a unit file and restarted the service, but the old config is still in effect. What did you skip?
+- [x] systemctl daemon-reload — systemd caches parsed unit files and must re-read them after edits
+- [ ] systemctl enable, which applies changes
+- [ ] Rebooting, which is required for unit edits
+- [ ] journalctl --flush
+> Restart reuses the cached definition. daemon-reload re-parses units; only then does restart pick up the change. It's the #1 "my edit didn't take" answer.
+
+Q: What's the difference between Restart=on-failure and Restart=always?
+- [ ] on-failure retries faster
+- [x] on-failure skips restarts after clean exits (code 0); always restarts regardless — wrong for services meant to stop cleanly
+- [ ] always ignores RestartSec
+- [ ] They differ only for Type=oneshot
+> A service that exits 0 intentionally (drained, done) shouldn't be resurrected; one that crashes should. The exit-code convention from Part 2 is what systemd is reading here.
+
+Q: Where did your service's stdout go, and how do you read it?
+- [ ] /var/log/[service].log, rotated by logrotate
+- [x] Into the journal — journalctl -u myapp (-f to follow, --since, -p err to filter) with structured metadata attached
+- [ ] Nowhere unless StandardOutput= is set
+- [ ] To the console of tty1
+> journald captures stdout/stderr automatically with unit, PID, timestamp, and priority indexed — no logfile management. Modern apps just print; the journal does the rest.
+
+Q: How do MemoryMax=2G and CPUQuota=200% in a unit file relate to Kubernetes limits?
+- [x] They're the same kernel mechanism — cgroup memory and CPU controllers; systemd, Docker, and K8s are different frontends to identical enforcement
+- [ ] systemd limits are advisory, K8s limits are enforced
+- [ ] They only apply at boot
+- [ ] systemd uses ulimits, which are unrelated to cgroups
+> MemoryMax is the cgroup memory limit (OOM kill on breach — exit 137); CPUQuota is CFS bandwidth (throttling). Learn the mechanism once and every orchestrator's resource limits become the same knob.
+```
+
 ---
 
 ## Part 8 — Namespaces & cgroups (How Containers Work)
@@ -559,6 +769,36 @@ That's it. There is no hypervisor, no guest kernel, no hardware virtualization. 
 
 If you remember one thing from Part 8: **a container is a regular Linux process with namespaces (what it can see) and cgroups (what it can use) — namespaces isolate PID/network/filesystem/hostname, cgroups enforce memory and CPU limits (and the OOM killer is what sends SIGKILL at exit code 137), and understanding this makes Docker, Kubernetes, and their security models concrete rather than magical.**
 
+```quiz
+Q: In one sentence, what is a container?
+- [ ] A lightweight virtual machine with its own kernel
+- [x] A regular Linux process with namespaces (limiting what it sees) and cgroups (limiting what it uses) plus a separate root filesystem
+- [ ] A sandboxed interpreter for OCI images
+- [ ] A kernel module that emulates hardware
+> No hypervisor, no guest kernel. That's why containers start in milliseconds, why they share the host kernel — and why a kernel exploit bypasses all of the isolation, making the hardening layers (caps, seccomp, non-root) non-optional.
+
+Q: Which namespaces do containers in one Kubernetes pod share by default?
+- [x] Network and IPC — they share localhost and can use shared memory, while keeping separate PID and mount namespaces
+- [ ] All of them — a pod is one namespace set
+- [ ] None — pods are just scheduling units
+- [ ] PID and mount, but separate network
+> Shared network namespace is why pod containers reach each other on 127.0.0.1 and why two can't bind the same port. shareProcessNamespace: true opts into a shared PID namespace (debug sidecars, zombie reaping).
+
+Q: What exactly enforces a container's memory limit, and what happens at the limit?
+- [ ] The runtime polls usage and restarts offenders
+- [x] The cgroup memory controller — exceed it and the kernel's OOM killer SIGKILLs the process (exit 137)
+- [ ] malloc starts returning NULL inside the container
+- [ ] The kernel swaps the container's pages out first
+> The limit is kernel-enforced, not advisory — which is why GOMEMLIMIT and --max-old-space-size exist: keep the runtime's heap under the cgroup ceiling so the OOM killer never fires.
+
+Q: Why do CPU limits cause throttling rather than just slower scheduling?
+- [x] CPU limits are CFS bandwidth quotas — a budget of µs per period; exhaust it and the cgroup is frozen until the next period, even on an idle node
+- [ ] The scheduler deprioritizes limited cgroups
+- [ ] Throttling only happens when the node is saturated
+- [ ] CPU limits reduce the clock speed for the cgroup
+> Requests influence scheduling (where the pod lands, minimum share); limits enforce a hard quota with stop-the-cgroup throttling. That asymmetry is why "requests without limits" is a common production stance for CPU.
+```
+
 ---
 
 ## Part 9 — The Network Stack From the OS Side
@@ -613,6 +853,36 @@ ndots: 5                          # if a name has fewer than 5 dots, try the sea
 The `ndots: 5` default in Kubernetes means `redis` gets expanded to `redis.default.svc.cluster.local` before trying `redis` as-is — which generates many extra DNS queries for external names (each short name tries all search domains). This is a known K8s performance footgun for workloads that resolve many external domains; the fix is `ndots: 2` or using FQDNs with a trailing dot (`api.example.com.`).
 
 If you remember one thing from Part 9: **container networking is built from veth pairs (virtual cables), bridges (virtual switches), and iptables/nftables rules (NAT and filtering) — all standard Linux kernel features — and Kubernetes Services are iptables DNAT rules that rewrite ClusterIP destinations to Pod IPs.**
+
+```quiz
+Q: How does a container's network reach the host?
+- [ ] Through a shared memory ring with the host's NIC
+- [x] A veth pair — a virtual cable with one end inside the container's network namespace and the other in the host (usually plugged into a bridge)
+- [ ] The container uses the host's interface directly
+- [ ] An automatically created VPN tunnel
+> veth pairs are back-to-back interfaces: frames in one end exit the other. The host-side ends plug into a bridge (docker0/cni0) acting as a virtual L2 switch — that's the entire physical metaphor, in software.
+
+Q: What is a Kubernetes Service's ClusterIP, at the kernel level?
+- [ ] An IP assigned to a hidden pod
+- [x] A virtual IP that exists only as iptables/IPVS DNAT rules — packets to it get their destination rewritten to a backend pod IP
+- [ ] A DNS alias with no packet-level existence
+- [ ] An interface on every node
+> Nothing answers ARP for a ClusterIP; kube-proxy programs the rewrite rules and the kernel load-balances. Debugging "Service doesn't reach pods" means reading iptables -t nat (and conntrack for established flows).
+
+Q: A pod making many external API calls generates a flood of failed DNS queries like api.example.com.default.svc.cluster.local. Why?
+- [x] ndots:5 — names with fewer than five dots try every search domain before being tried as-is; fix with ndots:2 or a trailing-dot FQDN
+- [ ] CoreDNS is misconfigured
+- [ ] The pod lacks a network policy for DNS
+- [ ] IPv6 fallback is enabled
+> The resolv.conf search-path machinery that makes `redis` resolve to the local Service also taxes every external lookup with cluster-suffix attempts. It's a known K8s performance footgun for external-API-heavy workloads.
+
+Q: Which command shows what's listening on port 8080 and which process owns it?
+- [ ] netstat -r
+- [x] ss -tlnp (or lsof -i :8080)
+- [ ] ip route get 8080
+- [ ] tcpdump port 8080
+> ss is the modern netstat: -t TCP, -l listening, -n numeric, -p process. tcpdump shows packets, not socket ownership; ip route shows path decisions.
+```
 
 ---
 
@@ -697,6 +967,36 @@ strace -c ./myapp                       # run myapp and summarize syscall counts
 It's slow (significant overhead) and noisy (hundreds of calls per second), but it's the "I don't know what else to try" tool that always works, because system calls are the *only* interface between your program and the kernel — everything your program does is visible here. When a Go service hangs and you can't attach a debugger, `strace` shows you whether it's stuck in an `epoll_wait` (waiting for I/O — normal), a `futex` (stuck on a lock — contention), or a `read` on a specific fd (waiting on a specific connection — check the other end).
 
 If you remember one thing from Part 10: **every monitoring tool reads from `/proc` and `/sys`; when the tools aren't available or aren't enough, `strace` shows you every system call the process makes — and the diagnostic workflow is always: is it running? → what does it say? → is it resource-starved? → is it blocked? → is it a kernel issue?**
+
+```quiz
+Q: Why does strace always work as a last-resort debugger, regardless of language or framework?
+- [x] System calls are the only interface between a program and the kernel — everything the process does externally is visible there
+- [ ] It reads the program's debug symbols
+- [ ] It hooks the language runtime's logger
+- [ ] It replays the process from a checkpoint
+> A hung service under strace shows its truth: epoll_wait (waiting for I/O — normal), futex (stuck on a lock — contention), read on one fd (waiting on a specific peer). The cost is real overhead — it's a diagnostic, not a monitor.
+
+Q: Load average is 8 on a 4-core box, but CPU usage is low. What's a likely explanation?
+- [ ] The load average is broken on multi-core systems
+- [x] Load counts runnable AND uninterruptible (D-state) tasks — processes stuck on disk/NFS I/O inflate it without using CPU
+- [ ] Too many zombie processes
+- [ ] Nice values are skewing the math
+> Linux's load metric includes D-state waiters, so "high load, idle CPU" usually means storage trouble, not compute. Check iostat -x and look for D-state processes in ps.
+
+Q: First step when a service "isn't working," per the diagnostic workflow?
+- [ ] strace it immediately
+- [x] Confirm it's running and read what it says — systemctl status and journalctl -u — before any resource or syscall digging
+- [ ] Reboot the host to clear transient state
+- [ ] Check iptables rules
+> The workflow is ordered cheapest-first: running? → logs? → resource-starved (CPU/mem/disk/fds/network)? → blocked (strace)? → kernel (dmesg)? Most incidents end at step 2.
+
+Q: dmesg | grep -i oom is the check for what?
+- [x] Whether the kernel's OOM killer terminated a process — the explanation behind mysterious exit-137 deaths
+- [ ] Out-of-date module warnings
+- [ ] Filesystem mount errors
+- [ ] Slow DNS lookups
+> The OOM killer logs its kills (victim, score, cgroup) to the kernel log. A process that vanished without application logs very often appears here — tying together Parts 2, 7, and 8.
+```
 
 ---
 

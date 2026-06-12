@@ -97,7 +97,7 @@ Part, click-to-reveal explanation included.
 
 ## Batch 2 — Systems, databases, networking
 
-- [ ] `LINUX_FUNDAMENTALS_STUDY_GUIDE.md`
+- [x] `LINUX_FUNDAMENTALS_STUDY_GUIDE.md` — 10 parts × 4 Q (40 questions)
 - [ ] `LINUX_NETWORKING_STUDY_GUIDE.md`
 - [ ] `EBPF_STUDY_GUIDE.md`
 - [ ] `NETWORKING_FUNDAMENTALS.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 8/65 (Batch 1 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 9/65 (Batch 1 complete).
