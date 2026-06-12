@@ -296,6 +296,36 @@ Beyond its role as Ω, election in its own right, two classics worth knowing:
 3. Raft with fixed (non-random) election timeouts: construct the infinite dueling-candidates execution explicitly (message schedule per round). Verify no safety property is violated along the way.
 4. Ω only requires *eventual* agreement on a *correct* leader. Show by execution that a system can have two simultaneous self-believed leaders for an arbitrary finite duration without violating Ω — and name the Chapter 7/8 mechanism that keeps such periods harmless to the data.
 
+```quiz
+Q: FLP says consensus is impossible. What does it actually rule out?
+- [x] A *deterministic* algorithm with *guaranteed* termination in the *fully asynchronous* model tolerating even one crash — real systems escape via partial synchrony, randomization, or failure detectors
+- [ ] That etcd and Raft can ever agree safely
+- [ ] That consensus can be safe — it predicts random data loss
+- [ ] Consensus on more than two values
+> FLP's failure is liveness (eternal indecision under adversarial timing), never safety. Raft/Paxos never violate Agreement in any execution; they only inherit vanishingly-rare non-termination — which Raft's randomized timeouts make measure-zero.
+
+Q: Raft's dueling-candidates livelock — two candidates splitting votes in lockstep forever — is best understood as what?
+- [x] FLP visiting in the flesh; it's not a Raft bug. Randomized election timeouts break the lockstep with probability 1
+- [ ] A safety violation that loses committed entries
+- [ ] A network partition
+- [ ] A bug fixed by adding more nodes
+> The livelock is the impossibility theorem made concrete. The fix is the randomization loophole FLP explicitly leaves open (it bars only *deterministic* algorithms) — every election-timeout knob tunes this.
+
+Q: Ω, the eventual leader elector, is the weakest failure detector for consensus. What does "weakest" buy you in practice?
+- [x] It guarantees only that *eventually* all correct processes trust the same correct leader — it may flap during chaos (consensus stalls, no safety harm) and stabilizes when the network calms
+- [ ] It detects every crash instantly and correctly
+- [ ] It prevents leader election entirely
+- [ ] It works only in the synchronous model
+> Timeout-based leader election *is* an Ω implementation in the good case. Your etcd lease/heartbeat/election-timeout config is tuning a real-world Ω — and FLP is precisely why those knobs exist.
+
+Q: Why is the Bully algorithm's leader election unsafe under asynchrony, and how does Raft fix it?
+- [x] It treats timeouts as proof of death, so a slow highest-ID node and a fast one can bully-elect a split brain; Raft adds vote + majority rule, converting the heuristic to a theorem (at most one leader per term)
+- [ ] It uses too many messages
+- [ ] It requires a ring topology
+- [ ] It can't handle more than 3 nodes
+> Election without quorum acknowledgment is unsafe under asynchrony — the chapter's closing lesson. Raft is "bully with votes and a majority," and the majority's pairwise intersection is what makes two leaders-per-term impossible.
+```
+
 ---
 
 ## Chapter 6 — Consensus I: Paxos
@@ -357,6 +387,36 @@ What "Paxos Made Simple" famously does *not* specify is everything between the i
 3. Why must ballot numbers be unique across proposers (e.g., round-robin or ⟨counter, proposerID⟩)? Exhibit the bad execution with duplicate ballots.
 4. Prove that Paxos still satisfies Agreement if "majority" is replaced by any quorum system in which every two quorums intersect; identify each proof step that uses intersection. Give a non-majority quorum system over 6 nodes and discuss what it trades.
 5. (Termination) Describe the dueling-proposers livelock precisely, and explain why adding randomized proposal backoff yields termination with probability 1 under partial synchrony.
+
+```quiz
+Q: Why are majorities the load-bearing choice in Paxos acceptors?
+- [x] Any two majorities intersect, so two different values can't both be chosen by disjoint juries — and the protocol still works with a minority of acceptors crashed
+- [ ] Majorities are faster to contact than all acceptors
+- [ ] A majority is the minimum to detect Byzantine faults
+- [ ] They reduce message count to O(1)
+> Pairwise quorum intersection is the entire safety mechanism — generalizable to any quorum system where every two quorums intersect. It's what survives minority crashes while preventing split decisions.
+
+Q: What is Paxos's "crux rule" in Phase 2, and what does it accomplish?
+- [x] A proposer adopts the highest-ballot accepted value reported in its promises, proposing its own only if none was reported — making a new proposer the *servant* of any possibly-chosen earlier value, not its overwriter
+- [ ] It picks the lowest ballot number to break ties
+- [ ] It always proposes the proposer's own value
+- [ ] It waits for all acceptors before proposing
+> The promise freezes the past ("never accept anything below n") so the proposer's read of it stays true; the crux rule then ensures a chosen value propagates up all higher ballots. That's the whole Agreement proof, in two rules.
+
+Q: The Paxos Agreement proof never mentions time. What does that tell you, and what *can* still fail?
+- [x] Safety (Agreement) holds in the raw asynchronous model with no timing assumption; only termination can fail — two proposers can alternate PREPAREs forever (FLP's shadow), fixed by electing a distinguished proposer
+- [ ] Nothing fails; Paxos always terminates
+- [ ] Both safety and termination depend on synchronized clocks
+- [ ] Agreement can be violated under high latency
+> Time-independence of safety is the deep property. The distinguished-proposer fix is an Ω implementation — the standard loophole used to recover liveness without touching the safety argument.
+
+Q: How does Raft relate to Multi-Paxos, per the guide?
+- [x] Raft is best read as Multi-Paxos with all the engineering decisions (log gaps, leader change, membership, snapshots) made in the order that makes the safety argument teachable — same wire cost, same algorithm at the consensus layer
+- [ ] Raft is a fundamentally different, weaker algorithm
+- [ ] Raft tolerates Byzantine faults; Paxos doesn't
+- [ ] Raft avoids the need for a leader
+> A stable Multi-Paxos leader commits each command in one Phase-2 round trip — identical to Raft. The difference is that "Paxos Made Simple" under-specifies everything around the invariant; Raft specified it.
+```
 
 ---
 
@@ -438,6 +498,36 @@ Compare the philosophies, because the exam question writes itself: **Paxos lets 
 4. Why is `votedFor` persisted? Construct the double-vote (and resulting two-leaders-one-term) execution if a server votes, crashes, restarts, and votes again.
 5. A leader serving lease-based reads has a clock running 2× fast. Construct the stale read. Which Jepsen-style consistency violation is this, and what does ReadIndex cost instead?
 
+```quiz
+Q: How does "one vote per term + majority to win" immediately guarantee at most one leader per term?
+- [x] Two leaders would each need a majority, and two majorities share a voter — who would have voted twice in one term, which the rule forbids
+- [ ] The highest-ID candidate always wins
+- [ ] Terms are assigned by a central coordinator
+- [ ] Leaders renew leases that prevent rivals
+> It's the bully algorithm cured of split-brain by quorum. Note it doesn't prevent two self-believed leaders of *different* terms — the old one is harmless because it can't assemble a majority that hasn't moved on.
+
+Q: Raft's commit rule says an entry is committed only when replicated on a majority AND the entry is of the leader's *current* term. Why the second clause?
+- [x] An earlier-term entry, even majority-replicated, can still be overwritten by a later-term leader elected on a different majority (Figure 8); committing one current-term entry on top commits the old ones indirectly
+- [ ] To reduce the number of fsyncs
+- [ ] Current-term entries replicate faster
+- [ ] It prevents clock skew from affecting commits
+> This is the subtlest sentence in the paper. Production Rafts append a no-op at election precisely to commit inherited entries safely — counting old-term replicas toward commitment is the classic safety bug.
+
+Q: Raft's vote restriction (grant votes only to candidates at least as up-to-date as you) replaces which Paxos mechanism, and what does it buy?
+- [x] Paxos's Phase 1 value adoption — Raft only elects leaders that *already contain* the committed past (Leader Completeness), so logs flow strictly leader→follower and are never adopted backward
+- [ ] Paxos's majority requirement
+- [ ] The need for terms
+- [ ] Log compaction
+> Same invariant — "the chosen survives" — enforced at election time (Raft) vs proposal time (Paxos). The leader-only-forward log flow is most of why Raft is easier to implement and verify.
+
+Q: A lease-based read on a Raft leader whose clock runs 2× fast can return stale data. What's the deeper lesson?
+- [x] Leases reintroduce a timing assumption into a protocol whose safety needed none — bounded clock error becomes part of the trusted computing base; ReadIndex avoids it by confirming leadership against a majority instead
+- [ ] Leases are always unsafe and should never be used
+- [ ] The fix is faster hardware clocks
+- [ ] This is a liveness bug, not a safety one
+> It's a real-time-order (linearizability) violation, and exactly the corner where production systems met Jepsen. ReadIndex trades a round trip for not trusting the clock — the safety-vs-latency dial.
+```
+
 ---
 
 ## Chapter 8 — Replication, Quorums, and Linearizability
@@ -503,6 +593,36 @@ Two non-quorum schemes worth having in the catalog: **primary-backup** (writes t
 4. In Gilbert–Lynch, weaken C to *sequential consistency*. Does the proof survive? (Careful: the read no longer must see the write merely because it started later in real time.) What does this say about systems claiming "sequential but not linearizable" under partition?
 5. Compute, for a 5-replica system, all (R, W) pairs with R+W>N, and for each: tolerated crash faults for writes, for reads, and the PACELC latency profile. Which pair is etcd, and which is Cassandra QUORUM/QUORUM?
 
+```quiz
+Q: What two clauses must a linearizable execution satisfy?
+- [x] Real-time order (if A completes before B begins, A's effect is visible to B) and single order (all clients agree on it) — each operation taking effect atomically at some instant in its interval
+- [ ] Eventual convergence and causal delivery
+- [ ] Majority agreement and bounded staleness
+- [ ] Sequential ordering without real-time constraints
+> The real-time clause is what makes "I wrote it, then my other client read it" hold. Linearizability is also composable (separately-linearizable objects compose) — unlike weaker conditions — and is what "strong consistency" should mean.
+
+Q: R + W > N gives quorum intersection but is NOT sufficient for linearizability. What's a canonical violation?
+- [x] Read-during-write skew: with a write landed on 1 of 3 replicas, reader X sees the new value while a later reader Y reads two stale replicas and returns old — new-then-old violates real-time single order
+- [ ] Two reads returning the same value
+- [ ] A write timing out
+- [ ] Reading from the leader
+> Most "tunable consistency" stores live in this gap. The fix is synchronous read-repair (write the chosen value back to a quorum before returning) — which is exactly what ABD does.
+
+Q: ABD achieves linearizable registers without consensus. What's the visible cost, and why doesn't it violate FLP?
+- [x] Reads write — every linearizable read costs a round trip plus a write-back to a majority; FLP isn't violated because registers are weaker than consensus (consensus number 1 — you can't build consensus from them)
+- [ ] It requires a leader, secretly using consensus
+- [ ] It only works synchronously
+- [ ] It sacrifices the real-time guarantee
+> The write-back is what makes read/read pairs monotone. Dynamo-style stores that do async best-effort read-repair are choosing non-linearizability — ABD is the price tag that makes the choice legible.
+
+Q: What is CAP actually forcing you to choose, per Gilbert–Lynch?
+- [x] Since partitions happen, the choice is what to do *during* one: refuse some requests (CP — minority side stalls) or answer from available state (AP — both sides diverge, repay later); PACELC adds latency-vs-consistency for the no-partition case
+- [ ] Any two of three properties at design time
+- [ ] Whether partitions can occur
+- [ ] Consistency vs availability permanently
+> P isn't a knob — the proof is one partitioned write-then-read. The practical residue is per-data-item: which side of the partition do these bytes sit on, and even unpartitioned, do linearizable round trips cost too much latency?
+```
+
 ---
 
 ## Chapter 9 — Atomic Commitment: 2PC, 3PC, and Beyond
@@ -550,6 +670,29 @@ The compact way to file this chapter: 2PC answers "did everyone agree?", consens
 4. In Spanner-style 2PC-over-Paxos, enumerate which failure of which role still stalls a transaction, and for how long (relate each to a Chapter 7 timeout). What survives a whole-region loss that plain 2PC would not survive losing one machine for?
 5. A team proposes "2PC, but participants auto-commit YES-voted transactions after a 30s timeout if the coordinator is silent." Construct the atomicity violation, and name the consistency debt this turns into (which later chapter would have to repay it?).
 
+```quiz
+Q: Why does a 2PC participant that voted YES and then sees the coordinator fail have to *block*, holding its locks?
+- [x] Its local state is identical whether the coordinator committed (and crashed mid-broadcast) or another participant voted NO and it aborted — the two safe actions differ but its view can't distinguish them
+- [ ] Locks are required for the network protocol
+- [ ] It must wait for a quorum of participants
+- [ ] The timeout hasn't expired yet
+> Polling other participants helps only if one knows the decision; if the coordinator crashed before telling anyone, every survivor is stuck. Skeen's theorem: non-blocking atomic commit in the crash-stop async model is exactly as hard as consensus.
+
+Q: Why don't production systems run 3PC despite it being "non-blocking"?
+- [x] Its non-blocking guarantee holds only in the synchronous, no-partition model; under real timeouts and partitions the two sides can reconstruct *opposite* decisions — a safety violation, strictly worse than 2PC's liveness block
+- [ ] It's too slow with the extra phase
+- [ ] It requires too many coordinators
+- [ ] Modern hardware made it unnecessary
+> 3PC's value is pedagogical — it marks exactly where the synchrony assumption does the work. Trading a liveness failure for a safety failure is the wrong trade, which is why the real answer went elsewhere.
+
+Q: What's the modern resolution to 2PC's blocking, and what is it in production dress?
+- [x] Replicate the coordinator's decision via consensus — "decide COMMIT" means committing a record to a Raft/Paxos group's log, so coordinator crash is just leader failover; this is Paxos Commit, and Spanner is 2PC across shards where every participant *and* coordinator is a Paxos group
+- [ ] Add more participants for redundancy
+- [ ] Use 3PC with a recovery coordinator
+- [ ] Make all transactions single-node
+> The disease was "the decision lived in one mortal place." 2PC answers "did everyone agree?", consensus answers "what is the durable truth?" — reliable distributed transactions store the first answer in the second's machinery.
+```
+
 ---
 
 ## Chapter 10 — Conflict-Free Replicated Data Types
@@ -588,6 +731,36 @@ merge:      pointwise union (a product of grow-only sets — a lattice)
 ```
 
 The semantics this buys: **add wins over concurrent remove** — a remove cannot kill a tag it never observed, so an element added concurrently with a remove survives the merge. That is a *choice* (the sane one for carts: concurrent "add item" beats "empty cart"), and the worked example to do by hand is replica 1 `remove(x)` ∥ replica 2 `add(x)`: merge leaves the new tag alive, x present. Cost: tombstones and tags grow forever; the production fix (causal-context compression / dotted version vectors — Riak's implementation) bounds metadata to O(replicas) by tracking observed-event *ranges* per replica instead of individual tags — Chapter 2's machinery, redeployed as garbage collection.
+
+```quiz
+Q: What does "strongly eventually consistent" (SEC) upgrade over plain eventual consistency?
+- [x] It makes convergence a *safety* property: any two replicas that received the same *set* of updates are in the same state, regardless of order — no reconciliation step, no sibling resolution left to the app
+- [ ] It guarantees linearizability
+- [ ] It requires a leader for writes
+- [ ] It bounds staleness to a fixed window
+> Eventual consistency only promises "they'll converge somehow, eventually." SEC's same-knowledge-implies-same-state is what lets CRDTs accept writes with zero coordination on the write path — AP under CAP, available even when partitioned.
+
+Q: Why does a CRDT's merge need to be associative, commutative, AND idempotent?
+- [x] Those three properties make the merged result independent of order and of duplication, so replicas converge over at-least-once, unordered transport with no dedup machinery — idempotence literally absorbs duplicate delivery (x ⊔ x = x)
+- [ ] To minimize network bandwidth
+- [ ] To support more than two replicas
+- [ ] To guarantee real-time ordering
+> The join-semilattice theorem (Shapiro et al.) is the entire magic — everything else is constructing useful lattices. It's why CRDT replication runs happily over gossip and cheap links.
+
+Q: A naive single-integer counter merged by max loses concurrent increments. How does a G-Counter fix this?
+- [x] It keeps a per-replica vector — increment bumps your own slot, merge is pointwise max, value is the sum — so two concurrent increments live in different slots and both count
+- [ ] It uses a lock during increment
+- [ ] It timestamps each increment and keeps the latest
+- [ ] It routes all increments through one replica
+> "Sum of pointwise maxes" counts every event once because each replica owns its slot. PN-Counters extend this by recasting decrement as growth of a separate N-component — the recurring CRDT trick of turning a non-monotone op into inflation of something else.
+
+Q: An OR-Set gives "add wins over concurrent remove." What's the mechanism, and the cost?
+- [x] Each add generates a unique tag; remove tombstones only the tags it has *observed* — so an element added concurrently with a remove survives, because the remove couldn't have seen its tag; the cost is unbounded tombstone/tag growth
+- [ ] It uses last-write-wins timestamps
+- [ ] Removes always lose to adds via a priority field
+- [ ] It blocks concurrent operations
+> The "kills only what it has seen" rule is the sane choice for carts (concurrent "add item" beats "empty cart"). Production bounds the metadata with dotted version vectors (Chapter 2's machinery as garbage collection). LWW-Register is the opposite trade — it admits "we drop conflicts" in its name.
+```
 
 **Sequence CRDTs** (collaborative text: RGA, Treedoc, LSEQ, Yjs/Automerge's internals): assign each character a stable, totally ordered, dense identifier so concurrent inserts at "the same place" commute; deletion tombstones. The identifiers are where all the difficulty hides (interleaving anomalies, identifier growth) — the honest summary is that sequences are the frontier where CRDT elegance meets real pain, and the engineering literature (Automerge's columnar encoding, Yjs's optimizations) is as important as the math.
 

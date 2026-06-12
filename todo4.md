@@ -106,7 +106,7 @@ Part, click-to-reveal explanation included.
 - [x] `REDIS_STUDY_GUIDE.md` — 6 quizzes (20 questions; mental model, sorted sets, eviction, transactions/Lua, persistence/replication, cluster)
 - [x] `POSTGRES_EXTENSIONS.md` — 4 quizzes (16 questions; mechanics, observability/indexing, geo/timeseries/vectors, security/CDC/Citus)
 - [x] `DATA_ENGINEERING_STUDY_GUIDE.md` — 5 quizzes (17 questions; storage formats, lakehouse, dbt, streaming, modeling)
-- [ ] `DISTRIBUTED_ALGORITHMS_STUDY_GUIDE.md`
+- [x] `DISTRIBUTED_ALGORITHMS_STUDY_GUIDE.md` — 6 quizzes (23 questions; FLP, Paxos, Raft, quorums/CAP, atomic commit, CRDTs)
 - [ ] `COMPILER_INTERNALS_STUDY_GUIDE.md`
 - [ ] `CRYPTO_FUNDAMENTALS.md`
 
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 17/65 (Batch 1 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 18/65 (Batch 1 complete).
