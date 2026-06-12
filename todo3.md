@@ -78,9 +78,9 @@ The worst offenders: no reading section *and* almost no documentation links.
 - [ ] `WEBGL_OPENGL_STUDY_GUIDE.md` (9 / 2021) — [ ] reading [ ] links (MDN WebGL, Khronos refs, webgl2fundamentals)
 - [ ] `WEBGPU_STUDY_GUIDE.md` (9 / 2073) — [ ] reading [ ] links (W3C WebGPU/WGSL specs, MDN, webgpufundamentals)
 - [x] `ENTERPRISE_API_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; Where to Go Next added)
-- [ ] `CB8_IOS_STUDY_GUIDE.md` (12 / 1149) — [ ] reading [ ] links (Apple docs for WKWebView/Capacitor equivalents)
-- [ ] `CB8_ANDROID_STUDY_GUIDE.md` (11 / 820) — [ ] reading [ ] links (developer.android.com WebView/Compose)
-- [ ] `k8s/ADVANCED_KUBERNETES_STUDY_GUIDE.md` (7 / 662) — [ ] reading [ ] links (kubernetes.io API reference, controller-runtime)
+- [x] `CB8_IOS_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; Where to Go Next added)
+- [x] `CB8_ANDROID_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; Where to Go Next added)
+- [x] `k8s/ADVANCED_KUBERNETES_STUDY_GUIDE.md` — [x] reading [x] links (API concepts, operator pattern, GitOps engines)
 
 ## Tier 2 — Long guides with thin links, no reading section
 
