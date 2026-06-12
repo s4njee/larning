@@ -95,6 +95,43 @@ Similarly, string literals that look like identifiers are **interned** automatic
 
 If you remember one thing from Part 1: **CPython is a reference-counted, bytecode-interpreted runtime where every value is a heap object, the GIL serializes CPU-bound threads, and the interpreter's dispatch overhead is *the* bottleneck for tight loops.** Every performance lever in this guide — NumPy, C extensions, `__slots__`, generators, the JIT — is a strategy for reducing either the object overhead or the dispatch overhead, or both.
 
+```quiz
+Q: What does a Python list of a million ints actually look like in memory?
+- [ ] A contiguous array of a million machine integers
+- [x] A million-pointer array referencing a million separately heap-allocated PyObject structs, each with ~28 bytes of overhead
+- [ ] A hash table mapping indices to values
+- [ ] A linked list of 8-byte nodes
+> Every value in CPython is a heap object carrying a refcount and type pointer — even 42. That per-object overhead (and the pointer-chasing it forces) is precisely what NumPy and array.array eliminate with contiguous machine-value arrays.
+
+Q: Ten threads doing pure-Python math run no faster than one. Why, and what actually parallelizes CPU work?
+- [ ] Python threads are green threads that share one core
+- [x] The GIL lets only one thread execute bytecode at a time — use processes (ProcessPoolExecutor) or a GIL-releasing C extension like NumPy
+- [ ] The OS scheduler can't see Python threads
+- [ ] Thread creation overhead dominates the math
+> The GIL protects refcounting, so CPU-bound threads serialize (and pay context-switch overhead). I/O-bound threading is fine — the GIL is released during blocking I/O — and C extensions release it during heavy computation, which is part of why "use NumPy" is a real answer.
+
+Q: Why use context managers for files when CPython closes them deterministically anyway?
+- [ ] CPython actually leaks file handles without them
+- [x] Refcount-based finalization is a CPython detail — PyPy and other implementations may delay it arbitrarily, so `with` is the only portable guarantee
+- [ ] The GC requires a context manager to track resources
+- [ ] open() fails without a with-block in Python 3.12+
+> Refcounting frees objects the instant the count hits zero — deterministic, but implementation-specific. On a non-refcounting runtime the file could stay open until some future GC. Context managers are correct everywhere.
+
+Q: Per the guide, what should you try before any exotic optimization?
+- [x] Upgrade to the latest CPython — the specializing adaptive interpreter (3.11+) can deliver 10–40% for free
+- [ ] Rewrite hot loops in C immediately
+- [ ] Disable the cycle GC permanently
+- [ ] Switch all code to the free-threaded build
+> Since 3.11 the interpreter rewrites hot generic bytecodes into type-specialized fast paths at runtime — no code changes required. The free-threaded build and the JIT are still experimental and need workload testing; a version bump is nearly free.
+
+Q: a = 257; b = 257; a is b → False, yet 256 is 256 → True. What's going on?
+- [ ] Integers above 256 are stored as floats
+- [x] CPython interns small integers in [-5, 256] as singletons; outside that range you get distinct heap objects — which is why you compare values with ==, never is
+- [ ] The is operator is nondeterministic for numbers
+- [ ] 257 overflows the SMI range
+> `is` compares pointer identity, and identity for ints is an interning accident, not a semantic guarantee. Reserve `is` for true singletons — None, True, False.
+```
+
 ---
 
 ## Part 2 — The Object Model & Data Model
@@ -205,6 +242,36 @@ Plugin._registry  # {"json": JSONPlugin, "xml": XMLPlugin}
 ```
 
 If you remember one thing from Part 2: **Python dispatches operators, attribute access, iteration, and calling through dunder methods defined in the data model, and the attribute lookup chain (data descriptor → instance dict → non-data descriptor → `__getattr__`) is the resolution order you must know to predict what any attribute access does.**
+
+```quiz
+Q: Two objects compare equal but have different hashes. What breaks?
+- [ ] Nothing — hash and equality are independent
+- [x] dict and set silently misbehave: lookups miss, "duplicate" keys appear — the a == b ⟹ hash(a) == hash(b) contract is load-bearing
+- [ ] Python raises TypeError on insertion
+- [ ] Only ordering comparisons break
+> Hash tables locate by hash first, then confirm with ==. Equal-but-differently-hashed objects land in different buckets and never find each other. It's also why mutable objects shouldn't be hashable — mutation changes the hash out from under the table.
+
+Q: A class defines a property named x, and an instance has "x" in its __dict__. Which wins on obj.x, and why?
+- [x] The property — data descriptors on the type outrank the instance __dict__
+- [ ] The instance dict — instance attributes always shadow class attributes
+- [ ] Whichever was assigned most recently
+- [ ] It raises an AttributeError for ambiguity
+> The lookup chain is: data descriptors → instance __dict__ → non-data descriptors → __getattr__. property defines __set__, making it a data descriptor, so it intercepts both reads and writes regardless of the instance dict.
+
+Q: How does `1 + MyVector()` work when int knows nothing about MyVector?
+- [ ] Python converts the int to a MyVector first
+- [x] int.__add__ returns NotImplemented, so Python tries MyVector.__radd__(1)
+- [ ] The + operator is looked up only on the right operand
+- [ ] It can't — that expression always raises TypeError
+> The reflected-operator protocol: when the left operand's dunder returns NotImplemented, Python gives the right operand's __r*__ a chance. Returning NotImplemented (not raising) is what keeps the negotiation going.
+
+Q: You want every subclass of Plugin to auto-register itself. What's the modern tool?
+- [ ] A custom metaclass overriding __new__
+- [x] __init_subclass__ on the parent — it's called whenever a child class is defined
+- [ ] A decorator applied manually to each subclass
+- [ ] Scanning sys.modules at startup
+> __init_subclass__ (3.6+) handles registration, validation, and behavior injection — the 80% of historical metaclass use — without metaclass complexity or conflicts. Metaclasses remain for frameworks that must control class *creation* itself.
+```
 
 ---
 
@@ -320,6 +387,36 @@ The effects:
 
 If you remember one thing from Part 3: **descriptors are the mechanism behind `property`, methods, `classmethod`, `staticmethod`, and `__slots__` — they intercept attribute access at the class level, and data descriptors outrank the instance `__dict__` while non-data descriptors yield to it.**
 
+```quiz
+Q: What distinguishes a data descriptor from a non-data descriptor, and why does it matter?
+- [ ] Data descriptors store data; non-data descriptors compute it
+- [x] Defining __set__ (or __delete__) makes it a data descriptor, which outranks the instance __dict__; __get__-only descriptors lose to it
+- [ ] Data descriptors only work on dataclasses
+- [ ] Non-data descriptors are read-only at runtime
+> The one-method difference decides lookup priority. It's why a property's setter always runs even when the instance dict has the same key — and why a plain method (non-data) can be shadowed by an instance attribute.
+
+Q: What is a bound method, mechanically?
+- [x] The result of a function's own __get__ — functions are descriptors, and access through an instance wraps the function with that instance as self
+- [ ] A copy of the function stored in each instance's __dict__
+- [ ] A special bytecode the compiler emits for class bodies
+- [ ] A closure created by __init__
+> Foo().greet calls function.__get__(instance, Foo), returning a bound method that prepends self. classmethod and staticmethod are just different descriptors: one binds the class, the other returns the raw function.
+
+Q: When does __slots__ earn its trade-offs?
+- [ ] On every class, as a best practice
+- [x] On small classes you instantiate millions of times — it halves per-instance memory and speeds attribute access, at the cost of no arbitrary attributes and inheritance footguns
+- [ ] Only on classes with more than 10 attributes
+- [ ] When you need faster method calls
+> Slots replace the per-instance dict with fixed struct offsets (each slot is itself a data descriptor). For bulk data carriers use @dataclass(slots=True); for ordinary classes the lost flexibility isn't worth it.
+
+Q: In a reusable validated-attribute descriptor, what does __set_name__ provide?
+- [ ] It renames the descriptor class at runtime
+- [x] It's called automatically with the attribute name the descriptor was assigned to, so the descriptor knows its own storage key without you passing the name twice
+- [ ] It registers the descriptor with the metaclass
+- [ ] It prevents subclasses from overriding the attribute
+> Before 3.6 you wrote width = Positive("width") — name duplicated. __set_name__(owner, name) fires at class-creation time, letting one descriptor class serve any field name cleanly.
+```
+
 ---
 
 ## Part 4 — Metaclasses & Class Machinery
@@ -413,6 +510,36 @@ Python's **Method Resolution Order** (MRO) is computed by the C3 linearization a
 `super()` follows the MRO, not the direct parent — which is *why* cooperative multiple inheritance works and why `super().__init__()` in a diamond calls each class's `__init__` exactly once, in MRO order. **Always use `super()` instead of hardcoding parent calls** unless you have an explicit reason not to.
 
 If you remember one thing from Part 4: **a class is an instance of its metaclass (default: `type`), and class creation is a callable chain you can hook into — but `__init_subclass__`, `@dataclass`, and class decorators handle most real-world needs without the complexity of a metaclass.**
+
+```quiz
+Q: What is `type("Foo", (Base,), {"x": 1})`?
+- [ ] A type assertion that Foo subclasses Base
+- [x] Exactly what the class statement does — calling the metaclass to create a class object; classes are instances of type
+- [ ] A runtime type check on the dict
+- [ ] Deprecated reflection syntax
+> A class statement determines the metaclass, executes the body into a namespace, then calls Meta(name, bases, namespace). The default metaclass is type, so creating a class is literally calling type — classes are objects like everything else.
+
+Q: You need to enforce that subclasses implement validate(). Which tool does the guide steer you to first?
+- [ ] A metaclass raising TypeError in __new__
+- [x] abc.ABC with @abstractmethod (or __init_subclass__) — the simplest tool that solves it; metaclasses are for frameworks
+- [ ] A module-level audit script
+- [ ] Runtime hasattr checks in __init__
+> The decision table's rule: reach for the simplest mechanism. ABCs enforce interfaces, __init_subclass__ handles registration/validation, dataclasses generate boilerplate, decorators transform bodies — metaclasses remain for ORM-grade control over creation itself.
+
+Q: What does @dataclass(frozen=True, slots=True) give a data-carrier class?
+- [x] Generated __init__/__repr__/__eq__, immutability with hashability, and __slots__ memory savings — the default choice for performance-critical carriers
+- [ ] Thread-safety via per-instance locks
+- [ ] Automatic JSON serialization
+- [ ] Lazy field initialization
+> frozen makes instances immutable (so they're hashable — usable as dict keys); slots removes the per-instance dict (~40% memory). Pydantic/attrs layer validation and serialization on the same machinery when you need more.
+
+Q: In a diamond inheritance, why does super().__init__() call each ancestor exactly once?
+- [ ] Python caches __init__ calls per object
+- [x] super() follows the C3-linearized MRO, not the direct parent — each class delegates to the next in one deterministic order
+- [ ] The metaclass deduplicates constructor calls
+- [ ] It doesn't — diamonds call the base twice
+> The MRO linearizes the inheritance graph; super() means "next in the MRO," which is what makes cooperative multiple inheritance work. Hardcoding Parent.__init__(self) breaks that chain — use super().
+```
 
 ---
 
@@ -537,6 +664,36 @@ for batch in batched(pipeline, 1000):
 No intermediate list is ever built. Each row flows through the pipeline one at a time. This is the power of lazy evaluation: **the pipeline's memory usage is O(batch_size), not O(file_size).**
 
 If you remember one thing from Part 5: **generators and `itertools` let you process arbitrarily large data in constant memory — prefer generator expressions over list comprehensions when feeding a single consumer, and build lazy pipelines that never materialize the full dataset.**
+
+```quiz
+Q: `sum(x*x for x in range(10_000_000))` vs `sum([x*x for x in range(10_000_000)])` — what's the difference?
+- [ ] The list version is faster because lists are optimized
+- [x] The generator version computes values one at a time in constant memory; the list version materializes all 10M results first
+- [ ] They're identical — sum() converts both to lists
+- [ ] The generator version can't handle that many elements
+> When the result feeds a single consumer (sum, max, any, join, a for loop), the generator expression gets the same answer without the intermediate list. Free, significant memory savings — make it the default.
+
+Q: A lazy CSV pipeline filters rows and inserts in batches of 1,000. What's its peak memory?
+- [ ] Proportional to the file size
+- [ ] Proportional to the number of matching rows
+- [x] O(batch size) — one row flows through at a time and at most 1,000 accumulate in a batch
+- [ ] Twice the file size, for input and output buffers
+> Nothing materializes the dataset: the file object yields lines lazily, the generator transforms them lazily, batched() collects only the current chunk. This is how Python handles files bigger than RAM.
+
+Q: What does `yield from sub()` do beyond a for-loop of yields?
+- [ ] It eagerly evaluates the sub-generator
+- [x] It delegates at C level (faster) and transparently routes send(), throw(), and close() through to the sub-generator
+- [ ] It flattens arbitrarily nested lists automatically
+- [ ] It runs the sub-generator in a thread
+> For plain iteration the for-loop is equivalent, just slower. The real semantic difference is the two-way channel: coroutine-style communication passes through, which a manual loop drops.
+
+Q: Why did itertools.groupby produce fragmented groups on your unsorted data?
+- [x] groupby groups *consecutive* items with equal keys — it's not SQL GROUP BY; sort by the key first
+- [ ] The key function must be hashable
+- [ ] groupby only works on strings
+- [ ] The data exceeded groupby's buffer
+> groupby is lazy and single-pass, so it can only see adjacency. ("a","a","b","a") yields three groups. Pre-sort by the same key when you need true grouping — or use a dict accumulation for one pass.
+```
 
 ---
 
@@ -668,6 +825,36 @@ typeCheckingMode = "strict"
 
 If you remember one thing from Part 6: **Python's type system is gradual and checked by external tools (mypy/pyright), not the runtime — use `Protocol` for structural typing, generics to preserve type relationships, and strict mode on new code to catch bugs before they run.**
 
+```quiz
+Q: A function annotated `-> str` returns an int in production. What does the runtime do?
+- [ ] Raises TypeError at the return statement
+- [ ] Coerces the int to str
+- [x] Nothing — annotations are ignored at runtime; only external checkers (mypy/pyright) enforce them, before the code runs
+- [ ] Logs a DeprecationWarning
+> Python's typing is gradual and tool-checked: the value is catching bugs in CI and powering IDE completion, not runtime enforcement. (Libraries like Pydantic add runtime validation on top, by reading the same annotations.)
+
+Q: You want to accept "anything with a render() -> str method" without forcing callers to inherit from your base class. What's the tool?
+- [ ] abc.ABC with @abstractmethod
+- [x] typing.Protocol — classes match structurally, no inheritance required
+- [ ] A Union of every known implementing class
+- [ ] isinstance checks against a tuple of types
+> Protocol is duck typing made checkable: Button satisfies Renderable by shape alone. Prefer it over ABCs when you don't control the implementing classes — third-party types match for free.
+
+Q: Why annotate `def first(items: list[T]) -> T` instead of `def first(items: list) -> Any`?
+- [x] The TypeVar preserves the relationship — the checker knows first(["a"]) is a str, so downstream errors are caught instead of laundered through Any
+- [ ] Any is deprecated in Python 3.12
+- [ ] Generics make the function run faster
+- [ ] list requires a parameter since 3.9
+> Any silences the checker on everything it touches. Generics keep type information flowing: input type determines output type, and the 3.12 `def first[T](...)` syntax makes it cheap to write.
+
+Q: What's TypedDict for?
+- [ ] Making dicts immutable
+- [x] Typing dictionaries with known string keys and per-key value types — the shape of JSON/API payloads
+- [ ] Enforcing key insertion order
+- [ ] Runtime schema validation of dicts
+> A TypedDict gives dict-shaped data a checked schema: payload["user_id"] is an int, payload["emial"] is a typo the checker catches. It's still a plain dict at runtime — validation needs Pydantic or similar.
+```
+
 ---
 
 ## Part 7 — Modern Packaging & Tooling
@@ -756,6 +943,29 @@ ruff format .             # format (replaces black)
 | Type-check | `mypy` | **`mypy`** or **`pyright`** |
 
 If you remember one thing from Part 7: **use `uv` for everything (dependencies, venvs, Python versions, running tools), `pyproject.toml` as the single config file, and `ruff` for linting and formatting — the Python tooling story has converged and it's fast.**
+
+```quiz
+Q: Which tools does uv replace in one binary?
+- [ ] Only pip
+- [x] pip, virtualenv, pip-tools, pyenv, and pipx — package install, venvs, lockfiles, Python versions, and one-off tool runs
+- [ ] mypy and ruff
+- [ ] git and make
+> uv covers the whole environment workflow (uv add/lock/sync, uv python, uvx) at 10–100× pip's speed. Linting/formatting is ruff's job and type-checking stays with mypy/pyright — those it doesn't replace.
+
+Q: What guarantees two machines install byte-identical dependency trees?
+- [ ] requirements.txt with >= constraints
+- [x] The lockfile — uv.lock pins exact resolved versions, and uv sync installs precisely that
+- [ ] Installing at the same time of day
+- [ ] pyproject.toml's dependencies list alone
+> pyproject.toml declares *ranges* (intent); the lockfile records the exact *resolution*. Same split as package.json/package-lock.json or Cargo.toml/Cargo.lock — commit both.
+
+Q: Which legacy files does a modern pyproject.toml subsume?
+- [x] setup.py, setup.cfg, requirements.txt, plus per-tool configs like .flake8, mypy.ini, and pytest.ini
+- [ ] Only setup.py
+- [ ] The Makefile and Dockerfile
+- [ ] .gitignore and editorconfig
+> PEP 621 made pyproject.toml the standard home for project metadata, dependencies, and [tool.*] configuration — one file as the source of truth instead of half a dozen formats.
+```
 
 ---
 
@@ -859,6 +1069,36 @@ A handful of rules that prevent misleading results:
 4. **Establish a baseline before changing anything.** You need a "before" number to know if the "after" is actually better.
 
 If you remember one thing from Part 8: **`cProfile` + `snakeviz` to find the hot function, `line_profiler` to find the hot line, and `timeit` to compare alternatives — always measure, because intuition about Python performance is almost always wrong.**
+
+```quiz
+Q: In cProfile output, a function has huge cumtime but tiny tottime. What does that mean?
+- [ ] The profiler failed to sample it properly
+- [x] The cost is in its callees — it's an expensive call chain, not a slow function body; sort by tottime to find the actual hot code
+- [ ] It's being called recursively
+- [ ] It's blocked on I/O
+> tottime excludes callees; cumtime includes them. main() always tops cumtime — that's not a finding. The function where tottime concentrates is where the interpreter is actually spending its cycles.
+
+Q: cProfile fingered one slow function. What's the next instrument?
+- [ ] timeit on the whole program
+- [x] line_profiler (kernprof -lv) — per-line timings inside that function show which statement actually costs
+- [ ] tracemalloc
+- [ ] dis.dis to read its bytecode
+> cProfile's resolution stops at function granularity. Line-level profiling regularly overturns assumptions — the "obvious" culprit line is often innocent while a quiet call on line 4 eats 80%.
+
+Q: Production is slow right now and you can't restart the process with profiling flags. What do you reach for?
+- [x] py-spy — a sampling profiler that attaches to a running process with negligible overhead
+- [ ] cProfile, after a rolling deploy
+- [ ] print-statement timing
+- [ ] timeit in a shell on the same box
+> py-spy reads the target's memory from outside — no code changes, no restart, safe overhead (it can even emit flame graphs live). cProfile is for development runs you control.
+
+Q: Which benchmarking mistake invalidates the result?
+- [ ] Running on the machine the code will deploy to
+- [x] Timing the first call only — it includes imports, cache population, and (3.13+) JIT warmup, none of which represent steady state
+- [ ] Disabling the GC during measurement
+- [ ] Running more than 1,000 iterations
+> Warm up before measuring, use production-shaped data (100 items hides O(n²); 100,000 doesn't), pick the right clock (perf_counter vs process_time), and record a baseline before changing anything.
+```
 
 ---
 
@@ -1005,6 +1245,43 @@ The lever that dwarfs all others but isn't Python-specific: **use a better algor
 Beyond algorithms: sometimes the right answer is **not running the computation at all** — caching the result (Lever 4), precomputing at build time, or moving the hot path to a service written in a compiled language. Python is the glue; let it be glue, and let the hot inner loop be C, Rust, or a database query.
 
 If you remember one thing from Part 9: **the performance levers in order of effort-to-impact are: right data structure → move the loop into C (`sum`/`map`/joins) → NumPy vectorization → caching → `__slots__` and memory layout → string joins → concurrency → compiled extensions → better algorithm.** Profile first, and pick the cheapest lever that solves the measured bottleneck.
+
+```quiz
+Q: `if item in blocklist` inside a loop is slow, where blocklist is a 50,000-entry list. What's the fix and the complexity change?
+- [x] Make blocklist a set — each membership test drops from O(n) linear scan to O(1) hash lookup, turning O(n×m) into O(n+m)
+- [ ] Sort the list and rely on faster scanning
+- [ ] Convert the loop to a comprehension
+- [ ] Cache the loop with lru_cache
+> The single most common Python performance murder, fixed with one word. A set is a hash table; a list is a scan. (Same family: deque for pop-from-front, heapq for priority, Counter for counting.)
+
+Q: Why is `sum(data)` so much faster than a Python for-loop accumulating the same total?
+- [ ] sum() uses a better numeric algorithm
+- [x] The loop runs inside one C call — no per-iteration bytecode dispatch, type lookup, or PyObject churn
+- [ ] sum() runs on a background thread
+- [ ] It isn't — they compile to identical bytecode
+> Interpreter dispatch is the tight-loop tax: each iteration costs LOAD/BINARY_OP/STORE machinery dwarfing the actual add. Built-ins (sum, min, join, map, sorted) and the entire NumPy API are "move the loop into C" in different sizes.
+
+Q: Why is a NumPy float64 array ~8 MB per million elements while a Python list of floats is ~28+ MB?
+- [x] The ndarray stores raw machine values contiguously; the list stores a pointer per element to a full PyObject per value
+- [ ] NumPy compresses values transparently
+- [ ] Python lists pre-allocate 3× capacity
+- [ ] NumPy stores in float32 by default
+> No per-value object header, no pointer indirection — plus operations run in C at SIMD speed with the GIL released. Vectorization is both a memory and a CPU answer, which is why it precedes threading and Cython in the lever order.
+
+Q: For compiling a hot loop you can't vectorize, what order does the guide recommend trying tools?
+- [ ] Cython first — it's the most powerful
+- [x] PyPy (zero effort) → Numba for numerical code (one decorator) → Mypyc (existing typed code) → Cython or PyO3/Rust for the truly hot path
+- [ ] Rewrite in C immediately
+- [ ] ctypes, then Numba, then PyPy
+> Effort-ordered: switching interpreters costs nothing to try; @njit is one line on NumPy-style code; Mypyc compiles annotations you already have; hand-rolled Cython/Rust is the justified-by-profile last step.
+
+Q: CPU-bound work needs all 8 cores. Threads or processes?
+- [ ] Threads — they're lighter weight
+- [x] Processes (ProcessPoolExecutor) — each has its own GIL; threads serialize on CPU-bound bytecode
+- [ ] Threads, but with sys.setswitchinterval(0)
+- [ ] Neither — Python cannot use multiple cores
+> The GIL rule from Part 1 in action: threading helps only I/O-bound or GIL-releasing-C workloads. Processes sidestep it (at IPC/serialization cost — batch with chunksize); the free-threaded build may change this calculus eventually.
+```
 
 ---
 
@@ -1288,6 +1565,36 @@ When a program is too slow, work through this:
 ```
 
 If you remember one thing from Part 10: **profile first, then pick the cheapest lever that fixes the measured bottleneck — right data structure beats micro-optimization, vectorization beats compiled extensions, and the best optimization is often the one that avoids the work entirely.**
+
+```quiz
+Q: Inserting 10,000 rows one execute() at a time is slow. What's the escalation ladder?
+- [ ] Add an index before inserting
+- [x] executemany to batch round-trips, then the COPY protocol for bulk loads — a streaming binary path that bypasses per-row SQL entirely
+- [ ] Wrap all inserts in one try/except
+- [ ] Use threads to insert in parallel
+> Per-row inserts pay a network round-trip each — the database equivalent of string +=. executemany batches; COPY (Postgres) streams, 10–100× faster for bulk loads.
+
+Q: What's the key constraint on Numba's @njit?
+- [ ] It only works on Python 3.13+
+- [x] It compiles a subset of Python — mostly NumPy arrays and scalar math; arbitrary objects and third-party calls aren't supported inside the function
+- [ ] It requires a C compiler at runtime
+- [ ] Functions must be under 50 lines
+> Inside that subset it's spectacular — LLVM-compiled machine code, prange auto-parallelism, C-comparable speed for branchy numerical loops vectorization can't express. Outside it, you fall back to Cython/PyO3.
+
+Q: In the 500-API async fan-out recipe, what is the Semaphore(50) protecting against?
+- [x] Opening 500 simultaneous connections — rate limits, descriptor exhaustion, and memory; it caps in-flight requests at 50
+- [ ] Race conditions on the results list
+- [ ] The GIL blocking the event loop
+- [ ] DNS cache pollution
+> gather() launches everything at once; the semaphore is the bounded-concurrency valve (Go's errgroup.SetLimit, Node's p-limit — same pattern everywhere). Unbounded fan-out is how you DoS your own dependencies.
+
+Q: Why pass chunksize=1000 to ProcessPoolExecutor.map for small work items?
+- [ ] It limits memory in the parent process
+- [x] The default ships one item per IPC message — serialization overhead per item can dwarf the work; chunking amortizes it
+- [ ] It guarantees result ordering
+- [ ] It prevents worker crashes
+> Process parallelism's tax is pickling and pipes. For a fast function over many small items, per-item IPC erases the speedup; batched chunks restore it. Always weigh work size against transfer cost.
+```
 
 ---
 

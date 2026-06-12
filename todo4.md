@@ -90,7 +90,7 @@ Part, click-to-reveal explanation included.
 - [x] `ADVANCED_LINUX_STUDY_GUIDE.md` — 10 parts × 4–5 Q (48 questions)
 - [x] `ADVANCED_GO_STUDY_GUIDE.md` — 10 parts × 4–5 Q (43 questions)
 - [x] `ADVANCED_NODEJS_STUDY_GUIDE.md` — 10 parts × 4–5 Q (41 questions)
-- [ ] `ADVANCED_PYTHON_STUDY_GUIDE.md`
+- [x] `ADVANCED_PYTHON_STUDY_GUIDE.md` — 10 parts × 3–5 Q (41 questions)
 - [ ] `ADVANCED_RUST_STUDY_GUIDE.md`
 - [ ] `ADVANCED_POSTGRES.md`
 - [ ] `POSTGRES.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 4/65.
+65 Markdown guides + 2 bespoke pages. Progress: 5/65.
