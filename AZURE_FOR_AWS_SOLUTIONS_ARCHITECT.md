@@ -8,9 +8,7 @@ This guide was assembled from official Microsoft Learn documentation and Azure A
 
 ## How to Use This Guide
 
-- Study the sections in order if Azure is new to you.
-- In each section, anchor on the AWS mental model first, then learn the Azure service names, then internalize the architectural differences.
-- Treat the mappings as directional, not literal. Azure and AWS often solve the same problem with different control planes, resource hierarchies, and service boundaries.
+Study the sections in order if Azure is new to you; each opens by anchoring on the AWS mental model you already hold, then develops the genuine architectural differences rather than just listing the Azure service names — because the names are the easy part and the conceptual differences are where designs go right or wrong. Treat every mapping as *directional, not literal*: Azure and AWS frequently solve the same problem with a different control plane, a different resource hierarchy, or a different service boundary, and the value of this guide is in those differences, not in the one-to-one substitutions. Two patterns recur often enough to name up front. First, **several single-service AWS mental models split into multiple Azure products** — IAM becomes Entra ID plus Azure RBAC plus managed identities plus Azure Policy; Route 53 becomes Azure DNS plus Traffic Manager plus Front Door; CloudWatch becomes Azure Monitor plus Application Insights plus Log Analytics plus Activity Log — so a recurring skill is learning *which* of the several Azure answers a given problem wants. Second, **Azure consistently offers a managed-tier ladder** (most-managed PaaS up through self-managed VM) across compute, databases, and containers, and the right instinct everywhere is to start at the most-managed rung that meets your needs and only climb toward raw infrastructure when you can name the feature the managed tier doesn't give you.
 
 ### Translation Rules That Matter Early
 
@@ -103,26 +101,11 @@ resource sa 'Microsoft.Storage/storageAccounts@2023-01-01' = {
 
 ## 1. Azure Foundations: Tenants, Subscriptions, Resource Groups, Regions
 
-### AWS Mental Model
+In AWS, the structural unit you reason about constantly is the **account** — your billing boundary, your blast radius, your governance edge — organized into OUs under an Organization, with regions and availability zones beneath. The first thing to internalize about Azure is that the same job is done by a *deeper hierarchy* with one genuinely new layer that has no AWS equivalent, and getting comfortable with that hierarchy is most of getting comfortable with Azure: a **Microsoft Entra tenant** is the identity boundary (roughly the directory your whole organization lives in), beneath it **management groups** nest to organize governance (the analog of OUs), beneath those sit **subscriptions** (the closest match to an AWS account — a billing and quota boundary you'd typically use one of per environment), and inside each subscription live **resource groups**, which is the layer that surprises everyone.
 
-- `AWS Organizations`, `OUs`, `accounts`, `regions`, `availability zones`, `tags`, and the general account boundary you use for billing and governance.
+A resource group is *not* a tag, and treating it like one is the most common early mistake. It is a hard **lifecycle container and deployment scope**: every resource belongs to exactly one resource group, `az group delete` cascades to everything inside it, and deployments, RBAC scopes, and policy all attach naturally at that level. Where an AWS architect's instinct is "one account per environment, tags for workloads within," the idiomatic Azure split is "one *subscription* per environment, then many *resource groups* by workload inside it" — so the resource group becomes the unit you create and destroy together, the thing you'd previously have approximated with a CloudFormation stack plus tag conventions, now made first-class and enforced.
 
-### Azure Services and Concepts to Learn
-
-- `Microsoft Entra tenant`
-- `Management groups`
-- `Subscriptions`
-- `Resource groups`
-- `Azure Resource Manager (ARM)`
-- `Regions`, `Availability Zones`, and `paired regions`
-
-### Key Differences to Internalize
-
-- Azure has a stronger hierarchy mindset than AWS for many enterprise setups: `tenant -> management group -> subscription -> resource group -> resource`.
-- A `resource group` is not just a label. It is a lifecycle container and deployment scope.
-- Azure subnets are regional, not availability-zone-bound the way AWS subnets are.
-- Azure HA decisions often layer `availability sets`, `availability zones`, and `paired regions`.
-- ARM is the control plane across Azure. Many Azure concepts make more sense once you think in ARM scopes and resources.
+Underneath all of this is **Azure Resource Manager (ARM)**, the single control plane through which every create, read, update, and delete flows, regardless of whether you used the portal, the CLI, or Bicep. Many Azure concepts that feel arbitrary at first click into place once you think in ARM's terms of *scopes* (management group → subscription → resource group → resource, with permissions and policy inheriting down the chain) and *resource providers*. One more difference worth wiring in early because it changes network and HA design: Azure **subnets are regional**, spanning all availability zones in a region, rather than being pinned to a single AZ the way AWS subnets are — so where an AWS architect places one subnet per AZ and distributes across them, an Azure architect places one regional subnet and makes zone-redundancy a property of the resources in it, layering availability zones and **paired regions** (Azure's built-in regional DR pairing) for high availability.
 
 ### Hands-On
 
@@ -157,26 +140,9 @@ az group create -n rg-app-prod     -l eastus --tags env=prod owner=appteam
 
 ## 2. Identity and Access Management
 
-### AWS Mental Model
+In AWS, IAM is one service that does two conceptually different jobs at once: it holds identities (users, roles) and it expresses authorization (policies attached to those identities and to resources). The single most important conceptual shift in moving to Azure is that **these two jobs are split into two separate systems**, and once you see the seam, a great deal of Azure's identity model stops feeling foreign. **Microsoft Entra ID** (formerly Azure AD) owns *identity and authentication* — it is the directory of users, groups, service principals, and app registrations; it handles sign-in, federation, multi-factor authentication, and **Conditional Access** (policy on *how* and *whether* someone may authenticate, e.g. "require MFA from outside the corporate network"). **Azure RBAC** owns *authorization to Azure resources* — it answers "may this identity perform this action on this resource," through role assignments at an ARM scope.
 
-- `IAM users`, `IAM roles`, `IAM policies`, `IAM Identity Center`, `STS`, and `Organizations SCPs`.
-
-### Azure Services and Concepts to Learn
-
-- `Microsoft Entra ID`
-- `Azure RBAC`
-- `Managed identities`
-- `Conditional Access`
-- `Management groups`
-- `Azure Policy`
-
-### Key Differences to Internalize
-
-- Azure splits identity and resource authorization more explicitly than AWS.
-- `Microsoft Entra ID` handles identity, authentication, directory objects, app registrations, Conditional Access, and federation.
-- `Azure RBAC` controls who can do what to Azure resources at a given scope.
-- `Managed identities` are often the cleanest Azure equivalent to workload IAM roles.
-- `Azure Policy` overlaps with some SCP-style governance goals, but it is not a direct SCP clone.
+The split means a permission grant in Azure is always a triple: a **principal** (from Entra), a **role** (a set of allowed actions, like the built-in "Storage Blob Data Reader"), and a **scope** (a management group, subscription, resource group, or single resource, with the grant inheriting downward). This is more verbose than attaching an IAM policy, but it is also cleaner to reason about, because identity questions ("who is this, and are they allowed to sign in this way?") and resource questions ("may they read this blob container?") live in different places and are administered by different teams. The mapping that an AWS architect needs most: an Entra **managed identity** is the clean equivalent of an EC2 instance profile or IRSA — an automatically-managed, secret-free identity you attach to a VM, App Service, or Function so the workload can authenticate to other Azure services with no credentials to rotate, and it is almost always the right answer wherever you'd have reached for a workload IAM role. The governance layer is **Azure Policy**, which overlaps with Organizations SCPs in intent but is genuinely more capable in one direction: where an SCP can only *deny* actions preemptively, Azure Policy can *audit existing resources* and even *remediate* them (deploy the missing diagnostic setting, add the required tag), making it a continuous compliance engine rather than only a guardrail at the door.
 
 ### AWS → Azure at a Glance
 
@@ -237,34 +203,9 @@ resource kvRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
 
 ## 3. Networking, Connectivity, and Edge Delivery
 
-### AWS Mental Model
+Networking is the area where the AWS-to-Azure mapping is most one-to-many, and the confusion it causes is worth pre-empting. The core is familiar: a **Virtual Network (VNet)** is a VPC, subnets are subnets (regional, per Section 1), and traffic is shaped by **user-defined routes** the way route tables shape it in AWS. The first simplification an AWS architect notices is welcome: where AWS gives you *two* packet-filtering layers — stateful security groups attached to instances *and* stateless NACLs attached to subnets — Azure collapses both into one construct, the **Network Security Group (NSG)**, which you attach to a subnet or a NIC and which is stateful. One mental model instead of two, which removes a whole category of "did I open it in the SG or the NACL?" debugging.
 
-- `VPC`, `subnets`, `route tables`, `security groups`, `NACLs`, `NAT Gateway`, `ALB`, `NLB`, `Route 53`, `CloudFront`, `Global Accelerator`, `PrivateLink`, `Transit Gateway`, and `Direct Connect`.
-
-### Azure Services and Concepts to Learn
-
-- `Virtual Network (VNet)`
-- `Subnets`
-- `User-defined routes (UDRs)`
-- `Network security groups (NSGs)`
-- `Azure NAT Gateway`
-- `Azure Load Balancer`
-- `Application Gateway`
-- `Azure DNS`
-- `Traffic Manager`
-- `Front Door`
-- `Private Link` and `Private Endpoint`
-- `VNet peering`
-- `Virtual WAN`
-- `ExpressRoute`
-
-### Key Differences to Internalize
-
-- Azure uses `NSGs` instead of the AWS combination of security groups plus NACLs.
-- `Route 53` functionality is split. DNS hosting is usually `Azure DNS`; global DNS-level routing can be `Traffic Manager`; modern global app delivery is often `Front Door`.
-- `Front Door` often ends up covering ground that AWS teams might split among `CloudFront`, `Global Accelerator`, and internet-facing load balancing patterns.
-- `Application Gateway` is the closest mental match for `ALB`; `Azure Load Balancer` is closer to `NLB`.
-- Azure hub-spoke and `Virtual WAN` are central reference patterns for multi-network architecture.
+The complications all live at the edge, where several distinct Azure products cover ground that a few AWS services covered, and choosing among them is the real skill. **Route 53 splits three ways**: plain authoritative DNS hosting is **Azure DNS**; DNS-level global routing (latency or priority-based, returning different answers to different users) is **Traffic Manager**; and modern global application delivery — anycast edge, CDN, WAF, and global HTTP load balancing in one — is **Front Door**, which itself absorbs what an AWS team would assemble from CloudFront, Global Accelerator, and an internet-facing load balancer. For *regional* load balancing the split is by OSI layer and is clean once stated: **Application Gateway** is the L7 (HTTP-aware, path-routing, WAF-capable) product and the closest match to an ALB, while **Azure Load Balancer** is the L4 (TCP/UDP) product matching an NLB. The connectivity story rounds it out with direct parallels — **Private Link / Private Endpoint** for PrivateLink, **VNet peering** and **Virtual WAN** for the Transit Gateway role, and **ExpressRoute** for Direct Connect — and the reference architecture you'll meet constantly is hub-spoke (a central hub VNet holding shared services and connectivity, with workload VNets peered as spokes), the Azure idiom for the multi-VPC designs Transit Gateway enables in AWS.
 
 ### AWS → Azure at a Glance
 
@@ -313,28 +254,9 @@ az network vnet subnet update -g rg-network-prod --vnet-name vnet-prod -n snet-w
 
 ## 4. Compute, Virtual Machines, and Scaling
 
-### AWS Mental Model
+The raw compute mapping is the most direct in the whole guide — an **Azure Virtual Machine** is an EC2 instance, a **VM Scale Set (VMSS)** is an Auto Scaling Group, a **Spot VM** is a Spot Instance, and an **Azure Compute Gallery** image is an AMI — so the value here is in the handful of defaults that differ and the one piece of architectural advice that matters more than any mapping. The defaults: **Managed Disks** are the normal, only-sane choice, and the relief they bring is that you no longer manage the underlying storage account for a VM's disk the way EC2 leaves you reasoning about EBS volume types and the instance's own store — you pick a disk SKU and Azure handles the placement, replication, and scaling beneath it. Spot VMs differ from AWS in a small but pleasant way: there is no bidding, just a fixed discount and an eviction when Azure needs the capacity, which removes the bid-price modeling AWS Spot demands. And high availability for VMs is expressed by *spreading the scale set across availability zones* (`--zones 1 2 3`), the direct analog of an ASG spanning subnets in multiple AZs, with the older **availability set** construct (anti-affinity within a single datacenter) as the fallback where zones aren't available.
 
-- `EC2`, `AMI`, `Auto Scaling Groups`, `Launch Templates`, `Spot`, `EBS`, and `instance store`.
-
-### Azure Services and Concepts to Learn
-
-- `Azure Virtual Machines`
-- `VM sizes`
-- `Virtual machine scale sets`
-- `Azure Compute Gallery`
-- `Spot VMs`
-- `Availability sets`
-- `Availability Zones`
-- `Managed Disks`
-- `Temporary storage`
-
-### Key Differences to Internalize
-
-- `VM scale sets` are the closest Azure equivalent to `Auto Scaling Groups`.
-- Azure HA patterns for VMs are closely tied to `availability sets`, `zones`, and region design.
-- Managed disks are the normal default. You do not manage the underlying storage accounts for VM disks.
-- Azure compute choices are broader than just VMs. Many AWS teams overuse EC2 patterns when an Azure PaaS or container option would be better.
+The architectural advice, which is the part worth carrying: Azure's compute menu is broader than VMs, and AWS teams reliably *over-use the VM pattern* when an Azure PaaS or container option would be simpler and cheaper. The instinct from AWS — "I need to run code, so I provision instances and an ASG" — leaves a lot on the table in Azure, where App Service, Container Apps, and Functions (Sections 8–9) handle a large fraction of workloads with no VM to patch, scale, or secure. Treat raw VMs as the option you reach for when you specifically need OS control, not the default landing place for every workload.
 
 ### AWS → Azure at a Glance
 
@@ -379,26 +301,9 @@ az monitor autoscale rule create -g rg-app-prod --autoscale-name web-autoscale \
 
 ## 5. Object, Block, and File Storage
 
-### AWS Mental Model
+The storage mapping is mostly clean — **Blob Storage** is S3, **Managed Disks** are EBS, **Azure Files** is EFS (managed SMB/NFS shares), and **Azure NetApp Files** is the high-performance shared-file tier matching FSx — but two things differ enough to call out. First, **storage redundancy is an explicit, visible architectural decision in Azure** in a way it isn't in S3. Where S3 quietly gives you eleven-nines durability across a region, Azure makes you choose the replication model by name and pricing tier: **LRS** (three copies in one datacenter), **ZRS** (across availability zones in the region — the usual production floor), **GRS** (asynchronously replicated to the paired region), and **GZRS** (both zone- and geo-redundant). This is more decisions than S3 asks of you, but it is also more honest, because the cost and the disaster-recovery posture of your data are now things you chose rather than things you assumed — and getting it wrong (LRS for data you needed geo-redundant) is a real design error the visibility helps you avoid. The access tiers (**Hot**, **Cool**, **Archive**) map directly onto S3's storage classes and Glacier.
 
-- `S3`, `EBS`, `EFS`, `FSx`, and `Glacier`.
-
-### Azure Services and Concepts to Learn
-
-- `Azure Blob Storage`
-- `Azure Data Lake Storage Gen2`
-- `Managed Disks`
-- `Azure Files`
-- `Azure NetApp Files`
-- `Archive`, `Cool`, and `Hot` tiers
-- `LRS`, `ZRS`, `GRS`, and `GZRS`
-
-### Key Differences to Internalize
-
-- `Blob Storage` is the main S3-like object store.
-- `Azure Data Lake Storage Gen2` is not a separate storage product in the same way teams often imagine it. It is built on top of Blob with hierarchical namespace features.
-- Azure makes storage redundancy choices highly visible in architecture design.
-- `Azure Files` is a managed file share service for SMB/NFS style workloads. `Azure NetApp Files` is the higher-performance shared file option for more demanding workloads.
+Second, a clarification that saves confusion: **Azure Data Lake Storage Gen2 is not a separate product** the way teams coming from a distinct S3-plus-Lake-Formation world often imagine. It *is* Blob Storage with a "hierarchical namespace" feature switched on, which adds real directories and POSIX-like permissions on top of the same object store — so a data lake on Azure is a Blob account with one checkbox flipped, not a different service to learn, which is a genuine simplification once you stop looking for the separate thing.
 
 ### AWS → Azure at a Glance
 
@@ -444,24 +349,9 @@ az storage account management-policy create --account-name stappprod001 -g rg-ap
 
 ## 6. Relational Databases
 
-### AWS Mental Model
+Relational databases are where the "no single equivalent" warning matters most, because **Azure has nothing branded like Aurora** — there is no one managed relational engine that is the obvious default. Instead the choice is driven by *engine* and by *how much compatibility you need*, and an AWS architect should learn the decision rather than look for the mapping. For SQL Server workloads (the Microsoft-native case), there is a ladder of three rungs by compatibility-versus-PaaS-depth: **Azure SQL Database** is the cloud-native, most-managed option (a single database or elastic pool, serverless and auto-scaling tiers, but a curated subset of SQL Server's surface — the right choice for new applications); **Azure SQL Managed Instance** climbs toward near-full SQL Server compatibility (instance-level features, cross-database queries, SQL Agent — the right choice when you're lifting an existing SQL Server estate that uses features the cloud-native tier omits); and **SQL Server on an Azure VM** is the full, self-managed engine for when you need OS-level control or a feature neither PaaS tier offers. For the open-source engines, **Azure Database for PostgreSQL** and **for MySQL** (the Flexible Server deployment model) are the managed-RDS equivalents and the obvious homes for Postgres and MySQL workloads.
 
-- `RDS`, `Aurora`, and self-managed databases on `EC2`.
-
-### Azure Services and Concepts to Learn
-
-- `Azure SQL Database`
-- `Azure SQL Managed Instance`
-- `SQL Server on Azure VMs`
-- `Azure Database for PostgreSQL`
-- `Azure Database for MySQL`
-
-### Key Differences to Internalize
-
-- Azure does not have one simple brand-equivalent to `Aurora`. Choose based on engine compatibility, PaaS depth, failover model, and operational needs.
-- `Azure SQL Database` is strong for cloud-native SQL Server-compatible workloads.
-- `Azure SQL Managed Instance` is the nearer fit when you need more SQL Server compatibility than Azure SQL Database offers.
-- If you were self-managing on EC2, Azure often still gives you the option to run the engine on a VM, but you should justify why PaaS is not good enough.
+The decision discipline to carry over: as with compute, AWS teams arriving in Azure tend to reach for "run the engine on a VM" out of habit, and the right instinct is the opposite — start at the most-managed PaaS rung that meets your compatibility needs and only climb toward the VM when you can *name* the feature PaaS doesn't give you, because each rung down the ladder hands you back operational work (patching, backups, HA configuration, failover) that the PaaS tiers were doing for you.
 
 ### AWS → Azure at a Glance
 
@@ -507,23 +397,9 @@ az sql db create -g rg-app-prod -s sql-app-prod -n appdb \
 
 ## 7. NoSQL, Cache, and Search
 
-### AWS Mental Model
+**Cosmos DB** is one of the biggest mental-model shifts in the move, and it pays to understand *why* rather than just filing it under "DynamoDB equivalent." Cosmos is a globally-distributed, multi-model database with a design philosophy of putting hard guarantees in the SLA: single-digit-millisecond latency, turnkey multi-region writes, and — most distinctively — **five tunable consistency levels** (strong, bounded-staleness, session, consistent-prefix, eventual) where DynamoDB offers essentially two. That spectrum is genuinely useful (session consistency, the default, gives read-your-writes per client at much lower cost than strong) but it is also a decision DynamoDB never made you make. The two databases *feel* similar in application patterns — both are partition-key-driven NoSQL stores you provision throughput against — but their APIs, consistency models, and throughput accounting differ enough that you should not assume a DynamoDB design ports cleanly; in particular, Cosmos is *extremely* sensitive to partition-key choice (a hot partition caps your throughput and inflates your bill), so the partition-key modeling that's important in DynamoDB is *critical* in Cosmos.
 
-- `DynamoDB`, `ElastiCache`, `OpenSearch`, `DocumentDB`, and `Keyspaces`.
-
-### Azure Services and Concepts to Learn
-
-- `Azure Cosmos DB`
-- `Azure Cache for Redis`
-- `Azure AI Search`
-- `Azure Data Explorer` for some time-series and log analytics cases
-
-### Key Differences to Internalize
-
-- `Cosmos DB` is one of the biggest mental-model shifts for AWS architects. It is globally distributed, SLA-heavy, multi-model, and extremely sensitive to good partition-key design.
-- `DynamoDB` and `Cosmos DB` feel similar in some application patterns, but their APIs, consistency options, throughput models, and multi-region behaviors differ enough that you should not assume direct portability.
-- `Redis` is still Redis. The cloud architecture choices around placement, networking, persistence, and failover still matter.
-- `OpenSearch` style needs may map to `Azure AI Search`, Elastic on Azure, or a different analytics stack depending on whether the problem is app search, log search, or full search cluster management.
+The rest of the category is more direct. **Azure Cache for Redis** is ElastiCache for Redis — Redis is still Redis, so the work is the familiar cloud-architecture decisions around tier, networking, persistence, and failover. Search splits by what you actually need: application search (the "search box in my product" case) maps to **Azure AI Search**, which bundles vector and semantic search and is increasingly the RAG retrieval layer for AI features; log and time-series analytics at scale maps instead to **Azure Data Explorer**; and a full self-managed Elasticsearch cluster maps to Elastic on Azure — three different answers to what AWS lumps under OpenSearch, chosen by whether the problem is app search, log search, or cluster ownership.
 
 ### AWS → Azure at a Glance
 
@@ -567,24 +443,9 @@ az cosmosdb sql container create -g rg-app-prod -a cosmos-app-prod -d appdb -n o
 
 ## 8. Containers and Kubernetes
 
-### AWS Mental Model
+The single most common mistake AWS architects make in Azure containers is over-mapping everything to **AKS** because they know EKS — reaching for managed Kubernetes by reflex when a lighter option would serve. The registry mapping is trivial (**Azure Container Registry** is ECR), but the runtime choice is a three-way decision worth making deliberately. **AKS** is full managed Kubernetes, the right answer *only* when you genuinely want the Kubernetes control plane and its ecosystem — Helm, operators, custom controllers, a service mesh (Azure offers a first-party Istio add-on) — and are willing to own the operational complexity that comes with it. For the large fraction of app teams who just want to run containers that scale (including to zero) and respond to events *without* learning or operating Kubernetes, **Azure Container Apps** is the better first stop, and it is genuinely the serverless-container default: it absorbs the ground an AWS team typically spreads across ECS, Fargate, service discovery, and simple event-driven container jobs, with KEDA-based scaling built in. **Azure Container Instances** is the lowest rung — a single container with no orchestration, for short-lived or burst tasks.
 
-- `ECR`, `ECS`, `EKS`, `Fargate`, and `App Mesh`.
-
-### Azure Services and Concepts to Learn
-
-- `Azure Container Registry (ACR)`
-- `Azure Kubernetes Service (AKS)`
-- `Azure Container Apps`
-- `Azure Container Instances`
-- `Istio add-on for AKS`
-
-### Key Differences to Internalize
-
-- Teams coming from AWS often over-map everything to `AKS` because they know `EKS`. In Azure, `Container Apps` is frequently the better first stop for app teams who want serverless containers without owning Kubernetes.
-- `AKS` is the answer when you truly want Kubernetes control and ecosystem flexibility.
-- `ACR` is the normal `ECR` analog.
-- `Container Apps` covers ground that AWS teams sometimes spread across `ECS`, `Fargate`, service discovery, and simple event-driven containers.
+The decision rule to carry: start at Container Apps and only climb to AKS when you can name the Kubernetes feature you actually need, because AKS hands you back the cluster-operations burden (upgrades, node pools, networking, the whole [Kubernetes Security](../k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md) surface) that Container Apps was managing for you — the same most-managed-tier-first discipline that governs the compute and database choices above, applied to containers.
 
 ### AWS → Azure at a Glance
 
@@ -627,23 +488,9 @@ az containerapp create -g rg-app-prod -n api --environment cae-prod \
 
 ## 9. Serverless, APIs, and Workflow Orchestration
 
-### AWS Mental Model
+**Azure Functions** is the primary Lambda equivalent and behaves much as you'd expect, but two of the surrounding services split in ways worth understanding. Step Functions has *two* Azure answers chosen by how you want to express orchestration: **Durable Functions** is the code-first model, where you write the workflow as ordinary code (an orchestrator function that `await`s activity functions) and the framework handles the durable checkpointing and replay — the right fit for developers who want orchestration *in code* and version it alongside the app; **Logic Apps** is the integration-centric, low-code model with hundreds of pre-built connectors to SaaS and enterprise systems, and it is frequently the *better* answer for enterprise integration ("when an email arrives, parse it, write to SharePoint, post to Teams") where Durable Functions would mean writing connectors by hand. Knowing which of the two a problem wants — developer orchestration versus connector-driven integration — is the real skill the split demands.
 
-- `Lambda`, `API Gateway`, and `Step Functions`.
-
-### Azure Services and Concepts to Learn
-
-- `Azure Functions`
-- `Azure API Management`
-- `Durable Functions`
-- `Azure Logic Apps`
-
-### Key Differences to Internalize
-
-- `Azure Functions` is the primary Lambda equivalent.
-- `Durable Functions` is the code-first orchestration model that most closely overlaps with `Step Functions` for developers who want orchestration in code.
-- `Logic Apps` is the more integration-centric and low-code workflow product. It often becomes the better answer for enterprise integration than Durable Functions.
-- `API Management` is broader than a simple API front door. It includes gateway, policies, developer portal, security, versioning, and lifecycle concerns.
+The other broadening is **API Management**, which is more than the API-front-door role API Gateway plays. It is a full API *platform*: the gateway itself, a rich policy engine (rate limiting, transformation, auth enforcement applied as composable policies), a developer portal for API consumers, versioning, and product/subscription lifecycle management. An AWS architect reaching for "API Gateway equivalent" gets that and a good deal more, which matters for sizing and cost — APIM is a heavier, more strategic component than a bare gateway, and you adopt it when the API *program* (many APIs, external consumers, governance) is the thing you're managing, not just a single API's front door.
 
 ### AWS → Azure at a Glance
 
@@ -694,24 +541,9 @@ module.exports = df.orchestrator(function* (ctx) {
 
 ## 10. Messaging and Event Streaming
 
-### AWS Mental Model
+Messaging is another one-to-many split, and the clarifying distinction Azure draws — sharper than AWS's — is between **messages** (commands you want a specific consumer to process reliably, exactly once, in order) and **events** (notifications that something happened, broadcast to whoever cares). That distinction maps the four Azure services cleanly. **Queue Storage** is the simplest queue, the lightweight SQS for basic decoupling. **Service Bus** is the enterprise message broker and the place to look whenever you need *durable queues, pub/sub via topics, ordering, sessions, dead-lettering, or transactions* — it covers both the richer end of SQS and the fan-out role of SNS (via Service Bus topics with multiple subscriptions). **Event Grid** is the event-routing service and the closest match to EventBridge — a serverless pub/sub for discrete events, with Azure's own resource events (a blob was created, a VM started) as first-class sources, ideal for reactive, event-driven glue. And **Event Hubs** is the high-throughput streaming ingestion service — millions of events per second, partitioned, replayable, *Kafka-protocol-compatible* — the one to reach for when the pattern is Kinesis or Kafka: telemetry, clickstreams, logs, anything you ingest as a stream and process with windowing.
 
-- `SQS`, `SNS`, `EventBridge`, `Kinesis`, `Amazon MQ`, and sometimes `MSK`.
-
-### Azure Services and Concepts to Learn
-
-- `Queue Storage`
-- `Service Bus`
-- `Event Grid`
-- `Event Hubs`
-
-### Key Differences to Internalize
-
-- `SQS` maps to two Azure answers depending on the problem. `Queue Storage` is the simpler queue. `Service Bus` is the richer enterprise messaging system.
-- `SNS` style fan-out often maps to `Service Bus topics` or `Event Grid`, depending on semantics and subscribers.
-- `EventBridge` thinking generally maps best to `Event Grid`.
-- `Kinesis` or Kafka-style ingest patterns generally point toward `Event Hubs`.
-- `Service Bus` is the place to look when you need durable queues, pub/sub, ordering patterns, sessions, or enterprise messaging semantics.
+The decision in one line: commands and enterprise messaging → Service Bus; reactive event routing → Event Grid; high-volume stream ingestion → Event Hubs; trivial decoupling → Queue Storage. Naming which of the four a problem wants, by whether it's a message or an event and at what throughput, is the whole skill here.
 
 ### AWS → Azure at a Glance
 
@@ -757,28 +589,9 @@ az eventhubs eventhub create -g rg-app-prod --namespace-name eh-app-prod -n tele
 
 ## 11. Analytics, Data Lake, and AI
 
-### AWS Mental Model
+Analytics is the area where there is most emphatically *no single mapping*, and an AWS architect expecting "the Redshift equivalent" should reset to thinking in roles instead, because the AWS analytics stack (Redshift + Glue + Athena + EMR + Kinesis) spreads across several Azure products that overlap. **Azure Data Factory** is the integration and orchestration layer — the Glue-pipelines role, moving and transforming data on a schedule. **Azure Synapse Analytics** is the blended workspace that bundles a SQL warehouse, Spark, and pipelines under one roof, the nearest thing to a Redshift-plus-EMR-plus-Athena center of gravity. **Azure Databricks** is a genuinely first-class option (a deep Microsoft partnership, not a marketplace afterthought) and is frequently *the* answer for lakehouse, Spark, streaming, data engineering, and ML workflows — many Azure data platforms are built on Databricks rather than Synapse. **Azure Data Explorer** owns the log/time-series/high-ingest interactive-analytics niche. And the strategic wildcard you'll see across current Azure docs is **Microsoft Fabric**, a newer unified SaaS analytics platform that folds warehouse, lakehouse, data engineering, real-time, and BI into one product with a single storage foundation (OneLake) — worth knowing as the direction Microsoft is steering greenfield analytics even as Synapse and Databricks remain the established choices.
 
-- `Athena`, `Glue`, `EMR`, `Redshift`, `Kinesis`, `Timestream`, `SageMaker`, `Rekognition`, and other AI services.
-
-### Azure Services and Concepts to Learn
-
-- `Azure Data Lake Storage Gen2`
-- `Azure Data Factory`
-- `Azure Synapse Analytics`
-- `Azure Databricks`
-- `Azure Data Explorer`
-- `Azure AI services`
-- `Microsoft Fabric` as an adjacent modern analytics platform you will see in current Azure docs
-
-### Key Differences to Internalize
-
-- Azure’s analytics landscape is wider than many AWS architects expect. There is no single answer that always replaces `Redshift + Glue + Athena + EMR`.
-- `Data Factory` handles integration and orchestration.
-- `Synapse` blends SQL, Spark, pipelines, and analytics workspace patterns.
-- `Databricks` is a major first-class choice for lakehouse, Spark, streaming, data engineering, and AI workflows.
-- `Data Explorer` is strong for log, time-series, and high-ingest interactive analytics use cases.
-- AI services in Azure are split across specialized APIs and broader platform tooling, rather than one monolithic ML answer.
+On the AI side, the same fragmentation holds: rather than one monolithic ML service, Azure splits into pre-built **Azure AI services** (vision, speech, language, document intelligence — the Rekognition/Comprehend-style turnkey APIs), Azure Machine Learning for custom model training and MLOps (the SageMaker role), and Azure OpenAI / AI Foundry for generative AI. The practical guidance is to choose by the *role* in your data architecture — ingest, orchestrate, warehouse, lakehouse, real-time, serve — rather than hunting for a one-to-one product swap that doesn't exist.
 
 ### AWS → Azure at a Glance
 
@@ -830,24 +643,9 @@ GROUP BY region;
 
 ## 12. Observability and Operations
 
-### AWS Mental Model
+CloudWatch is one monolith that does metrics, logs, dashboards, and alarms; Azure deliberately splits the same job into named pieces by concern, and the split confuses AWS architects until they see the shape. **Azure Monitor** is the umbrella brand and the metrics-and-alerts engine. **Application Insights** is the APM layer (distributed tracing, request maps, dependency tracking — the X-Ray role and more). **Log Analytics** is the *workspace* where logs land and are queried — and this is the piece that matters most operationally, because the query language is **KQL (Kusto Query Language)**, which is not optional knowledge: nearly every diagnostic, alert rule, and dashboard in Azure is a KQL query, so it becomes a core skill quickly, the way reading CloudWatch Logs Insights syntax does in AWS but more pervasively. **Activity Log** is the control-plane audit trail — who did what to which resource through ARM — the closest analog to CloudTrail. And **Azure Automation** covers the runbook/automation patterns an AWS team associates with Systems Manager.
 
-- `CloudWatch`, `X-Ray`, `CloudTrail`, `Systems Manager`, and some operational reporting you might also get from `Config`.
-
-### Azure Services and Concepts to Learn
-
-- `Azure Monitor`
-- `Application Insights`
-- `Log Analytics`
-- `Activity Log`
-- `Azure Automation`
-
-### Key Differences to Internalize
-
-- Azure observability is deliberately split by concern. `Azure Monitor` is the umbrella, `Application Insights` handles APM, `Log Analytics` is the query/workspace layer, and `Activity Log` is the control-plane audit log.
-- `Activity Log` is the closest control-plane analog to `CloudTrail`.
-- Azure teams frequently use `KQL` for querying operational data, which becomes an important skill quickly.
-- `Azure Automation` covers runbooks and automation patterns that many AWS teams might associate with `Systems Manager`.
+The mental adjustment is to stop looking for "the CloudWatch service" and instead learn the four-part division: metrics and alerts in Monitor, app traces in App Insights, log queries in Log Analytics (via KQL), and the audit trail in Activity Log. Once you internalize that observability is split by concern rather than bundled, the Azure docs stop feeling scattered — and KQL is the single highest-leverage thing to learn early, because it unlocks all of it.
 
 ### AWS → Azure at a Glance
 
@@ -897,26 +695,9 @@ az monitor metrics alert create -g rg-app-prod -n high-cpu \
 
 ## 13. Security, Secrets, and Perimeter Protection
 
-### AWS Mental Model
+Security is the one category where Azure *consolidates* rather than splits, and it's a welcome simplification. Where AWS gives you three separate services — KMS for keys, Secrets Manager for secrets, ACM for certificates — **Azure Key Vault** is one service that holds all three (keys, secrets, and certificates), with **Key Vault Managed HSM** as the FIPS-validated hardware-backed tier for the CloudHSM case. One vault, one access model (RBAC plus access policies), one audit trail for everything cryptographic. Likewise, **Microsoft Defender for Cloud** unifies what AWS spreads across Security Hub (posture management — "are my resources misconfigured?") and GuardDuty (workload threat protection — "is something attacking my resources?") into a single product that does both: continuous security-posture scoring against benchmarks *and* runtime threat detection across VMs, containers, databases, and storage.
 
-- `KMS`, `Secrets Manager`, `CloudHSM`, `GuardDuty`, `Security Hub`, `WAF`, and `Shield`.
-
-### Azure Services and Concepts to Learn
-
-- `Azure Key Vault`
-- `Azure Key Vault Managed HSM`
-- `Microsoft Defender for Cloud`
-- `Azure Web Application Firewall`
-- `Azure DDoS Protection`
-- `Application Gateway WAF`
-- `Front Door WAF`
-
-### Key Differences to Internalize
-
-- `Key Vault` combines several patterns AWS teams often split between `KMS`, `Secrets Manager`, and certificate management.
-- `Defender for Cloud` combines posture and workload protection concepts that AWS teams often spread across `Security Hub`, `GuardDuty`, and additional tools.
-- Network-layer DDoS defense and application-layer WAF are separate concerns in Azure, just as they should be architecturally.
-- The place you insert WAF in Azure depends on whether your app edge is `Application Gateway` or `Front Door`.
+The one genuine split to get right is at the edge, and it's architecturally correct: network-layer and application-layer defenses are separate concerns. **Azure DDoS Protection** handles volumetric L3/L4 attacks (the Shield role), while the **Azure WAF** handles L7 application attacks (the AWS WAF role) — but the WAF is not a standalone product you point at things; it is a *feature you enable on your edge*, so *where* you insert it depends on your edge choice from Section 3: WAF on **Application Gateway** for a regional edge, or WAF on **Front Door** for a global one. Choosing your edge product therefore also chooses where your WAF lives, which is why the networking and security decisions are coupled and best made together.
 
 ### AWS → Azure at a Glance
 
@@ -974,24 +755,7 @@ resource waf 'Microsoft.Network/FrontDoorWebApplicationFirewallPolicies@2022-05-
 
 ## 14. Governance, Landing Zones, and Cost Management
 
-### AWS Mental Model
-
-- `Organizations`, `Control Tower`, `Config`, `Trusted Advisor`, `Cost Explorer`, and `Budgets`.
-
-### Azure Services and Concepts to Learn
-
-- `Management groups`
-- `Azure Policy`
-- `Azure landing zones`
-- `Azure Advisor`
-- `Microsoft Cost Management`
-
-### Key Differences to Internalize
-
-- Azure landing zones are a core enterprise design pattern. Think of them as more than an account vending machine. They are a full platform architecture baseline for identity, networking, governance, management, and platform automation.
-- `Azure Policy` can audit and remediate both existing and new resources, which often changes how teams think about governance.
-- `Advisor` is the closest `Trusted Advisor` style service.
-- Cost visibility and accountability can be driven at `management group`, `subscription`, and `resource group` scopes.
+Governance is where Azure's hierarchy from Section 1 pays off, because policy and cost both attach naturally to its scopes. **Azure Policy** is the engine, and its defining advantage over Organizations SCPs is worth restating: it doesn't only *prevent* non-compliant resources at creation, it *audits and remediates existing ones* — so "every storage account must enforce HTTPS" isn't just a guardrail for new deployments but a continuous scan that flags (and can auto-fix) the accounts already running, which genuinely changes how teams think about governance from "block at the door" to "continuously converge to compliant." **Azure landing zones** are the enterprise design pattern that ties it together, and the crucial reframe for an AWS architect is that a landing zone is *more than Control Tower's account vending machine* — it is a full platform-architecture baseline (the management-group hierarchy, the hub-spoke network, the identity model, the policy set, the logging and monitoring foundation, the platform automation) that you stamp out before any workload arrives, so that every subscription a team receives is already governed, networked, and observable. **Azure Advisor** is the Trusted Advisor analog (cost, performance, reliability, and security recommendations), and **Microsoft Cost Management** drives cost visibility and accountability at every scope — management group, subscription, and resource group — which is exactly why the Section 1 hierarchy matters for FinOps: the resource group you create-and-destroy together is also the unit you can budget and chargeback against.
 
 ### AWS → Azure at a Glance
 
@@ -1037,27 +801,9 @@ az consumption budget create --budget-name prod-monthly --amount 5000 --time-gra
 
 ## 15. DevOps, IaC, Migration, Backup, and Disaster Recovery
 
-### AWS Mental Model
+The IaC story starts with the same ARM control plane from Section 1: everything you deploy is an ARM operation, and **Bicep** is the first-party authoring language that compiles to ARM templates — a far better day-to-day experience than hand-writing ARM JSON (which still exists beneath it), and the CloudFormation/CDK analog you should default to for Azure-native work, with **Terraform** the very common multi-cloud alternative (see the [Terraform guide](../TERRAFORM_STUDY_GUIDE.md)). For pipelines, Azure shops standardize on one of two platforms — **Azure DevOps** (the older, all-in-one suite with Repos, Pipelines, Boards) or **GitHub Actions** (increasingly the default for newer platform work, especially paired with Bicep or Terraform) — and an AWS architect's CodePipeline/CodeBuild/CodeDeploy mental model maps onto whichever the org has chosen.
 
-- `CloudFormation`, `CDK`, `CodePipeline`, `CodeBuild`, `CodeDeploy`, `Migration Hub`, `DMS`, `AWS Backup`, and `Elastic Disaster Recovery`.
-
-### Azure Services and Concepts to Learn
-
-- `Azure Resource Manager`
-- `Bicep`
-- `Azure DevOps`
-- `GitHub Actions for Azure`
-- `Azure Migrate`
-- `Azure Database Migration Service`
-- `Azure Backup`
-- `Azure Site Recovery`
-
-### Key Differences to Internalize
-
-- `Bicep` is the preferred first-party IaC language on top of ARM. ARM templates still matter, but Bicep is the better day-to-day authoring experience.
-- Azure shops commonly standardize on either `Azure DevOps` or `GitHub Actions`, with GitHub plus Bicep/Terraform being especially common for newer platform work.
-- `Azure Migrate` is the main discovery, assessment, and migration hub for many Azure adoption journeys.
-- `Azure Backup` and `Azure Site Recovery` solve different problems. Backup protects recoverable data states; Site Recovery handles replication, failover, and workload continuity.
+The migration and resilience tools split by job in a way worth getting right. **Azure Migrate** is the discovery-assessment-migration hub (the Migration Hub role) and **Azure Database Migration Service** is DMS for databases. On resilience, the distinction that AWS architects must keep straight is **Backup versus Site Recovery**, because they solve different problems and are not interchangeable: **Azure Backup** protects *recoverable data states* (point-in-time restore of a VM, a database, a file share — the "I deleted something or it got corrupted" case), while **Azure Site Recovery** handles *replication and failover for business continuity* (continuously replicating workloads to another region and orchestrating a coordinated failover — the "the region is down" case). Confusing the two — assuming Backup gives you DR, or that Site Recovery gives you granular restore — is a real architecture error; you generally need both, for the two different failure modes they each address.
 
 ### AWS → Azure at a Glance
 
