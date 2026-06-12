@@ -61,8 +61,8 @@ The worst offenders: no reading section *and* almost no documentation links.
 
 - [x] `ADVANCED_GO_STUDY_GUIDE.md` — [x] reading [x] links (5→36 links; gc-guide, pkg.go.dev, pgo, race detector)
 - [x] `ADVANCED_LINUX_STUDY_GUIDE.md` — [x] reading [x] links (4→52 links; docs.kernel.org, man7, Gregg)
-- [ ] `ADVANCED_NODEJS_STUDY_GUIDE.md` (5 / 1224) — [ ] reading [ ] links (nodejs.org/api, V8 blog)
-- [ ] `ADVANCED_PYTHON_STUDY_GUIDE.md` (7 / 1294) — [ ] reading [ ] links (docs.python.org, PEPs)
+- [x] `ADVANCED_NODEJS_STUDY_GUIDE.md` — [x] reading [x] links (5→30 links; nodejs.org, v8.dev, libuv)
+- [x] `ADVANCED_PYTHON_STUDY_GUIDE.md` — [x] reading [x] links (7→30 links; docs.python.org, PEPs, profiler docs)
 - [ ] `AUTH_STUDY_GUIDE.md` (9 / 752) — [ ] reading [ ] links (RFC 6749/6750/7519, OWASP, oauth.net)
 - [ ] `BLENDER_STUDY_GUIDE.md` (5 / 1275) — [ ] reading [ ] links (docs.blender.org manual + Python API)
 - [ ] `EBPF_STUDY_GUIDE.md` (4 / 1229) — [ ] reading [ ] links (ebpf.io, kernel BPF docs, libbpf, bcc)
