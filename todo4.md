@@ -113,7 +113,7 @@ Part, click-to-reveal explanation included.
 ## Batch 3 — Infra, cloud, and ops
 
 - [x] `k8s/KUBERNETES_STUDY_GUIDE.md` — 5 quizzes (18 questions; architecture, workloads/probes, services, resources, debugging)
-- [ ] `k8s/ADVANCED_KUBERNETES_STUDY_GUIDE.md`
+- [x] `k8s/ADVANCED_KUBERNETES_STUDY_GUIDE.md` — 5 quizzes (14 questions; control plane, API machinery, operators, multi-tenancy, GitOps)
 - [ ] `k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md`
 - [ ] `k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md`
 - [ ] `DOCKER_STUDY_GUIDE.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 21/65 (Batch 1 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 22/65 (Batch 1 complete).
