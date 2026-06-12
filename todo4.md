@@ -116,7 +116,7 @@ Part, click-to-reveal explanation included.
 - [x] `k8s/ADVANCED_KUBERNETES_STUDY_GUIDE.md` — 5 quizzes (14 questions; control plane, API machinery, operators, multi-tenancy, GitOps)
 - [x] `k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md` — 5 quizzes (15 questions; threat model, authn, RBAC, admission, hardening)
 - [x] `k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md` — 3 quizzes (9 questions; mental models, troubleshooting, advanced patterns)
-- [ ] `DOCKER_STUDY_GUIDE.md`
+- [x] `DOCKER_STUDY_GUIDE.md` — 5 quizzes (13 questions; isolation primitives, layers/cache, multi-stage, security, health/restart)
 - [ ] `TERRAFORM_STUDY_GUIDE.md`
 - [ ] `ANSIBLE_STUDY_GUIDE.md`
 - [ ] `GITHUB_ACTIONS_STUDY_GUIDE.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 24/65 (Batch 1 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 25/65 (Batch 1 complete).
