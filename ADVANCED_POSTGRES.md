@@ -231,6 +231,43 @@ If `xid_age` heads toward ~2 billion: kill the long transactions, drop dead repl
 - Open a transaction with `BEGIN; SELECT 1;` and leave it; watch `backend_xmin` age freeze on another session's table.
 - Simulate wraparound pressure by setting a tiny `autovacuum_freeze_max_age` on a test instance.
 
+```quiz
+Q: You UPDATE one row and its ctid changes. Why?
+- [ ] The page was defragmented by the write
+- [x] Postgres never modifies a row in place — an UPDATE writes a new tuple version and tombstones the old one with xmax
+- [ ] ctid is a random identifier per query
+- [ ] The row moved to the TOAST table
+> MVCC's core mechanic: readers keep seeing the old version per their snapshot (readers never block writers), and the dead version stays until VACUUM. Bloat isn't a bug — it's the purchase price of lock-free reads.
+
+Q: A hot table's HOT-update ratio collapsed after a deploy. What's the likely cause?
+- [x] Someone added an index on a frequently-updated column — HOT requires that no indexed column changed
+- [ ] fillfactor was raised to 100
+- [ ] autovacuum was disabled
+- [ ] The table exceeded 8 KB pages
+> HOT updates chain the new version on the same page with no new index entries — but only when no indexed column changed and the page has slack (fillfactor). One unnecessary index on a churning column can double write amplification; n_tup_hot_upd vs n_tup_upd is the verdict.
+
+Q: What does synchronous_commit = off actually risk?
+- [ ] Data corruption on crash
+- [x] Losing the last few hundred milliseconds of commits on a crash — never corruption, since WAL ordering is preserved
+- [ ] Torn pages in the heap
+- [ ] Replication permanently breaking
+> COMMIT returns before the WAL fsync, so a crash drops recent transactions, but what's replayed is always consistent. That makes it one of the highest-ROI single-line speedups for bulk loads and loss-tolerant workloads.
+
+Q: pg_stat_checkpointer shows num_requested far above num_timed. What does it mean and what's the fix?
+- [ ] The bgwriter is broken; restart it
+- [x] Checkpoints are triggered by WAL filling up rather than the timer — raise max_wal_size so they happen on schedule
+- [ ] Too much shared_buffers
+- [ ] fsync is disabled
+> Requested checkpoints mean WAL pressure, and each checkpoint triggers a full-page-write storm right after it. Fewer, spread-out checkpoints (checkpoint_timeout, completion_target 0.9) smooth the I/O.
+
+Q: The database is approaching transaction-ID wraparound. What are the three usual culprits?
+- [ ] Too many indexes, too many partitions, too many connections
+- [x] An idle-in-transaction connection, a leaked replication slot, and autovacuum throttled too hard
+- [ ] Large TOAST values, FILLFACTOR too low, missing PKs
+- [ ] Checkpoint frequency, WAL compression, work_mem
+> All three hold back the freeze horizon so autovacuum can't mark old tuples always-visible. XIDs are 32-bit; Postgres will shut down rather than wrap. Watch age(datfrozenxid), kill stale transactions, drop dead slots, raise the vacuum cost limit.
+```
+
 ---
 
 ## 4. The Query Planner & Statistics
@@ -353,6 +390,36 @@ auto_explain.log_buffers = on
 
 - Take a slow query and iterate: read the plan, find the biggest est-vs-actual gap or the most expensive node, fix it, re-run. Repeat until the plan is clean.
 - Paste a JSON plan (`FORMAT JSON`) into `explain.dalibo.com` and read the visual tree.
+
+```quiz
+Q: The planner chose a terrible plan. Where does the guide tell you to look first?
+- [ ] The planner's genetic-optimizer settings
+- [x] Estimated vs actual rows in EXPLAIN ANALYZE — bad plans are almost always bad estimates, not a "dumb planner"
+- [ ] The Postgres version
+- [ ] shared_buffers sizing
+> Costs are computed from statistics; garbage estimates produce confidently wrong plans (the classic: a nested loop over what the planner thought was 3 rows and was 30,000). Fix the estimate — ANALYZE, statistics targets, extended stats — before touching anything else.
+
+Q: Why set random_page_cost to ~1.1 on SSD/NVMe?
+- [x] The default 4.0 models spinning disks; on SSDs it over-penalizes index scans, pushing the planner toward sequential scans it shouldn't pick
+- [ ] It enables parallel index scans
+- [ ] Lower values reduce actual I/O latency
+- [ ] It makes VACUUM cheaper
+> Cost constants are anchored to seq_page_cost = 1.0. On storage where random reads cost nearly the same as sequential, telling the planner the truth flips big-table plans from seq scan to index scan. effective_cache_size is the companion hint (it allocates nothing).
+
+Q: WHERE city = 'Berlin' AND postal_code LIKE '10%' is misestimated by 100×. Why, and what's the fix?
+- [ ] LIKE predicates can't be estimated; rewrite as equality
+- [x] The planner multiplies per-column selectivities assuming independence, but the columns are correlated — CREATE STATISTICS (dependencies, mcv) on the pair
+- [ ] The histogram has too few buckets by default
+- [ ] Composite indexes fix estimation automatically
+> Independence is the planner's default assumption, and correlated columns (city/postal, status/shipped_at) break it badly — usually toward explosive nested loops. Extended statistics teach it the dependency; per-column SET STATISTICS raises resolution for skew.
+
+Q: EXPLAIN ANALYZE shows "Sort Method: external merge Disk: 180MB". What's the targeted fix?
+- [ ] Add an index on every sorted column
+- [x] Raise work_mem (ideally SET LOCAL in that transaction) so the sort fits in memory
+- [ ] Increase shared_buffers
+- [ ] Run VACUUM FULL
+> Spilled sorts and multi-batch hash joins are work_mem starvation. The other red-flag pairings: high Heap Fetches on an index-only scan → stale visibility map, VACUUM; huge Rows Removed by Filter → wrong/missing index; Buffers read >> hit → cold cache, I/O-bound.
+```
 
 ---
 
@@ -482,6 +549,43 @@ SELECT pg_try_advisory_lock(hashtext('nightly-rollup'));  -- false if someone el
 - Reproduce a deadlock with two psql sessions, read the server log's deadlock report.
 - Write a retry wrapper for `40001` and test it under `SERIALIZABLE`.
 
+```quiz
+Q: An index on (customer_id, created_at) serves WHERE customer_id = ? ORDER BY created_at, but (created_at, customer_id) doesn't. Why?
+- [x] B-tree order is leading-column-first: equality on the first column leaves the second sorted; reversed, the matching rows are scattered across the whole index
+- [ ] Postgres only uses the first column of any composite index
+- [ ] DESC indexes can't serve ASC queries
+- [ ] The second form needs INCLUDE columns
+> Composite order is the #1 index mistake: equality columns first, then the range/sort column. The wrong order forces a scan-and-sort over everything matching nothing.
+
+Q: When is BRIN the right index, and why is it so small?
+- [ ] Any large table — it's a compressed B-tree
+- [x] Huge tables physically ordered by the column (append-only time-series) — it stores only min/max per block range, so correlation is what makes it work
+- [ ] High-cardinality text columns
+- [ ] Whenever GIN is too slow to build
+> A BRIN on a billion-row events table can be a few hundred KB versus tens of GB for B-tree. But shuffle the physical order and the min/max ranges all overlap — BRIN's power is entirely borrowed from layout.
+
+Q: What does an unused index (idx_scan = 0) cost you?
+- [ ] Nothing — unused indexes are inert
+- [x] Write amplification on every insert/update plus its own bloat and maintenance — pure tax with no benefit; drop it
+- [ ] Planning time only
+- [ ] Disk space only, reclaimed automatically
+> Every index must be updated on every relevant write (unless HOT applies), vacuumed, and eventually reindexed. pg_stat_user_indexes makes the audit one query; dropping dead indexes is free performance.
+
+Q: Why is an unguarded ALTER TABLE on a busy table an outage even if the ALTER itself is instant?
+- [ ] DDL always rewrites the table
+- [x] ACCESS EXCLUSIVE queues behind any running query and then blocks every new query behind it — one slow SELECT turns the migration into a full stop
+- [ ] It invalidates the plan cache cluster-wide
+- [ ] Locks replicate to standbys synchronously
+> The lock queue is the trap, not the operation. SET lock_timeout = '2s' makes the migration give up instead of damming traffic; pair with NOT VALID + VALIDATE for constraints and CREATE INDEX CONCURRENTLY.
+
+Q: What contract do you accept when running transactions at SERIALIZABLE?
+- [x] Your data layer must catch 40001 serialization failures (and 40P01 deadlocks) and retry the whole transaction
+- [ ] All queries become single-threaded
+- [ ] Readers start blocking writers
+- [ ] Nothing — SSI is transparent
+> SSI aborts transactions that would create an anomaly; the retry is the design, not an error to patch around. Same family as the queue pattern: FOR UPDATE SKIP LOCKED gives N workers contention-free claims without double-processing.
+```
+
 ---
 
 ## 8. Connections & Pooling
@@ -564,6 +668,36 @@ max_parallel_workers = 8
 
 - Take a reporting query that spills to disk (`external merge` in EXPLAIN), raise `work_mem` locally until it's in-memory, and measure the speedup.
 - Set `random_page_cost` correctly for your disk and re-plan your slowest query.
+
+```quiz
+Q: Why does "just raise max_connections to 5,000" backfire?
+- [ ] Postgres caps connections at 1,000
+- [x] Each connection is a forked OS process — thousands of mostly-idle backends thrash the scheduler and inflate snapshot costs; pool instead
+- [ ] TCP ports run out
+- [ ] WAL grows per connection
+> Active connections should roughly track cores; the rest is concurrency to queue, not run. PgBouncer in transaction mode lets 5,000 client connections share ~50 server backends.
+
+Q: What breaks under PgBouncer's transaction pooling?
+- [ ] Multi-statement transactions
+- [x] Anything relying on session state across transactions — session SET, session advisory locks, LISTEN/NOTIFY, and classic server-side prepared statements
+- [ ] TLS connections
+- [ ] Queries longer than the pool timeout
+> A client gets a different server connection per transaction, so session-scoped state silently lands on the wrong backend. Know the list before flipping the mode — it's the entire trade for the huge fan-in.
+
+Q: Why is work_mem "the dangerous one" among the memory settings?
+- [x] It applies per sort/hash node, per connection — a 3-sort query across 100 connections can consume 300× work_mem
+- [ ] It allocates at server start whether used or not
+- [ ] It can't be changed without a restart
+- [ ] It only affects temporary tables
+> The multiplication is the trap: a generous global value OOMs under concurrency. Set it modestly globally and SET LOCAL a big value inside known reporting transactions. (effective_cache_size, by contrast, allocates nothing — it's a planner hint.)
+
+Q: Per the tuning ladder, where do the biggest wins almost always come from?
+- [ ] shared_buffers and kernel tuning
+- [x] The right index and fixing a bad row estimate — schema/query/index/statistics rungs, before any config
+- [ ] Parallel query settings
+- [ ] Faster storage hardware
+> Config polishing a query that's missing its index is effort spent on the wrong rung. The ladder is ordered: schema → indexes → statistics → memory → planner constants → parallelism → vacuum/checkpoint → pooling → replicas → exotica.
+```
 
 ---
 
@@ -715,6 +849,43 @@ In production, don't hand-roll this — use **pgBackRest** or **Barman**: they d
 - Take a base backup, archive WAL, intentionally `DROP TABLE`, then PITR to one second before the drop.
 - Configure pgBackRest with a weekly full + daily incremental and run a verified restore into a scratch instance.
 
+```quiz
+Q: What does partitioning actually buy you, per the guide?
+- [ ] Faster queries across the board
+- [x] Manageability (dropping a partition is instant where DELETE-ing millions of rows is not) and pruning (skipping partitions the query can't match)
+- [ ] Global unique constraints on any column
+- [ ] Smaller total storage
+> It's not a speedup by itself — queries that don't filter on the partition key scan everything and pay extra planning. The fit: large table, time-keyed queries, age-out retention. Automate with pg_partman, pair with BRIN.
+
+Q: A standby was decommissioned but its replication slot wasn't dropped. What happens?
+- [x] The primary retains WAL for it forever — pg_wal/ fills the disk and the primary stops; it's also a top wraparound cause
+- [ ] Nothing — slots expire automatically
+- [ ] The slot fails over to another standby
+- [ ] Only logical slots have this problem
+> A slot is a promise to keep WAL (and an xmin horizon) until the consumer catches up; an orphaned slot is a promise to a ghost. Monitor slot lag and age, and drop dead slots — it's one of the few ways Postgres can take itself down.
+
+Q: You need a replica where your own just-committed writes are immediately readable. Which setting?
+- [ ] synchronous_commit = local
+- [x] A synchronous standby with synchronous_commit = remote_apply — COMMIT waits until the standby has replayed the change
+- [ ] wal_level = logical
+- [ ] hot_standby_feedback = on
+> Async replication has lag (and non-zero RPO on failover); remote_write only guarantees receipt. remote_apply is the read-your-writes guarantee, paid for in commit latency tied to the standby.
+
+Q: Why is logical replication the tool for near-zero-downtime major version upgrades?
+- [x] It decodes WAL into row changes, so publisher and subscriber can run different major versions — replicate 16→17, then cut over
+- [ ] It's faster than streaming replication
+- [ ] It replicates schema changes automatically
+- [ ] It doesn't need wal_level changes
+> Physical standbys are byte-for-byte and version-locked; logical works across versions and per-table. Caveats: DDL is NOT replicated (ship schema changes yourself) and big transactions can lag.
+
+Q: What's the difference between pg_dump and base-backup-plus-WAL-archiving?
+- [ ] pg_dump is faster to restore at scale
+- [x] pg_dump is a portable logical snapshot (no point-in-time); physical base backup + archived WAL enables PITR to any moment — like "one second before the bad DELETE"
+- [ ] Only pg_dump preserves indexes
+- [ ] They're interchangeable
+> Different tools for different failures: selective restore and migrations vs. full-cluster recovery to an instant. Production runs pgBackRest/Barman — and an untested backup is not a backup.
+```
+
 ---
 
 ## 13. Observability
@@ -812,6 +983,43 @@ Methodology that matters: warm the cache first, run long enough to cross a check
 
 - Benchmark `synchronous_commit` on vs off, and direct vs pooled connections, on the same workload.
 - Write a custom script matching your hottest endpoint and use it to validate an index change end-to-end.
+
+```quiz
+Q: In pg_stat_statements, why rank queries by total_exec_time rather than mean_exec_time?
+- [x] A 2 ms query called a million times costs more than a 2 s query called ten times — total time finds what actually burns the database
+- [ ] mean_exec_time is not collected by default
+- [ ] Total time includes planning, mean doesn't
+- [ ] Slow queries are always rare queries
+> Optimizing the slowest query feels right and often isn't: aggregate cost is what saturates the box. The N+1 pattern shows up here too — thousands of identical fast queries at the top of total time.
+
+Q: pg_stat_activity shows a connection with wait_event = ClientRead and a transaction open for 40 minutes. What is it, and why care?
+- [ ] A slow query reading from disk
+- [x] Idle-in-transaction — the server is waiting on the app; it holds back the xmin horizon (blocking vacuum, risking wraparound) and may hold locks
+- [ ] A replication conflict
+- [ ] Normal connection-pool behavior
+> ClientRead means Postgres is waiting for the client. Set idle_in_transaction_session_timeout to kill these automatically — they're production pitfall #1.
+
+Q: Deleting a parent row is mysteriously slow and takes strong locks on the child table. Why?
+- [x] Postgres does not auto-index the referencing side of a foreign key — the FK check seq-scans the child; index every FK column
+- [ ] ON DELETE CASCADE is always slow
+- [ ] The child table's PK is missing
+- [ ] Foreign keys disable HOT updates
+> The constraint's existence doesn't create the child-side index. Every parent delete/update probes the child for referencing rows — unindexed, that's a full scan inside a locked operation.
+
+Q: Why does OFFSET 100000 LIMIT 20 get slower as users page deeper?
+- [ ] The optimizer caches early pages only
+- [x] OFFSET reads and discards all 100,000 preceding rows every time; keyset pagination (WHERE (created_at, id) < cursor) is constant-time at any depth
+- [ ] LIMIT forces a full sort each call
+- [ ] It doesn't — OFFSET is O(1)
+> OFFSET is linear in the offset. Keyset pagination uses the last row as a cursor and an index satisfies it directly — the same 20-row cost on page 1 and page 5,000.
+
+Q: Which benchmarking practice invalidates a pgbench comparison?
+- [ ] Running for longer than a checkpoint interval
+- [x] Changing two variables between runs — you can't attribute the difference; also warm the cache and compare medians of repeated runs
+- [ ] Using a custom script instead of the default
+- [ ] Running against production-sized data
+> Methodology is the result: one variable at a time, warm cache, runs long enough to cross a checkpoint, medians not single runs — and hardware resembling production, since work_mem and random_page_cost conclusions don't transfer from a laptop.
+```
 
 ---
 
