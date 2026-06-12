@@ -88,7 +88,7 @@ Part, click-to-reveal explanation included.
 - [x] `DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md` — the pilot; 10 parts × 4–5 Q
       (48 questions), one quiz per Part after its closing paragraph
 - [x] `ADVANCED_LINUX_STUDY_GUIDE.md` — 10 parts × 4–5 Q (48 questions)
-- [ ] `ADVANCED_GO_STUDY_GUIDE.md`
+- [x] `ADVANCED_GO_STUDY_GUIDE.md` — 10 parts × 4–5 Q (43 questions)
 - [ ] `ADVANCED_NODEJS_STUDY_GUIDE.md`
 - [ ] `ADVANCED_PYTHON_STUDY_GUIDE.md`
 - [ ] `ADVANCED_RUST_STUDY_GUIDE.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 2/65.
+65 Markdown guides + 2 bespoke pages. Progress: 3/65.
