@@ -1579,3 +1579,5 @@ You're solid on networking fundamentals when you can, without looking anything u
 5. **The relevant RFCs**: 1122 (Hosts), 791 (IPv4), 8200 (IPv6), 9293 (TCP), 768 (UDP), 1034/1035 (DNS), 8446 (TLS 1.3), 9110 (HTTP semantics), 9000 (QUIC), 9114 (HTTP/3). Read in roughly this order.
 6. **[Cloudflare's blog](https://blog.cloudflare.com/)** — perpetually publishes the best real-world networking writing on the internet. Especially anything by Marek Majkowski.
 7. **[Julia Evans' zines](https://wizardzines.com/)** — short, illustrated, deeply practical. *How DNS Works* and *Bite Size Networking* are especially good.
+
+**Adjacent guides in this repo:** [Linux Networking](LINUX_NETWORKING_STUDY_GUIDE.md) (operating the stack these protocols ride on), [Advanced Linux](ADVANCED_LINUX_STUDY_GUIDE.md) (TCP tuning, nftables, BBR), [WebSockets](WEBSOCKETS_STUDY_GUIDE.md), [Caddy](CADDY_STUDY_GUIDE.md)/[Cloudflare](CLOUDFLARE_STUDY_GUIDE.md) (the proxies and edges), and [Cryptography Fundamentals](CRYPTO_FUNDAMENTALS.md) (inside the TLS handshake).

@@ -1294,3 +1294,5 @@ You're solid on applied crypto when you can, without looking anything up:
 5. **The IETF specs themselves** — RFC 8446 (TLS 1.3), RFC 9106 (Argon2), RFC 8439 (ChaCha20-Poly1305), RFC 8725 (JWT BCP), RFC 9700 (OAuth 2.0 Security BCP). The specs are surprisingly readable once you have the fundamentals.
 6. **[Latacora's cryptographic right answers](https://latacora.singles/2018/04/03/cryptographic-right-answers.html)** — short, opinionated, current. Bookmark it.
 7. **[Real World Crypto symposium talks](https://rwc.iacr.org/)** — the annual conference where industry crypto problems get aired. YouTube has most recent years.
+
+**Adjacent guides in this repo:** [Auth](AUTH_STUDY_GUIDE.md) (the application layer consuming these primitives — JWTs, password hashing, WebAuthn), [Networking Fundamentals](NETWORKING_FUNDAMENTALS.md) (TLS on the wire), [Web & LLM Security](WEB_LLM_SECURITY_STUDY_GUIDE.md), and [Kubernetes Security](k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md) (certificates and signing at platform scale).

@@ -1183,3 +1183,5 @@ You're solid on data engineering when you can, without looking anything up:
 5. **[dbt's "How we structure our dbt projects"](https://docs.getdbt.com/best-practices/how-we-structure/1-guide-overview)** — the conventions that became industry standard.
 6. **[The Log: What every software engineer should know about real-time data's unifying abstraction](https://engineering.linkedin.com/distributed-systems/log-what-every-software-engineer-should-know-about-real-time-datas-unifying)** (Jay Kreps) — the mental model for streaming.
 7. **[Locally Optimistic](https://www.locallyoptimistic.com/)**, **[Benn Stancil's "benn.substack"](https://benn.substack.com/)**, **[Tristan Handy's blog](https://roundup.getdbt.com/)** — the current discourse. Read selectively, but read.
+
+**Adjacent guides in this repo:** [Distributed Systems](DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md) (Kafka/partitioning theory under everything here), [Database Internals](DATABASE_INTERNALS_STUDY_GUIDE.md) (the engines), [Advanced Postgres](ADVANCED_POSTGRES.md), and [Observability](OBSERVABILITY_STUDY_GUIDE.md) (pipeline health).

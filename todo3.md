@@ -120,7 +120,7 @@ already reasonable (verify coverage of first-mentions while in the file).
 - [x] `TERRAFORM_STUDY_GUIDE.md` — [x] reading added
 - [x] `k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md` — [x] reading [x] intro refs
 
-## Tier 4 — Has a reading section; verify it matches the model + fix links
+## Tier 4 — Has a reading section; verify it matches the model + fix links — ✅ COMPLETE (2026-06-12)
 
 These already end with Further Reading / Where to Go Next / Recommended Reading
 Path. Verify the section has real links (not bare titles), add the
@@ -128,20 +128,20 @@ sibling-guide cross-link bullet if missing, and fix inline link gaps.
 
 - [x] `ADVANCED_POSTGRES.md` — [x] links (0→32; per-part docs chapters, Rogov, operator toolkit) [x] Further Reading → Where to Go Next
 - [x] `POSTGRES.md` — [x] links (0→39; per-section *Docs:* pointers to postgresql.org chapters) [x] Further Reading upgraded
-- [ ] `SQLITE_STUDY_GUIDE.md` (13 / 2290) — [ ] links thin for the length (sqlite.org docs per pragma/feature) [x] reading section exists
-- [ ] `ANSIBLE_STUDY_GUIDE.md` (54 / 2247) — [ ] verify section + first-mention links
-- [ ] `CRYPTO_FUNDAMENTALS.md` (73 / 1296) — [ ] verify section + links
-- [ ] `DATA_ENGINEERING_STUDY_GUIDE.md` (50 / 1185) — [ ] verify section + links
-- [ ] `ESP32_STUDY_GUIDE.md` (6 / 856) — [ ] links badly needed (Espressif ESP-IDF/Arduino docs) [x] Going Further exists
-- [ ] `NETWORKING_FUNDAMENTALS.md` (43 / 1581) — [ ] verify section + links (RFC links per protocol)
-- [ ] `OBSERVABILITY_STUDY_GUIDE.md` (68 / 1870) — [ ] verify section + links
-- [ ] `QT_STUDY_GUIDE.md` (141 / 1401) — [ ] verify section (likely done)
-- [ ] `SVELTEKIT_STUDY_GUIDE.md` (143 / 1404) — [ ] verify section (likely done)
-- [ ] `COMPILER_INTERNALS_STUDY_GUIDE.md` (20 / 696) — [ ] verify (has Where to Go Next + intro refs)
-- [ ] `DATABASE_INTERNALS_STUDY_GUIDE.md` (18 / 651) — [ ] verify (has Where to Go Next + intro refs)
-- [ ] `DISTRIBUTED_ALGORITHMS_STUDY_GUIDE.md` (15 / 716) — [ ] verify (has Where to go next + intro refs)
-- [ ] `POSTGRES_EXTENSIONS.md` (161 / 494) — [ ] verify Further Reading format (links already dense)
-- [ ] `k8s/KUBERNETES_STUDY_GUIDE.md` (65 / 1199) — [ ] verify section + links
+- [x] `SQLITE_STUDY_GUIDE.md` — [x] links (per-section *Docs:* pointers to sqlite.org) [x] reading section exists
+- [x] `ANSIBLE_STUDY_GUIDE.md` — [x] verified; sibling cross-links added
+- [x] `CRYPTO_FUNDAMENTALS.md` — [x] verified; sibling cross-links added
+- [x] `DATA_ENGINEERING_STUDY_GUIDE.md` — [x] verified; sibling cross-links added
+- [x] `ESP32_STUDY_GUIDE.md` — [x] links (per-part ESP-IDF docs pointers) [x] Going Further exists
+- [x] `NETWORKING_FUNDAMENTALS.md` — [x] verified; sibling cross-links added
+- [x] `OBSERVABILITY_STUDY_GUIDE.md` — [x] verified; sibling cross-links added
+- [x] `QT_STUDY_GUIDE.md` — [x] verified (33-link Where to Go Next already present)
+- [x] `SVELTEKIT_STUDY_GUIDE.md` — [x] verified (ecosystem + Where to Go Next already present)
+- [x] `COMPILER_INTERNALS_STUDY_GUIDE.md` — [x] verified (four-path Where to Go Next, well linked)
+- [x] `DATABASE_INTERNALS_STUDY_GUIDE.md` — [x] verified (courses/source-reading paths, well linked)
+- [x] `DISTRIBUTED_ALGORITHMS_STUDY_GUIDE.md` — [x] verified (6.5840 labs, TLA+, Jepsen — strong)
+- [x] `POSTGRES_EXTENSIONS.md` — [x] verified (registries, provider allow-lists, project docs — strong)
+- [x] `k8s/KUBERNETES_STUDY_GUIDE.md` — [x] verified; sibling cross-links added
 - [x] `DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md` — the reference; no work needed
 
 ---
