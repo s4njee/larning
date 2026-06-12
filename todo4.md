@@ -83,7 +83,7 @@ Part, click-to-reveal explanation included.
 
 ---
 
-## Batch 1 — Pilot + flagship guides (biggest, most-read; prove the pattern)
+## Batch 1 — Pilot + flagship guides — ✅ COMPLETE (2026-06-12)
 
 - [x] `DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md` — the pilot; 10 parts × 4–5 Q
       (48 questions), one quiz per Part after its closing paragraph
@@ -93,7 +93,7 @@ Part, click-to-reveal explanation included.
 - [x] `ADVANCED_PYTHON_STUDY_GUIDE.md` — 10 parts × 3–5 Q (41 questions)
 - [x] `ADVANCED_RUST_STUDY_GUIDE.md` — 13 parts × 3–4 Q (46 questions)
 - [x] `ADVANCED_POSTGRES.md` — 6 cluster quizzes (28 questions: §1–3, §4–5, §6–7, §8–9, §10–12, §13–15)
-- [ ] `POSTGRES.md`
+- [x] `POSTGRES.md` — 6 cluster quizzes (30 questions across the reference sections)
 
 ## Batch 2 — Systems, databases, networking
 
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 7/65.
+65 Markdown guides + 2 bespoke pages. Progress: 8/65 (Batch 1 complete).
