@@ -1500,3 +1500,13 @@ A capstone that exercises everything: take some real, hand-built infrastructure 
 If you remember one thing from this guide, make it the thesis one more time: **Terraform is a graph builder and a diff engine; state is the source of record that maps your declarations to reality; providers translate the graph into API calls; and the plan is a contract. Read the contract — every time — and almost nothing in this guide can surprise you.**
 
 
+
+---
+
+## Where to Go Next
+
+- **Keep the [Terraform language docs](https://developer.hashicorp.com/terraform/language) open while writing HCL** — expressions, meta-arguments, and functions are all there, and the [provider registry docs](https://registry.terraform.io/) (especially the [AWS provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)) are the per-resource reference you'll live in.
+- **Read the [state](https://developer.hashicorp.com/terraform/language/state) and [import](https://developer.hashicorp.com/terraform/language/import) docs** before your first production incident, not during it — moved blocks, `terraform state mv`, and import blocks are the recovery toolkit.
+- **Set up the safety rails on one real repo:** remote state with locking, `terraform fmt`/`validate` in CI, [tflint](https://github.com/terraform-linters/tflint), plan-on-PR with required review, and [OpenTofu](https://opentofu.org/docs/) awareness if licensing matters to you.
+- **Break and recover state in a sandbox.** Delete a resource out-of-band, watch the plan, import it back; rename a resource and use `moved` blocks; split a state with `state mv`. State surgery confidence is what separates Terraform users from Terraform operators.
+- **Adjacent guides in this repo:** [GCP for AWS architects](GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md)/[Azure for AWS architects](AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md) (the clouds being declared), [Ansible](ANSIBLE_STUDY_GUIDE.md) (configuration management vs provisioning), [GitHub Actions](GITHUB_ACTIONS_STUDY_GUIDE.md) (plan/apply pipelines), and [Kubernetes](k8s/KUBERNETES_STUDY_GUIDE.md) (the other declarative reconciler).

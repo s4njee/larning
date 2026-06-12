@@ -6,6 +6,8 @@ A depth-first guide to `asyncio` and `aiohttp` for Python engineers who need to 
 
 The guide leans hard on two things you asked any performance-minded async guide to deliver: **aiohttp** (client and server, in depth) and **practical performance** — bounded concurrency, connection pooling, `uvloop`, bulk-loading Postgres with `asyncpg`, streaming files with `aiofiles`, and the anti-patterns that quietly serialize your "concurrent" code.
 
+Primary references: the [asyncio documentation](https://docs.python.org/3/library/asyncio.html) (especially the [developing-with-asyncio pitfalls page](https://docs.python.org/3/library/asyncio-dev.html)), the [aiohttp docs](https://docs.aiohttp.org/en/stable/) (client and server halves are separate manuals — read both), the [asyncpg docs](https://magicstack.github.io/asyncpg/current/), and Łukasz Langa's [asyncio video series](https://www.youtube.com/playlist?list=PLhNSoGM2ik6SIkVGXWBwerucXjgP1rHmB) (the CPython core dev's from-scratch walkthrough — the best deep explanation of the event loop in any medium).
+
 ---
 
 ## Table of Contents
@@ -1437,3 +1439,13 @@ If you control the stack and care about throughput, prefer Recipe 3's `asyncpg`.
 ---
 
 That's the arc: async buys you the elimination of idle waiting (Part 1), at the cost of a new execution model and new failure modes (Parts 2–4) that you manage with bounded concurrency and a strict no-blocking rule (Parts 5–6). `aiohttp` gives you a fast client and server on top of that model (Parts 7–8); `asyncpg`/`aiopg`/`aiofiles` connect it to your data (Part 9); and real performance comes from measuring, killing serialization, batching at the database, and sizing concurrency to the bottleneck (Part 10) — not from cranking every dial to maximum. The recipes are where it all comes together.
+
+---
+
+## Where to Go Next
+
+- **Read the [asyncio dev/pitfalls page](https://docs.python.org/3/library/asyncio-dev.html)** — the official catalog of the mistakes Parts 4–6 teach you to avoid (never-awaited coroutines, swallowed exceptions, blocking calls), and short enough to absorb in one sitting.
+- **Watch Łukasz Langa's [asyncio series](https://www.youtube.com/playlist?list=PLhNSoGM2ik6SIkVGXWBwerucXjgP1rHmB)** — building an event loop from scratch is the fastest way to make Part 2's machinery feel inevitable rather than magical.
+- **Read the [aiohttp server docs](https://docs.aiohttp.org/en/stable/web.html)** alongside Part 8, and the [asyncpg docs](https://magicstack.github.io/asyncpg/current/) alongside Part 9 — both are good enough to serve as the canonical second pass.
+- **Profile one async service.** Wire up the Part 10 toolkit — `asyncio.timeout`, bounded semaphores, `loop.slow_callback_duration` debugging — against a real workload, find the hidden serialization, and fix it. One "why is my gather not concurrent?" investigation cements the whole model.
+- **Sibling guides in this repo:** [Python Concurrency](PYTHON_CONCURRENCY.md) (the model-picker this guide descends from), [Advanced Python](ADVANCED_PYTHON_STUDY_GUIDE.md) (generators/coroutines underneath), [Python vs Node.js Async](PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md) (the comparison), and [WebSockets](WEBSOCKETS_STUDY_GUIDE.md) (long-lived connections on this loop).

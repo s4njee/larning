@@ -103,21 +103,21 @@ Substantial guides where link density lags the length.
 These mostly need the closing section + intro references paragraph; links are
 already reasonable (verify coverage of first-mentions while in the file).
 
-- [ ] `ADVANCED_RUST_STUDY_GUIDE.md` (138 / 885) — [ ] reading
-- [ ] `ASYNCIO_STUDY_GUIDE.md` (52 / 1439) — [ ] reading
+- [x] `ADVANCED_RUST_STUDY_GUIDE.md` — [x] already had Study Methodology + Additional Reference Links (audit regex miss)
+- [x] `ASYNCIO_STUDY_GUIDE.md` — [x] reading + intro refs added
 - [ ] `AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md` (70 / 902) — [ ] reading [ ] intro refs
 - [ ] `CADDY_STUDY_GUIDE.md` (91 / 2592) — [ ] reading [ ] intro refs
 - [ ] `CLOUDFLARE_STUDY_GUIDE.md` (64 / 992) — [ ] reading [ ] intro refs
-- [ ] `DJANGO_STUDY_GUIDE.md` (180 / 1804) — [ ] reading
+- [x] `DJANGO_STUDY_GUIDE.md` — [x] already had 'Where to Go From Here' ecosystem section (audit regex miss)
 - [ ] `DOTNET_FOR_PYTHON_DEVS.md` (51 / 1865) — [ ] reading [ ] intro refs
 - [ ] `GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md` (54 / 916) — [ ] reading [ ] intro refs
 - [ ] `GOLANG_FOR_PYTHON_DEVS.md` (102 / 1568) — [ ] reading [ ] intro refs
-- [ ] `KALI_LINUX_STUDY_GUIDE.md` (81 / 401) — [ ] reading
-- [ ] `NEXTJS_STUDY_GUIDE.md` (128 / 1401) — [ ] reading
+- [x] `KALI_LINUX_STUDY_GUIDE.md` — [x] reading added (HTB/THM/PortSwigger, HackTricks)
+- [x] `NEXTJS_STUDY_GUIDE.md` — [x] already had 'Where to Go from Here' (audit regex miss)
 - [ ] `RUST_FOR_PYTHON_DEVS.md` (53 / 2346) — [ ] reading [ ] intro refs
-- [ ] `VUE_STUDY_GUIDE.md` (151 / 1601) — [ ] reading
+- [x] `VUE_STUDY_GUIDE.md` — [x] reading added
 - [ ] `WEBSOCKETS_STUDY_GUIDE.md` (49 / 1843) — [ ] reading [ ] intro refs
-- [ ] `TERRAFORM_STUDY_GUIDE.md` (87 / 1502) — [ ] reading
+- [x] `TERRAFORM_STUDY_GUIDE.md` — [x] reading added
 - [ ] `k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md` (90 / 1210) — [ ] reading [ ] intro refs
 
 ## Tier 4 — Has a reading section; verify it matches the model + fix links

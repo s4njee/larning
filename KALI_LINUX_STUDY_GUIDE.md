@@ -399,3 +399,13 @@ Learn Kali the way the kill chain runs, one phase deep before the next, against 
 If you focus on twelve tools first, make them `nmap`, `burpsuite`, `ffuf`, `nuclei`, `hashcat`, `john`, `metasploit-framework`, `netexec`, `impacket`, `wireshark`, `ghidra`, and `bloodhound` — that set spans recon, web, credentials, AD, traffic, exploitation, and binaries, which is the whole kill chain.
 
 The most important thing to understand about Kali, restated as the guide's thesis: **Kali is a workflow platform, not a magic exploit button, and the technique is what transfers — the tools are just this year's instruments for techniques that barely change.** The people who get the most out of it are not the ones who memorize the most commands; they are the ones who understand what each technique exploits, who enumerate before they attack, who validate before they report, and who can turn raw tool output into a clear, provable, actionable security story — always, only, against systems they are authorized to test.
+
+---
+
+## Where to Go Next
+
+- **Practice on legal targets only:** [Hack The Box](https://www.hackthebox.com/), [TryHackMe](https://tryhackme.com/), and [PortSwigger's Web Security Academy](https://portswigger.net/web-security) (free, the best web-attack labs anywhere) give you authorized machines to run this entire toolkit against; [VulnHub](https://www.vulnhub.com/) for offline VMs.
+- **Use [Kali's own docs](https://www.kali.org/docs/) and [tools listing](https://www.kali.org/tools/)** — every packaged tool has a page with usage and the upstream link; it's the fastest answer to "what does this do and what replaced it."
+- **Follow one methodology source:** [HackTricks](https://book.hacktricks.wiki/) (the practitioner's enumeration encyclopedia) and the [OWASP Web Security Testing Guide](https://owasp.org/www-project-web-security-testing-guide/) (the formal counterpart) cover the technique layer that outlives any tool.
+- **Work toward one structured cert path if you want forcing pressure** — OSCP (offensive fundamentals) or PNPT — both are built around exactly the workflow this guide describes: enumerate, exploit, escalate, document.
+- **Adjacent guides in this repo:** [Web & LLM Security](WEB_LLM_SECURITY_STUDY_GUIDE.md) (the defender's counterpart — read both sides), [Linux Fundamentals](LINUX_FUNDAMENTALS_STUDY_GUIDE.md) (privilege escalation is applied Linux internals), [Networking Fundamentals](NETWORKING_FUNDAMENTALS.md), and [Auth](AUTH_STUDY_GUIDE.md) (what you're attacking when you spray credentials).
