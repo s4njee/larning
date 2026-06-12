@@ -100,7 +100,7 @@ Part, click-to-reveal explanation included.
 - [x] `LINUX_FUNDAMENTALS_STUDY_GUIDE.md` — 10 parts × 4 Q (40 questions)
 - [x] `LINUX_NETWORKING_STUDY_GUIDE.md` — 7 quizzes (26 questions; Parts 2,4,5,7,8,9,10)
 - [x] `EBPF_STUDY_GUIDE.md` — 7 quizzes (27 questions; architecture, types/maps, verifier, tooling, CO-RE, ecosystem, security)
-- [ ] `NETWORKING_FUNDAMENTALS.md`
+- [x] `NETWORKING_FUNDAMENTALS.md` — 7 quizzes (30 questions; Phases 2,4,5,6,8,10,13)
 - [ ] `DATABASE_INTERNALS_STUDY_GUIDE.md`
 - [ ] `SQLITE_STUDY_GUIDE.md`
 - [ ] `REDIS_STUDY_GUIDE.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 11/65 (Batch 1 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 12/65 (Batch 1 complete).
