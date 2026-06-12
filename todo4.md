@@ -103,7 +103,7 @@ Part, click-to-reveal explanation included.
 - [x] `NETWORKING_FUNDAMENTALS.md` — 7 quizzes (30 questions; Phases 2,4,5,6,8,10,13)
 - [x] `DATABASE_INTERNALS_STUDY_GUIDE.md` — 6 quizzes (28 questions; Ch 2,3,5,6,9,11)
 - [x] `SQLITE_STUDY_GUIDE.md` — 5 quizzes (20 questions; types/pipeline, indexes, concurrency/WAL, performance, mistakes)
-- [ ] `REDIS_STUDY_GUIDE.md`
+- [x] `REDIS_STUDY_GUIDE.md` — 6 quizzes (20 questions; mental model, sorted sets, eviction, transactions/Lua, persistence/replication, cluster)
 - [ ] `POSTGRES_EXTENSIONS.md`
 - [ ] `DATA_ENGINEERING_STUDY_GUIDE.md`
 - [ ] `DISTRIBUTED_ALGORITHMS_STUDY_GUIDE.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 14/65 (Batch 1 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 15/65 (Batch 1 complete).
