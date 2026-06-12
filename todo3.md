@@ -59,8 +59,8 @@ audit (external markdown links / total lines).
 
 The worst offenders: no reading section *and* almost no documentation links.
 
-- [ ] `ADVANCED_GO_STUDY_GUIDE.md` (5 links / 916 ln) — [ ] reading [ ] links (go.dev/ref, pkg.go.dev, Go blog for GC/sched design docs)
-- [ ] `ADVANCED_LINUX_STUDY_GUIDE.md` (4 / 1895) — [ ] reading [ ] links (man7.org, kernel.org docs)
+- [x] `ADVANCED_GO_STUDY_GUIDE.md` — [x] reading [x] links (5→36 links; gc-guide, pkg.go.dev, pgo, race detector)
+- [x] `ADVANCED_LINUX_STUDY_GUIDE.md` — [x] reading [x] links (4→52 links; docs.kernel.org, man7, Gregg)
 - [ ] `ADVANCED_NODEJS_STUDY_GUIDE.md` (5 / 1224) — [ ] reading [ ] links (nodejs.org/api, V8 blog)
 - [ ] `ADVANCED_PYTHON_STUDY_GUIDE.md` (7 / 1294) — [ ] reading [ ] links (docs.python.org, PEPs)
 - [ ] `AUTH_STUDY_GUIDE.md` (9 / 752) — [ ] reading [ ] links (RFC 6749/6750/7519, OWASP, oauth.net)
