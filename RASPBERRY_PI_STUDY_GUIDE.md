@@ -1813,3 +1813,13 @@ The ESP32 handles the physical world with microsecond precision and milliamp pow
 - [ ] Use VS Code Remote-SSH for development
 - [ ] Build a complete project: sensor + logger + web dashboard + systemd service
 - [ ] Understand when to use a Pi vs. an ESP32 vs. a hybrid
+
+---
+
+## Where to Go Next
+
+- **Keep the official [Raspberry Pi Documentation](https://www.raspberrypi.com/documentation/) open while you build** — the hardware, `config.txt`, and camera sections are accurate and current in a way most blog tutorials are not, and the [gpiozero docs](https://gpiozero.readthedocs.io/) have wiring recipes for nearly every component in this guide.
+- **Read the datasheets when a peripheral misbehaves** — the [BCM2711/RP1 peripherals documentation](https://www.raspberrypi.com/documentation/computers/processors.html) explains the level of the machine that `raspi-config` hides, and a sensor's datasheet beats any forum thread.
+- **Build the capstone project end to end:** a sensor logging to SQLite, exposed by a small web dashboard, supervised by systemd, surviving a reboot and an SD-card backup. It exercises every part of this guide and leaves you with a template for everything after.
+- **Branch to microcontrollers when latency or power demands it** — the [ESP32 guide](ESP32_STUDY_GUIDE.md) covers the other half of the hobby-hardware world, and the Pi-as-brain + microcontroller-as-nerves hybrid is the architecture most serious projects converge on.
+- **Adjacent guides in this repo:** [Linux Fundamentals](LINUX_FUNDAMENTALS_STUDY_GUIDE.md) and [Advanced Linux](ADVANCED_LINUX_STUDY_GUIDE.md) (a Pi is the perfect machine to break and rebuild), [Linux Networking](LINUX_NETWORKING_STUDY_GUIDE.md), and [Docker](DOCKER_STUDY_GUIDE.md) (containerized deploys to the Pi).

@@ -55,7 +55,7 @@ audit (external markdown links / total lines).
 
 ---
 
-## Tier 1 — Both missing, links critically sparse (≤10 links)
+## Tier 1 — Both missing, links critically sparse (≤10 links) — ✅ COMPLETE (2026-06-12)
 
 The worst offenders: no reading section *and* almost no documentation links.
 
@@ -67,16 +67,16 @@ The worst offenders: no reading section *and* almost no documentation links.
 - [x] `BLENDER_STUDY_GUIDE.md` — [x] reading [x] links (5→17 links; manual chapters, bpy API)
 - [x] `EBPF_STUDY_GUIDE.md` — [x] reading [x] links (4→25 links; kernel BPF docs, project docs)
 - [x] `ELECTRON_STUDY_GUIDE.md` — [x] reading [x] links (3→20 links; electronjs.org tutorials/APIs)
-- [ ] `IOS_DEVELOPMENT_STUDY_GUIDE.md` (6 / 1851) — [ ] reading [ ] links (developer.apple.com: Swift, SwiftUI, HIG)
+- [x] `IOS_DEVELOPMENT_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; Where to Go Next added)
 - [x] `LINUX_FUNDAMENTALS_STUDY_GUIDE.md` — [x] reading [x] links (touched lightly: man7 overview pages + Where to Go Next)
 - [x] `LINUX_NETWORKING_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; Where to Go Next added)
 - [x] `PYTHON_CONCURRENCY.md` — [x] reading [x] links (intro refs were strong; Where to Go Next added)
 - [x] `PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; Where to Go Next added)
-- [ ] `RASPBERRY_PI_STUDY_GUIDE.md` (4 / 1815) — [ ] reading [ ] links (raspberrypi.com/documentation, gpiozero)
-- [ ] `SWIFT_STUDY_GUIDE.md` (4 / 2197) — [ ] reading [ ] links (docs.swift.org TSPL, Swift Evolution)
+- [x] `RASPBERRY_PI_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; Where to Go Next added)
+- [x] `SWIFT_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; Where to Go Next added)
 - [x] `VIM_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; Where to Go Next added)
-- [ ] `WEBGL_OPENGL_STUDY_GUIDE.md` (9 / 2021) — [ ] reading [ ] links (MDN WebGL, Khronos refs, webgl2fundamentals)
-- [ ] `WEBGPU_STUDY_GUIDE.md` (9 / 2073) — [ ] reading [ ] links (W3C WebGPU/WGSL specs, MDN, webgpufundamentals)
+- [x] `WEBGL_OPENGL_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; Where to Go Next added)
+- [x] `WEBGPU_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; Where to Go Next added)
 - [x] `ENTERPRISE_API_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; Where to Go Next added)
 - [x] `CB8_IOS_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; Where to Go Next added)
 - [x] `CB8_ANDROID_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; Where to Go Next added)

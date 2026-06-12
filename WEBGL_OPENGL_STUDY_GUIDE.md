@@ -2019,3 +2019,13 @@ What draw call consumes all of that state?
 ```
 
 That is the whole game. WebGL teaches this model with browser ergonomics, but the concepts are OpenGL concepts. Once you can reason about state, data layout, shader stages, and framebuffer output, most real-time graphics APIs become less mysterious.
+
+---
+
+## Where to Go Next
+
+- **Work through [WebGL2 Fundamentals](https://webgl2fundamentals.org/)** — the best structured tutorial corpus in graphics; it teaches the same state-machine model as this guide with runnable, editable examples for every concept.
+- **Keep the references open while you code:** the [MDN WebGL API docs](https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API), the [WebGL 2.0 spec](https://registry.khronos.org/webgl/specs/latest/2.0/), and the [OpenGL ES 3.0 reference pages](https://registry.khronos.org/OpenGL-Refpages/es3.0/) (the functions WebGL2 wraps).
+- **Read [The Book of Shaders](https://thebookofshaders.com/)** for fragment-shader fluency — procedural patterns, noise, and the GPU mindset, one interactive chapter at a time.
+- **Build the classic ladder:** a triangle → a textured quad → a spinning lit cube with your own matrix math → a small scene with a camera. Each rung forces one part of the pipeline (buffers, textures, uniforms, depth) to become real. Use [Three.js](https://threejs.org/docs/) afterward, not before — it means more once you know what it automates.
+- **Adjacent guides in this repo:** [WebGPU](WEBGPU_STUDY_GUIDE.md) (the successor API — read it after this one; the contrast is the lesson) and [Blender](BLENDER_STUDY_GUIDE.md) (the artist's view of the same pipeline).

@@ -2195,3 +2195,13 @@ Need to prevent copies?
 ---
 
 That's the guide. Swift in 2026 is a language with two faces: a high-level, safe, expressive language for app development (protocols, generics, closures, result builders, macros — all the abstraction power you want), and an increasingly capable systems language (ownership, noncopyable types, inline arrays, embedded Swift, C interop) that's expanding beyond the Apple ecosystem. The type system enforces more invariants at compile time than almost any mainstream language — optionals for null safety, Sendable for thread safety, exhaustive switches for enum coverage, typed throws for error handling — and the 6.x evolution is steadily closing the remaining gaps.
+
+---
+
+## Where to Go Next
+
+- **Read [*The Swift Programming Language*](https://docs.swift.org/swift-book/)** (TSPL) cover to cover — it's free, current, and the canonical statement of everything in Parts 1–8; this guide is the map, TSPL is the territory.
+- **Read the [Swift Evolution proposals](https://github.com/swiftlang/swift-evolution/tree/main/proposals)** for the features that surprised you — each proposal documents the *why* behind a feature (motivation, alternatives considered) better than any tutorial; the concurrency proposals (SE-0296, SE-0306, SE-0414) are required reading for Part 9's mental model.
+- **Follow the [Swift.org blog](https://www.swift.org/blog/)** and the [migration guide to Swift 6 data-race safety](https://www.swift.org/migration/documentation/migrationguide/) — the strict-concurrency transition is the live edge of the language.
+- **Build something with the strictness on.** Start a project with Swift 6 language mode, make it compile warning-free with complete concurrency checking, and let the compiler teach you `Sendable` and actor isolation through real errors.
+- **Adjacent guides in this repo:** [iOS Development](IOS_DEVELOPMENT_STUDY_GUIDE.md) (the platform this language usually targets), [CB8 iOS](CB8_IOS_STUDY_GUIDE.md) (a worked porting project), and [Advanced Rust](ADVANCED_RUST_STUDY_GUIDE.md) (the language Swift's ownership features are converging toward — the comparison sharpens both).
