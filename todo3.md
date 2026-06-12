@@ -126,8 +126,8 @@ These already end with Further Reading / Where to Go Next / Recommended Reading
 Path. Verify the section has real links (not bare titles), add the
 sibling-guide cross-link bullet if missing, and fix inline link gaps.
 
-- [ ] `ADVANCED_POSTGRES.md` (≈1 bare URL / 964 ln!) — [ ] links badly needed (postgresql.org/docs per feature) [ ] upgrade Further Reading to linked entries
-- [ ] `POSTGRES.md` (≈3 bare URLs / 1887 ln!) — [ ] links badly needed [ ] upgrade Next Steps & Further Reading
+- [x] `ADVANCED_POSTGRES.md` — [x] links (0→32; per-part docs chapters, Rogov, operator toolkit) [x] Further Reading → Where to Go Next
+- [x] `POSTGRES.md` — [x] links (0→39; per-section *Docs:* pointers to postgresql.org chapters) [x] Further Reading upgraded
 - [ ] `SQLITE_STUDY_GUIDE.md` (13 / 2290) — [ ] links thin for the length (sqlite.org docs per pragma/feature) [x] reading section exists
 - [ ] `ANSIBLE_STUDY_GUIDE.md` (54 / 2247) — [ ] verify section + first-mention links
 - [ ] `CRYPTO_FUNDAMENTALS.md` (73 / 1296) — [ ] verify section + links

@@ -6,6 +6,8 @@ Its thesis, the throughline for everything below: **almost every Postgres perfor
 
 Tested against PostgreSQL 16/17; most material applies to 13+, with version notes where it matters.
 
+Primary references: the [official PostgreSQL documentation](https://www.postgresql.org/docs/current/) (the internals chapters — [MVCC](https://www.postgresql.org/docs/current/mvcc.html), [WAL](https://www.postgresql.org/docs/current/wal-intro.html), [routine vacuuming](https://www.postgresql.org/docs/current/routine-vacuuming.html) — are excellent and underread), Egor Rogov's [*PostgreSQL Internals*](https://postgrespro.com/community/books/internals) (free PDF — the definitive deep dive on MVCC, vacuum, and the planner), the [pg_stat_statements](https://www.postgresql.org/docs/current/pgstatstatements.html) and [pgbench](https://www.postgresql.org/docs/current/pgbench.html) docs, and [explain.dalibo.com](https://explain.dalibo.com/) for visual plan analysis.
+
 ---
 
 ## Table of Contents
@@ -32,7 +34,7 @@ Tested against PostgreSQL 16/17; most material applies to 13+, with version note
 
 ## 1. The Storage & MVCC Engine
 
-Everything starts with how a row physically lives on disk.
+Everything starts with how a row physically lives on disk ([docs: database page layout](https://www.postgresql.org/docs/current/storage-page-layout.html)).
 
 ### Pages and tuples
 
@@ -110,7 +112,7 @@ A stale VM (because `VACUUM` hasn't run) silently turns fast index-only scans ba
 
 ## 2. WAL, Checkpoints & Durability
 
-The **Write-Ahead Log** is the second pillar. Every change is written to WAL *before* the data page is modified, so a crash can always be replayed forward. The same log powers replication and PITR.
+The **[Write-Ahead Log](https://www.postgresql.org/docs/current/wal-intro.html)** is the second pillar. Every change is written to WAL *before* the data page is modified, so a crash can always be replayed forward. The same log powers replication and PITR.
 
 ### The write path
 
@@ -174,7 +176,7 @@ SELECT num_timed, num_requested FROM pg_stat_checkpointer;
 
 ## 3. VACUUM, Autovacuum & Wraparound
 
-MVCC's bill comes due here. `VACUUM` reclaims dead tuples, updates the VM/FSM, refreshes statistics (with `ANALYZE`), and — critically — **freezes** old rows to prevent transaction-ID wraparound.
+MVCC's bill comes due here ([docs: routine vacuuming](https://www.postgresql.org/docs/current/routine-vacuuming.html)). `VACUUM` reclaims dead tuples, updates the VM/FSM, refreshes statistics (with `ANALYZE`), and — critically — **freezes** old rows to prevent transaction-ID wraparound.
 
 ### What VACUUM actually does
 
@@ -233,7 +235,7 @@ If `xid_age` heads toward ~2 billion: kill the long transactions, drop dead repl
 
 ## 4. The Query Planner & Statistics
 
-Postgres is a **cost-based** optimizer: for each query it enumerates plans, estimates each plan's cost from table statistics, and picks the cheapest. When it chooses badly, the cause is almost always **bad row estimates**, not a "dumb planner."
+Postgres is a **cost-based** optimizer ([docs: planner statistics](https://www.postgresql.org/docs/current/planner-stats.html)): for each query it enumerates plans, estimates each plan's cost from table statistics, and picks the cheapest. When it chooses badly, the cause is almost always **bad row estimates**, not a "dumb planner."
 
 ### Where estimates come from
 
@@ -287,7 +289,7 @@ Postgres picks both the **join algorithm** (§5) and the **join order**. With ma
 
 ## 5. Reading EXPLAIN Like a Pro
 
-`EXPLAIN` is the single most important Postgres skill. `EXPLAIN` shows the plan + estimates; **`EXPLAIN ANALYZE` actually runs it** and shows real timings and row counts.
+[`EXPLAIN`](https://www.postgresql.org/docs/current/using-explain.html) is the single most important Postgres skill. `EXPLAIN` shows the plan + estimates; **`EXPLAIN ANALYZE` actually runs it** and shows real timings and row counts.
 
 ```sql
 EXPLAIN (ANALYZE, BUFFERS, SETTINGS, VERBOSE)
@@ -356,7 +358,7 @@ auto_explain.log_buffers = on
 
 ## 6. Index Internals & Strategy
 
-Indexes are the highest-leverage performance tool and the most over- and under-applied. Pick the *type* by the query shape.
+Indexes ([docs: index types](https://www.postgresql.org/docs/current/indexes-types.html)) are the highest-leverage performance tool and the most over- and under-applied. Pick the *type* by the query shape.
 
 ### B-tree (the default, and ~90% of what you need)
 
@@ -426,7 +428,7 @@ FROM pg_stat_user_indexes WHERE idx_scan = 0 ORDER BY pg_relation_size(indexreli
 
 ## 7. Locking & Concurrency at Scale
 
-MVCC means reads don't lock, but writes and DDL do. Understanding the lock hierarchy keeps you out of production incidents.
+MVCC means reads don't lock, but writes and DDL do. Understanding the lock hierarchy ([docs: explicit locking](https://www.postgresql.org/docs/current/explicit-locking.html)) keeps you out of production incidents.
 
 ### Row locks
 
@@ -484,7 +486,7 @@ SELECT pg_try_advisory_lock(hashtext('nightly-rollup'));  -- false if someone el
 
 ## 8. Connections & Pooling
 
-Postgres forks **one OS process per connection**, each consuming memory and a snapshot slot. This is why "just raise `max_connections`" backfires: thousands of mostly-idle backends thrash the scheduler and inflate snapshot costs.
+Postgres forks **one OS process per connection**, each consuming memory and a snapshot slot. This is why "just raise `max_connections`" backfires: thousands of mostly-idle backends thrash the scheduler and inflate snapshot costs. The standard fix is [PgBouncer](https://www.pgbouncer.org/).
 
 ### The math
 
@@ -567,7 +569,7 @@ max_parallel_workers = 8
 
 ## 10. Partitioning at Scale
 
-Declarative partitioning (PG10+) splits one logical table into physical partitions. It's not a speed-up by itself — it's a tool for **manageability** (drop old data instantly) and **pruning** (skip irrelevant partitions).
+[Declarative partitioning](https://www.postgresql.org/docs/current/ddl-partitioning.html) (PG10+) splits one logical table into physical partitions. It's not a speed-up by itself — it's a tool for **manageability** (drop old data instantly) and **pruning** (skip irrelevant partitions).
 
 ### When it actually helps
 
@@ -610,7 +612,7 @@ Automate creation/retention with **pg_partman** + **pg_cron** rather than hand-r
 
 ## 11. Replication & High Availability
 
-All replication is WAL shipping; the question is *how* the WAL is applied.
+All replication is WAL shipping ([docs: high availability](https://www.postgresql.org/docs/current/high-availability.html)); the question is *how* the WAL is applied.
 
 ### Physical (streaming) replication
 
@@ -717,7 +719,7 @@ In production, don't hand-roll this — use **pgBackRest** or **Barman**: they d
 
 ## 13. Observability
 
-You cannot tune what you cannot see. Three extensions/views carry most of the weight.
+You cannot tune what you cannot see ([docs: the cumulative statistics system](https://www.postgresql.org/docs/current/monitoring-stats.html)). Three extensions/views carry most of the weight.
 
 ### pg_stat_statements — your #1 tool
 
@@ -790,7 +792,7 @@ The greatest hits — most production Postgres incidents are one of these.
 
 ## 15. Benchmarking
 
-Measure, don't guess. **`pgbench`** ships with Postgres.
+Measure, don't guess. **[`pgbench`](https://www.postgresql.org/docs/current/pgbench.html)** ships with Postgres.
 
 ```bash
 pgbench -i -s 100 app          # initialize, scale factor 100 (~10M rows)
@@ -955,10 +957,11 @@ Different major version / selective tables?   → logical replication
 
 ---
 
-## Further Reading
+## Where to Go Next
 
-- Official docs: https://www.postgresql.org/docs/current/ (the internals chapters are excellent)
-- *PostgreSQL 14 Internals* (Egor Rogov) — the definitive deep dive on MVCC, vacuum, and the planner
-- `explain.dalibo.com` — visual plan analysis
-- `pgBackRest` / `Patroni` / `pg_partman` / `pg_repack` docs — the production operator's toolkit
-- Companion: the [PostgreSQL Feature Reference](POSTGRES.md) for the SQL surface area
+- **Read Egor Rogov's [*PostgreSQL Internals*](https://postgrespro.com/community/books/internals)** (free PDF) — the definitive book-length treatment of MVCC, vacuum, locking, and the planner; it is this guide's Parts 1–7 at full depth, by someone who reads the source for a living.
+- **Read the [official docs'](https://www.postgresql.org/docs/current/) internals chapters** — [MVCC](https://www.postgresql.org/docs/current/mvcc.html), [WAL configuration](https://www.postgresql.org/docs/current/wal-configuration.html), [routine vacuuming](https://www.postgresql.org/docs/current/routine-vacuuming.html), and [planner statistics](https://www.postgresql.org/docs/current/planner-stats.html) — they are excellent and most users never open them.
+- **Practice plans on [explain.dalibo.com](https://explain.dalibo.com/)** — paste any `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` output and learn to read the visual tree; then enable [auto_explain](https://www.postgresql.org/docs/current/auto-explain.html) in a real environment.
+- **Learn the operator's toolkit from its own docs:** [pgBackRest](https://pgbackrest.org/) (backups/PITR), [Patroni](https://patroni.readthedocs.io/) (HA), [pg_partman](https://github.com/pgpartman/pg_partman) (partition management), [pg_repack](https://reorg.github.io/pg_repack/) (bloat removal without long locks).
+- **Run one incident drill:** fill a table with dead tuples, watch autovacuum respond (or fail to), tune the per-table thresholds, and verify with `pg_stat_user_tables`. Then practice a PITR restore. These two drills cover the failure modes that actually page people.
+- **Companions in this repo:** the [PostgreSQL Feature Reference](POSTGRES.md) (the SQL surface), [PostgreSQL Extensions](POSTGRES_EXTENSIONS.md) (the ecosystem), [Database Internals](DATABASE_INTERNALS_STUDY_GUIDE.md) (the cross-engine theory), and [Distributed Systems](DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md) (replication consistency).
