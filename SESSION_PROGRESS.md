@@ -7,50 +7,50 @@ rebuilding the site (`python3 build_all_guides.py`), and committing+pushing. No 
 
 **Branch:** `claude/cb8-ios-study-guide-wej97v`
 
-## Done this pass (lowest → up) — 15 guides, every one that was ≤76
+## Done this pass (lowest → up) — 17 guides; the entire 57–77 band lifted
 
 | Guide | Before | After | What was done |
 |---|---|---|---|
 | k8s/KUBERNETES_SECURITY | 57 | 84 | Bullet checklist → prose + real manifests, blast-radius framing |
 | WEB_LLM_SECURITY | 58 | 84 | Bullet template → full prose treatment per bug class |
 | KALI_LINUX | 66 | 82 | Tool catalog → technique-first kill-chain prose |
-| AZURE_FOR_AWS | 70 | 80 | Service-name bullets → flowing conceptual exposition (all 15 sections) |
+| AZURE_FOR_AWS | 70 | 80 | Service-name bullets → flowing conceptual exposition (15 sections) |
+| GCP_FOR_AWS | 77 | 81 | Same as Azure: service-name bullets → prose (15 sections) |
 | k8s/DOCKER_KUBERNETES_NETWORKING | 72 | 79 | Added the stack underneath (veth/NAT/CNI/kube-proxy/CoreDNS) |
 | k8s/KUBERNETES | 72 | 78 | Foundational concepts bullets → developed prose |
 | POSTGRES | 72 | 77 | Bare catalog → explained reference (teaching section openers) |
-| TYPESCRIPT | 74 | 80 | Added the missing tooling/build/ecosystem chapter (erasure, @types, Zod) |
+| TYPESCRIPT | 74 | 80 | Added the missing tooling/build/ecosystem chapter |
 | GIT | 74 | 79 | Back-half command reference → developed why-first prose |
 | VIM | 75 | 79 | Developed the quickfix project-refactor workflow |
-| REDIS | 75 | 80 | Added why-it-works (single-thread, skiplist, RDB/AOF, hash slots) |
-| PYTHON_VS_NODEJS_ASYNC | 76 | 78 | Deepened free-threaded-Python forward analysis (scope-limited by design) |
-| EBPF | 76 | 79 | Verifier (abstract interpretation) + CO-RE (BTF relocation) mechanisms |
+| REDIS | 75 | 80 | why-it-works (single-thread, skiplist, RDB/AOF, hash slots) |
+| PYTHON_VS_NODEJS_ASYNC | 76 | 78 | Free-threaded-Python forward analysis (scope-limited by design) |
+| EBPF | 76 | 79 | Verifier (abstract interpretation) + CO-RE (BTF relocation) |
 | RASPBERRY_PI | 76 | 79 | I2C/SPI/UART wire-level protocol mechanism prose |
-| CADDY | 76 | 79 | Automatic-HTTPS (ACME/CA trust) + reverse-proxy conceptual cores |
+| CADDY | 76 | 79 | Automatic-HTTPS (ACME/CA trust) + reverse-proxy concepts |
+| DOTNET_FOR_PYTHON_DEVS | 77 | 79 | LINQ deferred execution + reified generics mechanisms |
 
-The whole 57–76 band is now lifted. New bottom of the ranking starts at 77.
+## Remaining lowest-scorers (next targets, ascending) — now 77–78, all genuinely decent
 
-## Remaining lowest-scorers (next targets, ascending) — all 77–78
-
-Check `grep -E '^\| [1-9] \|' list.md` for the live order. As of this note:
-- DOTNET_FOR_PYTHON_DEVS (77) — "annotated snippet catalogs"; develop prose around code
-- POSTGRES (77, already deepened this pass — could go further but diminishing)
-- GCP_FOR_AWS_SOLUTIONS_ARCHITECT (77) — same translation-table issue as Azure was; convert to prose
-- DOCKER (78), SQLITE (78), SWIFT (78), RUST_FOR_PYTHON_DEVS (78), KUBERNETES (78, deepened)
-- then the 80s (Advanced trilogy, the new textbook guides, etc.)
-
-GCP_FOR_AWS is the highest-leverage next target (the Azure rewrite is a direct template:
-its sibling, same per-section service-name-bullets → prose conversion).
+- POSTGRES (77) — already deepened this pass; it's a reference by design (depth lives in
+  ADVANCED_POSTGRES at 86), so further gains are limited. Could add more section openers.
+- DOCKER (78) — "strong under-the-hood framing; more terse-and-practical than expository in
+  the middle chapters." Develop the middle-chapter prose (namespaces/cgroups → containerd/runc).
+- SQLITE (78) — "genuinely comprehensive; heavily code-driven, explanatory prose secondary."
+  Add why-it-works prose (note DATABASE_INTERNALS covers SQLite internals deeply — cross-link,
+  don't duplicate).
+- SWIFT (78) — "real language treatment; highest code-to-prose ratio." Develop concept prose.
+- RUST_FOR_PYTHON_DEVS (78) — "code-heavy with commentary rather than sustained exposition."
+- k8s/KUBERNETES (78, deepened), GOLANG_FOR_PYTHON_DEVS (80), then the 80s.
 
 ## Method per guide (repeat this)
 
-1. Read the guide + its `list.md` critique (the assessment column says exactly what's wrong).
-2. Rewrite/expand to address that specific critique, matching DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md
-   tone (concept-first, grounded, prose-first) and developed depth. Keep good tables/code/links;
-   convert bullet enumerations to flowing prose; add the missing "why" / mechanism.
+1. Read the guide + its `list.md` critique (assessment column says exactly what's wrong).
+2. Rewrite/expand to address that specific critique, matching DISTRIBUTED_SYSTEMS tone
+   (concept-first, grounded, prose-first) and depth. Keep good tables/code/links; convert
+   bullet enumerations to flowing prose; add the missing "why"/mechanism.
 3. Re-score in `list.md` via the python snippet pattern used in each commit (remove old row,
-   insert at correct ascending position, renumber all rows, append to the June-2026 header note;
-   assert scores stay monotone and numbering contiguous).
-4. Update the README entry to reflect the new depth.
-5. `python3 build_all_guides.py`; commit + push to the branch.
+   insert at correct ascending position, renumber all rows, append to June-2026 header note;
+   assert scores monotone + numbering contiguous).
+4. Update the README entry; `python3 build_all_guides.py`; commit + push.
 
 Quality bar: DISTRIBUTED_SYSTEMS (88), LINUX_FUNDAMENTALS (92).
