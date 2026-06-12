@@ -153,6 +153,29 @@ sudo shutdown -c
 
 For firewall work, use the same pattern. A saved rollback is cheap; a locked-out server is not.
 
+```quiz
+Q: Why does the guide insist on the debugging ladder's order (name → service → route → link → neighbor → reachability → firewall → throughput)?
+- [ ] Packet capture must always come first
+- [x] Each step rules out a whole layer cheaply — most incidents become obvious before the expensive steps, and skipping steps is how people blame the wrong layer
+- [ ] Firewall checks require root, so they come last
+- [ ] It's alphabetical by tool name
+> Jumping to tcpdump while the service is bound to 127.0.0.1 wastes an hour. Walking down the ladder turns "the network is broken" into a specific, testable claim at one layer.
+
+Q: You fix a route with `ip route replace` and it works — until the reboot. Why?
+- [x] ip commands are runtime-only; persistence belongs to NetworkManager/systemd-networkd/netplan, which reapply their config
+- [ ] ip route changes require a commit subcommand
+- [ ] The kernel resets routes hourly
+- [ ] replace is temporary by definition; add is permanent
+> The split is deliberate: ip for debugging, labs, and proving what the persistent config should be — then encode the fix in the distro's network manager. Surprise reversions also happen mid-day when the manager reapplies.
+
+Q: Before changing routes or firewall rules on a remote machine over SSH, what's the standard safety net?
+- [ ] Take a VM snapshot
+- [x] Schedule a rollback — `shutdown -r +5`, cancel it once you confirm you still have access
+- [ ] Open a second SSH session as root
+- [ ] Run the change in a screen session
+> A timed reboot restores the boot config if you cut your own access; a second SSH session dies with the same misconfigured network. Cheap insurance against the classic locked-out-server incident.
+```
+
 ---
 
 ## Part 3 - Interfaces, Addresses, and Links with ip
@@ -412,6 +435,36 @@ dig @1.1.1.1 example.com
 
 If `dig @1.1.1.1 example.com` works but `getent hosts example.com` fails, the problem is local resolver configuration. If both work but connections fail, the problem is not DNS.
 
+```quiz
+Q: A multihomed host with a VPN sends traffic out the wrong interface. What's the single command that shows the kernel's actual decision?
+- [ ] ip addr
+- [x] ip route get <destination> — it prints the chosen interface, source address, and gateway for that exact destination
+- [ ] traceroute
+- [ ] ethtool <interface>
+> The route table shows the rules; route get shows the verdict, including policy-routing effects (add `from <src>` to test a source). On hosts with VPNs, containers, and multiple NICs, it's the truth.
+
+Q: Two default routes exist. Which one wins?
+- [x] The one with the lower metric
+- [ ] The one added most recently
+- [ ] The one on the faster interface
+- [ ] Both — traffic is load-balanced automatically
+> Metric is the tiebreaker for otherwise-equal routes. When traffic still leaves the "wrong" way, check ip rule — policy routing consults other tables before the main one, and it's the classic forgotten configuration.
+
+Q: The route is correct, the service is up, but packets never leave the host. What does the ladder say to check before blaming the firewall?
+- [ ] DNS caching
+- [x] Neighbor resolution — ip neigh; a FAILED ARP/NDP entry means Linux can't find the next hop's MAC
+- [ ] TCP window scaling
+- [ ] The interface's MTU
+> Routing picks where; ARP/NDP figures out who. A stuck or failed neighbor entry stalls everything silently — flush it (ip neigh flush) and watch. The states (REACHABLE/STALE/FAILED) read directly from ip neigh.
+
+Q: dig @1.1.1.1 example.com works but getent hosts example.com fails. Where's the problem?
+- [x] Local resolver configuration — the network path to DNS is fine; the system's resolution chain (resolv.conf/systemd-resolved/nsswitch) is not
+- [ ] The upstream DNS server
+- [ ] IP routing to the internet
+- [ ] The application's DNS library
+> dig queries a specific server directly; getent exercises the system resolver path your applications actually use. Diverging results isolate the failure to the local config — and if both work, the problem isn't DNS at all.
+```
+
 ---
 
 ## Part 5 - Sockets and Services with ss
@@ -530,6 +583,36 @@ ss -xap
 ```
 
 This helps with local services like Docker, Postgres, systemd, Wayland, and agents that communicate over filesystem socket paths.
+
+```quiz
+Q: The app works via SSH on the box but not from anywhere else, and ss shows LISTEN on 127.0.0.1:8080. Diagnosis?
+- [x] The service is bound to loopback — local-only by definition; bind 0.0.0.0 (or the real interface) or front it with a proxy
+- [ ] The firewall is dropping external SYNs
+- [ ] The default route is wrong
+- [ ] Port 8080 needs root to be reachable externally
+> The bind address is the first thing to read in ss -ltnp output: 127.0.0.1 means local-only, 0.0.0.0 all IPv4, [::] IPv6 (possibly IPv4 too). No amount of firewall debugging fixes a loopback bind.
+
+Q: ss shows hundreds of sockets stuck in CLOSE-WAIT. What does that almost always mean?
+- [ ] The kernel is slow at recycling sockets
+- [x] An application bug — the peer closed the connection, but your process never closed its side
+- [ ] Normal TIME-WAIT behavior under load
+- [ ] SYN flood in progress
+> CLOSE-WAIT is the state where the remote said goodbye and your process hasn't. The kernel can't clean it up — only the app closing its fd does. Piles of them mean a missing close() in some error path.
+
+Q: A service is "up" but clients see timeouts, and ss -ltn shows a large Recv-Q on the listening socket. What's happening?
+- [x] Connections arrive faster than the app accepts them — the accept backlog is filling; check worker counts before tuning somaxconn
+- [ ] The NIC is dropping packets
+- [ ] DNS is slow
+- [ ] TIME-WAIT exhaustion
+> Recv-Q on a LISTEN socket counts completed-but-unaccepted connections. The kernel-side knobs (somaxconn) only matter after confirming the app is actually accepting — usually it's starved workers or a blocked accept loop.
+
+Q: What can ss -ti tell you that basic socket listing can't?
+- [ ] Which process owns each socket
+- [x] Per-connection TCP internals — RTT, congestion window, retransmissions — letting you spot loss and stalls without a packet capture
+- [ ] The firewall rules affecting the socket
+- [ ] Historical connection counts
+> -i exposes the kernel's TCP state per flow. Many retransmits = loss/congestion; tiny cwnd = a constrained path. It's the step between "feels slow" and breaking out tcpdump.
+```
 
 ---
 
@@ -772,6 +855,36 @@ rsync -a --info=progress2 /data/bigfile nas:/data/
 
 If `iperf3` shows 940 Mbit/s on gigabit Ethernet but `rsync` gets 90 Mbit/s, the link is probably not the bottleneck. Look at disk, CPU, SSH cipher, compression, small-file overhead, or remote filesystem behavior.
 
+```quiz
+Q: nc -vz to a port says "connection refused" vs "timed out". What's the difference?
+- [x] Refused means the host replied (port closed/rejected — reachability is fine); timed out means nothing came back (firewall, routing, or loss)
+- [ ] They're synonyms with different netcat variants
+- [ ] Refused is a DNS failure
+- [ ] Timed out means the service is overloaded
+> A RST is information: the path works and nothing listens (or a reject rule fired). Silence is a different problem class entirely — something ate the packet. This one distinction routes the rest of the investigation.
+
+Q: Your UDP test sender exited successfully. What did that prove about delivery?
+- [ ] The packet arrived at the receiver
+- [ ] The receiver's port is open
+- [x] Nothing — UDP has no handshake; a clean send proves only that the packet left; confirm with capture or receiver logs
+- [ ] The MTU is sufficient
+> No connection means no acknowledgment. UDP smoke tests need confirmation on the far side — which is also why firewalled UDP fails silently rather than with errors.
+
+Q: iperf3 shows 940 Mbit/s but rsync over SSH moves the same files at 90 Mbit/s. Where do you look?
+- [ ] The switch — it's clearly dropping rsync traffic
+- [x] Off the network: disk throughput, CPU (SSH cipher/compression), small-file overhead, remote filesystem behavior
+- [ ] MTU mismatch
+- [ ] Conntrack exhaustion
+> iperf3's entire job is isolating the path from the application stack. When the path measures fast and the transfer is slow, the bottleneck is in the transfer machinery — compare with a dd disk read and watch CPU during the copy.
+
+Q: What does iperf3 -R add to your toolkit?
+- [x] Reverse-direction testing — server sends to client, catching asymmetric links and "downloads slow, uploads fine" cases that the default direction misses
+- [ ] Retransmission counting
+- [ ] Raw (unencrypted) mode
+- [ ] UDP mode with rate limiting
+> Many paths are asymmetric (shaping, duplex faults, cloud egress). Test both directions (-R, then --bidir) before declaring a link healthy — one direction clean proves only one direction.
+```
+
 ---
 
 ## Part 8 - Network Namespaces and veth Labs
@@ -902,6 +1015,36 @@ done
 ### Why This Matters
 
 Docker, containerd, Kubernetes, Podman, systemd-nspawn, and many CNI plugins all use these primitives. A pod is not magic: it is a process in a network namespace, usually connected to the host through a veth pair and routed or bridged by host networking rules.
+
+```quiz
+Q: What does a network namespace isolate?
+- [x] A complete network stack — its own interfaces, routes, neighbor tables, firewall state, and sockets
+- [ ] Just the port number space
+- [ ] Only the hostname
+- [ ] Bandwidth allocation between processes
+> Inside a fresh netns there's nothing but a down loopback — no eth0, no routes, no connectivity until you plumb it. That totality is why containers feel like separate machines while being processes on one kernel.
+
+Q: In the two-namespace lab, what actually carries packets between red and blue?
+- [ ] The host's eth0 in promiscuous mode
+- [x] A veth pair — two interfaces created as one unit, each end moved into a namespace; frames in one end exit the other
+- [ ] A UDP tunnel over loopback
+- [ ] Shared memory between the namespaces
+> The veth pair is the virtual patch cable. Move one end into each namespace, address both ends, bring links up — that's container networking's first principle, buildable by hand in six commands.
+
+Q: In the router-namespace lab, pings between left and right fail until you set one sysctl in rtr. Which, and why?
+- [x] net.ipv4.ip_forward=1 — Linux refuses to forward packets between interfaces until told it's a router
+- [ ] net.core.somaxconn — the router's backlog is too small
+- [ ] rp_filter=0 — reverse-path filtering blocks all forwarding
+- [ ] tcp_syncookies=1
+> A host with two interfaces isn't a router by default; forwarding is opt-in. This single sysctl is also load-bearing in real container hosts and VPN gateways — and its absence is a classic "the topology looks right but nothing crosses" cause.
+
+Q: Why is this lab the recommended way to understand Kubernetes pod networking?
+- [ ] kubectl uses ip netns internally
+- [x] Because a pod IS this lab: a process in a network namespace, joined to the host by a veth pair, with bridges/routes/NAT rules doing the rest — the same primitives, automated
+- [ ] Namespaces are deprecated in favor of service meshes
+- [ ] It's the only way to test CNI plugins
+> CNIs differ in how they wire the host side (bridge, routes, overlay, eBPF), but the per-pod machinery is namespaces and veth everywhere. Build it by hand once and pod networking stops being magic.
+```
 
 ---
 
@@ -1079,6 +1222,29 @@ Middlebox/cloud:
 - Load balancer listener/target health.
 
 `connection refused` usually means the host replied but the port is closed. `timed out` usually means no reply reached the client.
+
+```quiz
+Q: Small requests work; large transfers stall; a VPN is in the path. What's the suspicion and the test?
+- [x] An MTU black hole — ping -M do -s 1472 vs -s 1400 (do-not-fragment probes); if the smaller works and the larger fails, fix tunnel MTU or MSS clamping
+- [ ] Conntrack exhaustion — raise nf_conntrack_max
+- [ ] DNS timeouts — lower ndots
+- [ ] TCP keepalives — shorten the interval
+> Tunnels shrink the effective MTU; oversized packets with DF set vanish silently, so handshakes (small) work while bulk data (full-size segments) hangs. tracepath shows where the path MTU drops. Fix it at the boundary, not by lowering every host blindly.
+
+Q: In the "service is down" playbook, curl connects but the HTTP response is an error. What has been established?
+- [ ] Nothing — start over with tcpdump
+- [x] TCP reachability is fine — DNS, routing, firewall, and the listener all work; the problem is the app/proxy/TLS layer
+- [ ] The firewall is half-open
+- [ ] The load balancer is down
+> The ladder's payoff: a successful TCP connect eliminates the entire network layer cabinet. The remaining suspects are application configuration, the proxy, certificates — different tools, different owners.
+
+Q: Why does the slow-network playbook run iperf3 before touching the application?
+- [x] To separate the path from everything else — if iperf3 is fast, the network is exonerated and the investigation moves to disk/CPU/app; if slow, it's a link/path issue regardless of the app
+- [ ] iperf3 fixes congestion as it measures
+- [ ] Applications can't measure their own throughput
+- [ ] It's faster to run than rsync
+> "The network is slow" is usually something else. One clean measurement of the raw path divides the problem space in half — then ss -ti (retransmits), interface error counters, and disk benchmarks finish the picture.
+```
 
 ---
 
@@ -1578,6 +1744,36 @@ Need encryption/auth over an untrusted network?
     One huge file and you can verify checksum? -> nc.
     Directory tree and you can verify? -> tar + nc.
     Anything production or repeatable? -> rsync anyway.
+```
+
+```quiz
+Q: A nightly mirror of a large directory tree to another server — which tool, and why not the others?
+- [x] rsync — incremental (only changed data moves), resumable, metadata-preserving; scp re-copies everything and tar restarts from zero on interruption
+- [ ] scp -r — simplest is best for recurring jobs
+- [ ] tar over SSH — it's the fastest
+- [ ] nc — no encryption overhead
+> Repeat sync is rsync's home turf: the delta algorithm makes night two nearly free. scp is for one-off copies; tar-over-SSH for one-time exact tree streams; nc only on isolated networks with checksum verification.
+
+Q: What's the standing danger in rsync --delete?
+- [ ] It deletes the source after copying
+- [x] It removes destination files missing from the source — point it at the wrong path (or trip on the trailing-slash semantics) and it erases good data; always --dry-run first
+- [ ] It breaks hard links
+- [ ] It disables resume
+> --delete makes a true mirror, which means it destroys whatever isn't in the source. The trailing-slash distinction (src/ = contents, src = the directory itself) plus --delete is the classic data-loss combo. Dry run, read the plan, then run.
+
+Q: How do you verify a multi-gigabyte transfer actually arrived intact?
+- [ ] Compare file sizes with du
+- [x] Checksums — sha256sum both sides for single files; rsync --checksum --dry-run for trees (it reads contents, not just size/time)
+- [ ] Trust rsync's exit code alone
+- [ ] Re-run the transfer and see if it's a no-op
+> Size/mtime equality is circumstantial; checksums are evidence. rsync's default quick check trusts size+time — fine day-to-day, not for verification after a questionable transfer or a flaky link.
+
+Q: When is plain nc an acceptable file-transfer tool?
+- [x] On an isolated, trusted network (lab LAN, direct cable) where you'll verify checksums — it's unencrypted and unauthenticated, but minimal overhead
+- [ ] Through a bastion host, since SSH adds latency
+- [ ] Whenever both ends have netcat installed
+- [ ] For production backups, paired with cron
+> nc moves raw bytes fast with zero protection — anyone on the path can read or alter them, and anyone can connect to your listener. The decision tree's first question is encryption/auth, and "untrusted network" answers it: SSH-based tools.
 ```
 
 ---
