@@ -133,7 +133,7 @@ Part, click-to-reveal explanation included.
 - [x] `CPP26_STUDY_GUIDE.md` — 5 quizzes (15 questions; RAII/move-elision/Rule-of-Zero, jthread-RAII/coroutine-suspension/library-gap, contracts-vs-exceptions & build-mode, erroneous-behavior/pack-indexing/_-placeholder, no-borrow-checker safety & sanitizers)
 - [x] `SWIFT_STUDY_GUIDE.md` — 5 quizzes (15 questions; value-vs-reference & Sendable foundation, ARC determinism/cycles/weak-unowned, optionals-as-enum/chaining/IUO, protocol static-vs-dynamic-dispatch & some-vs-any & associatedtype, actors/Sendable/structured-concurrency)
 - [x] `ASYNCIO_STUDY_GUIDE.md` — 5 quizzes (15 questions; I/O-vs-CPU value-prop & coroutine density, coroutine-objects/await-yield-points/task-concurrency, gather-order/exceptions & TaskGroup, cancellation-at-await/CancelledError-BaseException/timeouts, blocking-the-loop & to_thread-vs-ProcessPool & aiofiles)
-- [ ] `PYTHON_CONCURRENCY.md`
+- [x] `PYTHON_CONCURRENCY.md` — 5 quizzes (15 questions; GIL held-vs-released & NumPy escape hatch, thread races/queue/pool, process parallelism/__main__-guard/coarse-grained, futures unifying-API/submit-vs-map/exception-trap, model-choice numerical-native/thread-vs-async/to_thread-hybrid)
 - [ ] `PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md`
 - [ ] `GOLANG_FOR_PYTHON_DEVS.md`
 - [ ] `RUST_FOR_PYTHON_DEVS.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 38/65 (Batches 1–3 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 39/65 (Batches 1–3 complete).
