@@ -123,7 +123,7 @@ Part, click-to-reveal explanation included.
 - [x] `OBSERVABILITY_STUDY_GUIDE.md` — 6 quizzes (18 questions; cardinality/monitoring-vs-observability, counters/rate/histograms, traces/sampling/propagation, OTel neutrality/auto-vs-manual/gateway, SLI-SLO-SLA/error-budgets/burn-rate, symptom-vs-cause alerting)
 - [x] `CLOUDFLARE_STUDY_GUIDE.md` — 5 quizzes (15 questions; anycast/proxy-pipeline, cache decision/Cache-Everything sin, Workers isolate model/CPU-billing/bindings, KV-vs-DO-vs-R2 storage, Zero Trust/Tunnel inversion/JWT verification)
 - [x] `AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md` — 5 quizzes (15 questions; tenant/MG/subscription/RG hierarchy & regional subnets, Entra-vs-RBAC split & managed identities, NSG/Front-Door/L7-vs-L4, Cosmos consistency & partition keys, Key Vault/WAF-on-edge/Defender)
-- [ ] `GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md`
+- [x] `GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md` — 5 quizzes (15 questions; project hierarchy/labels-vs-tags/multi-region, resource-bound IAM/no-users/actAs, global VPC/SA-targeted firewall/global LB, Spanner+TrueTime/Firestore-vs-Bigtable, BigQuery bytes-scanned/partitioning/Omni)
 - [ ] `GIT_STUDY_GUIDE.md`
 - [ ] `VIM_STUDY_GUIDE.md`
 
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 31/65 (Batch 1 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 32/65 (Batch 1 complete).
