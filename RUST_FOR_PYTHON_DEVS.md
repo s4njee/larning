@@ -75,11 +75,17 @@ x = 6  # always fine -- Python has no concept of immutable bindings
 
 Official docs: [The Rust Book: What Is Ownership?](https://doc.rust-lang.org/book/ch04-01-what-is-ownership.html), [`Copy`](https://doc.rust-lang.org/std/marker/trait.Copy.html), [`Clone`](https://doc.rust-lang.org/std/clone/trait.Clone.html)
 
+Before the rules, the problem they solve — because ownership is incomprehensible until you see *why* it exists, and obvious once you do. Every program must answer one question about every piece of heap memory: when is it safe to free? History offers two answers, each with a fatal flaw. **Manual management** (C/C++: you call `free` yourself) is fast and predictable but hands you the two worst bug classes in software — free too early and you get a use-after-free (a security hole); free twice or never and you get corruption or a leak. **Garbage collection** (Python, Java, Go: a runtime traces and frees for you) is safe and convenient but costs you a runtime, unpredictable pauses, and the inability to know *when* cleanup happens. Rust's ownership system is a *third answer*: the compiler figures out, at compile time, exactly when each value can be freed, and inserts the free for you — so you get C's speed and predictability (no runtime, no GC pauses, deterministic cleanup) *and* memory safety (the use-after-free and double-free become compile errors), with no garbage collector. Ownership is the bookkeeping system that makes this possible, and "fighting the borrow checker" is really the compiler walking you through the proof that your memory usage is safe.
+
 ### The Three Rules of Ownership
 
-1. Each value in Rust has exactly **one owner**
-2. When the owner goes out of scope, the value is **dropped** (freed)
-3. Ownership can be **transferred** (moved), but then the original variable is invalid
+That goal produces three rules, and each one exists to make the compile-time-safe-freeing tractable:
+
+1. Each value in Rust has exactly **one owner** — so there is always a single, unambiguous answer to "who is responsible for freeing this," no shared bookkeeping to get wrong.
+2. When the owner goes out of scope, the value is **dropped** (freed) — so freeing is tied deterministically to a scope the compiler can see, not to a runtime decision.
+3. Ownership can be **transferred** (moved), but then the original variable is invalid — so responsibility passes cleanly from one owner to the next without ever being shared or duplicated.
+
+Read together, the rules guarantee that every value has exactly one owner at every moment and is freed exactly once when that owner's scope ends — which is precisely the invariant that makes both leaks and double-frees impossible, proven by the compiler rather than hoped for by the programmer.
 
 ### Move Semantics (The Python Brain-Breaker)
 
@@ -186,10 +192,14 @@ fn main() {
 
 ### The Borrowing Rules
 
+Ownership solved "when to free," but it created a friction: if every use of a value moves it, you'd have to keep handing values back and forth constantly. **Borrowing** is the fix — a reference (`&T`) lets you *use* a value without *owning* it, so the owner keeps responsibility and the borrow just looks. But references reintroduce the danger ownership removed (a reference could outlive the thing it points at, or two references could mutate the same data at once), so borrowing comes with rules, and the rules are not arbitrary — they encode the one principle that prevents data races at compile time:
+
 1. You can have **either** (not both at the same time):
    - Any number of **immutable references** (`&T`)
    - Exactly **one mutable reference** (`&mut T`)
 2. References must always be **valid** (no dangling references)
+
+Rule 1 is the famous **"shared XOR mutable"** principle, and it's worth seeing *why* it makes data races impossible rather than memorizing it. A data race needs three things: two or more accesses to the same data, at least one of them a write, happening concurrently. The borrowing rule attacks the combination directly — you can have *many* readers (all immutable, no writes, safe to share) *or* exactly *one* writer (a write, but nobody else is looking), but never readers and a writer at once. That's the exact condition that would let a write race a read, forbidden at compile time, which is how Rust delivers "fearless concurrency": the same rule that prevents a function from mutating data you're iterating over *also* prevents two threads from racing, because both are the same shared-XOR-mutable violation. So the borrow checker isn't being pedantic when it rejects your second mutable reference — it's refusing to compile a potential data race, the bug that takes days to find in other languages, turned into a red squiggle before the program ever runs.
 
 ```rust
 let mut s = String::from("hello");
