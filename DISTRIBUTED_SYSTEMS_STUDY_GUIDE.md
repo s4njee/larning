@@ -103,6 +103,36 @@ The guide is layered, and the layers build on each other:
 
 If you remember one thing from Part 1: **a distributed system is one where partial, ambiguous failure is the normal case, not the exception.** Everything else is the disciplined response to that fact.
 
+```quiz
+Q: You send a request to another service and get no response. What does that tell you?
+- [ ] The request was lost on the way out
+- [ ] The recipient crashed before processing it
+- [x] Nothing — a lost request, a lost response, a slow node, and a crash before or after processing all look identical
+- [ ] The recipient processed it but the response was lost
+> Silence is ambiguous by nature: every one of those failures produces the same observation. This five-way ambiguity is why consensus is hard, why exactly-once delivery is impossible, and why idempotency matters so much.
+
+Q: Why do replication and partitioning — the field's two load-bearing techniques — fight each other?
+- [ ] Replication requires consensus but partitioning forbids it
+- [x] More copies means more things to keep consistent; more splits means more coordination to answer a single question
+- [ ] Partitioning only works on data that is never replicated
+- [ ] They don't — every well-designed system maximizes both
+> Copy for availability, split for scale — and each makes the other harder. Nearly every design in this guide is managing the tension between those two forces.
+
+Q: Which motivation for going distributed pushes you toward replication rather than partitioning?
+- [ ] A dataset too big for one disk
+- [ ] Analytics that finish faster split across workers
+- [x] Surviving the loss of a machine without downtime
+- [ ] A write rate that saturates one box
+> Fault tolerance (and latency-via-geography) call for copies of the data; scale and throughput call for splitting it. The other three options all force partitioning.
+
+Q: Per the guide, internalizing which two of the Eight Fallacies avoids most beginner disasters?
+- [x] "The network is reliable" and "latency is zero"
+- [ ] "The network is secure" and "topology doesn't change"
+- [ ] "Bandwidth is infinite" and "transport cost is zero"
+- [ ] "There is one administrator" and "the network is homogeneous"
+> The network drops things, and it is slow in ways you can't predict — a factor of a million between a local call and a cross-region one. Most of the guide is the disciplined response to those two lies.
+```
+
 ---
 
 ## Part 2 — The Physics of Failure & Time
@@ -174,6 +204,43 @@ You don't need the proofs, but you must know the shape of these, because they ex
 - **FLP (Fischer–Lynch–Paterson, 1985).** In a fully asynchronous system (no clock bounds) where even *one* node may crash, **no deterministic algorithm can guarantee it will reach consensus** — there's always some unlucky timing that makes it run forever. This sounds like it kills consensus entirely. It doesn't, because real systems sidestep it: they use **timeouts** (a touch of synchrony) and **randomization** to guarantee *termination in practice* while never sacrificing *safety*. That distinction — safety (never wrong) vs. liveness (eventually makes progress) — is the lens through which Part 4's Raft is best understood: Raft is always safe, and is live whenever the network behaves well enough for long enough.
 
 If you remember one thing from Part 2: **the network and the clock are both unreliable narrators.** You order events by causality, not timestamps; you detect failure by inference, not certainty; and you make retries safe with idempotency because the impossibility results say you have no other choice.
+
+```quiz
+Q: Why must you never order two events on different machines by comparing their wall-clock timestamps?
+- [ ] Wall clocks have insufficient resolution for ordering
+- [ ] NTP is not available in most datacenters
+- [x] Clock skew means the "later" timestamp can belong to the event that truly happened first
+- [ ] Timestamps cannot be attached to network messages
+> NTP keeps clocks within milliseconds at best, and 50 ms of skew across nodes is enough to invert the apparent order. Cassandra's last-write-wins resolves conflicts this way — which is how concurrent writes within the skew window can silently lose data.
+
+Q: What can vector clocks do that Lamport clocks cannot?
+- [ ] Provide a total order useful for tie-breaking
+- [ ] Guarantee that `a → b` implies `L(a) < L(b)`
+- [ ] Stay a fixed size regardless of the number of writers
+- [x] Detect that two events are concurrent — neither happened before the other
+> Lamport clocks give `L(a) < L(b)` whenever `a → b`, but the converse fails, so they can't distinguish "ordered" from "concurrent." Vector clocks compare element-wise and surface genuine conflicts — exactly how Dynamo-style stores detect conflicting siblings.
+
+Q: Which clock should you use to measure a timeout, and why?
+- [x] The monotonic clock — it only moves forward, though its absolute value is meaningless across machines
+- [ ] The time-of-day clock — it is synchronized by NTP
+- [ ] Either, as long as both machines run NTP
+- [ ] The time-of-day clock, but only in UTC
+> The time-of-day clock can jump backward on an NTP correction, turning an elapsed-time measurement into garbage. Monotonic clocks exist precisely for durations — and comparing them across machines is meaningless, since each starts at an arbitrary point.
+
+Q: What is the practical lesson of the Two Generals Problem?
+- [ ] Two nodes can reach certain agreement if they exchange enough confirmations
+- [ ] Reliable delivery requires TCP rather than UDP
+- [x] Guaranteed exactly-once delivery over an unreliable network is impossible — you bridge at-least-once with idempotency
+- [ ] Consensus requires an odd number of participants
+> Any final confirming message could be the one that's lost, requiring a confirmation of the confirmation, forever. So delivery is at-most-once or at-least-once, and "exactly-once" only ever means at-least-once plus deduplication.
+
+Q: FLP proves consensus can't be guaranteed to terminate in a fully asynchronous system. How do Raft and friends live with that?
+- [ ] They run on networks with bounded delay, where FLP doesn't apply
+- [x] They are always safe, and use timeouts and randomization to be live whenever the network cooperates
+- [ ] They sacrifice safety in rare timing scenarios
+- [ ] They require a majority of nodes to share a hardware clock
+> FLP rules out guaranteed termination, not correctness. Practical algorithms never produce two different answers (safety) and make progress in practice (liveness) by adding a touch of synchrony — Raft's randomized election timeouts being the canonical example.
+```
 
 ---
 
@@ -292,6 +359,43 @@ The design takeaway is to **choose per-data, not per-system.** A single product 
 
 If you remember one thing from Part 3: **replication is easy until data changes, and then every hard choice reduces to "how stale and how ordered a read will tolerate, versus how much latency and availability you'll pay to avoid it."** CAP/PACELC name the axis; quorums, leases, and consensus are how you pick a point on it.
 
+```quiz
+Q: A user saves their profile, immediately reloads the page, and sees the old data. What most likely happened?
+- [ ] The write was lost in a failover
+- [ ] The cache returned a stale entry that will never converge
+- [x] The write went to the leader, but the read hit an asynchronously replicated follower that hadn't caught up
+- [ ] The database rolled back the transaction
+> This is the read-your-own-writes anomaly — the everyday face of replication lag. The fix is a session guarantee: route the user's reads to the leader briefly after a write, or read from a replica known to have caught up to the write's position.
+
+Q: With N replicas, why does requiring W write acks and R read acks with W + R > N give you fresh reads?
+- [x] The read set and write set must overlap in at least one replica, so every read consults some replica holding the latest write
+- [ ] It forces all replicas to be synchronously updated
+- [ ] It guarantees the coordinator is always the freshest node
+- [ ] It prevents network partitions from occurring
+> Quorum overlap is pure pigeonhole: any W-set and R-set with W + R > N share a member. That's the whole trick behind Dynamo-style tunable consistency — and why N=3, W=1, R=1 (no overlap) is eventual consistency.
+
+Q: Why is automatic failover the birthplace of split-brain?
+- [ ] Followers cannot be promoted without operator approval
+- [x] A leader that is merely slow is indistinguishable from a dead one, so you can promote a new leader while the old one still accepts writes
+- [ ] Replication lag makes the new leader reject all writes
+- [ ] DNS caches the old leader's address
+> Part 2's ambiguity returns with teeth: silence doesn't mean dead. Two simultaneous leaders accept conflicting writes and corrupt data — which is why deciding "the leader is really dead" requires consensus among the survivors, not a timer on one box.
+
+Q: What distinguishes linearizability from serializability?
+- [ ] They are two names for the same guarantee
+- [ ] Serializability implies real-time ordering; linearizability does not
+- [x] Linearizability is about real-time recency on single objects; serializability is about transactions appearing to run in some serial order
+- [ ] Linearizability applies only to leaderless systems
+> They get conflated constantly. Linearizability: once a write completes, all reads see it (freshness, one object). Serializability: multi-object transactions appear to execute one at a time, in some order that needn't match real time. Strict serializability is both at once.
+
+Q: What does the CAP theorem actually let you choose?
+- [ ] Any two of consistency, availability, and partition tolerance, at design time
+- [ ] Whether your network will experience partitions
+- [x] Consistency or availability, and only while a partition is happening
+- [ ] Latency or consistency during normal operation
+> Partitions aren't optional, so "pick two of three" is a misreading — the real choice is CP vs. AP during a partition. PACELC adds the part CAP is silent on: even with no partition, you trade latency against consistency all the time.
+```
+
 ## Part 4 — Consensus
 
 Consensus is the crown jewel of the field: getting a group of nodes to **agree on a single value (or a sequence of values) despite crashes, restarts, and a lying network — and never producing two different answers.** Part 2's FLP result says you can't guarantee this terminates in a fully asynchronous system, yet practical algorithms (Raft, Paxos, ZAB) achieve it every day by being *always safe* and *live whenever the network cooperates*. This part is the densest in the guide; it pays off because consensus is the engine inside etcd, ZooKeeper, Consul, Kafka's controller, and every distributed SQL database.
@@ -376,6 +480,43 @@ Note the CockroachDB pattern: rather than one giant consensus group for the whol
 
 If you remember one thing from Part 4: **consensus turns "agree on a value" into "agree on the order of a log," and it costs a majority round-trip per decision.** That cost is why you use it for the small, critical control plane — who's leader, what's the config, the metadata — and lean on cheaper replication (Part 3) for the bulk data path.
 
+```quiz
+Q: What is the unifying model that reduces "replicate anything" to a consensus problem?
+- [ ] Two-phase commit across all replicas
+- [x] The replicated state machine: agree on the order of commands in a log, and identical deterministic replicas stay identical
+- [ ] Quorum reads with read repair
+- [ ] Last-write-wins with tightly synchronized clocks
+> If every replica applies the same commands in the same order from the same start, they end in the same state. So consensus on a log generalizes leader election, locks, and atomic commit — and it's literally how etcd, ZooKeeper, and CockroachDB ranges work.
+
+Q: Why is a 4-node consensus cluster no more fault-tolerant than a 3-node one?
+- [ ] Four nodes cannot form a ring topology
+- [x] The majority of 4 is 3, so it still tolerates only one failure — while needing a bigger quorum for every write
+- [ ] Even node counts cause permanent split votes
+- [ ] Raft only supports odd cluster sizes
+> Tolerated failures = n minus majority. 3 nodes tolerate 1; 4 nodes also tolerate 1 but wait on a 3-node majority for every decision — slower and less available, not more. Hence production clusters of 3 or 5.
+
+Q: In Raft, what stops a newly elected leader from missing entries that were already committed?
+- [ ] The new leader copies the old leader's log before taking office
+- [ ] Committed entries are stored on every node
+- [x] Nodes refuse to vote for a candidate with a less up-to-date log, and any winning majority overlaps the majority holding each committed entry
+- [ ] A higher term number automatically includes all prior entries
+> That's the election restriction. A committed entry lives on a majority; a winner needs votes from a majority; two majorities always overlap — so no candidate can win without already holding everything committed.
+
+Q: Why are Raft election timeouts randomized per node?
+- [x] So split votes are rare and self-correcting — whoever's timer fires first usually wins outright
+- [ ] To spread CPU load evenly across the cluster
+- [ ] Because synchronized timeouts would violate the FLP result
+- [ ] To prevent followers from learning the leader's identity
+> If all followers timed out together, they'd all become candidates together and tie, repeatedly. Randomized timeouts (e.g. 150–300 ms) make one node move first almost every time — the touch of randomness that buys liveness.
+
+Q: Even with Raft replicating writes correctly, why can a read still return stale data — and what does etcd do about it?
+- [ ] Followers serve reads from uncommitted entries
+- [ ] Raft logs are only eventually consistent
+- [x] A partitioned-out leader may not know it lost leadership; etcd's linearizable reads confirm leadership with a quorum (ReadIndex) before answering
+- [ ] Reads bypass the state machine entirely
+> Write safety doesn't make reads fresh: a deposed leader can happily answer from stale state. ReadIndex makes the leader check with a quorum first; etcd's cheaper "serializable" reads skip that check and may be slightly stale — it makes you choose.
+```
+
 ---
 
 ## Part 5 — Partitioning & Sharding
@@ -442,6 +583,43 @@ The same idea, many dialects — this table is worth internalizing because it's 
 | **Vitess (MySQL) / Citus (Postgres)** | Shard | sharding key → keyspace shard | Adds scale-out sharding to a single-node SQL engine |
 
 If you remember one thing from Part 5: **partitioning is the answer to "too much data/load for one node," consistent hashing is how you grow without reshuffling everything, and choosing the partition key is the highest-leverage schema decision you'll make** — a bad key bakes in hotspots that no amount of hardware fixes.
+
+```quiz
+Q: Why is `partition = hash(key) % N` a trap for a growing cluster?
+- [ ] The modulo operation biases load toward low-numbered nodes
+- [ ] Hash functions cannot distribute keys evenly
+- [x] Changing N remaps almost every key, triggering a near-total data reshuffle exactly when you're trying to grow
+- [ ] It cannot handle string keys
+> Adding one node (N: 4→5) moves ~80% of keys. Consistent hashing fixes this: nodes and keys share a ring, and adding a node only remaps the ~K/N keys between it and its neighbor.
+
+Q: You range-partition events by timestamp. What happens?
+- [ ] Range scans become impossible
+- [x] Every write lands on the partition holding the newest range while the others sit idle
+- [ ] Reads must scatter-gather across all partitions
+- [ ] Keys are silently dropped when ranges fill
+> A monotonic key under range partitioning is the textbook hotspot: all inserts hammer one partition. Hash partitioning spreads them out — at the cost of turning "Tuesday's events" into a scatter-gather.
+
+Q: What problem do virtual nodes (vnodes) solve in consistent hashing?
+- [ ] They let the ring hold more physical nodes
+- [ ] They make hash collisions impossible
+- [x] They even out load and spread a departing node's share across all survivors instead of dumping it on one neighbor
+- [ ] They let two nodes own the same key simultaneously
+> With one point per physical node, random ring placement is lumpy, and a node's departure dumps its whole range on its clockwise neighbor. Many points per node averages both problems away — the literal mechanism in Cassandra and Riak.
+
+Q: A single celebrity key is overwhelming its partition despite perfectly uniform hashing. What's the fix?
+- [ ] Re-hash with a stronger hash function
+- [ ] Add more nodes to the cluster
+- [x] Split the key with a random suffix to spread writes, accepting scatter-gather on reads — applied surgically to known-hot keys
+- [ ] Switch from hash to range partitioning
+> Hashing distributes keys, not one key's traffic — all of a hot key's load hits one partition no matter what. Re-shaping the data (key splitting, or a cache absorbing the reads) is the only fix; more nodes just adds idle ones.
+
+Q: Why is Elasticsearch's primary shard count a decision to sweat over?
+- [x] It's immutable after index creation — changing it means a full reindex
+- [ ] Each primary shard requires its own dedicated master node
+- [ ] Lucene caps the shard count at 16
+- [ ] Replica count cannot exceed the primary count
+> Fixed-partition systems make rebalancing simple (move whole shards, never resplit keys), but you must pick the count up front. Too few caps scalability, too many wastes overhead — one of the most common Elasticsearch operational regrets.
+```
 
 ---
 
@@ -542,6 +720,43 @@ Practical defaults: if you're in the **Kubernetes world**, you're already runnin
 
 If you remember one thing from Part 6: **outsource consensus to a coordination service and build leader election, discovery, and config on its watches and leases — but treat distributed locks with suspicion, because a TTL that prevents deadlock is also a window for two holders, and only fencing tokens (or pushing atomicity into the datastore) actually close it.**
 
+```quiz
+Q: Why shouldn't you store bulk application data in etcd or ZooKeeper?
+- [ ] Their APIs only accept keys under 1 KB
+- [x] Every write is a consensus round-trip and the dataset must stay small — bulk data takes down the cluster's brain
+- [ ] They cannot replicate data across nodes
+- [ ] Watches stop working past 1,000 keys
+> A coordination service is a linearizable KV store paid for with majority round-trips: thousands of writes per second, not millions, and etcd defaults to an 8 GB cap. Metadata and coordination state go there; data goes elsewhere.
+
+Q: What makes a lease-backed (ephemeral) key the bridge between failure detection and actionable state?
+- [ ] It encrypts the key until the client returns
+- [ ] It guarantees the client is reachable by all other clients
+- [x] The key exists only while its client keeps renewing the lease — so "this key exists" means "this client is alive"
+- [ ] It prevents any other client from reading the key
+> Crash or get partitioned, stop renewing, and the key vanishes on its own — service registrations self-clean and leadership lapses automatically. Watches then push that change to every client instantly.
+
+Q: Process A holds a 30-second TTL lock, pauses for a 40-second GC, then resumes writing. Why is this the canonical distributed-lock disaster?
+- [ ] The lock service crashes when a holder pauses
+- [x] The lock expired during the pause and B acquired it — A resumes writing while believing it still holds the lock, and no lock service can prevent that
+- [ ] GC pauses corrupt the lock's TTL counter
+- [ ] B is blocked forever because A never released
+> The TTL that prevents deadlock is exactly what creates the two-holders window, and the danger is on the client side, after the grant — the heart of Kleppmann's Redlock critique. Fencing tokens fix it, but only if the protected resource rejects stale tokens.
+
+Q: A lock only prevents two workers from redundantly processing the same job — wasted work, not corruption. What does the guide recommend?
+- [x] A best-effort lock is fine here; reserve fencing tokens and consensus-backed locks for correctness-critical sections
+- [ ] Always use fencing tokens regardless of the stakes
+- [ ] Never use locks for any purpose
+- [ ] Use two independent lock services and require both
+> Distinguish efficiency locks from correctness locks. For efficiency, even Redis `SET NX PX` is fine — the worst case is duplicate work. For correctness, a TTL lock alone is unsafe; better still, push atomicity into the datastore (CAS, unique constraint) and design the lock away.
+
+Q: How does ZooKeeper's leader-election recipe avoid a thundering herd when the leader dies?
+- [ ] All candidates poll the leader on a randomized schedule
+- [ ] The leader broadcasts a farewell message before exiting
+- [x] Each candidate watches only the znode immediately below its own, so exactly one node is notified per departure
+- [ ] Elections are rate-limited to one per minute
+> If every standby watched the leader's znode, its death would wake all of them at once (the herd). Watching only your predecessor means one notification, one check, no stampede.
+```
+
 ## Part 7 — Transactions & Ordering
 
 A single database gives you transactions for free: ACID, all-or-nothing, isolated. The moment your state spans **two systems** — a database *and* a cache, a database *and* a message broker, two microservices each with their own store — that guarantee evaporates, and you're left holding the hardest everyday problem in the field. This part is about keeping data correct across that boundary, and the surprising answer is that the heavyweight solution (distributed transactions) is usually the *wrong* one, while a humble idea (idempotency) does most of the work.
@@ -639,6 +854,43 @@ You don't need to implement these, but recognizing the shape — *partition + pe
 
 If you remember one thing from Part 7: **avoid distributed transactions; make operations idempotent, keep multi-step changes inside one database with the outbox pattern, use sagas with compensations for cross-service workflows, and reach for a NewSQL database only when you truly need cross-shard serializability.**
 
+```quiz
+Q: Your service inserts an order into its database, then publishes an event to a broker. What's wrong?
+- [ ] Nothing, as long as both calls are inside a try/except
+- [ ] The broker should be written before the database
+- [x] A crash between the two writes leaves them permanently inconsistent — two systems can't be made atomic by wishing
+- [ ] Events must always be published inside the database transaction
+> This is the dual-write problem, and retrying the publish can double-publish if only the ack was lost. The outbox pattern is the fix: write the order and the event into the same database in one local transaction, and let a relay publish at-least-once to idempotent consumers.
+
+Q: Why is 2PC avoided for cross-service transactions?
+- [ ] It cannot guarantee atomicity even when everything works
+- [x] A coordinator crash after the prepare phase leaves participants in-doubt, holding locks until it recovers
+- [ ] It requires all participants to share one database
+- [ ] It only works with exactly two participants
+> Participants that voted yes mustn't decide unilaterally, so they block with locks held — one crash can stall the whole system. NewSQL databases use 2PC internally only because their coordinator state is itself consensus-replicated, removing the single point of blocking.
+
+Q: Sagas give you atomicity across services. What do they NOT give you?
+- [ ] Compensating actions for failed steps
+- [x] Isolation — intermediate states are visible to the rest of the world
+- [ ] The ability to span more than two services
+- [ ] A way to orchestrate steps with a workflow engine
+> Between "charge card" and "reserve hotel," anyone can observe a charge with no booking. The database isolation that normally hides in-progress state is gone, so you must design for visibility explicitly — pending states, semantic locks, commutative steps.
+
+Q: A vendor advertises "exactly-once delivery." What should you look for?
+- [x] The deduplication mechanism underneath — exactly-once is always at-least-once delivery plus idempotent processing
+- [ ] The patented protocol that beats the Two Generals Problem
+- [ ] Whether they use TCP instead of UDP
+- [ ] A synchronous replication option
+> The Two Generals result makes exactly-once *delivery* impossible over an unreliable network. What exists is effectively-once *results*: retries (at-least-once) made safe by dedup — Kafka's producer IDs and sequence numbers being the canonical example.
+
+Q: How does an idempotency key make a payment API safe to retry?
+- [ ] It encrypts the request so duplicates are rejected by TLS
+- [ ] It instructs the network to deliver the request only once
+- [x] The server records processed keys and returns the original result for any duplicate, so a retried charge happens once
+- [ ] It makes the charge reversible for 24 hours
+> The client attaches the same UUID to every retry of one logical operation; the server short-circuits keys it has already processed. This converts unavoidable at-least-once delivery into effectively-once effects — exactly how Stripe's `Idempotency-Key` header works.
+```
+
 ---
 
 ## Part 8 — Messaging & Streaming
@@ -708,6 +960,43 @@ Kafka gets its own future deep-dive in [TOPICS.md](TOPICS.md); for stream *proce
 
 If you remember one thing from Part 8: **a broker decouples availability and absorbs load, but you must choose queue (each message handled once) vs. log (replayable ordered history), accept at-least-once with idempotent consumers, and bound the system with prefetch/backpressure and a DLQ — or the buffer that was supposed to protect you becomes the thing that fills up and fails.**
 
+```quiz
+Q: What's the test for choosing a queue versus a log?
+- [x] Queue: each message handled once by some worker. Log: a durable, replayable history many consumers process independently
+- [ ] Queue for small messages, log for large ones
+- [ ] Queue when you need durability, log when you don't
+- [ ] Logs are always better; queues are legacy
+> Work distribution ("resize this image" — one worker, then gone) wants a queue like RabbitMQ or SQS. Event streaming (a history that analytics, search, and notifications each consume at their own pace, with rewind) wants a log like Kafka.
+
+Q: You need all events for `user-42` processed in order through Kafka. What do you do?
+- [ ] Set `acks=all` on the producer
+- [ ] Use a single consumer for the whole topic
+- [x] Give them all the same key, so they hash to the same partition — Kafka only orders within a partition
+- [ ] Enable idempotence on the brokers
+> Ordering is per-partition, never per-topic. Same key → same partition → one ordered sequence. That's also why partition count is the parallelism ceiling: each partition is assigned to exactly one consumer in a group.
+
+Q: What does the durable recipe — `acks=all`, `min.insync.replicas=2`, RF=3 — do when only one replica is in sync?
+- [ ] Acknowledges the write from the leader alone
+- [ ] Buffers writes in the producer until replicas recover
+- [x] Fails the write rather than accept it with too little redundancy — a deliberate CP-leaning choice
+- [ ] Silently lowers the replication factor
+> The point of `min.insync.replicas` is to refuse acknowledged-but-fragile writes: an ack means at least 2 replicas hold the record, so one broker can die with zero loss. Failing loudly beats losing data silently.
+
+Q: Why does a pull-based consumer (Kafka) get backpressure "for free" while a push-based one (RabbitMQ) needs a prefetch limit?
+- [x] A pull consumer fetches at its own pace, so it can't be overwhelmed; a push broker will drown a slow consumer unless unacked deliveries are bounded
+- [ ] Pull consumers are single-threaded by design
+- [ ] Push brokers cannot persist messages
+- [ ] Prefetch limits exist for ordering, not flow control
+> With pull, a slow consumer just polls less and lag grows visibly — nothing is overwhelmed. With push, the broker sets the pace, so `prefetch_count` bounds how many unacked messages a consumer holds; forget it and a fast broker buries a slow worker.
+
+Q: What is a dead-letter queue for?
+- [ ] Storing messages from producers that have shut down
+- [ ] Archiving processed messages for compliance
+- [x] Moving a repeatedly failing poison message aside so it can't wedge the partition or queue forever
+- [ ] Replaying the log from the beginning
+> Without a DLQ, one un-processable message blocks everything behind it in an ordered partition — a single bad record becomes an outage. After N failed attempts, set it aside and investigate offline.
+```
+
 ---
 
 ## Part 9 — Operating Distributed Systems
@@ -760,6 +1049,43 @@ The final operational truth: distributed systems behave differently under failur
 - **Jepsen** (Kyle Kingsbury): the gold-standard framework for testing whether a database *actually* provides the consistency it advertises, by hammering it under network partitions and checking the history for violations. Jepsen has caught *many* well-known databases violating their own guarantees — a humbling reminder that "we're linearizable" is a claim to verify, not trust. When you evaluate a distributed datastore, **read its Jepsen report.**
 
 If you remember one thing from Part 9: **operating a distributed system is about containing failure, not preventing it — every dependency gets a timeout, every retry gets backoff/jitter/a budget, every cascade gets a circuit breaker, and you assume the network will betray you and test that assumption on purpose.**
+
+```quiz
+Q: Each of 4 layers in your call chain retries failed requests 3 times. What does a brief outage at the bottom become?
+- [ ] 12 extra requests, evenly spread over time
+- [x] Up to 3⁴ = 81× amplification hammering the recovering service
+- [ ] Nothing — retries are absorbed by timeouts
+- [ ] A clean failover to the secondary
+> Retry amplification is multiplicative across layers, so the service gets hit hardest at the exact moment it tries to recover. The cures: retry at one layer only, exponential backoff with jitter, and a retry budget.
+
+Q: Why is a readiness check that pings the database a fleet-wide outage waiting to happen?
+- [x] A shared dependency hiccup makes every replica report not-ready simultaneously, so the load balancer pulls the entire fleet
+- [ ] Database pings are too slow for the check interval
+- [ ] Readiness checks cannot reach external systems
+- [ ] It causes the database to restart
+> Health checks must be shallow and local. When all replicas share the failure condition, "remove unhealthy instances" removes everything — turning a minor DB blip into zero serving capacity.
+
+Q: A load spike triggered an outage; the spike has long passed, but the system stays down until you intervene. What is this?
+- [ ] A gray failure
+- [ ] Tail-latency amplification
+- [x] A metastable failure — a degraded equilibrium sustained by a feedback loop, usually retries
+- [ ] A cache stampede
+> The retries (or reconnects) the failure provoked now sustain the overload by themselves, even though the trigger is gone. "It'll recover when traffic drops" doesn't apply; you must break the loop, typically by deliberately shedding load.
+
+Q: Your service fans a request out to 100 backends, each with a 1-in-100 chance of being slow. How often is the overall request slow?
+- [ ] About 1% of the time
+- [x] Most of the time — the fan-out is as slow as its slowest backend, so everyone's p99 becomes your common case
+- [ ] Never, if you use connection pooling
+- [ ] Only during deployments
+> 1 − 0.99¹⁰⁰ ≈ 63%. Tail-latency amplification is why wide fan-outs obsess over p99s, hedged requests, and tight per-hop deadlines — the subject of Dean & Barroso's *The Tail at Scale*.
+
+Q: What does a circuit breaker do that a timeout alone doesn't?
+- [ ] It retries the request on a backup connection
+- [x] After enough failures it trips open and fails fast for a cooldown, so callers stop piling up against a dead dependency
+- [ ] It extends the timeout adaptively under load
+- [ ] It guarantees the dependency recovers
+> A timeout bounds one call; a tripped breaker stops sending entirely, freeing threads and connections instead of queueing doomed work — the primary defense against cascading failure. Half-open probes then test for recovery.
+```
 
 ## Part 10 — A Field Guide to Distributed OSS
 
@@ -821,6 +1147,36 @@ The capstone, because Kubernetes uses *almost every concept in this guide* and y
 6. **A node dies (P2, P3, P9).** Its kubelet stops heartbeating; after a timeout the node is marked NotReady (Part 2's failure-by-inference); controllers reconcile by rescheduling its Pods elsewhere — self-healing that is just "notice the gap between desired and actual, close it again."
 
 Kubernetes is, in the end, **a strongly-consistent log of desired state (etcd/Raft) plus a swarm of reconcile loops driving reality toward it** — Parts 4, 6, and 9 wearing a trench coat. Once you see it that way, its behavior stops being magic.
+
+```quiz
+Q: Reading the field-guide table, what pattern recurs across nearly every distributed OSS system?
+- [ ] Every system runs its own consensus protocol for all of its data
+- [x] A small consensus core guards critical metadata while bulk data is partitioned and replicated more cheaply
+- [ ] Leaderless designs have replaced leader-based ones everywhere
+- [ ] Each system invents fundamentally new primitives
+> Spend consensus on the control plane (who leads, where data lives, what the config is); use quorums or leader-follower replication for the data path. Learn that shape once and Kafka, Cassandra, CockroachDB, and Kubernetes all become legible.
+
+Q: In the Cassandra walkthrough, what is the price paid for leaderless availability?
+- [ ] Writes block whenever any replica is down
+- [ ] Reads require contacting every replica
+- [x] Conflicts resolve by last-write-wins on timestamps, so clock skew can silently drop a concurrent write
+- [ ] There is no way to repair stale replicas
+> No leader means no failover pause — hinted handoff and quorums keep the system serving. But "newest wins" is decided by wall clocks Part 2 told you not to trust; when that's intolerable, you reach for per-range consensus instead.
+
+Q: Why is Kubernetes' level-triggered reconciliation robust to missed events and controller crashes?
+- [ ] The API server retries every event until acknowledged
+- [ ] Controllers subscribe to an exactly-once event stream
+- [x] Controllers continuously compare desired state to actual state and close the gap, so a missed event is simply fixed on the next reconcile
+- [ ] etcd replays all events after a crash
+> Edge-triggered designs must never miss an event; level-triggered ones only need the current state of the world. Crash, restart, reconcile again — the Part 9 philosophy of containing failure, built into the control loop.
+
+Q: In Kubernetes, which component is the only strongly consistent store, and how does everything else relate to it?
+- [ ] The kubelet — it holds the authoritative pod list per node
+- [ ] The scheduler — it owns the cluster's desired state
+- [x] etcd, behind the API server — every other component is stateless and derives its view from it through watches
+- [ ] CoreDNS — it resolves the state of every service
+> etcd's Raft-replicated log is the cluster's single source of truth, and the API server is the sole gatekeeper. That single-writer discipline keeps the consensus core small and everything else horizontally scalable — the coordination-service pattern from Part 6.
+```
 
 ### If You Remember a Handful of Things
 
