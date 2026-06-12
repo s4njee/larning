@@ -202,6 +202,29 @@ C# encourages "make the legal shapes explicit and let the compiler defend the bo
 
 That sounds restrictive at first. In practice it makes large codebases much easier to refactor safely.
 
+```quiz
+Q: A Python developer assumes C#'s `var` works like Python's flexible binding. Why is that wrong?
+- [ ] var is slower
+- [x] `var` only asks the compiler to *infer* the static type from the right-hand side; the variable still has one fixed type and can't later hold a different one
+- [ ] var means the variable is dynamic
+- [ ] var disables type checking
+> `var name = "Ada"` infers `string` and `name = 42` is then a compile error — `var` is type inference, not dynamic typing. The variable is just as statically typed as if you'd written `string name`. If you genuinely want Python-style runtime flexibility, that's the separate `dynamic` keyword, which is an escape hatch, not the default.
+
+Q: What do nullable reference types (`string` vs `string?`) add over Python's `None`?
+- [ ] They make null faster
+- [x] The compiler's flow analysis tracks where null can appear — `string` means "shouldn't be null," `string?` means "may be null" — warning on possible null dereferences before runtime
+- [ ] They forbid null entirely
+- [ ] They're identical to Python's None
+> In Python any variable can be `None` and the type system won't stop you dereferencing it (you find out via a runtime `AttributeError`). Modern C# bakes nullability into compiler flow analysis: dereferencing a `string?` without a null check produces a warning, and narrowing with `if (x is not null)` makes it safe. It catches the null-dereference class of bug before the program runs, if you heed the warnings.
+
+Q: What does C#'s compilation model (source → IL → JIT) buy you in the dev loop versus Python?
+- [ ] Faster startup always
+- [x] Stronger compile-time errors, stronger IDE refactoring, and fewer runtime type-mismatch surprises — the code feels "finished" earlier
+- [ ] No runtime needed
+- [ ] It eliminates all bugs
+> Compiling to IL that the runtime then JIT-compiles means type errors and many mistakes are caught at compile time, and tooling can reason about the code precisely for refactoring. The trade against Python's run-immediately flexibility is more upfront ceremony, repaid by catching whole categories of errors before execution and making large-codebase refactors safe.
+```
+
 ---
 
 ## 3. Classes, Records, Structs & Properties
@@ -330,6 +353,29 @@ In C#, whether you copied or aliased something depends on the type category.
 | Reference types | `string`, arrays, `List<T>`, `class`, `record class` | copies the reference |
 
 Do not reduce this to "stack vs heap." That explanation is usually too simplistic and leads beginners into bad reasoning. The important part for day-to-day coding is **copy semantics** and **mutability**.
+
+```quiz
+Q: `var p2 = p1;` then `p2.X = 99;` leaves `p1.X` as 1 when `Point` is a `struct`. Why, and how does this differ from Python?
+- [ ] structs are immutable
+- [x] A struct is a *value type*, so assignment copies the whole value (p2 is independent); Python assignment usually just aliases the same object
+- [ ] p1 was garbage collected
+- [ ] X is a constant
+> Value types (`int`, `DateTime`, `struct`, `record struct`) are copied on assignment, so `p2` is a separate copy and mutating it doesn't touch `p1`. Reference types (`class`, arrays, `List<T>`) copy only the reference, like Python's default aliasing. Whether `=` copies or aliases depends on the type category — a footgun for Python developers expecting everything to alias.
+
+Q: When is a `record` a better fit than a classic class in modern C#?
+- [ ] When you need inheritance
+- [x] For data-centric types where value equality and concise immutable modeling matter — records give `==` value equality and `with`-expressions by default
+- [ ] When the type has lots of mutable state
+- [ ] Records are always faster
+> A `record` is C#'s answer to a frozen dataclass: `a == b` compares by value, and `a with { Email = ... }` produces a modified copy. That suits DTOs and data-heavy modeling where two instances with the same fields should be equal. A classic `class` defaults to reference equality and suits objects with identity and behavior, where two instances are distinct even with identical fields.
+
+Q: Two `UserDto` records with identical field values compare `==` as true, but two classes with identical fields usually don't. Why?
+- [ ] Records cache their hash
+- [x] Records have value equality by default (compares fields); classes default to reference equality (same object identity) unless you override it
+- [ ] Classes can't be compared
+- [ ] It's undefined behavior
+> Records synthesize value-based `Equals`/`==` and `GetHashCode` from their members, so equality means "same data." A plain class's `==` is reference equality — true only if both names point to the same object — unless you implement equality yourself. This is exactly why records shine for data: you usually *want* two equal-valued DTOs to be equal.
+```
 
 ### Immutable-by-Convention Is Common
 
@@ -659,6 +705,29 @@ var summaries = users.Select(u => new UserSummary(u.Id, u.Name)).ToList();
 
 Projection into anonymous or record types is common and pleasant.
 
+```quiz
+Q: `IEnumerable<int> query = numbers.Where(n => n % 2 == 0);` — what has happened after this line runs?
+- [ ] The even numbers have been filtered into a new list
+- [x] Nothing is filtered yet — it builds a deferred pipeline (a recipe); work happens only when something enumerates it (foreach, ToList, Count, First)
+- [ ] It throws if numbers is empty
+- [ ] It mutates numbers in place
+> A LINQ query is a description of work, like a Python generator chain, not a materialized result. No element is examined until a `foreach` or a materializing operator (`ToList`, `Count`, `First`) pulls from it. This deferral lets you compose queries in pieces and even `Take(10)` from an unbounded source — but it means "the query ran" is not true until you enumerate.
+
+Q: You build an expensive LINQ `query`, then call `query.Count()` and later `foreach (var x in query)`. What's the trap?
+- [ ] Count consumes the query so the foreach is empty
+- [x] A deferred query re-executes every time you enumerate it, so the expensive work runs twice; the fix is to materialize once with `ToList()` and iterate the list
+- [ ] It caches automatically after the first run
+- [ ] Count throws because the query is unmaterialized
+> Unlike a Python generator (which is exhausted after one pass), a LINQ query is a recipe that re-runs on each enumeration — so `Count()` then `foreach` does the whole filter/computation twice, and against a database, two round-trips. Materializing once (`var results = query.ToList();`) snapshots the result so subsequent iterations are over the in-memory list.
+
+Q: When the LINQ source is an `IQueryable<T>` from Entity Framework, what does deferred execution enable?
+- [ ] It pulls the whole table into memory then filters in C#
+- [x] The pipeline is translated to SQL and executed on the database when materialized, so `.Where().Select()` becomes one efficient query rather than loading everything
+- [ ] It runs the query on a background thread
+- [ ] It caches results in Redis
+> Because the query is a deferred description rather than immediate C# execution, EF can translate the expression tree to SQL and push the filtering/projection down to the database, materializing only the needed rows. That's the same deferral mechanism that causes the re-execution and captured-variable bugs, repurposed to avoid pulling whole tables into memory.
+```
+
 ### Beware `IQueryable<T>`
 
 `IQueryable<T>` looks like LINQ but often means "this expression will be translated into something else," usually SQL through Entity Framework Core.
@@ -831,6 +900,29 @@ That is actually pretty close to .NET, with one important addition:
 
 If a type implements `IDisposable` or `IAsyncDisposable`, treat that as meaningful and intentional.
 
+```quiz
+Q: .NET has a garbage collector, so why must you still `using`/dispose files, sockets, and DB connections?
+- [ ] The GC is too slow
+- [x] The GC manages *memory*, but external resources (file handles, sockets, connections) need *deterministic* release; types holding them implement `IDisposable` so you dispose them promptly rather than whenever the GC happens to run
+- [ ] Disposal frees memory faster
+- [ ] Those types leak memory otherwise
+> GC reclaims managed memory eventually, but a held file handle or database connection shouldn't wait for a non-deterministic collection — you could exhaust the pool or lock a file. `IDisposable` types are released deterministically, which is what `using` guarantees. "Managed language" covers memory, not external OS/network resources.
+
+Q: What is C#'s `using` the close analogue of in Python, and what does it guarantee?
+- [ ] A try/except block
+- [x] Python's `with` — it acquires a resource and guarantees its `Dispose` runs when the scope ends, even on exceptions
+- [ ] A decorator
+- [ ] A finalizer that runs at GC time
+> `using var reader = File.OpenText(...)` (or the block form) maps directly to `with open(...) as f:` — acquire, use, guaranteed cleanup at scope exit regardless of how it's left. For resources needing async cleanup there's `await using`, the counterpart for `IAsyncDisposable`. It's the deterministic disposal mechanism, not a GC finalizer.
+
+Q: To rethrow a caught exception while preserving its original stack trace, which is correct?
+- [ ] `throw ex;`
+- [x] `throw;` — bare throw preserves the original stack trace, whereas `throw ex;` resets it to the rethrow point
+- [ ] `raise ex;`
+- [ ] `return ex;`
+> A bare `throw;` inside a catch re-raises the current exception with its original stack trace intact, so you can still see where it originally occurred. `throw ex;` treats it as a new throw from the current line, discarding the original trace and making debugging harder. Use `throw;` to rethrow, and wrap-with-inner-exception (`new ..Exception(msg, ex)`) when adding context.
+```
+
 ---
 
 ## 7. Async/Await, `Task` & Cancellation
@@ -925,6 +1017,29 @@ If an API accepts a `CancellationToken`, pass one when you have it. This is espe
 - background services
 - long-running jobs
 - HTTP and database calls
+
+```quiz
+Q: A Python developer assumes C#'s `async`/`await` behaves exactly like `asyncio`. What key runtime difference should they know?
+- [ ] C# async runs on a single-threaded loop too
+- [x] A `Task` doesn't imply a dedicated OS thread, and .NET async integrates deeply with the thread pool — unlike asyncio's single-threaded event loop, continuations can resume on different pool threads
+- [ ] C# async is actually synchronous
+- [ ] Tasks always spawn a new thread
+> The syntax looks the same, but .NET async is primarily about non-blocking I/O coordinated through the thread pool, not a single event loop. A `Task` is an async operation that may or may not involve a thread, and continuations are scheduled onto pool threads. This is why patterns like `ConfigureAwait` and thread-pool sizing matter in .NET but have no asyncio equivalent.
+
+Q: What's the C# equivalent of `asyncio.gather` for running several async operations concurrently and awaiting all results?
+- [ ] Task.Wait
+- [x] `Task.WhenAll(...)` — awaits a collection of tasks and returns all their results
+- [ ] Task.Run
+- [ ] Parallel.ForEach
+> `await Task.WhenAll(urls.Select(u => FetchTextAsync(...)))` launches the tasks and awaits them all together, the direct analogue of `asyncio.gather`. `Task.WhenAny` is the "first to finish" counterpart (like racing). These compose the already-in-flight Tasks rather than starting them, since calling an async method returns a hot Task.
+
+Q: Why should you avoid `.Result` and `.Wait()` on a Task and prefer `await`?
+- [ ] They're deprecated syntax
+- [x] Blocking on async work ("async all the way down" violation) ties up a thread waiting and can deadlock; `await` keeps the chain non-blocking end to end
+- [ ] They return the wrong value
+- [ ] await is faster to type
+> `.Result`/`.Wait()` synchronously block the calling thread until the Task completes, defeating the point of async (you've parked a thread) and risking deadlock when the continuation needs that same context. The "async all the way down" rule — real in both Python and .NET — says propagate `await` through the call chain rather than bridging to blocking calls. Cancellation, similarly, is cooperative via `CancellationToken` you thread through.
+```
 
 ### Async Streams Exist
 

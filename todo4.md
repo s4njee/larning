@@ -127,7 +127,7 @@ Part, click-to-reveal explanation included.
 - [x] `GIT_STUDY_GUIDE.md` — 6 quizzes (17 questions; content-addressed object model, three-trees index & conflict stages, rebase rehashing & rebase-onto, reset/restore/revert, remote snapshot/fetch-vs-pull/force-with-lease, reflog recovery)
 - [x] `VIM_STUDY_GUIDE.md` — 5 quizzes (15 questions; operator+motion grammar & counts, text objects inner/around & dot-refactor, registers/unnamed-vs-yank trap & named-append, :s ranges/flags & :g+:normal & cgn, macro robustness & 99@a & macro-vs-:g)
 
-## Batch 4 — Languages and runtimes
+## Batch 4 — Languages and runtimes (COMPLETE)
 
 - [x] `TYPESCRIPT_STUDY_GUIDE.md` — 6 quizzes (18 questions; types-as-sets & structural typing, type guards/asserts/never-exhaustiveness, generics constraints/keyof/inference, conditional-type distribution & infer & Exclude, any-vs-unknown/void/hierarchy, branded nominal types)
 - [x] `CPP26_STUDY_GUIDE.md` — 5 quizzes (15 questions; RAII/move-elision/Rule-of-Zero, jthread-RAII/coroutine-suspension/library-gap, contracts-vs-exceptions & build-mode, erroneous-behavior/pack-indexing/_-placeholder, no-borrow-checker safety & sanitizers)
@@ -137,7 +137,7 @@ Part, click-to-reveal explanation included.
 - [x] `PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md` — 5 quizzes (14 questions; uniform-vs-fragmented ecosystems, eager-vs-lazy & forgotten-await, Promise-vs-coroutine/Task/Future & cancellation, colored-functions two-ecosystem-tax & asyncio.run trap, blocking-the-loop Node-structural-advantage)
 - [x] `GOLANG_FOR_PYTHON_DEVS.md` — 5 quizzes (15 questions; implicit interfaces & embedding-not-inheritance, errors-as-values/%w-wrapping/error-interface, goroutine M:N-scheduling & no-colored-functions & WaitGroup, channels buffered-vs-unbuffered/CSP/close-rules, slice-aliasing/append-capacity/nil-map-panic)
 - [x] `RUST_FOR_PYTHON_DEVS.md` — 5 quizzes (15 questions; ownership third-answer/move/Copy-vs-Clone, borrowing shared-XOR-mutable & NLL, enums-as-ADTs/Option/exhaustive-match, Option-vs-Result/?-operator/thiserror-vs-anyhow, fearless-concurrency/Arc-Mutex/Send-Sync)
-- [ ] `DOTNET_FOR_PYTHON_DEVS.md`
+- [x] `DOTNET_FOR_PYTHON_DEVS.md` — 5 quizzes (15 questions; var-inference/nullable-refs/IL-JIT, struct-value-copy & records-value-equality, LINQ deferred-execution/re-execution/IQueryable-SQL, GC-vs-IDisposable/using/throw-preserves-trace, Task-not-thread/WhenAll/avoid-.Result)
 
 ## Batch 5 — Web, frontend, and apps
 
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 42/65 (Batches 1–3 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 43/65 (Batches 1–4 complete).
