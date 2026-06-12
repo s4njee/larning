@@ -129,6 +129,29 @@ The honest trade, stated once: you are placing a single vendor's network in the 
 
 Docs: [How Cloudflare works](https://developers.cloudflare.com/fundamentals/concepts/how-cloudflare-works/), [Anycast](https://www.cloudflare.com/learning/cdn/glossary/anycast-network/).
 
+```quiz
+Q: Why is there no "us-east-1" equivalent to choose when you put a site on Cloudflare?
+- [ ] Cloudflare hides the region behind an abstraction you set later
+- [x] Every PoP announces the same anycast IP prefixes, so internet routing itself delivers each client to the nearest PoP — the address *is* the network
+- [ ] Cloudflare only has one datacenter
+- [ ] You must pick a region, it's just named differently
+> Cloudflare's 330+ datacenters all BGP-announce the same IP prefixes, so when a client connects, ordinary anycast routing sends the packet to the topologically nearest PoP. There's no region to select because the endpoint doesn't live in one place. This is why there's nothing to provision per location and why rule changes propagate in seconds — they're configuration, not deployed artifacts.
+
+Q: Why does Cloudflare absorb DDoS attacks "structurally" rather than as a bolt-on product?
+- [ ] It has a dedicated scrubbing region traffic is rerouted to
+- [x] Anycast spreads attack traffic across hundreds of PoPs near the bots, diluting it by the same mechanism that serves legitimate users
+- [ ] It rate-limits every IP by default
+- [ ] It blocks all traffic during an attack
+> Because every PoP announces the same address, a botnet's traffic arrives distributed across the many PoPs nearest the bots instead of concentrating on one victim datacenter. The attack is diluted by the very routing that serves real users, so absorption is a property of the architecture — which is why it can be unmetered and free in a way a centralized scrubbing service's economics can't match.
+
+Q: When you debug a Cloudflare request, why is "which pipeline stage did this reach and what did it decide?" the central question?
+- [ ] Because each product runs in a separate console you check in turn
+- [x] Cloudflare's products are ordered stages in one proxy pipeline every proxied request traverses, so behavior is determined by how far the request got and each stage's decision
+- [ ] Because requests are processed in random order
+- [ ] Because the origin makes all decisions
+> Unlike AWS, where WAF, CDN, edge functions, and DDoS are separate products with separate attachment models, Cloudflare's features are phases of a single fixed-order request lifecycle inside one PoP (DDoS → firewall → WAF → Access → Workers → cache → origin). Debugging is therefore tracing which stage handled the request and what it did — exactly what the Trace tool and `cf-*` headers expose.
+```
+
 ---
 
 ## 2. DNS
@@ -230,6 +253,29 @@ Client → nearest PoP → cache HIT? serve
 - Collapse `utm_*` parameters out of the cache key and prove two tagged URLs hit one cached object.
 
 Docs: [Cache](https://developers.cloudflare.com/cache/), [Cache Rules](https://developers.cloudflare.com/cache/how-to/cache-rules/), [Tiered Cache](https://developers.cloudflare.com/cache/how-to/tiered-cache/).
+
+```quiz
+Q: A user reports "Cloudflare isn't caching my site" while images and JS show `cf-cache-status: HIT`. Why are the HTML pages `DYNAMIC`?
+- [ ] The HTML files are too large to cache
+- [x] HTML isn't cached by default — the proxy assumes pages are dynamic and caches only static-extension assets until a Cache Rule says otherwise
+- [ ] The origin is sending `no-store` on everything
+- [ ] Caching is disabled until you deploy a distribution
+> By default Cloudflare caches responses whose file extension is on its static list (images, JS, CSS, fonts) and treats HTML as dynamic (`cf-cache-status: DYNAMIC`). So it *is* caching your assets and deliberately not your pages — the single most common source of "it's not caching" confusion. To cache HTML you write a Cache Rule with "Cache Everything," which is where the next hazard lives.
+
+Q: Why is applying "Cache Everything" to HTML without a cookie condition the cardinal caching sin?
+- [ ] It exceeds the cache storage quota
+- [x] It will eventually serve one logged-in user's personalized page to another user — cache poisoning by configuration
+- [ ] It disables Tiered Cache
+- [ ] It forces every request to the origin
+> A Cache Rule that caches HTML while ignoring the session cookie stores a personalized page under a key shared by all users, so another visitor gets served someone else's logged-in page. The fix is to cache HTML only for anonymous traffic (bypass when the session cookie is present), or leave personalized HTML uncached and assemble it in a Worker from cached fragments. "Cache Everything" should always trigger the reflex "what about Set-Cookie and sessions?"
+
+Q: What does removing `utm_*` query parameters from the cache key accomplish?
+- [ ] It blocks marketing trackers from loading
+- [x] It collapses many tagged URL variants into one stored object, raising hit rate instead of caching a separate copy per tag permutation
+- [ ] It encrypts the query string
+- [ ] It forces a cache miss on tagged links
+> The default cache key includes the query string, so `?utm_source=a` and `?utm_source=b` would each store a separate copy of an identical page — fragmenting the cache and lowering hit rate. Stripping `utm_*` from the custom cache key means all those marketing-tag permutations resolve to one cached object. The inverse tool — *adding* a header like `Accept-Language` to the key — partitions the cache when you genuinely need per-variant copies.
+```
 
 ---
 
@@ -421,6 +467,29 @@ Read the table as a design statement: Workers wants many small, I/O-bound invoca
 - Take a CPU-heavy task (image resize), watch it hit the CPU limit, and re-architect: queue it (§14) or move it to Containers.
 
 Docs: [Workers](https://developers.cloudflare.com/workers/), [How Workers works](https://developers.cloudflare.com/workers/reference/how-workers-works/), [Runtime APIs](https://developers.cloudflare.com/workers/runtime-apis/), [Workflows](https://developers.cloudflare.com/workflows/).
+
+```quiz
+Q: Why do Workers have negligible cold starts compared to Lambda?
+- [ ] They keep a warm pool of VMs per customer
+- [x] They use V8 isolates in an already-running runtime, so "cold start" is constructing an isolate (<5ms), not booting a micro-VM
+- [ ] They precompile your code to native binaries
+- [ ] They run only on the first request and cache the result
+> Lambda isolates customers with Firecracker micro-VMs that must boot and load a runtime on demand — hundreds of ms of cold start. Workers isolate with V8 isolates (the same mechanism Chrome uses for tabs) inside the `workerd` runtime that's *already running* in every PoP. Deploying just distributes a few hundred KB of code, and spinning up an isolate takes under 5ms, usually hidden inside the TLS handshake — so there's no VM to size, pool to provision, or region to pick.
+
+Q: A Worker `await`s a slow origin for 30 seconds. How does this affect your bill and limits?
+- [ ] It costs 30 seconds of compute and may hit the timeout
+- [x] It costs almost nothing — Workers meter CPU time, not wall-clock, so I/O waiting is essentially free
+- [ ] It's billed as 30 GB-seconds like Lambda
+- [ ] It's blocked because Workers can't await
+> Workers bill and limit on *CPU time*, the inverse of Lambda's GB-second wall-clock model. Thirty seconds of `await`ing I/O burns no CPU and costs nothing, while a 30-second CPU loop hits the cap. This makes Workers economically ideal for I/O-bound work (proxying, API composition, auth) and the wrong tool for sustained number-crunching, which belongs in Containers or the origin.
+
+Q: What is a Worker "binding" and why is it described as the platform's IAM replacement?
+- [ ] An environment variable holding an API key
+- [x] A capability — a typed handle to exactly the declared resources, addressed on `env`, with no credentials to leak; the wrangler.toml is the reviewable permission boundary
+- [ ] A network route to the origin
+- [ ] A cron schedule
+> A binding gives the code a typed object on `env` for precisely the resources its config declares — no credentials, no SDK client construction, no signing, no confused-deputy ambiguity. The wrangler.toml itself is the permission boundary, reviewable in the pull request. The trade versus IAM is less expressive conditions and per-environment declaration, which is why a binding missing from `[env.production]` is a classic deploy-time failure.
+```
 
 ---
 
@@ -642,6 +711,29 @@ The unit of consistency is the unit of throughput: one object is serial, so **sh
 
 Docs: [Durable Objects](https://developers.cloudflare.com/durable-objects/), [WebSocket hibernation](https://developers.cloudflare.com/durable-objects/best-practices/websockets/), [Alarms](https://developers.cloudflare.com/durable-objects/api/alarms/).
 
+```quiz
+Q: Why is KV exactly the wrong store for an inventory counter that two clients must agree on right now?
+- [ ] KV values are too small to hold a number
+- [x] KV is centralized storage with edge caching and eventual consistency up to ~60s, so a read-modify-write can race on stale cached values
+- [ ] KV doesn't support integers
+- [ ] KV writes are too slow to be useful
+> KV isn't a database replicated to every PoP — it's central storage with lazy edge caching, so a write invalidates caches lazily and a PoP may serve the old value for up to about a minute. That's perfect for read-constantly/write-rarely/tolerate-stale data like feature flags, and exactly wrong for anything requiring two clients to agree instantly. Counters, locks, and inventory want a Durable Object, which is strongly consistent because there's exactly one of each.
+
+Q: How does a Durable Object guarantee no lost updates on a counter without locks or conditional-write retries?
+- [ ] It uses optimistic locking with version numbers
+- [x] Each object is globally unique and single-threaded — it processes requests one at a time, so there's no concurrency within the object to race
+- [ ] It replicates the write to a quorum of PoPs
+- [ ] It caches the counter in KV
+> A DO addressed by name always routes to the same single instance, and that instance handles requests serially. Read-modify-write is safe because there's no concurrency *inside* the object — serializability by construction. The cost is that one object's throughput is bounded by its serial execution, so you shard by natural entity (per room, per user, per API key); across millions of objects the per-object limit is irrelevant, but a global singleton DO in the request path is a planet-wide bottleneck.
+
+Q: Why does R2's "$0 egress, always" change which architectures are rational versus S3?
+- [ ] R2 is faster than S3
+- [x] S3's per-GB egress dominates read-heavy bills and enforces lock-in; with no transfer meter you can serve media directly, feed other clouds, or let customers bulk-export freely
+- [ ] R2 has no storage charges at all
+- [ ] R2 automatically caches everything at the edge for free
+> S3 charges storage, requests, *and* egress per GB — the egress line is what makes high-read workloads expensive and moving large datasets out costly (a soft lock-in). R2 charges storage and operations but zero egress, which isn't just a discount but a different theory of whose data it is: serving media to users directly, feeding training jobs on another cloud, or letting customers export in bulk all become rational because no transfer meter is running.
+```
+
 ---
 
 ## 14. Queues, Hyperdrive, Vectorize, Workers AI, and AI Gateway
@@ -775,6 +867,29 @@ Beyond per-hostname publishing, Tunnels also route **private networks**: adverti
 - Run two replicas, kill one mid-request-stream, and observe the failover.
 
 Docs: [Cloudflare Tunnel](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/).
+
+```quiz
+Q: What does "Zero Trust" operationally mean in Cloudflare Access?
+- [ ] All traffic is encrypted end to end
+- [x] Every request to a protected resource is evaluated against identity + device + context, with no trusted-network notion
+- [ ] Users authenticate once per network session
+- [ ] Only Cloudflare employees can access your apps
+> Zero Trust replaces "you're on the corporate network, so you're trusted" with per-request evaluation of who you are, what device you're on, and the context (group, country, MFA recency, device posture). The blast-radius win is the whole business case: a phished contractor credential exposes only the specific apps that identity could reach, not a flat internal subnet. Migration is incremental — one app at a time, VPN retired at the end.
+
+Q: Why does a Cloudflare Tunnel make an origin "exposed to nothing" while still reachable from anywhere?
+- [ ] It encrypts the origin's public IP
+- [x] `cloudflared` dials *outbound* to PoPs, so the origin needs no public IP or open inbound port — there's no address to scan or port to probe
+- [ ] It puts the origin behind a NAT gateway
+- [ ] It rotates the origin's IP every few minutes
+> A Tunnel inverts the connection arrow: the connector establishes long-lived outbound connections to nearby PoPs, and traffic flows down them, so the origin only needs "allow outbound 443" — which it already has. There's no inbound port, public IP, or firewall exception, meaning the only path to the service is through Cloudflare's pipeline with whatever WAF/Access policy you attached. Paired with Access, that's how "internal app, reachable anywhere, exposed to nothing" is built.
+
+Q: An app sits behind Access but its origin is still reachable by other network paths, and it trusts the `Cf-Access-Jwt-Assertion` header without verifying it. What's the risk?
+- [ ] None — Access handles everything
+- [x] An attacker reaching the origin directly can forge or omit the header, bypassing Access entirely — the JWT must be verified server-side and other paths closed
+- [ ] The JWT will expire and lock out real users
+- [ ] Access will double-charge for each request
+> Access issues a signed JWT per authenticated request, but if the origin is reachable by paths that don't go through Access, an attacker can hit it directly and supply a forged or empty header. The app must verify the JWT against Access's published public keys *and* the origin must be unreachable except through the pipeline (a Tunnel closes the other paths). Trusting Access while leaving the origin open is the classic half-migration hole.
+```
 
 ---
 

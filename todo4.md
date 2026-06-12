@@ -121,7 +121,7 @@ Part, click-to-reveal explanation included.
 - [x] `ANSIBLE_STUDY_GUIDE.md` — 5 quizzes (14 questions; idempotency/module contract, handlers & blocks, register/set_fact & vault, serial/run_once/delegate_to, pipelining/mitogen/fact-caching)
 - [x] `GITHUB_ACTIONS_STUDY_GUIDE.md` — 5 quizzes (15 questions; ephemeral-runner execution model, triggers/contexts/$GITHUB_ENV, caching/matrix/artifacts, OIDC/environments, pull_request_target/script-injection/SHA-pinning)
 - [x] `OBSERVABILITY_STUDY_GUIDE.md` — 6 quizzes (18 questions; cardinality/monitoring-vs-observability, counters/rate/histograms, traces/sampling/propagation, OTel neutrality/auto-vs-manual/gateway, SLI-SLO-SLA/error-budgets/burn-rate, symptom-vs-cause alerting)
-- [ ] `CLOUDFLARE_STUDY_GUIDE.md`
+- [x] `CLOUDFLARE_STUDY_GUIDE.md` — 5 quizzes (15 questions; anycast/proxy-pipeline, cache decision/Cache-Everything sin, Workers isolate model/CPU-billing/bindings, KV-vs-DO-vs-R2 storage, Zero Trust/Tunnel inversion/JWT verification)
 - [ ] `AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md`
 - [ ] `GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md`
 - [ ] `GIT_STUDY_GUIDE.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 29/65 (Batch 1 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 30/65 (Batch 1 complete).
