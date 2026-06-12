@@ -136,7 +136,7 @@ Part, click-to-reveal explanation included.
 - [x] `PYTHON_CONCURRENCY.md` — 5 quizzes (15 questions; GIL held-vs-released & NumPy escape hatch, thread races/queue/pool, process parallelism/__main__-guard/coarse-grained, futures unifying-API/submit-vs-map/exception-trap, model-choice numerical-native/thread-vs-async/to_thread-hybrid)
 - [x] `PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md` — 5 quizzes (14 questions; uniform-vs-fragmented ecosystems, eager-vs-lazy & forgotten-await, Promise-vs-coroutine/Task/Future & cancellation, colored-functions two-ecosystem-tax & asyncio.run trap, blocking-the-loop Node-structural-advantage)
 - [x] `GOLANG_FOR_PYTHON_DEVS.md` — 5 quizzes (15 questions; implicit interfaces & embedding-not-inheritance, errors-as-values/%w-wrapping/error-interface, goroutine M:N-scheduling & no-colored-functions & WaitGroup, channels buffered-vs-unbuffered/CSP/close-rules, slice-aliasing/append-capacity/nil-map-panic)
-- [ ] `RUST_FOR_PYTHON_DEVS.md`
+- [x] `RUST_FOR_PYTHON_DEVS.md` — 5 quizzes (15 questions; ownership third-answer/move/Copy-vs-Clone, borrowing shared-XOR-mutable & NLL, enums-as-ADTs/Option/exhaustive-match, Option-vs-Result/?-operator/thiserror-vs-anyhow, fearless-concurrency/Arc-Mutex/Send-Sync)
 - [ ] `DOTNET_FOR_PYTHON_DEVS.md`
 
 ## Batch 5 — Web, frontend, and apps
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 41/65 (Batches 1–3 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 42/65 (Batches 1–3 complete).

@@ -172,6 +172,29 @@ fn takes_and_gives_back(s: String) -> String {
 
 But this gets tedious -- which is why **borrowing** exists.
 
+```quiz
+Q: Rust's ownership is called "a third answer" to memory management. What problem does it solve that manual `free` and garbage collection each fail at?
+- [ ] It makes programs shorter
+- [x] It gives C's speed and deterministic cleanup with no runtime *and* memory safety — the compiler decides at compile time when to free, eliminating use-after-free and double-free without a GC
+- [ ] It eliminates the need for heap allocation
+- [ ] It runs a faster garbage collector
+> Manual management is fast but invites use-after-free and double-free; GC is safe but adds a runtime, pauses, and non-deterministic cleanup. Ownership is a compile-time bookkeeping system: the compiler proves exactly when each value can be freed and inserts the free, so you keep C-like performance and deterministic drops while the dangerous bug classes become compile errors. "Fighting the borrow checker" is the compiler walking you through that safety proof.
+
+Q: `let s2 = s1;` where `s1` is a `String` makes `s1` unusable afterward. Why, and how does this differ from Python?
+- [ ] s1 is deleted from memory
+- [x] Assignment *moves* ownership to `s2` (one owner rule), invalidating `s1`; Python assignment just creates another reference to the same object
+- [ ] String is immutable so it's frozen
+- [ ] It's a compiler bug
+> Each value has exactly one owner, so assigning a non-`Copy` value transfers that ownership and the original binding becomes invalid — using `s1` afterward is a compile error. This guarantees the value is freed exactly once when its single owner's scope ends. Python instead reference-counts, so both names point at one shared object and both stay usable.
+
+Q: `let y = x;` leaves `x` usable when `x` is an `i32`, but not when it's a `String`. Why?
+- [ ] i32 is smaller
+- [x] `i32` implements `Copy` (cheap stack-only duplication), so `x` is copied not moved; `String` owns heap data and isn't `Copy`, so it moves
+- [ ] Integers are immutable
+- [ ] The compiler special-cases numbers
+> `Copy` types are stack-only values cheap to bitwise-duplicate (`i32`, `bool`, `char`, tuples/arrays of them), so assignment copies and the original stays valid. Types owning heap data (`String`, `Vec`, `Box`) aren't `Copy` because duplicating them would mean two owners of one allocation — so they move instead, and you use `.clone()` for an explicit deep copy when you really want two.
+```
+
 ---
 
 ## 3. Borrowing & References
@@ -238,6 +261,29 @@ fn main() {
     append_world(&mut s);
     println!("{s}");  // "hello world"
 }
+```
+
+```quiz
+Q: What does a reference `&T` let you do that taking the value by ownership doesn't?
+- [ ] Free the value immediately
+- [x] Use (borrow) the value without owning it, so the owner keeps responsibility and you don't have to hand values back and forth
+- [ ] Copy the value cheaply
+- [ ] Mutate any value freely
+> Because every use of an owned non-`Copy` value moves it, you'd otherwise have to return values constantly just to keep using them. A reference borrows: it accesses the data while the owner retains ownership (and the duty to free it). When the borrow ends, nothing is dropped because the reference doesn't own anything — that's why functions usually take `&String`/`&str` rather than `String`.
+
+Q: The borrowing rule is "any number of `&T` OR exactly one `&mut T`, never both." Why does this prevent data races at compile time?
+- [ ] It serializes all memory access
+- [x] A data race needs concurrent access with at least one write; allowing many readers *or* one writer but never both forbids exactly the read-write overlap that races
+- [ ] It uses a lock behind the scenes
+- [ ] It only applies to threads
+> A race requires two+ accesses to the same data, at least one a write, concurrently. Shared-XOR-mutable removes the dangerous combination: with multiple immutable borrows there are no writes, and with one mutable borrow nobody else is looking. The same rule that stops you mutating data you're iterating also stops two threads racing — both are the same violation, which is why Rust calls it "fearless concurrency."
+
+Q: Why does `let r3 = &mut s;` compile after `r1`/`r2` (immutable borrows) are last used, even though they're still in scope?
+- [ ] The compiler ignores unused variables
+- [x] Non-Lexical Lifetimes end a borrow at its last *use*, not the end of its scope, so once `r1`/`r2` aren't used again the mutable borrow is allowed
+- [ ] Immutable borrows are always ignored
+- [ ] `s` was cloned
+> NLL makes a borrow's lifetime span from creation to its final use rather than to the closing brace, so after `println!("{r1} {r2}")` those immutable borrows are over and a mutable borrow becomes legal. This relaxation is what makes the borrow checker practical — without it, the strict shared-XOR-mutable rule would reject far more valid programs.
 ```
 
 ### Slices -- Borrowing Parts of Data
@@ -455,6 +501,29 @@ if let Some(value) = x {
 }
 ```
 
+```quiz
+Q: How do Rust enums differ fundamentally from Python's `Enum`?
+- [ ] Rust enums can't have names
+- [x] Rust enum variants can each carry data (they're algebraic data types / tagged unions), where Python `Enum` members are just named constants
+- [ ] They're identical
+- [ ] Rust enums are integers only
+> A Rust enum like `Shape::Circle(f64)` or `Triangle { a, b, c }` attaches per-variant data, making it a tagged union you destructure with `match`. Python's `Enum` is a set of named constant values with no per-variant payload. This is why Rust enums plus `match` express things like `Option`/`Result` directly, where Python reaches for classes or `None`.
+
+Q: Why does Rust have no `null`, using `Option<T>` instead?
+- [ ] To save memory
+- [x] "Might be absent" is encoded in the type, so the compiler forces you to handle the `None` case before using the value — turning Python's runtime `AttributeError: 'NoneType'` into a compile-time check
+- [ ] Option is faster than null
+- [ ] null exists but is hidden
+> Because any Python variable can secretly be `None`, missing-value bugs surface as runtime crashes. Rust makes absence explicit in the type: a `User` is always present, an `Option<User>` might not be, and you can't access the inner value without first matching `Some`/`None` (or using `?`/`unwrap`). The "billion-dollar mistake" becomes a type the compiler checks.
+
+Q: Why does the compiler reject a `match` on a `Shape` enum that omits one variant, while Python's `match` lets missing cases fall through?
+- [ ] Rust match is slower
+- [x] Rust `match` is exhaustive — every variant must be handled (or a `_` wildcard), so adding a new variant forces you to update all matches; Python pattern matching isn't exhaustive
+- [ ] Python match is exhaustive too
+- [ ] Rust requires a default case
+> Exhaustiveness means a `match` won't compile until every enum variant is covered, so introducing a new `Shape` variant produces compile errors at every match that forgot it — a refactoring safety net. Python's `match` simply falls through unmatched cases (often returning `None`), so a forgotten case is a silent runtime gap rather than a caught-at-compile-time omission.
+```
+
 ### `Result<T, E>` -- Rust's Replacement for Exceptions
 
 `Option<T>` answers "is there a value?" while `Result<T, E>` answers "did the operation succeed?" That split is one of Rust's best design choices because it forces APIs to distinguish ordinary absence from an actual failure condition.
@@ -582,6 +651,29 @@ fn main() -> Result<()> {
 Use `thiserror` for libraries (structured errors), `anyhow` for applications (convenient error chaining).
 
 That distinction matters. If you are publishing a library, callers may want to `match` on specific failures. If you are writing a binary, preserving every intermediate error type is often more work than value, and `anyhow` keeps the code readable.
+
+```quiz
+Q: What's the division of labor between `Option<T>` and `Result<T, E>`?
+- [ ] They're interchangeable
+- [x] `Option` answers "is there a value?" (ordinary absence); `Result` answers "did the operation succeed?" (Ok value or Err failure) — forcing APIs to distinguish absence from failure
+- [ ] Option is for numbers, Result for strings
+- [ ] Result is just Option with a message
+> Rust deliberately splits "no value here" from "the operation failed." A lookup that legitimately finds nothing returns `Option::None`; an operation that could error returns `Result::Err(e)` carrying why. This forces every API to be honest about which kind of outcome it has, and the compiler makes you handle both cases — replacing Python's `None`-or-raise ambiguity.
+
+Q: What exactly does the `?` operator do on a `Result`?
+- [ ] It always panics on error
+- [x] If `Err`, it returns that error from the enclosing function immediately; if `Ok`, it unwraps the value and continues — replacing a `match` that early-returns on error
+- [ ] It logs the error and continues
+- [ ] It converts errors to None
+> `?` is sugar for "unwrap the Ok or early-return the Err," so `fs::read_to_string(path)?` either yields the string or propagates the `io::Error` out of the function. This keeps the happy path linear and visible while failures short-circuit type-safely — which is why Rust error code reads sequentially despite having no exceptions. It only works in a function whose return type can hold the error.
+
+Q: When should you use `thiserror` versus `anyhow`?
+- [ ] anyhow for libraries, thiserror for apps
+- [x] `thiserror` for libraries (structured, matchable error enums callers can inspect); `anyhow` for applications (convenient context-chaining where preserving every error type isn't worth it)
+- [ ] Always use unwrap instead
+- [ ] They do the same thing
+> A library's callers may want to `match` on specific failure variants, so `thiserror` helps you define a structured error enum with `#[from]` conversions. An application binary usually just needs readable error context for logs/CLI output, so `anyhow`'s single dynamic error type with `.context(...)` is less ceremony. Match the tool to whether downstream code needs to distinguish your error cases.
+```
 
 ### When to `unwrap()` and `expect()`
 
@@ -1108,6 +1200,29 @@ The compiler uses two marker traits to enforce thread safety:
 | `Sync` | Can be referenced from multiple threads | Types where `&T` is `Send` |
 
 `Rc<T>` is **not** `Send` -- use `Arc<T>` for multi-threaded reference counting. The compiler will refuse to let you send an `Rc` to another thread.
+
+```quiz
+Q: What does "fearless concurrency" mean concretely in Rust?
+- [ ] Rust has no threads
+- [x] The same ownership and borrowing rules that prevent single-threaded aliasing bugs also reject data races at compile time, so sharing data unsafely across threads won't compile
+- [ ] A global lock serializes all threads
+- [ ] Threads can't share any data
+> Rust's shared-XOR-mutable rule forbids exactly the read-write overlap a data race needs, and it applies across threads too. So if you try to share mutable state without proper synchronization, the compiler refuses — where Python would happily let you create a race. You reach for `Arc<Mutex<T>>` or channels not as convention but because the type system demands it.
+
+Q: Why must thread closures use `move`, and why is `Arc<Mutex<T>>` (not `Rc<RefCell<T>>`) used for shared mutable state across threads?
+- [ ] move is faster
+- [x] A spawned thread can outlive the spawning scope, so data must be moved in to own it; `Arc` is the atomically-refcounted (thread-safe `Send`) pointer and `Mutex` guards the data, whereas `Rc`/`RefCell` aren't thread-safe
+- [ ] Rc works fine across threads
+- [ ] Mutex is optional
+> Because a thread may run after its parent function returns, captured data must be owned by the thread (`move`), not borrowed. For shared ownership across threads you need `Arc` (atomic refcount, which is `Send`), and `Mutex` to synchronize mutation. `Rc` uses non-atomic counts and isn't `Send`, so the compiler rejects sending it to another thread — pushing you to the thread-safe pair.
+
+Q: What do the `Send` and `Sync` marker traits encode?
+- [ ] How fast a type is
+- [x] `Send` = ownership can be transferred across threads; `Sync` = `&T` can be shared across threads — the compiler uses them to decide what's safe to move or reference between threads
+- [ ] Whether a type can be cloned
+- [ ] Whether a type is heap-allocated
+> `Send` and `Sync` are auto-derived markers the compiler checks to enforce thread safety: a type is `Send` if moving it to another thread is safe, and `Sync` if `&T` can be accessed from multiple threads. `Rc<T>` is neither (non-atomic refcount), so sending it across threads fails to compile, while `Arc<T>` is — this is how the data-race guarantee is mechanized in the type system.
+```
 
 ---
 
