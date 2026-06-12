@@ -1,0 +1,989 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Database Internals: PostgreSQL and SQLite.">
+<title>Database Internals: PostgreSQL and SQLite - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#deb962; --accent2:#c8d85e; --accent-weak:rgba(222,185,98,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#deb962; --accent2:#c8d85e; --accent-weak:rgba(222,185,98,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint);pointer-events:none}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px;min-width:0;overflow-wrap:break-word}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:minmax(0,1fr)}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+  .spacer{display:none}
+  .brand{flex:1;min-width:0}
+  .brand > span:not(.logo):not(.sub){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">D</span><span>Database Internals: PostgreSQL and SQLite</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#chapter-1-the-shape-of-a-database-engine" data-target="chapter-1-the-shape-of-a-database-engine">Chapter 1 — The Shape of a Database Engine</a></li><li class="toc-l3"><a href="#11-the-layer-cake" data-target="11-the-layer-cake">1.1 The layer cake</a></li><li class="toc-l3"><a href="#12-how-to-study-an-engine-the-tooling-youll-use-throughout" data-target="12-how-to-study-an-engine-the-tooling-youll-use-throughout">1.2 How to study an engine (the tooling you'll use throughout)</a></li><li class="toc-l3"><a href="#exercises-1" data-target="exercises-1">Exercises 1</a></li><li class="toc-l2"><a href="#chapter-2-pages-the-on-disk-layout" data-target="chapter-2-pages-the-on-disk-layout">Chapter 2 — Pages: The On-Disk Layout</a></li><li class="toc-l3"><a href="#21-the-slotted-page" data-target="21-the-slotted-page">2.1 The slotted page</a></li><li class="toc-l3"><a href="#22-postgresql-heap-pages-and-tuples" data-target="22-postgresql-heap-pages-and-tuples">2.2 PostgreSQL: heap pages and tuples</a></li><li class="toc-l3"><a href="#23-sqlite-b-tree-pages-varints-and-records" data-target="23-sqlite-b-tree-pages-varints-and-records">2.3 SQLite: B-tree pages, varints, and records</a></li><li class="toc-l3"><a href="#exercises-2" data-target="exercises-2">Exercises 2</a></li><li class="toc-l2"><a href="#chapter-3-b-trees" data-target="chapter-3-b-trees">Chapter 3 — B-Trees</a></li><li class="toc-l3"><a href="#31-the-b-tree-and-why-it-fits-disks" data-target="31-the-b-tree-and-why-it-fits-disks">3.1 The B+-tree, and why it fits disks</a></li><li class="toc-l3"><a href="#32-postgresqls-nbtree-lehmanyao-concurrency" data-target="32-postgresqls-nbtree-lehmanyao-concurrency">3.2 PostgreSQL's nbtree: Lehman–Yao concurrency</a></li><li class="toc-l3"><a href="#33-sqlite-the-table-is-a-b-tree" data-target="33-sqlite-the-table-is-a-b-tree">3.3 SQLite: the table is a B-tree</a></li><li class="toc-l3"><a href="#exercises-3" data-target="exercises-3">Exercises 3</a></li><li class="toc-l2"><a href="#chapter-4-the-buffer-pool-and-the-io-path" data-target="chapter-4-the-buffer-pool-and-the-io-path">Chapter 4 — The Buffer Pool and the I/O Path</a></li><li class="toc-l3"><a href="#41-postgresql-shared_buffers-and-the-clock-sweep" data-target="41-postgresql-shared_buffers-and-the-clock-sweep">4.1 PostgreSQL: shared_buffers and the clock sweep</a></li><li class="toc-l3"><a href="#42-sqlite-the-pager" data-target="42-sqlite-the-pager">4.2 SQLite: the pager</a></li><li class="toc-l3"><a href="#43-what-both-must-fear-from-the-os" data-target="43-what-both-must-fear-from-the-os">4.3 What both must fear from the OS</a></li><li class="toc-l3"><a href="#exercises-4" data-target="exercises-4">Exercises 4</a></li><li class="toc-l2"><a href="#chapter-5-logging-recovery-and-durability" data-target="chapter-5-logging-recovery-and-durability">Chapter 5 — Logging, Recovery, and Durability</a></li><li class="toc-l3"><a href="#51-postgresql-redo-only-wal" data-target="51-postgresql-redo-only-wal">5.1 PostgreSQL: redo-only WAL</a></li><li class="toc-l3"><a href="#52-sqlite-mode-one-the-rollback-journal-undo-logging" data-target="52-sqlite-mode-one-the-rollback-journal-undo-logging">5.2 SQLite mode one: the rollback journal (undo logging)</a></li><li class="toc-l3"><a href="#53-sqlite-mode-two-wal" data-target="53-sqlite-mode-two-wal">5.3 SQLite mode two: WAL</a></li><li class="toc-l3"><a href="#exercises-5" data-target="exercises-5">Exercises 5</a></li><li class="toc-l2"><a href="#chapter-6-mvcc-and-transaction-isolation" data-target="chapter-6-mvcc-and-transaction-isolation">Chapter 6 — MVCC and Transaction Isolation</a></li><li class="toc-l3"><a href="#61-postgresql-row-version-mvcc" data-target="61-postgresql-row-version-mvcc">6.1 PostgreSQL: row-version MVCC</a></li><li class="toc-l3"><a href="#62-sqlite-the-whole-database-as-one-version" data-target="62-sqlite-the-whole-database-as-one-version">6.2 SQLite: the whole database as one version</a></li><li class="toc-l3"><a href="#exercises-6" data-target="exercises-6">Exercises 6</a></li><li class="toc-l2"><a href="#chapter-7-locking-and-concurrency-control" data-target="chapter-7-locking-and-concurrency-control">Chapter 7 — Locking and Concurrency Control</a></li><li class="toc-l3"><a href="#71-the-species" data-target="71-the-species">7.1 The species</a></li><li class="toc-l3"><a href="#72-sqlites-lock-ladder-and-sqlite_busy" data-target="72-sqlites-lock-ladder-and-sqlite_busy">7.2 SQLite's lock ladder, and SQLITE_BUSY</a></li><li class="toc-l3"><a href="#exercises-7" data-target="exercises-7">Exercises 7</a></li><li class="toc-l2"><a href="#chapter-8-query-processing-i-parsing-statistics-and-planning" data-target="chapter-8-query-processing-i-parsing-statistics-and-planning">Chapter 8 — Query Processing I: Parsing, Statistics, and Planning</a></li><li class="toc-l3"><a href="#81-from-text-to-plan" data-target="81-from-text-to-plan">8.1 From text to plan</a></li><li class="toc-l3"><a href="#82-statistics-what-the-planner-knows" data-target="82-statistics-what-the-planner-knows">8.2 Statistics: what the planner knows</a></li><li class="toc-l3"><a href="#83-join-ordering-the-combinatorial-core" data-target="83-join-ordering-the-combinatorial-core">8.3 Join ordering: the combinatorial core</a></li><li class="toc-l3"><a href="#exercises-8" data-target="exercises-8">Exercises 8</a></li><li class="toc-l2"><a href="#chapter-9-query-processing-ii-execution" data-target="chapter-9-query-processing-ii-execution">Chapter 9 — Query Processing II: Execution</a></li><li class="toc-l3"><a href="#91-postgresql-the-volcano-iterator-model" data-target="91-postgresql-the-volcano-iterator-model">9.1 PostgreSQL: the Volcano iterator model</a></li><li class="toc-l3"><a href="#92-sqlite-the-vdbe" data-target="92-sqlite-the-vdbe">9.2 SQLite: the VDBE</a></li><li class="toc-l3"><a href="#exercises-9" data-target="exercises-9">Exercises 9</a></li><li class="toc-l2"><a href="#chapter-10-beyond-the-b-tree-other-indexes-and-the-lsm-road-not-taken" data-target="chapter-10-beyond-the-b-tree-other-indexes-and-the-lsm-road-not-taken">Chapter 10 — Beyond the B-Tree: Other Indexes, and the LSM Road Not Taken</a></li><li class="toc-l3"><a href="#101-postgresqls-index-menagerie" data-target="101-postgresqls-index-menagerie">10.1 PostgreSQL's index menagerie</a></li><li class="toc-l3"><a href="#102-the-lsm-road-not-taken" data-target="102-the-lsm-road-not-taken">10.2 The LSM road not taken</a></li><li class="toc-l3"><a href="#exercises-10" data-target="exercises-10">Exercises 10</a></li><li class="toc-l2"><a href="#chapter-11-two-walkthroughs-the-life-of-a-query-and-the-life-of-a-write" data-target="chapter-11-two-walkthroughs-the-life-of-a-query-and-the-life-of-a-write">Chapter 11 — Two Walkthroughs: The Life of a Query and the Life of a Write</a></li><li class="toc-l3"><a href="#111-postgresql-update-accounts-set-balance-balance-100-where-id-42-commit" data-target="111-postgresql-update-accounts-set-balance-balance-100-where-id-42-commit">11.1 PostgreSQL: UPDATE accounts SET balance = balance - 100 WHERE id = 42; COMMIT;</a></li><li class="toc-l3"><a href="#112-sqlite-wal-mode-the-same-update" data-target="112-sqlite-wal-mode-the-same-update">11.2 SQLite (WAL mode): the same update</a></li><li class="toc-l3"><a href="#exercises-11" data-target="exercises-11">Exercises 11</a></li><li class="toc-l2"><a href="#chapter-12-where-to-go-next" data-target="chapter-12-where-to-go-next">Chapter 12 — Where to Go Next</a></li></ul></nav></aside>
+  <main><h1 id="database-internals-postgresql-and-sqlite">Database Internals: PostgreSQL and SQLite</h1>
+<p>A textbook-level study guide to what happens beneath SQL — the page layouts, B-trees, buffer pools, write-ahead logs, MVCC machinery, and query engines — taught through the two most instructive open-source databases to study side by side. PostgreSQL and SQLite are both single-node, both B-tree-based, both exhaustively documented and readable — and they disagree about almost every other decision: client-server versus in-process library, heap tables with secondary indexes versus clustered B-trees, row-version MVCC with vacuum versus whole-database snapshots with a single writer, redo-only WAL versus a choice of undo journaling or WAL. Wherever the two systems diverge, the divergence is a <em>lesson</em>: the same theory, two defensible answers, and a design space made visible. The sibling guides cover using these systems (<a href="postgres.html">PostgreSQL</a>, <a href="advanced-postgres.html">Advanced PostgreSQL</a>, <a href="sqlite-study-guide.html">SQLite</a>); this one is about <em>being</em> them.</p>
+<p>The style follows this repo's <a href="distributed-algorithms-study-guide.html">Distributed Algorithms guide</a>: precise definitions, mechanisms traced to the byte level where the bytes matter, claims you can verify against source code and introspection tools, and exercises closing every chapter — most of them runnable, because both systems ship the instruments needed to dissect them live (<code>pageinspect</code>, <code>pg_waldump</code>, <code>EXPLAIN (ANALYZE, BUFFERS)</code>; <code>sqlite3</code>'s <code>.dbinfo</code>, <code>EXPLAIN</code>, <code>sqlite3_analyzer</code>, and the <code>dbstat</code>/<code>sqlite_dbpage</code> virtual tables).</p>
+<p>Primary references: Andy Pavlo's <a href="https://15445.courses.cs.cmu.edu/">CMU 15-445/645</a> lectures (public, graduate-level, the best structured course on this material); Alex Petrov, <a href="https://www.databass.dev/"><em>Database Internals</em></a>; the PostgreSQL source tree's READMEs (especially <a href="https://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/access/nbtree/README"><code>src/backend/access/nbtree/README</code></a> and <a href="https://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=src/backend/access/heap/README.HOT"><code>src/backend/access/heap/README.HOT</code></a>) and the <a href="https://www.postgresql.org/docs/current/internals.html">internals chapters of the manual</a>; Hironobu Suzuki's <a href="https://www.interdb.jp/pg/"><em>The Internals of PostgreSQL</em></a>; and SQLite's own documentation, which is a textbook in disguise — <a href="https://www.sqlite.org/fileformat2.html">Database File Format</a>, <a href="https://www.sqlite.org/atomiccommit.html">Atomic Commit</a>, <a href="https://www.sqlite.org/wal.html">Write-Ahead Logging</a>, <a href="https://www.sqlite.org/vdbe.html">The Virtual Database Engine</a>, and <a href="https://www.sqlite.org/queryplanner-ng.html">The Next-Generation Query Planner</a>.</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#chapter-1--the-shape-of-a-database-engine">Chapter 1 — The Shape of a Database Engine</a></li>
+<li><a href="#chapter-2--pages-the-on-disk-layout">Chapter 2 — Pages: The On-Disk Layout</a></li>
+<li><a href="#chapter-3--b-trees">Chapter 3 — B-Trees</a></li>
+<li><a href="#chapter-4--the-buffer-pool-and-the-io-path">Chapter 4 — The Buffer Pool and the I/O Path</a></li>
+<li><a href="#chapter-5--logging-recovery-and-durability">Chapter 5 — Logging, Recovery, and Durability</a></li>
+<li><a href="#chapter-6--mvcc-and-transaction-isolation">Chapter 6 — MVCC and Transaction Isolation</a></li>
+<li><a href="#chapter-7--locking-and-concurrency-control">Chapter 7 — Locking and Concurrency Control</a></li>
+<li><a href="#chapter-8--query-processing-i-parsing-statistics-and-planning">Chapter 8 — Query Processing I: Parsing, Statistics, and Planning</a></li>
+<li><a href="#chapter-9--query-processing-ii-execution">Chapter 9 — Query Processing II: Execution</a></li>
+<li><a href="#chapter-10--beyond-the-b-tree-other-indexes-and-the-lsm-road-not-taken">Chapter 10 — Beyond the B-Tree: Other Indexes, and the LSM Road Not Taken</a></li>
+<li><a href="#chapter-11--two-walkthroughs-the-life-of-a-query-and-the-life-of-a-write">Chapter 11 — Two Walkthroughs: The Life of a Query and the Life of a Write</a></li>
+<li><a href="#chapter-12--where-to-go-next">Chapter 12 — Where to Go Next</a></li>
+</ol>
+<hr>
+<h2 id="chapter-1-the-shape-of-a-database-engine">Chapter 1 — The Shape of a Database Engine</h2>
+<h3 id="11-the-layer-cake">1.1 The layer cake</h3>
+<p>Every relational engine, however different its skin, decomposes into the same stack — worth fixing as a map before descending:</p>
+<pre><code class="language-text">SQL text
+  │  parser            → parse tree (grammar only; &quot;is this SQL?&quot;)
+  │  analyzer/rewriter → query tree (names resolved, views expanded)
+  │  planner/optimizer → plan tree (the *how*: scans, joins, order)   Ch. 8
+  │  executor          → rows (iterators / bytecode)                  Ch. 9
+  ├─ access methods    → tables &amp; indexes as trees and heaps          Ch. 2–3, 10
+  ├─ buffer manager    → pages cached in memory, pinned, dirtied      Ch. 4
+  ├─ transaction mgr   → visibility, isolation, locks                 Ch. 6–7
+  ├─ WAL / journal     → durability and crash recovery                Ch. 5
+  └─ storage           → files, fsync, the operating system
+</code></pre>
+<p>The two case studies instantiate the stack at opposite ends of the architecture spectrum:</p>
+<p><strong>PostgreSQL</strong> is a client-server system: a postmaster forks a backend process per connection (one query's state lives in one process); shared state — the buffer pool, lock tables, WAL buffers — lives in shared memory mapped by all backends; background processes (checkpointer, background writer, WAL writer, autovacuum workers) do maintenance asynchronously. Concurrency is the <em>point</em>: hundreds of backends reading and writing the same pages, coordinated by fine-grained locks and MVCC.</p>
+<p><strong>SQLite</strong> is a library: the "server" is linked into your process, the database is one file, and a query is a function call away. There is no daemon to coordinate writers, so coordination happens through the <em>file itself</em> (POSIX locks, a shared-memory index in WAL mode) and the concurrency model is drastically simpler: many readers, <strong>one writer at a time, total</strong>. SQLite's own docs call it a replacement for <code>fopen()</code>, not for PostgreSQL — and the design decisions that follow from that one sentence are half this guide.</p>
+<p>The deepest contrast, planted now and harvested in Chapters 3 and 6: <strong>PostgreSQL tables are heaps</strong> — unordered bags of row versions, with <em>all</em> indexes secondary, pointing at physical row addresses — while <strong>SQLite tables are themselves B-trees</strong> keyed on the rowid (or the primary key, for <code>WITHOUT ROWID</code> tables): the table <em>is</em> its primary index. And <strong>PostgreSQL implements MVCC by keeping multiple versions of each row in the heap</strong>, while <strong>SQLite versions the whole database</strong> (a reader in WAL mode sees the file as of a moment, via the log). Most of each system's personality — vacuum, HOT updates, index bloat on one side; the single writer, the busy timeout, blazing point reads on the other — falls out of these two choices.</p>
+<h3 id="12-how-to-study-an-engine-the-tooling-youll-use-throughout">1.2 How to study an engine (the tooling you'll use throughout)</h3>
+<p>Textbook claims about internals should be checkable. Your instruments:</p>
+<pre><code class="language-sql">-- PostgreSQL
+CREATE EXTENSION pageinspect;            -- raw page contents, heap and index
+SELECT * FROM page_header(get_raw_page('t', 0));
+SELECT * FROM heap_page_items(get_raw_page('t', 0));
+SELECT * FROM bt_page_items('t_pkey', 1);
+EXPLAIN (ANALYZE, BUFFERS, WAL) ...;     -- plans + buffer &amp; WAL accounting
+SELECT pg_current_wal_lsn();             -- and pg_waldump on the WAL files
+SELECT * FROM pg_stat_io;                -- (v16+) who did which I/O, and why
+</code></pre>
+<pre><code class="language-text">-- SQLite (CLI)
+.dbinfo                                  -- header fields, page size, counts
+EXPLAIN SELECT ...;                      -- VDBE bytecode (the actual program)
+EXPLAIN QUERY PLAN SELECT ...;           -- planner's intent, human-readable
+SELECT * FROM dbstat;                    -- per-page b-tree statistics
+SELECT * FROM sqlite_dbpage;             -- raw page bytes as a virtual table
+sqlite3_analyzer mydb.db                 -- space accounting per object
+</code></pre>
+<p>A standing suggestion for the whole guide: keep one scratch database in each system and run the exercises — both systems are honest enough to show you everything.</p>
+<h3 id="exercises-1">Exercises 1</h3>
+<ol>
+<li>Map each layer of the cake to the process/thread that executes it in each system for a single <code>SELECT</code>: which layers run in <em>your</em> process in SQLite, and in <em>which</em> process in PostgreSQL? Where does shared state live in each?</li>
+<li>From architecture alone (before reading Ch. 6), predict: which system can have two transactions writing different rows of the same table simultaneously? What is the <em>weakest</em> piece of machinery PostgreSQL must therefore own that SQLite can omit entirely?</li>
+<li>SQLite advertises itself as a replacement for <code>fopen()</code>. List three guarantees it nonetheless shares with PostgreSQL that <code>fopen()</code>+<code>fwrite()</code> lack, and which chapter of this guide implements each.</li>
+<li>Run <code>.dbinfo</code> on a fresh SQLite file and <code>SELECT * FROM page_header(get_raw_page(...))</code> on a fresh PostgreSQL table. Record page sizes and version fields — you will reuse both scratch databases for the rest of the guide.</li>
+</ol>
+<hr>
+<h2 id="chapter-2-pages-the-on-disk-layout">Chapter 2 — Pages: The On-Disk Layout</h2>
+<p>Databases read and write fixed-size <strong>pages</strong> (PostgreSQL: 8 KiB default; SQLite: 4 KiB default, 512–65536 configurable at creation), because the page is the unit of buffering, locking granularity decisions, I/O, and crash atomicity reasoning. Everything above this chapter manipulates pages; everything below it is the filesystem.</p>
+<h3 id="21-the-slotted-page">2.1 The slotted page</h3>
+<p>Both systems implement variants of the <strong>slotted page</strong>, the standard answer to "variable-length rows on a fixed-size page":</p>
+<pre><code class="language-text">+------------------+ 0
+| page header      |
+| slot array  →    |   slots/cell-pointers grow downward →
+|------------------|
+|   free space     |
+|------------------|
+|   ← row data     |   records grow upward ←
++------------------+ pagesize
+</code></pre>
+<p>The indirection through the slot array is the load-bearing trick: a row's <em>physical</em> position on the page can change (compaction after deletes) without changing its <em>address</em> — which is slot-based, not offset-based. PostgreSQL addresses a row version by <strong>ctid</strong> = <code>(page number, slot number)</code>, also known as an <em>item pointer</em> — and because every index entry stores ctids, the stability of slots is what keeps indexes valid while pages defragment in place.</p>
+<h3 id="22-postgresql-heap-pages-and-tuples">2.2 PostgreSQL: heap pages and tuples</h3>
+<p>A heap page (<code>src/include/storage/bufpage.h</code>):</p>
+<ul>
+<li><strong>PageHeaderData</strong>, 24 bytes: <code>pd_lsn</code> (the WAL position of the last change — the linchpin of recovery ordering, Ch. 5), <code>pd_checksum</code>, <code>pd_lower</code>/<code>pd_upper</code> (the free-space boundaries), <code>pd_special</code> (unused in heaps; B-tree pages keep sibling links there, Ch. 3).</li>
+<li>The <strong>line pointer array</strong> (<code>ItemIdData</code>, 4 bytes each): offset, length, and a 2-bit state — <code>NORMAL</code>, <code>UNUSED</code>, <code>DEAD</code>, or <code>REDIRECT</code> (the last two are vacuum's and HOT's vocabulary, Ch. 6).</li>
+<li><strong>Tuples</strong>, each prefixed by a 23-byte <strong>HeapTupleHeader</strong> whose fields <em>are</em> the MVCC machine: <code>t_xmin</code> (inserting transaction ID), <code>t_xmax</code> (deleting/locking transaction ID, 0 if live), <code>t_cid</code> (command ID within the transaction), <code>t_ctid</code> (forward pointer to the newer version of this row, or to itself), <code>t_infomask</code> (hint bits — Ch. 6), then the null bitmap and the user data. Read that field list again: <strong>PostgreSQL spends ~23 bytes per row version on visibility bookkeeping.</strong> That's the price tag of heap MVCC, payable in advance, and small rows pay the highest rate.</li>
+</ul>
+<p><strong>TOAST</strong> (The Oversized-Attribute Storage Technique) handles values that don't fit: a tuple is kept under ~2 KiB (a quarter page) by compressing large attributes (<code>pglz</code> or, since v14, <code>lz4</code>) and/or moving them <em>out of line</em> into a companion TOAST table, sliced into ~2 KiB chunks, with an 18-byte pointer left in the main tuple. Consequences worth knowing cold: wide values cost an extra (indexed) lookup to fetch; <code>SELECT *</code> detoasts everything while <code>SELECT id</code> touches nothing; and an <code>UPDATE</code> that doesn't modify a TOASTed column doesn't rewrite it — the new row version points at the same TOAST chunks.</p>
+<h3 id="23-sqlite-b-tree-pages-varints-and-records">2.3 SQLite: B-tree pages, varints, and records</h3>
+<p>The first 100 bytes of file are the <strong>database header</strong> (<code>"SQLite format 3\0"</code>, page size, file format versions, change counters, schema cookie). Every page thereafter is a B-tree page (or an overflow/freelist/ptrmap page). Four B-tree page types: table leaf (0x0D), table interior (0x05), index leaf (0x0A), index interior (0x02). Layout is the slotted page again: an 8/12-byte header, a <strong>cell pointer array</strong> growing downward, <strong>cells</strong> growing upward, a freeblock list threading the holes.</p>
+<p>Two encoding decisions define SQLite's on-disk character:</p>
+<ul>
+<li><strong>Varints</strong>: integers are stored in 1–9 bytes, high-bit-continuation encoded, so small numbers (rowids, lengths, type codes — most numbers in a database) cost one or two bytes. The format is biased toward smallness everywhere.</li>
+<li>The <strong>record format</strong>: each row is a header of <em>serial type</em> codes followed by the values. Serial types encode type <em>and</em> size in one varint (<code>0</code> = NULL, <code>1..6</code> = integers of 1/2/3/4/6/8 bytes, <code>7</code> = float, even/odd codes ≥ 12 = BLOBs/strings with length embedded) — and notably, the <em>same column</em> can use different serial types in different rows: an <code>INTEGER</code> column stores 1-byte values for small numbers, 8-byte for large. This is <strong>dynamic typing materialized in storage</strong> — flexible, compact, and the reason SQLite rows have no fixed layout to compute offsets into; every read parses the header. Cells too large for a page spill into a linked chain of <strong>overflow pages</strong> (the analog of TOAST, minus compression and minus the independent table).</li>
+</ul>
+<p>A useful contrast snapshot: PostgreSQL pays bytes for <em>visibility</em> (23-byte tuple headers, so concurrent readers/writers never block each other); SQLite pays bytes for <em>nothing</em> — its per-row overhead is a few varints — and pays instead in concurrency (Ch. 6–7). Storage layout is policy, made permanent.</p>
+<h3 id="exercises-2">Exercises 2</h3>
+<ol>
+<li>Insert three rows in a PostgreSQL table; <code>UPDATE</code> the second; inspect with <code>heap_page_items</code>. Identify <code>t_xmin</code>/<code>t_xmax</code>/<code>t_ctid</code> on all <em>four</em> tuples present, and explain each field's value. Which line pointer states do you see?</li>
+<li>Compute the maximum number of <code>(int, int)</code> rows on one 8 KiB PostgreSQL heap page (24-byte page header, 4-byte line pointers, 23-byte tuple headers + alignment to 8 bytes, 8 bytes of data). Compare with SQLite's count for the same logical rows on a 4 KiB page (assume 2-byte cell pointers, ~2-byte cell header, 1–2-byte varints) — then verify both empirically (<code>pageinspect</code>; <code>dbstat</code>).</li>
+<li>Store a 100 KiB string in each system. In PostgreSQL, find it in the TOAST table (<code>pg_class.reltoastrelid</code>); in SQLite, observe the overflow chain via <code>dbstat</code>'s <code>pageno</code>/<code>payload</code> columns. What does each system re-write if you <code>UPDATE</code> a <em>different</em> column of that row?</li>
+<li>Why must the slot/cell-pointer indirection exist at all? Describe concretely what would break in PostgreSQL if indexes stored byte offsets instead of ctids, the first time a page compacted after a delete.</li>
+<li>SQLite's serial-type system means <code>CREATE TABLE t(x INTEGER)</code> can store <code>1</code> in one byte. What is the equivalent storage for <code>int8</code> in PostgreSQL, and why <em>can't</em> PostgreSQL do the same trick? (Hint: how does each system find column 7 of a row?)</li>
+</ol>
+<hr>
+<h2 id="chapter-3-b-trees">Chapter 3 — B-Trees</h2>
+<p>The B-tree is the data structure that <em>is</em> the relational database in practice — both systems bet everything on it. This chapter does the theory once, then each system's deviations, which are where the insight lives.</p>
+<h3 id="31-the-b-tree-and-why-it-fits-disks">3.1 The B+-tree, and why it fits disks</h3>
+<p>A <strong>B+-tree</strong> of fanout <em>f</em> stores all data in leaves, with interior nodes holding only separator keys; all leaves sit at the same depth (the tree grows by splitting <em>upward</em>, at the root — it is always perfectly balanced). Height is ⌈log_f N⌉, and the arithmetic is the whole argument: with 8 KiB pages and ~200–500 separators per interior page, <strong>a billion rows fit in a tree of height 3–4</strong>. A point lookup is 3–4 page reads, of which the top levels are effectively always cached (Ch. 4) — so "one or two I/Os per lookup, forever, regardless of N" is the B-tree's contract with the disk. Leaves are sibling-linked for ordered range scans. Compare hashing (O(1) but no ranges, and ugly growth) and you know why every general-purpose engine chose this.</p>
+<p>Mechanics to have at your fingertips: <strong>search</strong> descends by binary-searching separators; <strong>insert</strong> finds the leaf, inserts in place if it fits, else <strong>splits</strong> the leaf (half the entries move to a new right sibling; a new separator is inserted into the parent — possibly splitting it, recursively; a root split adds a level, the only way the tree gets taller); <strong>delete</strong> in textbooks merges underfull nodes — in production engines, <em>delete is lazy</em>: both PostgreSQL and SQLite mark/remove entries and reclaim a page only when fully empty (PostgreSQL recycles it via FSM after a vacuum interlock; SQLite moves it to the freelist), accepting some fragmentation in exchange for not paying rebalancing costs on every delete. Textbook deletion is one of the field's great pedagogical lies of omission.</p>
+<p><strong>Split policy meets workload</strong>: a 50/50 split is optimal for random inserts; for <em>rightmost</em> (append-order: sequential IDs, timestamps) inserts, both systems instead split unevenly/fill the right edge, yielding ~90%+ packed pages for monotonic keys. This — plus cache locality on the rightmost path — is the mechanical content of the advice "prefer sequential keys over UUIDv4 for insert-heavy tables"; random UUIDs spray inserts across all leaves, splitting everywhere at ~50% utilization (UUIDv7 exists precisely to restore key monotonicity).</p>
+<h3 id="32-postgresqls-nbtree-lehmanyao-concurrency">3.2 PostgreSQL's nbtree: Lehman–Yao concurrency</h3>
+<p>The interesting question for a server engine: how do hundreds of backends traverse a tree that's splitting under them, without lock-crabbing their way down (parent locked until child locked — correct, but a concurrency disaster at the root)? PostgreSQL's <code>nbtree</code> implements <strong>Lehman &amp; Yao's B-link tree</strong>:</p>
+<ul>
+<li>Every page carries a <strong>right-sibling link</strong> and a <strong>high key</strong> (an upper bound on keys belonging to this page).</li>
+<li>A descending reader takes <em>no</em> locks above the page it's currently reading. If, between reading a parent and arriving at the child, the child split — the sought key may have moved right — the reader detects it (search key exceeds the high key) and simply <strong>follows the right-link</strong>, possibly several times.</li>
+<li>A split therefore needs to lock only the splitting page and its new sibling (then, separately and lazily, insert the new separator into the parent — even a crash between the two halves leaves a correct, merely slower, tree; the right-link covers the gap until vacuum or a later insert completes the parent entry).</li>
+</ul>
+<p>The deep idea — <em>make readers tolerate stale parent information and give them a recovery edge to follow, rather than excluding writers</em> — is the same move as optimistic concurrency everywhere, and it's why B-tree contention almost never shows up in PostgreSQL profiles. Two modern refinements worth naming: <strong>suffix truncation</strong> (separator keys in interior pages keep only the prefix needed to distinguish — fatter fanout, shorter tree) and <strong>deduplication</strong> (v13: equal keys in a leaf stored once with a ctid list — shrinking indexes on low-cardinality columns dramatically) plus <strong>bottom-up index deletion</strong> (v14: inserts that would split a page first try to evict entries pointing at dead heap tuples — directly attacking version-churn bloat, Ch. 6's index tax).</p>
+<h3 id="33-sqlite-the-table-is-a-b-tree">3.3 SQLite: the table <em>is</em> a B-tree</h3>
+<p>SQLite has two B-tree flavors: <strong>table B-trees</strong> (leaf cells = <code>(rowid varint, record)</code>, keyed by integer rowid — interior pages hold only rowids and child pointers, making them extremely high-fanout) and <strong>index B-trees</strong> (cells = the indexed columns' record + the rowid, no separate payload). An ordinary table is a table B-tree; <code>INTEGER PRIMARY KEY</code> makes your column <em>be</em> the rowid (zero-cost primary key); every secondary index lookup finds rowids, then probes the table B-tree — so <strong>every secondary-index hit costs two tree descents</strong> (the analog of a clustered-index lookup in InnoDB, and the reason <code>WITHOUT ROWID</code> tables exist: the table is then keyed directly on your declared primary key — better when the natural key <em>is</em> the lookup key and rows are small; worse when the PK is fat, since every secondary index then embeds it).</p>
+<p>Contrast with PostgreSQL's heap, now sharpened: a PostgreSQL index hit costs one descent plus one heap page fetch by ctid (no second tree), but the heap guarantees nothing about physical order (<code>CLUSTER</code> is a one-shot rewrite, not maintained), while SQLite gives you primary-key clustering <em>by construction</em> — adjacent keys are physically adjacent, so PK range scans are sequential reads. Neither dominates; you now know exactly what each buys.</p>
+<p>One SQLite-specific structural note: the tree's parent pointers don't exist on disk (descent is always from the root; splits are simpler than Lehman–Yao because <strong>there is only one writer</strong> — concurrency solved by fiat, Ch. 7); and <code>auto_vacuum</code> mode maintains <strong>ptrmap</strong> pages so pages can be relocated to truncate the file, the closest SQLite comes to PostgreSQL's vacuum world.</p>
+<h3 id="exercises-3">Exercises 3</h3>
+<ol>
+<li>Compute tree heights: PostgreSQL B-tree over <code>bigint</code> keys (16-byte index tuples + line pointers on 8 KiB pages) for 10⁶ and 10⁹ rows; SQLite table B-tree interior fanout for 4 KiB pages and 2-byte average rowid varints. Verify the PostgreSQL height with <code>bt_metap('idx')</code>.</li>
+<li>Trace, by hand, a Lehman–Yao reader racing a split: reader reads parent P (child C contains keys ≤ 50), writer splits C at 30 into C and C′, reader arrives at C seeking 42. Walk the steps to the right answer. What single piece of on-page state made it work?</li>
+<li>Demonstrate the UUID effect: insert 10⁶ rows keyed by <code>uuid4()</code> vs. sequential <code>bigint</code> into both systems; compare index/file size and (PostgreSQL) <code>bt_metap</code>/<code>pgstattuple</code> leaf density, (SQLite) <code>sqlite3_analyzer</code> packing. Explain the difference via split policy.</li>
+<li>In SQLite, why does <code>SELECT * FROM t WHERE rowid BETWEEN 1000 AND 2000</code> read pages sequentially while the equivalent ctid-range trick in PostgreSQL does not retrieve rows in key order? Connect to the clustered-vs-heap decision.</li>
+<li>PostgreSQL's split inserts the parent separator <em>after</em> releasing the split pages, and may crash in between. Argue (from the right-link + high-key invariants) that searches remain correct in the interim, and name the kind of consistency this resembles from the Distributed Algorithms guide.</li>
+</ol>
+<hr>
+<h2 id="chapter-4-the-buffer-pool-and-the-io-path">Chapter 4 — The Buffer Pool and the I/O Path</h2>
+<p>The buffer pool is the database's answer to "RAM is fast, disks are not, and we promised durability anyway": cache pages in memory, modify them there, write them back <em>on a schedule decoupled from commits</em> (the WAL, Ch. 5, is what makes that decoupling safe). It is also where the database and the operating system step on each other.</p>
+<h3 id="41-postgresql-shared_buffers-and-the-clock-sweep">4.1 PostgreSQL: shared_buffers and the clock sweep</h3>
+<p><code>shared_buffers</code> is an array of 8 KiB slots in shared memory with a hash table mapping <code>(relation, fork, block#) → slot</code>. Each slot's header carries a <strong>pin count</strong> (how many backends are using the page right now — a pinned page is never evicted) and a <strong>usage count</strong> (popularity, capped at 5). Eviction is <strong>clock sweep</strong> — approximate LRU without LRU's lock contention: a hand circles the array; each pass decrements usage counts; a page with count 0 and no pins is evictable. Frequently-touched pages (index roots, hot rows) keep getting re-bumped to 5 and effectively never leave; the upper tree levels staying memory-resident is what cashes the B-tree height argument of Chapter 3.</p>
+<p>Dirty pages are written back by (in order of preference) the <strong>checkpointer</strong> (Ch. 5, spread writes), the <strong>background writer</strong> (keeps a trickle of clean evictable pages ahead of demand), or — the case you tune to avoid — <em>a foreground backend that needed a slot and found only dirty candidates</em>, paying the write (plus possibly a WAL flush, by the WAL-before-data rule) on the query's critical path. <code>pg_stat_io</code> (v16+) breaks out exactly who wrote what and why; <code>EXPLAIN (BUFFERS)</code> shows per-query hits/reads/dirtied — the two instruments that turn this chapter from theory into tuning.</p>
+<p>Two refinements that prevent classic pathologies: <strong>ring buffers</strong> — large sequential scans, bulk loads (<code>COPY</code>), and vacuum confine themselves to a small private ring of buffers (hundreds of KiB; vacuum's is settable via <code>vacuum_buffer_usage_limit</code>) instead of flushing the entire working set out of the pool — the direct fix for "one analyst's table scan evicted the OLTP cache"; and <strong>backend-private temp buffers</strong> for temporary tables (<code>temp_buffers</code>), which need no shared coordination at all.</p>
+<p>The honest blemish: <strong>double buffering</strong>. PostgreSQL reads via the OS page cache (buffered I/O), so hot pages occupy RAM twice — once in <code>shared_buffers</code>, once in the kernel. Hence the heuristic of <code>shared_buffers</code> ≈ 25% of RAM (let the kernel use the rest, it's good at it) rather than the ~100% a direct-I/O engine like InnoDB takes; asynchronous and direct I/O work in recent releases (<code>io_method</code>, <code>debug_io_direct</code>) is slowly renegotiating this truce with the kernel.</p>
+<h3 id="42-sqlite-the-pager">4.2 SQLite: the pager</h3>
+<p>SQLite's equivalent layer is the <strong>pager</strong>, sitting between the B-tree module and the VFS (the OS-abstraction layer — also the hook point for encryption layers and the test harness's fault injection). Each connection has a private page cache (default ~2 MB, <code>PRAGMA cache_size</code>) — there being no server, there is no shared pool; in WAL mode, what's <em>shared</em> between connections is not cached pages but the <strong>WAL index</strong> in a shared-memory file (<code>-shm</code>), which tells every reader which page versions exist in the log (Ch. 5–6). The pager enforces the same fundamental rules as PostgreSQL's buffer manager — journal-before-data, no eviction of pinned pages — in two thousand lines instead of twenty thousand, and reading <code>pager.c</code> after <code>bufmgr.c</code> is one of the best compare-and-contrast exercises in open source.</p>
+<p><code>PRAGMA mmap_size</code> offers memory-mapped reads — genuinely faster for read-heavy embedded workloads (no syscall, no copy) and a genuine trade: I/O errors become signals rather than error codes, and a stray pointer write in the host process can corrupt the mapped database. The decision — and the fact that the <em>application</em> gets to make it — is very SQLite.</p>
+<h3 id="43-what-both-must-fear-from-the-os">4.3 What both must fear from the OS</h3>
+<p>The page cache giveth and taketh: <code>write()</code> puts data in kernel memory, not on disk; only <code>fsync()</code> (or <code>fdatasync</code>) makes it durable, and the <em>scheduling</em> of writeback is the kernel's. Both engines therefore reason exclusively in terms of explicit sync points (Ch. 5). Beyond that, the platform fine print that production engineers eventually meet: partial (torn) page writes on power loss — neither 8 KiB nor 4 KiB writes are atomic on most stacks — handled by full-page images / journaling (Ch. 5); <code>posix_fadvise</code> readahead interplay for sequential scans; and the fact that an <code>fsync</code> <em>failure</em> may not mean what anyone hoped (Ch. 5's fsyncgate). The buffer pool chapter's closing moral: <strong>a database is a program that has stopped trusting the operating system politely.</strong></p>
+<h3 id="exercises-4">Exercises 4</h3>
+<ol>
+<li>Run a query twice in PostgreSQL with <code>EXPLAIN (ANALYZE, BUFFERS)</code>: explain the <code>shared read</code> → <code>shared hit</code> shift. Then scan a table 4× larger than <code>shared_buffers</code> and explain, via the ring buffer, why repeated scans <em>don't</em> convert to hits.</li>
+<li>Why must a pinned page never be evicted, even at usage 0? Construct the corruption that eviction-under-pin would permit (two backends, one page, one eviction).</li>
+<li>Clock sweep vs. strict LRU: describe a workload where they differ materially, and explain why PostgreSQL accepts the approximation (what shared data structure would strict LRU require <em>per page access</em>?).</li>
+<li>In SQLite WAL mode, two connections from different processes have private page caches — yet a reader never sees a stale page after another process commits. What invalidates/redirects its cached view? (You may peek at Ch. 5–6; the answer lives in the WAL index.)</li>
+<li>Estimate the RAM wasted by double buffering for a PostgreSQL instance with <code>shared_buffers=8GB</code> and a 30 GB hot working set, and explain why the answer differs between read-mostly and write-heavy workloads.</li>
+</ol>
+<hr>
+<h2 id="chapter-5-logging-recovery-and-durability">Chapter 5 — Logging, Recovery, and Durability</h2>
+<p>The problem: commits must be durable and atomic, but dirty pages are written lazily (Ch. 4), and a crash can interrupt <em>anything</em> — including a single page write. The universal solution: <strong>write-ahead logging</strong> — record intentions sequentially and durably <em>first</em>, let the random-access data files lag, and replay/undo from the log after a crash. The two systems implement two distinct classic flavors, and SQLite implements <em>both</em>, selectable per database.</p>
+<h3 id="51-postgresql-redo-only-wal">5.1 PostgreSQL: redo-only WAL</h3>
+<p>Every modification generates a <strong>WAL record</strong> (insert this tuple at this ctid; split this page; commit this xid), appended to a sequential log addressed by <strong>LSN</strong> (log sequence number — a byte position in the WAL stream). The two protocol rules that make lazy page writing safe:</p>
+<ol>
+<li><strong>WAL-before-data</strong>: a dirty page may be written to the data files only after the WAL up through that page's <code>pd_lsn</code> is fsynced. (The page header's LSN, Ch. 2, exists exactly for this comparison.)</li>
+<li><strong>Commit = WAL flush</strong>: <code>COMMIT</code> returns only after the commit record is fsynced (<code>synchronous_commit=on</code>). Data pages may be arbitrarily stale on disk; the log is the truth.</li>
+</ol>
+<p>Crash recovery is then pure <strong>redo</strong>: start from the last <strong>checkpoint</strong> (a recorded moment at which all then-dirty pages were known flushed), replay every WAL record forward, idempotently (each record applies only if the target page's LSN is older — LSN comparison makes replay safely re-runnable). There is no undo pass: PostgreSQL never needs one <em>because MVCC already keeps old versions in the heap</em> — an aborted transaction's rows are simply never marked committed, and vacuum collects them (Ch. 6). This is the elegant interlock of the whole design: <strong>MVCC is the undo log</strong>, amortized into the table.</p>
+<p>The details that matter operationally, each a small theorem:</p>
+<ul>
+<li><strong>Torn pages and full-page writes</strong>: if a crash interrupts an 8 KiB page write, the page may be half-old/half-new — and redo against a <em>corrupt base</em> is garbage. Fix: the first modification of each page after a checkpoint logs a <strong>full-page image</strong> (FPI); replay restores the image, then applies records. Corollaries: WAL volume spikes after every checkpoint; spreading checkpoints further apart (<code>max_wal_size</code>) reduces FPI traffic; <code>pg_waldump --stats</code> shows you the FPI share directly.</li>
+<li><strong>Checkpoints</strong> are <em>spread</em> (<code>checkpoint_completion_target</code>) so the flush of gigabytes of dirty pages doesn't slam the disks at once; recovery time scales with checkpoint distance — the knob trades steady-state write amplification against restart latency.</li>
+<li><strong>Group commit</strong>: concurrent committers share fsyncs (one flush durably commits everyone whose record it covers); <code>synchronous_commit=off</code> goes further — commit returns before the flush, risking the last ~<code>wal_writer_delay</code>×3 of <em>acknowledged</em> transactions on a crash but never corruption or torn replay (the WAL rules still hold). Know exactly which guarantee each setting sells.</li>
+<li><strong>fsyncgate</strong> (2018), the cautionary tale: PostgreSQL assumed a failed <code>fsync</code> could be retried; on Linux, the kernel may <em>clear the error state and drop the dirty pages</em> after reporting the failure once — retrying "succeeds" while the data is gone. The fix was to <strong>PANIC on fsync failure</strong> and recover from WAL, never retry. Moral for every storage engineer: the contract you assume the OS honors is part of your correctness proof, and it was never written down where you thought.</li>
+<li>The same WAL stream, shipped, <em>is</em> physical replication and PITR — recovery and replication being one mechanism is the architectural dividend of redo logging.</li>
+</ul>
+<h3 id="52-sqlite-mode-one-the-rollback-journal-undo-logging">5.2 SQLite mode one: the rollback journal (undo logging)</h3>
+<p>Default mode. Before modifying a page, SQLite copies the <strong>original</strong> page into <code>dbname-journal</code> (undo log); syncs the journal; writes the new pages into the database file <em>in place</em>; syncs; then <strong>deletes/invalidates the journal — which is the commit instant</strong> (one atomic event: the journal's existence flips the meaning of the main file). Crash with journal present → roll <em>back</em> by restoring the saved pages; crash after journal gone → the new data simply is the database. The <a href="https://www.sqlite.org/atomiccommit.html">Atomic Commit</a> document walks every step's failure window — read it once in full; it is the cleanest published proof-sketch of crash safety anywhere.</p>
+<p>Costs, symmetrical to PostgreSQL's: every write transaction pays ≥2 fsyncs and writes pages <em>twice</em> (journal + database); readers and the writer exclude each other during the commit window (the file is momentarily inconsistent in place); but the database is always exactly one file (plus a transient journal), and recovery is instant.</p>
+<h3 id="53-sqlite-mode-two-wal">5.3 SQLite mode two: WAL</h3>
+<p><code>PRAGMA journal_mode=WAL</code> inverts the roles, landing one design decision away from PostgreSQL: modified pages are <strong>appended to <code>dbname-wal</code></strong> (redo log of page images); the main file is untouched until a <strong>checkpoint</strong> copies WAL frames back. Readers read the main file but first consult the <strong>WAL index</strong> (the memory-mapped <code>-shm</code> hash) to redirect any page that has a newer committed frame — each reader pinned to the WAL position at its snapshot's start, which is precisely how WAL mode buys <strong>readers that never block the writer and vice versa</strong> (the concurrency upgrade that motivates the mode; Ch. 6 builds isolation on it). Commit = append + (by default) sync; <code>synchronous=NORMAL</code> in WAL mode syncs only at checkpoints — the popular middle setting: durability of the last few commits traded away, corruption still impossible, the same shape of bargain as <code>synchronous_commit=off</code>.</p>
+<p>Checkpointing is the mode's operational tax: the WAL grows until a checkpoint copies frames back, and a checkpoint can only recycle the WAL up to the <em>oldest reader's</em> position — a long-lived read transaction pins the log (<code>PASSIVE</code>/<code>FULL</code>/<code>RESTART</code>/<code>TRUNCATE</code> checkpoint variants escalate how hard it tries). Set against PostgreSQL: same redo logic, same checkpoint-vs-recovery trade, but page-image-only frames (no logical records), per-database log, and the <em>reader</em> — not vacuum — as the thing that pins history. Files: <code>.db</code> + <code>-wal</code> + <code>-shm</code>, the answer to "why are there three files now," a question every SQLite WAL user eventually asks in production.</p>
+<h3 id="exercises-5">Exercises 5</h3>
+<ol>
+<li>Walk both failure windows of the rollback journal by hand (crash before journal sync; crash between data write and journal delete): state what's on disk and what recovery does. Then do the same for WAL mode (crash mid-append; crash mid-checkpoint).</li>
+<li>With <code>pg_waldump --stats</code>, measure FPI bytes vs. record bytes for a workload of 10⁵ single-row updates immediately after a manual <code>CHECKPOINT</code>, then again without checkpointing. Explain the ratio change.</li>
+<li>Prove (informally) that PostgreSQL redo is idempotent given the page-LSN rule, and exhibit what would go wrong replaying a record into a page <em>newer</em> than the record without the check.</li>
+<li>Rank by durability-of-acknowledged-commits and by write amplification: PG <code>synchronous_commit=on/off</code>; SQLite rollback <code>synchronous=FULL</code>; SQLite WAL <code>synchronous=FULL/NORMAL</code>. One sentence of justification each.</li>
+<li>Why does PostgreSQL need no undo pass while ARIES-style engines (InnoDB, SQL Server) do? Identify exactly which design choice (Ch. 6 preview) substitutes for undo, and what <em>it</em> costs instead.</li>
+</ol>
+<hr>
+<h2 id="chapter-6-mvcc-and-transaction-isolation">Chapter 6 — MVCC and Transaction Isolation</h2>
+<p>Multi-Version Concurrency Control is the idea that <strong>readers and writers need not block each other if writers create new versions instead of overwriting</strong> — every modern engine's answer to lock-based readers. The two systems implement it at opposite granularities: PostgreSQL versions <em>rows</em>; SQLite (WAL mode) versions <em>the database</em>. Both deliver snapshot reads; everything else differs.</p>
+<h3 id="61-postgresql-row-version-mvcc">6.1 PostgreSQL: row-version MVCC</h3>
+<p>Chapter 2 planted the fields; here is the machine. Every transaction gets a 32-bit <strong>xid</strong>. Every tuple carries <code>t_xmin</code> (creator) and <code>t_xmax</code> (deleter — or 0). The operations:</p>
+<ul>
+<li><code>INSERT</code>: new tuple, <code>xmin</code> = my xid.</li>
+<li><code>DELETE</code>: set <code>xmax</code> = my xid on the current version. Nothing is removed.</li>
+<li><code>UPDATE</code> = <code>DELETE</code> + <code>INSERT</code>: the old version gets <code>xmax</code>, a complete new version is written (<code>t_ctid</code> of the old points to the new). <strong>Every update physically duplicates the row.</strong></li>
+</ul>
+<p>A <strong>snapshot</strong> is <code>(xmin_horizon, xmax_horizon, [in-progress xids])</code> taken at statement start (READ COMMITTED) or transaction start (REPEATABLE READ). A tuple is <strong>visible</strong> to a snapshot iff its <code>xmin</code> is committed-and-not-in-progress-and-before-the-horizon, and its <code>xmax</code> is absent/aborted/in-progress/after-horizon. Commit status itself lives in <strong>pg_xact</strong> (the commit log, 2 bits per xid); since checking it per-tuple forever would be ruinous, the first reader to resolve a tuple's status stamps <strong>hint bits</strong> into <code>t_infomask</code> (<code>XMIN_COMMITTED</code> etc.) — which is why a freshly bulk-loaded table generates a wave of <em>writes</em> on first read, an eternally surprising production observation with a one-line explanation.</p>
+<p>The bills now come due, and naming them precisely is the point of the chapter:</p>
+<ul>
+<li><strong>Dead tuples</strong>: superseded/deleted versions visible to no possible snapshot are garbage. <strong>VACUUM</strong> collects them: scans (guided by the <strong>visibility map</strong>, skipping all-visible pages), removes dead tuples, marks line pointers reusable, updates the <strong>free space map</strong>, and sets all-visible bits — which double as the enabler of <strong>index-only scans</strong> (an index can answer without heap visits only for pages the VM certifies all-visible). Autovacuum triggers on dead-tuple thresholds; a vacuum-starved table is "bloat" — the heap and indexes full of ghosts, scans slower, cache colder. Crucially, vacuum can only remove versions older than the <strong>oldest active snapshot</strong>: a forgotten <code>IDLE IN TRANSACTION</code> session pins the entire cluster's garbage, the precise analog of SQLite's reader pinning the WAL.</li>
+<li><strong>Index amplification &amp; HOT</strong>: since indexes point at ctids and an update makes a new ctid, a single-row update naively inserts into <em>every</em> index of the table. <strong>Heap-Only Tuples</strong> (HOT) avert this when (a) no indexed column changed and (b) the new version fits on the <em>same page</em>: the indexes keep pointing at the old line pointer, which becomes a <code>REDIRECT</code> to the chain of versions on-page. This is why <code>fillfactor &lt; 100</code> on hot-update tables is real advice (reserve on-page room for chains), why "don't index columns you update constantly" has mechanical content, and what v14's bottom-up index deletion (Ch. 3) mops up when HOT can't apply.</li>
+<li><strong>Wraparound and freezing</strong>: 32-bit xids wrap. Comparisons are modular (2³¹ ahead/behind), so versions older than ~2 billion xids would suddenly look <em>future</em> — therefore vacuum <strong>freezes</strong> old tuples (marks them visible-to-all, modernly via <code>t_infomask</code> bits), and <code>autovacuum_freeze_max_age</code> forces aggressive vacuums before the horizon approaches. The infamous "database shutting down to prevent wraparound data loss" incidents are this machinery, ignored until it became unignorable.</li>
+</ul>
+<p><strong>Isolation levels on top</strong>: READ COMMITTED = new snapshot per statement (plus the quietly tricky <code>EvalPlanQual</code> recheck: an update finding its target row concurrently updated re-evaluates against the <em>new</em> version — no serializability, but no lost update on the same row either). REPEATABLE READ = one snapshot per transaction — true <strong>snapshot isolation</strong>, which famously still admits <strong>write skew</strong> (two transactions each read the other's write-target and both commit: e.g., two doctors each going off-call after checking "≥2 on call"). SERIALIZABLE = <strong>SSI</strong> (Serializable Snapshot Isolation, Cahill/Ports &amp; Grittner, v9.1): run as snapshot isolation but track read/write dependencies via <strong>SIREAD locks</strong> (predicate-level, lock nothing, block nothing), and abort a transaction whenever a <em>dangerous structure</em> — two consecutive read-write antidependencies — completes, the condition under which SI anomalies are possible. The contract: no blocking, occasional false-positive aborts, and the application <strong>must retry on SQLSTATE 40001</strong>. SSI is one of the few cases of a 2008 research result shipping nearly verbatim in a mainstream engine, and PostgreSQL's is still the reference implementation.</p>
+<h3 id="62-sqlite-the-whole-database-as-one-version">6.2 SQLite: the whole database as one version</h3>
+<p>SQLite has no per-row versions, no xmin/xmax, no vacuum-the-garbage problem — because it versions at file granularity. Rollback mode: readers and the writer share the <em>same</em> bytes, so isolation is by exclusion (Ch. 7's lock ladder) — <code>SERIALIZABLE</code> trivially, via "one at a time." WAL mode: a reader's transaction records a position in the WAL (via the wal-index) and reads <em>the database as of that frame</em> for its whole life — clean <strong>snapshot isolation for readers</strong> — while the single writer appends beyond it. Since there is never more than one writer, <em>writer-writer</em> anomalies (lost update, write skew) are impossible by construction: <strong>SQLite is serializable because concurrency control degenerates to mutual exclusion.</strong> The entire content of PostgreSQL's §6.1 — visibility rules, hint bits, vacuum, HOT, SSI — exists to recover, under high write concurrency, the simplicity SQLite gets by refusing write concurrency. Neither is free; Chapter 7 prices the other side (writers queueing on <code>SQLITE_BUSY</code>).</p>
+<p>The vestigial cousin: <code>VACUUM</code> in SQLite is an <em>offline rewrite</em> (rebuild the file compactly — defragmentation, not garbage collection), and <code>auto_vacuum</code> merely truncates freed pages; do not let the shared name suggest shared function.</p>
+<h3 id="exercises-6">Exercises 6</h3>
+<ol>
+<li>Two psql sessions: A <code>BEGIN; UPDATE row;</code> (no commit), B reads the row under READ COMMITTED and under REPEATABLE READ, A commits, B reads again. Explain all four observations with snapshot contents and visibility rules, then verify the tuple states with <code>heap_page_items</code> (find the xmax and the ctid chain).</li>
+<li>Construct write skew under REPEATABLE READ (the on-call doctors), confirm it commits, then rerun under SERIALIZABLE and exhibit the 40001 abort. Which transaction aborts, and is that choice deterministic?</li>
+<li>Measure HOT: a table with one index, <code>fillfactor=90</code>; update a <em>non-indexed</em> column 10⁵ times and watch <code>pg_stat_user_tables.n_tup_hot_upd</code> vs. index size; repeat updating the <em>indexed</em> column. Explain both curves.</li>
+<li>Why must vacuum's removable-horizon be the oldest snapshot, not the oldest <em>write</em> transaction? Construct the read anomaly that premature removal would cause for a long REPEATABLE READ reader.</li>
+<li>In SQLite WAL mode, open a long read transaction, commit 10⁴ writes from another connection, and watch the <code>-wal</code> file size and <code>PRAGMA wal_checkpoint(PASSIVE)</code>'s return values. Explain the pinning, and name the exact PostgreSQL analog from this chapter.</li>
+<li>State precisely why write skew is impossible in SQLite, and what the application gives up to obtain that (answer in terms of the throughput model of Ch. 7).</li>
+</ol>
+<hr>
+<h2 id="chapter-7-locking-and-concurrency-control">Chapter 7 — Locking and Concurrency Control</h2>
+<p>MVCC removed reader/writer blocking; what remains is writer/writer coordination and physical-structure protection — locks of several distinct species that are routinely confused. Taxonomy first, then the two systems.</p>
+<h3 id="71-the-species">7.1 The species</h3>
+<ol>
+<li><strong>Latches / lightweight locks</strong>: protect <em>in-memory structures</em> (a buffer page being read while another thread writes it, the buffer mapping table) for microseconds; no deadlock detection, no transaction scope. PostgreSQL: <code>LWLock</code>s + per-buffer content locks (visible in <code>pg_stat_activity.wait_event</code> under load). SQLite: a connection-level mutex — the library serializes itself.</li>
+<li><strong>Row/object locks</strong>: transaction-scoped logical locks with deadlock handling. PostgreSQL stores <strong>row locks in the tuples themselves</strong> — locking a row writes the locker's xid into <code>t_xmax</code> plus infomask bits (so an in-memory lock table cannot be exhausted by a million row locks; multiple lockers share a <strong>multixact</strong>) — with four flavors (<code>KEY SHARE</code>/<code>SHARE</code>/<code>NO KEY UPDATE</code>/<code>UPDATE</code>) whose main consumer is foreign-key enforcement (<code>KEY SHARE</code> taken on referenced rows is why FK checks don't block ordinary updates of non-key columns).</li>
+<li><strong>Table-level locks</strong>: the eight-mode matrix (<code>ACCESS SHARE</code> … <code>ACCESS EXCLUSIVE</code>) whose entire purpose is letting DDL and queries negotiate. The two facts that prevent most production lock incidents: every <code>SELECT</code> holds <code>ACCESS SHARE</code>, and lock <em>queues</em> are fair — so an <code>ALTER TABLE</code> waiting behind one long query makes every <em>subsequent</em> <code>SELECT</code> queue behind the <code>ALTER</code>: the classic "one idle transaction froze the whole app" has this exact shape, and <code>lock_timeout</code> on DDL is the standard vaccine.</li>
+</ol>
+<p><strong>Deadlocks</strong>: PostgreSQL builds a waits-for graph when a lock wait exceeds <code>deadlock_timeout</code> (1s default) and aborts one cycle member (SQLSTATE 40P01) — detection, not prevention, so applications must order their lock acquisitions or be retry-ready. SQLite cannot deadlock between two transactions in the classic sense (one writer), but has its one famous wait: the <strong>upgrade</strong>.</p>
+<h3 id="72-sqlites-lock-ladder-and-sqlite_busy">7.2 SQLite's lock ladder, and SQLITE_BUSY</h3>
+<p>Rollback mode is a five-state file-lock ladder: <code>UNLOCKED → SHARED</code> (readers, many) <code>→ RESERVED</code> (intent to write, one; readers still enter) <code>→ PENDING</code> (no <em>new</em> readers; draining) <code>→ EXCLUSIVE</code> (the commit window). The well-known trap is the <strong>lock upgrade deadlock-in-miniature</strong>: a transaction that reads under <code>SHARED</code> and then writes must upgrade to <code>RESERVED</code> — if another connection already holds <code>RESERVED</code>, you get <code>SQLITE_BUSY</code> <em>immediately and unretriably-in-place</em> (waiting can't help: the other writer may be waiting for <em>your</em> readers to drain — a real deadlock, which SQLite resolves by refusing to wait). The idioms that exist because of this paragraph: <code>BEGIN IMMEDIATE</code> (take <code>RESERVED</code> up front if you know you'll write — turning the upgrade race into a simple queue), <code>busy_timeout</code> (politely spin on the cases where waiting <em>can</em> help), and WAL mode (readers never block the writer, so the ladder collapses to "writers queue on one lock"). Even in WAL mode the writer is single: SQLite write throughput is one-writer-at-a-time <em>by design</em>, fine for its design point (local data, one app), and the honest disqualifier for shared-server workloads — this, not parsing speed or planner sophistication, is the load-bearing difference.</p>
+<p>PostgreSQL's mirror-image trap, for symmetry: nothing stops a hundred writers, but <code>SELECT … FOR UPDATE</code> ordering, FK lock interactions (multixact contention on hot referenced rows), and DDL queueing produce the waits — richer machinery, richer failure modes. Each system's locking war stories are exactly the inverse of the other's.</p>
+<h3 id="exercises-7">Exercises 7</h3>
+<ol>
+<li>Reproduce SQLITE_BUSY-on-upgrade with two connections in rollback mode (<code>BEGIN; SELECT; ... UPDATE</code> in both). Fix it three ways (<code>BEGIN IMMEDIATE</code>, <code>busy_timeout</code>, WAL) and explain what each changes mechanically.</li>
+<li>In PostgreSQL, demonstrate the DDL pile-up: session A holds a long <code>SELECT</code>, session B issues <code>ALTER TABLE ... ADD COLUMN</code>, session C runs a fast <code>SELECT</code>. Show C waits, identify all three lock modes in <code>pg_locks</code>, and resolve with <code>lock_timeout</code>.</li>
+<li>Why does PostgreSQL store row locks in tuple headers rather than a lock table? Compute the memory a 10⁷-row <code>SELECT FOR UPDATE</code> would need at ~150 bytes/lock-table-entry, and name what InnoDB does instead (escalation) and what that costs.</li>
+<li>Construct a three-transaction deadlock in PostgreSQL (cyclic <code>FOR UPDATE</code> on three rows), watch detection fire, and verify which victim is chosen. Is victim choice load-bearing for your application's retry logic?</li>
+<li>For a workload of 95% reads / 5% single-row writes from 8 processes, predict throughput behavior on: PG, SQLite rollback, SQLite WAL. State the serialization point in each.</li>
+</ol>
+<hr>
+<h2 id="chapter-8-query-processing-i-parsing-statistics-and-planning">Chapter 8 — Query Processing I: Parsing, Statistics, and Planning</h2>
+<p>Everything before this chapter executes <em>given</em> decisions; the planner <em>makes</em> them. It is the layer where databases are most like compilers — and where their errors are silent, manifesting only as latency.</p>
+<h3 id="81-from-text-to-plan">8.1 From text to plan</h3>
+<p>PostgreSQL: parser (grammar → parse tree) → analyzer (catalog lookup: names → OIDs, types resolved) → <strong>rewriter</strong> (views and rules textually expanded into the query tree) → <strong>planner</strong>. SQLite: parse → name resolution → its planner → <strong>bytecode generation</strong> (Ch. 9; SQLite compiles all the way to an executable program — <code>EXPLAIN</code> shows the actual opcodes, <code>EXPLAIN QUERY PLAN</code> the planner's intent).</p>
+<p>The planner's problem is well-posed: among the semantically equivalent plans (scan choices × join orders × join algorithms × …), pick the cheapest under a <strong>cost model</strong> fed by <strong>statistics</strong>. Both parts can be wrong; understanding <em>how each is wrong</em> is the skill.</p>
+<h3 id="82-statistics-what-the-planner-knows">8.2 Statistics: what the planner knows</h3>
+<p><code>ANALYZE</code> (both systems' verb!) samples tables into summaries:</p>
+<ul>
+<li><strong>PostgreSQL</strong> (<code>pg_statistic</code>, viewed via <code>pg_stats</code>): per column — null fraction, average width, <strong>n_distinct</strong> (negative = proportional to rowcount), <strong>most-common values</strong> with frequencies, an equi-depth <strong>histogram</strong> of the rest, and physical <strong>correlation</strong> (how well heap order tracks the column — the input that decides whether an index range scan means sequential or random heap I/O). Selectivity arithmetic: <code>col = const</code> → MCV hit or <code>(1 − Σmcv_freqs)/(n_distinct − n_mcvs)</code>; ranges → histogram interpolation; <code>AND</code> → multiply (the <strong>independence assumption</strong>, the cost model's original sin: correlated predicates like <code>city='SF' AND state='CA'</code> multiply to near-zero while reality is 1× — <code>CREATE STATISTICS</code> exists precisely to declare such dependencies). Estimation errors <strong>compound through joins</strong> roughly multiplicatively — a 10× error at the bottom is a 1000× error three joins up, by which point the chosen plan is pathological; this compounding, not any single bad estimate, is the root of most "the planner went insane" incidents.</li>
+<li><strong>SQLite</strong> (<code>sqlite_stat1</code>, optionally <code>stat4</code>): per index — rows, and average rows per distinct prefix of each index-column prefix; <code>STAT4</code> adds sampled key values for range estimation. Coarser by design, supplemented by aggressive <em>structural</em> heuristics, and — a deliberate philosophy difference — SQLite without <code>ANALYZE</code> assumes sensible defaults and leans on the schema (unique indexes ⇒ selectivity 1), accepting worse plans on weird data in exchange for zero-maintenance behavior in its embedded habitat.</li>
+</ul>
+<h3 id="83-join-ordering-the-combinatorial-core">8.3 Join ordering: the combinatorial core</h3>
+<p>Join order is where plan spaces explode (Catalan-number growth in relation count). <strong>PostgreSQL</strong> runs the System R playbook: <strong>dynamic programming</strong> over subsets — best plan for every 2-relation subset, then 3, … — with <em>interesting orders</em> kept (a costlier subplan that delivers sort order useful later survives); beyond <code>geqo_threshold</code> (12 relations) it switches to a <strong>genetic algorithm</strong> (GEQO), trading optimality for planning time — the existence of that switch is itself the lesson about the problem's hardness. <strong>SQLite</strong>'s <strong>Next-Generation Query Planner</strong> runs the same idea, budgeted: a beam-ish search (N best prefixes per level) over join orders with nested-loop execution assumed — because SQLite's executor (Ch. 9) is nested-loop-only by design, the planner's real decision is <em>order and index choice</em>, a smaller, embeddable problem.</p>
+<p>Cost units deserve demystification: PostgreSQL costs are <strong>abstract</strong> (<code>seq_page_cost=1.0</code> is the unit; <code>random_page_cost=4.0</code> <em>encodes the rotational-disk era</em> — on NVMe/cloud SSD, lowering it toward 1.1 is the single most consequential planner tuning, mechanically shifting the seq-scan/index-scan crossover); <code>effective_cache_size</code> doesn't allocate anything — it's a <em>belief</em> about OS caching that discounts repeated index page fetches. The planner is a model; tuning is belief-revision.</p>
+<h3 id="exercises-8">Exercises 8</h3>
+<ol>
+<li>With <code>pg_stats</code>, hand-compute the planner's row estimate for an equality predicate on a column you've populated with a skewed (Zipfian) distribution — MCV path and non-MCV path — and check against <code>EXPLAIN</code>'s estimate.</li>
+<li>Build the correlated-predicate trap (<code>city</code>/<code>state</code>), show the 100×-off estimate and the bad plan at three joins, then fix with <code>CREATE STATISTICS (dependencies)</code> and re-explain. Where did the error compound?</li>
+<li>Find the crossover: one table, one selective→unselective range predicate; vary selectivity and <code>random_page_cost</code> (4.0 vs 1.1) and chart where PostgreSQL flips seq scan ↔ index scan. Explain the flip with the cost formula and the <code>correlation</code> statistic.</li>
+<li>In SQLite, run a 4-table join with <code>EXPLAIN QUERY PLAN</code> before and after <code>ANALYZE</code> on data engineered so the default heuristics misorder the join. What changed in <code>sqlite_stat1</code>, and in the chosen order?</li>
+<li>Why does keeping <em>interesting orders</em> in the DP table matter? Construct a two-join query where the globally best plan contains a locally suboptimal subplan (merge-join-friendly sort order), and verify PostgreSQL finds it.</li>
+</ol>
+<hr>
+<h2 id="chapter-9-query-processing-ii-execution">Chapter 9 — Query Processing II: Execution</h2>
+<p>Two genuinely different execution architectures: PostgreSQL interprets a <strong>plan tree of iterators</strong>; SQLite executes <strong>compiled bytecode on a virtual machine</strong>. Same relational algebra, different machine — and the difference is instructive far beyond these two systems (it is the interpreter-vs-compiler axis that modern analytics engines push to its endpoint).</p>
+<h3 id="91-postgresql-the-volcano-iterator-model">9.1 PostgreSQL: the Volcano iterator model</h3>
+<p>Every plan node implements <code>next() → tuple</code>: a parent pulls from children, demand-driven, one row at a time (<code>Limit 10</code> naturally stops the pipeline after ten pulls — early termination for free). The node catalog you'll meet in every <code>EXPLAIN</code>:</p>
+<ul>
+<li><strong>Scans</strong>: <em>Seq Scan</em> (heap order, ring-buffered); <em>Index Scan</em> (b-tree order, heap fetch per hit — random I/O unless <code>correlation</code> is high); <em>Index Only Scan</em> (no heap fetch for VM-all-visible pages — Ch. 6's dividend, and the reason its <code>Heap Fetches</code> number is the health metric of vacuum); <em>Bitmap Index/Heap Scan</em> (the hybrid: collect ctids from one <em>or several</em> indexes, OR/AND the bitmaps, then visit heap pages in <em>physical order</em> — converting random to sequential I/O, degrading gracefully to per-page "lossy" bits under <code>work_mem</code> pressure).</li>
+<li><strong>Joins</strong>: <em>Nested Loop</em> (drives an inner index probe; the OLTP join), <em>Hash Join</em> (build hash on smaller input, probe with larger; spills to batches — grace hashing — beyond <code>work_mem</code>; the analytics join), <em>Merge Join</em> (two sorted inputs zipped; wins when order is free from indexes or needed anyway above).</li>
+<li><strong>Sort/Agg</strong>: in-memory quicksort spilling to external k-way merge (<code>work_mem</code> per sort node, not per query — the multiplier that makes global <code>work_mem</code> raises dangerous); hash aggregation, spillable since v13; <em>Incremental Sort</em> exploiting a prefix already ordered.</li>
+<li><strong>Parallelism</strong> (v9.6+): Gather + worker backends partition scans/joins/aggregates. <strong>JIT</strong> (v11+, LLVM): for large queries, expression evaluation and tuple deforming compile to native code — attacking the iterator model's known tax (per-row virtual dispatch), the same diagnosis that drove vectorized/compiled analytics engines (DuckDB, ClickHouse); PostgreSQL keeps row-at-a-time semantics and JITs the hot leaves.</li>
+</ul>
+<p>Read <code>EXPLAIN (ANALYZE, BUFFERS)</code> like a profiler: actual-vs-estimated rows per node (the planner audit — Ch. 8's errors land here), per-node buffers (I/O attribution), loops (a nested-loop inner shows its <em>per-iteration</em> rows ×loops). Most real tuning sessions are: find the node where estimates diverge 100×, fix the statistic or the predicate, re-plan.</p>
+<h3 id="92-sqlite-the-vdbe">9.2 SQLite: the VDBE</h3>
+<p><code>sqlite3_prepare()</code> compiles SQL into a program for the <strong>Virtual DataBase Engine</strong> — a register machine whose opcodes (<code>OpenRead</code>, <code>Rewind</code>, <code>SeekGE</code>, <code>Column</code>, <code>ResultRow</code>, <code>Next</code>, <code>Halt</code>…) are the <em>only</em> thing the execution layer runs. <code>EXPLAIN</code> prints it:</p>
+<pre><code class="language-text">sqlite&gt; EXPLAIN SELECT name FROM users WHERE id = ?;
+addr opcode        p1 p2 p3
+0    Init           0  8
+1    OpenRead       0  2  0  2          # cursor 0 on root page 2 (users)
+2    Variable       1  1               # bind ? into r[1]
+3    SeekRowid      0  7  1            # b-tree seek; jump to 7 if absent
+4    Column         0  1  2            # r[2] := users.name
+5    ResultRow      2  1               # emit
+7    Halt
+</code></pre>
+<p>A prepared statement <em>is</em> this program plus its cursors — re-binding and re-running it skips parse and plan entirely, which is why "prepare once, step many" is the core SQLite performance idiom (and why its per-statement overhead can undercut a client-server round trip by orders of magnitude: the "function call to <code>fopen()</code>-land" architecture cashing out). Joins compile to nested loops as nested opcode loops; subqueries/CTEs become <strong>co-routines</strong> (two programs interleaved by <code>Yield</code> — the bytecode answer to pipelining); there is no hash join, no parallelism — by design: predictable, tiny, embeddable. The structural insight to carry away: PostgreSQL's executor is a <em>library of operators</em> interpreted over a tree; SQLite's is a <em>compiler target</em>; both are dominated, in the analytical limit, by engines that vectorize — execution architecture is a spectrum, and you now hold its two classical poles.</p>
+<h3 id="exercises-9">Exercises 9</h3>
+<ol>
+<li>Take one three-table join and produce: PostgreSQL <code>EXPLAIN (ANALYZE, BUFFERS)</code> and SQLite <code>EXPLAIN</code> + <code>EXPLAIN QUERY PLAN</code>. Annotate every PostgreSQL node with its SQLite opcode-range counterpart (or its absence).</li>
+<li>Force all three PostgreSQL join algorithms on the same query (<code>enable_hashjoin</code> etc.) and explain each cost from inputs' sizes, order, and indexes. Where does each win <em>legitimately</em>?</li>
+<li>Demonstrate bitmap scan's purpose: a predicate matching 5% of a big table, scattered; compare index scan vs. bitmap scan timing and <code>BUFFERS</code>, then check <code>correlation</code> and explain.</li>
+<li>Measure the prepared-statement effect in SQLite: 10⁵ point lookups via re-prepared text vs. one prepared statement re-bound. Attribute the difference to specific lifecycle stages.</li>
+<li>Why does <code>LIMIT 10</code> cost almost nothing under Volcano but a hash aggregate under it still consumes its whole input? Classify operators into pipelining vs. <em>pipeline breakers</em> and re-read your plan from (1) marking each.</li>
+</ol>
+<hr>
+<h2 id="chapter-10-beyond-the-b-tree-other-indexes-and-the-lsm-road-not-taken">Chapter 10 — Beyond the B-Tree: Other Indexes, and the LSM Road Not Taken</h2>
+<h3 id="101-postgresqls-index-menagerie">10.1 PostgreSQL's index menagerie</h3>
+<p>The access-method layer is pluggable, and the built-ins each embody one idea:</p>
+<ul>
+<li><strong>GIN</strong> (Generalized Inverted Index): maps <em>elements</em> → posting lists of rows containing them — the index for "column is a container" (arrays, <code>jsonb</code> keys/paths, full-text <code>tsvector</code>, trigrams via <code>pg_trgm</code> — which is how <code>LIKE '%substr%'</code> becomes indexable). Write amplification is its tax (one row touches many keys; the <code>fastupdate</code> pending list batches it).</li>
+<li><strong>GiST</strong>: a generalized balanced tree over any data with a "consistent" predicate — R-tree semantics for geometry/ranges (<code>&amp;&amp;</code> overlap), nearest-neighbor (<code>ORDER BY &lt;-&gt;</code>), exclusion constraints (<code>EXCLUDE USING gist (room WITH =, during WITH &amp;&amp;)</code> — the booking-conflict constraint SQL can't otherwise express). <strong>SP-GiST</strong> covers space-partitioned cousins (quadtrees, radix tries).</li>
+<li><strong>BRIN</strong>: block-range summaries (min/max per ~128 pages) — an index of <em>kilobytes</em> on a <em>terabyte</em> table, valid exactly when physical order correlates with the column (append-only time series); the degenerate-but-brilliant end of the indexing spectrum.</li>
+<li><strong>Hash</strong>: equality-only; crash-safe since v10; still rarely beats b-tree in practice — included here mostly as the answer to "why not hash?" (no ranges, no order, marginal wins).</li>
+<li>Cross-cutting: <strong>partial indexes</strong> (<code>WHERE status='pending'</code> — index only the hot subset), <strong>expression indexes</strong> (<code>lower(email)</code>), <strong>covering</strong> (<code>INCLUDE</code> columns for index-only scans). These three, plus b-tree, solve ~95% of schema-design indexing in the wild.</li>
+</ul>
+<p><strong>SQLite</strong>'s set is leaner, same ideas where it counts: partial and expression indexes (yes, both), <code>WITHOUT ROWID</code> as the clustering tool (Ch. 3), <strong>R*Tree</strong> as a module (virtual table), <strong>FTS5</strong> as the inverted-index engine (a GIN-equivalent for text, complete with BM25 ranking) — built on the <em>virtual table</em> mechanism, SQLite's general extension story (an "index type" is just a table-valued module with its own <code>xBestIndex</code> cost hook into the planner: the embeddable answer to PostgreSQL's access-method API).</p>
+<h3 id="102-the-lsm-road-not-taken">10.2 The LSM road not taken</h3>
+<p>Neither system uses <strong>log-structured merge trees</strong> — the B-tree's great modern rival (RocksDB, LevelDB, Cassandra, and most KV stores). The design, compressed: writes go to a memtable + log; flushed as immutable sorted runs (SSTables); background <strong>compaction</strong> merges runs down a hierarchy of levels; reads consult memtable + every level (bloom filters pruning most probes). The trade triangle, by amplification class:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>B-tree (PG/SQLite)</th>
+<th>LSM</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Write amp</strong></td>
+<td>page-sized random writes per small update, + WAL (and FPIs)</td>
+<td>sequential always; but compaction <em>rewrites data repeatedly</em> — total amp often 10–30× yet sequential and batched</td>
+</tr>
+<tr>
+<td><strong>Read amp</strong></td>
+<td>one tree descent (≈1–2 I/Os, cached top)</td>
+<td>potentially one probe per level; blooms make point reads ≈1, <em>range scans</em> pay a merge across runs</td>
+</tr>
+<tr>
+<td><strong>Space amp</strong></td>
+<td>fragmentation + dead versions (vacuum's domain)</td>
+<td>obsolete versions awaiting compaction (typ. ~1.1–2×)</td>
+</tr>
+</tbody>
+</table>
+<p>Why these two systems rightly stayed B-tree: their workloads want cheap <em>reads and range scans with predictable latency</em> and in-place updates of moderate rate — the B-tree's home turf — while LSM's victory condition is write-dominated ingest on storage that rewards sequential I/O. The deeper unification (the RUM conjecture): <strong>Read, Update/write, and Memory/space overheads cannot all be minimized at once</strong> — every storage structure is a point on that simplex, and "B-tree vs. LSM" is not a fashion question but a coordinates question. (PostgreSQL's pluggable <em>table</em> access methods and projects like the OrioleDB engine are attempts to let the same SQL layer choose different coordinates; SQLite once shipped LSM as an experimental <code>lsm1</code> extension — the road exists, it's just not the default.)</p>
+<h3 id="exercises-10">Exercises 10</h3>
+<ol>
+<li>For each query, name the best PostgreSQL index and why the alternatives lose: (a) <code>WHERE tags @&gt; '{urgent}'</code>; (b) <code>WHERE created_at &gt; now()-'1 day'</code> on an append-only 2 TB table; (c) <code>WHERE lower(email)=?</code>; (d) <code>ORDER BY location &lt;-&gt; point(?,?) LIMIT 5</code>; (e) <code>WHERE status='pending'</code> where 0.1% of rows are pending.</li>
+<li>Implement booking-overlap prevention with a GiST exclusion constraint; demonstrate the constraint rejecting a conflicting insert under concurrency, and explain why a <code>UNIQUE</code> index cannot express it.</li>
+<li>Build FTS5 over 10⁵ documents in SQLite and inspect its shadow tables (<code>_data</code>, <code>_idx</code>). Identify the inverted-index structure and compare its query path to GIN's (posting lists, merge).</li>
+<li>Compute total bytes written for 10⁶ random 100-byte row updates: B-tree (8 KiB page write + WAL record + amortized FPI per checkpoint interval) vs. an LSM with leveled compaction (write amp 15×, sequential). Then compute for <em>point-read</em> latency at 99th percentile on cold cache. Which workload flips the verdict?</li>
+<li>Place five systems on the RUM triangle from their docs: PostgreSQL heap+btree, SQLite, RocksDB, ClickHouse's MergeTree, a plain append-only log. Justify each placement in one sentence.</li>
+</ol>
+<hr>
+<h2 id="chapter-11-two-walkthroughs-the-life-of-a-query-and-the-life-of-a-write">Chapter 11 — Two Walkthroughs: The Life of a Query and the Life of a Write</h2>
+<p>The synthesis chapter: every preceding layer, traversed once, in each system. Read these slowly — being able to narrate them from memory <em>is</em> the learning objective of the guide.</p>
+<h3 id="111-postgresql-update-accounts-set-balance-balance-100-where-id-42-commit">11.1 PostgreSQL: <code>UPDATE accounts SET balance = balance - 100 WHERE id = 42; COMMIT;</code></h3>
+<ol>
+<li><strong>Parse/analyze/rewrite/plan</strong> (Ch. 8): trivial here — index scan on <code>accounts_pkey</code>.</li>
+<li><strong>Executor</strong> (Ch. 9): Index Scan descends the b-tree (Ch. 3) — root and internal pages almost surely buffer hits (Ch. 4) — finds the ctid, fetches the heap page (pin + content latch), checks <strong>visibility</strong> of the tuple against the snapshot (Ch. 6).</li>
+<li><strong>Row lock</strong>: <code>t_xmax</code> ← my xid (Ch. 7); if a concurrent committed update is found, EvalPlanQual re-check (Ch. 6).</li>
+<li><strong>New version</strong>: construct the updated tuple; HOT if no indexed column changed and the page has room (it's the <em>indexed</em> <code>id</code> untouched, so yes if space) — else new ctid + index insert(s) (Ch. 6/3).</li>
+<li><strong>WAL first</strong> (Ch. 5): the heap-update record (FPI if first touch since checkpoint) written to WAL buffers; page dirtied in shared_buffers, <code>pd_lsn</code> advanced. <em>No data-file write happens now.</em></li>
+<li><strong>COMMIT</strong>: commit record → WAL flush to disk (group commit may piggyback others); pg_xact bit set; locks released; backend returns. Disk state at this instant: WAL has everything; heap/index files possibly still stale — crash now and redo (Ch. 5) reconstructs.</li>
+<li><strong>Afterlife</strong>: checkpointer eventually writes the dirty page; first later reader stamps hint bits; vacuum eventually recycles the dead version and (if non-HOT) the dead index entry — possibly via bottom-up deletion at the next page split (Ch. 3/6).</li>
+</ol>
+<h3 id="112-sqlite-wal-mode-the-same-update">11.2 SQLite (WAL mode): the same update</h3>
+<ol>
+<li><strong>Prepare</strong> (Ch. 8/9): planner picks the rowid lookup; emits VDBE program (<code>SeekRowid</code>, <code>Column</code>s, arithmetic, <code>MakeRecord</code>, <code>Insert</code>, idempotently replacing the cell).</li>
+<li><strong>Write lock</strong>: the single writer lock (Ch. 7) — any second writer now gets <code>SQLITE_BUSY</code>/queues on <code>busy_timeout</code>.</li>
+<li><strong>Execute</strong>: pager (Ch. 4) fetches the table b-tree pages (private cache, possibly redirected through the WAL index to a newer frame); the leaf cell is rewritten in the page image in cache (table-is-the-index: no separate heap, Ch. 3); no per-row version anything (Ch. 6).</li>
+<li><strong>COMMIT</strong>: changed pages appended as frames to <code>-wal</code> with a commit frame; fsync per <code>synchronous</code>; wal-index updated so <em>new</em> readers see the new position. Old readers continue at their snapshot frame — nobody blocked.</li>
+<li><strong>Afterlife</strong>: a later checkpoint copies frames into the main <code>.db</code> (blocked from completing past any older reader's mark) and the WAL is eventually reset. Crash at any point: recovery replays the WAL's committed frames — or ignores a torn tail (frame checksums).</li>
+</ol>
+<p>Same logical operation; count the differences you can now <em>name</em>: versioning granularity, index count touched, who waits, what's on disk at ack, who cleans up, and what each system would have to add to behave like the other. That enumeration is this guide, compressed.</p>
+<h3 id="exercises-11">Exercises 11</h3>
+<ol>
+<li>Narrate both walkthroughs from memory onto paper, then diff against the text. (Seriously — this is the exam.)</li>
+<li>Instrument 11.1: <code>pg_waldump</code> the WAL generated by exactly that update (find the HOT bit or the index insert), <code>heap_page_items</code> before/after vacuum, <code>pg_stat_io</code> attribution of the eventual page write.</li>
+<li>Instrument 11.2: with <code>dbstat</code> and the <code>-wal</code> file size, identify the frames one update produces at <code>synchronous=FULL</code> vs. <code>NORMAL</code>; then crash (kill -9) before checkpoint and verify recovery.</li>
+<li>For each step in 11.1, name the failure (crash, lost race, full disk) the step is designed to survive and the chapter that proved it.</li>
+<li>Re-run 11.1 with the updated column <em>indexed</em> and <code>fillfactor=100</code>: predict, then verify, every additional physical consequence (index insert, no HOT, later bloat).</li>
+</ol>
+<hr>
+<h2 id="chapter-12-where-to-go-next">Chapter 12 — Where to Go Next</h2>
+<p><strong>Courses and books</strong>: Andy Pavlo's <a href="https://15445.courses.cs.cmu.edu/">CMU 15-445</a> (then 15-721 for in-memory/analytics engines); Petrov's <em>Database Internals</em> (Part I maps almost chapter-for-chapter onto this guide; Part II is the Distributed Algorithms guide's territory); Hellerstein/Stonebraker/Hamilton, <a href="https://dsf.berkeley.edu/papers/fntdb07-architecture.pdf">"Architecture of a Database System"</a> — the 80-page survey that organizes everything; Gray &amp; Reuter, <em>Transaction Processing</em>, when you want the deep classical well.</p>
+<p><strong>Source reading, in a productive order</strong>: SQLite first (it's smaller and astonishingly literate): <code>btree.c</code>, <code>pager.c</code>, <code>wal.c</code>, <code>vdbe.c</code>, plus the <a href="https://www.sqlite.org/fileformat2.html">file-format</a> and <a href="https://www.sqlite.org/atomiccommit.html">atomic-commit</a> docs alongside. Then PostgreSQL by README: <code>nbtree/README</code>, <code>heap/README.HOT</code>, <code>transam/README</code> (WAL and xact machinery), <code>optimizer/README</code> — each is a well-written design document hiding in the tree; Suzuki's interdb.jp chapters make the perfect guided tour.</p>
+<p><strong>Things this guide deliberately deferred</strong>, each one good next climb: replication internals (PostgreSQL physical/logical decoding — bridging into the Distributed Algorithms guide's Chapter 8); columnar/vectorized execution (DuckDB as the readable modern codebase); in-memory OLTP and latch-free structures (Bw-tree, ART); query compilation end-to-end (HyPer/Umbra lineage); and io_uring-era async storage engines.</p>
+<p>The compressed thesis to leave with: <strong>a database engine is four promises kept simultaneously — find it fast (Ch. 3, 8–10), don't hit the disk twice (Ch. 4), never lose it (Ch. 5), and let everyone work at once without lying to any of them (Ch. 6–7) — and every byte of both codebases is one of those promises, negotiating with the other three.</strong> PostgreSQL and SQLite are what two different sets of priorities among the four look like after decades of honest engineering; learn to read the negotiation and no storage system will be opaque to you again.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

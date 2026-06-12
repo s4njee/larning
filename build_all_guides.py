@@ -57,6 +57,7 @@ GUIDES = [
     ("GIT_STUDY_GUIDE.md", "html/git-study-guide.html", {"auto": True}),
     ("VIM_STUDY_GUIDE.md", "html/vim-study-guide.html", {"auto": True}),
     ("DATA_ENGINEERING_STUDY_GUIDE.md", "html/data-engineering-study-guide.html", {"auto": True}),
+    ("DATABASE_INTERNALS_STUDY_GUIDE.md", "html/database-internals-study-guide.html", {"auto": True}),
     ("POSTGRES.md", "html/postgres.html", {"accent": "#336791"}),
     ("ADVANCED_POSTGRES.md", "html/advanced-postgres.html", {"accent": "#336791"}),
     ("POSTGRES_EXTENSIONS.md", "html/postgres-extensions.html", {"accent": "#336791"}),
@@ -117,7 +118,8 @@ CATEGORIES = [
         "git-study-guide.html", "vim-study-guide.html",
     ]),
     ("Data and messaging", [
-        "data-engineering-study-guide.html", "postgres.html",
+        "data-engineering-study-guide.html", "database-internals-study-guide.html",
+        "postgres.html",
         "advanced-postgres.html", "postgres-extensions.html",
         "redis-study-guide.html", "sqlite-study-guide.html",
     ]),
