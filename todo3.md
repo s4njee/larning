@@ -82,14 +82,14 @@ The worst offenders: no reading section *and* almost no documentation links.
 - [x] `CB8_ANDROID_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; Where to Go Next added)
 - [x] `k8s/ADVANCED_KUBERNETES_STUDY_GUIDE.md` — [x] reading [x] links (API concepts, operator pattern, GitOps engines)
 
-## Tier 2 — Long guides with thin links, no reading section
+## Tier 2 — Long guides with thin links, no reading section — ✅ COMPLETE (2026-06-12)
 
 Substantial guides where link density lags the length.
 
-- [ ] `AI_AGENTS_STUDY_GUIDE.md` (12 / 2781) — [ ] reading [ ] links (provider API docs, MCP spec, ReAct/Toolformer papers)
-- [ ] `TESTING_STUDY_GUIDE.md` (17 / 2886) — [ ] reading [ ] links (pytest/Jest/Playwright/Hypothesis docs)
-- [ ] `CPP26_STUDY_GUIDE.md` (14 / 1733) — [ ] reading [ ] links (cppreference, wg21 papers by P-number)
-- [ ] `LLM_APP_DEV_STUDY_GUIDE.md` (18 / 1760) — [ ] reading [ ] links (Anthropic/OpenAI docs, tokenizer/eval tool docs)
+- [x] `AI_AGENTS_STUDY_GUIDE.md` — [x] reading [x] links (MCP spec, ReAct/Toolformer, Building Effective Agents)
+- [x] `TESTING_STUDY_GUIDE.md` — [x] reading [x] links (pytest/Vitest/Playwright/Hypothesis, Testing Trophy)
+- [x] `CPP26_STUDY_GUIDE.md` — [x] reading [x] links (cppreference, wg21.link, Core Guidelines, godbolt)
+- [x] `LLM_APP_DEV_STUDY_GUIDE.md` — [x] reading [x] links (provider docs, eval tooling, Building Effective Agents)
 - [x] `GIT_STUDY_GUIDE.md` — [x] reading [x] links (Pro Git, command man pages)
 - [x] `REDIS_STUDY_GUIDE.md` — [x] reading [x] links (redis.io data types/persistence/replication)
 - [x] `TYPESCRIPT_STUDY_GUIDE.md` — [x] reading [x] links (intro refs expanded; per-chapter Handbook links already present)

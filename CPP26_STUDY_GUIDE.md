@@ -1731,3 +1731,14 @@ std::visit([](auto& v) { std::println("{}", v); }, value);
 That's the guide. C++26 is a genuine milestone: reflection eliminates the boilerplate that has driven developers to macros and code generators for decades, contracts give the language its first standard mechanism for expressing function specifications, and `std::execution` provides a composable async model that replaces the broken `std::async`/`std::future` experiment. Combined with the paradigm shifts that accumulated since C++11 — RAII, value semantics, move semantics, concepts, ranges, `expected` — and a disciplined house style around ownership, APIs, errors, tests, dependencies, and modernization, modern C++ is a significantly different language from what most engineers learned in school.
 
 The honest caveat: C++ in 2026 is more capable than ever, but it's also more complex than ever, and it still lacks the compile-time safety guarantees of Rust. The practical path is to adopt the modern subset aggressively, instrument with sanitizers and static analysis, and make informed decisions about when a component should be C++ and when it should be something else.
+
+---
+
+## Where to Go Next
+
+- **Make [cppreference.com](https://en.cppreference.com/) your default tab** — it is the working reference for every facility in this guide, including per-feature compiler-support tables, and its [C++26 page](https://en.cppreference.com/w/cpp/26) tracks what landed where.
+- **Read the proposals behind the features that interest you** — every C++26 feature has a paper (searchable at [wg21.link](https://wg21.link/) by P-number), and papers explain motivation and rejected alternatives better than any tutorial. Herb Sutter's [trip reports](https://herbsutter.com/) are the readable summaries of each committee meeting.
+- **Internalize the [C++ Core Guidelines](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines)** — the official answer to "which subset of this enormous language should I write," enforceable in part via clang-tidy.
+- **Practice on [Compiler Explorer](https://godbolt.org/)** — paste any snippet from this guide, switch between GCC/Clang/MSVC, and read the assembly; it's the fastest feedback loop in C++ and the honest check on "zero-cost."
+- **Build one thing with modules + ranges + `std::expected`** and sanitizers on (`-fsanitize=address,undefined`) — the modern subset only becomes default behavior after a real project where you reach for it first.
+- **Adjacent guides in this repo:** [Advanced Rust](ADVANCED_RUST_STUDY_GUIDE.md) (the contrast that sharpens both languages' trade-offs), [Compiler Internals](COMPILER_INTERNALS_STUDY_GUIDE.md) (what the optimizer does with all this), and [Qt](QT_STUDY_GUIDE.md) (the biggest C++ GUI ecosystem).

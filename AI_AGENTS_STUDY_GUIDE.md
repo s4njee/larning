@@ -2779,3 +2779,13 @@ Is this step generating the final user-facing output?
   → YES: Use a mid-to-frontier model for quality.
   → NO: Use the cheapest model that works.
 ```
+
+---
+
+## Where to Go Next
+
+- **Read Anthropic's [Building Effective Agents](https://www.anthropic.com/research/building-effective-agents)** — the canonical short statement of this guide's central discipline: use the simplest pattern that works, and reserve true agency for problems that need it.
+- **Read the [MCP specification](https://modelcontextprotocol.io/)** — the protocol layer for tool/context interoperability, and increasingly the standard way agents reach external systems; the spec is short and the reference servers are readable.
+- **Read the foundational papers while the patterns are fresh:** [ReAct](https://arxiv.org/abs/2210.03629) (reason+act interleaving) and [Toolformer](https://arxiv.org/abs/2302.04761) (tool-use emergence) — both are approachable and explain *why* the loop architecture looks the way it does.
+- **Build one agent with evals and a budget.** A single-loop agent with 3–5 tools, a hard iteration cap, cost tracking, and a 30-case eval set teaches more than any framework tour — and per this guide's thesis, *resist* reaching for multi-agent until the eval numbers demand it.
+- **Adjacent guides in this repo:** [LLM App Development](LLM_APP_DEV_STUDY_GUIDE.md) (the layer below: prompts, RAG, structured output), [Web & LLM Security](WEB_LLM_SECURITY_STUDY_GUIDE.md) (prompt injection and tool-permission boundaries — mandatory before giving an agent real tools), [Enterprise APIs](ENTERPRISE_API_STUDY_GUIDE.md) (idempotency for agent-issued writes), and [Observability](OBSERVABILITY_STUDY_GUIDE.md) (tracing multi-step loops).
