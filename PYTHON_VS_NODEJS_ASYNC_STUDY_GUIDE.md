@@ -68,7 +68,7 @@ Both run your async code on **a single thread** with **a cooperative event loop*
 
 Both also share the same fundamental weakness, the mirror image of that strength: **if a task never yields — a tight CPU loop, a synchronous blocking call — nothing else runs at all.** The single thread is captured. [Part 6](#part-6--blocking-the-event-loop) is entirely about this.
 
-And here's a detail people love: **uvloop**, the fast drop-in event loop for Python, is built on **libuv — the exact same C library Node.js uses.** So a Python service running uvloop and a Node service are, at the I/O layer, running the *same event loop implementation*. The languages on top differ; the engine can be identical.
+And here's a detail people love: **[uvloop](https://github.com/MagicStack/uvloop)**, the fast drop-in event loop for Python, is built on **[libuv](https://libuv.org/) — the exact same C library Node.js uses.** So a Python service running uvloop and a Node service are, at the I/O layer, running the *same event loop implementation*. The languages on top differ; the engine can be identical.
 
 ### Where They Diverge: Loop Lifecycle
 
@@ -808,6 +808,13 @@ You don't have to pick one forever. A common, healthy architecture runs **both**
 Both languages made the same wager two decades apart, and both won it for I/O-bound work. **Node's async is more cohesive, harder to misuse on I/O, and faster** — it had to be, because async was its whole reason to exist and it had no synchronous past to drag along. **Python's async is more fragmented and easier to misuse, but better-designed at the high end and embedded in a far broader ecosystem** — because async came late to a mature, flexible language that already had other answers to concurrency.
 
 If you want the platform that makes the common case safe and fast, that's Node. If you want the platform with the better concurrency toolkit and the ecosystem that owns data and AI, that's Python. Neither choice is wrong; they're optimized for different failure modes, and the best engineers know both well enough to pick deliberately — and to run them side by side when that's the right answer.
+
+## Where to Go Next
+
+- **Read the two essays in the primary references** if you skipped them: [*What Color Is Your Function?*](https://journal.stuffwithstuff.com/2015/02/01/what-color-is-your-function/) (the function-coloring problem both languages share) and [*Notes on structured concurrency*](https://vorpus.org/blog/notes-on-structured-concurrency-or-go-statement-considered-harmful/) (why `TaskGroup` and orphaned-promise discipline exist). They're the intellectual foundation of Part 8.
+- **Read each platform's own event-loop doc:** Python's [asyncio dev guide](https://docs.python.org/3/library/asyncio-dev.html) (the pitfalls page) and Node's [event loop guide](https://nodejs.org/en/learn/asynchronous-work/event-loop-timers-and-nexttick) — each is short and authoritative for its half of this comparison.
+- **Port one small service both ways.** Take a fan-out-and-aggregate endpoint and implement it in both `aiohttp`/`httpx`+`TaskGroup` and Node `fetch`+`Promise.allSettled`. The differences this guide describes — eager vs lazy, uniform vs fragmented — become visceral in an afternoon.
+- **Then go deep on your shipping side:** the [Asyncio & aiohttp guide](ASYNCIO_STUDY_GUIDE.md) and [Python Concurrency guide](PYTHON_CONCURRENCY.md) for Python, the [Advanced Node.js guide](ADVANCED_NODEJS_STUDY_GUIDE.md) for Node.
 
 That's the guide. From here the highest-leverage next step is to internalize the two facts that generate everything else — **Node async is uniform and eager; Python async is fragmented and lazy** — and then go deep on whichever side you're shipping: the [Asyncio & aiohttp guide](ASYNCIO_STUDY_GUIDE.md) for Python, the [Advanced Node.js guide](ADVANCED_NODEJS_STUDY_GUIDE.md) for Node. Master one, understand the other by contrast, and you'll never again be confused about why your "concurrent" code is secretly running one request at a time.
 

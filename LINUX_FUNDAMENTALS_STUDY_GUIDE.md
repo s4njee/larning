@@ -190,7 +190,7 @@ For production services, raise the limit in your systemd unit (`LimitNOFILE=6553
 
 By default, a `read()` on a socket **blocks** — the process (or thread) sleeps until data arrives. A server handling 10,000 connections with blocking I/O needs 10,000 threads, each mostly sleeping — expensive.
 
-The alternative: mark the fd as **non-blocking** (`O_NONBLOCK`), and `read()` returns immediately with `EAGAIN` if no data is ready. But then you need to *know when to try again* — and that's what **`epoll`** (Linux), **`kqueue`** (macOS), and **`IOCP`** (Windows) provide: a system call that watches *many* fds at once and tells you which ones are ready for I/O. You register thousands of fds with `epoll_create` + `epoll_ctl`, then call `epoll_wait` — it blocks until *any* of them is ready, and returns the set of ready fds. Now one thread handles thousands of connections, checking only the ones that have data.
+The alternative: mark the fd as **non-blocking** (`O_NONBLOCK`), and `read()` returns immediately with `EAGAIN` if no data is ready. But then you need to *know when to try again* — and that's what **[`epoll`](https://man7.org/linux/man-pages/man7/epoll.7.html)** (Linux), **`kqueue`** (macOS), and **`IOCP`** (Windows) provide: a system call that watches *many* fds at once and tells you which ones are ready for I/O. You register thousands of fds with `epoll_create` + `epoll_ctl`, then call `epoll_wait` — it blocks until *any* of them is ready, and returns the set of ready fds. Now one thread handles thousands of connections, checking only the ones that have data.
 
 This is **the** mechanism underneath:
 
@@ -212,7 +212,7 @@ If you remember one thing from Part 3: **a file descriptor is the kernel's handl
 
 ## Part 4 — Signals
 
-Signals are Linux's oldest inter-process communication — asynchronous notifications sent to a process by the kernel, by another process, or by the process itself. They're how your services shut down gracefully, how Ctrl-C works, and why containers sometimes die mysteriously. This is one of the most practically important chapters for anyone running services.
+Signals ([`signal(7)`](https://man7.org/linux/man-pages/man7/signal.7.html)) are Linux's oldest inter-process communication — asynchronous notifications sent to a process by the kernel, by another process, or by the process itself. They're how your services shut down gracefully, how Ctrl-C works, and why containers sometimes die mysteriously. This is one of the most practically important chapters for anyone running services.
 
 ### The Signal Catalog (the Ones That Matter)
 
@@ -338,7 +338,7 @@ Three special permission bits that have outsized security implications:
 
 ### Linux Capabilities: Fine-Grained Root
 
-Traditional Unix has two levels: root (can do everything) and non-root (subject to permission checks). **Capabilities** (since Linux 2.2) split root's powers into ~40 discrete privileges, so you can grant *only* the ones needed:
+Traditional Unix has two levels: root (can do everything) and non-root (subject to permission checks). **Capabilities** ([`capabilities(7)`](https://man7.org/linux/man-pages/man7/capabilities.7.html), since Linux 2.2) split root's powers into ~40 discrete privileges, so you can grant *only* the ones needed:
 
 | Capability | Allows |
 |---|---|
@@ -394,7 +394,7 @@ If you remember one thing from Part 6: **a file is an inode (metadata) plus data
 
 ## Part 7 — systemd
 
-systemd is the init system and service manager on virtually all mainstream Linux distributions (Ubuntu, Fedora, Debian, RHEL, Arch, SUSE). It's PID 1 — the first process the kernel starts, the parent (directly or transitively) of every other process, the zombie reaper, and the supervisor of your services. Understanding it explains how services start, restart, and log on a Linux machine, and how the [Ansible guide](ANSIBLE_STUDY_GUIDE.md)'s `systemd` module and the [Caddy guide](CADDY_STUDY_GUIDE.md)'s systemd unit work.
+[systemd](https://www.freedesktop.org/software/systemd/man/latest/) is the init system and service manager on virtually all mainstream Linux distributions (Ubuntu, Fedora, Debian, RHEL, Arch, SUSE). It's PID 1 — the first process the kernel starts, the parent (directly or transitively) of every other process, the zombie reaper, and the supervisor of your services. Understanding it explains how services start, restart, and log on a Linux machine, and how the [Ansible guide](ANSIBLE_STUDY_GUIDE.md)'s `systemd` module and the [Caddy guide](CADDY_STUDY_GUIDE.md)'s systemd unit work.
 
 ### Units: The Building Block
 
@@ -502,7 +502,7 @@ This is the chapter the repo has been building toward. The [Docker guide](DOCKER
 
 ### Namespaces: Isolation of What You Can See
 
-A **namespace** wraps a global system resource so that the process inside the namespace sees its own isolated instance. Linux has eight namespace types:
+A **namespace** ([`namespaces(7)`](https://man7.org/linux/man-pages/man7/namespaces.7.html)) wraps a global system resource so that the process inside the namespace sees its own isolated instance. Linux has eight namespace types:
 
 | Namespace | Isolates | Container effect |
 |---|---|---|
@@ -521,7 +521,7 @@ A `docker run` creates a process with *new instances of each namespace* (except 
 
 ### cgroups: Limits on What You Can Use
 
-**Control groups (cgroups)** limit, account for, and isolate the **resource usage** (CPU, memory, I/O, PIDs) of a group of processes. Where namespaces answer "what can you see?", cgroups answer "how much can you use?"
+**Control groups (cgroups, [`cgroups(7)`](https://man7.org/linux/man-pages/man7/cgroups.7.html))** limit, account for, and isolate the **resource usage** (CPU, memory, I/O, PIDs) of a group of processes. Where namespaces answer "what can you see?", cgroups answer "how much can you use?"
 
 The two versions: **cgroups v1** (the original, multiple hierarchies) and **cgroups v2** (unified hierarchy, the modern default on recent kernels and distros). cgroups v2 is cleaner and is what Docker and Kubernetes use on modern systems.
 
@@ -699,5 +699,13 @@ It's slow (significant overhead) and noisy (hundreds of calls per second), but i
 If you remember one thing from Part 10: **every monitoring tool reads from `/proc` and `/sys`; when the tools aren't available or aren't enough, `strace` shows you every system call the process makes — and the diagnostic workflow is always: is it running? → what does it say? → is it resource-starved? → is it blocked? → is it a kernel issue?**
 
 ---
+
+## Where to Go Next
+
+- **Read Michael Kerrisk's [*The Linux Programming Interface*](https://man7.org/tlpi/)** — the definitive book on everything in Parts 1–5, and the reference this guide's process/fd/signal chapters compress. It's long; read the chapters as you need them.
+- **Make `man` a habit:** [`man7.org`](https://man7.org/linux/man-pages/) hosts the canonical pages — `man 2` for syscalls, `man 7` for the overview pages (`signal(7)`, `namespaces(7)`, `cgroups(7)`, `capabilities(7)`) that are mini-guides in themselves.
+- **Go deeper with the [Advanced Linux guide](ADVANCED_LINUX_STUDY_GUIDE.md)** in this repo — the scheduler, memory management, the I/O stack, eBPF, and performance analysis: everything that sits on top of this substrate.
+- **Trace something real.** `strace` a tool you use daily and read the syscalls; build a "container" by hand with `unshare -fpm --mount-proc` and a chroot; watch `dmesg` catch the OOM killer. The fundamentals only become instincts when you've seen them in `/proc`.
+- **Adjacent guides in this repo:** [Docker](DOCKER_STUDY_GUIDE.md) (namespaces+cgroups productized), [Kubernetes](k8s/KUBERNETES_STUDY_GUIDE.md), [Linux Networking](LINUX_NETWORKING_STUDY_GUIDE.md), and [eBPF](EBPF_STUDY_GUIDE.md).
 
 That's the guide. From here the highest-leverage next step is to connect these fundamentals to the systems you're already running: `cat /proc/self/cgroup` inside a Docker container to see *your* cgroup, `ls -l /proc/self/ns/` to see your process's namespace memberships, and `strace -p $(pgrep myapp) -e trace=network` on a running service to watch the syscalls your event loop is making. Once you've seen `epoll_wait` return and your Node callback fire, or watched the OOM killer send SIGKILL in `dmesg` and matched it to exit code 137 in Kubernetes — the substrate becomes real, and every other guide in this repo makes more sense for it.
