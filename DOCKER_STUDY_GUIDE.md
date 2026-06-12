@@ -1667,3 +1667,13 @@ docker volume prune                    # remove unused volumes
 docker image prune -a                  # remove all unused images
 docker builder prune                   # remove BuildKit cache
 ```
+
+---
+
+## Where to Go Next
+
+- **Read the [Dockerfile reference](https://docs.docker.com/reference/dockerfile/) and the [build best-practices page](https://docs.docker.com/build/building/best-practices/)** end to end — short, official, and the source of every layer-caching and multi-stage idiom in this guide.
+- **Go beneath the abstraction with the [Linux Fundamentals guide](LINUX_FUNDAMENTALS_STUDY_GUIDE.md)** (Part 8: namespaces + cgroups) — a container is a process, and proving it to yourself (`cat /proc/self/cgroup` inside one, `unshare` your own by hand) permanently demystifies Docker.
+- **Read the [OCI image](https://github.com/opencontainers/image-spec/blob/main/spec.md) and [runtime](https://github.com/opencontainers/runtime-spec/blob/main/spec.md) specs' overview sections** — knowing that "Docker image" is just a tarball-of-layers + JSON manifest explains registries, `docker save`, and why alternative runtimes interoperate.
+- **Optimize one real image.** Take your largest production Dockerfile and drive it down: multi-stage build, cache mounts, `.dockerignore`, distroless or slim base, then verify with [`dive`](https://github.com/wagoodman/dive). One deliberate optimization pass teaches the whole build model.
+- **Adjacent guides in this repo:** [Kubernetes](k8s/KUBERNETES_STUDY_GUIDE.md) (where containers run at scale), [Docker & Kubernetes Networking](k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md), [Kubernetes Security](k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md) (image signing/scanning), and [GitHub Actions](GITHUB_ACTIONS_STUDY_GUIDE.md) (building images in CI).

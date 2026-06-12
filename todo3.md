@@ -90,13 +90,13 @@ Substantial guides where link density lags the length.
 - [ ] `TESTING_STUDY_GUIDE.md` (17 / 2886) — [ ] reading [ ] links (pytest/Jest/Playwright/Hypothesis docs)
 - [ ] `CPP26_STUDY_GUIDE.md` (14 / 1733) — [ ] reading [ ] links (cppreference, wg21 papers by P-number)
 - [ ] `LLM_APP_DEV_STUDY_GUIDE.md` (18 / 1760) — [ ] reading [ ] links (Anthropic/OpenAI docs, tokenizer/eval tool docs)
-- [ ] `GIT_STUDY_GUIDE.md` (24 / 1854) — [ ] reading [ ] links (git-scm.com book + man pages)
-- [ ] `REDIS_STUDY_GUIDE.md` (28 / 1904) — [ ] reading [ ] links (redis.io commands + docs)
-- [ ] `TYPESCRIPT_STUDY_GUIDE.md` (25 / 1809) — [ ] reading [ ] links (typescriptlang.org handbook + release notes)
-- [ ] `DOCKER_STUDY_GUIDE.md` (34 / 1669) — [ ] reading [ ] links (docs.docker.com, OCI specs)
-- [ ] `GITHUB_ACTIONS_STUDY_GUIDE.md` (37 / 1479) — [ ] reading [ ] links (docs.github.com/actions)
-- [ ] `k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md` (11 / 513) — [ ] reading [ ] links (kubernetes.io security docs, Pod Security Standards)
-- [ ] `WEB_LLM_SECURITY_STUDY_GUIDE.md` (13 / 479) — [ ] reading [ ] links (OWASP LLM Top 10, prompt-injection papers)
+- [x] `GIT_STUDY_GUIDE.md` — [x] reading [x] links (Pro Git, command man pages)
+- [x] `REDIS_STUDY_GUIDE.md` — [x] reading [x] links (redis.io data types/persistence/replication)
+- [x] `TYPESCRIPT_STUDY_GUIDE.md` — [x] reading [x] links (intro refs expanded; per-chapter Handbook links already present)
+- [x] `DOCKER_STUDY_GUIDE.md` — [x] reading [x] links (Dockerfile ref, OCI specs, dive)
+- [x] `GITHUB_ACTIONS_STUDY_GUIDE.md` — [x] reading [x] links (syntax/contexts refs, hardening guide, zizmor)
+- [x] `k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; kube-bench, checklist)
+- [x] `WEB_LLM_SECURITY_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; PortSwigger, GenAI project)
 
 ## Tier 3 — Decent links already, just missing the reading section
 

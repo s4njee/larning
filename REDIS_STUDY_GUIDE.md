@@ -1902,3 +1902,13 @@ Solutions:
 | Reliable event processing with consumer groups | Stream |
 | Find items within a geographic radius | Geospatial (Geo commands) |
 | Distributed lock | String with `SET NX EX` |
+
+---
+
+## Where to Go Next
+
+- **Read the [Redis docs](https://redis.io/docs/latest/) by data type, not alphabetically** — each [data-type page](https://redis.io/docs/latest/develop/data-types/) is short and includes the patterns it was designed for, and every command page lists its time complexity (the habit that prevents `KEYS`-in-production mistakes).
+- **Read the [persistence](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/) and [replication](https://redis.io/docs/latest/operate/oss_and_stack/management/replication/) pages** before running Redis in production — they are the official versions of this guide's durability trade-offs, written with unusual honesty about failure modes.
+- **Read Kleppmann's [Redlock critique](https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html)** alongside the lock patterns here — the canonical analysis of what distributed locks on Redis can and cannot guarantee.
+- **Break a cluster on purpose.** Stand up a master + replica + Sentinel (or a 6-node cluster) locally, kill the master mid-write, and watch the failover: what was lost, what was promoted, how clients reconnect. One observed failover teaches more than the whole HA chapter.
+- **Adjacent guides in this repo:** [Distributed Systems](DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md) (replication/consistency theory Redis instantiates), [Database Internals](DATABASE_INTERNALS_STUDY_GUIDE.md), and [Enterprise APIs](ENTERPRISE_API_STUDY_GUIDE.md) (rate limiting and idempotency keys — two of Redis's biggest production jobs).

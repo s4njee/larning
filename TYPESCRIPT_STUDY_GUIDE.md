@@ -2,7 +2,7 @@
 
 A study guide focused on the type system. Assumes fluency with modern JavaScript (ES2015+): arrow functions, destructuring, modules, promises, async/await, iterators, classes. This guide skips the JS you already know and focuses on what TypeScript adds on top.
 
-Primary reference: [The TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+Primary references: [The TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html) (the official guide — this study guide follows its arc at greater depth), the [release notes per version](https://www.typescriptlang.org/docs/handbook/release-notes/overview.html) (where new type-system features are actually explained), the [TSConfig reference](https://www.typescriptlang.org/tsconfig/) (every compiler option, with examples), the [TypeScript Playground](https://www.typescriptlang.org/play) (test any snippet in this guide live), and [Type Challenges](https://github.com/type-challenges/type-challenges) (the exercise set that makes Parts 9–17 stick).
 
 ---
 
@@ -1807,3 +1807,14 @@ These are completely different operations that happen to share a keyword.
 | Extend third-party types | Module augmentation |
 | Handle unknown input safely | `unknown` + narrowing |
 | Escape hatch (last resort) | `any` |
+
+---
+
+## Where to Go Next
+
+- **Do [Type Challenges](https://github.com/type-challenges/type-challenges)** — graded type-level puzzles (easy → extreme) that turn Parts 7–17 (generics, conditional/mapped/template-literal types, `infer`) from recognition into fluency. A few per week is the single highest-return TypeScript practice.
+- **Read the [release notes](https://www.typescriptlang.org/docs/handbook/release-notes/overview.html) for the last few versions** — TypeScript evolves fast, and the release notes are where features like `satisfies`, const type parameters, and inference improvements are explained by their authors.
+- **Keep the [TSConfig reference](https://www.typescriptlang.org/tsconfig/) open** when touching build config — and read [Total TypeScript](https://www.totaltypescript.com/articles) (Matt Pocock) for the ecosystem's best free articles on real-world patterns.
+- **Experiment in the [Playground](https://www.typescriptlang.org/play)** — paste any snippet from this guide, hover everything, and flip compiler flags to see what changes. Hovering is how you learn what the compiler actually inferred.
+- **Type one gnarly real thing** — a fetch wrapper with typed routes, an event emitter with per-event payloads, or a form-validation schema — using branded types and template literals. Production typing problems teach what puzzles can't: when to stop being clever.
+- **Adjacent guides in this repo:** [Advanced Node.js](ADVANCED_NODEJS_STUDY_GUIDE.md) (the runtime under your TS), [Vue](VUE_STUDY_GUIDE.md)/[Next.js](NEXTJS_STUDY_GUIDE.md)/[SvelteKit](SVELTEKIT_STUDY_GUIDE.md) (frameworks where these types live), and [Testing](TESTING_STUDY_GUIDE.md).
