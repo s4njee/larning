@@ -1,786 +1,513 @@
 # Kubernetes Security Study Guide
 
-A practical, production-focused guide to Kubernetes security. The goal is not to memorize every API flag or every compliance buzzword. The goal is to understand how Kubernetes security layers fit together, where the common failure modes are, and how to design a cluster that is defensible in production.
+A practical, depth-first guide to securing Kubernetes for engineers who already run clusters and now have to defend them. It assumes you can write a Deployment and read a `kubectl` error, but not that you've reasoned carefully about what an attacker does *after* they get a shell in one of your Pods. The approach is concept-first but relentlessly concrete: every control here is shown as the manifest you actually apply, motivated by the specific attack it stops, because Kubernetes security is a subject where the abstractions only stick once you've seen the exploit they prevent and the YAML that prevents it.
 
-As of April 9, 2026, the upstream Kubernetes documentation site lists `v1.35` as the current docs version. This guide assumes current, v1.35-era guidance and calls out places where managed clusters or older versions may behave differently.
+As of early 2026 the upstream documentation tracks `v1.35`; this guide assumes that era and flags where managed clusters (EKS, GKE, AKS) or older versions diverge. Treat version-specific defaults as directional and confirm against your provider — the *principles* move much more slowly than the flags.
 
-The main theme of Kubernetes security is this: there is no single control that makes a cluster secure. Real security comes from stacking identity, authorization, workload hardening, network isolation, secrets protection, auditability, and operational discipline so that one mistake does not become total cluster compromise.
+The single thesis of the whole field is this: **there is no one control that secures a cluster, so security is the discipline of stacking independent layers such that any single failure — a leaked credential, an exploited container, a permissive RoleBinding, a partially compromised node — is contained instead of catastrophic.** Every section below is one layer, and the recurring question is always the same: *when this layer fails, what is the blast radius, and what is the next layer that limits it?*
+
+This guide has siblings that share its ground: the [Kubernetes guide](KUBERNETES_STUDY_GUIDE.md) (the platform itself), the [Advanced Kubernetes guide](ADVANCED_KUBERNETES_STUDY_GUIDE.md) (operators, multi-tenancy, the reconciliation model), the [Docker/Kubernetes Networking guide](DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md) (the data path NetworkPolicy rides on), the [Linux Fundamentals guide](../LINUX_FUNDAMENTALS_STUDY_GUIDE.md) (namespaces, cgroups, and capabilities — the substrate container isolation is built from), and the [Auth guide](../AUTH_STUDY_GUIDE.md) (OIDC, tokens, the identity concepts RBAC consumes).
+
+Primary references, all worth reading in full: the upstream [Security Checklist](https://kubernetes.io/docs/concepts/security/security-checklist/) and [Application Security Checklist](https://kubernetes.io/docs/concepts/security/application-security-checklist/); [Controlling Access to the Kubernetes API](https://kubernetes.io/docs/concepts/security/controlling-access/); [RBAC Good Practices](https://kubernetes.io/docs/concepts/security/rbac-good-practices/); [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/); and the [NSA/CISA Kubernetes Hardening Guidance](https://media.defense.gov/2022/Aug/29/2003066362/-1/-1/0/CTR_KUBERNETES_HARDENING_GUIDANCE_1.2_20220829.PDF), which remains the best single document tying the layers together.
 
 ---
 
 ## Table of Contents
 
-1. [Phase 1: Core Security Model](#phase-1-core-security-model)
-2. [Phase 2: Authentication and Access Control](#phase-2-authentication-and-access-control)
-3. [Phase 3: Network and Multi-Tenancy Security](#phase-3-network-and-multi-tenancy-security)
-4. [Phase 4: Workload and Container Security](#phase-4-workload-and-container-security)
-5. [Phase 5: Secrets and Sensitive Data Protection](#phase-5-secrets-and-sensitive-data-protection)
-6. [Phase 6: Audit, Detection, and Response](#phase-6-audit-detection-and-response)
-7. [Phase 7: Important Third-Party Security Topics](#phase-7-important-third-party-security-topics)
-8. [Phase 8: Production Hardening Checklist](#phase-8-production-hardening-checklist)
-9. [Hands-On Labs](#hands-on-labs)
-10. [What Good Looks Like in Production](#what-good-looks-like-in-production)
+1. [Part 1 — The Security Model & Threat Model](#part-1--the-security-model--threat-model)
+2. [Part 2 — Authentication: Who Are You](#part-2--authentication-who-are-you)
+3. [Part 3 — Authorization: What You May Do (RBAC)](#part-3--authorization-what-you-may-do-rbac)
+4. [Part 4 — Admission Control: The Policy Chokepoint](#part-4--admission-control-the-policy-chokepoint)
+5. [Part 5 — Workload & Container Hardening](#part-5--workload--container-hardening)
+6. [Part 6 — Network Security & Multi-Tenancy](#part-6--network-security--multi-tenancy)
+7. [Part 7 — Secrets & Data Protection](#part-7--secrets--data-protection)
+8. [Part 8 — Supply Chain Security](#part-8--supply-chain-security)
+9. [Part 9 — Audit, Detection & Response](#part-9--audit-detection--response)
+10. [Part 10 — Putting It Together: A Hardened Cluster](#part-10--putting-it-together-a-hardened-cluster)
+11. [Hands-On Labs](#hands-on-labs)
 
 ---
 
-## Phase 1: Core Security Model
+## Part 1 — The Security Model & Threat Model
 
-### 1.1 The Four Big Security Planes in Kubernetes
+Before any control, get the model right. Most Kubernetes security failures trace back to a single failure of imagination: treating the cluster as one trust boundary — "we're inside the VPC, we're fine" — when it is in fact a dense lattice of *many* boundaries, most of which are wide open by default.
 
-- **Cluster access plane**: Who can talk to the Kubernetes API, and how they authenticate.
-  - This is where OIDC, certificates, cloud-provider identity integrations, kubeconfig handling, and API endpoint exposure matter most; docs: [Controlling Access to the Kubernetes API](https://kubernetes.io/docs/concepts/security/controlling-access/), [Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/).
-- **Authorization and policy plane**: What an authenticated identity is allowed to do.
-  - This is where RBAC, admission control, and policy engines determine whether a request should be allowed at all; docs: [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/), [RBAC Good Practices](https://kubernetes.io/docs/concepts/security/rbac-good-practices/).
-- **Workload isolation plane**: What a Pod can do after it is running.
-  - This is where Pod Security Standards, `securityContext`, seccomp, AppArmor, SELinux, Linux capabilities, and privileged containers matter; docs: [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/), [Linux kernel security constraints for Pods and containers](https://kubernetes.io/docs/concepts/security/linux-kernel-security-constraints/), [Configure a Security Context for a Pod or Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
-- **Data and observability plane**: How secrets, audit trails, and evidence are handled.
-  - This is where Secrets, encryption at rest, external secret stores, audit policies, and log pipelines matter; docs: [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/), [Good practices for Kubernetes Secrets](https://kubernetes.io/docs/concepts/security/secrets-good-practices/), [Auditing](https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/).
+### The 4Cs, and where your responsibility actually sits
 
-### 1.2 Kubernetes Security Is Mostly About Blast Radius
+The canonical framing is the **4Cs of Cloud Native Security**: Cloud, Cluster, Container, Code, nested like Russian dolls. The Cloud (or datacenter) is the trust base everything else assumes; the Cluster is the Kubernetes control and data planes; the Container is the running workload and its image; the Code is your application logic. The model's real lesson is the *direction of dependence*: you cannot secure an inner layer against a compromised outer one. A perfectly hardened Pod on a node whose kubelet API is exposed to the internet is not secure; airtight RBAC on a cluster whose cloud IAM lets any instance assume the cluster-admin role is not secure. **Secure outside-in, audit inside-out.**
 
-- **Assume a credential can leak**
-  - Design so a stolen developer kubeconfig, compromised Pod token, or leaked CI credential does not become full-cluster admin.
-- **Assume a Pod can be exploited**
-  - Design so one vulnerable app container cannot trivially read every Secret, reach every Pod, or gain node-level access.
-- **Assume a node can be partially compromised**
-  - Design so node compromise does not silently bypass your main control path or expose cleartext data unnecessarily.
-- **Assume mistakes will happen**
-  - Use layered controls so a bad manifest, permissive RoleBinding, or forgotten namespace policy is caught somewhere else.
+Where your work lands depends on who runs the control plane. On a self-managed cluster (kubeadm, kops, bare metal) you own everything: etcd encryption, API server flags, kubelet configuration, certificate rotation, the lot. On a managed cluster the provider owns the control plane's availability and patching — but *not* its authorization. This is the most expensive misconception in the managed world: EKS, GKE, and AKS hand you a running, reachable API server and leave RBAC, network policy, Pod hardening, secrets, and workload identity entirely to you. "Managed" means managed *uptime*, not managed *security*.
 
-### 1.3 The Most Important Mindset Shift
+### The mental model that matters: blast radius
 
-- **Kubernetes defaults are often functional, not production-secure**
-  - Pods can usually talk freely unless you add network policies. Teams often over-grant RBAC. Secrets are just base64-encoded unless you add real encryption controls. Service accounts are easy to misuse. Production security is mostly about intentionally tightening defaults.
-- **The API server is the choke point you want to preserve**
-  - Authentication, authorization, admission, and audit logging all happen at the API server. Anything that bypasses it is disproportionately risky; docs: [Kubernetes API Server Bypass Risks](https://kubernetes.io/docs/concepts/security/api-server-bypass-risks/).
+The productive way to think about every decision in this guide is not "is this secure?" (an unanswerable yes/no) but "**what is the blast radius when this fails?**" — because things will fail, and the only question that has an actionable answer is how far the damage spreads. Hold four assumptions as permanent design premises:
 
-### 1.4 Foundation Docs You Should Know Cold
+- **A credential will leak.** A developer's kubeconfig ends up in a Slack message; a CI token is printed in a build log; a Pod's service-account token is read by an exploited process. Design so that no single leaked credential is cluster-admin.
+- **A Pod will be exploited.** Some container is running a library with a CVE, and an attacker gets remote code execution inside it. Design so that a shell in one Pod is *not* a shell in every Pod, a reader of every Secret, or a path to the node.
+- **A node will be partially compromised.** An attacker who breaks out of a container, or who lands on a node another way, should not thereby own the cluster or read every tenant's data in cleartext.
+- **A mistake will be merged.** Someone will push a manifest with `privileged: true`, a `RoleBinding` to `cluster-admin`, or a forgotten namespace with no NetworkPolicy. Layered controls exist so that a single bad change is caught by *some other* layer.
 
-- [Security Checklist](https://kubernetes.io/docs/concepts/security/security-checklist/)
-- [Application Security Checklist](https://kubernetes.io/docs/concepts/security/application-security-checklist/)
-- [Cloud Native Security](https://kubernetes.io/docs/concepts/security/overview/)
-- [Multi-tenancy](https://kubernetes.io/docs/concepts/security/multi-tenancy/)
+These are not pessimism; they are the partial-failure premise of distributed systems (see the [Distributed Systems guide](../DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md)) applied to security. A control that only works when nothing else has gone wrong is not a security control.
+
+### The API server is the chokepoint — guard it, never bypass it
+
+Almost every control in this guide — authentication, authorization, admission, audit — happens at one place: the **API server**. That concentration is a gift, because it gives you a single point at which to enforce and observe policy. It is also a liability, because anything that reaches cluster state *without* going through the API server bypasses your entire enforcement and audit story at once. The upstream [API Server Bypass Risks](https://kubernetes.io/docs/concepts/security/api-server-bypass-risks/) page enumerates the paths that matter: the **kubelet API** (port 10250 — a direct `exec`/`logs`/`run` interface into Pods that must require authentication and authorization, never `--anonymous-auth=true`), **etcd** (the database of record — anyone who can read it reads every Secret in cleartext, so it must be on its own network with mutual TLS), the **read-only kubelet port** (10255, historically unauthenticated — disable it), and **static Pods** the kubelet runs straight from a directory on disk with no API-server involvement at all. A recurring shape of real incidents is an attacker who never authenticates to the API server because they found a side door into one of these. The defensive instinct to build: every component that can mutate cluster or node state should be reachable only over an authenticated, authorized, audited path, and you should be able to name the ones that aren't.
+
+### Defaults are functional, not safe
+
+The last premise is cultural. Kubernetes defaults are tuned to make a cluster *work* the moment you stand it up, which means they are tuned *against* security: Pods can reach every other Pod on the network with no policy in place; a workload with no `securityContext` can run as root; a Secret is base64, not encryption; a freshly created ServiceAccount is mounted into every Pod that uses it whether the app needs the API or not. Production security is, to a first approximation, the disciplined work of *intentionally tightening every default that ships open* — and the rest of this guide is a tour of which ones, in what order, and what each one stops.
 
 ---
 
-## Phase 2: Authentication and Access Control
+## Part 2 — Authentication: Who Are You
 
-### 2.1 How Kubernetes Secures API Access
+Authentication answers one question — *what identity is making this API request?* — and it is the foundation the entire authorization stack is built on, because RBAC can only make decisions about a name it has been given. Get the names wrong and every rule downstream is reasoning about the wrong subject.
 
-Every request to the Kubernetes API goes through a chain:
+### The request lifecycle: four gates
 
-1. **Authentication**: who are you?
-2. **Authorization**: what are you allowed to do?
-3. **Admission**: should this specific object or change be accepted?
-4. **Audit**: what happened, and who did it?
+Every request to the API server passes through four sequential gates, and understanding the sequence is most of understanding Kubernetes access control:
 
-That sequence is the backbone of Kubernetes security; docs: [Controlling Access to the Kubernetes API](https://kubernetes.io/docs/concepts/security/controlling-access/).
+```
+request → [ Authentication ] → [ Authorization ] → [ Admission ] → persisted to etcd
+            who are you?         may you?            mutate/validate
+```
 
-### 2.2 Authentication Methods You Must Understand
+Authentication establishes the identity; authorization (Part 3) decides whether that identity may perform the action; admission (Part 4) gets the last word, mutating or rejecting the object even after authorization passed. A request that fails any gate is rejected, and — critically — these are *independent* layers, so a misconfiguration in one is often caught by another. The flow is documented at [Controlling Access to the Kubernetes API](https://kubernetes.io/docs/concepts/security/controlling-access/).
 
-- **OIDC / external identity provider**
-  - Best default for human user access in production. Kubernetes upstream explicitly recommends using external authentication such as OIDC for production clusters with multiple human users; docs: [Hardening Guide - Authentication Mechanisms](https://kubernetes.io/docs/concepts/security/hardening-guide/authentication-mechanisms/), [Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/).
-- **X.509 client certificates**
-  - Important for system components and occasionally for tightly controlled admin access, but awkward for broad user auth because revocation and lifecycle management are harder; docs: [Hardening Guide - Authentication Mechanisms](https://kubernetes.io/docs/concepts/security/hardening-guide/authentication-mechanisms/), [PKI certificates and requirements](https://kubernetes.io/docs/setup/best-practices/certificates/), [Issue a Certificate for a Kubernetes API Client Using A CertificateSigningRequest](https://kubernetes.io/docs/tasks/tls/certificate-issue-client-csr/).
-- **Service account tokens**
-  - Intended for workloads, not humans. Modern Kubernetes prefers short-lived projected tokens from the `TokenRequest` API, not legacy long-lived token Secrets; docs: [Service Accounts](https://kubernetes.io/docs/concepts/security/service-accounts/), [Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/), [Hardening Guide - Authentication Mechanisms](https://kubernetes.io/docs/concepts/security/hardening-guide/authentication-mechanisms/).
-- **Webhook or authenticating proxy**
-  - Useful in specialized environments, but add infrastructure and trust complexity. These are not usually the first choice unless your platform already depends on them; docs: [Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/), [Hardening Guide - Authentication Mechanisms](https://kubernetes.io/docs/concepts/security/hardening-guide/authentication-mechanisms/).
+### Two kinds of identity, and the one that surprises people
 
-### 2.3 OIDC: The Main Production Pattern for Human Access
+Kubernetes recognizes two categories of identity, and the distinction is load-bearing. **Normal users** — humans, and the automation that acts on their behalf — are *not Kubernetes objects*. There is no `User` resource, no `kubectl create user`. The API server simply trusts an external authenticator to assert "this request is from `alice@example.com`, in groups `engineering` and `oncall`," and RBAC reasons about that asserted name. **ServiceAccounts**, by contrast, *are* first-class namespaced objects, created and managed in-cluster, intended for the identity of Pods.
 
-- **What it is**
-  - Kubernetes trusts tokens issued by an external identity provider such as Okta, Microsoft Entra ID, Google, Dex, or another OIDC-capable IdP.
-- **Why it matters**
-  - It centralizes identity lifecycle, supports MFA and corporate SSO, and avoids inventing a separate human-user credential system just for Kubernetes.
-- **What to study**
-  - Token issuer configuration
-  - Audience and claim mapping
-  - Group-based authorization
-  - Short token lifetimes
-  - How `kubectl` gets credentials through exec plugins or managed provider tooling
-- **Hardening points**
-  - Keep OIDC support components isolated if they run in-cluster.
-  - Prefer short-lived tokens.
-  - Be aware that some managed Kubernetes offerings constrain which OIDC flows or providers you can use; docs: [Hardening Guide - Authentication Mechanisms](https://kubernetes.io/docs/concepts/security/hardening-guide/authentication-mechanisms/).
+The surprise, and a frequent source of confusion, is that **users live outside the cluster and ServiceAccounts live inside it** — which means your strategy for human access is fundamentally a question of *which external system the API server trusts*, while your strategy for workload access is a question of *how you scope and mount in-cluster tokens*. They are different problems with different tools.
 
-### 2.4 Certificates: Important, but Usually Not Your Main Human Auth Strategy
+### Human access: OIDC is the production answer
 
-- **Where certificates shine**
-  - Control-plane internals
-  - Kubelet identity
-  - Bootstrap and rotation workflows
-  - Emergency or tightly controlled admin access
-- **Where certificates are weak**
-  - Individual revocation is poor
-  - Group membership is effectively baked into the cert
-  - Private key handling is operationally brittle
-  - Distribution and tracking get painful as human user count grows
-- **What to know**
-  - The CSR API
-  - Manual and kubeadm certificate workflows
-  - Certificate rotation implications
-  - Why certificate issuance rights are security-sensitive RBAC permissions; docs: [PKI certificates and requirements](https://kubernetes.io/docs/setup/best-practices/certificates/), [Issue a Certificate for a Kubernetes API Client Using A CertificateSigningRequest](https://kubernetes.io/docs/tasks/tls/certificate-issue-client-csr/), [RBAC Good Practices](https://kubernetes.io/docs/concepts/security/rbac-good-practices/).
+The authenticators the API server can use range from "fine for a lab" to "fine for production," and the dividing line matters. **Static token files** and **basic auth** are deprecated and disqualifying for anything real — they cannot be revoked without an API-server restart and they have no group story. **X.509 client certificates** work and are how the control-plane components authenticate to each other, but as a *human* strategy they have a fatal operational flaw: Kubernetes provides no certificate revocation, so a leaked client cert is valid until it expires, and you cannot un-issue it. Use certs for break-glass admin access (kept offline) and component identity, not as your everyday human path.
 
-### 2.5 Cloud Provider IAM and Managed Cluster Access
+The production pattern for human access is **OpenID Connect (OIDC)**: the API server is configured to trust an external identity provider (Okta, Entra ID, Google, Keycloak, or your cloud's IAM), users authenticate to that IdP and receive a short-lived JWT, and the API server validates the token's signature and extracts the username and groups from configured claims. The configuration on the API server side:
 
-This is one of the most practically important areas in production. In managed clusters, there are usually two related but separate identity problems:
+```
+--oidc-issuer-url=https://idp.example.com
+--oidc-client-id=kubernetes
+--oidc-username-claim=email
+--oidc-groups-claim=groups
+--oidc-groups-prefix=oidc:        # so IdP group "admins" becomes "oidc:admins", avoiding collisions
+```
 
-1. **How humans get cluster access**
-2. **How workloads in Pods get cloud API access**
+Everything good about this flows from one property: **the IdP is the single source of truth for identity and group membership**, so off-boarding a person, rotating their access, or enforcing MFA happens in *one* place that you already operate, and the token they carry is short-lived, so a leak is a problem for minutes, not forever. RBAC then binds to the IdP-provided groups (`oidc:admins`), never to individual emails — group-based bindings are what make access reviews tractable and what keep your RBAC stable as people come and go. The user-side flow is handled by a plugin like [`kubelogin`](https://github.com/int128/kubelogin), which performs the browser login and refreshes the token transparently.
 
-Do not blur those together.
+Managed clusters wire this to cloud IAM and it is worth knowing the shape of each, because the integration point is where the most dangerous misconfigurations live. **EKS** maps AWS IAM principals to Kubernetes identities — historically through the `aws-auth` ConfigMap, now through the cleaner EKS Access Entries API; the classic EKS footgun is that the IAM identity which *created* the cluster is permanently cluster-admin and invisible in RBAC, so audit *who that is*. **GKE** ties Google IAM to Kubernetes RBAC and adds Workload Identity for Pods (below). **AKS** integrates Entra ID and supports Azure RBAC for Kubernetes. In all three, the lesson is the same: there is a cloud-IAM path to cluster access that lives *outside* your Kubernetes RBAC, and you must audit it as carefully as RBAC itself.
 
-#### AWS / EKS
+### Workload identity: the token in every Pod
 
-- **Human access to the cluster**
-  - EKS cluster access is increasingly centered around access entries and AWS IAM identities rather than legacy `aws-auth` management patterns; docs: [Change authentication mode to use access entries](https://docs.aws.amazon.com/eks/latest/userguide/setting-up-access-entries.html).
-- **Workload access to AWS APIs**
-  - IAM Roles for Service Accounts (IRSA) lets Pods use projected service account OIDC tokens to assume IAM roles without static AWS keys in Secrets; docs: [IAM roles for service accounts](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html).
-- **Key study point**
-  - IRSA improves credential isolation, but AWS explicitly notes that containers are not a security boundary. Node compromise or privileged Pod placement still matters.
+Every Pod gets a ServiceAccount (the `default` one in its namespace if you don't specify), and a token for that account is, by default, **automounted** into the container's filesystem at `/var/run/secrets/kubernetes.io/serviceaccount/token`. That token is a credential to the API server, and the first hardening move is to stop handing it to workloads that don't use it:
 
-#### Google Cloud / GKE
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: payments-api
+  namespace: payments
+automountServiceAccountToken: false   # default-deny the token; opt in per workload
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payments-api
+  namespace: payments
+spec:
+  template:
+    spec:
+      serviceAccountName: payments-api
+      automountServiceAccountToken: false   # also settable on the Pod, which wins
+      containers:
+        - name: app
+          image: registry.example.com/payments-api@sha256:...
+```
 
-- **Human access to the cluster**
-  - GKE supports external identity provider integration and related identity federation workflows for cluster auth; docs: [Use external identity providers to authenticate to GKE](https://cloud.google.com/kubernetes-engine/docs/how-to/oidc).
-- **Workload access to Google Cloud APIs**
-  - Workload Identity Federation for GKE is the recommended path instead of shipping service account keys into Pods; docs: [About Workload Identity Federation for GKE](https://cloud.google.com/kubernetes-engine/docs/concepts/workload-identity), [Authenticate to Google Cloud APIs from GKE workloads](https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity).
-- **Key study point**
-  - Understand the separation between Kubernetes ServiceAccounts and Google IAM service accounts, and study the limitations around `hostNetwork: true` and metadata access.
+The reasoning is pure blast radius: most application containers never call the Kubernetes API, so the token mounted into them is *purely* attack surface — a credential an exploited process can read and replay. Mounting it only where it is needed turns a leaked token from "every Pod is a foothold" into "only the few Pods that legitimately talk to the API are." Modern clusters further use **bound, projected service-account tokens** (audience-scoped, time-limited, auto-rotated) instead of the legacy long-lived Secret-based tokens, which removes the never-expiring token from etcd entirely; this is the default for the automounted token on current versions.
 
-#### Azure / AKS
-
-- **Human access to the cluster**
-  - AKS commonly uses AKS-managed Microsoft Entra integration for authentication to the cluster; docs: [Enable AKS-managed Microsoft Entra integration](https://learn.microsoft.com/en-us/azure/aks/enable-authentication-microsoft-entra-id).
-- **Workload access to Azure APIs**
-  - Microsoft Entra Workload ID federates Kubernetes service account tokens to Azure identities for Pods that need cloud access; docs: [Microsoft Entra Workload ID on AKS](https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview), [Create an OIDC provider for AKS](https://learn.microsoft.com/en-us/azure/aks/use-oidc-issuer).
-- **Key study point**
-  - AKS identity design is often a combination of Microsoft Entra for users, Kubernetes RBAC for cluster authorization, and workload identity for Pods.
-
-### 2.6 RBAC: The Most Important Authorization Model to Master
-
-- **RBAC decides what an authenticated identity can do**
-  - Learn `Role`, `ClusterRole`, `RoleBinding`, and `ClusterRoleBinding` thoroughly; docs: [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/).
-- **Least privilege is the whole game**
-  - Avoid broad verbs, broad resources, and cluster-wide grants unless you have a specific reason.
-- **Namespace scoping is your friend**
-  - Many teams accidentally make every operator a cluster administrator because scoping work correctly takes more effort.
-- **Groups beat per-user bindings**
-  - Map users to groups in your IdP, then bind groups to RBAC roles.
-- **Separate human and workload permissions**
-  - A CI system, controller, developer, and support engineer should not all share the same role shape.
-
-### 2.7 RBAC Good Practices You Need to Internalize
-
-Kubernetes upstream has an unusually useful RBAC good-practices page. Study it closely; docs: [Role Based Access Control Good Practices](https://kubernetes.io/docs/concepts/security/rbac-good-practices/).
-
-The high-value lessons are:
-
-- **Avoid `system:masters`**
-  - Upstream explicitly warns that membership in `system:masters` bypasses all RBAC checks and even authorization webhooks.
-- **Avoid wildcard permissions**
-  - `*` on resources or verbs is an easy way to create accidental future privilege.
-- **Treat Secrets read access as highly privileged**
-  - If you can read Secrets in a namespace, you can often pivot into workload or cloud credentials.
-- **Treat workload creation as privileged**
-  - If you can create Pods, you can often mount service account tokens, host paths, or other sensitive assets depending on cluster policy.
-- **Treat certificate issuance, token request, bind, escalate, and impersonate as dangerous**
-  - These are classic RBAC escalation paths.
-- **Review permissions periodically**
-  - RBAC debt accumulates silently.
-
-### 2.8 Service Accounts: Critical and Frequently Misused
-
-- **Every workload identity should be intentional**
-  - Create purpose-specific ServiceAccounts instead of letting everything run as namespace default.
-- **Disable token automount where not needed**
-  - Many workloads do not need to call the Kubernetes API at all; docs: [Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/).
-- **Prefer projected, short-lived tokens**
-  - Modern clusters use TokenRequest-backed projected tokens with bounded lifetimes, not legacy long-lived token Secrets; docs: [Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/), [Hardening Guide - Authentication Mechanisms](https://kubernetes.io/docs/concepts/security/hardening-guide/authentication-mechanisms/).
-- **Use workload identity federation when cloud APIs are needed**
-  - Do not store long-lived AWS, GCP, or Azure credentials in Kubernetes Secrets if the platform supports federation.
-
-### 2.9 kubeconfig Security Matters More Than Many Teams Realize
-
-- **A kubeconfig is often a credential, not just a config file**
-  - It may contain client certificates, bearer tokens, or exec-based auth flows.
-- **Treat kubeconfigs like secrets**
-  - Store them carefully, prefer short-lived auth, and avoid leaving admin kubeconfigs on laptops or CI agents.
-- **Segment admin access**
-  - Break-glass admin credentials should be rare, heavily audited, and not your day-to-day workflow.
-
-### 2.10 Admission Control Is Where Security Policy Becomes Enforceable
-
-- **Admission is the last checkpoint before an object is persisted**
-  - Authentication tells Kubernetes who you are, RBAC tells it what verbs you may attempt, and admission decides whether this specific object shape is acceptable; docs: [Admission Controllers](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/), [Controlling Access to the Kubernetes API](https://kubernetes.io/docs/concepts/security/controlling-access/).
-- **Native admission already covers important security cases**
-  - Pod Security Admission is the most obvious example, but admission also matters for defaulting, validation, and cluster-wide policy enforcement.
-- **ValidatingAdmissionPolicy is worth learning**
-  - It gives Kubernetes-native validation logic without always requiring an external webhook deployment; docs: [Validating Admission Policy](https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/).
-- **Webhook-based admission is powerful and risky**
-  - If you depend on external admission webhooks for security, those webhooks become part of your control plane reliability and trust model.
+For Pods that need to talk to *cloud* APIs (read an S3 bucket, a GCS object, a Key Vault secret), the right pattern is **cloud workload identity** — EKS IRSA / Pod Identity, GKE Workload Identity, AKS Workload Identity — which exchanges the Pod's projected Kubernetes token for short-lived cloud credentials with no long-lived secret stored anywhere. The anti-pattern it replaces, putting static cloud access keys in a Kubernetes Secret, is one of the most common ways a single exploited Pod becomes a cloud-account breach, because that key is long-lived, broadly scoped, and sitting in cleartext-to-the-Pod environment variables.
 
 ---
 
-## Phase 3: Network and Multi-Tenancy Security
+## Part 3 — Authorization: What You May Do (RBAC)
 
-### 3.1 Network Policies Are the Main Native East-West Isolation Control
+Authentication gave the request a name; authorization decides what that name may do. Kubernetes supports several authorizers (Node, ABAC, Webhook, and RBAC), evaluated such that any one of them can *allow* a request — but in practice the one you design, review, and live with is **RBAC**, and mastering it is the highest-leverage skill in this entire guide because RBAC is where the "a credential will leak" premise is either contained or catastrophic.
 
-- **What they do**
-  - Restrict which Pods can talk to which other Pods or CIDRs for ingress and egress; docs: [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/).
-- **What many people miss**
-  - Policies are additive, and both the source egress side and destination ingress side must allow the flow.
-- **The most important operational caveat**
-  - NetworkPolicy objects do nothing unless your CNI actually enforces them.
-- **The most common production pattern**
-  - Start with default-deny, then add specific allow rules for DNS, app-to-app traffic, ingress controllers, and required external egress.
+### The four objects, and the additive-only rule
 
-### 3.2 What to Learn About NetworkPolicy
+RBAC has exactly four object kinds, and they pair on two axes. A **Role** is a namespaced set of permissions; a **ClusterRole** is the same thing but cluster-scoped (and also the only way to grant permissions on non-namespaced resources like nodes). A **RoleBinding** grants a Role (or a ClusterRole) to subjects *within one namespace*; a **ClusterRoleBinding** grants a ClusterRole *across the whole cluster*. The combination that trips people up is RoleBinding-to-ClusterRole: it grants the ClusterRole's permissions but *scoped to the binding's namespace* — which is exactly how you reuse a single well-defined ClusterRole (say, "deployer") across many namespaces without duplicating it.
 
-- Pod selectors and namespace selectors
-- Ingress vs egress policies
-- Default deny patterns
-- DNS allowance
-- Namespace label trust assumptions
-- How your chosen CNI implements enforcement
+The property that makes RBAC reasoning tractable is that **it is purely additive — there are no deny rules.** A subject's permissions are the union of everything bound to them and their groups; nothing subtracts. This has a profound consequence for how you design: you cannot "grant broad access then carve out exceptions," because there are no exceptions. You must grant *only* what is needed, from zero, which is least privilege not as a slogan but as the only model the system supports.
 
-### 3.3 North-South Security Is Not Solved by NetworkPolicy Alone
+A concrete least-privilege Role — read-only access to Pods and their logs in one namespace, the kind of thing a support engineer or a dashboard actually needs:
 
-- **Ingress, Gateway, and load balancers are security boundaries too**
-  - You need TLS termination strategy, client IP handling, WAF strategy, and rate limiting thinking.
-- **Separate public and private entry paths**
-  - Public internet traffic should not share the same route or policy assumptions as internal admin traffic.
-- **Use mTLS where appropriate**
-  - Native Kubernetes does not give you mesh-style mutual TLS for service-to-service traffic by default.
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: payments
+  name: pod-reader
+rules:
+  - apiGroups: [""]                       # "" is the core API group
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  namespace: payments
+  name: support-can-read-pods
+subjects:
+  - kind: Group                            # bind to a group from your IdP, never individuals
+    name: "oidc:payments-support"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+```
 
-### 3.4 Multi-Tenancy Changes the Security Model
+Read the manifest as a sentence: members of the IdP group `payments-support` may get/list/watch Pods and read their logs, in the `payments` namespace, and *nothing else*. Note `pods/log` as a distinct resource — RBAC's subresources are how you grant "read logs" without granting "read the Pod spec," and the same mechanism (`pods/exec`, `pods/portforward`, `pods/attach`) is what lets you *deny* the dangerous interactive subresources while allowing the benign ones.
 
-- **By default, Pods can communicate broadly**
-  - Upstream multi-tenancy guidance recommends default deny network policies plus specific DNS allowances in stricter tenant isolation scenarios; docs: [Multi-tenancy](https://kubernetes.io/docs/concepts/security/multi-tenancy/).
-- **Namespace isolation is useful, but not absolute**
-  - Namespaces are a control-plane partitioning tool, not a perfect hard boundary.
-- **You need multiple isolation layers**
-  - RBAC
-  - network policy
-  - quotas and limits
-  - node isolation
-  - storage isolation
-  - workload hardening
-- **Not every cluster should be multi-tenant**
-  - Sometimes the right answer is more clusters, not more policy complexity.
+### The permissions that are secretly cluster-admin
 
-### 3.5 Common Network Security Mistakes
+Some RBAC grants look narrow but are, transitively, a path to total control, and recognizing them is the difference between a real access review and a rubber-stamp. The [RBAC Good Practices](https://kubernetes.io/docs/concepts/security/rbac-good-practices/) page is the authoritative list; the ones to internalize:
 
-- **No default-deny policies**
-- **Allowing unrestricted egress everywhere**
-- **Using a CNI that supports NetworkPolicy but never testing enforcement**
-- **Relying on namespace names instead of controlled namespace labels for policy**
-- **Assuming internal traffic is safe because it is "inside the cluster"**
+- **`create` on Pods (or any controller that makes Pods)** in a namespace is *node-level code execution* in that namespace: the holder can schedule a Pod that mounts the host filesystem, runs privileged, or mounts another ServiceAccount's token — so "can deploy" is much closer to "can root the node" than it reads.
+- **`get`/`list` on Secrets** is read access to every credential in scope, in cleartext (the API server decrypts on read). A Role that "just reads Secrets to populate a dashboard" reads your database passwords.
+- **`escalate` and `bind` on Roles** let the holder grant themselves permissions they don't have — the explicit RBAC self-escalation verbs, which exist precisely so you can *deny* them and which are why RBAC normally won't let you create a binding more powerful than your own.
+- **`impersonate`** lets the holder act as any other user, group, or ServiceAccount — a complete authorization bypass if granted broadly.
+- **The `*` wildcard** on resources or verbs grants permissions on resources that *don't exist yet* — a CRD installed next month is automatically in scope. Enumerate; never wildcard.
+
+The unifying instinct: when reviewing a Role, don't ask "does this look broad?" — ask "what is the most damaging thing the holder can do by *combining* these verbs?" The answer is frequently "more than the author intended."
+
+### Auditing and the practical workflow
+
+Two habits keep RBAC honest. First, `kubectl auth can-i` is your assertion language — `kubectl auth can-i create pods --as=system:serviceaccount:payments:default -n payments` answers "can this subject do this thing?" directly, and you should use it both to verify a grant did what you meant and, in CI, to assert that a sensitive permission is *absent*. Second, audit for the dangerous bindings continuously: anything bound to the built-in `cluster-admin` ClusterRole, any ClusterRoleBinding (cluster-scoped grants are the ones that escape namespace containment), and any subject with the secretly-admin verbs above. Tools like [`rbac-tool`](https://github.com/alcideio/rbac-tool) and `kubectl-who-can` turn "who can read Secrets in production?" from a manual graph-walk into a query. The goal state is one most clusters are far from at first: a small, named set of human groups with deliberately scoped namespace access, ServiceAccounts with exactly the permissions their workload uses, and `cluster-admin` held by approximately nobody on a day-to-day basis.
 
 ---
 
-## Phase 4: Workload and Container Security
+## Part 4 — Admission Control: The Policy Chokepoint
 
-### 4.1 Pod Security Standards Are the Native Baseline
+Authentication and authorization decide *whether* a request is allowed; admission control decides *what the object is allowed to be*. It is the last gate before persistence, it runs on every create and update, and it is where most *organizational* security policy — "no privileged Pods," "every image from our registry," "every namespace has resource limits" — is actually enforced. RBAC cannot express these rules (it reasons about verbs and resources, not field values); admission control can, and that makes it the security layer where the most leverage per line of policy lives.
 
-Kubernetes replaced PodSecurityPolicy with Pod Security Standards plus Pod Security Admission. You need to understand all three policy levels:
+### Two phases, and why order matters
 
-- **Privileged**
-  - Mostly unrestricted. Useful only for special trusted system workloads.
-- **Baseline**
-  - Prevents many obviously dangerous settings while staying compatible with a broad set of applications.
-- **Restricted**
-  - The strongest mainstream baseline and the best default target for ordinary apps; docs: [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/), [Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/).
+Admission runs in two phases. **Mutating** admission controllers run first and may *change* the object — inject a sidecar, set a default `securityContext`, add a label. **Validating** controllers run second and may only *accept or reject* — they see the object in its final, post-mutation form. The ordering is deliberate and exploitable for good: you mutate to set safe defaults, then validate to enforce that the result (defaults included) is acceptable. Both phases can call out to **webhooks** — your own HTTPS services the API server consults — which is the extension point the entire policy ecosystem is built on.
 
-### 4.2 Pod Security Admission: How Enforcement Actually Happens
+### Pod Security Admission: the built-in baseline
 
-- **Namespace labels drive enforcement**
-  - Learn the `enforce`, `warn`, and `audit` modes and how teams phase them in safely; docs: [Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/).
-- **Production rollout pattern**
-  - Start with `warn` and `audit`
-  - fix manifests
-  - then move critical namespaces to `enforce`
-- **Do not leave sensitive namespaces permanently in soft-only mode**
-  - That defeats the point of the control.
+The native, no-install workload control is **Pod Security Admission (PSA)**, which enforces the three **Pod Security Standards** — `privileged` (no restrictions), `baseline` (blocks the well-known dangerous settings: host namespaces, privileged containers, most host mounts), and `restricted` (the genuinely locked-down profile: non-root, no privilege escalation, dropped capabilities, seccomp on). PSA is configured per namespace with labels, and its best feature is three independent *modes* that make rollout safe:
 
-### 4.3 `securityContext` Is One of the Highest Leverage Manifest Skills
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: payments
+  labels:
+    # enforce: reject Pods that violate the standard
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    # audit: record violations in the audit log (visibility without breakage)
+    pod-security.kubernetes.io/audit: restricted
+    # warn: return a warning to the user who applied the manifest
+    pod-security.kubernetes.io/warn: restricted
+```
 
-You should be comfortable reading and setting:
+The rollout discipline this enables is the same one that makes any enforcement change safe: start with `warn` and `audit` only, watch what *would* have been rejected without breaking anything, fix the workloads, then promote to `enforce`. Apply `restricted` to your application namespaces and reserve `privileged` for the genuinely exceptional ones (a CNI plugin's namespace, a node-level agent) — and treat every `privileged`-labeled namespace as a documented, reviewed exception, not a default. PSA's deliberate limitation is that it enforces *only* the fixed Pod Security Standards; it cannot express "images must come from our registry" or "every Pod must have a `team` label." For those you need a policy engine.
 
-- `runAsNonRoot`
-- `runAsUser`
-- `runAsGroup`
-- `fsGroup`
-- `allowPrivilegeEscalation: false`
-- `readOnlyRootFilesystem: true`
-- `capabilities.drop`
-- `seccompProfile`
+### Policy engines: OPA Gatekeeper and Kyverno
 
-Study docs: [Configure a Security Context for a Pod or Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/).
+When the rule you want isn't one of the three standards, you reach for a validating-webhook policy engine, and the field has effectively two answers. **OPA Gatekeeper** expresses policy in Rego (a purpose-built declarative query language) and is the more powerful and more complex option — its strength is arbitrary logic across multiple resources, its cost is that Rego is a language your team has to learn. **Kyverno** expresses policy as Kubernetes-native YAML, which most teams find dramatically more approachable because a policy reads like the resources it governs. A Kyverno policy that enforces the two rules PSA can't — registry allowlisting and required labels:
 
-### 4.4 Linux Kernel Hardening Features Matter
+```yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-trusted-registry
+spec:
+  validationFailureAction: Enforce       # Audit first in a real rollout, then Enforce
+  rules:
+    - name: images-from-our-registry
+      match:
+        any:
+          - resources: { kinds: ["Pod"] }
+      validate:
+        message: "Images must come from registry.example.com"
+        pattern:
+          spec:
+            containers:
+              - image: "registry.example.com/*"
+```
 
-- **seccomp**
-  - Filters allowed syscalls to reduce kernel attack surface.
-- **AppArmor**
-  - Policy-based mandatory access control for file and capability behaviors on supported hosts.
-- **SELinux**
-  - Strong label-based mandatory access control, especially important in environments already standardized on SELinux.
-- **Why this matters**
-  - Upstream explicitly notes that privileged containers override or ignore many of these protections; docs: [Linux kernel security constraints for Pods and containers](https://kubernetes.io/docs/concepts/security/linux-kernel-security-constraints/).
-
-### 4.5 Privileged Containers Are a Serious Exception Case
-
-- **`privileged: true` should be rare**
-  - It effectively blows through many other hardening controls.
-- **Capabilities are usually better than full privilege**
-  - Grant only what is actually required.
-- **Keep privileged workloads isolated**
-  - Dedicated nodes, taints, and tighter RBAC/service account handling reduce blast radius; docs: [Linux kernel security constraints for Pods and containers](https://kubernetes.io/docs/concepts/security/linux-kernel-security-constraints/), [RBAC Good Practices](https://kubernetes.io/docs/concepts/security/rbac-good-practices/).
-
-### 4.6 Image Security and Supply Chain Security Are Part of Kubernetes Security
-
-- **Use minimal, maintained base images**
-- **Pin versions intentionally**
-- **Scan images continuously**
-- **Know where images are allowed to come from**
-- **Prefer signed and verifiable artifacts where possible**
-- **Treat CI/CD as part of cluster security**
-  - If your pipeline can push bad manifests or poisoned images, your cluster is only as safe as that pipeline.
-
-Upstream docs that help frame this area:
-
-- [Application Security Checklist](https://kubernetes.io/docs/concepts/security/application-security-checklist/)
-- [Images](https://kubernetes.io/docs/concepts/containers/images/)
-
-### 4.7 Node and Runtime Security Still Matter
-
-- **Kubernetes is not a VM boundary**
-  - A container breakout lands you on the node, not in some abstract layer.
-- **Harden the node OS**
-  - Patch aggressively, minimize packages, lock down SSH, protect kubelet, and understand runtime configuration.
-- **Protect the kubelet and node credentials**
-  - Node-level compromise can turn into broader compromise quickly.
-- **Understand bypass risk**
-  - Access paths that avoid the API server also avoid normal authorization, admission, and audit controls; docs: [Kubernetes API Server Bypass Risks](https://kubernetes.io/docs/concepts/security/api-server-bypass-risks/).
-
-### 4.8 Other High-Value Workload Security Topics
-
-- **User namespaces**
-  - Worth understanding for stronger isolation patterns in environments that support them.
-- **Sandboxed runtimes**
-  - Runtime isolation technologies such as gVisor or Kata can matter for stronger tenant separation.
-- **HostPath, hostNetwork, hostPID, hostIPC**
-  - These are all high-risk settings that deserve scrutiny in policy and review.
-- **Ephemeral containers for debugging**
-  - Powerful and useful, but easy to misuse if your operational model is sloppy.
+Whichever engine you choose, three operational truths apply. First, run policies in audit/warn mode before enforce — a too-strict policy that rejects every Deployment is an outage, and the engine's mistakes are *your* mistakes. Second, a validating webhook is in the critical path of every relevant API write, so its availability is your cluster's availability — set `failurePolicy` deliberately (`Fail` is more secure but means a down webhook blocks deploys; `Ignore` is more available but means a down webhook is a policy bypass), and exclude `kube-system` so a broken policy can't brick the control plane. Third, **admission control is enforcement, not detection** — it stops bad objects at creation but says nothing about what's already running or what changes out-of-band, which is why Part 9's audit and runtime layers exist alongside it.
 
 ---
 
-## Phase 5: Secrets and Sensitive Data Protection
+## Part 5 — Workload & Container Hardening
 
-### 5.1 Kubernetes Secrets Are Not Magic Encryption
+This is the layer that contains the "a Pod will be exploited" premise. Everything so far decided who may *create* a workload; this part decides what that workload can *do* to the node and its neighbors once it is running and, hypothetically, compromised. It is also the highest-density manifest skill in Kubernetes security, because almost all of it lives in one field: `securityContext`.
 
-- **A Secret object is an API object**
-  - It is not inherently secure just because the kind is named `Secret`.
-- **Base64 is not encryption**
-  - Upstream explicitly warns about this; docs: [Good practices for Kubernetes Secrets](https://kubernetes.io/docs/concepts/security/secrets-good-practices/).
-- **Anyone who can read the Secret gets the secret**
-  - That sounds obvious, but many clusters effectively grant this too widely via RBAC, controller permissions, or namespace over-sharing.
+### Containers are processes, not VMs
 
-### 5.2 Native Secret Good Practices
+The foundational fact, which determines everything else: **a container is not a virtual machine; it is a Linux process (or process tree) that shares the host kernel**, isolated by namespaces (its own view of PIDs, mounts, network) and constrained by cgroups (its share of CPU and memory) — the exact mechanisms the [Linux Fundamentals guide](../LINUX_FUNDAMENTALS_STUDY_GUIDE.md) covers in depth. The security consequence is stark: container isolation is *kernel* isolation, and a kernel vulnerability or a misconfiguration that hands a container kernel-level privilege is a host compromise. "It's just a container, it's sandboxed" is false in exactly the cases that matter. Hardening a workload is therefore the work of shrinking what its process can ask the kernel for.
 
-- **Restrict who can read or create Secrets**
-  - This is one of the most important RBAC boundaries in the cluster.
-- **Avoid putting long-lived credentials in manifests**
-  - Never confuse YAML convenience with acceptable security.
-- **Mount only where needed**
-  - If only one container in a Pod needs a secret, mount it only there.
-- **Protect data after the app reads it**
-  - Avoid cleartext logging, debugging dumps, and accidental retransmission; docs: [Good practices for Kubernetes Secrets](https://kubernetes.io/docs/concepts/security/secrets-good-practices/), [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/).
+### The securityContext that every production Pod should carry
 
-### 5.3 Encrypt Secret Data at Rest
+A handful of `securityContext` settings, applied together, turn a default-permissive container into a hardened one. The canonical hardened Pod:
 
-- **Do this in production**
-  - Enable encryption at rest for Secrets in etcd. Otherwise a backup, disk snapshot, or etcd access path may expose raw secret values; docs: [Encrypting Confidential Data at Rest](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/).
-- **Know what is encrypted**
-  - Study which resources are covered and how key rotation works.
-- **Know where your KMS keys live**
-  - In managed platforms, this often ties into cloud KMS services and provider-managed control planes.
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hardened
+spec:
+  securityContext:                  # Pod-level: applies to all containers
+    runAsNonRoot: true              # refuse to start if the image's user is root
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault          # block the ~44 dangerous syscalls the runtime blocklists
+  containers:
+    - name: app
+      image: registry.example.com/app@sha256:...
+      securityContext:              # container-level: overrides/augments
+        allowPrivilegeEscalation: false   # no setuid path to more privilege than the parent
+        readOnlyRootFilesystem: true      # the image's filesystem is immutable at runtime
+        privileged: false
+        capabilities:
+          drop: ["ALL"]                   # start from zero kernel capabilities
+          # add: ["NET_BIND_SERVICE"]     # then add back only what's provably needed
+      volumeMounts:
+        - name: tmp
+          mountPath: /tmp           # read-only root needs writable tmp mounted explicitly
+  volumes:
+    - name: tmp
+      emptyDir: {}
+```
 
-### 5.4 Secrets in Git: The Sealed Secrets Question
+Each line is a specific attack removed, and it's worth knowing which:
 
-This is a very common real-world topic.
+- **`runAsNonRoot` + `runAsUser`** stops the container running as UID 0. Root in a container is root on the host kernel for any operation namespaces don't isolate; running as an unprivileged UID means a container escape lands as a nobody, not as root.
+- **`allowPrivilegeEscalation: false`** sets the kernel's `no_new_privs` bit, closing the setuid-binary path by which a process re-acquires privileges its parent dropped — without it, dropping capabilities can be partially undone by a setuid binary in the image.
+- **`readOnlyRootFilesystem: true`** makes the image immutable at runtime, which defeats the entire class of attacks that depend on writing a payload, dropping a tool, or modifying a binary in place. Most apps need only a writable `/tmp` and a data volume, mounted explicitly as above.
+- **`capabilities: drop: ["ALL"]`** is the highest-leverage line. Linux capabilities slice root's power into ~40 pieces (bind low ports, change file ownership, load kernel modules, trace processes); containers get a permissive default set, and almost every app needs *none* of them. Drop all, add back only the specific capability the app provably requires (a web server binding port 80 needs `NET_BIND_SERVICE` — or better, just bind a high port).
+- **`seccompProfile: RuntimeDefault`** applies the container runtime's syscall blocklist, cutting off the dangerous and rarely-needed syscalls (`keyctl`, `ptrace` of others, mount operations) that kernel exploits reach for. It is on by default for new clusters but worth asserting.
 
-- **Sealed Secrets**
-  - Encrypts a secret into a git-storable SealedSecret resource that can only be decrypted by the controller in the target cluster; docs: [Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets).
-- **Why teams like it**
-  - Simple GitOps story
-  - easy developer workflow
-  - no plain secret values in Git
-- **What to think about**
-  - Key management
-  - rotation strategy
-  - cluster coupling
-  - disaster recovery if keys are lost
+The `privileged: true` setting deserves its own sentence: it disables essentially all of the above at once — full capabilities, host device access, the works — and a privileged container is, for security purposes, **root on the node**. It is occasionally legitimate (a CNI agent, a storage driver, a node-level monitor) but it is never the default, every instance must be a reviewed exception with a named reason, and the single most valuable cluster-wide policy you can write is "no privileged Pods outside this short allowlist of system namespaces."
 
-### 5.5 Important Alternatives to Sealed Secrets
+### When process isolation isn't enough
 
-- **External Secrets Operator**
-  - Syncs secrets from external backends like AWS Secrets Manager, GCP Secret Manager, Azure Key Vault, Vault, and others into Kubernetes; docs: [External Secrets Operator](https://external-secrets.io/latest/).
-- **Secrets Store CSI Driver**
-  - Mounts secrets from external secret stores into Pods, often avoiding persistence as standard Kubernetes Secret objects depending on your design; docs: [Secrets Store CSI Driver](https://secrets-store-csi-driver.sigs.k8s.io/).
-- **Cloud-provider native secret stores**
-  - Often the most natural option if you are already standardized on a cloud KMS and secret manager ecosystem.
-
-### 5.6 How to Think About the Tradeoffs
-
-Use this mental model:
-
-- **Use native Kubernetes Secrets**
-  - For simple clusters, low-risk config, or when external secret dependencies would be overkill.
-- **Use Sealed Secrets**
-  - When GitOps-first workflows matter and you want encrypted values committed to Git.
-- **Use External Secrets Operator**
-  - When the source of truth should stay in an external secret manager and Kubernetes should consume, not own, the secret lifecycle.
-- **Use Secrets Store CSI Driver**
-  - When runtime-mounted secret material is preferable to syncing secret values into the API.
-
-### 5.7 Other Sensitive Data Concerns People Forget
-
-- **Backups**
-  - etcd backups and volume snapshots may contain secret data.
-- **CI logs**
-  - Secret leakage often happens in pipelines, not just in Pods.
-- **Crash dumps and debug output**
-  - Memory and stack traces can become a secret exposure path.
-- **Developer tooling**
-  - Local `.env` files, shell history, and copied kubeconfigs routinely become the weakest link.
+For genuinely hostile multi-tenancy — running untrusted code, a SaaS that executes customer workloads — shared-kernel isolation is the wrong trust boundary, and the answer is a **sandboxed runtime**: **gVisor** (a user-space kernel that intercepts the container's syscalls so they never reach the host kernel directly) or **Kata Containers** (a lightweight VM per Pod, restoring a hardware isolation boundary). Both are wired in per-workload through a `RuntimeClass`, so you can run most Pods on the fast default runtime and reserve the heavier sandbox for the untrusted ones. Knowing these exist — and knowing that the default `runc` is *not* a security boundary against determined untrusted code — is the senior judgment call this section builds toward.
 
 ---
 
-## Phase 6: Audit, Detection, and Response
+## Part 6 — Network Security & Multi-Tenancy
 
-### 6.1 Audit Logging Is Core Production Hygiene
+By default, **every Pod can reach every other Pod in the cluster** — a flat, unrestricted network where a single compromised workload can scan and connect to your databases, your internal APIs, and your neighbors' services with nothing in its way. This is the "a Pod will be exploited" premise meeting the network, and the layer that contains it is the **NetworkPolicy**.
 
-- **What it is**
-  - The API server emits audit events for requests as they move through execution stages, based on an audit policy; docs: [Auditing](https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/).
-- **What to learn**
-  - Audit stages
-  - policy rules
-  - log backend vs webhook backend
-  - retention and downstream SIEM ingestion
-- **Why it matters**
-  - If you cannot answer "who changed this RoleBinding" or "who created this privileged Pod," your incident response is already in trouble.
+### Default-deny is the whole game
 
-### 6.2 Good Audit Questions
+A NetworkPolicy is a namespaced firewall for Pod traffic, selecting Pods by label and specifying allowed ingress and egress. The single most important fact about it is that **policies are deny-by-omission only once a policy selects a Pod**: a Pod with no policy is wide open, but the moment *any* policy selects it for a given direction, all traffic in that direction is denied except what the policy explicitly allows. This is what makes the foundational move possible — a default-deny policy that selects everything:
 
-- Who created or modified cluster-admin-like bindings?
-- Who accessed or listed Secrets?
-- Who created privileged Pods or workloads with host access?
-- Who changed admission or policy resources?
-- Which service accounts are making unexpected API calls?
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: payments
+spec:
+  podSelector: {}                  # select every Pod in the namespace
+  policyTypes: ["Ingress", "Egress"]
+  # no ingress/egress rules ⇒ deny all of both
+```
 
-### 6.3 Logging Beyond Audit
+Apply that to a namespace and nothing can talk to or from those Pods until you write the allows — which is exactly the posture you want, because now connectivity is an explicit, reviewable decision rather than an accident. You then add back the specific flows each app needs:
 
-- **Control plane logs**
-  - Required for operational investigation.
-- **Node and kubelet logs**
-  - Important when runtime compromise or bypass risk is involved.
-- **Application logs**
-  - Must not accidentally print credentials or tokens.
-- **Security event logs**
-  - Runtime detections, policy violations, admission denials, and image scan failures should flow somewhere centralized.
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-allows
+  namespace: payments
+spec:
+  podSelector:
+    matchLabels: { app: payments-api }
+  policyTypes: ["Ingress", "Egress"]
+  ingress:
+    - from:
+        - namespaceSelector:                 # only the ingress controller's namespace
+            matchLabels: { kubernetes.io/metadata.name: ingress-nginx }
+      ports:
+        - { protocol: TCP, port: 8080 }
+  egress:
+    - to:
+        - podSelector:                       # only the database Pods, same namespace
+            matchLabels: { app: postgres }
+      ports:
+        - { protocol: TCP, port: 5432 }
+    - to: []                                 # and DNS, or nothing resolves
+      ports:
+        - { protocol: UDP, port: 53 }
+        - { protocol: TCP, port: 53 }
+```
 
-### 6.4 Runtime Detection Is the Missing Layer in Many Clusters
+Two practical notes that bite everyone once. First, **egress default-deny breaks DNS** until you explicitly allow port 53 to kube-dns — the `egress` block above includes it, and forgetting it is the classic "why can't my Pod resolve anything" incident. Second, **NetworkPolicy requires a CNI that implements it** — Calico, Cilium, and most managed CNIs do, but the bare default in some setups does not, and a NetworkPolicy applied to a cluster whose CNI ignores it is a dangerous illusion of protection. Verify enforcement, don't assume it.
 
-- **Preventive controls are not enough**
-  - You also want to know when a Pod suddenly starts spawning shells, touching sensitive paths, or making suspicious syscalls.
-- **This is where runtime tooling matters**
-  - Falco and similar tools are common here; docs: [Falco Documentation](https://falco.org/docs/).
+The rollout discipline mirrors PSA's: never flip a busy namespace to default-deny blind. Map the real traffic first (a CNI with flow logs, or Cilium's Hubble, shows you what actually talks to what), write the allow policies, apply default-deny, and watch for breakage. The end state — every namespace default-denied, every cross-service flow an explicit allow — converts the flat network into a segmented one where an exploited Pod can reach only its declared dependencies.
 
-### 6.5 Policy and Drift Detection
+### North-south, mTLS, and the service mesh question
 
-- **Policy violations should be visible**
-  - It is not enough to say "we use RBAC" or "we have Pod Security Admission." You want evidence when manifests drift or exceptions pile up.
-- **Continuously scan**
-  - Images, manifests, clusters, and IaC all need scanning, not just one of them.
+NetworkPolicy governs *east-west* (Pod-to-Pod) L3/L4 traffic and nothing else. Two adjacent concerns need other tools. **North-south** traffic — the internet reaching your Ingress — is the province of your ingress controller, WAF, and TLS termination, a different layer with its own hardening (rate limits, request validation, cert management). And **identity-based, encrypted east-west** — "service A may call service B, proven by mutual TLS, regardless of IP" — is what a **service mesh** (Istio, Linkerd) adds: automatic mTLS between Pods (so traffic is encrypted and *authenticated* even inside the cluster) and L7 authorization policies (per-path, per-method). A mesh is real operational weight, so the honest guidance is to adopt it when you specifically need mTLS-everywhere or fine-grained L7 service-to-service authz, not reflexively — NetworkPolicy plus good ingress hardening covers a great deal of the threat model at a fraction of the cost.
 
-### 6.6 Incident Response Topics to Study
+### Multi-tenancy: namespaces are a soft boundary
 
-- Credential revocation and rotation
-- Break-glass access design
-- What to do after a node compromise
-- How to evict or quarantine suspicious workloads
-- How to preserve logs and audit trails
-- How to re-establish trust in image supply and CI pipelines
-
----
-
-## Phase 7: Important Third-Party Security Topics
-
-Kubernetes gives you the primitives, not a complete production security platform. These ecosystem tools matter because they solve real gaps teams hit quickly.
-
-### 7.1 Secrets, Certificates, and Identity Ecosystem
-
-| Topic | Why it matters | Docs |
-|---|---|---|
-| `Sealed Secrets` | Encrypt secrets for GitOps workflows | [Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets) |
-| `External Secrets Operator` | Sync secret values from external secret managers | [External Secrets Operator](https://external-secrets.io/latest/) |
-| `Secrets Store CSI Driver` | Mount secrets from external backends into Pods | [Secrets Store CSI Driver](https://secrets-store-csi-driver.sigs.k8s.io/) |
-| `cert-manager` | Automate certificate issuance and rotation inside clusters | [cert-manager docs](https://cert-manager.io/docs/) |
-
-### 7.2 Policy as Code
-
-| Topic | Why it matters | Docs |
-|---|---|---|
-| `Kyverno` | Kubernetes-native policy engine for validation, mutation, and generation | [Kyverno docs](https://kyverno.io/docs/) |
-| `OPA Gatekeeper` | OPA/Rego-based admission policy and audit tooling | [Gatekeeper docs](https://open-policy-agent.github.io/gatekeeper/website/docs/) |
-
-These tools matter because native Pod Security Admission is intentionally narrow. Real teams often need policy around image registries, label conventions, hostPath usage, resource requests, signing requirements, or exception management.
-
-### 7.3 Runtime and Detection Tooling
-
-| Topic | Why it matters | Docs |
-|---|---|---|
-| `Falco` | Runtime detection for suspicious container and node activity | [Falco docs](https://falco.org/docs/) |
-| `Trivy` | Scan images, filesystem content, Kubernetes manifests, and IaC for vulnerabilities/misconfigurations | [Trivy docs](https://trivy.dev/latest/docs/) |
-
-### 7.4 Software Supply Chain and Signature Verification
-
-| Topic | Why it matters | Docs |
-|---|---|---|
-| `Sigstore Policy Controller` | Enforce image signature and attestation policies in-cluster | [Sigstore Policy Controller docs](https://docs.sigstore.dev/policy-controller/overview/) |
-
-This area is important because "trusted registry" is not the same thing as "trusted artifact." Mature teams move toward signed images, provenance, and admission-time verification.
-
-### 7.5 How to Prioritize Third-Party Topics
-
-If you are learning for practical production work, this is a strong order:
-
-1. `cert-manager`
-2. `External Secrets Operator` or `Secrets Store CSI Driver`
-3. `Kyverno` or `Gatekeeper`
-4. `Falco`
-5. `Trivy`
-6. `Sealed Secrets`
-7. `Sigstore Policy Controller`
-
-That order is not universal, but it maps well to the controls most teams need first.
+The most consequential design judgment in this part is how strong a wall you actually need between tenants, because **a namespace is an organizational boundary, not a hard security boundary**. Namespaces scope names and RBAC and NetworkPolicy, but tenants in different namespaces still share one API server, one set of nodes, and — critically — one kernel per node, so a container escape or a kernel exploit crosses namespace lines. This gives a spectrum. *Soft multi-tenancy* (trusted teams in one cluster, separated by namespace + RBAC + NetworkPolicy + ResourceQuota) is appropriate when tenants are internal and broadly trusted. *Hard multi-tenancy* (untrusted tenants, e.g. a SaaS running customer code) needs more: sandboxed runtimes (Part 5), and frequently the conclusion that the only boundary you trust is a **separate cluster per tenant** — because at the limit, the strongest isolation Kubernetes offers within a cluster is weaker than a fresh cluster, and pretending otherwise is how cross-tenant breaches happen. Naming where your workload sits on that spectrum, honestly, is the senior call.
 
 ---
 
-## Phase 8: Production Hardening Checklist
+## Part 7 — Secrets & Data Protection
 
-### 8.1 Identity and Access
+Secrets are where a small mistake becomes a large one fastest, because the entire point of a Secret is that it unlocks something else. The defining fact you must internalize first: **a Kubernetes Secret is not encrypted — it is base64-encoded**, which is encoding, not protection. `echo <value> | base64 -d` reverses it instantly. Everything in this part is about adding the protection that the name falsely implies.
 
-- Use OIDC or managed-cluster identity integration for human users.
-- Require MFA through the upstream IdP where possible.
-- Avoid shared admin accounts and avoid `system:masters`.
-- Use groups, not one-off user bindings.
-- Prefer namespace-scoped roles over cluster-wide access.
-- Review all permissions that allow reading Secrets, creating Pods, issuing certificates, impersonating identities, or binding/escalating roles.
-- Use dedicated ServiceAccounts for workloads.
-- Disable service account token automount where workloads do not need API access.
-- Prefer projected short-lived tokens and workload identity federation to static cloud credentials.
+### Three places a Secret is exposed, and the control for each
 
-### 8.2 Workload Hardening
+A Secret is at risk in three distinct places, and a real secrets strategy addresses all three rather than congratulating itself for fixing one.
 
-- Enforce Pod Security Admission for app namespaces.
-- Run as non-root by default.
-- Set `allowPrivilegeEscalation: false`.
-- Drop Linux capabilities by default and add only what is required.
-- Use a read-only root filesystem where practical.
-- Use seccomp profiles and stronger kernel MAC features where your platform supports them.
-- Treat `privileged`, `hostNetwork`, `hostPID`, `hostIPC`, and `hostPath` as exception-only settings.
+**At rest in etcd.** By default, Secrets sit in etcd as base64 — so anyone who can read etcd (a node backup, a compromised control-plane host, an attacker who reached the database directly) reads every credential in the cluster in cleartext. The native fix is **encryption at rest**, configured with an `EncryptionConfiguration` on the API server:
 
-### 8.3 Network and Tenancy
+```yaml
+apiVersion: apiserver.config.k8s.io/v1
+kind: EncryptionConfiguration
+resources:
+  - resources: ["secrets"]
+    providers:
+      - kms:                       # envelope encryption: data keys wrapped by a cloud KMS
+          apiVersion: v2
+          name: my-kms
+          endpoint: unix:///var/run/kmsplugin/socket.sock
+      - identity: {}               # fallback so existing un-encrypted secrets still read
+```
 
-- Implement default-deny ingress and egress policies.
-- Explicitly allow DNS and required service dependencies.
-- Segment public, internal, and admin traffic paths.
-- Be cautious about multi-tenancy assumptions.
-- Use dedicated nodes or stronger isolation for sensitive workloads when required.
+The strongly preferred provider is **KMS v2** (envelope encryption, where data is encrypted with a local key that is itself encrypted by a cloud KMS, so the root key never lands on the node) rather than a static `aesgcm` key sitting in a file on the control-plane host — a static key in a file is barely better than no key, because it lives next to the data it protects. On managed clusters this is often a checkbox (enable KMS encryption), and it is one you should always check. Note the subtlety: enabling encryption only encrypts Secrets written *after* it's on, so you must rewrite existing Secrets (`kubectl get secrets -A -o json | kubectl replace -f -`) to actually protect them.
 
-### 8.4 Secrets and Data
+**In transit and at use.** The API server decrypts Secrets on read, so any identity with `get` on Secrets gets cleartext (Part 3's "secretly cluster-admin" verb) — which is why RBAC on Secrets is part of secrets security, not separate from it. And a Secret injected as an environment variable is readable by anything that can see the process environment (a crash dump, a `/proc/<pid>/environ` read, a logging library that dumps env on error); injecting Secrets as *mounted files* rather than env vars is a meaningful hardening, because files are easier to permission and don't leak into the dozen places env vars do.
 
-- Enable encryption at rest for Secrets in etcd.
-- Keep secret sources of truth outside Git unless using an intentional encrypted workflow.
-- Limit who can read, create, and update Secrets.
-- Avoid static cloud access keys in Secret objects if federation is available.
-- Protect backups, snapshots, and exported manifests.
+### The architecture question: where does the source of truth live?
 
-### 8.5 Audit and Monitoring
+The deeper decision is *where secrets actually originate*, and the modern answer increasingly is **not in etcd at all**. The dominant pattern is an **external secret store** — HashiCorp Vault, AWS Secrets Manager, GCP Secret Manager, Azure Key Vault — as the source of truth, with one of two bridges into Kubernetes. The **External Secrets Operator** syncs from the external store into Kubernetes Secrets (so workloads consume them normally, but the canonical copy and the rotation live in the store). The **Secrets Store CSI Driver** mounts secrets directly from the external store into the Pod as a volume, so they never become a Kubernetes Secret object at all. Both centralize the things that matter — rotation, audit, fine-grained access, dynamic short-lived credentials (Vault can issue a database password that expires in an hour) — in a system built for them.
 
-- Enable audit logging with a reviewed policy.
-- Forward audit logs and control plane logs to a durable system.
-- Monitor for suspicious RBAC, Secret, and privileged workload events.
-- Continuously scan images and manifests.
-- Regularly review policy violations and cluster exceptions.
+A separate, common need is **secrets in Git** for GitOps, where the literal Secret manifest obviously cannot be committed in cleartext. The two answers are **Sealed Secrets** (a controller holds a private key; you encrypt the Secret with the matching public key, commit the encrypted blob safely, and only the in-cluster controller can decrypt it) and the External-Secrets approach (commit a *reference* to a secret in an external store, not the secret itself). Sealed Secrets is simpler and self-contained; external stores are stronger on rotation and central audit. The honest trade: for a small platform, encryption-at-rest plus Sealed Secrets is a perfectly defensible posture; for a larger or compliance-bound one, an external store with the CSI driver or ESO is where you end up, because the value is less the encryption and more the *operational* properties — one place to rotate, one audit trail, short-lived dynamic credentials. Whatever you choose, the disqualifying anti-patterns are constant: secrets in plain ConfigMaps, secrets baked into images, secrets in environment variables in the manifest, and static long-lived cloud keys in a Secret when workload identity (Part 2) would issue short-lived ones.
 
-### 8.6 Platform and Operations
+---
 
-- Patch Kubernetes, node OS, and runtimes consistently.
-- Keep admission, CNI, and ingress components updated.
-- Protect the kubelet and node credentials.
-- Design break-glass access before an incident, not during one.
-- Test restore and secret recovery workflows.
+## Part 8 — Supply Chain Security
+
+Everything so far defends the cluster against what runs in it; supply chain security asks the prior question — *do you actually know what you're running, and that it's what you think it is?* It has risen from a footnote to a first-class concern because the attacks moved there: it is easier to compromise a popular base image or a CI pipeline than to break a hardened cluster, and a poisoned image sails through every control in Parts 1–7 because it was *admitted legitimately*.
+
+### Know what's in the image, and prove what it is
+
+The chain has a few links, each with a control. **Image provenance and minimalism**: every byte in your image is attack surface and potential CVE, so the move is toward minimal bases — `distroless` images (no shell, no package manager, just your app and its runtime) or `scratch` for static binaries — which removes the `curl`/`bash`/`apt` toolkit an attacker uses *after* landing in your container. A container with no shell is a container an exploit can't easily pivot from. **Vulnerability scanning**: tools like Trivy, Grype, or your registry's built-in scanner check images against CVE databases, and the right place to run them is *in CI as a gate* (fail the build on a critical CVE) plus *continuously on the registry* (because a CVE disclosed tomorrow affects an image you built and shipped today, and you want to learn that without rebuilding). **SBOMs** (Software Bills of Materials) make the contents explicit and queryable, so when the next Log4Shell-class disclosure lands you can answer "are we affected, and where?" in minutes instead of an audit.
+
+The strongest link is **signing and admission-time verification**. With **Sigstore/cosign**, your CI signs every image it builds (keylessly, against an OIDC identity, so there's no signing key to leak), and an admission policy *refuses to run any image that isn't signed by your pipeline*. This is the control that closes the loop, because it makes provenance enforceable rather than aspirational:
+
+```yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signatures
+spec:
+  validationFailureAction: Enforce
+  rules:
+    - name: require-our-signature
+      match:
+        any:
+          - resources: { kinds: ["Pod"] }
+      verifyImages:
+        - imageReferences: ["registry.example.com/*"]
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "https://github.com/our-org/*"      # only images CI built
+                    issuer: "https://token.actions.githubusercontent.com"
+```
+
+Read it as the enforced version of "we only run our own builds": a Pod whose image lacks a valid signature from our GitHub Actions identity is rejected at admission, so a compromised image — even one pushed to our registry by an attacker who never gained signing capability — cannot run. Combined with **digest pinning** (referencing images by `@sha256:...` rather than a mutable `:latest` tag, so what you tested is byte-for-byte what runs, and nobody can swap the image out from under a tag) and a tightly controlled **registry allowlist** (Part 4), this is the supply-chain posture that turns "we hope this image is clean" into "this image is provably ours and provably scanned."
+
+---
+
+## Part 9 — Audit, Detection & Response
+
+Every preceding layer is *prevention* — stopping bad things from happening. This part is *detection and response* — knowing when prevention failed, and being able to reconstruct and contain it. The premise here is the humblest and most important: **prevention will be incomplete, so a cluster you cannot see into is a cluster you cannot defend.** A breach you can't detect is a breach that runs until the attacker is done.
+
+### The audit log is the cluster's flight recorder
+
+The API server can emit an **audit log** — a structured record of every request: who made it, what they did, to what, when, and whether it was allowed. It is the single most valuable security signal in Kubernetes because it captures intent at the chokepoint, and it is *off or minimal by default* on many clusters, which is the first thing to fix. Audit behavior is governed by a policy that sets the verbosity per resource, and the craft is logging enough to investigate without drowning:
+
+```yaml
+apiVersion: audit.k8s.io/v1
+kind: Policy
+rules:
+  - level: RequestResponse                 # full detail for the crown jewels
+    resources:
+      - group: ""
+        resources: ["secrets", "serviceaccounts"]
+      - group: "rbac.authorization.k8s.io"
+        resources: ["roles", "clusterroles", "rolebindings", "clusterrolebindings"]
+  - level: Metadata                        # who/what/when for everything else
+    omitStages: ["RequestReceived"]
+  - level: None                            # drop the noise
+    users: ["system:kube-scheduler"]
+    verbs: ["get", "watch", "list"]
+```
+
+The policy above says: capture *full request and response* for anything touching Secrets, ServiceAccounts, or RBAC (the high-value targets), capture *metadata* for everything else, and drop the high-volume read noise from system components. With this in place, the questions an investigation actually asks become answerable: who created this RoleBinding, who read this Secret, who exec'd into this Pod, what did this now-compromised ServiceAccount do in the last 24 hours? Ship the log off-cluster (to a SIEM, or at least durable storage an attacker on the cluster can't edit) — an audit log that lives only on a compromised control-plane node is an audit log the attacker deletes. On managed clusters the control-plane audit log is a provider feature (CloudTrail/Cloud Logging integration) you enable and route; do it.
+
+### Runtime detection: the layer most clusters are missing
+
+Audit logs see API-server activity, but they are blind to what happens *inside* a running container — a process that spawns a shell, opens an unexpected outbound connection, reads `/etc/shadow`, or loads a kernel module. Catching that needs **runtime detection**, and the standard tool is **Falco** (now graduated in the CNCF), which uses eBPF to watch syscalls against a ruleset of suspicious behavior: "a shell was spawned in a container," "a sensitive file was read," "a process wrote to a binary directory," "an outbound connection went to an unexpected destination." This is the layer that catches the *post-exploitation* activity all the prevention layers are designed to make hard — the moment an attacker who got into a Pod tries to do something with it. Most clusters don't run it, which is precisely why it's worth running: prevention tells you a Pod *can't* do X; runtime detection tells you a Pod *just tried* to.
+
+### Incident response: assume you'll need it
+
+The response side is mostly about having decided things in advance. The key Kubernetes-specific moves: **isolate** a compromised Pod (apply a NetworkPolicy that cuts all its traffic, rather than deleting it and destroying the forensic evidence), **revoke** the relevant credentials (rotate the ServiceAccount token, the leaked kubeconfig, the cloud keys), **preserve** evidence (snapshot the node, capture the Pod's filesystem and the audit trail before anything is torn down), and **understand the escalation graph** before you're in it — knowing, ahead of time, that an attacker in namespace X with ServiceAccount Y can reach Z is what lets you scope the blast radius in minutes during an incident rather than discovering it during the post-mortem. Drift detection (continuously checking that the running cluster still matches policy — that no one disabled a NetworkPolicy or added a privileged Pod out of band) is the quieter companion to all of this: it catches the slow erosion of your posture that no single audit event flags.
+
+---
+
+## Part 10 — Putting It Together: A Hardened Cluster
+
+The layers only matter as a stack, so here is what "good" looks like, assembled — the posture a defensible production cluster actually holds, with each item carrying its blast-radius justification.
+
+**Identity and access.** Human access is OIDC through your IdP, with RBAC bound to IdP groups and never to individuals; `cluster-admin` is held by approximately nobody day-to-day and break-glass admin is a separate, audited, offline-kept path. Every ServiceAccount has exactly the permissions its workload uses, token automounting is off except where the API is genuinely called, and the secretly-cluster-admin verbs (Secrets read, Pod create, `escalate`/`bind`/`impersonate`, wildcards) are inventoried and justified. The cloud-IAM path to the cluster is audited as carefully as RBAC, because it bypasses it.
+
+**Workloads.** Pod Security Admission enforces `restricted` on application namespaces; `privileged` namespaces are a short, reviewed allowlist. Every production Pod carries the hardened `securityContext` — non-root, no privilege escalation, read-only root filesystem, all capabilities dropped, seccomp on — and privileged containers are a named exception, never a default. Untrusted code, if any, runs on a sandboxed runtime.
+
+**Network.** Every namespace is default-deny ingress and egress, with explicit allows for each real flow (DNS included); the CNI provably enforces NetworkPolicy; ingress is hardened separately; mTLS via a mesh is present where the threat model needs identity-based east-west encryption, absent where it doesn't. Tenancy is honestly classified — soft tenants share a cluster, genuinely untrusted ones get their own.
+
+**Secrets and supply chain.** Encryption at rest is on with a KMS provider; secrets originate in an external store with rotation and audit, or at minimum are Sealed for GitOps; nothing lives in ConfigMaps, images, or manifest env vars. Images are minimal, scanned in CI and continuously, signed by the pipeline, verified at admission, and pinned by digest from an allowlisted registry.
+
+**Detection.** API-server audit logging captures full detail on Secrets and RBAC, ships off-cluster, and is queryable; Falco watches runtime behavior; drift detection catches out-of-band erosion; the escalation graph is understood before an incident, not during one.
+
+The thread through all of it is the opening thesis, now concrete: no single one of these stops a determined attacker, but the *stack* means that a leaked credential meets least-privilege RBAC, an exploited Pod meets a dropped-capabilities securityContext and a default-deny network, a node compromise meets encrypted secrets and a sandboxed runtime, and a bad manifest meets admission control — and at every layer, the question you can now answer is the only one that matters: *when this fails, how far does it spread, and what catches it next?*
 
 ---
 
 ## Hands-On Labs
 
-### Lab 1: OIDC and RBAC Design Exercise
+These build the instincts the prose describes. Each is doable on a local cluster (kind, minikube, or k3s) except where a managed cluster is called for.
 
-- Draw the identity path for human access into a cluster using OIDC.
-- Map groups from an IdP to namespace-scoped RBAC roles.
-- Identify which users truly need cluster-wide visibility.
-- Create a break-glass cluster-admin path and describe how it would be audited.
+**Lab 1 — RBAC blast radius.** Create a ServiceAccount, bind it a Role with `create` on Pods in one namespace, and use `kubectl auth can-i --as=...` to confirm its grants. Then, *as that ServiceAccount*, schedule a Pod that mounts the host root filesystem and reads a file from the node — demonstrating to yourself that "can create Pods" is "can read the node." Now write the admission policy (PSA `restricted` or a Kyverno rule) that stops it, and prove the second attempt is rejected.
 
-### Lab 2: Service Account Hardening
+**Lab 2 — ServiceAccount token hardening.** Deploy an app with `automountServiceAccountToken: true`, exec in, and read the token from `/var/run/secrets/...`; use it against the API to show what it can do. Set automounting to `false`, redeploy, and confirm the token is gone and the app still works — quantifying the attack surface you just removed.
 
-- Create two workloads in a namespace:
-  - one that needs no Kubernetes API access
-  - one that needs read-only access to ConfigMaps
-- Disable automount for the first.
-- Create a dedicated ServiceAccount and least-privilege Role/RoleBinding for the second.
-- Explain why the default ServiceAccount is not a good long-term answer.
+**Lab 3 — Default-deny network rollout.** In a namespace with a frontend, an API, and a database, first prove the flat network: exec into the frontend and connect directly to the database, bypassing the API. Apply default-deny, watch everything (including DNS) break, then add back exactly the flows that should exist, and prove the frontend can no longer reach the database directly while the real path works.
 
-### Lab 3: NetworkPolicy Default-Deny Rollout
+**Lab 4 — Pod Security Admission rollout.** Label a namespace `warn` + `audit: restricted` and deploy a deliberately non-compliant workload (root, privileged, writable root fs); read the warnings without breakage. Fix the workload's `securityContext` until it's clean, then promote the namespace to `enforce` and confirm the original manifest is now rejected.
 
-- Apply default-deny ingress and egress in a test namespace.
-- Add rules for DNS.
-- Add rules for app-to-database traffic.
-- Verify that unrelated Pods can no longer connect.
-- Confirm your CNI is actually enforcing policy.
+**Lab 5 — Secrets, three ways.** Store the same credential as (a) a base64 Secret — then decode it to prove it's not encrypted; (b) a Secret under encryption-at-rest — then read it raw from etcd to prove the difference; (c) a Sealed Secret committed to a git repo — proving the encrypted blob is safe to commit. Write the one-paragraph comparison of operational properties (rotation, audit, git-safety) you'd hand a teammate.
 
-### Lab 4: Pod Security Admission Rollout
+**Lab 6 — Audit investigation.** Enable an audit policy that logs Secret reads at `RequestResponse`. Have one identity read a Secret, then play investigator: from the audit log alone, reconstruct who read what, when, and from where — the exact exercise a real incident demands.
 
-- Label a namespace with `warn` and `audit` for the Restricted standard.
-- Deploy a workload that violates Restricted.
-- Fix the manifest by setting:
-  - `runAsNonRoot`
-  - `allowPrivilegeEscalation: false`
-  - capability drops
-  - a seccomp profile
-- Move the namespace to `enforce`.
-
-### Lab 5: Secret Management Comparison
-
-Pick one secret, such as a database password, and compare four ways of handling it:
-
-1. Native Kubernetes Secret
-2. Sealed Secrets
-3. External Secrets Operator
-4. Secrets Store CSI Driver
-
-For each, answer:
-
-- Where is the source of truth?
-- Does the secret live in Git?
-- Does it persist in the Kubernetes API?
-- How is rotation handled?
-- What happens during disaster recovery?
-
-### Lab 6: Audit Logging
-
-- Enable or inspect audit logging on a cluster.
-- Create a low-risk audit policy focused on:
-  - Secret access
-  - RBAC changes
-  - privileged workload creation
-- Generate sample events and confirm they are captured.
-
-### Lab 7: Supply Chain Security
-
-- Scan a container image with Trivy.
-- Identify high/critical vulnerabilities.
-- Decide whether to block deployment or document a compensating control.
-- If your environment supports it, design an admission policy that only allows approved registries or signed images.
-
----
-
-## What Good Looks Like in Production
-
-A healthy production Kubernetes security posture usually looks like this:
-
-- Human users authenticate through OIDC or the managed-cluster identity integration, not shared static credentials.
-- RBAC is group-based, least-privilege, and periodically reviewed.
-- App namespaces are under Pod Security Admission enforcement.
-- ServiceAccounts are specific to workloads, and most Pods do not get unnecessary API credentials.
-- NetworkPolicy default-deny is normal, not exotic.
-- Secrets are encrypted at rest and ideally sourced from an external secret manager or an intentional GitOps encryption workflow.
-- Audit logs exist, are retained, and are actually reviewed.
-- Image scanning and policy enforcement are part of CI/CD, not an afterthought.
-- Privileged workloads are rare and isolated.
-- The platform team understands how to rotate credentials, investigate suspicious activity, and recover trust after an incident.
-
-If you remember only one thing from this guide, remember this: the dangerous Kubernetes failures are usually not "a missing feature." They are combinations of small permissions, weak defaults, and invisible operational shortcuts that line up into a full compromise path.
-
----
-
-## Recommended Study Order
-
-If you want the fastest path to practical competence, study in this order:
-
-1. Authentication models, ServiceAccounts, and RBAC
-2. Pod Security Standards, `securityContext`, and privileged-container risks
-3. NetworkPolicy and multi-tenancy basics
-4. Secrets handling and encryption at rest
-5. Audit logging and incident investigation
-6. Managed-cluster IAM integrations
-7. Third-party policy, runtime, and supply-chain tooling
-
----
-
-## Primary Documentation Index
-
-### Upstream Kubernetes
-
-- [Controlling Access to the Kubernetes API](https://kubernetes.io/docs/concepts/security/controlling-access/)
-- [Authenticating](https://kubernetes.io/docs/reference/access-authn-authz/authentication/)
-- [Using RBAC Authorization](https://kubernetes.io/docs/reference/access-authn-authz/rbac/)
-- [Admission Controllers](https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/)
-- [Validating Admission Policy](https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy/)
-- [Role Based Access Control Good Practices](https://kubernetes.io/docs/concepts/security/rbac-good-practices/)
-- [Hardening Guide - Authentication Mechanisms](https://kubernetes.io/docs/concepts/security/hardening-guide/authentication-mechanisms/)
-- [PKI certificates and requirements](https://kubernetes.io/docs/setup/best-practices/certificates/)
-- [Issue a Certificate for a Kubernetes API Client Using A CertificateSigningRequest](https://kubernetes.io/docs/tasks/tls/certificate-issue-client-csr/)
-- [Service Accounts](https://kubernetes.io/docs/concepts/security/service-accounts/)
-- [Configure Service Accounts for Pods](https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/)
-- [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
-- [Pod Security Standards](https://kubernetes.io/docs/concepts/security/pod-security-standards/)
-- [Pod Security Admission](https://kubernetes.io/docs/concepts/security/pod-security-admission/)
-- [Linux kernel security constraints for Pods and containers](https://kubernetes.io/docs/concepts/security/linux-kernel-security-constraints/)
-- [Configure a Security Context for a Pod or Container](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/)
-- [Secrets](https://kubernetes.io/docs/concepts/configuration/secret/)
-- [Good practices for Kubernetes Secrets](https://kubernetes.io/docs/concepts/security/secrets-good-practices/)
-- [Encrypting Confidential Data at Rest](https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/)
-- [Auditing](https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/)
-- [Security Checklist](https://kubernetes.io/docs/concepts/security/security-checklist/)
-- [Application Security Checklist](https://kubernetes.io/docs/concepts/security/application-security-checklist/)
-- [Multi-tenancy](https://kubernetes.io/docs/concepts/security/multi-tenancy/)
-- [Kubernetes API Server Bypass Risks](https://kubernetes.io/docs/concepts/security/api-server-bypass-risks/)
-
-### Managed Kubernetes Identity Docs
-
-- [EKS access entries](https://docs.aws.amazon.com/eks/latest/userguide/setting-up-access-entries.html)
-- [EKS IAM roles for service accounts](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html)
-- [GKE external identity providers / OIDC](https://cloud.google.com/kubernetes-engine/docs/how-to/oidc)
-- [GKE Workload Identity Federation](https://cloud.google.com/kubernetes-engine/docs/concepts/workload-identity)
-- [AKS Microsoft Entra integration](https://learn.microsoft.com/en-us/azure/aks/enable-authentication-microsoft-entra-id)
-- [AKS Microsoft Entra Workload ID](https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview)
-- [AKS OIDC issuer](https://learn.microsoft.com/en-us/azure/aks/use-oidc-issuer)
-
-### Important Ecosystem Security Docs
-
-- [Sealed Secrets](https://github.com/bitnami-labs/sealed-secrets)
-- [External Secrets Operator](https://external-secrets.io/latest/)
-- [Secrets Store CSI Driver](https://secrets-store-csi-driver.sigs.k8s.io/)
-- [cert-manager](https://cert-manager.io/docs/)
-- [Kyverno](https://kyverno.io/docs/)
-- [OPA Gatekeeper](https://open-policy-agent.github.io/gatekeeper/website/docs/)
-- [Falco](https://falco.org/docs/)
-- [Trivy](https://trivy.dev/latest/docs/)
-- [Sigstore Policy Controller](https://docs.sigstore.dev/policy-controller/overview/)
+**Lab 7 — Supply chain gate.** Sign an image with cosign in a CI step, write the admission policy that requires your signature, and prove two things: your signed image runs, and an unsigned image (or one signed by a different key) is rejected at admission — closing the loop from build to runtime.

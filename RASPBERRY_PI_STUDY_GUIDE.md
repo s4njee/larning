@@ -705,6 +705,10 @@ For most embedded applications (reading sensors, controlling relays, driving LED
 
 ## 8. I2C — Inter-Integrated Circuit
 
+I2C is the protocol you reach for first when connecting sensors, and understanding how it works on the wire makes every command below — and every debugging session — make sense. The defining trait is in the name's pronunciation ("I-squared-C," inter-IC): I2C is a **two-wire, addressed, multi-drop bus**. Just *two* signal wires — `SDA` (data) and `SCL` (clock) — carry communication for *many* devices wired in parallel on the same pair, which is why you can hang a temperature sensor, a real-time clock, and a display off the same two GPIO pins. The trick that makes many devices share two wires is **addressing**: every I2C device has a 7-bit address (often configurable by a jumper), and a transaction begins with the Pi (the *controller*) broadcasting an address; only the device whose address matches responds, while the rest stay silent. This is exactly why `i2cdetect` works the way it does — it walks every possible address and notes which ones answer — and why two devices with the same fixed address can't share a bus without an address-translating workaround.
+
+Two mechanical facts explain most I2C troubleshooting. First, because `SDA` is shared and any device might pull it low, the bus uses **open-drain signaling with pull-up resistors** — devices can only pull the line *down*, and resistors pull it back *up*, so no two devices fighting can damage each other; the Pi provides built-in pull-ups on the primary bus, which is why simple sensors often work with no extra components. Second, I2C is **clocked by the controller** (synchronous), so timing is forgiving — there's no agreed-upon speed both sides must match exactly, unlike UART below. The trade-offs to carry: I2C is wonderfully economical on pins and great for low-to-moderate-speed sensors, but it's slower than SPI (typically 100 kHz–400 kHz) and the shared bus means one misbehaving device can wedge the whole thing. Reach for it when you have several slow peripherals and few pins to spare; reach for SPI (next) when you need speed.
+
 ### Enabling I2C
 
 ```ini
@@ -813,6 +817,10 @@ dtoverlay=i2c-gpio,bus=3,i2c_gpio_sda=23,i2c_gpio_scl=24
 
 ## 9. SPI — Serial Peripheral Interface
 
+SPI is the protocol for *speed* — displays, ADCs, fast sensors, SD cards — and it makes a different set of trade-offs than I2C, which is the whole reason both protocols exist. Where I2C economizes on wires, SPI economizes on nothing and gets performance in return: it uses **four wires** — `SCLK` (clock), `MOSI` (controller-out, peripheral-in), `MISO` (controller-in, peripheral-out), and a per-device `CS`/chip-select — and the two separate data lines (`MOSI` and `MISO`) are the key, because they make SPI **full-duplex**: data flows in both directions *simultaneously* on every clock tick, where I2C's single shared `SDA` can only go one way at a time. That, plus the absence of I2C's addressing overhead and open-drain pull-up timing, is why SPI runs at tens of megahertz versus I2C's hundreds of kilohertz.
+
+The cost of that speed is wires and pins. SPI has no addressing scheme; instead, each peripheral gets its own dedicated **chip-select** line, and the controller talks to exactly one device at a time by pulling *that device's* `CS` low while the others stay high and ignore the bus. So three SPI devices need three CS pins (plus the three shared clock/data lines), whereas three I2C devices need only the same two wires — the pin budget grows with device count on SPI and stays flat on I2C, which is frequently the deciding factor on a pin-constrained board like the Pi Zero. The one configuration subtlety that bites everyone is **SPI mode** (`CPOL`/`CPHA`, modes 0–3): the controller and peripheral must agree on the clock's idle polarity and which clock edge samples the data, and a mismatch produces garbage rather than an error — so "I get nonsense from my SPI device" is almost always a mode mismatch, checked against the device datasheet. The rule of thumb: SPI for anything fast or one-to-one (a display, a high-rate ADC); I2C for several slow sensors sharing two pins.
+
 ### Enabling SPI
 
 ```ini
@@ -909,6 +917,10 @@ spi.max_speed_hz = 50000000   # 50 MHz (fast displays, check datasheet)
 ---
 
 ## 10. UART & Serial Communication
+
+UART is the oldest and conceptually simplest of the three protocols, and it differs from both I2C and SPI in one fundamental way that drives everything about using it: **it has no clock wire.** Where I2C and SPI are *synchronous* — a clock line tells the receiver exactly when to sample each bit — UART is **asynchronous**, using just two wires (`TX` to transmit, `RX` to receive, cross-connected between the two devices) and *no* shared clock. This raises an obvious question: without a clock, how does the receiver know when each bit starts and ends? The answer is that **both sides agree on the speed in advance** — the *baud rate* (9600, 115200, …) — and the data is wrapped in a framing protocol: each byte is preceded by a *start bit* that signals "a byte is coming, sample now," followed by the 8 data bits at the agreed baud rate, an optional parity bit, and a *stop bit*. The receiver sees the start bit, then samples at the pre-agreed interval. This is why a **baud-rate mismatch produces garbage** (the classic UART bug): if the two sides disagree on speed, the receiver samples at the wrong moments and reads nonsense, with no clock to catch the error — the single most common UART problem, and always the first thing to check.
+
+The consequences of being clock-free and point-to-point shape when UART fits. It is strictly **one-to-one** — two devices, `TX`-to-`RX` and `RX`-to-`TX` — with no addressing and no bus, so it can't multi-drop like I2C. Its asynchronous nature makes it slower and slightly less reliable at high speeds than the synchronous protocols, but its simplicity and ubiquity make it the universal choice for two specific jobs: a **serial console** for logging into the Pi over a wire when the network is down (the headless-debugging lifeline from section 5), and talking to modules that speak serial natively (GPS receivers, some cellular and LoRa modems, microcontrollers). The mental sorting across all three protocols: UART for a point-to-point console or a serial-native module, I2C for several slow sensors on two pins, SPI for one fast device.
 
 ### The Pi Zero 2 W's UART Situation
 

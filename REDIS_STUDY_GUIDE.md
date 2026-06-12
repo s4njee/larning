@@ -53,14 +53,15 @@ Redis is an in-memory data structure server. The key insight is **data structure
 └─────────────────────────────────────────────┘
 ```
 
-### Why Redis Is Fast
+### Why Redis Is Fast — and Why That Shapes Everything
 
-- **In-memory**: all data lives in RAM. No disk seeks, no page faults for hot data.
-- **Single-threaded event loop**: no locks, no context switching, no contention. One thread handles all commands sequentially. (I/O and persistence run on background threads.)
-- **Efficient data structures**: purpose-built C implementations — skip lists for sorted sets, hash tables, zip lists for small collections.
-- **Simple protocol**: RESP (Redis Serialization Protocol) is text-based with minimal overhead.
+Redis's speed comes from one design decision whose consequences run through this entire guide, so it's worth understanding deeply rather than as a bullet: **Redis processes commands one at a time, on a single thread.** Everything else — sub-millisecond latency, the atomicity that makes the patterns work, the one operation you must never run — follows from that single fact.
 
-Typical latency: **sub-millisecond** for most operations on a local network. Throughput: **100K–300K+ operations/second** on modest hardware.
+Being **in-memory** is the obvious half: all data lives in RAM, so there are no disk seeks and no page faults for hot data, and an operation completes in the time it takes to chase a few pointers. But the non-obvious and more consequential half is the **single-threaded command loop**. A conventional concurrent server runs many threads and pays for it constantly — locks to protect shared data, context switches between threads, cache lines bouncing between cores, and the entire category of race-condition bugs. Redis sidesteps all of it by having *one* thread execute every command to completion before starting the next. There are no locks because there is no concurrency to protect against; there is no contention because there is only one worker; and the CPU stays on its hot path instead of thrashing. (Modern Redis does use background threads, but only for I/O and persistence — the *command execution* that defines its semantics is single-threaded.)
+
+This is not just a performance story; it is the source of Redis's most useful guarantee. Because each command runs to completion with nothing interleaved, **every single command is atomic for free** — `INCR` cannot lose an increment to a race, `LPUSH` cannot interleave with another client's `LPUSH`, and `SET key val NX` either wins or loses cleanly. Nearly every pattern in this guide — atomic counters, distributed locks, rate limiters, reliable queues — works *because* of single-threaded execution, not despite it, and that's why the same patterns are subtle to build correctly on a multi-threaded store. The same fact has a sharp edge, and it is the single most important operational rule about Redis: **a slow command blocks the entire server.** Run an O(N) command against a million-element collection — `KEYS *` on a huge keyspace, `SMEMBERS` on a giant set, a Lua script with a long loop — and *every other client waits* for it to finish, because there is no second thread to serve them. So the data-structure choice isn't only about correctness; it's about keeping every operation O(1) or O(log N), because the moment one command goes O(N) on big data, your whole Redis stalls. The remaining speed contributors support this model: **purpose-built C data structures** (the skip list, hash table, and compact encodings detailed per structure below) keep operations cheap, and the **RESP** wire protocol keeps parsing overhead minimal.
+
+Typical latency is **sub-millisecond** for most operations on a local network, with throughput of **100K–300K+ operations/second** on modest hardware — but hold the rule above alongside those numbers, because both are true only as long as no command is allowed to monopolize the one thread.
 
 ### When to Use Redis
 
@@ -483,7 +484,9 @@ For very high cardinalities (millions of unique visitors), switch to HyperLogLog
 
 Reference: [Sorted Sets](https://redis.io/docs/latest/develop/data-types/sorted-sets/)
 
-Sorted sets are the most versatile Redis data structure. Each member has a floating-point score, and members are ordered by score. O(log N) insert, remove, and rank lookup. O(log N + M) range queries.
+Sorted sets are the most versatile Redis data structure, and understanding *how* they achieve their performance is what lets you use them confidently for leaderboards, priority queues, time-series indexes, and rate limiters. Each member is unique (like a set) but carries a floating-point **score**, and the members are kept permanently ordered by that score — so you get both "is X a member?" and "what is X's rank?" and "give me the top 10" cheaply, which no other single structure offers.
+
+The mechanism behind that is a deliberate pairing of two data structures maintained together, and it's worth knowing because it explains the exact performance you can rely on. Redis backs a sorted set with a **skip list** (a probabilistic balanced structure that keeps elements in sorted order with O(log N) insert, delete, and rank-position lookup — the [Database Internals guide](DATABASE_INTERNALS_STUDY_GUIDE.md) covers ordered structures in depth) *plus* a **hash table** mapping each member to its score. The hash table makes "what's alice's score?" (`ZSCORE`) an O(1) lookup, while the skip list makes "what's alice's rank?" and "members ranked 1–10" O(log N) and O(log N + M) — so a leaderboard query for the top ten of a million players touches roughly twenty skip-list nodes, not a million, which is the entire reason real-time leaderboards on Redis stay sub-millisecond no matter how many players exist. Every operation below inherits these costs, and the practical lesson is that sorted sets are the right answer *whenever you need ordering by a numeric key alongside membership* — and the wrong answer only when M (the range you fetch) is huge, because returning a million-element range is O(N) and, per the single-threaded rule above, blocks the server.
 
 ### Basic Operations
 
@@ -1170,7 +1173,11 @@ results = pipe.execute()
 
 Reference: [Persistence](https://redis.io/docs/latest/operate/oss_and_stack/management/persistence/)
 
-Redis is in-memory, but it can persist data to disk for durability. Two mechanisms, often used together:
+Redis is in-memory, which raises an obvious question: what happens when the process dies? Persistence is the answer, and the two mechanisms Redis offers — RDB and AOF — embody the same durability-versus-cost tradeoff that runs through every storage system (the [Database Internals guide](DATABASE_INTERNALS_STUDY_GUIDE.md)'s WAL chapter is the deep version). Understanding *what each actually writes and when* is what lets you choose a configuration that matches how much data you can afford to lose.
+
+**RDB takes point-in-time snapshots**: periodically, Redis writes the *entire current dataset* to a compact binary file. The mechanism is clever and worth knowing because it explains both RDB's strengths and its one gotcha — Redis `fork()`s a child process, and the child writes the snapshot while the parent keeps serving traffic. This works because of copy-on-write: the child shares the parent's memory pages until one is modified, so the snapshot reflects a consistent moment without pausing the server. The cost is that on a write-heavy server with a large dataset, the parent dirties many pages during the save, forcing copies that spike memory, and the `fork()` itself slows as the page tables grow. RDB's defining property is that it's a *snapshot* — so if Redis crashes between snapshots, you lose every write since the last one, which could be minutes. That makes RDB excellent for backups and fast restarts (loading one compact file is quick) and unsuitable on its own when minimal data loss matters.
+
+**AOF (the Append-Only File) logs every write command instead**, which is the redo-log approach: rather than periodically dumping state, AOF appends each mutating command to a file as it happens, so recovery means replaying the log. The durability you get depends entirely on the `fsync` policy — `always` (fsync every command: safest, slowest), `everysec` (fsync once per second: the standard balance, losing at most one second on a crash), or `no` (let the OS decide: fastest, least safe) — which is the exact same durability-vs-throughput dial every write-ahead log exposes. AOF files grow without bound as commands accumulate, so Redis periodically *rewrites* the AOF into the minimal set of commands that reproduces the current state (a compaction). The production-standard configuration uses *both*: AOF with `everysec` for low-data-loss durability, plus periodic RDB snapshots for fast backups and quick restarts — RDB for the backup, AOF for the floor on data loss.
 
 ### RDB (Snapshotting)
 
@@ -1365,7 +1372,11 @@ Always run an **odd number** of Sentinels (3 or 5) for quorum voting. Deploy Sen
 
 Reference: [Redis Cluster](https://redis.io/docs/latest/operate/oss_and_stack/management/scaling/)
 
-Redis Cluster distributes data across multiple primaries for horizontal scaling. Each primary owns a subset of the keyspace.
+Redis Cluster is how you scale beyond one machine's RAM, and its design is a clean worked example of the partitioning problem the [Distributed Systems guide](DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md) covers: how do you split a keyspace across N machines such that any client can find any key, and such that adding or removing a machine doesn't require rehashing everything? Redis's answer is **hash slots**, and understanding the indirection is what makes cluster behavior (and its constraints) make sense.
+
+Rather than hashing keys directly to *nodes* — which would mean every key moves whenever the node count changes, the classic rehashing catastrophe — Redis divides the keyspace into a fixed **16,384 hash slots** and maps each key to a slot with `CRC16(key) mod 16384`. Nodes then own *ranges of slots*, not keys directly. This extra layer is the whole trick: the key-to-slot mapping never changes (it's pure arithmetic on the key), so resharding means moving *slots* between nodes, and only the keys in the moved slots relocate — adding a fourth node to a three-node cluster migrates roughly a quarter of the slots and leaves the other three-quarters of keys exactly where they were. (The number 16,384 is a deliberate engineering choice: small enough that each node's slot-ownership bitmap is tiny to gossip between nodes, large enough to spread evenly across the hundreds of nodes a cluster might reach.) The client learns which node owns which slots and routes each command directly to the right node, with the cluster issuing a `MOVED` redirect if the client's map is stale.
+
+This mechanism also explains Cluster's central constraint, which trips up every newcomer: **a multi-key command only works if all its keys live in the same slot**, because a single node must be able to execute it atomically and the keys could otherwise be on different machines. The escape hatch is the **hash tag** — wrapping part of a key in `{braces}` makes Redis hash *only that part*, so `{user:1001}:name` and `{user:1001}:email` deliberately land in the same slot and can be operated on together. The design lesson Cluster teaches is that horizontal scaling forces you to think about *data locality* up front: keys you'll touch together must be co-located by hash tag, or the cluster won't let you touch them together.
 
 ### How It Works
 

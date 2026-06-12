@@ -28,7 +28,8 @@ Primary reference: [The TypeScript Handbook](https://www.typescriptlang.org/docs
 18. [Classes & TypeScript](#18-classes--typescript)
 19. [Modules, Declaration Files & Type-Only Imports](#19-modules-declaration-files--type-only-imports)
 20. [`tsconfig.json` — The Options That Matter](#20-tsconfigjson--the-options-that-matter)
-21. [Common Pitfalls](#21-common-pitfalls)
+21. [TypeScript in the Real World: Build, Tooling & Ecosystem](#21-typescript-in-the-real-world-build-tooling--ecosystem)
+22. [Common Pitfalls](#22-common-pitfalls)
 
 ---
 
@@ -1598,7 +1599,52 @@ Reference: [TSConfig Bases](https://github.com/tsconfig/bases)
 
 ---
 
-## 21. Common Pitfalls
+## 21. TypeScript in the Real World: Build, Tooling & Ecosystem
+
+The type system is the intellectually interesting part of TypeScript, but it is not the part you spend most of your time fighting on a real project. That part is the *tooling story* — how TypeScript becomes JavaScript, how its types flow through a build, how it integrates with the JavaScript ecosystem that vastly predates it — and it is where most newcomers' confusion actually lives. The single most clarifying fact, the one that reorganizes everything else, is this: **TypeScript's type system has no effect at runtime, because it is erased.** Compilation does two entirely separate jobs that it helps to think of as different programs: *type checking* (does this code obey the types?) and *transpilation* (rewrite the TS syntax as JS, deleting all the type annotations). The deleted types leave no trace in the output — there are no type checks at runtime, no `instanceof MyInterface`, no way to ask "what type is this?" of a TS type — which is the root cause of a whole family of beginner surprises and the reason runtime validation (below) is a separate concern the type system cannot cover.
+
+### `tsc` checks; something else usually builds
+
+Because checking and transpiling are separable, modern toolchains usually split them, and understanding *why* prevents a lot of misconfiguration. The TypeScript compiler `tsc` can do both, but its transpilation is slow (it type-checks as it goes) and it does not *bundle* — `tsc` turns one `.ts` file into one `.js` file, it does not resolve your imports into a single optimized artifact, minify, tree-shake, or handle CSS and assets. So real projects typically use a fast transpiler that *ignores types entirely* — esbuild, SWC, or the Vite/Next/Bun toolchains built on them — to produce the JavaScript, and run `tsc --noEmit` *separately* (in the editor and in CI) purely as the type *checker*. This is the mental model to hold: your bundler makes the code run, and `tsc --noEmit` is the gate that makes sure it's correct. The reason the fast transpilers can skip type-checking safely is that erasure makes types irrelevant to the output — deleting annotations is a purely syntactic transform that doesn't need to understand them — which is also why a file can *transpile* fine while still being full of type errors the bundler never reported. The lesson: **never treat "it builds" as "it type-checks"**; the two are different programs, and CI must run the checker explicitly or type errors ship.
+
+```jsonc
+// package.json — the real-world division of labor
+{
+  "scripts": {
+    "dev": "vite",                       // esbuild under the hood: fast, no type-checking
+    "build": "tsc --noEmit && vite build", // CHECK first, then bundle
+    "typecheck": "tsc --noEmit",         // the gate CI runs
+    "lint": "eslint ."
+  }
+}
+```
+
+### The `@types` ecosystem and `declare`
+
+TypeScript arrived years into JavaScript's life, atop millions of lines of existing untyped JS, and its solution to "how do I get types for code that has none" is the **declaration file** (`.d.ts`) — a file of pure type information with no implementation, describing the *shape* of JavaScript that exists elsewhere. Libraries written in TypeScript ship their own `.d.ts` alongside their JS, so they "just work." Libraries written in plain JavaScript get their types from **DefinitelyTyped**, a vast community repository published under the `@types/*` scope — so `npm install lodash` gives you the runtime code and `npm install -D @types/lodash` gives you the types, two separate packages because the types are maintained separately from the (untyped) library. Knowing this dissolves the common "Could not find a declaration file for module X" error: it means the library has no bundled types and no `@types` package, and your options are to install one if it exists, write a minimal `declare module "x";` stub yourself, or contribute the types upstream. The `declare` keyword more broadly is how you tell TypeScript "trust me, this exists at runtime" — for a global injected by a script tag, an environment variable, or a module with no types — which is a small, honest hole you punch in the type system's knowledge, to be used deliberately and sparingly.
+
+### Linting: the rules the type-checker doesn't enforce
+
+The type-checker proves your types are *consistent*; it does not enforce *good practice*, and that gap is filled by **typescript-eslint**, the bridge that lets ESLint understand TypeScript's syntax and, crucially, its *types*. This is more powerful than ordinary linting because type-aware lint rules can reason about things a syntactic linter can't: the `no-floating-promises` rule (catching an `async` call you forgot to `await` — a leading source of silent bugs), `no-unsafe-*` rules (flagging where `any` is leaking through and quietly disabling type safety), and rules that enforce exhaustive `switch` handling. The division of labor to internalize is that `tsc` answers "is this type-correct?" and ESLint answers "is this *wise*?", and a production TypeScript setup runs both — the type-checker as the correctness gate and the linter as the consistency-and-safety gate, both in CI, because each catches a class of problem the other is blind to.
+
+### The runtime-validation boundary
+
+The most important architectural consequence of erasure is that **types cannot validate data that enters your program at runtime.** A `fetch` returns JSON you've annotated as `User`, an environment variable is typed as a number, a form submits a body you've typed as `OrderRequest` — but the annotation is a *claim*, not a *check*, and at the trust boundary where external data arrives, nothing verifies it. This is the exact spot where TypeScript's compile-time guarantee runs out and a runtime hole opens, and the ecosystem's answer is a **schema validation library** — Zod is the standard — that does double duty: it validates the data at runtime *and* infers a static type from the same schema, so a single `z.object({...})` gives you both the runtime guard and the compile-time type, kept automatically in sync.
+
+```ts
+import { z } from "zod";
+
+const User = z.object({ id: z.string(), age: z.number().int().positive() });
+type User = z.infer<typeof User>;          // the static type, derived from the schema
+
+const data: User = User.parse(await res.json()); // validates at runtime AND types statically
+```
+
+The principle is the one the [Web Security guide](WEB_LLM_SECURITY_STUDY_GUIDE.md) states from the security side: never trust input from across a boundary. TypeScript's types are a within-the-program contract; the moment data crosses in from the network, the filesystem, or the user, you validate it at runtime and let the validator hand you back the type. Internalizing where the type system's reach ends — at the runtime boundary — is what separates someone who *knows TypeScript* from someone who knows the type system in isolation, which is the real subject of this section.
+
+---
+
+## 22. Common Pitfalls
 
 ### 1. Object Literal Excess Property Checking
 

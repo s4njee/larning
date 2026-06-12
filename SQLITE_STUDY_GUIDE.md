@@ -205,9 +205,11 @@ The Virtual File System (VFS) is an abstraction layer between SQLite and the ope
 
 ## 3. The Type System
 
+SQLite's type system is its single most surprising design decision for anyone coming from Postgres or MySQL, and it is worth understanding *why* it works this way before reacting to it, because what looks like a bug is a deliberate fit to SQLite's purpose. In a server database, the column owns the type: a `VARCHAR(100)` column rejects an integer, and the rigidity is a feature because the database is the shared source of truth for many clients. SQLite is the opposite kind of system — an embedded library inside *one* application, usually written in a dynamically-typed language (Python, JavaScript, Ruby, Lua) where values are already loosely typed — so SQLite adopts **manifest typing**: the type belongs to the **value**, not the column, mirroring the host language's own flexibility rather than fighting it.
+
 ### Manifest Typing & Type Affinity
 
-SQLite's type system is fundamentally different from other databases. It uses **manifest typing** — the type belongs to the **value**, not the column. Any column can hold any type of data (with one exception: `INTEGER PRIMARY KEY`).
+Concretely, this means any column can hold any type of data (the one exception is `INTEGER PRIMARY KEY`, which is special because it aliases the rowid — see the [Database Internals guide](DATABASE_INTERNALS_STUDY_GUIDE.md), which covers SQLite's storage at the byte level):
 
 ```sql
 CREATE TABLE demo (x, y, z);  -- no types at all, perfectly valid
@@ -215,6 +217,8 @@ CREATE TABLE demo (x, y, z);  -- no types at all, perfectly valid
 INSERT INTO demo VALUES (1, 'hello', 3.14);
 INSERT INTO demo VALUES ('text', NULL, X'DEADBEEF');  -- different types in same column
 ```
+
+This is liberating for rapid development and a perfect match for storing whatever a dynamic language hands you, but it removes a safety net that server-database developers rely on — so SQLite added an opt-in escape hatch for when you *do* want rigidity: **STRICT tables** (`CREATE TABLE t (...) STRICT;`), which enforce declared types like a conventional database and reject mismatches. The design philosophy to take away is that SQLite's flexibility is the *default* because its typical caller is one flexible application, and its rigidity is *available* (via STRICT) for the cases where you want the database to guard the type — which inverts the server-database assumption that rigidity is mandatory and flexibility impossible.
 
 ### Five Storage Classes
 
@@ -626,6 +630,10 @@ SELECT * FROM sqlite_stat1;
 ---
 
 ## 6. Transactions, Concurrency & Locking
+
+SQLite's concurrency model is its second great design decision, and like the type system it only makes sense once you accept what SQLite is *for*. A server database is built for many clients writing simultaneously, so it invests enormous machinery in row-level locking and multi-version concurrency to let writers proceed in parallel. SQLite makes the opposite bet: **one writer at a time, full stop.** A write transaction takes an exclusive lock on the *entire database*, and other writers wait. This sounds like a crippling limitation until you remember the use case — SQLite is embedded in one application, often on one device, where "many simultaneous writers to the same file" rarely happens and the simplicity of single-writer locking (no deadlocks between writers, no complex lock manager, transactions that are trivially serializable) is worth far more than write parallelism the workload doesn't need.
+
+The cost of that bet shows up as the `SQLITE_BUSY` error — the signal that another writer holds the lock and you must wait or retry — which is why setting a **busy timeout** (`PRAGMA busy_timeout = 5000`) so SQLite waits rather than failing instantly is essential operational hygiene, not optional tuning. The crucial refinement that makes the single-writer model practical for real applications is **WAL mode** (section 7), which decouples readers from the writer: in the default rollback-journal mode a writer blocks all readers during its commit, but in WAL mode *readers never block the writer and the writer never blocks readers* — many readers proceed concurrently while one writer appends, which is exactly the read-heavy shape most embedded applications have. The [Database Internals guide](DATABASE_INTERNALS_STUDY_GUIDE.md) covers the byte-level mechanics of both journal modes; the design lesson here is that SQLite chose single-writer simplicity deliberately and then used WAL to recover reader concurrency, giving most real workloads (many reads, occasional writes) the concurrency they actually need without the machinery they don't.
 
 ### Transaction Basics
 
