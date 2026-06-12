@@ -979,5 +979,14 @@ If you remember one thing from Part 10: **configure lightly, lean on Vim mode ev
 
 ---
 
+## Where to Go Next
+
+- **Run `vimtutor` today** if you somehow still haven't — 30 minutes, ships with Vim, and it's the best first hour of Vim instruction ever written.
+- **Read Drew Neil's [*Practical Vim*](https://pragprog.com/titles/dnvim2/practical-vim-second-edition/)** — organized as 121 tips, it's the book-length version of this guide's grammar-first approach, and his [Vimcasts](http://vimcasts.org/) screencasts are free.
+- **Learn to read `:help`** (mirrored at [vimhelp.org](https://vimhelp.org/)) — Vim's built-in docs are excellent once you know `:help text-objects`, `:help motion.txt`, and `Ctrl-]` to follow tags. Answering your own Vim questions is a skill that compounds forever.
+- **If you go Neovim:** the [Neovim docs](https://neovim.io/doc/) and `:help lua-guide` for Lua configuration; [kickstart.nvim](https://github.com/nvim-lua/kickstart.nvim) is the best-documented starting config — a single annotated file, not a framework.
+- **Drill, don't read.** Two weeks of real editing in Vim beats any further study; add one new motion or text object per day and force yourself to use it.
+- **Adjacent guide in this repo:** the [Git guide](GIT_STUDY_GUIDE.md) — commit messages, `git mergetool`, and interactive rebase are where Vim shows up in your daily tools whether you chose it or not.
+
 That's the guide. From here the highest-leverage next step isn't reading more — it's the two-week commitment: run `vimtutor` today, then do your real editing in Vim (or Vim mode) even though it's slower at first, and drill text objects until `ci"`, `dap`, and `cit` are reflexes. Past that hump, the grammar keeps compounding for the rest of your career, and every other editor starts to feel like typing with mittens on.
 

@@ -1698,3 +1698,13 @@ Linux networking is a debugging advantage if you use the right layer:
 - `rsync`, `scp`, `tar`, and `nc` are not interchangeable; they trade security, resumability, metadata, and speed.
 
 If you remember one operational rule, make it this: **prove the path before blaming the application, and choose the transfer tool based on risk, not just speed.**
+
+---
+
+## Where to Go Next
+
+- **Build the namespace lab from Part 8 on a real machine** — two veth-connected namespaces, a bridge, and `tcpdump` watching the wire. Every concept in this guide becomes concrete inside a lab you can break and rebuild in seconds.
+- **Read the man pages as references, not lore:** [`ip(8)`](https://man7.org/linux/man-pages/man8/ip.8.html) and its per-object pages (`ip-route(8)`, `ip-link(8)`), [`ss(8)`](https://man7.org/linux/man-pages/man8/ss.8.html), and the kernel's [networking documentation](https://docs.kernel.org/networking/index.html) for the sysctls behind Part 9's playbooks.
+- **Go one layer down with the [Advanced Linux guide](ADVANCED_LINUX_STUDY_GUIDE.md)** (Part 4: nftables, BBR, conntrack, traffic control) and the [eBPF guide](EBPF_STUDY_GUIDE.md) (XDP, Cilium — where modern Linux networking is headed).
+- **Go one layer up with the [Networking Fundamentals guide](NETWORKING_FUNDAMENTALS.md)** (the protocols these tools inspect) and the [Docker & Kubernetes Networking guide](k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md) (the namespaces/veth/bridge model at container-platform scale).
+- **Adopt one playbook.** Next time something "can't connect," run Part 9's connectivity playbook verbatim instead of guessing — link → address → route → neighbor → firewall → socket. The discipline of asking the kernel in order is the entire skill.
