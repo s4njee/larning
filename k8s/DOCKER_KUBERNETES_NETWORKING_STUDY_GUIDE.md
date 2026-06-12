@@ -17,72 +17,50 @@ The most important mindset shift in this guide is this: a common Docker networki
 
 ## Phase 1: Core Mental Models
 
-### 1.1 What "Container Networking" Actually Means
+### 1.1 What "Container Networking" Actually Means — the Stack Underneath
 
 Official docs: [Docker Engine networking](https://docs.docker.com/engine/network/), [Docker bridge driver](https://docs.docker.com/engine/network/drivers/bridge/), [Kubernetes Services and Networking concepts](https://kubernetes.io/docs/concepts/services-networking/), [Kubernetes Pods](https://kubernetes.io/docs/concepts/workloads/pods/)
 
-- **Network namespace**: A container usually gets its own isolated view of interfaces, routes, and ports.
-  - That is why a process inside a container can listen on port `80` without colliding with another container also listening on `80`.
-- **Virtual Ethernet pair (`veth`)**: One end lives in the container namespace, the other connects to a bridge or host-side network.
-  - This is the common Linux plumbing that lets container traffic leave the namespace and reach the rest of the system.
-- **Bridge**: A virtual switch on the host that connects container interfaces together.
-  - In Docker, the bridge model is the default starting point for most local development.
-- **NAT / port publishing**: Traffic from a host port is translated and forwarded into a container port.
-  - This is the networking behind `docker run -p 8080:80 ...`.
-- **DNS-based service discovery**: Instead of hardcoding IPs, containers and Pods usually resolve names to find each other.
-  - In real teams, stable names matter much more than memorizing dynamic IPs.
-- **Overlay or cluster networking**: Multiple hosts need a shared routing model so workloads can talk across nodes.
-  - Docker Swarm overlay networks and Kubernetes pod networking solve this at a higher level than a single Linux bridge.
+Before any pattern, it pays to understand what container networking *is* at the Linux level, because every Docker flag and every Kubernetes object in this guide is ultimately a convenient way to arrange a handful of kernel primitives — and once you can see those primitives, the higher layers stop being magic and start being predictable. There are only four pieces, and they are the same four whether you are running `docker run` on a laptop or operating a thousand-node cluster.
 
-**Practical picture**
+The first is the **network namespace**. A Linux network namespace is an isolated copy of the entire network stack — its own interfaces, its own routing table, its own set of listening ports, its own firewall rules. When a container starts, it gets its own network namespace, which is the entire reason two containers can each listen on port 80 without colliding: each "port 80" lives in a separate namespace, as unrelated as two houses that both have a room called "the kitchen." A container is, for networking purposes, just a process running in its own network namespace (the [Linux Fundamentals guide](../LINUX_FUNDAMENTALS_STUDY_GUIDE.md) covers namespaces in general). But an isolated namespace with no connection to anything is useless, which is where the second piece comes in.
+
+The **virtual Ethernet pair (`veth`)** is the kernel's answer to "how does traffic leave the namespace?" A veth is a pair of virtual network interfaces that act like the two ends of a patch cable: whatever goes in one end comes out the other. One end is placed inside the container's namespace (where it appears as the container's `eth0`), and the other end stays in the host's namespace. Now a packet sent by the container has somewhere to go — it travels through the cable to the host side — but it still needs somewhere to *arrive*, which is the third piece. The **bridge** is a virtual switch in the host's namespace: the host ends of every container's veth are plugged into it, so the bridge connects all the containers on a host into one virtual LAN where they can reach each other directly by IP. Docker's default bridge is literally a Linux bridge device named `docker0`, and you can see it with `ip link show docker0`.
+
+The fourth piece is what lets the outside world in, and it is the one most worth understanding because it is where "publish a port" actually happens: **NAT (Network Address Translation) via iptables**. When you run `docker run -p 8080:80`, Docker doesn't move the container onto the host — it installs an iptables rule in the host's `nat` table that says, roughly, "any packet arriving at host port 8080, rewrite its destination to the container's IP on port 80 and forward it across the bridge." The return traffic gets rewritten back. So `-p 8080:80` is a DNAT (destination NAT) rule, and you can watch it work with `iptables -t nat -L -n` or `sudo nft list ruleset`. This is the single most important mechanism to internalize, because the entire difference between Docker networking and Kubernetes networking comes down to *how much NAT there is* — Docker NATs aggressively at every host boundary, while Kubernetes, as the next sections show, deliberately tries to avoid NAT between Pods so that a Pod's IP is the same address everyone uses to reach it.
+
+Two higher-level concerns sit on top of these four primitives. **DNS-based service discovery** replaces brittle IP-chasing with stable names — containers and Pods resolve names like `db` or `redis` rather than memorizing addresses that change on every restart — and you will care far more about names than IPs in any real system. And **cross-host (overlay or routed) networking** extends the model beyond one machine: a single host's bridge can't reach a container on a different host, so Docker Swarm overlay networks and, more importantly, Kubernetes CNI plugins build a routing fabric that makes every container reachable from every node regardless of which physical machine it sits on. The full data path, end to end, looks like this:
 
 ```text
-Docker published port:
-browser -> host:8080 -> Docker NAT -> container:80
+Docker published port (NAT at the host boundary):
+  browser → host:8080 → iptables DNAT → docker0 bridge → veth → container:80
 
-Kubernetes cluster path:
-client -> LoadBalancer / Ingress / Gateway -> Service -> Pod IP -> containerPort
+Kubernetes cluster path (Pod IPs are routable, no NAT between Pods):
+  client → LoadBalancer / Ingress / Gateway → Service VIP (kube-proxy rules)
+         → real Pod IP (routed by the CNI across nodes) → containerPort
 ```
 
 ### 1.2 Docker Networking in Real Life
 
 Official docs: [Docker Engine networking](https://docs.docker.com/engine/network/), [Port publishing and mapping](https://docs.docker.com/engine/network/port-publishing/), [Compose networks](https://docs.docker.com/reference/compose-file/networks/), [Host driver](https://docs.docker.com/engine/network/drivers/host/), [Macvlan driver](https://docs.docker.com/engine/network/drivers/macvlan/), [IPvlan driver](https://docs.docker.com/engine/network/drivers/ipvlan/)
 
-- **Default bridge network**: Good for quick tests, but not ideal for multi-container apps.
-  - Containers on the default bridge can reach outbound networks, but service discovery and isolation are better with a user-defined bridge.
-- **User-defined bridge network**: The most common Docker networking pattern for local multi-container apps.
-  - Containers on the same user-defined network can resolve each other by container or service name.
-- **Published ports**: Used when traffic must enter from the host machine or outside world.
-  - Example: expose `localhost:3000` to reach a React app running on port `3000` inside a container.
-- **Multiple networks per container**: One container can join more than one network.
-  - This is a very common pattern for reverse proxies: they join a public network and a private app network.
-- **Host networking**: The container uses the host's network stack directly.
-  - This is useful for node-level agents, packet inspection, or workloads that need raw host networking behavior, but it reduces isolation.
-- **Macvlan / IPvlan**: Advanced Docker options for making containers appear more directly on the physical network.
-  - These are real tools, but they are not the first choice for ordinary web apps.
+In day-to-day Docker work, the four primitives above present as a small set of choices, and the most consequential is bridge type. The **default bridge** (`docker0`) is what containers join when you specify no network, and it has one annoying limitation that pushes everyone past it: containers on the default bridge cannot resolve each other by name — they get IPs and outbound connectivity, but service discovery and isolation are weak. The fix, and the pattern you will use constantly, is a **user-defined bridge network** (`docker network create mynet`), which is mechanically the same Linux bridge plus an embedded DNS resolver: Docker runs a tiny DNS server at `127.0.0.11` inside each container's namespace, so a container named `db` is reachable from its peers simply as `db`. This is why every real multi-container Compose stack works by name — Compose creates a user-defined bridge for the project and attaches every service to it, giving you name-based discovery for free.
 
-**What Docker Compose usually gives you**
+**Published ports** (`-p`) are the NAT mechanism from 1.1, used only when traffic must cross *from the host or the outside world into* a container — exposing `localhost:3000` to reach a React dev server, say. The mental model that matters here, and the one that trips up people moving to Kubernetes, is that Docker treats publishing as the *exception*: containers talk to each other freely over the user-defined bridge with no publishing at all, and you publish *only* the few ports the outside world needs. A container can also **join multiple networks** at once, which is the classic reverse-proxy shape — the proxy joins both a public network (where it's published) and a private app network (where it reaches the backends), bridging the two tiers while the backends stay unpublished and unreachable from outside.
 
-- One default user-defined bridge network unless you define custom networks.
-- DNS by service name, such as `db`, `redis`, or `api`.
-- Easy expression of "app can see db, but only app is published to the host."
+The remaining drivers are specialist tools worth recognizing but rarely your first reach. **Host networking** (`--network host`) drops the namespace isolation entirely and runs the container directly in the host's network stack — no veth, no bridge, no NAT, the container's ports *are* the host's ports — which is occasionally right for node-level agents or packet-inspection tools that need raw host access, at the cost of the isolation that made containers safe to colocate. **Macvlan** and **IPvlan** go the other direction, giving a container its own MAC or IP directly on the physical network so it appears as a first-class device on the LAN, useful for integrating with legacy systems that expect real hosts but overkill (and an IP-management burden) for ordinary web apps. The thing to carry from this section into the Kubernetes one: in Docker, *networking is fundamentally about containers on one host*, with NAT at every boundary and publishing as a deliberate act.
 
-### 1.3 Kubernetes Networking in Real Life
+### 1.3 Kubernetes Networking in Real Life — and How It's Actually Implemented
 
-Official docs: [Pods](https://kubernetes.io/docs/concepts/workloads/pods/), [Services](https://kubernetes.io/docs/concepts/services-networking/service/), [DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/), [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/), [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
+Official docs: [Pods](https://kubernetes.io/docs/concepts/workloads/pods/), [Services](https://kubernetes.io/docs/concepts/services-networking/service/), [DNS for Services and Pods](https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/), [Ingress](https://kubernetes.io/docs/concepts/services-networking/ingress/), [Network Policies](https://kubernetes.io/docs/concepts/services-networking/network-policies/), [The Kubernetes network model](https://kubernetes.io/docs/concepts/services-networking/#the-kubernetes-network-model)
 
-- **Every Pod gets an IP**: Kubernetes expects Pods to talk to each other without port publishing between them.
-  - This is a major difference from the "publish every useful thing to the host" mental model many people bring from Docker.
-- **All containers in one Pod share a network namespace**: They share `localhost`, ports, and the Pod IP.
-  - If two containers truly need to communicate over `localhost`, they belong in the same Pod.
-- **Services provide stable virtual endpoints**: Pods come and go; the `Service` name stays stable.
-  - This is the standard way other workloads find `api`, `redis`, or `postgres`.
-- **Ingress and Gateway are cluster entry patterns**: They handle HTTP, TLS, hostname routing, and external exposure.
-  - Think of them as the Kubernetes answer to "my Nginx or Traefik container is my front door," except standardized at cluster level.
-- **NetworkPolicy controls allowed traffic**: It is the main Kubernetes tool for saying which Pods may talk to which other Pods or CIDRs.
-  - This only works if the cluster network plugin enforces NetworkPolicy.
-- **The cluster network is bigger than one host**: Kubernetes networking spans nodes.
-  - Your app should not care whether Pod A and Pod B are on the same machine.
+Kubernetes networking is built on the same Linux primitives but arranged around a single demanding rule — the **Kubernetes network model** — that everything else follows from: *every Pod gets its own IP, and every Pod can reach every other Pod's IP directly, on any node, without NAT.* This is a deliberate rejection of the Docker "publish ports across boundaries" model, and it is the conceptual hurdle for people arriving from Docker, because it means you almost never publish ports between Pods — they just talk to each other's IPs over a flat network that spans the whole cluster. Within a single Pod, the model goes further: **all containers in one Pod share one network namespace** (Kubernetes creates a Pod by setting up the namespace first, then starting each container into it), so they share `localhost`, the Pod IP, and the port space — which is exactly why "two containers that must talk over localhost" is the textbook reason to put them in the same Pod rather than separate ones.
+
+Kubernetes does not implement that flat network itself; it delegates to a **CNI (Container Network Interface) plugin** — Calico, Cilium, Flannel, or your cloud's CNI — and understanding that the CNI is a pluggable component is most of understanding why Kubernetes networking "depends on your cluster." When the kubelet creates a Pod, it calls the CNI plugin, which does the 1.1 plumbing (creates the veth pair, assigns the Pod an IP from the node's allocated range) and then arranges *routing* so that the Pod's IP is reachable from other nodes — some CNIs do this by encapsulating Pod traffic in an overlay (VXLAN), others by programming the underlying network's routes directly, but the contract is always the same flat, NAT-free Pod network. This is also the layer that enforces **NetworkPolicy**: a NetworkPolicy is just a desired rule, and it does nothing unless the CNI translates it into actual packet filtering (iptables or eBPF), which is why a NetworkPolicy on a cluster whose CNI ignores policy is a dangerous illusion (a point the [Kubernetes Security guide](KUBERNETES_SECURITY_STUDY_GUIDE.md) develops in full).
+
+Pod IPs are flat and routable, but they are also *ephemeral* — a Pod that restarts gets a new IP — so connecting to a Pod IP directly is as brittle as connecting to a Docker container's IP. The fix is the **Service**, and understanding how a Service is *implemented* dispels the most common Kubernetes-networking confusion. A Service has a stable virtual IP (the ClusterIP) that never changes for the Service's lifetime, and a stable DNS name. But that ClusterIP belongs to no Pod and no network interface — it is a fiction maintained by **kube-proxy**, a component running on every node that watches the API server for Services and their backing Pods and programs the kernel to make the fiction work. In the traditional mode, kube-proxy writes **iptables** rules that intercept any packet destined for a Service's ClusterIP and DNAT it (the same NAT mechanism from 1.1, now load-balancing) to one of the Service's real Pod IPs, chosen at random; at large scale, the **IPVS** mode uses the kernel's purpose-built load balancer instead for O(1) lookup rather than iptables' linear rule traversal; and modern eBPF dataplanes (Cilium) replace kube-proxy's rules with eBPF programs entirely. So "a Service load-balances across its Pods" is, concretely, "every node's kernel has rules that rewrite the Service VIP to a random healthy Pod IP" — there is no proxy process in the data path, just kernel packet-mangling, which is why Services are fast and also why debugging them means reading kube-proxy's rules.
+
+The stable names come from **CoreDNS**, the cluster DNS server (itself running as a Service): it watches the API for Services and gives each one an A record like `redis.myapp.svc.cluster.local`, so a Pod resolving `redis` (via its `/etc/resolv.conf`, which Kubernetes configures with the cluster's search domains) gets the Service's ClusterIP, then the kube-proxy rules take over from there. The two remaining pieces complete the entry path from outside the cluster: **Ingress and Gateway API** are the cluster's HTTP front doors — standardized objects that an ingress controller (an Nginx, Traefik, or Envoy Pod) turns into real reverse-proxy configuration for TLS termination and hostname/path routing, the Kubernetes-native and cluster-wide version of "my Nginx container is my front door." The whole system is bigger than one host by design — *your app should never care whether Pod A and Pod B are on the same machine*, because the CNI makes the network flat and the Service makes the endpoint stable, which is precisely the abstraction Docker's one-host model lacks.
 
 ### 1.4 Quick Mapping: Docker Pattern to Kubernetes Equivalent
 
