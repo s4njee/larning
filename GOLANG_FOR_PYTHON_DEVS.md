@@ -240,6 +240,29 @@ Official docs: [Language Spec: Interface types](https://go.dev/ref/spec#Interfac
 
 This is Go's escape hatch for dynamic typing -- similar to Python's `object`. Use sparingly.
 
+```quiz
+Q: How does a Go type come to satisfy an interface?
+- [ ] By declaring `implements Speaker`
+- [x] Implicitly — having the required methods is enough; there's no `implements` keyword and the type need not know the interface exists
+- [ ] By embedding the interface
+- [ ] By registering with the runtime
+> Go interfaces are satisfied structurally: any type with a `Speak() string` method satisfies `Speaker` automatically, with no explicit declaration. This is duck typing checked at compile time. The implementor doesn't reference the interface at all — unlike Python's `class Dog(Speaker)` or Java's `implements`.
+
+Q: Why does implicit interface satisfaction enable strong decoupling?
+- [ ] It makes interfaces optional
+- [x] A consumer package can define an interface that types in another package satisfy without those types (or their package) ever importing the interface
+- [ ] It removes the need for methods
+- [ ] It lets interfaces inherit from each other
+> Because the implementor doesn't know about the interface, you can declare an interface where it's *used* (package A) describing exactly the behavior you need, and any type in package B satisfies it without B importing A. Dependencies point inward to the consumer's needs rather than outward to a shared base type — the opposite of explicit-implements coupling.
+
+Q: Go's `Dog` embeds `Animal` and calls promoted methods. Why is this "not inheritance"?
+- [ ] Embedding copies the methods at compile time
+- [x] It's composition — methods/fields are promoted, but there's no polymorphism via embedding, no `super()`, and no method resolution order
+- [ ] Embedding only works for one level
+- [ ] Embedded structs can't have methods
+> Embedding promotes the inner type's fields and methods so `d.Speak()` works, but Go deliberately omits inheritance machinery: an `Animal` method can't be virtually overridden to change behavior through a `Dog`, there's no `super`, and no MRO. It's "has-a" composition with convenient forwarding, which Go pairs with implicit interfaces to get polymorphism instead.
+```
+
 ---
 
 ## 3. Error Handling
@@ -330,6 +353,29 @@ func (e *ValidationError) Error() string {
 ```
 
 Official docs: [Package errors](https://pkg.go.dev/errors)
+
+```quiz
+Q: How does Go's error model fundamentally differ from Python's exceptions?
+- [ ] Go errors are faster to raise
+- [x] Go treats failure as a value returned from a function (part of its contract), not a control-flow mechanism — there's no try/except/finally
+- [ ] Go errors can't carry messages
+- [ ] Go automatically logs every error
+> Go functions return errors as ordinary values (typically the last return), so failure is part of the visible function signature rather than an out-of-band exception. The `if err != nil` check at each call site forces a local decision: handle, wrap, or propagate. The trade is verbosity for making every error path explicit in the code and in review.
+
+Q: What does the `%w` verb in `fmt.Errorf("reading file: %w", err)` provide that `%v` would not?
+- [ ] It formats the error in color
+- [x] It *wraps* the original error so it stays in the chain, letting callers later match it with `errors.Is`/`errors.As`
+- [ ] It converts the error to a string permanently
+- [ ] It panics if err is nil
+> `%w` wraps the underlying error, preserving it in an unwrappable chain; `%v` would only interpolate its text, discarding the typed error. Wrapping lets you add context at each layer while still allowing `errors.Is(err, os.ErrNotExist)` or `errors.As(err, &pathErr)` to inspect the original cause far up the stack. It's the idiom for contextful-yet-inspectable error propagation.
+
+Q: What makes a Go value an `error`?
+- [ ] Inheriting from a base Error class
+- [x] Implementing the error interface — having an `Error() string` method — so any custom type with that method is an error
+- [ ] Being returned from a function
+- [ ] Registering with the errors package
+> `error` is just an interface with a single `Error() string` method, satisfied implicitly like any interface. So a custom struct like `ValidationError` becomes an error simply by defining that method — no inheritance, no registration. This is why error handling composes with the rest of Go's interface system rather than being a special language feature.
+```
 
 ### Sentinel Errors
 
@@ -494,6 +540,29 @@ Key differences:
 - **No `async`/`await`** -- goroutines look like normal synchronous code
 - **No colored function problem** -- any function can be run as a goroutine
 - **Blocking is fine** -- the runtime handles it by scheduling other goroutines
+
+```quiz
+Q: Why can Go run millions of goroutines where you can only have hundreds of OS threads?
+- [ ] Goroutines run on the GPU
+- [x] M:N scheduling multiplexes many goroutines onto few OS threads; each goroutine starts with a tiny ~2KB growable stack and switches in user space, avoiding the ~MB stack and kernel context-switch of a thread
+- [ ] Goroutines don't actually run concurrently
+- [ ] The OS schedules goroutines directly
+> A goroutine is runtime-managed, not kernel-managed: the Go scheduler maps many goroutines onto roughly one OS thread per core, each goroutine begins with a ~2KB stack that grows/shrinks on demand, and switching is a cheap user-space operation. OS threads carry a fixed multi-MB stack and kernel-trap context switches, which caps them in the hundreds. That cost difference is why millions of goroutines is practical.
+
+Q: Why does Go have "no colored functions" while Python's asyncio does?
+- [ ] Go forbids blocking calls
+- [x] When a goroutine makes a blocking call, the runtime invisibly parks it and runs another on the same thread — so you write straight-line blocking code that's automatically concurrent, with no async/await coloring the call chain
+- [ ] Go functions are all async by default
+- [ ] Go uses callbacks instead
+> Python's asyncio requires `async`/`await` at every suspension point, and the async/sync split infects the whole call chain. Go's scheduler does that suspension automatically: a blocking `http.Get` in a goroutine parks it and resumes when I/O is ready, so any function works as a goroutine with no annotations. The work shifts from *coloring* to *lifecycle* — knowing when a goroutine finishes, how to cancel it, and how not to leak it.
+
+Q: The example ends `main` with `time.Sleep(2 * time.Second)` to wait for goroutines, calling it "bad." Why?
+- [ ] Sleep is too slow
+- [x] It guesses at timing rather than actually waiting for completion — if the work takes longer the program exits early; you should use `sync.WaitGroup` to wait deterministically
+- [ ] Sleep blocks other goroutines
+- [ ] Goroutines can't outlive main anyway
+> A fixed sleep is a race: it assumes the goroutines finish within the guessed window, and `main` returning kills any still running. The correct tool is a `sync.WaitGroup` (add per goroutine, `Done` when each finishes, `Wait` to block until all complete) so you wait exactly as long as needed. Lifecycle management — knowing when concurrent work is done — is the discipline goroutines demand.
+```
 
 ### The "Colored Function" Problem Python Has
 
@@ -664,6 +733,29 @@ Official docs: [builtin.close](https://pkg.go.dev/builtin#close), [Language Spec
 - Only the **sender** should close a channel
 - Sending on a closed channel **panics**
 - Receiving from a closed channel returns the zero value immediately
+
+```quiz
+Q: What's the behavioral difference between `make(chan int)` and `make(chan int, 10)`?
+- [ ] The buffered one is faster
+- [x] Unbuffered blocks the sender until a receiver is ready (synchronous handoff); buffered only blocks the sender when the buffer is full (decouples sender/receiver timing)
+- [ ] Buffered channels can't be closed
+- [ ] Unbuffered channels lose messages
+> An unbuffered channel is a synchronization point: the send doesn't complete until a receiver takes the value, guaranteeing a rendezvous. A buffered channel lets the sender deposit up to N values without a waiting receiver, blocking only when full — useful for producer/consumer decoupling. Choosing between them is choosing whether you want a guaranteed handoff or some slack.
+
+Q: Go's concurrency motto is "don't communicate by sharing memory; share memory by communicating." What does that mean in practice versus Python?
+- [ ] Go forbids shared memory entirely
+- [x] Go's default is to pass data through channels (CSP) so ownership moves with the message, where Python's default is shared state guarded by locks
+- [ ] Go has no locks at all
+- [ ] It means goroutines can't share variables
+> The CSP style moves data between goroutines over channels, so at any moment one goroutine "owns" the value and there's no contended shared state to lock. Python typically reaches for shared objects plus `Lock`. Go still *has* mutexes (the `sync` package) for when sharing is simpler, but channels are the idiomatic first choice precisely because they sidestep many race conditions.
+
+Q: Who should close a channel, and what happens if you send on a closed one?
+- [ ] The receiver closes it; sending returns an error
+- [x] Only the sender should close it; sending on a closed channel panics, while receiving from a closed channel returns the zero value immediately
+- [ ] Either side can close it safely
+- [ ] Closing is optional and never needed
+> Closing is the sender's signal of "no more values," which is why only the sender should do it — a receiver closing could leave another sender to panic. Sending on a closed channel panics (a real bug), and receiving from one yields the zero value at once (the two-value receive `v, ok := <-ch` reports `ok=false`), which is how `for range ch` knows to stop.
+```
 
 ---
 
@@ -1066,6 +1158,29 @@ m = map[string]int{}
 ```
 
 Official docs: [Language Spec: Map types](https://go.dev/ref/spec#Map_types), [builtin.make](https://pkg.go.dev/builtin#make)
+
+```quiz
+Q: `sub := original[1:3]; sub[0] = 99` changes `original` too. Why does Go behave differently from Python here?
+- [ ] Go has a bug in slicing
+- [x] A Go slice is a view over a shared backing array, so the sub-slice and original alias the same memory; Python slicing copies
+- [ ] `sub` is a pointer to `original`
+- [ ] Only happens with integer slices
+> A Go slice is a lightweight header (pointer, length, capacity) over an underlying array, so slicing creates a *view* sharing that array — mutating through one is visible through the other. Python's list slicing produces an independent copy. To get copy semantics in Go you allocate and `copy` explicitly. Assuming Python semantics is the root of most slice surprises.
+
+Q: `a := []int{1,2,3}; b := a[:2]; b = append(b, 99)` leaves `a` as `[1, 2, 99]`. Why?
+- [ ] append always mutates the original
+- [x] `b` shares `a`'s backing array and still has spare capacity, so the append writes into the existing array (overwriting `a[2]`) rather than allocating a new one
+- [ ] append is undefined behavior
+- [ ] b is a reference to a
+> `append` reuses the backing array when there's spare capacity, only allocating a new one when the slice would overflow. Since `b` (len 2) shares `a`'s array of capacity 3, appending fits and overwrites `a[2]`. Whether append copies is therefore *unpredictable from the call alone* — it depends on capacity. The safe pattern when you need independence is `make` + `copy`.
+
+Q: `var m map[string]int` then `m["key"] = 1` panics, but reading `m["key"]` is fine. Why?
+- [ ] Reading initializes the map
+- [x] A nil map can be read (returns the zero value) but writing to it panics — you must initialize with `make` or a literal before assigning
+- [ ] Maps can't hold ints
+- [ ] The key must be declared first
+> A nil map behaves like an empty read-only map: lookups return the value type's zero value safely, but there's no allocated structure to store into, so assignment panics. Always initialize with `make(map[string]int)` or `map[string]int{}` before writing. This asymmetry (read-ok, write-panic) is a common Go-newcomer crash.
+```
 
 ---
 
