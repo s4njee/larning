@@ -110,7 +110,7 @@ Part, click-to-reveal explanation included.
 - [x] `COMPILER_INTERNALS_STUDY_GUIDE.md` — 5 quizzes (18 questions; parsing, IR/SSA, optimization/UB, JIT, GC)
 - [x] `CRYPTO_FUNDAMENTALS.md` — 6 quizzes (20 questions; hashing, symmetric, asymmetric, key exchange, signatures, TLS)
 
-## Batch 3 — Infra, cloud, and ops
+## Batch 3 — Infra, cloud, and ops (COMPLETE)
 
 - [x] `k8s/KUBERNETES_STUDY_GUIDE.md` — 5 quizzes (18 questions; architecture, workloads/probes, services, resources, debugging)
 - [x] `k8s/ADVANCED_KUBERNETES_STUDY_GUIDE.md` — 5 quizzes (14 questions; control plane, API machinery, operators, multi-tenancy, GitOps)
@@ -125,7 +125,7 @@ Part, click-to-reveal explanation included.
 - [x] `AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md` — 5 quizzes (15 questions; tenant/MG/subscription/RG hierarchy & regional subnets, Entra-vs-RBAC split & managed identities, NSG/Front-Door/L7-vs-L4, Cosmos consistency & partition keys, Key Vault/WAF-on-edge/Defender)
 - [x] `GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md` — 5 quizzes (15 questions; project hierarchy/labels-vs-tags/multi-region, resource-bound IAM/no-users/actAs, global VPC/SA-targeted firewall/global LB, Spanner+TrueTime/Firestore-vs-Bigtable, BigQuery bytes-scanned/partitioning/Omni)
 - [x] `GIT_STUDY_GUIDE.md` — 6 quizzes (17 questions; content-addressed object model, three-trees index & conflict stages, rebase rehashing & rebase-onto, reset/restore/revert, remote snapshot/fetch-vs-pull/force-with-lease, reflog recovery)
-- [ ] `VIM_STUDY_GUIDE.md`
+- [x] `VIM_STUDY_GUIDE.md` — 5 quizzes (15 questions; operator+motion grammar & counts, text objects inner/around & dot-refactor, registers/unnamed-vs-yank trap & named-append, :s ranges/flags & :g+:normal & cgn, macro robustness & 99@a & macro-vs-:g)
 
 ## Batch 4 — Languages and runtimes
 
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 33/65 (Batch 1 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 34/65 (Batches 1–3 complete).
