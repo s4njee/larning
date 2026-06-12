@@ -526,13 +526,14 @@ This section is where .NET starts to feel really productive. The collection stor
 
 ### Generics Are Real Runtime Types, Not Just Hints
 
-Python type hints mostly help editors, static checkers, and humans.  
-C# generics are part of the actual compiled type system.
+This is a genuine paradigm difference from Python, not a syntax variation, and understanding the mechanism explains both why C# generics catch more bugs and why they perform better. A Python type hint — `list[str]` — is *erased*: it helps editors and `mypy`, but at runtime the list is just a list and nothing stops you putting an `int` in it (the [TypeScript guide](../TYPESCRIPT_STUDY_GUIDE.md) describes the same erasure for TS). C# generics are the opposite: they are **reified** — `List<string>` is a real, distinct type that exists at runtime, the compiler enforces it, and the CLR knows about it.
 
 ```csharp
 List<string> names = new() { "Ada", "Grace", "Linus" };
-// names.Add(123); // compile error
+// names.Add(123); // compile error — not a runtime surprise, a build failure
 ```
+
+Two consequences follow from reification that matter. First, the type safety is *real and complete*: there is no runtime path by which an `int` ends up in a `List<string>`, because the type isn't a hint the runtime ignores — it's part of what the list *is*. Second, and less obvious to a Python developer, reification buys **performance** through specialization. When you write `List<int>`, the CLR generates a version specialized for `int` that stores the integers *directly* in the backing array — no boxing, no per-element object header, no pointer chase — exactly as if you'd hand-written an int array. Python's `list` of ints, by contrast, is an array of pointers to heap-allocated integer objects. So `List<int>` isn't just type-safe where a Python list is loose; it's a fundamentally tighter memory layout, which is a large part of why .NET numeric code runs the way it does. (For reference types the CLR shares one generic implementation across them, since they're all pointer-sized — the specialization that matters is for value types like `int` and `struct`s, section 3.) The takeaway: when you write `List<T>`, you're not annotating a list, you're asking for a real specialized type — which is why generics in C# are load-bearing infrastructure, not documentation.
 
 ### Common Collections You Will Use Constantly
 
@@ -616,20 +617,15 @@ var result =
 
 ### `IEnumerable<T>` Is Closer to a Generator Pipeline Than a List
 
-This matters a lot.
+This is the single most important thing to understand about LINQ, and the one that causes the most surprises for a Python developer, so it's worth getting exactly right rather than as a footnote. The right mental model is that a LINQ query is a **recipe, not a result** — it behaves like a Python generator chain (`(n for n in numbers if n % 2 == 0)`), not like a materialized list.
 
 ```csharp
 IEnumerable<int> query = numbers.Where(n => n % 2 == 0);
 ```
 
-That line usually does **not** run the query immediately. It builds a deferred pipeline. Execution happens when you enumerate it:
-- `foreach`
-- `ToList()`
-- `ToArray()`
-- `Count()`
-- `First()`
+That line does *not* filter anything. It builds a deferred pipeline — a description of work to be done — and the work happens only when something **enumerates** it: a `foreach`, or a *materializing* operator like `ToList()`, `ToArray()`, `Count()`, or `First()`. Up to that point, no element has been examined. This deferral is powerful (you can compose a complex query in pieces, and an unbounded source can be filtered and `Take(10)`'d without ever computing the rest), but it has three consequences that bite real code, and recognizing them is what separates "I read about deferred execution" from "I won't ship the bug."
 
-This is one of the most common sources of confusion for Python developers. A LINQ pipeline often behaves more like a lazy generator chain than a realized list.
+First and most painful: **a deferred query re-executes every time you enumerate it.** If `query` filters a database or runs an expensive computation, then `query.Count()` followed by `foreach (var x in query)` does the whole thing *twice* — Python's generator would have been exhausted, but a LINQ query is a recipe that re-runs on each use. The fix is to materialize once (`var results = query.ToList();`) and enumerate the list. Second, **deferred execution captures variables by reference, not by value**, so a query built inside a loop that closes over the loop variable sees the variable's *final* value when it finally runs, not the value at the time the query was built — the classic "all my queries returned the same thing" bug. Third, and this is where .NET goes beyond a generator: when the source is a database (`IQueryable<T>` via Entity Framework, section 12), the deferred pipeline isn't executed in C# at all — it's *translated to SQL* and run on the database when you materialize it, which is why a `.Where().Select()` chain becomes one efficient SQL query rather than pulling the whole table into memory. So "it's deferred" isn't a quirk to memorize; it's the mechanism that makes LINQ both composable and able to push work down to the database — and the source of the three bugs above when you forget the recipe hasn't run yet.
 
 ### Materialization Matters
 
