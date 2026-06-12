@@ -2,6 +2,8 @@
 
 A study guide that skips the basics and focuses on what actually trips up Python developers learning modern, cross-platform .NET. This guide targets **.NET 10** and **C# 14** as of **April 9, 2026**, and intentionally avoids legacy Windows-only `.NET Framework` advice unless the distinction matters.
 
+Primary references: the [.NET documentation](https://learn.microsoft.com/en-us/dotnet/) and [C# language reference](https://learn.microsoft.com/en-us/dotnet/csharp/) (Microsoft Learn is current and thorough), the [ASP.NET Core docs](https://learn.microsoft.com/en-us/aspnet/core/) (the web half), and the per-release [What's new in C#](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/) pages (the fastest way to keep the language model current).
+
 ---
 
 ## Table of Contents
@@ -1863,3 +1865,13 @@ The biggest opportunity is the same thing:
 - use records, LINQ, async/await, DI, and the host model as intended
 
 Once that mental shift happens, modern .NET feels less like "Microsoft Java" and more like a very cohesive, productive, cross-platform application platform with unusually strong tooling.
+
+---
+
+## Where to Go Next
+
+- **Read the [ASP.NET Core fundamentals](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/)** — DI, middleware, configuration, and hosting are the platform's load-bearing ideas, and the official docs treat them properly.
+- **Keep the [C# language reference](https://learn.microsoft.com/en-us/dotnet/csharp/) and per-release [What's new](https://learn.microsoft.com/en-us/dotnet/csharp/whats-new/) pages bookmarked** — C# evolves a major version a year, and the release notes are where pattern matching, records, and nullable-reference refinements are actually explained.
+- **Read [EF Core's docs](https://learn.microsoft.com/en-us/ef/core/) with your ORM instincts on alert** — change tracking, migrations, and the LINQ-to-SQL translation model are where Django/SQLAlchemy habits mislead most.
+- **Port one real Python service** — a FastAPI app to ASP.NET Core Minimal APIs, with DI, EF Core, and tests — the friction points you hit are precisely this guide's chapter list, experienced firsthand.
+- **Adjacent guides in this repo:** [Advanced Python](ADVANCED_PYTHON_STUDY_GUIDE.md) (the runtime you're translating from), [Golang for Python devs](GOLANG_FOR_PYTHON_DEVS.md) and [Rust for Python devs](RUST_FOR_PYTHON_DEVS.md) (the sibling translations), and [Enterprise APIs](ENTERPRISE_API_STUDY_GUIDE.md) (what you build with it).

@@ -2,6 +2,8 @@
 
 A study guide that skips the basics and focuses on what actually trips up Python developers learning Go.
 
+Primary references: the [Tour of Go](https://go.dev/tour/) (the 90-minute on-ramp), [Effective Go](https://go.dev/doc/effective_go) and the [Go FAQ](https://go.dev/doc/faq) (the idiom and *why* documents), the [language spec](https://go.dev/ref/spec) (unusually readable), and [Go by Example](https://gobyexample.com/) (the snippet reference this guide's format echoes).
+
 ---
 
 ## Table of Contents
@@ -1566,3 +1568,13 @@ If you are switching between Python and Go regularly, this is the part to skim b
 | `None` | `nil` (only for pointer/reference types) |
 | `isinstance()` | Type assertion: `v, ok := x.(Type)` |
 | `import module` | `import "path/to/package"` |
+
+---
+
+## Where to Go Next
+
+- **Do the [Tour of Go](https://go.dev/tour/) and then read [Effective Go](https://go.dev/doc/effective_go)** — the Tour for mechanics, Effective Go for idiom; together they're an afternoon and cover what "Pythonic → Goish" translation requires.
+- **Read the [Go FAQ](https://go.dev/doc/faq)** when a design choice annoys you — "why no exceptions/generics-before-1.18/sets" all have considered answers there, and knowing the *why* dissolves most resistance.
+- **Write Go with the race detector and linter on from day one:** `go test -race`, `go vet`, and [staticcheck](https://staticcheck.dev/) — Go's tooling is the language's best feature; let it teach you.
+- **Port one real Python tool** — a CLI or small HTTP service — and resist recreating Python patterns: no inheritance hierarchies, return errors instead of raising, use channels/goroutines only where concurrency is real.
+- **Adjacent guides in this repo:** [Advanced Go](ADVANCED_GO_STUDY_GUIDE.md) (the runtime/performance deep-dive this guide on-ramps to), [Python Concurrency](PYTHON_CONCURRENCY.md) (the model you're leaving), and [Rust for Python devs](RUST_FOR_PYTHON_DEVS.md)/[.NET for Python devs](DOTNET_FOR_PYTHON_DEVS.md) (the sibling translations).

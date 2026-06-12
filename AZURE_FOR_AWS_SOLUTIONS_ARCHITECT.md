@@ -4,6 +4,8 @@ A practical 15-section guide for architects who already know AWS and want to bui
 
 This guide was assembled from official Microsoft Learn documentation and Azure Architecture Center comparisons reviewed on April 9, 2026. Use the linked docs as the current source of truth when a feature, limit, SLA, SKU, or pricing detail matters operationally.
 
+Primary references: the [Azure Architecture Center's AWS-to-Azure comparison](https://learn.microsoft.com/en-us/azure/architecture/aws-professional/) (the official Rosetta stone this guide expands), [Microsoft Learn](https://learn.microsoft.com/en-us/azure/) (per-service docs), the [Cloud Adoption Framework](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/) (landing zones and governance), and the [Azure Well-Architected Framework](https://learn.microsoft.com/en-us/azure/well-architected/) (the pillar-review counterpart to AWS's).
+
 ---
 
 ## How to Use This Guide
@@ -900,3 +902,13 @@ jobs:
 | Governance | SCP / Control Tower | Azure Policy / Landing Zones |
 | Observability | CloudWatch / X-Ray / CloudTrail | Azure Monitor / App Insights / Activity Log |
 | Backup vs DR | AWS Backup / Elastic DR | Azure Backup / Site Recovery |
+
+---
+
+## Where to Go Next
+
+- **Read the [Azure for AWS professionals series](https://learn.microsoft.com/en-us/azure/architecture/aws-professional/)** — the official per-domain comparisons (compute, networking, identity, databases) are the canonical second pass over this guide's mapping tables.
+- **Internalize Entra ID vs IAM** — identity is the deepest conceptual gap for AWS architects; the [Entra ID fundamentals docs](https://learn.microsoft.com/en-us/entra/fundamentals/whatis) and RBAC scope model deserve a dedicated session before anything else.
+- **Build one landing zone** with the [Cloud Adoption Framework](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/landing-zone/) — management groups, policy, hub-spoke networking — the structures that have no exact AWS-account-model equivalent.
+- **Deploy one real workload twice** — the same app via App Service and AKS, with Azure Monitor wired up — to feel where Azure's PaaS-first culture diverges from AWS's primitives-first one.
+- **Adjacent guides in this repo:** [GCP for AWS architects](GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md) (the third cloud, same method), [Terraform](TERRAFORM_STUDY_GUIDE.md) (declaring all of it), and [Kubernetes](k8s/KUBERNETES_STUDY_GUIDE.md) (AKS's substrate).

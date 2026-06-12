@@ -98,27 +98,27 @@ Substantial guides where link density lags the length.
 - [x] `k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; kube-bench, checklist)
 - [x] `WEB_LLM_SECURITY_STUDY_GUIDE.md` — [x] reading [x] links (intro refs were strong; PortSwigger, GenAI project)
 
-## Tier 3 — Decent links already, just missing the reading section
+## Tier 3 — Decent links already, just missing the reading section — ✅ COMPLETE (2026-06-12)
 
 These mostly need the closing section + intro references paragraph; links are
 already reasonable (verify coverage of first-mentions while in the file).
 
 - [x] `ADVANCED_RUST_STUDY_GUIDE.md` — [x] already had Study Methodology + Additional Reference Links (audit regex miss)
 - [x] `ASYNCIO_STUDY_GUIDE.md` — [x] reading + intro refs added
-- [ ] `AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md` (70 / 902) — [ ] reading [ ] intro refs
-- [ ] `CADDY_STUDY_GUIDE.md` (91 / 2592) — [ ] reading [ ] intro refs
-- [ ] `CLOUDFLARE_STUDY_GUIDE.md` (64 / 992) — [ ] reading [ ] intro refs
+- [x] `AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md` — [x] reading [x] intro refs
+- [x] `CADDY_STUDY_GUIDE.md` — [x] reading [x] intro refs
+- [x] `CLOUDFLARE_STUDY_GUIDE.md` — [x] reading [x] intro refs
 - [x] `DJANGO_STUDY_GUIDE.md` — [x] already had 'Where to Go From Here' ecosystem section (audit regex miss)
-- [ ] `DOTNET_FOR_PYTHON_DEVS.md` (51 / 1865) — [ ] reading [ ] intro refs
-- [ ] `GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md` (54 / 916) — [ ] reading [ ] intro refs
-- [ ] `GOLANG_FOR_PYTHON_DEVS.md` (102 / 1568) — [ ] reading [ ] intro refs
+- [x] `DOTNET_FOR_PYTHON_DEVS.md` — [x] reading [x] intro refs
+- [x] `GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md` — [x] reading [x] intro refs
+- [x] `GOLANG_FOR_PYTHON_DEVS.md` — [x] reading [x] intro refs
 - [x] `KALI_LINUX_STUDY_GUIDE.md` — [x] reading added (HTB/THM/PortSwigger, HackTricks)
 - [x] `NEXTJS_STUDY_GUIDE.md` — [x] already had 'Where to Go from Here' (audit regex miss)
-- [ ] `RUST_FOR_PYTHON_DEVS.md` (53 / 2346) — [ ] reading [ ] intro refs
+- [x] `RUST_FOR_PYTHON_DEVS.md` — [x] reading [x] intro refs
 - [x] `VUE_STUDY_GUIDE.md` — [x] reading added
-- [ ] `WEBSOCKETS_STUDY_GUIDE.md` (49 / 1843) — [ ] reading [ ] intro refs
+- [x] `WEBSOCKETS_STUDY_GUIDE.md` — [x] reading [x] intro refs
 - [x] `TERRAFORM_STUDY_GUIDE.md` — [x] reading added
-- [ ] `k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md` (90 / 1210) — [ ] reading [ ] intro refs
+- [x] `k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md` — [x] reading [x] intro refs
 
 ## Tier 4 — Has a reading section; verify it matches the model + fix links
 

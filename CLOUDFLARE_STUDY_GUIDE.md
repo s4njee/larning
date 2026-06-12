@@ -4,6 +4,8 @@ A practical, depth-first guide to Cloudflare for engineers and architects who al
 
 Cloudflare is best understood in two halves. The **network/security half** (CDN, DNS, TLS, DDoS, WAF, Zero Trust, Tunnels) is what you put *in front of* infrastructure you already run anywhere. The **developer platform half** (Workers, Pages, R2, D1, KV, Durable Objects, Queues, and friends) is a place to *run and store* the application itself, at the edge, with a different cost and consistency model than a regional cloud. This guide treats both, anchors each service to its AWS analog, explains the mechanism underneath each one — because the mechanisms, not the product names, are what let you predict behavior — and shows the actual code and config you write.
 
+Primary references: the [Cloudflare developer docs](https://developers.cloudflare.com/) (per-product, current, and good — especially [Workers](https://developers.cloudflare.com/workers/), [R2](https://developers.cloudflare.com/r2/), and [Durable Objects](https://developers.cloudflare.com/durable-objects/)), [How Cloudflare works](https://developers.cloudflare.com/fundamentals/concepts/how-cloudflare-works/) (the network-half mental model), the [Cloudflare blog](https://blog.cloudflare.com/) (the engineering posts are primary sources for the mechanisms this guide describes), and the [workers.dev examples](https://developers.cloudflare.com/workers/examples/).
+
 Pricing, plan limits, and product availability change over time. Treat every number here as directional and use the linked Cloudflare docs as the source of truth when a figure matters operationally.
 
 ---
@@ -990,3 +992,13 @@ Not HTTP?                    → Spectrum (or gray-cloud + your own protections)
 | Images / video | Images / Stream | S3+Lambda / IVS+MediaConvert |
 | Steer across origins | Load Balancing | Route 53 + ELB |
 | Ship logs to SIEM | Logpush | Kinesis Firehose |
+
+---
+
+## Where to Go Next
+
+- **Read the [Workers docs](https://developers.cloudflare.com/workers/)** front to back — the platform half of Cloudflare is Workers plus its bindings, and the [examples gallery](https://developers.cloudflare.com/workers/examples/) covers most real patterns in copy-adaptable form.
+- **Read the [Durable Objects docs](https://developers.cloudflare.com/durable-objects/)** carefully before designing stateful edge systems — the single-instance consistency model is the platform's most distinctive idea and its easiest to misuse.
+- **Follow the [Cloudflare blog](https://blog.cloudflare.com/)'s engineering posts** — the deep dives on how Workers isolates, R2, and the network actually work are primary sources, not marketing.
+- **Ship one project on the free tier:** a Worker + R2 + D1 app behind a custom domain with a Tunnel to something private — it exercises both halves of the platform and costs nothing.
+- **Adjacent guides in this repo:** [Networking Fundamentals](NETWORKING_FUNDAMENTALS.md) (DNS/TLS/CDN mechanics), [Enterprise APIs](ENTERPRISE_API_STUDY_GUIDE.md) (rate limiting and caching at the edge), [WebSockets](WEBSOCKETS_STUDY_GUIDE.md) (Durable Objects' killer use case), and [Distributed Systems](DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md) (the consistency trade-offs the edge model makes).

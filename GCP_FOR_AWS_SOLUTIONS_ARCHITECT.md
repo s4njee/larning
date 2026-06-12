@@ -4,6 +4,8 @@ A practical 15-section guide for architects who already know AWS and want to bui
 
 This guide is updated to reflect the Google Cloud architecture and services landscape in 2026. Use the linked official documentation as the current source of truth when a feature, limit, SLA, SKU, or pricing detail matters operationally.
 
+Primary references: Google's [GCP for AWS professionals comparison](https://cloud.google.com/docs/get-started/aws-azure-gcp-service-comparison) (the official service mapping this guide expands), the [Google Cloud documentation](https://cloud.google.com/docs) (per-service), the [Architecture Framework](https://cloud.google.com/architecture/framework) (Google's well-architected counterpart), and the [Cloud Architecture Center](https://cloud.google.com/architecture) (reference architectures).
+
 ---
 
 ## How to Use This Guide
@@ -914,3 +916,13 @@ steps:
 | IaC | CloudFormation / CDK | Terraform / Deployment Manager |
 | Governance | SCP / Control Tower | Organization Policy |
 | Observability | CloudWatch / X-Ray / CloudTrail | Cloud Monitoring / Trace / Audit Logs |
+
+---
+
+## Where to Go Next
+
+- **Read Google's [service-comparison page](https://cloud.google.com/docs/get-started/aws-azure-gcp-service-comparison)** as the living version of this guide's mapping tables, and the [Architecture Framework](https://cloud.google.com/architecture/framework) for the design-review lens.
+- **Internalize the two deepest differences first:** the [resource hierarchy](https://cloud.google.com/resource-manager/docs/cloud-platform-resource-hierarchy) (projects ≠ accounts) and [VPC global scope](https://cloud.google.com/vpc/docs/vpc) (one network spanning regions) — most AWS-instinct mistakes on GCP trace back to these two.
+- **Spend real time with BigQuery and Spanner docs** — they are the services with no true AWS equivalent and the usual reason teams choose GCP; the [BigQuery docs](https://cloud.google.com/bigquery/docs) repay reading beyond the quickstart.
+- **Deploy one workload on Cloud Run** end to end (build → deploy → IAM → monitoring) — Cloud Run is the platform's center of gravity in a way Lambda isn't on AWS, and one deployment teaches the IAM/service-account model concretely.
+- **Adjacent guides in this repo:** [Azure for AWS architects](AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md), [Terraform](TERRAFORM_STUDY_GUIDE.md), [Kubernetes](k8s/KUBERNETES_STUDY_GUIDE.md) (GKE is the managed-K8s reference implementation), and [Data Engineering](DATA_ENGINEERING_STUDY_GUIDE.md) (BigQuery's world).

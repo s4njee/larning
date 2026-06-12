@@ -4,6 +4,8 @@ A depth-first guide to WebSockets for engineers building real-time features. Ass
 
 > *A WebSocket is just a TCP connection that started life as an HTTP request and never hung up. Everything else — frames, rooms, reconnection, scaling — is what you build on top of that one idea.*
 
+Primary references: [RFC 6455](https://datatracker.ietf.org/doc/html/rfc6455) (the protocol — Part 1 is a guided tour of it), the [MDN WebSocket API docs](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API) (the browser half), the [`ws`](https://github.com/websockets/ws) and [Socket.IO](https://socket.io/docs/v4/) docs (Node), and the [`websockets`](https://websockets.readthedocs.io/) library docs (Python — its deployment pages are quietly excellent).
+
 ---
 
 ## Table of Contents
@@ -1841,3 +1843,13 @@ Because every server shares the Redis backplane (Step 3), a client on `node-1` a
 - **Reliability** ([Part 9](#part-9--reliability--edge-cases)) — re-join on reconnect; for guaranteed history you'd add the resume-cursor from Part 9.3.
 
 That's the arc from "a TCP connection that started as HTTP" to a service that survives real networks and scales across nodes. The protocol is small; the engineering around it — auth, scaling, reliability — is where the work lives, and where this guide spent most of its pages.
+
+---
+
+## Where to Go Next
+
+- **Read [RFC 6455](https://datatracker.ietf.org/doc/html/rfc6455) §1 and §5** — the overview and framing sections — with Part 1 fresh; the spec is short and surprisingly readable, and frames stop being abstract once you've seen the bit layout in its own words.
+- **Read the [`websockets` deployment docs](https://websockets.readthedocs.io/en/stable/deploy/index.html)** (Python) and the [`ws` docs](https://github.com/websockets/ws) (Node) — both are the production-grade reference for their half of this guide's code.
+- **Build the end-to-end project from Part 12** and then *break* it: kill the server mid-message, drop the network, restart a node behind the load balancer — reconnection and resume logic are where real-time engineering actually lives.
+- **Know the alternatives before defaulting:** [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) for one-way push (simpler than you remember) and [WebTransport](https://developer.mozilla.org/en-US/docs/Web/API/WebTransport_API) (the QUIC-based successor to watch).
+- **Adjacent guides in this repo:** [Networking Fundamentals](NETWORKING_FUNDAMENTALS.md) (TCP/HTTP beneath the upgrade), [Auth](AUTH_STUDY_GUIDE.md) (the cookie/ticket auth patterns for the handshake), [Asyncio](ASYNCIO_STUDY_GUIDE.md)/[Advanced Node.js](ADVANCED_NODEJS_STUDY_GUIDE.md) (the event loops underneath), and [Redis](REDIS_STUDY_GUIDE.md) (pub/sub for multi-node fan-out).
