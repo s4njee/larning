@@ -58,6 +58,36 @@ It is **not** optimized for CPU-heavy computation. A single CPU-bound task — p
 
 If you remember one thing from Part 1: **Node.js is V8 (one JS thread) + libuv (event loop + thread pool) + kernel async I/O. Your JavaScript never runs in parallel with itself (without Workers), but I/O overlaps massively because the OS and libuv do the waiting.** Every performance lever in this guide either keeps the main thread unblocked (Parts 3–5) or offloads CPU work off it (Part 6).
 
+```quiz
+Q: How does one Node.js thread handle tens of thousands of concurrent connections?
+- [ ] V8 secretly multiplexes JavaScript across hidden threads
+- [x] Network I/O goes through the kernel's non-blocking mechanisms (epoll/kqueue) — the OS does the waiting, and JS only runs callbacks when data is ready
+- [ ] Each connection gets a libuv thread
+- [ ] HTTP keep-alive means most connections are idle
+> The JS thread never waits on sockets; it dispatches callbacks as the kernel reports readiness. That's the architecture's whole bet: many connections, each doing little CPU work — which is also why one CPU-bound task freezes every connection at once.
+
+Q: Which of these runs on libuv's thread pool rather than via kernel async I/O?
+- [ ] An incoming HTTPS request
+- [x] fs.readFile, dns.lookup, zlib compression, and crypto.pbkdf2
+- [ ] A TCP socket write
+- [ ] A Promise resolving
+> The OS can't do these asynchronously, so libuv fakes it with 4 background threads (UV_THREADPOOL_SIZE). Network I/O bypasses the pool entirely. Practical consequence: heavy fs/crypto traffic can saturate those 4 threads while the network side stays fine.
+
+Q: A request handler parses a 50 MB JSON payload synchronously, taking 200 ms. What happens to the other requests on a server doing 1,000 req/s?
+- [ ] They're handled by V8's background threads
+- [ ] Nothing — I/O continues in the kernel
+- [x] Roughly 200 of them queue behind the parse — no callback can run while JS is executing
+- [ ] They fail immediately with ECONNRESET
+> Blocking the event loop is the cardinal sin: the loop can't dispatch any callback while your JS runs. The kernel keeps accepting bytes, but every handler, timer, and response stalls — which is exactly what event-loop-delay monitoring detects.
+
+Q: "Node is single-threaded" — what's the accurate version of that claim?
+- [x] JavaScript execution is single-threaded; the process also has libuv pool threads, V8 GC/compiler threads, and any Worker threads you spawn
+- [ ] The entire process has exactly one thread
+- [ ] Node is single-threaded only on Windows
+- [ ] V8 runs each module on its own thread
+> The defining constraint is that *your JS* never runs in parallel with itself (absent Workers) — not that the process is one thread. GC, JIT compilation, and the thread pool all work in the background while the main thread runs JS.
+```
+
 ---
 
 ## Part 2 — V8: How Your JavaScript Gets Fast
@@ -182,6 +212,43 @@ node --trace-deopt app.js 2>&1 | grep "deoptimize"
 
 If you remember one thing from Part 2: **V8 compiles hot functions to specialized machine code based on observed types — keep shapes consistent, call sites monomorphic, and numbers as SMIs, or V8 deoptimizes and your hot path slows by 10–100×.**
 
+```quiz
+Q: Why can "the same" JavaScript function suddenly become 10–100× slower in production?
+- [ ] V8 throttles long-running processes
+- [x] TurboFan's optimized code was speculative — a new type or shape violated its assumptions, forcing a deoptimization back to the interpreter
+- [ ] The function exceeded V8's bytecode size limit
+- [ ] GC moved the function's code object
+> The optimizing compiler specializes machine code to the types it observed. One call with a string where it always saw numbers, or an object with an extra property, throws the optimized code away. `node --trace-deopt` shows it happening.
+
+Q: Two objects get the same hidden class only if…
+- [ ] They have the same number of properties
+- [x] They were given the same properties in the same order
+- [ ] They were created by the same function
+- [ ] They are deeply equal
+> Hidden classes track property layout transitions: {x then y} and {y then x} are different classes even with identical contents. Same class means optimized code can read properties at fixed offsets like C struct fields — which is why constructors should initialize everything, in one order, every time.
+
+Q: A hot function receives objects of four different shapes at one call site. What happens at that site?
+- [ ] V8 compiles four specialized versions
+- [ ] Nothing — shapes only matter for property writes
+- [x] The inline cache goes megamorphic and falls back to generic dictionary lookups
+- [ ] The function is deoptimized permanently across all call sites
+> ICs cache lookups per hidden class: one shape is fast (monomorphic), a few are tolerable, many means V8 gives up specializing that site. The rule: don't feed structurally different objects to the same hot function.
+
+Q: Why does `arr[i] = i + 0.5` in a million-iteration loop allocate, while `arr[i] = i` doesn't?
+- [x] Floats can't be SMIs — each one becomes a heap-allocated HeapNumber, while 31-bit integers are stored tagged in the pointer itself
+- [ ] Array stores always allocate
+- [ ] The addition operator boxes its operands
+- [ ] V8 caches integers but only up to 256
+> Small integers ride for free inside the tagged pointer — no heap, no GC. Cross into floats (or past ±~1 billion) and every value is an object. For bulk numeric work the real escape hatch is typed arrays: contiguous raw memory, no boxing at all.
+
+Q: What's the V8-level reason to use `Float64Array` instead of a plain array for numeric crunching?
+- [ ] Plain arrays are limited to 65,536 elements
+- [x] Typed arrays compile to direct memory loads/stores — no hidden-class checks, no per-element boxing, no GC pressure
+- [ ] Typed arrays run on the libuv thread pool
+- [ ] Plain arrays can't hold floats
+> A typed array is a view over one contiguous ArrayBuffer — the NumPy move applied to JS. It's what Buffer, WebGL, and Wasm build on, and the right container for any performance-critical numeric data.
+```
+
 ---
 
 ## Part 3 — The Event Loop, Actually
@@ -280,6 +347,36 @@ setInterval(() => {
 The production tool is **Clinic.js Doctor** (Part 8), which profiles event-loop blocking automatically. The fixes are: offload CPU work to a Worker Thread (Part 6), use streaming (Part 5) for large payloads, and avoid synchronous APIs entirely in request-handling code.
 
 If you remember one thing from Part 3: **the event loop is a fixed sequence of phases — timers → poll (I/O) → check (setImmediate) — with microtask queues drained between every step. Any long-running JS blocks the entire thing, and recursive `process.nextTick` starves I/O.**
+
+```quiz
+Q: Inside an I/O callback, why does setImmediate(fn) always fire before setTimeout(fn, 0)?
+- [ ] setImmediate has higher scheduler priority
+- [x] The check phase (setImmediate) comes right after poll in the *current* iteration; timers wait for the *next* iteration
+- [ ] setTimeout(fn, 0) is silently converted to setTimeout(fn, 100)
+- [ ] It doesn't — the order is always random
+> From inside poll, the loop proceeds to check before cycling back to timers — so the order is deterministic there (and only there; at top level it's a race). When you want to yield to I/O, setImmediate is the tool whose behavior you can rely on.
+
+Q: Why does a recursive process.nextTick starve all I/O?
+- [x] The nextTick queue is drained completely between every step — re-queueing itself means the loop never reaches the poll phase
+- [ ] nextTick callbacks run on the libuv thread pool
+- [ ] It overflows the timer heap
+- [ ] V8 deoptimizes recursive callbacks
+> nextTick outranks everything: it must empty before the loop advances. A self-requeueing callback refills it forever, so timers, setImmediate, and I/O callbacks never fire. For deferred work that should let I/O breathe, use setImmediate instead.
+
+Q: When do Promise callbacks (.then, await continuations) actually run?
+- [ ] At the end of each full loop iteration
+- [ ] In the check phase with setImmediate
+- [x] In the microtask queue, drained after the nextTick queue between every phase transition and after each callback
+- [ ] Immediately, synchronously, when the promise resolves
+> Microtasks slot in between everything: after the current callback completes, before the loop moves on. That makes promises responsive — and makes a synchronous microtask-spawning loop almost as dangerous as recursive nextTick.
+
+Q: Your p99 latency spikes but CPU profiles of handlers look clean. What's the Node-specific metric to check?
+- [ ] GC pause frequency
+- [x] Event-loop delay via monitorEventLoopDelay — a high p99 means *something* is blocking the loop between timer deadlines
+- [ ] The libuv thread pool queue depth
+- [ ] Socket backlog length
+> Event-loop lag is the gap between when a timer should fire and when it can — the direct measurement of loop blockage, whatever the cause (sync fs, big JSON.parse, pathological regex). Healthy is a p99 under ~20 ms; over 100 ms means requests are queueing.
+```
 
 ---
 
@@ -380,6 +477,36 @@ This is the correct way to implement request-level timeouts in Node.js — creat
 
 If you remember one thing from Part 4: **`await` serializes by default — use `Promise.all` for independent operations, bound the concurrency to avoid overwhelming downstream systems, and treat every unhandled promise rejection as a crash waiting to happen.**
 
+```quiz
+Q: Three independent fetches each take 1 second. `await fetchA(); await fetchB(); await fetchC();` takes 3 seconds. Why?
+- [ ] The connection pool only allows one request at a time
+- [x] await suspends the function until each promise resolves, so the next fetch doesn't even start until the previous finishes
+- [ ] Node serializes all outbound HTTP by default
+- [ ] The microtask queue can only hold one promise
+> This is the most common Node performance bug: code that *looks* concurrent but runs sequentially. Independent operations belong in `Promise.all([...])` — all three in flight at once, 1 second total.
+
+Q: For a 500-endpoint fan-out where some failures are acceptable, which combination is right?
+- [ ] Promise.all + try/catch around the whole thing
+- [x] Promise.allSettled with a concurrency limiter like p-limit
+- [ ] Promise.race in a loop
+- [ ] Promise.any with retries
+> all rejects the whole batch on the first failure; allSettled returns every outcome so you keep successes and log failures. And raw Promise.all on 500 URLs opens 500 simultaneous connections — bound it (p-limit) or exhaust descriptors and get rate-limited.
+
+Q: What happens to a promise rejection nobody handles in modern Node?
+- [ ] It's logged and ignored
+- [x] The process crashes — unhandled rejections are fatal since Node 15
+- [ ] It's retried once, then dropped
+- [ ] It's converted to a warning event only
+> A fire-and-forget `someAsyncFn()` with no await and no .catch silently drops errors right up until one crashes production. Every promise needs an owner; the process-level unhandledRejection handler is a last-resort crash logger, not error handling.
+
+Q: What's the standard way to give every outbound call in a request a shared 5-second deadline?
+- [ ] Wrap each call in setTimeout/clearTimeout pairs
+- [x] One AbortController per request — pass its signal through the call chain and abort on deadline; every listening operation throws AbortError
+- [ ] Promise.race each call against a rejection timer, leaving the original call running
+- [ ] Set server.timeout = 5000
+> AbortController is the platform-wide cancellation primitive (fetch, fs, streams all accept the signal). Unlike a bare Promise.race timeout, aborting actually *cancels* the underlying work instead of abandoning it to run on.
+```
+
 ---
 
 ## Part 5 — Streams & Backpressure
@@ -469,6 +596,36 @@ The `highWaterMark` (default: 16 KB for streams, 16 objects for object-mode stre
 By default, streams carry `Buffer` or `string` chunks. In **object mode** (`objectMode: true`), each chunk is an arbitrary JS object — useful for streaming parsed records (JSON lines, database rows) through a transform pipeline. The `highWaterMark` then counts *objects*, not bytes.
 
 If you remember one thing from Part 5: **use `stream.pipeline` (not `.pipe`) to chain streams with automatic backpressure and error handling, and consume Readable streams with `for await` — this is how you process data larger than memory without leaking it.**
+
+```quiz
+Q: Why is `.pipe()` banned from production code in favor of `stream.pipeline`?
+- [ ] .pipe() is slower because it copies chunks
+- [x] .pipe() doesn't propagate errors — a failing writable leaks the readable and can hang the process; pipeline wires up errors and cleanup for the whole chain
+- [ ] .pipe() doesn't support transform streams
+- [ ] pipeline compresses the data automatically
+> Backpressure works in both, but error handling doesn't: with .pipe(), each stream's errors must be handled individually or something leaks. pipeline (callback or promises form) tears the whole chain down on any failure.
+
+Q: writable.write(chunk) returned false. What is the stream telling you?
+- [ ] The write failed and should be retried
+- [ ] The stream is closed
+- [x] Its buffer is past highWaterMark — stop writing until the 'drain' event, or you'll buffer unboundedly in memory
+- [ ] The chunk was too large and was split
+> false is the backpressure signal, not an error. Ignore it and the writable's internal buffer grows until OOM — the classic stream leak. pipeline handles this handshake for you; manual writers must await 'drain'.
+
+Q: What does highWaterMark actually control?
+- [x] How much the stream buffers before signaling backpressure — a throughput-vs-memory knob
+- [ ] The maximum size of a single chunk
+- [ ] The total bytes a stream may ever carry
+- [ ] The number of concurrent readers
+> Too low means many tiny reads/writes and syscall overhead; too high means big buffers per stream (10,000 connections × 1 MB = 10 GB). The 16 KB default is right for most cases — tune only when profiling says so.
+
+Q: How do you process a 10 GB file line-by-line in constant memory with modern Node?
+- [ ] fs.readFile, then split('\n')
+- [x] createReadStream into readline, consumed with for await (const line of rl)
+- [ ] fs.readFileSync with a streaming JSON parser
+- [ ] Load it in a Worker thread, which has a separate heap
+> Readable streams are async iterables, so for await gives you pull-based consumption with backpressure built in — memory stays at the buffer size (~64 KB) regardless of file size. Buffering 10 GB anywhere, in any thread, is the thing being avoided.
+```
 
 ---
 
@@ -569,6 +726,36 @@ In practice, **use a process manager instead of hand-rolling cluster:** [`pm2`](
 
 If you remember one thing from Part 6: **Worker Threads offload CPU-bound work to a separate V8 isolate (use `piscina` as a pool); clustering runs multiple processes for I/O-bound scaling. Don't use Workers for I/O, and don't use clustering to solve a CPU-bound problem in a single request.**
 
+```quiz
+Q: Image resizing is blocking your API's event loop. Worker Threads or cluster?
+- [ ] Cluster — more processes means more CPU
+- [x] A Worker pool (piscina) — the resize runs in a separate V8 isolate while the main thread keeps serving requests
+- [ ] Neither — raise UV_THREADPOOL_SIZE
+- [ ] setInterval to spread the resize over time
+> Cluster replicas each still block their own loop on a big resize — you've multiplied the problem, not solved it. A worker takes the CPU work off the serving thread entirely. Cluster's job is the other axis: scaling I/O-bound throughput across cores.
+
+Q: Why is moving fetch/fs.readFile calls into a Worker thread pointless?
+- [x] I/O is already non-blocking on the main thread — the worker adds IPC and memory overhead for zero gain
+- [ ] Workers can't open sockets
+- [ ] The libuv pool isn't available inside Workers
+- [ ] It deadlocks the parent's event loop
+> Workers exist to offload *CPU*. The main thread never waits on I/O anyway; a worker doing I/O just relays the same async result through postMessage. Each worker also costs a whole V8 isolate (~30–50 ms startup plus heap) — hence pools, not per-task spawning.
+
+Q: postMessage with a 100 MB ArrayBuffer is slow. What's the fix?
+- [ ] Compress the buffer with zlib first
+- [ ] Send it in 64 KB chunks
+- [x] Transfer it — postMessage(buf, [buf]) moves ownership in O(1), leaving the sender's copy detached
+- [ ] Use JSON.stringify, which is faster than structured clone
+> Structured clone copies by default. The transferList moves the underlying memory instead: constant-time, zero-copy — the original's byteLength becomes 0. SharedArrayBuffer + Atomics is the further step when both sides must access the same memory.
+
+Q: Why does cluster (or pm2/replicas) multiply throughput for an I/O-bound HTTP server?
+- [ ] It increases the kernel's socket backlog
+- [x] One Node process drives roughly one core; one process per core gives each its own event loop, with the OS spreading connections across them
+- [ ] Worker processes share a single event loop more efficiently
+- [ ] It enables HTTP/2 multiplexing
+> A single JS thread saturates one core; cluster runs N independent event loops on N cores behind one port. In practice use pm2, a reverse proxy, or Kubernetes replicas rather than hand-rolled cluster — restarts and graceful reloads come free.
+```
+
 ---
 
 ## Part 7 — Memory Management & GC Tuning
@@ -654,6 +841,36 @@ node --trace-gc app.js
 The numbers: `before (allocated) -> after (allocated) MB, pause / ... ms`. If Major GC pauses are >50 ms and frequent, you have too many long-lived objects or too much heap pressure.
 
 If you remember one thing from Part 7: **short-lived objects are cheap (collected quickly in New Space); memory leaks are growing caches, un-removed listeners, and closures over large scopes — find them with the three-snapshot comparison in Chrome DevTools.**
+
+```quiz
+Q: Why are short-lived per-request objects relatively cheap in V8?
+- [x] They're allocated in New Space and collected by the fast copying Scavenger — most die before ever reaching the expensive Old Space collector
+- [ ] V8 stack-allocates anything smaller than 1 KB
+- [ ] The JIT eliminates all temporary allocations
+- [ ] They're reference-counted and freed instantly
+> V8's generational bet: most objects die young, so the young generation is collected often and cheaply. The expensive case is what *survives* — promoted long-lived objects are where Major GC cost and leaks accumulate.
+
+Q: A container crashes after three days with "JavaScript heap out of memory." Raising --max-old-space-size made it crash after six. What's the real diagnosis?
+- [ ] V8's GC can't keep up and needs more threads
+- [x] A leak — something accumulates in Old Space; find it with snapshots instead of raising the ceiling again
+- [ ] The heap limit resets on deploys
+- [ ] The kernel is overcommitting memory
+> Linear growth to a crash is a leak signature; the limit just sets when it dies. The fix is identifying what grows — the heap-limit flag is for workloads that legitimately need a bigger live set.
+
+Q: What's the three-snapshot technique?
+- [ ] Snapshot three different replicas and average them
+- [x] Snapshot after warmup, exercise the suspected operation thousands of times, snapshot again — the comparison view shows which constructors grew
+- [ ] Snapshot at startup, mid-life, and crash, then diff the first and last
+- [ ] Three consecutive snapshots to let the GC settle
+> The comparison between before/after-exercise snapshots turns "memory grows" into "10,000 retained closures over req" — naming the exact constructor and retainer chain. Chrome DevTools' Comparison view (or v8.writeHeapSnapshot in production) is the tool.
+
+Q: Which of these is a classic Node memory-leak pattern?
+- [ ] Recursion deeper than 1,000 frames
+- [x] An event listener added per request and never removed — each one retains its closure scope forever
+- [ ] Using Buffer.allocUnsafe
+- [ ] Creating many short-lived promises
+> Listeners, ever-growing Map/Set caches without eviction, and closures over big scopes are the recurring trio. Fixes: off()/once/AbortSignal for listeners, lru-cache for caches, and not closing over whole req/res objects.
+```
 
 ---
 
@@ -752,6 +969,36 @@ console.table(bench.table());
 | HTTP request latency (p50, p99, p999) | end-user impact | OpenTelemetry, the [Observability guide](OBSERVABILITY_STUDY_GUIDE.md) |
 
 If you remember one thing from Part 8: **`node --inspect` + Chrome DevTools flame chart for CPU, Clinic.js Doctor for automated diagnosis, `monitorEventLoopDelay` for loop health, and the three-snapshot technique for memory leaks — always profile the real workload, not a guess.**
+
+```quiz
+Q: You don't yet know what *kind* of performance problem a service has. What's the recommended first tool?
+- [ ] node --prof and read the processed log
+- [x] clinic doctor — it runs the app under load and diagnoses the problem class: blocked loop, I/O bottleneck, or GC pressure
+- [ ] A heap snapshot
+- [ ] strace
+> Doctor's job is triage; Flame (CPU) and Bubbleprof (async flow) are the follow-ups once you know the class. Starting with a specific tool means betting on a diagnosis you haven't made yet.
+
+Q: In a DevTools flame chart (Performance tab), what makes a function worth investigating?
+- [ ] It appears at the top of the stack
+- [x] Its bar is wide — width is time, and wide bars are where the CPU actually went
+- [ ] It has the deepest call stack beneath it
+- [ ] It appears most frequently by call count
+> The flame chart's x-axis is time and width is duration (unlike the alphabetical flame *graphs* of perf tooling). Wide bars at any depth are the slow paths; call count without width is noise.
+
+Q: What event-loop delay reading indicates a healthy service?
+- [x] Mean under ~5 ms with p99 under ~20 ms; a p99 over 100 ms means the loop is blocking and requests are queueing
+- [ ] Exactly 0 ms at all percentiles
+- [ ] Anything under one second
+- [ ] Delay only matters at p50
+> Some delay is inherent (timers aren't exact), so zero isn't the bar. The tail is what matters: p99 spikes are individual blocking events — each one a stall for every concurrent request on that process.
+
+Q: Why is timing one run with Date.now() a useless microbenchmark in Node?
+- [ ] Date.now() has only second-level resolution
+- [x] One run is noise and misses JIT warmup — Ignition-vs-TurboFan can differ 10–100×; use a harness (tinybench) that warms up and reports statistically
+- [ ] The event loop pauses timers under load
+- [ ] Benchmarks must run inside a Worker to be valid
+> The first executions run interpreted bytecode; the steady state runs optimized code. A harness runs thousands of iterations past warmup and reports distributions — the only basis for claiming one approach beats another.
+```
 
 ---
 
@@ -870,6 +1117,36 @@ When you've exhausted the above and the bottleneck is CPU-bound JavaScript:
 - **Rust via Neon or [`napi-rs`](https://napi.rs/):** write the extension in Rust, compile to a native module. Increasingly popular — `napi-rs` is the ergonomic choice and is what powers `@swc/core`, `lightningcss`, and `@parcel/css`.
 
 If you remember one thing from Part 9: **the levers in order of effort-to-impact are: faster framework (Fastify) → schema-compiled JSON → streams for large data → connection pooling → unblock the event loop → caching → V8 shape discipline → cluster across cores → native/Wasm for the hot path.** Profile first, fix the measured bottleneck.
+
+```quiz
+Q: Why is schema-compiled serialization (fast-json-stringify) 2–5× faster than JSON.stringify?
+- [ ] It skips Unicode escaping
+- [x] Knowing the shape in advance lets it generate specialized string-building code at startup instead of walking arbitrary objects at runtime
+- [ ] It caches serialized responses by object identity
+- [ ] It serializes on the libuv thread pool
+> JSON.stringify must handle any shape generically, every call. A compiled serializer is straight-line code for one known schema — and since JSON.stringify tops most API-server profiles, this is the single biggest cheap win. Declaring response schemas in Fastify gets it automatically.
+
+Q: Why does every database access go through a pool rather than a fresh connection per request?
+- [x] Connection setup (TCP + TLS + auth) costs 5–20 ms — often more than the query — while a pooled checkout is sub-millisecond
+- [ ] Postgres only allows one connection per client IP
+- [ ] Pools encrypt queries more efficiently
+- [ ] Fresh connections bypass prepared statements
+> Per-request connection churn can dominate latency and exhausts server connection slots under load. Pool, batch round-trips, and the same logic covers outbound HTTP: undici/fetch keep-alive reuses connections instead of re-handshaking.
+
+Q: A regex on user input occasionally pins the CPU for seconds. What's happening and what's the fix?
+- [ ] The regex engine is leaking memory; restart the process
+- [x] Catastrophic backtracking — certain inputs explode the match search; rewrite the pattern or use re2, which guarantees linear time
+- [ ] V8 deoptimized the regex; add a warmup
+- [ ] The string exceeds V8's heap limit
+> Backtracking regexes can go exponential on adversarial input — a denial-of-service vector on the event loop. re2 trades some features (no backreferences) for a linear-time guarantee.
+
+Q: You've exhausted framework, JSON, pooling, and caching levers; one CPU-bound JS function still dominates. What's the modern escalation path?
+- [ ] Rewrite the service in another language entirely
+- [x] Move that function to Wasm or a native addon — napi-rs (Rust) is the ergonomic route, as used by swc and lightningcss
+- [ ] Run it under --jitless to force optimization
+- [ ] Inline it manually into the caller
+> The last lever moves the hot kernel out of JS while keeping the service intact: Wasm for portability, Node-API addons for raw speed. napi-rs is the production-proven Rust path — it's what powers the fast JS tooling generation.
+```
 
 ---
 
@@ -1218,6 +1495,36 @@ When a Node.js service is too slow, work through this:
 ```
 
 If you remember one thing from Part 10: **profile first, then pick the cheapest lever — response-schema JSON compilation and connection pooling are the two highest-return, lowest-effort wins for most Node.js API servers, and `setImmediate` chunking or a `piscina` worker pool is how you keep the event loop alive when CPU work is unavoidable.**
+
+```quiz
+Q: What does allowStale (stale-while-revalidate) in an LRU cache buy you over plain TTL expiry?
+- [ ] Entries never expire
+- [x] Expired entries are served immediately while one background fetch refreshes — no cold-miss latency spike and no thundering herd of concurrent refetches
+- [ ] The cache compresses stale values
+- [ ] It doubles the effective cache size
+> With plain TTL, a hot key's expiry makes every concurrent request miss and hammer the database at once. Stale-while-revalidate serves the old value fast and dedupes the refresh to a single flight per key.
+
+Q: The setImmediate-chunking recipe processes 1,000 items then yields. What does it actually optimize?
+- [ ] Total processing time — yielding makes the loop faster
+- [x] Other requests' latency — the work still runs on the main thread, but I/O gets serviced between chunks so p99 stays low
+- [ ] Memory usage during the loop
+- [ ] GC pause frequency
+> Chunking doesn't speed anything up; it keeps the loop *responsive* during unavoidable main-thread work too small to justify worker IPC. setImmediate (check phase, after poll) is the right yield point because pending I/O runs first.
+
+Q: Why does a Node service in Kubernetes need a SIGTERM handler?
+- [ ] Kubernetes can't kill Node processes without one
+- [x] SIGTERM precedes the kill — without graceful shutdown (stop accepting, drain in-flight requests, close pools), clients get ECONNRESET and transactions are left open on every deploy
+- [ ] Node ignores SIGKILL otherwise
+- [ ] It speeds up pod startup
+> Every rolling deploy sends SIGTERM and waits terminationGracePeriodSeconds. The handler's job: server.close(), drain with a hard deadline, then close database pools. Without it, deploys are a recurring source of dropped requests.
+
+Q: Per the decision tree, what's checked before anything else when a Node service is too slow?
+- [x] The profile — flame chart, event-loop delay, and memory — because each branch (blocked loop, framework, JSON, DB, GC, cores) needs different evidence
+- [ ] Whether Express can be swapped for Fastify
+- [ ] The Node version
+- [ ] Whether GC pauses exceed 50 ms
+> The tree's branches are diagnoses, and each lever fixes exactly one of them. Swapping frameworks when the real problem is connection churn (or a blocked loop) spends effort on the wrong fix — measurement picks the branch.
+```
 
 ---
 
