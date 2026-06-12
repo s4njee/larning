@@ -104,6 +104,29 @@ let fixedCounter = Counter()
 // fixedCounter.increment()    // error — can't call mutating method on let
 ```
 
+```quiz
+Q: You pass a struct to a function that mutates it internally. What happens to your original?
+- [ ] It's mutated, because Swift passes by reference
+- [x] Nothing — the function received a copy, so it physically cannot affect your value
+- [ ] It depends on whether the function is `mutating`
+- [ ] It throws a runtime error
+> Value types are copied on assignment and on being passed, so the callee gets an independent copy and your original is untouchable from outside. This eliminates the "why did my value change? I never touched it" class of bug that reference types invite, where a shared pointer lets a callee mutate your object behind your back. It's the central reason Swift pushes structs so hard.
+
+Q: How does preferring value types connect to Swift 6's compile-time concurrency safety?
+- [ ] Value types run on a dedicated thread
+- [x] A value type has no sharing to race — each task gets its own copy — so the compiler can prove it's `Sendable` and safe to cross task boundaries, unlike a class with mutable state
+- [ ] Structs automatically lock their properties
+- [ ] Classes are always Sendable
+> The hardest problem in concurrency is shared mutable state racing between threads, and a value type simply has no sharing: two tasks each hold their own copy. That's why strict concurrency checking can mark value types `Sendable` while a class holding mutable state is not. The actor exists as the one sanctioned way to have shared mutable state safely when you genuinely need it.
+
+Q: For a `let` reference to a class instance, what exactly is immutable?
+- [ ] The object's properties can't change
+- [x] The reference (binding) can't be reassigned to a different object, but the object's `var` properties can still be mutated
+- [ ] Nothing — `let` has no effect on classes
+- [ ] Both the reference and all properties are frozen
+> `let` on a class makes the *reference* constant — you can't point it at a new object — but the object it points to remains mutable, so `account.balance = 200` is fine while `account = Account(...)` is an error. For a value type, `let` freezes the whole value (you can't even call a `mutating` method). This is the binding-level vs type-level mutability distinction.
+```
+
 ### Structs
 
 ```swift
@@ -354,6 +377,29 @@ onUpdate = { [id] in    // captures the VALUE of id, not a reference to user
 - **Instruments → Allocations:** Track allocation patterns and identify objects that grow without bound.
 - **`deinit` logging:** Temporary `print` statements in `deinit` to verify objects are being released.
 
+```quiz
+Q: Why does ARC give deterministic deallocation while a tracing garbage collector cannot — and what's the cost?
+- [ ] ARC is faster at allocation
+- [x] ARC frees the instant a reference count hits zero (so `deinit` runs at a knowable moment), but because it only counts and never traces, it can't detect reference cycles, which leak
+- [ ] ARC uses more memory but never leaks
+- [ ] A GC also frees deterministically
+> ARC tracks each object's count and deallocates the moment it reaches zero, giving pause-free, deterministic cleanup (ideal for a 16ms frame budget) — `deinit` fires at a precise time, like C++ RAII. The bill is that counting can't notice two objects pointing at each other keeping each other alive; a tracing GC would see they're unreachable, but ARC never traces. So the programmer owns breaking cycles with `weak`/`unowned`.
+
+Q: When should you choose `unowned` over `weak` for breaking a reference cycle?
+- [ ] Always — `unowned` is faster and safer
+- [x] Only when the referenced object is guaranteed to outlive the holder, since `unowned` is non-optional and crashes if accessed after the object is deallocated
+- [ ] When you want it to auto-nil on deallocation
+- [ ] Never — `weak` is the only safe option
+> `weak` is the safe default: it's optional and automatically becomes `nil` when its target deallocates. `unowned` is non-optional and assumes the target outlives the holder — accessing it after deallocation is a crash (like a dangling pointer). Use `unowned` only when you can *prove* the lifetime relationship (e.g. a credit card never outlives its holder); otherwise default to `weak`.
+
+Q: A view model holds a closure that references `self`, creating a leak. Why does `{ [weak self] in ... }` fix it?
+- [ ] It copies self into the closure
+- [x] The capture list makes the closure's reference to self weak, so it doesn't increment self's count — breaking the self→closure→self cycle
+- [ ] It runs the closure on a background thread
+- [ ] It deletes the closure after one call
+> Closures capture the objects they use by strong reference by default, so if `self` holds the closure and the closure captures `self` strongly, neither can reach zero. A `[weak self]` capture list makes that captured reference weak (non-retaining), so `self` can deallocate and the cycle breaks; you then `guard let self else { return }` to handle the now-possibly-nil reference. Capturing a value like `[id]` instead captures the value, not a reference to its owner.
+```
+
 ---
 
 ## Part 3 — Optionals
@@ -436,6 +482,29 @@ struct Settings {
 
 var settings: Settings? = Settings()
 settings?.theme = .dark    // sets if settings is non-nil, no-op if nil
+```
+
+```quiz
+Q: `String?` is described as syntactic sugar for what, and why does that framing matter?
+- [ ] A pointer that may be null
+- [x] `Optional<String>`, an enum with `.none` and `.some(Wrapped)` — so "nil" is an ordinary value you must explicitly unwrap, not an absence the compiler ignores
+- [ ] A String that defaults to empty
+- [ ] A reference type
+> An optional is just an enum with two cases, so the type system forces you to handle both before using the wrapped value — there's no implicit null that silently propagates. That's why `if let`, `guard let`, `??`, and optional chaining exist: they're the safe ways to get at `.some`'s payload. Modeling absence as a value in the type is what eliminates null-pointer surprises.
+
+Q: What does optional chaining `user?.address?.city?.first` evaluate to, and what happens if `address` is nil?
+- [ ] It crashes if any link is nil
+- [x] It yields `Character?` — the whole expression short-circuits to nil the moment any link is nil, with no crash
+- [ ] It returns an empty Character
+- [ ] It returns the first non-nil link
+> Optional chaining propagates nil: if any link in the chain is nil, the entire expression becomes nil and the rest isn't evaluated, and the result type is optional (`Character?`). This lets you safely drill through several layers of optionals in one expression instead of nesting `if let` checks, while still forcing you to handle the optional result.
+
+Q: When is an implicitly unwrapped optional (`UILabel!`) appropriate?
+- [ ] Whenever you're confident a value isn't nil
+- [x] Only for values guaranteed set before use but unsettable during init — like Interface Builder outlets — never in your own API surface
+- [ ] As the default for all properties
+- [ ] To avoid writing `guard let`
+> An IUO auto-force-unwraps on access, so it crashes if nil — acceptable only in narrow framework patterns (IB outlets, some Apple delegation) where the value is provably set after init but before any use. The guide says never use it in your own APIs; reach for a real optional with proper unwrapping or restructure initialization instead.
 ```
 
 ---
@@ -908,6 +977,29 @@ struct User: Identifiable, Codable, Hashable {
     var email: String
     // Codable, Hashable, Equatable are auto-synthesized
 }
+```
+
+```quiz
+Q: A method declared *only* in a protocol extension (not in the protocol itself) behaves surprisingly through `any Animal`. What happens?
+- [ ] It always calls the conforming type's override
+- [x] It uses static dispatch, so the extension's version runs even if the concrete type provides its own — a common bug
+- [ ] It fails to compile
+- [ ] It calls the protocol requirement instead
+> Methods listed as protocol *requirements* use dynamic dispatch, so the concrete type's implementation is found even through a protocol type. Methods that exist only in the extension use static dispatch keyed to the declared type, so through `any Animal` you get the extension's version regardless of the concrete type's own `description()`. The rule: if you want polymorphic behavior, declare the method in the protocol, not just the extension.
+
+Q: What's the core difference between `some Protocol` and `any Protocol`?
+- [ ] `some` allows nil; `any` doesn't
+- [x] `some` is an opaque type — one fixed concrete type the compiler knows (static dispatch, no boxing); `any` is an existential holding any conforming type at runtime (dynamic dispatch, possible heap allocation)
+- [ ] They're interchangeable
+- [ ] `any` is faster
+> `some Animal` means "a specific concrete type I'm not naming," so the compiler knows it statically and dispatches without boxing — use it by default. `any Animal` is an existential box that can hold different conforming types, enabling heterogeneous collections at the cost of dynamic dispatch and potential heap allocation. Reach for `any` only when you need that runtime flexibility.
+
+Q: Why can't you use a protocol with an `associatedtype` (like `Repository`) directly as a plain variable type the way you'd use `any Animal`?
+- [ ] Associated types are deprecated
+- [x] The associated type is an unfilled placeholder until a concrete type conforms, so the protocol isn't a complete type on its own — it's used as a generic constraint (or via `some`/`any` with constraints)
+- [ ] Protocols can't have methods
+- [ ] It requires inheritance
+> An `associatedtype` makes the protocol generic — `Repository` doesn't specify what `Item` is until `UserRepository` fills it in as `User`. Because the type isn't fully determined, you constrain a generic over it (`func use<R: Repository>(_ r: R)`) rather than using it as a bare existential the way you can with a non-associated-type protocol. This is the practical reason associated types push you toward generics.
 ```
 
 ---
@@ -1668,6 +1760,29 @@ func temperatureUpdates() -> AsyncStream<Double> {
 for await temp in temperatureUpdates() {
     print("Temperature: \(temp)")
 }
+```
+
+```quiz
+Q: How does an `actor` prevent data races on its mutable state?
+- [ ] It copies its state to each caller
+- [x] It serializes access — only one task runs its isolated code at a time, so concurrent calls can't race on `balance`; that's why external access requires `await`
+- [ ] It runs all code on the main thread
+- [ ] It marks every property `let`
+> An actor is a reference type whose isolated mutable state is accessed one task at a time, eliminating concurrent read-modify-write races by construction. Because a caller from outside may have to wait its turn (a potential suspension), accessing an actor's properties or methods requires `await`. Immutable `let` properties are safe to read synchronously since they can't be raced.
+
+Q: A `struct` with all-`Sendable` properties is implicitly `Sendable`, but a class must be `final` with immutable properties (or `@unchecked`). Why the asymmetry?
+- [ ] Classes are slower
+- [x] A value type can't be shared (each holder has a copy), so it's inherently race-free; a class is shared by reference, so it's only safe to send if it has no mutable shared state or guards it manually
+- [ ] Structs can't cross threads at all
+- [ ] `final` makes classes into value types
+> `Sendable` means "safe to cross concurrency boundaries." Value types satisfy this automatically when their parts are Sendable because sending one sends a copy — nothing is shared to race. A class is shared by reference, so it qualifies only if it's immutable (`final` + `let` properties) or you assert thread-safety with `@unchecked Sendable` and protect state yourself (e.g. a lock). Actors are implicitly Sendable because they serialize access.
+
+Q: What's the difference between `async let` and a `TaskGroup` for running work concurrently?
+- [ ] `async let` is unstructured; TaskGroup is unstructured too
+- [x] `async let` runs a *fixed, statically-known* set of child tasks; a TaskGroup runs a *dynamic* number (e.g. one per element of a runtime array)
+- [ ] They're identical
+- [ ] TaskGroup can't propagate errors
+> `async let` binds a known number of concurrent operations you await together — perfect for "fetch user, posts, and notifications in parallel." A `TaskGroup` adds tasks in a loop, so it handles a count known only at runtime (one fetch per id in a list). Both are *structured* concurrency: children are scoped to the parent and awaited before it returns, unlike an unstructured `Task`.
 ```
 
 ---

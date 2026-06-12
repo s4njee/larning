@@ -131,7 +131,7 @@ Part, click-to-reveal explanation included.
 
 - [x] `TYPESCRIPT_STUDY_GUIDE.md` — 6 quizzes (18 questions; types-as-sets & structural typing, type guards/asserts/never-exhaustiveness, generics constraints/keyof/inference, conditional-type distribution & infer & Exclude, any-vs-unknown/void/hierarchy, branded nominal types)
 - [x] `CPP26_STUDY_GUIDE.md` — 5 quizzes (15 questions; RAII/move-elision/Rule-of-Zero, jthread-RAII/coroutine-suspension/library-gap, contracts-vs-exceptions & build-mode, erroneous-behavior/pack-indexing/_-placeholder, no-borrow-checker safety & sanitizers)
-- [ ] `SWIFT_STUDY_GUIDE.md`
+- [x] `SWIFT_STUDY_GUIDE.md` — 5 quizzes (15 questions; value-vs-reference & Sendable foundation, ARC determinism/cycles/weak-unowned, optionals-as-enum/chaining/IUO, protocol static-vs-dynamic-dispatch & some-vs-any & associatedtype, actors/Sendable/structured-concurrency)
 - [ ] `ASYNCIO_STUDY_GUIDE.md`
 - [ ] `PYTHON_CONCURRENCY.md`
 - [ ] `PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 36/65 (Batches 1–3 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 37/65 (Batches 1–3 complete).
