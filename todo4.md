@@ -95,7 +95,7 @@ Part, click-to-reveal explanation included.
 - [x] `ADVANCED_POSTGRES.md` — 6 cluster quizzes (28 questions: §1–3, §4–5, §6–7, §8–9, §10–12, §13–15)
 - [x] `POSTGRES.md` — 6 cluster quizzes (30 questions across the reference sections)
 
-## Batch 2 — Systems, databases, networking
+## Batch 2 — Systems, databases, networking — ✅ COMPLETE (2026-06-12)
 
 - [x] `LINUX_FUNDAMENTALS_STUDY_GUIDE.md` — 10 parts × 4 Q (40 questions)
 - [x] `LINUX_NETWORKING_STUDY_GUIDE.md` — 7 quizzes (26 questions; Parts 2,4,5,7,8,9,10)
@@ -108,7 +108,7 @@ Part, click-to-reveal explanation included.
 - [x] `DATA_ENGINEERING_STUDY_GUIDE.md` — 5 quizzes (17 questions; storage formats, lakehouse, dbt, streaming, modeling)
 - [x] `DISTRIBUTED_ALGORITHMS_STUDY_GUIDE.md` — 6 quizzes (23 questions; FLP, Paxos, Raft, quorums/CAP, atomic commit, CRDTs)
 - [x] `COMPILER_INTERNALS_STUDY_GUIDE.md` — 5 quizzes (18 questions; parsing, IR/SSA, optimization/UB, JIT, GC)
-- [ ] `CRYPTO_FUNDAMENTALS.md`
+- [x] `CRYPTO_FUNDAMENTALS.md` — 6 quizzes (20 questions; hashing, symmetric, asymmetric, key exchange, signatures, TLS)
 
 ## Batch 3 — Infra, cloud, and ops
 
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 19/65 (Batch 1 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 20/65 (Batch 2 complete) (Batch 1 complete).

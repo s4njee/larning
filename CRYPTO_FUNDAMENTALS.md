@@ -113,6 +113,36 @@ The right algorithms, in order of preference:
 
 References: [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html), [Argon2 RFC 9106](https://datatracker.ietf.org/doc/html/rfc9106)
 
+```quiz
+Q: Why must you never use raw SHA-256 as a MAC (use HMAC instead)?
+- [x] SHA-2 is Merkle–Damgård, so it suffers length-extension: given H(secret || message) and the secret's length, an attacker can compute H(secret || message || padding || extension) without knowing the secret
+- [ ] SHA-256 is too slow for MACs
+- [ ] SHA-256 collisions are trivial to find
+- [ ] Raw hashes can't take a key
+> HMAC's nested construction is secure even when H has the length-extension weakness. SHA-3 and BLAKE2/3 don't have the weakness — but HMAC-SHA-256 is the interoperable standard.
+
+Q: Why is a leaked database of SHA-256 password hashes "effectively plaintext"?
+- [x] General-purpose hashes are fast — a modern GPU computes billions of SHA-256s per second — so password hashes need to be deliberately slow and memory-hard (Argon2id), with a per-password salt
+- [ ] SHA-256 is reversible
+- [ ] The salts decrypt the hashes
+- [ ] SHA-256 has known preimage attacks
+> Password hashing inverts the usual goals: slow, memory-hard, tunable work factor. Argon2id is the default; salts (≥16 bytes, unique, not secret) defeat rainbow tables; peppers (a secret outside the DB) add database-breach protection.
+
+Q: Why must MAC tags be compared in constant time?
+- [x] A naive `==` short-circuits on the first differing byte, leaking timing that lets an attacker forge a tag byte-by-byte; constant-time compare (timingSafeEqual / ConstantTimeCompare) reveals nothing
+- [ ] Constant-time compare is faster
+- [ ] It prevents length-extension
+- [ ] It's required for HMAC to be valid
+> The byte-by-byte timing leak is a real, practical forgery vector. The same discipline applies anywhere secrets are compared — the timing side channel is invisible in functional tests.
+
+Q: What does a salt protect against, and what's different about a pepper?
+- [x] A salt (unique per password, in the DB, not secret) prevents rainbow-table reuse across users/databases; a pepper is an additional *secret* (same for all users) stored outside the DB, protecting against database-only breaches
+- [ ] Salts are secret; peppers are public
+- [ ] Both must be the same for all users
+- [ ] A pepper replaces the need for slow hashing
+> Salts make identical passwords hash differently; peppers add a layer an attacker who only stole the database can't use. Neither substitutes for a slow, memory-hard algorithm — they're complements.
+```
+
 ---
 
 ## Phase 3: Symmetric Encryption
@@ -154,6 +184,29 @@ The other modern AEAD. A stream cipher (ChaCha20) + a MAC (Poly1305). Designed b
 | Anything else CBC/ECB    | Stop. Use AEAD.                                     |
 
 References: [NIST SP 800-38D (GCM)](https://csrc.nist.gov/publications/detail/sp/800-38d/final), [RFC 8439 (ChaCha20-Poly1305)](https://datatracker.ietf.org/doc/html/rfc8439), [Latacora's Cryptographic Right Answers](https://latacora.singles/2018/04/03/cryptographic-right-answers.html)
+
+```quiz
+Q: Why is ECB mode "never use"?
+- [x] Each block is encrypted independently, so identical plaintext blocks produce identical ciphertext blocks — leaking the structure of your data (the famous ECB penguin)
+- [ ] It's slower than CBC
+- [ ] It requires a nonce you'll reuse
+- [ ] It has no integrity check
+> ECB reveals patterns through the ciphertext. The deeper lesson: modes of operation matter as much as the cipher — and the modern answer to "which mode?" is almost always AEAD (GCM or ChaCha20-Poly1305).
+
+Q: What's catastrophic about reusing a (key, nonce) pair in AES-GCM?
+- [x] It reveals the XOR of the two plaintexts *and* compromises the authentication key — far worse than CTR's plaintext-XOR leak alone; AES-GCM's 96-bit random nonces birthday-bound after ~2³² encryptions per key
+- [ ] Nothing — GCM is nonce-misuse resistant
+- [ ] It only slows down encryption
+- [ ] It leaks the key directly
+> Nonce uniqueness is GCM's load-bearing assumption. GCM-SIV (leaks only whether plaintexts were identical) or XChaCha20-Poly1305 (192-bit nonces make random safe) are the answers when you can't guarantee uniqueness.
+
+Q: When does ChaCha20-Poly1305 beat AES-GCM?
+- [x] On CPUs without AES-NI hardware acceleration (older phones, embedded) — it's fast in pure software; AES without AES-NI is both slower and more vulnerable to cache-timing attacks
+- [ ] Always — it's strictly more secure
+- [ ] When you need disk encryption
+- [ ] When ciphertext length must equal plaintext length
+> Both are modern AEADs and TLS 1.3 peers. AES-GCM wins with hardware acceleration; ChaCha20-Poly1305 wins without it. XChaCha20-Poly1305 (libsodium's secretbox) is the "zero footguns" reach when nonces are random.
+```
 
 ---
 
@@ -209,6 +262,29 @@ The standard pattern for "encrypt this data to a public key":
 
 This is what PGP does, what S/MIME does, and what every "encrypt a large blob to a public key" library does under the hood. **HPKE** (Hybrid Public Key Encryption, RFC 9180) is the modern standardized version — use it instead of rolling your own.
 
+```quiz
+Q: Why don't you encrypt bulk data directly with public-key crypto?
+- [x] Asymmetric operations are orders of magnitude slower than symmetric — so you use them to wrap a fresh symmetric key (hybrid encryption) or to do a key exchange that derives a shared symmetric key
+- [ ] Public keys can't encrypt data over 256 bytes
+- [ ] It would leak the private key
+- [ ] Symmetric crypto is less secure
+> Hybrid encryption (encrypt data with AEAD, encrypt the data key with the public key) is what PGP, S/MIME, and HPKE do. The modern approach is key exchange (DH) deriving a shared key.
+
+Q: Why prefer ECC over RSA for new designs?
+- [x] A 256-bit elliptic-curve key matches a 3072-bit RSA key's ~128-bit security — smaller keys, faster operations and handshakes, smaller signatures, and better forward-secrecy support (ECDHE)
+- [ ] RSA is broken
+- [ ] ECC is quantum-resistant
+- [ ] RSA can't do signatures
+> Neither is quantum-resistant (that's Phase 10). The win is efficiency at equivalent security. Curve25519/X25519/Ed25519 are the misuse-resistant choices with no controversial parameters.
+
+Q: "Textbook RSA" (c = m^e mod n) is broken as an encryption scheme. Why?
+- [x] It's deterministic (same plaintext → same ciphertext, leaking equality), malleable, and leaks information — real RSA needs OAEP padding for encryption; PKCS#1 v1.5 encryption is Bleichenbacher-vulnerable
+- [ ] The modular exponentiation is too slow
+- [ ] It can't handle messages longer than the key
+- [ ] The public exponent e is guessable
+> Padding is not optional decoration — it's what makes the scheme secure. The repeated Bleichenbacher rediscoveries (ROBOT 2017, Marvin 2023) are why the honest answer for new designs is "don't use RSA; use ECC."
+```
+
 ---
 
 ## Phase 5: Key Exchange & Key Derivation
@@ -255,6 +331,29 @@ The `info` parameter provides **domain separation** — different contexts deriv
 
 References: [RFC 5869 (HKDF)](https://datatracker.ietf.org/doc/html/rfc5869), [Cryptographic Doom Principle](https://moxie.org/2011/12/13/the-cryptographic-doom-principle.html)
 
+```quiz
+Q: What does forward secrecy (PFS) guarantee, and how is it achieved?
+- [x] If a long-term private key leaks later, past session keys still can't be recovered — achieved by using a *fresh ephemeral* DH key pair per session and discarding it; TLS 1.3 mandates this
+- [ ] That the session key is never transmitted
+- [ ] That the server is authenticated
+- [ ] That nonces are never reused
+> Ephemeral ECDH (ECDHE) is why all TLS 1.3 cipher suites have forward secrecy. The old RSA-key-exchange suites lacked it — recording traffic and later stealing the key decrypted everything.
+
+Q: Raw Diffie–Hellman is vulnerable to what, and how do real protocols fix it?
+- [x] Man-in-the-middle — the attacker does DH with each party separately; protocols authenticate the DH exchange (TLS signs the DH public value with a cert-trusted key, or uses a PSK/PAKE)
+- [ ] Eavesdropping recovers the shared secret
+- [ ] Nonce reuse leaks the key
+- [ ] The shared secret is predictable
+> DH defeats passive eavesdroppers but not active MITM. Authentication is the missing piece — which is most of what TLS's certificate machinery is for.
+
+Q: The output of a DH exchange isn't directly usable as a key. Why, and what fixes it?
+- [x] It's a uniform-looking but algebraically-biased byte string; run it through a KDF (HKDF: extract then expand) to produce usable keys — and the `info` parameter gives domain separation so different contexts derive different keys
+- [ ] It's too short; HKDF lengthens it
+- [ ] It's encrypted; the KDF decrypts it
+- [ ] DH output is fine to use directly
+> HKDF's domain separation (different `info` → different keys from the same secret) is how you safely derive an enc-key and a mac-key from one shared secret — the recurring pattern in real protocols.
+```
+
 ---
 
 ## Phase 6: Digital Signatures
@@ -289,6 +388,29 @@ A subtle but critical point: **sign exactly what you mean**.
 - Include **context / domain separation** in what you sign. Signing `"transfer:" || from || to || amount` prevents an attacker from replaying the signature in a different protocol context.
 
 This is what RFC 8032 calls the "context string" for Ed25519ctx, and what TLS 1.3 calls the "context label" in its signature inputs.
+
+```quiz
+Q: ECDSA has a "catastrophic nonce-reuse footgun." What is it, and what eliminates it?
+- [x] Two signatures using the same nonce `k` let an attacker recover the private key with a few lines of algebra (this hacked the PS3, which used a constant k); deterministic ECDSA (RFC 6979) derives k from the private key + message hash
+- [ ] Reusing k leaks the message, not the key
+- [ ] It only matters for RSA signatures
+- [ ] Nonce reuse breaks verification, not signing
+> Ed25519 avoids this entirely — the nonce is derived deterministically inside the algorithm, so there's no nonce to misuse. It's why Ed25519 is the misuse-resistant choice for new work.
+
+Q: "A signature is an encrypted hash." What's wrong with this common belief?
+- [x] It's a misconception from RSA-PKCS#1 v1.5, where the operation superficially looks like public-key decryption; ECDSA and Ed25519 have no decryption-shaped operation at all
+- [ ] Signatures are encrypted hashes, but with a different key
+- [ ] Signatures encrypt the whole message, not a hash
+- [ ] It's correct for all signature schemes
+> Signatures provide authenticity, integrity, and non-repudiation — not confidentiality. They're computed over a hash and transmitted alongside the (often plaintext) message. The "encrypted hash" analogy only ever fit one RSA padding scheme.
+
+Q: Why must you use canonical encoding before signing structured data (JSON, CBOR)?
+- [x] Otherwise an attacker can re-encode the same logical message into different bytes and get a valid signature for both — a confusion attack; include context/domain separation in what you sign to prevent cross-protocol replay
+- [ ] Non-canonical encoding is slower to sign
+- [ ] Canonical encoding compresses the message
+- [ ] It's only needed for Ed25519
+> "Sign exactly what you mean" — sign a hash, canonicalize structured input, and bind context (signing "transfer:" || from || to || amount stops replay in another protocol). This is what TLS 1.3's "context label" and Ed25519ctx's context string formalize.
+```
 
 ---
 
@@ -352,6 +474,36 @@ The client refuses to trust *any* cert except a specific one (or one signed by a
 - Not redirecting HTTP → HTTPS.
 
 Tools: [SSL Labs](https://www.ssllabs.com/ssltest/), [testssl.sh](https://testssl.sh/), [`openssl s_client -connect host:443`].
+
+```quiz
+Q: What are the three things TLS does on every connection?
+- [x] Authenticate the server (and optionally client) via certificates, establish a shared symmetric key via ephemeral key exchange, and encrypt+authenticate all traffic with an AEAD cipher
+- [ ] Compress, encrypt, and route traffic
+- [ ] Hash, sign, and timestamp each message
+- [ ] Only encrypt — authentication is separate
+> Authentication + key establishment + authenticated encryption. TLS 1.3 made the key exchange ECDHE-only (mandatory forward secrecy) and cut the cipher suites to 5, all AEAD — removing RC4, 3DES, CBC, SHA-1, and RSA key exchange.
+
+Q: Why did TLS 1.3 make ECDHE the only key-exchange mechanism?
+- [x] To mandate forward secrecy — RSA key exchange had none, so recording traffic and later stealing the server's key decrypted all of it
+- [ ] ECDHE is faster than RSA
+- [ ] RSA keys are too large for the handshake
+- [ ] To support post-quantum crypto
+> Removing non-PFS key exchange is the headline security upgrade. TLS 1.3 also cut the full handshake to one round-trip (zero on resumption) and encrypted most of the server hello.
+
+Q: What's the "works in browsers, breaks in curl/Go" TLS symptom, and its cause?
+- [x] A missing intermediate certificate — browsers often cache or fetch intermediates, but stricter clients (curl, Go) need the server to present the full chain
+- [ ] An expired root certificate
+- [ ] TLS 1.3 not being enabled
+- [ ] A self-signed leaf certificate
+> The server must present the chain from leaf up to (but not including) a trusted root. Browsers paper over gaps; minimal clients don't. testssl.sh and SSL Labs catch it, as does testing from a fresh machine.
+
+Q: What does Certificate Transparency (CT) provide that CAA records don't?
+- [x] CT is public append-only logs of every issued cert (browsers require logging) — so unauthorized issuance gets *caught after the fact*; CAA records tell CAs which CAs may issue for your domain, *preventing* some misissuance up front
+- [ ] CT encrypts the certificate
+- [ ] They do the same thing
+- [ ] CAA replaces the trust store
+> Defense in depth: CAA constrains who can issue, CT makes any issuance auditable. Together with a trust store and OCSP stapling they're the public-CA TLS foundation — and modern guidance dropped HPKP pinning (footguns outweighed benefits).
+```
 
 References: [RFC 8446 (TLS 1.3)](https://datatracker.ietf.org/doc/html/rfc8446), [BetterTLS](https://bettertls.com/), [Cloudflare's TLS 1.3 deep dive](https://blog.cloudflare.com/rfc-8446-aka-tls-1-3/)
 
