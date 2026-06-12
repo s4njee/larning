@@ -155,6 +155,36 @@ bpf_send_signal()            // send a signal to the current process
 
 Each program type has access to a subset of helpers — an XDP program can call `bpf_redirect()` but not `bpf_send_signal()`, and a tracing program can call `bpf_send_signal()` but not `bpf_redirect()`.
 
+```quiz
+Q: What are the three guarantees eBPF provides that kernel modules can't?
+- [x] Verified safety before execution, JIT-compiled native performance in kernel context, and dynamic load/unload with no reboot
+- [ ] Memory isolation, automatic updates, and GPL exemption
+- [ ] Userspace execution, sandboxed syscalls, and rollback
+- [ ] Type safety, garbage collection, and portability
+> A module runs with full kernel privileges — one bug crashes the machine. eBPF demands a proof of safety first (the verifier), then runs at native speed at the hook point, and unloading restores the previous state. That combination is why "the JavaScript of the kernel" is a model claim, not a language claim.
+
+Q: Put the eBPF program lifecycle in order.
+- [ ] Attach → verify → JIT → load
+- [x] Compile to bytecode → load via bpf() → verifier analyzes → JIT to native code → attach to a hook → events trigger execution → results via maps
+- [ ] JIT → verify → interpret → attach
+- [ ] Load → attach → verify on first event
+> Verification happens at load time, before any event can trigger the program — rejection means it never runs at all. The JIT then makes "runs in the kernel" mean native machine code, not interpretation.
+
+Q: Why can't an eBPF program call arbitrary kernel functions?
+- [x] Programs are restricted to a curated, stable helper API — and each program type gets only its relevant subset
+- [ ] Kernel functions are stripped from BTF
+- [ ] They can, via bpf_call_kernel()
+- [ ] The JIT can't generate call instructions
+> Helpers (bpf_map_lookup_elem, bpf_probe_read_kernel, …) are the sanctioned surface; an XDP program gets packet helpers, a tracing program gets process helpers. The boundary is part of what keeps in-kernel code governable.
+
+Q: Why do eBPF programs have a 512-byte stack, and what do you do when that's not enough?
+- [ ] It's a JIT register-allocation limit; split the function
+- [x] It prevents kernel stack overflow — larger working state goes in maps, which is also how state persists across invocations
+- [ ] It's a BTF encoding limit; upgrade the kernel
+- [ ] Use malloc via a helper
+> Kernel stacks are small and shared with everything else running in that context. Maps are the answer for both size and persistence — eBPF programs are event-driven and stateless between firings except for what they store in maps.
+```
+
 ---
 
 ## Part 3 — Program Types and Hook Points
@@ -329,6 +359,36 @@ int dispatcher(struct xdp_md *ctx) {
 }
 ```
 
+```quiz
+Q: You need to trace a specific internal kernel function. kprobe or tracepoint — and what's the trade?
+- [x] kprobe — it attaches to any kernel function, but the function's signature can change between kernel versions; tracepoints are stable ABI but exist only where the kernel defined them
+- [ ] tracepoint — kprobes are deprecated
+- [ ] Either; they're equivalent in stability
+- [ ] uprobe, since it's version-independent
+> Prefer tracepoints when one exists (stable across versions); reach for kprobes for arbitrary internals and accept the fragility. fentry/fexit (5.5+) are the faster modern kprobe replacement when your kernel supports them.
+
+Q: Why is XDP so much faster than iptables for dropping packets?
+- [x] It runs in the driver before the kernel allocates the sk_buff — dropped packets never enter the stack at all
+- [ ] XDP programs run on a dedicated CPU core
+- [ ] iptables is interpreted while XDP is compiled
+- [ ] XDP bypasses the NIC's DMA engine
+> Most of a drop's cost is everything that happens before the verdict. XDP's verdict comes first — 10M+ pps per core vs iptables' 1–2M. Modes matter too: native (driver) for production, generic (skb) only for development.
+
+Q: On a 128-core box, a hash map updated on every packet is slow. What's the eBPF-native fix?
+- [ ] A bigger max_entries setting
+- [x] A per-CPU map — each core updates its own copy with no locking; userspace aggregates on read
+- [ ] Wrapping updates in bpf_spin_lock
+- [ ] Batching updates through a tail call
+> PERCPU_HASH/PERCPU_ARRAY trade read-side aggregation for contention-free writes — the standard pattern for high-throughput counters. Locks in a per-packet path are how you turn a NIC into a benchmark of your lock.
+
+Q: For streaming events to userspace in new code, ring buffer or perf event array?
+- [x] Ring buffer (5.8+) — shared across CPUs, lock-free, variable-length events, simpler consumption; perf event array is the legacy option
+- [ ] perf event array — it's per-CPU and therefore faster
+- [ ] Neither; use bpf_trace_printk
+- [ ] A hash map polled from userspace
+> bpf_ringbuf_reserve/submit is the modern event path. trace_printk is debug-only, and polling maps wastes cycles — the ring buffer wakes the consumer when data arrives.
+```
+
 ---
 
 ## Part 5 — The Verifier: Why eBPF Is Safe
@@ -390,6 +450,36 @@ __u8 byte = *((__u8 *)data + 100);  // OK: verifier knows it's in bounds
 ### The Verifier Is the Bottleneck
 
 For complex programs, satisfying the verifier is the hardest part of eBPF development. You'll restructure working code to help the verifier prove properties it can't infer. This is the eBPF equivalent of "fighting the borrow checker" in Rust — frustrating, but the constraints are what make the system safe.
+
+```quiz
+Q: How does the verifier actually prove a program safe?
+- [ ] It runs the program in a sandbox with test inputs
+- [x] Abstract interpretation — it symbolically executes every possible path, tracking what each register could hold (pointer kind, bounds, nullability), and a property holds only if it holds on all paths
+- [ ] It checks the program against a database of known-safe patterns
+- [ ] It requires a signed proof from the compiler
+> No execution happens during verification. The fork-per-branch analysis is also why verification cost explodes with branching — and why state pruning and the 1M-instruction budget exist.
+
+Q: Why does the verifier reject dereferencing a map lookup result without a NULL check?
+- [x] bpf_map_lookup_elem returns NULL when the key is absent — on that path the dereference is invalid, and the verifier requires safety on every path
+- [ ] Map values are read-only without a check
+- [ ] NULL checks are required syntax in eBPF C
+- [ ] The JIT can't compile unchecked dereferences
+> The `if (val)` branch is exactly what teaches the verifier: on the true path, val is provably non-NULL. The same logic drives packet bounds checks — `if (data + n > data_end) return` gives the verifier the range fact it needs.
+
+Q: A logically simple but branch-heavy program fails verification with "BPF program is too large." What's actually happening?
+- [ ] The bytecode exceeds 64 KB
+- [x] The verifier's path exploration blew the one-million-instruction budget — n branches can mean 2ⁿ paths; simplify control flow or restructure
+- [ ] The stack exceeded 512 bytes
+- [ ] Too many helper calls
+> The limit counts verified instructions across all explored paths, not program size. "Fighting the verifier" usually means reshaping code so the safety property is provable cheaply — fewer paths, explicit bounds.
+
+Q: Before kernel 5.13, loops in eBPF were forbidden outright. What's the rule now?
+- [x] Loops are allowed if the verifier can prove the iteration count is bounded — e.g. `i < 256 && i < len`
+- [ ] Any loop is fine; the runtime kills slow programs
+- [ ] Only for-loops with constant bounds compile
+- [ ] Loops require CAP_SYS_ADMIN
+> Termination is non-negotiable — an unbounded loop would hang the kernel at the hook point. The bounded-loop support is what made general programming in eBPF practical.
+```
 
 ---
 
@@ -630,6 +720,36 @@ execsnoop -x               # show only failed executions
 memleak -p 12345 -a 30     # track allocations for PID 12345, report every 30s
 ```
 
+```quiz
+Q: The classic bpftrace latency-histogram pattern stores @start[tid] = nsecs on syscall entry. Why key by tid?
+- [x] The exit probe must match the entry of the *same thread* — keying by thread ID pairs each entry with its own exit even with thousands of concurrent calls
+- [ ] tid is faster to hash than pid
+- [ ] bpftrace only allows integer keys
+- [ ] To group the histogram per thread
+> Entry/exit pairing is the workhorse pattern (read latency, block I/O latency, run-queue latency all use it). The /@start[tid]/ filter skips exits whose entry wasn't seen, and delete() keeps the map from growing forever.
+
+Q: When do you reach for a BCC tool instead of writing a bpftrace one-liner?
+- [ ] BCC is always preferable — bpftrace is a toy
+- [x] When a battle-tested tool already answers the question — biolatency, execsnoop, tcplife encode non-obvious details (correct probes, edge cases) you'd have to rediscover
+- [ ] Only when bpftrace isn't installed
+- [ ] When you need kernel versions before 4.1
+> The 100+ BCC tools are the "top and vmstat of the eBPF era." bpftrace shines for ad-hoc questions the toolkit doesn't cover — its one-liners are disposable; BCC tools are dependable.
+
+Q: A process is slow but barely uses CPU. Which BCC tool answers "where is it waiting"?
+- [ ] cpudist
+- [x] offcputime — it captures stack traces for time spent blocked, the raw material of off-CPU flame graphs
+- [ ] execsnoop
+- [ ] cachestat
+> On-CPU profilers only see running code. offcputime attributes the *sleeping* time to stacks — lock waits, disk I/O, network waits — the half of performance analysis most profilers miss.
+
+Q: Something keeps spawning processes on a production box. Which tool shows every exec system-wide, with arguments?
+- [x] execsnoop — it traces every exec() with PID, parent, and argv
+- [ ] ps aux in a loop
+- [ ] tcpconnect
+- [ ] filelife
+> Polling ps misses short-lived processes entirely; execsnoop hooks the exec path so nothing escapes, however brief. It's the first tool for "what just ran?" — cron mysteries, build escapes, cryptominers.
+```
+
 ---
 
 ## Part 8 — Writing eBPF Programs
@@ -779,6 +899,29 @@ bpftool prog pin id 42 /sys/fs/bpf/my_program
 
 # attach XDP to an interface
 bpftool net attach xdp id 42 dev eth0
+```
+
+```quiz
+Q: What problem does CO-RE solve, and what's the two-part mechanism?
+- [x] Kernel struct offsets differ across versions; BTF embeds the running kernel's exact layouts, and compiler-emitted relocations let the loader patch field offsets at load time — one binary runs everywhere
+- [ ] It cross-compiles eBPF for ARM and x86 from one source
+- [ ] It caches verified programs across reboots
+- [ ] It translates BCC Python scripts to libbpf C
+> Before CO-RE, BCC shipped a compiler to every box and rebuilt against local headers — slow, fragile, toolchain-on-prod. CO-RE moved the adaptation to load time: "access task_struct->pid" resolves against the kernel you're actually on.
+
+Q: How do you check whether a kernel supports CO-RE, and get types for development?
+- [x] /sys/kernel/btf/vmlinux exists if BTF is available; bpftool btf dump generates vmlinux.h with all kernel types
+- [ ] uname -r ≥ 5.0 guarantees it
+- [ ] grep CONFIG_BPF /boot/config
+- [ ] CO-RE works on any kernel with clang installed
+> The BTF blob in the kernel binary is the prerequisite. vmlinux.h replaces the entire kernel-headers dance for development — one generated header with every struct, matched to BTF at load.
+
+Q: Your team writes Go services and Kubernetes operators and needs custom eBPF tooling. Which ecosystem?
+- [ ] BCC — Python embeds C strings
+- [x] cilium/ebpf — eBPF in C, userspace in Go, with bpf2go generating typed Go bindings for maps and programs
+- [ ] Raw bpf() syscalls
+- [ ] aya, since Rust is safest
+> The split is by userspace language and use: libbpf (C) for maximum control, cilium/ebpf for Go shops (it's what Cilium itself uses), aya for Rust-native teams, BCC for prototyping.
 ```
 
 ---
@@ -1007,6 +1150,36 @@ Pixie (by New Relic, CNCF project) uses eBPF to provide instant Kubernetes obser
 - **Continuous CPU profiling** — flame graphs for every pod.
 - **In-cluster data processing** — data stays in the cluster (privacy-friendly).
 
+```quiz
+Q: How does Cilium make Kubernetes Service routing O(1) where kube-proxy's iptables mode is O(n)?
+- [x] eBPF programs on each pod's interface look the Service VIP up in a hash map, pick a backend, and rewrite the packet — no rule-chain traversal, no netfilter, no conntrack
+- [ ] It caches iptables verdicts per connection
+- [ ] It moves the rules to userspace where they're indexed
+- [ ] It limits clusters to 5,000 Services
+> iptables evaluates rules sequentially per packet; a map lookup is constant-time however many Services exist. Same data path also feeds Hubble — flow-level observability with no extra instrumentation.
+
+Q: What's the operational difference between Tetragon and Falco?
+- [x] Tetragon enforces in-kernel (it can SIGKILL a process or deny an operation before it completes); Falco streams events to a userspace rule engine for detection and alerting
+- [ ] Tetragon is for VMs, Falco for containers
+- [ ] Falco is the enforcement layer on top of Tetragon
+- [ ] They're competing implementations of the same spec
+> Enforcement vs detection: blocking the write to /etc/shadow as it happens vs alerting that it happened. Many shops run both — Tetragon to block known-bad, Falco for anomaly detection and compliance.
+
+Q: How can Beyla produce HTTP metrics for an app written in any language, with no SDK or sidecar?
+- [ ] It parses the app's access logs
+- [x] Its eBPF programs hook the kernel's socket layer (and library uprobes), seeing every read/write on every socket, and parse the protocol from the bytes
+- [ ] It requires apps to expose /metrics
+- [ ] It proxies all traffic through itself
+> The kernel sees all traffic regardless of language — that's the zero-instrumentation trick shared by Beyla, Pixie, and Hubble. RED metrics per endpoint appear without touching the application.
+
+Q: What makes eBPF-based continuous profiling (Parca/Pyroscope) viable always-on, where perf record was ad-hoc?
+- [x] perf_event eBPF programs sample stacks in-kernel at <1% overhead, so the data is already captured when an incident happens
+- [ ] It only profiles processes that opt in
+- [ ] It samples once per minute
+- [ ] It stores profiles in the kernel
+> The shift is from "reproduce the problem and profile it" to "scroll back to when it happened." Cheap in-kernel stack sampling plus aggregated flame graphs makes profiling a utility, not an event.
+```
+
 ---
 
 ## Part 12 — sched_ext: Custom Schedulers in eBPF
@@ -1116,6 +1289,36 @@ The verifier is a best-effort safety system, not a formal proof. Known limitatio
 - The verification process itself is complex enough to have bugs.
 
 The practical stance: eBPF is vastly safer than kernel modules (which have zero verification), but it is not a perfect security boundary. Treat eBPF program loading as a privileged operation.
+
+```quiz
+Q: What makes sched_ext safe enough to experiment with schedulers in production?
+- [x] A crashing or misbehaving eBPF scheduler causes the kernel to automatically revert to the default scheduler — the system keeps running
+- [ ] eBPF schedulers run in userspace
+- [ ] It only schedules low-priority tasks
+- [ ] It requires a reboot to activate, which forces review
+> Hot-swappable scheduling with a built-in safety net: the verifier bounds what the program can do, and the kernel falls back on failure. That's why Meta and Google can A/B test policies on live fleets.
+
+Q: Why would anyone replace EEVDF, the default scheduler?
+- [ ] EEVDF is unmaintained
+- [x] General-purpose fairness isn't always the goal — gaming wants foreground responsiveness, databases want uninterrupted query threads, trainers want cache-local co-scheduling
+- [ ] eBPF schedulers are inherently faster
+- [ ] To bypass cgroup CPU limits
+> "Fair" is one policy among many. sched_ext makes the policy pluggable (scx_lavd for latency, scx_rusty as a general improvement) instead of a kernel-compile decision.
+
+Q: Should your application containers have CAP_BPF?
+- [x] No — eBPF tooling runs as node-level infrastructure (privileged DaemonSets); workloads loading eBPF is the wrong trust model, and unprivileged BPF should be disabled
+- [ ] Yes, it's harmless since the verifier checks everything
+- [ ] Only with CAP_PERFMON as a pair
+- [ ] Yes, for observability sidecars
+> The verifier is ~20k lines of best-effort safety with a real CVE history, and eBPF can read kernel memory. Loading programs is a privileged operation: infrastructure does it; applications don't. kernel.unprivileged_bpf_disabled=1 is the production default.
+
+Q: "The verifier makes eBPF perfectly safe." What's wrong with that claim?
+- [ ] Nothing — verification is a formal proof
+- [x] It's best-effort: verifier bugs have allowed bypasses, side channels have been demonstrated, and complex programs exceed its analysis budget — vastly safer than modules, but not a perfect boundary
+- [ ] The verifier only runs in debug kernels
+- [ ] The claim understates it — eBPF is safer than userspace
+> The honest position drives the policy: patch kernels promptly, restrict who can load programs, audit with bpftool prog list. Trust the mechanism; don't worship it.
+```
 
 ---
 
