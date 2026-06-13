@@ -726,6 +726,19 @@ task<std::string> fetch_page(std::string url) {
 }
 ```
 
+```mermaid
+sequenceDiagram
+  participant L as for-loop (caller)
+  participant G as fibonacci() coroutine
+  L->>G: first pull (begin iterating)
+  G-->>L: co_yield a — suspend, hand back value
+  Note over G: frame (a, b) preserved while suspended
+  L->>G: next pull
+  G->>G: resume after co_yield, advance a, b
+  G-->>L: co_yield next value — suspend again
+  Note over L: nothing computed until pulled (lazy)
+```
+
 The key mental model: a coroutine can **suspend and resume**, so `co_await` *looks* like a blocking call but actually yields the thread back to do other work — the same "stop waiting, don't stop the thread" idea as the [Python](PYTHON_CONCURRENCY.md) and Node async guides, at the language level. The honest caveat that's persisted since C++20: the standard shipped the *language machinery* (the compiler transforms) but minimal *library* support — for years you needed a third-party coroutine type (cppcoro, or a framework's `task`). C++23's `std::generator` filled the lazy-sequence gap, and C++26's `std::execution` provides the async task framework, so the coroutine story is finally becoming usable out of the box rather than requiring you to write your own `promise_type`.
 
 If you remember one thing from Part 5: **for everyday threading, `std::jthread` + `stop_token` and the C++20 primitives (`latch`, `barrier`, `counting_semaphore`, `atomic_ref`) are the modern default — `jthread` is to `thread` what `unique_ptr` is to `new`. Reach for `std::execution`'s composable senders/receivers (with structured concurrency, the RAII of async) when you need pipelines that transfer across execution contexts, and use coroutines (`co_await`/`co_yield`, `std::generator`) for sequential-looking async and lazy sequences.**

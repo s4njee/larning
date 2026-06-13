@@ -231,8 +231,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       to become async (red spreads upward).
 - [ ] `TYPESCRIPT_STUDY_GUIDE.md` — Flow: conditional-type distribution; the
       type-narrowing decision. (Mostly fine as prose — max 1–2.)
-- [ ] `CPP26_STUDY_GUIDE.md` — Seq: coroutine suspend/resume; flow: RAII
-      destruction order. 
+- [x] `CPP26_STUDY_GUIDE.md` — Seq: coroutine suspend/resume via the lazy
+      `std::generator` pull model (co_yield suspends, frame preserved, caller
+      pulls to resume). *Follow-up: RAII destruction order.*
 - [x] `SWIFT_STUDY_GUIDE.md` — Graph: the ARC retain cycle (Person↔Dog strong =
       leak) vs the `weak`-broken version (frees). *Follow-ups: dispatch
       decision, actor reentrancy.*
