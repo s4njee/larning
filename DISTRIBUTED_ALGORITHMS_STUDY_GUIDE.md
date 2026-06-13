@@ -362,6 +362,29 @@ learner: value chosen when some ballot's ACCEPTED reaches a majority
 
 Every line is forced. The promise ("I will never accept anything numbered < n") freezes the past so the proposer's read of it stays true. The crux rule — *adopt the highest-ballot accepted value you heard, propose your own only if you heard none* — is what makes a new proposer the *servant* of any possibly-chosen earlier value instead of its overwriter. And persistence before replying is the crash-recovery model (Chapter 1) collecting its toll: an acceptor that forgets a promise un-freezes the past.
 
+The message flow makes the two phases — and the majorities that carry them — concrete:
+
+```mermaid
+sequenceDiagram
+  participant P as Proposer
+  participant A1 as Acceptor 1
+  participant A2 as Acceptor 2
+  participant A3 as Acceptor 3
+  Note over P,A3: Phase 1 — prepare / promise
+  P->>A1: PREPARE(n)
+  P->>A2: PREPARE(n)
+  P->>A3: PREPARE(n)
+  A1-->>P: PROMISE(n, lastAccepted)
+  A2-->>P: PROMISE(n, lastAccepted)
+  Note over P: promises from a majority (2 of 3)
+  Note over P,A3: Phase 2 — propose / accept
+  P->>A1: ACCEPT(n, v)
+  P->>A2: ACCEPT(n, v)
+  A1-->>P: ACCEPTED(n)
+  A2-->>P: ACCEPTED(n)
+  Note over P: v chosen once ACCEPTED reaches a majority
+```
+
 ### 6.3 The safety proof
 
 **Invariant P2c.** If a proposal with ballot n and value v is issued, then there is a majority S such that either (a) no acceptor in S has accepted any proposal numbered < n, or (b) v equals the value of the highest-numbered proposal below n accepted within S.

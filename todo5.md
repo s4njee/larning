@@ -108,8 +108,10 @@ their core and prose carries them poorly.
       log-replication commit flow (append→majority-ack→commit→apply, plus the
       lagging-follower log-match repair). *Possible follow-ups: leader-election
       sequence, 2PC commit, a node's view through a partition.*
-- [ ] `DISTRIBUTED_ALGORITHMS_STUDY_GUIDE.md` — Seq: Paxos prepare/accept
-      rounds; flow: FLP/quorum intersection. State: Raft term transitions.
+- [x] `DISTRIBUTED_ALGORITHMS_STUDY_GUIDE.md` — Seq: Paxos prepare/promise +
+      propose/accept message flow with majorities (added alongside the
+      pseudocode). *Follow-ups: FLP/quorum intersection flow, Raft term
+      transitions.*
 - [x] `NETWORKING_FUNDAMENTALS.md` — Seq: TCP three-way handshake (replaced
       ASCII). State: the TCP state machine, active-open/active-close path
       (replaced ASCII). *Follow-ups: DNS resolution chain, packet path through
