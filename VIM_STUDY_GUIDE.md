@@ -59,23 +59,20 @@ Vim has a handful of modes. You'll live in the first two; the rest are specializ
 - **Replace mode** — typing overwrites existing characters instead of inserting. Niche.
 - **Operator-pending mode** — a brief, almost invisible mode you're in *between* pressing an operator and its motion (the moment after `d`, waiting for the `w`). You don't think of it as a mode, but it's the conceptual engine behind the whole grammar.
 
-```text
-                 i a o I A O s c ...
-        ┌────────────────────────────────►┌──────────────┐
-        │                                  │  INSERT mode  │
-        │              <Esc>               │ (type text)   │
-        │   ◄──────────────────────────────└──────────────┘
- ┌──────┴───────┐  v V <C-v>   ┌──────────────┐
- │  NORMAL mode │ ───────────► │  VISUAL mode  │
- │ (commands —  │  ◄────────── │ (select then  │
- │  home base)  │    <Esc>     │   operate)    │
- └──────┬───────┘              └──────────────┘
-        │  :  /  ?      ┌────────────────────┐
-        │ ────────────► │  COMMAND-LINE mode │
-        │  ◄─────────── │ (:w :s /search ... )│
-        │   <CR>/<Esc>  └────────────────────┘
-        ▼
-   (everything returns to Normal — when in doubt, press <Esc>)
+```mermaid
+stateDiagram-v2
+  state "Normal (commands — home base)" as N
+  state "Insert (type text)" as I
+  state "Visual (select then operate)" as V
+  state "Command-line (:w :s /search)" as C
+  [*] --> N
+  N --> I: i a o I A O s c ...
+  I --> N: Esc
+  N --> V: v V Ctrl-v
+  V --> N: Esc
+  N --> C: : / ?
+  C --> N: CR / Esc
+  note right of N: when in doubt, press Esc to return to Normal
 ```
 
 The golden rule for survival: **when you're lost, press `<Esc>` (or `<C-[>`) until you're back in Normal mode**, then think. Everything radiates from Normal.

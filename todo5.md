@@ -325,9 +325,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [ ] `RASPBERRY_PI_STUDY_GUIDE.md` — Flow: the boot chain (bootcode→start.elf
       →kernel→device tree); decision: undervoltage→throttle. (Leave GPIO
       pinout ASCII.)
-- [ ] `VIM_STUDY_GUIDE.md` — Graph: the operator+motion+text-object grammar;
-      state: the mode transitions (normal/insert/visual/cmdline). *(Modes are
-      a textbook state diagram.)*
+- [x] `VIM_STUDY_GUIDE.md` — State: the mode machine (Normal↔Insert/Visual/
+      Command-line, with the keys that switch and Esc returning to Normal;
+      replaced ASCII). *Follow-up: operator+motion grammar graph.*
 
 ## Bespoke pages
 
