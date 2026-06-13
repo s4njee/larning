@@ -329,20 +329,27 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       Command-line, with the keys that switch and Esc returning to Normal;
       replaced ASCII). *Follow-up: operator+motion grammar graph.*
 
-## Bespoke pages
+## Bespoke pages — ✅ COMPLETE (2026-06-13)
 
-- [ ] `build_caddy_html.py` — Caddy already has a decision-helper; consider a
-      seq diagram for automatic-HTTPS/ACME issuance. Verify SVG theming after
-      any shared-CSS change.
-- [ ] `build_nginx_html.py` — Seq: a request through the nginx phases
-      (rewrite→access→content); the master/worker process model.
+Both bespoke generators now route their content through `build_guide`'s
+`extract_mermaid_blocks`/`restore_mermaid_blocks` (via a local import that
+avoids the circular dependency), so they render mermaid exactly like the guide
+pages — existing quizzes intact.
+
+- [x] `build_caddy_html.py` — Seq: the HTTP-01 ACME issuance handshake
+      (account → challenge token → CA fetch → cert issued → TLS configured).
+      13 quizzes still render.
+- [x] `build_nginx_html.py` — Graph: the master/worker process model (master
+      forks workers + cache manager/loader; replaced ASCII). 14 quizzes still
+      render.
 
 ---
 
 64 guide files + 2 bespoke pages (Caddy/Nginx, built from their `.py`
-generators) = 66 targets. Progress: Phase 0 ✅; Batch A ✅ (12); Batch B ✅ (15);
-Batch C ✅ (13); Batch D ✅ (13). 53 guides total carry diagrams. Next:
-Batch E (security/AI/embedded/tools) + the 2 bespoke pages. Diagrams are
+generators) = 66 targets. Progress: **66/66 — COMPLETE.** Phase 0 ✅;
+Batch A ✅ (12); Batch B ✅ (15); Batch C ✅ (13); Batch D ✅ (13);
+Batch E ✅ (12); bespoke pages ✅ (2). Every guide and both bespoke pages now
+carry at least one tactical, build-time-rendered mermaid diagram. Diagrams are
 **additive and tactical** — a guide is "done" here when
 its 1–4 highest-value relational/temporal/state diagrams render as inline SVG
 on both themes, with spatial/byte-layout diagrams left as ASCII.

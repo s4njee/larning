@@ -622,6 +622,22 @@ example.com {
 }
 ```
 
+The HTTP-01 challenge that proves domain control is a short exchange between Caddy and the CA:
+
+```mermaid
+sequenceDiagram
+  participant C as Caddy
+  participant A as ACME CA (Let's Encrypt)
+  participant V as Your domain on :80
+  C->>A: create account, request cert for example.com
+  A-->>C: HTTP-01 challenge token
+  C->>C: serve token at /.well-known/acme-challenge/token
+  A->>V: GET the challenge token
+  V-->>A: token (proves you control the domain)
+  A-->>C: issue the certificate
+  C->>C: configure TLS, redirect :80 to :443, renew at ~2/3 lifetime
+```
+
 Caddy stores certificates, private keys, ACME account data, and OCSP staples in its **data directory** (`~/.local/share/caddy` on Linux, or `/data` in the Docker image). Never delete this directory in production.
 
 References: [ACME challenges](https://caddyserver.com/docs/automatic-https#acme-challenges), [Certificate management](https://caddyserver.com/docs/caddyfile/directives/tls).
