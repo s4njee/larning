@@ -111,6 +111,29 @@ The rules that make this work at scale:
 - **Every response carries a `Request-Id`** the client can quote and you can look up (Part 11). This single header eliminates a whole genre of support escalation.
 - **Never leak internals**: no stack traces, no SQL, no upstream hostnames, no "NullPointerException" — those are information disclosure to attackers and confusion to everyone else. The 500 body is generic; the *details* go to your logs, joined by `request_id`.
 
+```quiz
+Q: Why is "method semantics are a contract, not a style" — what breaks if a GET mutates state?
+- [ ] GET is slower for writes
+- [x] Proxies, gateways, SDK retry layers, and browsers all assume GET is safe and idempotent, so a prefetcher, health checker, or retry will eventually call your mutating GET — and the resulting incident is your fault, not theirs
+- [ ] GET can't carry a body
+- [ ] It violates JSON schema
+> RFC 9110's safe/idempotent properties aren't aesthetic — infrastructure relies on them. A link prefetcher follows GETs, monitors poll them, retry layers re-issue them freely, all assuming no side effects. A GET that changes state will be triggered by one of these and double-act. The same contract underpins idempotent retries (Part 3) and resilience (Part 9): PUT/DELETE retryable, POST not.
+
+Q: Why is `code` the contract while `detail` is "just prose" in an RFC 9457 error?
+- [ ] code is shorter
+- [x] Clients branch programmatically on the stable machine-matchable `code`, so you can reword the human-readable `detail` freely — if you give clients only prose to match, they'll regex your messages and your typo fixes become breaking changes
+- [ ] detail is optional
+- [ ] code is for humans
+> Two audiences read every error: a program deciding what to do next (needs a stable `code`) and a human debugging (reads `detail`). Keeping them separate lets you improve wording without breaking integrations. Omit the code and clients will pattern-match your message text (Hyrum's Law), turning every copy edit into a contract change. Document every code; treat `detail` as freely editable.
+
+Q: Why return the full created resource from `POST /transfers` rather than just an ID or 201 with empty body?
+- [ ] To save the client a parse
+- [x] So clients get server-set fields (`id`, `created_at`, `status`) immediately and never need a follow-up GET that might hit a stale read replica before the write has propagated
+- [ ] REST requires it
+- [ ] To reduce server load
+> A write knows the authoritative post-write state, so returning it (with all server-generated fields) saves a round trip and, more importantly, avoids the read-after-write hazard: a follow-up GET could land on a replica that hasn't caught up, showing stale or missing data (Part 6's consistency concern). Echoing the full resource from the write is both an ergonomics and a correctness win.
+```
+
 ---
 
 ## Part 3 — Idempotency
@@ -229,6 +252,29 @@ Before reaching for key infrastructure, check whether the operation can be *rede
 
 The decision rule: **anything that moves money, sends communications, or creates resources on behalf of a retrying caller needs an idempotency story in the contract** — either natural (preferred) or keyed (when "create a new X" is genuinely the semantic). Write down which, per endpoint. "We didn't think about it" is the only wrong answer.
 
+```quiz
+Q: Why is "exactly-once delivery is impossible but exactly-once effect is achievable" the key to API resilience?
+- [ ] Networks never fail
+- [x] A client can have a request execute successfully yet never see the response, so robust clients retry and your API *will* receive duplicates — exactly-once effect comes from at-least-once delivery plus idempotent processing (dedup), which you must do on purpose
+- [ ] You should disable client retries
+- [ ] Idempotency is only for GET requests
+> Partial network failure means the client can't tell "never arrived" from "executed, response lost," so every robust client (SDKs, meshes, mobile apps, queue consumers) retries. Duplicates are therefore inevitable; the only question is whether they're harmless. Every system that seems exactly-once (Kafka, payment processors) deduplicates somewhere — enterprise-grade means building that idempotent processing deliberately rather than hoping.
+
+Q: The naive idempotency check `if (seen(key)) return cached; else execute(); save(key)` has a race. What's the fix?
+- [ ] Add a longer TTL
+- [x] Make key *reservation atomic and first* via a uniqueness constraint (INSERT ... ON CONFLICT DO NOTHING) so exactly one concurrent duplicate wins; otherwise two duplicates both pass the `seen()` check and both execute
+- [ ] Use a faster cache
+- [ ] Reject all concurrent requests
+> "Multiple times" includes "concurrently," so a time-of-check/time-of-use gap lets two racing duplicates both see "not seen" and both run. Reserving the key with an atomic unique INSERT makes the database arbitrate: one request wins the reservation and executes, the loser finds the existing row and either replays the stored response, rejects a mismatched body, or returns 409 if the first is still in flight.
+
+Q: How does idempotency "compose" when your operation calls an external service (e.g. charging a card)?
+- [ ] It can't — external calls break idempotency
+- [x] You propagate the same idempotency key downstream — call the processor with that key — so a retry of your half safely retries their half too; idempotency composes by passing keys through the call chain
+- [ ] You wrap the external call in your local transaction
+- [ ] You disable retries for external calls
+> You can't put an external charge in your local database transaction, so a crash between "charged" and "key marked completed" risks a double charge on retry. The fix is to pass your idempotency key to the processor (which accepts one precisely for this), making the downstream call itself idempotent. Then re-executing your half re-invokes their half harmlessly — the keys chain through, preserving exactly-once effect end to end.
+```
+
 ---
 
 ## Part 4 — Versioning and Compatibility
@@ -242,6 +288,22 @@ Non-breaking (do freely, with a changelog entry): adding a response field; addin
 Breaking (requires a new version or a managed migration): removing or renaming anything; changing a type or format; making an optional field required; tightening validation that previously accepted input; changing a default; changing error *codes* (not prose); reordering paginated results a client documented as stable; meaningfully changing latency or rate-limit behavior, if consumers were told to rely on it. Note the asymmetry — requests follow "be conservative in what you send" for clients, and your *responses* are governed by Hyrum's Law: if it was observable, somebody depends on it.
 
 This only works if it's enforced, not aspired to: contract diffing in CI (Part 12) that fails the build on a breaking change to the OpenAPI document is worth more than any policy memo.
+
+```quiz
+Q: "Versioning is the fire escape; compatibility discipline is the building code." What does that mean in practice?
+- [ ] Version every release to be safe
+- [x] Most API evolution should be *additive within a version* (new fields, new optional params, new endpoints, new enum values) — reserve a new version for genuinely breaking changes, because each major version is a migration project imposed on every consumer
+- [ ] Never change an API once shipped
+- [ ] Header versioning is mandatory
+> Cutting a `/v2` is a migration you force on everyone — parallel operation for quarters, migration guides, telemetry on stragglers. So you avoid it by evolving compatibly: additions don't break clients, removals and type changes do. The discipline is to make breaking changes rare enough that each new version is an event, not a habit — enforced by CI contract diffing, not a policy memo.
+
+Q: Why are your API *responses* governed by Hyrum's Law even for behavior you never documented?
+- [ ] Documentation is optional
+- [x] If a behavior is observable — field order, an undocumented field, an error message string — some consumer will come to depend on it, so changing it breaks them even though you never promised it; that's why removals/renames/reorderings are breaking
+- [ ] Responses are immutable once shipped
+- [ ] Only documented fields matter
+> Hyrum's Law: with enough consumers, every observable behavior becomes a contract regardless of intent. A client may parse your error prose, rely on incidental field ordering, or read a field you added for internal use. So "non-breaking" is defined by observability, not documentation — which is also why error `code` (the documented contract) is changeable only as a breaking change while `detail` prose is freely editable, and why paginated order a client treats as stable can't be silently reordered.
+```
 
 ### When you must version
 
@@ -311,6 +373,29 @@ If-Match: "v17"
 
 Implementation is one integer: a `version` column incremented on every write, compared in the `UPDATE ... WHERE id = $1 AND version = $2` (zero rows updated → `412`). The contract decisions that go with it: **document which endpoints require `If-Match`** (require it on anything where lost updates hurt — silently accepting unconditional writes on a contested resource is choosing corruption as the default); return the new ETag on every write so clients can chain edits; and pair `412` with a problem body telling the client to refresh. Note the kinship with Part 3: a conditional write is *naturally idempotent* — replaying `If-Match: "v17"` after it succeeded yields `412`, not a second application, which is exactly the no-op you want from a retry. (`If-Unmodified-Since` is the timestamp cousin; use the ETag form — timestamps have resolution problems.)
 
+```quiz
+Q: Why is offset pagination (`?offset=5000&limit=50`) called "a correctness bug wearing a convenience costume"?
+- [ ] It returns JSON in the wrong order
+- [x] Under concurrent writes it skips or duplicates items (a row inserted before your page shifts everything, so a client walking "all transfers" silently misses some), and it degrades O(offset) since the DB produces and discards 5,000 rows to serve page 101
+- [ ] Offset only works on small tables
+- [ ] It requires a total count
+> Both failures are disqualifying for anything that grows or changes. The correctness one is worst: in a reconciliation job, silently missing rows is a financial discrepancy that looks like success. Cursor (keyset) pagination fixes both by returning an opaque token encoding position by a *stable, unique* sort key (timestamp + id tiebreaker) and fetching "everything after that key" via a `WHERE` clause, not an `OFFSET`.
+
+Q: How does optimistic concurrency with ETags prevent the lost update, and why is it "naturally idempotent"?
+- [ ] It locks the row until the client disconnects
+- [x] The client sends `If-Match: "v17"`; the write applies only if the version still matches (else 412), so a stale edit is rejected rather than silently overwriting — and replaying the same conditional write after success yields 412, not a second application, exactly the no-op a retry wants
+- [ ] It serializes all writes globally
+- [ ] It uses timestamps for comparison
+> Read-modify-write loses updates because the second saver overwrites the first with no error. Conditional requests turn the version into a precondition: `UPDATE ... WHERE id=$1 AND version=$2` updates zero rows if someone wrote first, returning 412 so the client re-reads and re-applies intent. The kinship with idempotency (Part 3): once `If-Match: "v17"` has succeeded, retrying it fails the precondition — a safe no-op, which is what you want from a duplicate.
+
+Q: Why should filters and sorts be a documented allowlist rather than a generic query language?
+- [ ] Query languages are hard to parse
+- [x] Every filter you accept is a query plan you promise to execute at production scale; a free-form filter language lets a consumer invent a query your indexes never imagined, at peak load — and silently ignoring an unknown filter (a typo like `craeted_after`) returns the unfiltered world
+- [ ] Allowlists are more RESTful
+- [ ] It reduces JSON size
+> Named, indexed filters mean you only commit to query shapes you can serve fast. A generic expression language (or an unguarded GraphQL resolver) invites the unindexed query that melts your database on a busy Monday. And rejecting unknown filter/sort params with a 400 listing valid ones is essential: silently dropping a misspelled filter returns everything, which in a reconciliation script is a catastrophe disguised as a successful run.
+```
+
 For *create* races, the same idea wears a different header: `If-None-Match: *` on `PUT /resources/{client-id}` means "create only if absent" — `412` tells the caller it already exists.
 
 ### Consistency is part of the contract — say what you guarantee
@@ -375,6 +460,29 @@ function tryConsume(bucket: Bucket, now: number, rate: number, capacity: number)
 ```
 
 Key by **principal** (never IP alone — corporate NATs put a thousand legitimate users behind one address), with separate classes for cheap reads vs expensive writes vs auth attempts (the latter limited aggressively — credential stuffing is a rate-limiting problem).
+
+```quiz
+Q: Rate limiting, quotas, and load shedding "share a status code and not much else." What does each protect?
+- [ ] They're three names for the same thing
+- [x] Rate limiting protects *capacity* (bursts/runaway clients); quotas implement the *business model* and tenant fairness (daily/monthly); load shedding protects *survival* — rejecting work you could normally handle because you're degraded
+- [ ] All three protect against credential theft
+- [ ] They differ only in the time window
+> Conflating them produces bad designs. Rate limiting smooths short-term load (per-second), quotas enforce billing/fairness over long windows, and load shedding is an incident-time survival valve that drops even legitimate traffic to stay up. They all return 429, but their triggers, windows, and policies are distinct — design each separately rather than as one knob.
+
+Q: Why is the token bucket preferred over a fixed window for rate limiting, and why key by principal not IP?
+- [ ] Token bucket uses less memory
+- [x] Token bucket permits honest bursts (depth B) around a sustained rate (R), matching real client behavior, and avoids fixed windows' 2× boundary burst; keying by principal avoids punishing the thousand legitimate users a corporate NAT hides behind one IP
+- [ ] IP keying is more accurate
+- [ ] Fixed windows can't return 429
+> A batch job waking up and firing 50 calls is normal; a token bucket of capacity B absorbs that burst while enforcing the average rate R, whereas a fixed window both fails to model bursts and lets 2× the limit straddle a window edge. And IP-based limits collapse under shared egress (offices, mobile carriers) — the authenticated principal is the fair unit, with separate buckets for cheap reads, expensive writes, and aggressively-limited auth attempts (credential stuffing is a rate-limiting problem).
+
+Q: Why must a 429 response carry `Retry-After`/`RateLimit-*` headers — what's wrong with a bare rejection?
+- [ ] Headers are required by HTTP
+- [x] "A rate limit a client can't cooperate with is just an outage with paperwork" — the headers teach the client exactly how long to back off and how much budget remains, so well-behaved clients self-regulate instead of hammering and amplifying the problem
+- [ ] They reduce server load directly
+- [ ] Clients ignore the body otherwise
+> A 429 with no guidance forces the client to guess (or retry immediately, making things worse). `Retry-After` tells it precisely when to come back, and `RateLimit-Limit/Remaining/Reset` let it pace itself proactively. The goal is cooperative clients that slow down on signal — turning a hard limit into a smooth backpressure mechanism rather than a wall they repeatedly run into.
+```
 
 ### The contract side: 429 done right
 

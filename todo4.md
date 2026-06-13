@@ -161,7 +161,7 @@ Part, click-to-reveal explanation included.
 - [x] `KALI_LINUX_STUDY_GUIDE.md` — 5 quizzes (15 questions; purpose-built-distro/enumerate-before-exploit/post-ex-pathfinding, passive-vs-active-recon/subdomain-validation/version-string-hinge, online-vs-offline/hash-identification/reverse-shell-direction, AD-as-graph/Kerberoasting/NTLM-relay, trust-not-verify/ARP-spoof-MITM/verification-not-encryption)
 - [x] `AI_AGENTS_STUDY_GUIDE.md` — 5 quizzes (13 questions; workflow-vs-agent-who-controls/start-with-workflows/evaluator-optimizer, agent-loop-primitive/ReAct-is-the-loop/production-guardrails, tool-trust-boundary/descriptions-are-instructions, defense-in-depth-cheapest-first/output-guardrails, multi-agent-only-when-justified/handoffs-are-tools/sequential-pipeline-stable)
 - [x] `LLM_APP_DEV_STUDY_GUIDE.md` — 5 quizzes (13 questions; stateless/output-latency/hallucination-inherent, JSON-mode-vs-schema/tool-as-schema, RAG-grounds-knowledge/hybrid-search/retrieve-then-rerank, prompt-cache-prefix/semantic-cache-caution, RAG-for-facts/when-to-fine-tune/prompt-vs-finetune-cost)
-- [ ] `ENTERPRISE_API_STUDY_GUIDE.md`
+- [x] `ENTERPRISE_API_STUDY_GUIDE.md` — 5 quizzes (14 questions; method-semantics-contract/code-vs-detail/return-full-resource, exactly-once-effect/atomic-key-reservation/idempotency-composes, additive-evolution/Hyrum-observability, offset-pagination-bug/ETag-optimistic-concurrency/filter-allowlist, three-problems-one-429/token-bucket-by-principal/cooperative-429)
 - [ ] `TESTING_STUDY_GUIDE.md`
 - [ ] `BLENDER_STUDY_GUIDE.md`
 - [ ] `ESP32_STUDY_GUIDE.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 60/65 (Batches 1–5 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 61/65 (Batches 1–5 complete).
