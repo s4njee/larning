@@ -289,6 +289,11 @@ This guide is a comprehensive deep dive into SQLite — the most widely deployed
 
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/SQLITE_STUDY_GUIDE.md)
 
+### Scala
+This guide teaches Scala properly as the functional language it is, while explaining the JVM it compiles down to — it's the repo's coverage of the JVM managed runtime, and where the Compiler Internals guide's HotSpot/tiered-JIT references point. Built on one through-line — Scala fuses FP and OO into a powerful type system, but it all erases to JVM bytecode on HotSpot — it works through the mental model (FP+OO fusion, Scala 3, Java interop), the JVM runtime underneath (bytecode, the tiered C1/C2 JIT and warmup, deoptimization, generational/G1/ZGC garbage collection, type erasure and autoboxing and why immutable functional code is affordable), and then the functional features in depth: expressions/immutability/referential transparency (val vs lazy val vs def), algebraic data types and pattern matching (case classes, sealed traits, enums, exhaustivity as a compile-time checklist), functions as first-class values (higher-order functions, currying, composition, by-name params), functional error handling (Option/Either/Try and for-comprehensions as flatMap/map sugar that works for any monad), the immutable collections library and laziness (structural sharing, views, LazyList), type classes via given/using and the Cats hierarchy (Functor/Applicative/Monad, Semigroup/Monoid — ad-hoc, retroactive polymorphism), the type system at depth (variance, higher-kinded types, opaque/union/intersection types), and functional effects and concurrency with Cats Effect and ZIO (the IO monad making effects pure values, fibers, structured concurrency), closing on tooling (sbt, Metals, worksheets) and when Scala is the right tool. Quizzes and build-time mermaid diagrams (the JVM tiered-JIT pipeline, the ADT sum-of-products, for-comprehension desugaring, the Cats type-class hierarchy, the fiber runtime) throughout.
+
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/SCALA_STUDY_GUIDE.md)
+
 ### SvelteKit
 This guide explains SvelteKit as a modern app framework with a lightweight, ergonomic developer experience. It focuses on the patterns you need to understand to build real apps: routing, data loading, component structure, and deployment flow.
 
