@@ -898,6 +898,19 @@ The single biggest security upgrade for a deploy pipeline: stop storing long-liv
 
 The trust is scoped by the token's claims — above all `sub` (subject), which encodes values like `repo:ORG/REPO:ref:refs/heads/main` or `repo:ORG/REPO:environment:production`. You write a condition that matches exactly the runs you trust. (For the JWT and token-signing background, see the [Cryptography guide](CRYPTO_FUNDAMENTALS.md).)
 
+```mermaid
+sequenceDiagram
+  participant W as Workflow run (id-token: write)
+  participant GH as GitHub OIDC provider
+  participant STS as Cloud STS (e.g. AWS)
+  W->>GH: request OIDC token
+  GH-->>W: signed JWT — claims: repo, ref, environment (in sub)
+  W->>STS: AssumeRoleWithWebIdentity(JWT)
+  Note over STS: verify signature + match trust policy<br/>sub = repo:ORG/REPO:ref:refs/heads/main
+  STS-->>W: short-lived credentials
+  Note over W: deploy — nothing long-lived stored
+```
+
 **AWS, end to end.** First, an IAM role whose trust policy accepts GitHub's OIDC tokens for your repo's `main` branch:
 
 ```json

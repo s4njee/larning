@@ -172,8 +172,10 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       *Follow-ups: resource DAG, remote-state lock acquisition sequence.*
 - [ ] `ANSIBLE_STUDY_GUIDE.md` — Seq: a play's task→module→handler flow across
       control node and targets.
-- [ ] `GITHUB_ACTIONS_STUDY_GUIDE.md` — Seq: trigger→runner→job→step lifecycle;
-      OIDC token exchange to a cloud. Graph: matrix/needs DAG.
+- [x] `GITHUB_ACTIONS_STUDY_GUIDE.md` — Seq: the OIDC token exchange to a
+      cloud (request JWT → AssumeRoleWithWebIdentity → trust-policy match →
+      short-lived creds; no stored secrets). *Follow-ups: job/step lifecycle,
+      matrix/needs DAG.*
 - [ ] `OBSERVABILITY_STUDY_GUIDE.md` — Flow: a trace's span propagation across
       services; the OTel collector pipeline. Flow: burn-rate alert decision.
 - [ ] `CLOUDFLARE_STUDY_GUIDE.md` — Seq: a request through the proxy pipeline
