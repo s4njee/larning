@@ -169,12 +169,12 @@ Part, click-to-reveal explanation included.
 
 ## Bespoke pages (verify only)
 
-- [ ] `build_caddy_html.py` — already has quizzes; verify still renders after
-      any shared-CSS/JS changes
-- [ ] `build_nginx_html.py` — check whether it has quizzes; if not, add a
-      `QUIZZES` dict matching the Caddy pattern
+- [x] `build_caddy_html.py` — verified: 13 widgets / 25 questions render clean
+      (exactly one correct per item, no placeholder leaks, no double-escapes)
+- [x] `build_nginx_html.py` — verified: already ships quizzes (14 widgets /
+      30 questions) via its `QUIZZES` dict; renders clean, no changes needed
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 65/65 (all guide batches complete).
-Remaining: the 2 bespoke pages (verify only).
+65 Markdown guides + 2 bespoke pages. Progress: 67/67 — COMPLETE.
+All guides and both bespoke pages carry self-check quizzes.
