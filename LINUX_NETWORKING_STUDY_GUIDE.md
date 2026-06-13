@@ -893,6 +893,19 @@ Network namespaces are how containers get separate interfaces, routes, firewall 
 
 ### Two Namespaces Connected by a veth Pair
 
+A veth pair is a virtual cable: two interfaces, one in each namespace, where whatever enters one end comes out the other. This is the primitive every container runtime uses to wire a container to the host.
+
+```mermaid
+graph LR
+  subgraph red["netns: red"]
+    VR["veth-red<br/>10.10.0.1/24"]
+  end
+  subgraph blue["netns: blue"]
+    VB["veth-blue<br/>10.10.0.2/24"]
+  end
+  VR <-->|veth pair| VB
+```
+
 Create namespaces:
 
 ```bash
@@ -966,7 +979,23 @@ This tests the local kernel path, not a physical NIC. It is still useful for lea
 
 ### Add a Router Namespace
 
-This pattern models two LANs connected by a router:
+This pattern models two LANs connected by a router — the `rtr` namespace sits between two veth pairs, one to each LAN, and forwards between them:
+
+```mermaid
+graph LR
+  subgraph left["netns: left (LAN A)"]
+    L["veth-left<br/>10.20.0.1/24"]
+  end
+  subgraph rtr["netns: rtr (router, ip_forward=1)"]
+    RL["veth-rtr-left<br/>10.20.0.254/24"]
+    RR["veth-rtr-right<br/>10.30.0.254/24"]
+  end
+  subgraph right["netns: right (LAN B)"]
+    R["veth-right<br/>10.30.0.1/24"]
+  end
+  L <-->|veth pair| RL
+  RR <-->|veth pair| R
+```
 
 ```bash
 sudo ip netns add left

@@ -116,9 +116,9 @@ their core and prose carries them poorly.
       ASCII). State: the TCP state machine, active-open/active-close path
       (replaced ASCII). *Follow-ups: DNS resolution chain, packet path through
       the layers.*
-- [ ] `LINUX_NETWORKING_STUDY_GUIDE.md` — Graph: netfilter/iptables chain
-      traversal; namespace + veth + bridge topology. Flow: a packet through
-      the routing decision.
+- [x] `LINUX_NETWORKING_STUDY_GUIDE.md` — Graph: the veth-pair two-namespace
+      lab and the three-namespace router lab (topologies for the Part 8 labs).
+      *Follow-ups: netfilter chain traversal, packet routing-decision flow.*
 - [x] `DATABASE_INTERNALS_STUDY_GUIDE.md` — Flow: the engine layer cake —
       query pipeline (parser→executor) on the subsystem stack (replaced ASCII,
       kept chapter cross-refs). B-tree/page layouts left as ASCII. *Follow-ups:
