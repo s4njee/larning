@@ -269,9 +269,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `WEBSOCKETS_STUDY_GUIDE.md` — Seq: the HTTP→WS upgrade handshake (GET
       Upgrade → 101 Switching Protocols → full-duplex framing). *Follow-ups:
       backplane fan-out, connection lifecycle + 1006/close.*
-- [ ] `WEBGL_OPENGL_STUDY_GUIDE.md` — Flow: the rendering pipeline (vertex→
-      clip→raster→fragment); the state-machine binding model.
-      *(Low ASCII density — adds new; high payoff.)*
+- [x] `WEBGL_OPENGL_STUDY_GUIDE.md` — Flow: the rendering pipeline (vertex
+      buffers→vertex shader→assembly→clip→raster→fragment shader→depth/stencil→
+      blend→framebuffer; replaced ASCII), marking the programmable stages.
 - [ ] `WEBGPU_STUDY_GUIDE.md` — Flow: explicit pipeline setup vs GL state;
       seq: async command submission. *(Low ASCII density — adds new.)*
 - [ ] `IOS_DEVELOPMENT_STUDY_GUIDE.md` — Flow: SwiftUI body re-evaluation;

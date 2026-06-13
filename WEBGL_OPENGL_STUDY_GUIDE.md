@@ -362,16 +362,16 @@ The GL pipeline is the conceptual spine of the API.
 
 For a simple draw:
 
-```text
-vertex buffers
-  -> vertex shader
-  -> primitive assembly
-  -> clipping
-  -> rasterization
-  -> fragment shader
-  -> depth/stencil tests
-  -> blending
-  -> framebuffer
+```mermaid
+graph TD
+  VB[vertex buffers] --> VS["vertex shader — programmable"]
+  VS --> PA[primitive assembly]
+  PA --> CL[clipping]
+  CL --> RZ[rasterization]
+  RZ --> FS["fragment shader — programmable"]
+  FS --> DS[depth / stencil tests]
+  DS --> BL[blending]
+  BL --> FB[framebuffer]
 ```
 
 You control parts of this pipeline with shaders and parts with fixed-function state.
