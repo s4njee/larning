@@ -61,6 +61,14 @@ Blender's internal data model has a shape that explains most of its behavior:
 - **Objects** are containers that reference data-blocks. An object in the scene says "I am at position X, rotated by Y, and I display *this mesh* with *this material*." Multiple objects can share the same mesh data-block — this is **instancing**, and it's how you put a thousand identical trees in a scene without a thousand copies of the geometry.
 - Data-blocks with **zero users** (nothing references them) are orphaned and cleaned up on save — unless you give them a **fake user** (the shield icon) to keep them around.
 
+```mermaid
+graph TD
+  O1["Object: Tree.001<br/>transform (pos/rot/scale)"] --> M["Mesh data-block: TreeMesh<br/>geometry stored once"]
+  O2["Object: Tree.002<br/>transform"] --> M
+  O3["Object: Tree.003<br/>transform"] --> M
+  M --> MAT["Material data-block"]
+```
+
 This user-count system is why things sometimes "disappear" when you think you saved them. If a material has zero users (it's not assigned to any object), Blender discards it on reload. The shield icon prevents that.
 
 ### Coordinate System

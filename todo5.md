@@ -288,7 +288,7 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       (Phase 1 Compose client → existing CB8 `/api`; Phase 2 on-device library
       via SAF + in-process readers + Room, same UI).
 
-## Batch E — Security, AI, embedded, tools, the rest — in progress
+## Batch E — Security, AI, embedded, tools, the rest — ✅ COMPLETE (2026-06-13)
 
 - [x] `CRYPTO_FUNDAMENTALS.md` — Seq: the TLS 1.3 1-RTT handshake (ClientHello
       + key share → ServerHello/cert/finished → client finished + app data).
@@ -316,9 +316,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `TESTING_STUDY_GUIDE.md` — Flow: the dependency-boundary test-double
       decision (real inside the boundary; fake/stub/mock outside by what the
       test needs). Pyramid/trophy left as ASCII (proportional/spatial).
-- [ ] `BLENDER_STUDY_GUIDE.md` — Graph: object→datablock instancing relations;
-      flow: the modifier stack evaluation order; EEVEE-vs-Cycles decision.
-      (Diagram-dense — pick the relational ones.)
+- [x] `BLENDER_STUDY_GUIDE.md` — Graph: object→data-block instancing (many
+      objects with their own transforms sharing one mesh data-block → geometry
+      stored once). *Follow-ups: modifier-stack order, EEVEE-vs-Cycles.*
 - [x] `ESP32_STUDY_GUIDE.md` — Flow: the deep-sleep wake cycle (wake=reboot →
       setup from top → one job → arm wake source → deep sleep → repeat), the
       defining battery-IoT pattern. Pin/memory maps left as ASCII.
