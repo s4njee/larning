@@ -79,6 +79,15 @@ When you run `terraform plan`, Terraform reconciles **three views of the world**
 
 The plan is the computed difference, and you should read it as a **contract**: these exact creations, updates, and destructions, in this order, and nothing else. Everything in professional Terraform practice flows from treating the plan that way — saving plans to a file so the thing reviewed is the thing applied, reviewing replacements like schema migrations, refusing to apply a plan you don't understand. A surprising diff is never noise; it's one of the three inputs disagreeing with the others, and your job is to figure out which one and why.
 
+```mermaid
+graph LR
+  CFG["Configuration — what you wrote"] --> PLAN{{"terraform plan: diff engine"}}
+  STATE["State — what Terraform remembers creating (address → real ID)"] --> PLAN
+  REAL["Reality — what the provider reports on refresh"] --> PLAN
+  PLAN --> C["Contract: exact creates / updates / destroys, in order"]
+  C -->|you approve| APPLY[terraform apply]
+```
+
 If you remember one thing from Part 1: **Terraform builds a dependency graph from references, asks providers to translate nodes into API calls, and plans by diffing config against state against reality — every confusing behavior you'll ever see is one of those three inputs disagreeing.**
 
 ```quiz

@@ -167,8 +167,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       (starting→healthy/unhealthy with the start-period grace window). Image
       layer/overlay stack left as prose (spatial). *Follow-up: namespaces/
       cgroups isolation concept graph.*
-- [ ] `TERRAFORM_STUDY_GUIDE.md` — Flow: plan→apply diff-as-contract; the
-      resource DAG. Seq: remote-state lock acquisition.
+- [x] `TERRAFORM_STUDY_GUIDE.md` — Flow: the three-inputs diff (config + state
+      + reality → plan-as-contract → apply), the guide's central thesis.
+      *Follow-ups: resource DAG, remote-state lock acquisition sequence.*
 - [ ] `ANSIBLE_STUDY_GUIDE.md` — Seq: a play's task→module→handler flow across
       control node and targets.
 - [ ] `GITHUB_ACTIONS_STUDY_GUIDE.md` — Seq: trigger→runner→job→step lifecycle;
