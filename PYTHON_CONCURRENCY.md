@@ -543,29 +543,17 @@ This is the part the whole guide exists to serve. You've seen each model; now de
 
 ### The Decision Tree
 
-```text
-Is the work CPU-bound or I/O-bound?  (watch a CPU monitor; profile if unsure)
-│
-├── CPU-BOUND (cores are the bottleneck)
-│   │
-│   ├── Is it numerical (arrays, dataframes, tensors)?
-│   │   └── YES → use a GIL-releasing native library (NumPy/Polars/PyTorch);
-│   │            it already parallelizes. No multiprocessing needed.
-│   │   └── NO (your own pure-Python compute) → ProcessPoolExecutor / multiprocessing
-│   │
-│   └── Need many cores on free-threaded Python 3.13+? → threads may now work (Part 9)
-│
-└── I/O-BOUND (waiting is the bottleneck)
-    │
-    ├── Do async-native libraries exist AND do you need high concurrency (1000s)?
-    │   └── YES → asyncio + aiohttp/httpx/asyncpg
-    │
-    ├── Is your library blocking, or is the codebase synchronous,
-    │   or is concurrency modest (dozens–hundreds)?
-    │   └── YES → ThreadPoolExecutor
-    │
-    └── Both at once (mostly async, a few blocking calls)?
-        └── asyncio + asyncio.to_thread() for the blocking parts
+```mermaid
+graph TD
+  Q{"CPU-bound or I/O-bound?<br/>watch a CPU monitor; profile if unsure"}
+  Q -->|CPU-bound| C{"Numerical?<br/>arrays, dataframes, tensors"}
+  C -->|yes| NLIB["GIL-releasing native lib<br/>NumPy / Polars / PyTorch — already parallel"]
+  C -->|"no — pure-Python compute"| PROC["ProcessPoolExecutor / multiprocessing"]
+  C -.->|free-threaded 3.13+| FT["threads may now work (Part 9)"]
+  Q -->|I/O-bound| IO{"High concurrency (1000s)<br/>AND async libs exist?"}
+  IO -->|yes| ASYNC["asyncio + aiohttp / httpx / asyncpg"]
+  IO -->|"blocking lib / sync codebase / modest concurrency"| TPE["ThreadPoolExecutor"]
+  IO -->|"mostly async, a few blocking calls"| HYB["asyncio + asyncio.to_thread()"]
 ```
 
 ### The Real Fork: ThreadPoolExecutor vs asyncio

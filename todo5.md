@@ -222,8 +222,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `ASYNCIO_STUDY_GUIDE.md` — State: the Task lifecycle (pending→running⇄
       suspended-at-await→done/failed/cancelled), making cooperative scheduling
       concrete.
-- [ ] `PYTHON_CONCURRENCY.md` — Flow: GIL held-vs-released decision; the
-      model-choice decision tree (thread/process/async).
+- [x] `PYTHON_CONCURRENCY.md` — Flow: the model-choice decision tree
+      (CPU-vs-I/O-bound → native lib / processes / asyncio / threads / hybrid;
+      replaced ASCII), the guide's central decision.
 - [ ] `PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md` — Side-by-side flow: both event
       loops; the colored-function call path.
 - [ ] `TYPESCRIPT_STUDY_GUIDE.md` — Flow: conditional-type distribution; the
