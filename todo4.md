@@ -147,7 +147,7 @@ Part, click-to-reveal explanation included.
 - [x] `DJANGO_STUDY_GUIDE.md` — 5 quizzes (15 questions; null-vs-blank/on_delete/validation-trapdoor, lazy-querysets/N+1/F-and-Q, custom-user-early/authorization-is-filtering/auth-backends, post_save-pre-commit/signals-vs-services/select_for_update, SQL-param/csrf_exempt/mass-assignment)
 - [x] `ELECTRON_STUDY_GUIDE.md` — 5 quizzes (15 questions; three-process model/preload-bridge/macOS-lifecycle, IPC least-privilege/invoke-vs-push/serialization, nodeIntegration-mistake/path-intent/ship-the-browser, electron-rebuild-ABI/client-migrations/sync-sqlite, signed-updates/staged-rollout/utilityProcess)
 - [x] `QT_STUDY_GUIDE.md` — 5 quizzes (15 questions; moc/parent-child-ownership/lambda-context, event-loop blocking/processEvents-smell/events-vs-signals, model begin-end-pairs/cheap-data()/proxy-models, QML bindings/assign-over-binding/QML_ELEMENT-vs-context, worker-object affinity/QThread-misconception/QtConcurrent-vs-worker)
-- [ ] `WEBSOCKETS_STUDY_GUIDE.md`
+- [x] `WEBSOCKETS_STUDY_GUIDE.md` — 5 quizzes (14 questions; full-duplex value-prop/handshake-correctness/1006, jitter/bufferedAmount/intentional-close, backplane/sticky-sessions/connection-ceilings, CSWSH-origin/auth-options/heartbeats, at-most-once-default/at-least-once-recipe)
 - [ ] `WEBGL_OPENGL_STUDY_GUIDE.md`
 - [ ] `WEBGPU_STUDY_GUIDE.md`
 - [ ] `IOS_DEVELOPMENT_STUDY_GUIDE.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 49/65 (Batches 1–4 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 50/65 (Batches 1–4 complete).

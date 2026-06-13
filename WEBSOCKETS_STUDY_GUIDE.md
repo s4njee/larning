@@ -190,6 +190,29 @@ Putting it together, every WebSocket moves through a fixed lifecycle, and every 
 
 Keep this picture in mind. When we talk about "broadcasting," we mean iterating over every connection currently in `OPEN`. When we talk about "reconnection," we mean detecting the transition to `CLOSED` and starting a new `CONNECTING`. When we talk about "backpressure," we mean a peer in `OPEN` that can't drain its send buffer fast enough.
 
+```quiz
+Q: What do WebSockets provide that short polling, long polling, and SSE each fall short of?
+- [ ] Encrypted transport
+- [x] A full-duplex, bidirectional, persistent connection — after one handshake both sides can send at any time over one TCP connection with as little as 2 bytes of per-message framing
+- [ ] Guaranteed message delivery
+- [ ] Compression by default
+> Short polling wastes round trips and bounds latency by the interval; long polling still costs one HTTP request per message; SSE streams server→client but the client can't send on the same channel. WebSockets upgrade once and then both sides push frames independently with minimal overhead — low-latency, two-way communication is the whole value proposition.
+
+Q: What is `Sec-WebSocket-Key`/`Sec-WebSocket-Accept` actually for?
+- [ ] Encrypting the handshake
+- [x] A correctness check — the deterministic SHA-1-of-key-plus-GUID response proves the server really speaks WebSocket, preventing caching proxies and non-WebSocket servers from accidentally "accepting" the upgrade; it is not a security mechanism
+- [ ] Authenticating the user
+- [ ] Negotiating compression
+> The key is a random value and the accept is a deterministic hash anyone could compute — there's no secret. Its purpose is to ensure the 101 response came from something that genuinely understood the WebSocket handshake, not a confused intermediary. Confidentiality is `wss://`'s job (TLS), and client-frame masking similarly exists to defeat cache poisoning, not to hide data.
+
+Q: Close code `1006` appears constantly in logs. What does it mean, and why is it special?
+- [ ] Normal closure
+- [x] Abnormal closure — the TCP connection died with *no* Close frame (crashed server, dropped Wi-Fi, proxy timeout); it's never sent on the wire, only synthesized locally, and it's the case reconnection logic exists to handle
+- [ ] Message too big
+- [ ] Policy violation
+> A clean close is a handshake: Close frame, reply, teardown. `1006` is the absence of that — the connection just vanished, so the local side synthesizes the code. It's the most common close in production (network blips, proxy idle timeouts, crashes), which is why robust clients implement reconnection with backoff rather than treating it as exceptional.
+```
+
 ---
 
 ## Part 2 — The Browser Client API
@@ -374,6 +397,29 @@ conn.on("message", (e) => render(JSON.parse(e.data)));
 ```
 
 This pattern — backoff, jitter, reset-on-open, distinguish-intentional-from-accidental-close — is the foundation. Libraries like [`reconnecting-websocket`](https://github.com/pladaria/reconnecting-websocket) (browser) and the auto-reconnect built into Socket.IO ([Part 4](#part-4--socketio)) package it up, but you should understand what they're doing. State recovery *after* reconnecting — replaying missed messages — is a harder problem we cover in [Part 9](#part-9--reliability--edge-cases).
+
+```quiz
+Q: Why does the reconnection wrapper add random *jitter* on top of exponential backoff?
+- [ ] To make reconnects faster on average
+- [x] Without jitter, thousands of clients disconnected by the same outage reconnect in lockstep at the same instants — a thundering herd that can knock the recovering server back over
+- [ ] Jitter is required by RFC 6455
+- [ ] To randomize close codes
+> Exponential backoff stops one client from hammering a down server, but a mass disconnect synchronizes every client's retry schedule: at t=1s, 2s, 4s the whole fleet arrives at once. Randomizing each delay (here 50–100% of the base) spreads the reconnections out so the recovering server sees a ramp, not a spike. Backoff protects the server from one client; jitter protects it from all of them.
+
+Q: A live dashboard calls `ws.send()` on every tick and the tab's memory grows until it crashes. What's the missing discipline?
+- [ ] Calling close() between sends
+- [x] Checking `bufferedAmount` — send() queues into an internal buffer when the network can't keep up, so a sender faster than the socket drains grows the buffer without bound; drop or back off when it's high
+- [ ] Using text frames instead of binary
+- [ ] Increasing the polling interval
+> `send()` is non-blocking: data the network can't take yet sits in the socket's buffer, and `bufferedAmount` reports the queued bytes. High-frequency senders (dashboards, game loops) must treat a large `bufferedAmount` as backpressure — skip or coalesce updates rather than piling more on. The same problem exists server-side per slow client (Part 8).
+
+Q: Why does the wrapper set `shouldReconnect = false` before an intentional `close()`?
+- [ ] To free the listeners array
+- [x] The close handler can't otherwise distinguish "user logged out" from "network died" — without the flag, an intentional close would trigger the reconnect loop and immediately reopen the connection
+- [ ] close() fails if reconnect is enabled
+- [ ] It resets the backoff counter
+> Both an intentional `close(1000)` and an accidental drop fire the same `close` event, and the reconnect logic lives there. Distinguishing deliberate shutdown from failure (via a flag, or by inspecting the close code) is essential — otherwise logout becomes login. It's one of the four foundation ingredients: backoff, jitter, reset-on-open, and intentional-vs-accidental discrimination.
+```
 
 ---
 
@@ -1196,6 +1242,29 @@ server {
 
 This is also why the simpler your transport, the simpler your scaling: pure `wss://` connections need a backplane for broadcast but not necessarily sticky sessions; Socket.IO with fallback needs both.
 
+```quiz
+Q: Alice is connected to server A, Bob to server B. Alice's chat message never reaches Bob. What's missing?
+- [ ] Sticky sessions on the load balancer
+- [x] A backplane — server A's in-process connection set only knows its own clients, so every server must publish broadcasts to a shared bus (Redis pub/sub) and relay what it receives to its local connections
+- [ ] A bigger server A
+- [ ] WebSocket compression
+> A WebSocket is pinned to one server process for its lifetime, so each process's clients map covers only its own connections. The standard fix is the Redis pub/sub backplane: publish broadcasts to Redis, every server subscribes and relays to its local clients. Socket.IO's Redis adapter and Channels' channel layer are this pattern packaged; with raw `ws` you wire it yourself.
+
+Q: Why does Socket.IO require sticky sessions at the load balancer while pure WebSockets often don't?
+- [ ] Socket.IO uses UDP
+- [x] Pure WebSocket is one TCP connection that naturally stays on the server that accepted the upgrade; Socket.IO's HTTP long-polling fallback makes one logical session a *series* of HTTP requests, which fail if they land on a server that's never heard of the session
+- [ ] Sticky sessions improve latency
+- [ ] Pure WebSockets can't be load balanced
+> Once an upgrade is routed to server A, that single connection stays there — nothing to stick. But during Socket.IO's polling phase, each poll is a separate HTTP request; without session affinity (cookie or IP hash), request 2 can hit server B, which rejects the unknown session. Simpler transport, simpler scaling: pure `wss://` needs a backplane but not stickiness; fallback transports need both.
+
+Q: At ~100k connections per node, what are the real resource ceilings?
+- [ ] CPU clock speed
+- [x] File descriptors (raise `ulimit -n` well above the target), memory per connection (10KB each is already 1GB at 100k), and ephemeral ports on proxies at high fan-in
+- [ ] Database row limits
+- [ ] TLS certificate size
+> Event-driven I/O solved C10K long ago — Node and asyncio handle hundreds of thousands of connections per box. What actually binds: every socket is an open FD (defaults ~1024 must be raised), per-connection buffers and app state multiply by connection count (keep state lean), and a proxy funneling into a backend can exhaust ~64k source ports per destination tuple. Beyond one node, scale horizontally with the backplane.
+```
+
 ### 7.4 Connection Limits and the C10K/C10M Problem
 
 Each WebSocket connection consumes a file descriptor and some memory for buffers and bookkeeping. The classic "C10K problem" (10,000 concurrent connections on one box) was solved long ago by event-driven I/O — both Node's libuv and Python's asyncio are built for exactly this. Modern servers reach hundreds of thousands of connections per node, with the real ceilings being:
@@ -1358,6 +1427,29 @@ Terminating TLS at the proxy (so the proxy speaks `wss://` to the browser and pl
 
 References: [Caddy reverse_proxy (WebSocket support)](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy), [Nginx WebSocket proxying](https://nginx.org/en/docs/http/websocket.html).
 
+```quiz
+Q: What is Cross-Site WebSocket Hijacking (CSWSH), and what's the server's defense?
+- [ ] An attack on the TLS handshake
+- [x] The same-origin policy doesn't apply to WebSockets and there's no CORS preflight, so any page on any origin can open a socket to your server *as your logged-in user* (cookies attach automatically); the defense is validating the `Origin` header at the handshake
+- [ ] Stealing tokens from the URL bar
+- [ ] Forging the Sec-WebSocket-Key
+> Browsers attach cookies to the upgrade request automatically and never block cross-origin WebSocket connections, so a malicious page can connect with the victim's session. Checking `Origin` against an allowlist during the handshake defeats the browser-based attack (the one cookie auth is exposed to); non-browser clients can forge Origin, but they can't steal cookies either. Origin checking is mandatory for any cookie-authenticated WebSocket.
+
+Q: The browser WebSocket constructor can't set an `Authorization` header. Which auth options exist, and what's the preferred timing?
+- [ ] Only cookies work
+- [x] Cookies (with Origin checks), short-lived tokens in the query string, subprotocol smuggling, or first-message auth — preferring handshake-time auth, since rejecting before the WebSocket exists is cleaner and cheaper
+- [ ] Custom headers via a polyfill
+- [ ] Auth isn't possible for WebSockets
+> Each option trades off differently: cookies are automatic but need CSWSH defenses; query-string tokens leak into logs (mitigate with 30-second single-use connect-tokens); the settable `Sec-WebSocket-Protocol` header can smuggle a token (the Kubernetes trick); first-message auth keeps tokens out of URLs but allows a brief unauthenticated window to time-box. And tokens expire mid-connection — long-lived sockets need re-validation.
+
+Q: Why send heartbeat pings even when the application has nothing to say?
+- [ ] To measure latency for analytics
+- [x] To detect half-open dead connections (a sleeping laptop looks alive until you write) and to keep proxies/load balancers from reaping "idle" connections — the ping interval must beat the tightest idle timeout in the path
+- [ ] The RFC requires a ping per minute
+- [ ] To keep the event loop warm
+> Two independent reasons: a half-open TCP connection only reveals its death when written to, so periodic pings surface it promptly for resource cleanup and presence; and intermediaries (AWS ALB defaults to 60s) kill connections they consider idle, so a quiet-but-healthy socket gets reaped unless heartbeats keep it active. Set the interval below the smallest proxy timeout and raise `proxy_read_timeout` where you control it.
+```
+
 ---
 
 ## Part 9 — Reliability & Edge Cases
@@ -1383,6 +1475,22 @@ To upgrade from at-most-once to **at-least-once**, combine three things, all lea
 3. **Deduplicate on the receiver.** Because resends mean a message can arrive twice, the receiver tracks seen `id`s and ignores duplicates — i.e., processing must be **idempotent**.
 
 At-least-once + idempotent handling is the standard recipe; true exactly-once is a distributed-systems hard problem you almost never actually need. The cost is real (buffers, ack bookkeeping, dedup state), so apply it only to message types that warrant it.
+
+```quiz
+Q: TCP guarantees in-order reliable delivery, so why is WebSocket messaging still "at-most-once" by default?
+- [ ] TCP drops packets under load
+- [x] TCP's guarantee holds only while the connection is up — when it drops (`1006`), messages sent during the gap are gone, there's no application-level ack, and nothing replays what you missed
+- [ ] WebSocket frames are unreliable
+- [ ] Browsers discard queued messages
+> The trap is extending TCP's per-connection guarantee to your application. A dead connection's buffers don't survive; "delivered" means bytes reached the OS, not that your handler processed them; and reconnection restores the *connection*, not the missed messages. If the next update obsoletes the last (cursors, metrics), at-most-once is fine; chat and financial events need stronger guarantees built on top.
+
+Q: What's the three-part recipe for upgrading to at-least-once delivery?
+- [ ] Compression, batching, and retries
+- [x] Acks carrying the message id (sent after *durable processing*), sender-side resend of unacked messages, and receiver-side dedup by id — i.e., idempotent processing, because resends mean duplicates
+- [ ] TLS, heartbeats, and sticky sessions
+- [ ] Bigger buffers on both sides
+> The receiver acks once it has durably processed (not merely received) a message; the sender buffers and resends anything unacked after a timeout or reconnect; and since resends create duplicates, the receiver tracks seen ids and ignores repeats. At-least-once plus idempotency is the standard; true exactly-once is a hard distributed-systems problem you almost never need — and the bookkeeping costs enough that you apply it only where loss is unacceptable.
+```
 
 ### 9.3 State Recovery After Reconnect
 
