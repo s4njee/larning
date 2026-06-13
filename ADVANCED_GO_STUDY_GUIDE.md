@@ -132,12 +132,18 @@ The scheduler is built on three entities — memorize these, because every sched
 
 The model: **to run Go code, an M must hold a P.** A P has a queue of Gs; the M grabs a G from its P's queue and runs it. There are `GOMAXPROCS` Ps, so at most `GOMAXPROCS` goroutines execute Go code in parallel — but there can be *many* more Ms (threads blocked in syscalls don't hold a P).
 
-```text
-   P0 [G G G G]──M0──CPU      Ps  = GOMAXPROCS (logical processors, each a run queue)
-   P1 [G G]    ──M1──CPU      Ms  = OS threads (only run Go code while holding a P)
-   P2 [G G G]  ──M2──CPU      Gs  = goroutines (cheap, ~2KB stacks)
-                              global run queue: [G G]  (overflow / unparked Gs)
+```mermaid
+graph LR
+  G0["Gs: G G G G"] --> P0[P0 run queue]
+  G1["Gs: G G"] --> P1[P1 run queue]
+  G2["Gs: G G G"] --> P2[P2 run queue]
+  P0 --> M0[M0 OS thread] --> C0[CPU]
+  P1 --> M1[M1 OS thread] --> C1[CPU]
+  P2 --> M2[M2 OS thread] --> C2[CPU]
+  GRQ["global run queue<br/>overflow / unparked Gs"] -.work-steal / refill.-> P1
 ```
+
+(Ps = `GOMAXPROCS` logical processors, each owning a run queue; Ms = OS threads that run Go code only while holding a P; Gs = goroutines with ~2 KB stacks.)
 
 ### Work-Stealing Keeps Cores Busy
 

@@ -207,10 +207,11 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       image at the same PID; replaced ASCII). *Follow-up: signal delivery
       path.*
 
-## Batch C — Languages, runtimes, concurrency
+## Batch C — Languages, runtimes, concurrency — in progress
 
-- [ ] `ADVANCED_GO_STUDY_GUIDE.md` — Graph: GMP scheduler (goroutines→M→P);
-      channel send/recv rendezvous. Flow: GC mark phases.
+- [x] `ADVANCED_GO_STUDY_GUIDE.md` — Graph: the GMP scheduler (Gs in each P's
+      run queue, P→M→CPU binding, global queue feeding via work-stealing;
+      replaced ASCII). *Follow-up: GC mark-phase flow.*
 - [ ] `ADVANCED_RUST_STUDY_GUIDE.md` — Flow: borrow-checker decision; state:
       a value's ownership/move lifecycle. (Leave memory layouts ASCII.)
 - [ ] `ADVANCED_PYTHON_STUDY_GUIDE.md` — Flow: the import system; descriptor
