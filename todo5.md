@@ -294,8 +294,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       + key share → ServerHello/cert/finished → client finished + app data).
       Block-cipher byte diagrams left as ASCII. *Follow-ups: DH exchange,
       signature verify.*
-- [ ] `AUTH_STUDY_GUIDE.md` — Seq: OAuth2 + PKCE authorization-code flow;
-      OIDC; session-vs-JWT validation paths. State: refresh-token rotation.
+- [x] `AUTH_STUDY_GUIDE.md` — Seq: the OAuth2 + PKCE authorization-code flow
+      (challenge on /authorize, verifier on /token, server matches the hash;
+      replaced ASCII). *Follow-ups: refresh-token rotation, session-vs-JWT.*
 - [ ] `WEB_LLM_SECURITY_STUDY_GUIDE.md` — Flow: SSRF confused-deputy path;
       CSRF token-check flow; the prompt-injection data/instruction confusion.
 - [ ] `KALI_LINUX_STUDY_GUIDE.md` — Flow: the recon→exploit→post-ex kill chain;

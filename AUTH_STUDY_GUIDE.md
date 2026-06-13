@@ -431,22 +431,18 @@ Memorize these; every flow is a conversation between them:
 
 This is *the* flow for essentially all modern apps — SPAs, mobile, and traditional web. It replaced the old Implicit Flow (now deprecated — it leaked tokens in URLs). **PKCE** ("pixie," [Proof Key for Code Exchange, RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636)) is the addition that makes it safe for public clients that can't keep a secret.
 
-```text
-1. Client generates a random code_verifier, and code_challenge = SHA256(code_verifier).
-2. Client redirects user to the Authorization Server, sending the code_challenge.
-        ──►  https://auth.example.com/authorize?
-                response_type=code&client_id=...&redirect_uri=...&
-                scope=openid profile email&state=<csrf>&
-                code_challenge=<hash>&code_challenge_method=S256
-3. User logs in and consents.
-4. Auth Server redirects back to the Client with a one-time authorization_code.
-        ◄──  https://app.example.com/callback?code=<code>&state=<csrf>
-5. Client makes a BACK-CHANNEL POST to the token endpoint, sending the code
-   AND the original plaintext code_verifier.
-        ──►  POST /token  { code, code_verifier, client_id, redirect_uri }
-6. Auth Server computes SHA256(code_verifier); if it matches the code_challenge
-   from step 2, it returns the tokens.
-        ◄──  { access_token, id_token, refresh_token, expires_in }
+```mermaid
+sequenceDiagram
+  participant U as User / Browser
+  participant C as Client app
+  participant AS as Authorization Server
+  Note over C: generate code_verifier, code_challenge = SHA256(verifier)
+  C->>AS: redirect to /authorize (code_challenge, state, scope)
+  U->>AS: log in and consent
+  AS->>C: redirect to callback — one-time authorization_code + state
+  C->>AS: back-channel POST /token (code + plaintext code_verifier)
+  Note over AS: SHA256(code_verifier) must match the stored code_challenge
+  AS->>C: access_token, id_token, refresh_token
 ```
 
 **Why PKCE matters:** if an attacker intercepts the `authorization_code` in step 4 (e.g., a malicious app hijacking a mobile custom-URL-scheme redirect), they still can't exchange it for tokens in step 5 — they don't have the secret `code_verifier`, and the code alone is useless. PKCE binds the code to the client that started the flow. (The separate `state` parameter is a CSRF token for the redirect — always verify it on return.)
