@@ -238,8 +238,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `SWIFT_STUDY_GUIDE.md` — Graph: the ARC retain cycle (Person↔Dog strong =
       leak) vs the `weak`-broken version (frees). *Follow-ups: dispatch
       decision, actor reentrancy.*
-- [ ] `GOLANG_FOR_PYTHON_DEVS.md` — Graph: goroutine scheduling vs threads
-      (one comparison diagram). *(Low ASCII density — likely adds new.)*
+- [x] `GOLANG_FOR_PYTHON_DEVS.md` — Graph: M:N scheduling — many goroutines
+      multiplexed onto few OS threads onto CPU cores (the intro companion to
+      Advanced Go's GMP diagram).
 - [x] `RUST_FOR_PYTHON_DEVS.md` — Graph: the three answers to "when is it safe
       to free?" (manual / GC / ownership) and their trade-offs — the guide's
       framing for why ownership exists.
