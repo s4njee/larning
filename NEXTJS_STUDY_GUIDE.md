@@ -632,6 +632,16 @@ The old vocabulary — "SSG site" vs "SSR site" — treated rendering mode as a 
 
 Here's the part that surprises people: you usually don't *choose* a mode — **Next.js infers it from what your code does.** At `next build`, every route is prerendered as static *unless* rendering it touches request-time information: awaiting [`cookies()`](https://nextjs.org/docs/app/api-reference/functions/cookies) or [`headers()`](https://nextjs.org/docs/app/api-reference/functions/headers), reading `searchParams`, using an uncached `fetch`, or an explicit `export const dynamic = "force-dynamic"`. Touch any of those and the route becomes dynamic — rendered per request. This inference is elegant and occasionally maddening: importing one helper that reads `cookies()` deep in a utility file silently flips a whole route from CDN-cheap to server-rendered. The `next build` output table (`○` static, `ƒ` dynamic) is your audit; read it after meaningful changes, and treat an unexpected `ƒ` as a regression to investigate.
 
+```mermaid
+graph TD
+  B["next build — each route"] --> Q{"Rendering touches request-time info?<br/>cookies / headers / searchParams /<br/>uncached fetch / force-dynamic"}
+  Q -->|no| RV{"export const revalidate set?"}
+  RV -->|no| STATIC["Static — prerendered, CDN-served"]
+  RV -->|yes| ISR["ISR — static + bounded staleness"]
+  Q -->|yes| DYN["Dynamic — rendered per request"]
+  DYN -->|wrap slow parts in Suspense| STREAM["Streaming — shell first, regions fill in"]
+```
+
 Dynamic *routes* (the `[slug]` kind) are dynamic-rendered by default — the build can't know the universe of slugs. Unless you tell it, with [`generateStaticParams`](https://nextjs.org/docs/app/api-reference/functions/generate-static-params):
 
 ```tsx

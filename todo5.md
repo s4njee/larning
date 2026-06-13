@@ -249,8 +249,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 
 ## Batch D — Web, frontend, apps — in progress
 
-- [ ] `NEXTJS_STUDY_GUIDE.md` — Flow: the rendering decision (static/ISR/
-      streaming); request through the four caches. Seq: a Server Action.
+- [x] `NEXTJS_STUDY_GUIDE.md` — Flow: how `next build` infers the rendering
+      mode (request-time info → dynamic/streaming; else static, or ISR if
+      revalidate set). *Follow-ups: four-caches request path, Server Action.*
 - [ ] `VUE_STUDY_GUIDE.md` — Graph: reactivity dependency tracking
       (ref→effect→re-render); flow: a component's update cycle.
 - [ ] `SVELTEKIT_STUDY_GUIDE.md` — Flow: universal-vs-server load resolution;
