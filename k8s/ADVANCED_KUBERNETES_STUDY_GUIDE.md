@@ -195,6 +195,20 @@ Every API mutation passes through a chain of **admission controllers** — built
 
 The order is important: mutating happens first, so validating webhooks see the *final* object. For policy enforcement (Part 6), validating admission policies — including the newer **CEL-based ValidatingAdmissionPolicy** (GA in 1.30, no webhook required) — are the modern tool.
 
+```mermaid
+graph TD
+  REQ[API create / update request] --> AUTHN{Authentication}
+  AUTHN -->|fail| R1[401]
+  AUTHN -->|ok| AUTHZ{Authorization / RBAC}
+  AUTHZ -->|deny| R2[403]
+  AUTHZ -->|allow| MUT["Mutating admission webhooks<br/>inject sidecars, defaults, labels"]
+  MUT --> SCH{"Schema validation<br/>OpenAPI / built-in"}
+  SCH -->|invalid| R3[422 rejected]
+  SCH -->|valid| VAL{"Validating admission<br/>webhooks + CEL policies"}
+  VAL -->|reject| R4[rejected]
+  VAL -->|accept| ETCD[(persist to etcd)]
+```
+
 ### Server-Side Apply and Field Ownership
 
 **Server-Side Apply (SSA)** is the modern approach to declarative management, replacing `kubectl apply`'s client-side three-way merge with a **server-side field-ownership model**. Each field in an object is tagged with its **manager** (who last set it), and conflicts (two managers trying to set the same field) are explicit rather than silently merged. SSA matters for operators (Part 3) because it lets a controller and a human both manage *different fields* of the same object without clobbering each other — the controller owns `.status`, the user owns `.spec`, and SSA tracks the boundary.

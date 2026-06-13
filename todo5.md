@@ -157,8 +157,10 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       (every component watches the API server). State: Pod phase lifecycle
       (Pending→Running→Succeeded/Failed, Unknown). *Follow-up: control-plane
       component graph.*
-- [ ] `k8s/ADVANCED_KUBERNETES_STUDY_GUIDE.md` — Seq: admission/API machinery
-      request flow; operator reconcile loop. 
+- [x] `k8s/ADVANCED_KUBERNETES_STUDY_GUIDE.md` — Flow: the full API-mutation
+      path (authn→authz/RBAC→mutating webhooks→schema validation→validating
+      webhooks/CEL→etcd, with reject branches). *Follow-up: operator reconcile
+      loop.*
 - [ ] `k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md` — Flow: authn→authz(RBAC)→
       admission decision path. Graph: the threat model.
 - [ ] `k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md` — Graph: pod→service→
