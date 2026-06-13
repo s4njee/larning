@@ -150,6 +150,13 @@ C# code is compiled before it runs. In very simplified terms:
 2. the runtime loads that code
 3. the runtime JIT-compiles hot paths for the target machine
 
+```mermaid
+graph LR
+  SRC["C# source"] -->|"C# compiler (ahead of time)"| IL["IL — intermediate language (assemblies / .dll)"]
+  IL -->|CLR loads| LOAD["runtime loads the assembly"]
+  LOAD -->|JIT compiles hot paths| NATIVE["native machine code"]
+```
+
 This is why .NET code often feels more "finished" earlier in the dev loop:
 - compiler errors are stronger
 - IDE refactoring is stronger

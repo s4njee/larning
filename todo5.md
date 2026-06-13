@@ -207,7 +207,7 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       image at the same PID; replaced ASCII). *Follow-up: signal delivery
       path.*
 
-## Batch C — Languages, runtimes, concurrency — in progress
+## Batch C — Languages, runtimes, concurrency — ✅ COMPLETE (2026-06-13)
 
 - [x] `ADVANCED_GO_STUDY_GUIDE.md` — Graph: the GMP scheduler (Gs in each P's
       run queue, P→M→CPU binding, global queue feeding via work-stealing;
@@ -244,8 +244,8 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `RUST_FOR_PYTHON_DEVS.md` — Graph: the three answers to "when is it safe
       to free?" (manual / GC / ownership) and their trade-offs — the guide's
       framing for why ownership exists.
-- [ ] `DOTNET_FOR_PYTHON_DEVS.md` — Flow: IL→JIT→native; Task vs Thread.
-      *(Low ASCII density — likely adds new.)*
+- [x] `DOTNET_FOR_PYTHON_DEVS.md` — Flow: the compilation model (C# source →
+      IL → CLR loads → JIT to native). *Follow-up: Task vs Thread.*
 
 ## Batch D — Web, frontend, apps
 
@@ -318,9 +318,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 ---
 
 64 guide files + 2 bespoke pages (Caddy/Nginx, built from their `.py`
-generators) = 66 targets. Progress: Phase 0 ✅ complete; Batch A ✅ complete
-(12 guides); Batch B ✅ complete (15 guides). 27 guides total carry diagrams.
-Next: Batch C (languages/runtimes/concurrency). Diagrams are **additive and
-tactical** — a guide is "done" here when
+generators) = 66 targets. Progress: Phase 0 ✅ complete; Batch A ✅ (12);
+Batch B ✅ (15); Batch C ✅ (13). 40 guides total carry diagrams. Next:
+Batch D (web/frontend/apps). Diagrams are **additive and tactical** — a guide
+is "done" here when
 its 1–4 highest-value relational/temporal/state diagrams render as inline SVG
 on both themes, with spatial/byte-layout diagrams left as ASCII.
