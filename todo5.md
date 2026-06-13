@@ -186,8 +186,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       span tree across services (service + duration per span; replaced ASCII
       waterfall). *Follow-ups: OTel collector pipeline, burn-rate alert
       decision.*
-- [ ] `CLOUDFLARE_STUDY_GUIDE.md` — Seq: a request through the proxy pipeline
-      (edge→cache→Worker→origin). Flow: the cache decision tree.
+- [x] `CLOUDFLARE_STUDY_GUIDE.md` — Flow: the reverse-proxy pipeline every
+      request traverses (DDoS→firewall→WAF→Access→Transform→Workers→cache
+      hit/miss→origin; replaced ASCII), with the cache decision as a branch.
 - [ ] `AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md` — Graph: tenant/MG/subscription/RG
       hierarchy; Entra-vs-RBAC split.
 - [ ] `GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md` — Graph: org→folder→project→resource

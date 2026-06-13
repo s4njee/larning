@@ -107,16 +107,17 @@ Three consequences fall out immediately. First, **there is nothing to provision 
 
 The second decision: Cloudflare's products are not separate services you wire together — they are **stages in one proxy pipeline** that every request to a proxied hostname traverses, in a fixed order, inside a single PoP. A simplified but operationally accurate picture of the order of operations:
 
-```
-client TCP/TLS terminates at the PoP
-  → DDoS mitigation (always-on, pre-everything)
-  → IP Access / firewall basics
-  → WAF: custom rules → rate limiting → managed rules
-  → Zero Trust Access policy (if the hostname is protected)
-  → Transform rules / redirects
-  → Workers (your code, if a route matches)
-  → Cache lookup (hit? serve; miss? continue)
-  → Origin fetch (Argo path selection, Tunnel, or plain HTTPS)
+```mermaid
+graph TD
+  C[client TCP/TLS terminates at the PoP] --> D[DDoS mitigation — always-on, pre-everything]
+  D --> F[IP Access / firewall basics]
+  F --> W["WAF: custom rules → rate limiting → managed rules"]
+  W --> A[Zero Trust Access policy, if hostname protected]
+  A --> T[Transform rules / redirects]
+  T --> WK[Workers — your code, if a route matches]
+  WK --> CA{Cache lookup}
+  CA -->|hit| SERVE[serve from cache]
+  CA -->|miss| O[Origin fetch — Argo / Tunnel / HTTPS]
 ```
 
 This is why the platform feels coherent where AWS feels assembled: AWS WAF, CloudFront, Lambda@Edge, Shield, and Verified Access are five products with five consoles and five attachment models; on Cloudflare they are phases of one request lifecycle, sharing one expression language (§6) and one analytics view. When you debug Cloudflare, you are almost always asking *"which stage did this request reach, and what did that stage decide?"* — and the [Trace tool](https://developers.cloudflare.com/fundamentals/basic-tasks/trace-request/) plus the `cf-*` response headers answer exactly that question.
