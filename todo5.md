@@ -288,10 +288,12 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       (Phase 1 Compose client → existing CB8 `/api`; Phase 2 on-device library
       via SAF + in-process readers + Room, same UI).
 
-## Batch E — Security, AI, embedded, tools, the rest
+## Batch E — Security, AI, embedded, tools, the rest — in progress
 
-- [ ] `CRYPTO_FUNDAMENTALS.md` — Seq: TLS 1.3 handshake; DH key exchange;
-      a signature verify flow. (Leave block-cipher byte diagrams ASCII.)
+- [x] `CRYPTO_FUNDAMENTALS.md` — Seq: the TLS 1.3 1-RTT handshake (ClientHello
+      + key share → ServerHello/cert/finished → client finished + app data).
+      Block-cipher byte diagrams left as ASCII. *Follow-ups: DH exchange,
+      signature verify.*
 - [ ] `AUTH_STUDY_GUIDE.md` — Seq: OAuth2 + PKCE authorization-code flow;
       OIDC; session-vs-JWT validation paths. State: refresh-token rotation.
 - [ ] `WEB_LLM_SECURITY_STUDY_GUIDE.md` — Flow: SSRF confused-deputy path;

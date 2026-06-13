@@ -439,6 +439,19 @@ The differences are large enough that they're worth knowing.
 
 **Disable TLS 1.0 and 1.1.** They're deprecated by RFC 8996 (2021). Disable TLS 1.2 if you can — but most production deployments still need it for client compatibility. Disable known-bad cipher suites: anything with CBC, anything with RSA key exchange (no forward secrecy), anything with SHA-1.
 
+The TLS 1.3 full handshake is a single round trip — the client guesses the key-exchange group and sends its share immediately:
+
+```mermaid
+sequenceDiagram
+  participant C as Client
+  participant S as Server
+  C->>S: ClientHello + key share (ECDHE)
+  S->>C: ServerHello + key share, then encrypted Certificate, CertVerify, Finished
+  Note over C,S: both derive the shared secret from the ECDHE shares
+  C->>S: Finished + encrypted application data
+  Note over C,S: 1-RTT — application data flows encrypted
+```
+
 ### 7.3 The Certificate Chain
 
 A TLS server presents a chain of X.509 certificates ending at a trusted root. Each cert is signed by the next; the client validates the chain against its trust store.
