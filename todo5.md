@@ -132,8 +132,9 @@ their core and prose carries them poorly.
 - [x] `REDIS_STUDY_GUIDE.md` — Graph: Sentinel + primary/replica topology
       (replaced ASCII). Seq: the Sentinel failover (ODOWN→promote→reconfigure→
       client rediscovery). *Follow-up: Cluster hash-slot ownership graph.*
-- [ ] `EBPF_STUDY_GUIDE.md` — Flow: program load → verifier → JIT → attach.
-      Graph: where probe types hook into the kernel path.
+- [x] `EBPF_STUDY_GUIDE.md` — Flow: program lifecycle with the verifier as a
+      decision gate (load→verify→reject/JIT→attach→run→maps). *Follow-up: graph
+      of where probe types hook into the kernel path.*
 - [ ] `DATA_ENGINEERING_STUDY_GUIDE.md` — Graph: a lakehouse pipeline (sources
       →ingest→storage→transform→serve); dbt DAG. (Already diagram-dense — pick
       the 2–3 that are flows, not tables.)

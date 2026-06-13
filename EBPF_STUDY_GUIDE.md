@@ -117,6 +117,20 @@ By 2026, every major Linux distribution ships with BTF-enabled kernels, every ma
 6. When the event fires, the eBPF program executes **in kernel context** — with access to kernel data structures, but sandboxed by the verifier's constraints.
 7. The program communicates results to userspace via **maps** (shared data structures) or **ring buffers** (event streams).
 
+The verifier is the gate the whole safety story hangs on — nothing reaches the JIT, let alone a hook, until it has proven safe:
+
+```mermaid
+graph TD
+  W[Write: C / Rust / bpftrace] --> CC[Compile to eBPF bytecode]
+  CC --> LD["Load via bpf() syscall"]
+  LD --> V{"Verifier: safe and terminates?"}
+  V -->|reject| X[Rejected — never runs]
+  V -->|accept| J[JIT to native machine code]
+  J --> AT[Attach to a hook point]
+  AT --> EV[Event fires: run in kernel context]
+  EV --> M[Results to userspace via maps / ring buffers]
+```
+
 ### The eBPF Instruction Set
 
 eBPF has its own instruction set architecture (ISA): 11 registers (r0-r10), 64-bit operations, and a restricted set of instructions. It resembles a simplified RISC ISA. You almost never write eBPF assembly directly — you write C and compile with Clang/LLVM, which has a native eBPF backend.
