@@ -297,8 +297,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `AUTH_STUDY_GUIDE.md` — Seq: the OAuth2 + PKCE authorization-code flow
       (challenge on /authorize, verifier on /token, server matches the hash;
       replaced ASCII). *Follow-ups: refresh-token rotation, session-vs-JWT.*
-- [ ] `WEB_LLM_SECURITY_STUDY_GUIDE.md` — Flow: SSRF confused-deputy path;
-      CSRF token-check flow; the prompt-injection data/instruction confusion.
+- [x] `WEB_LLM_SECURITY_STUDY_GUIDE.md` — Seq: the SSRF confused-deputy attack
+      on the cloud metadata endpoint (attacker → server's ambient authority →
+      169.254.169.254 → leaked IAM creds). *Follow-ups: CSRF, prompt injection.*
 - [x] `KALI_LINUX_STUDY_GUIDE.md` — Flow: the pentest kill chain (recon→scan/
       enumerate→analysis→exploit→post-ex→reporting) with the "enumerate before
       you exploit" habit. *Follow-up: AD attack graph.*

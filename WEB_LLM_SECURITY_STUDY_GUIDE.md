@@ -202,6 +202,19 @@ Server-Side Request Forgery and Cross-Site Request Forgery are usually taught se
 
 SSRF arises whenever your server fetches a URL that the user supplied — a webhook callback, an image proxy, a link-preview generator, an "import from URL" feature. The attacker supplies a URL that points not outward but *inward*: at internal services that have no authentication because they assumed the network was trusted, at administrative interfaces bound to localhost, or — most devastatingly in the cloud — at the instance metadata endpoint `http://169.254.169.254/`, which on a misconfigured instance will hand out the temporary IAM credentials of the role the server is running as. An SSRF against the metadata endpoint is frequently a direct path from "image proxy" to "full cloud account compromise."
 
+```mermaid
+sequenceDiagram
+  participant A as Attacker
+  participant S as Your server (image proxy / webhook fetcher)
+  participant M as 169.254.169.254 (cloud metadata)
+  A->>S: supply an inward-pointing URL (http://169.254.169.254/...)
+  Note over S: server has ambient network authority — the confused deputy
+  S->>M: fetches the metadata URL on the attacker's behalf
+  M-->>S: temporary IAM credentials of the server's role
+  S-->>A: response body leaks the credentials
+  Note over A: image proxy becomes full cloud-account compromise
+```
+
 ```python
 import ipaddress, socket
 from urllib.parse import urlparse
