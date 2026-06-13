@@ -136,9 +136,10 @@ their core and prose carries them poorly.
 - [x] `EBPF_STUDY_GUIDE.md` — Flow: program lifecycle with the verifier as a
       decision gate (load→verify→reject/JIT→attach→run→maps). *Follow-up: graph
       of where probe types hook into the kernel path.*
-- [ ] `DATA_ENGINEERING_STUDY_GUIDE.md` — Graph: a lakehouse pipeline (sources
-      →ingest→storage→transform→serve); dbt DAG. (Already diagram-dense — pick
-      the 2–3 that are flows, not tables.)
+- [x] `DATA_ENGINEERING_STUDY_GUIDE.md` — Graph: the Phase 14 end-to-end
+      production pipeline (sources→Kafka→S3→Iceberg bronze→Snowflake marts→
+      BI/Reverse-ETL/Feature-store, tools on the edges; replaced ASCII).
+      *Follow-up: dbt model DAG.*
 - [x] `COMPILER_INTERNALS_STUDY_GUIDE.md` — Flow: the implementation pipeline
       grouped into frontend/middle-end/backend subgraphs + runtime alongside
       (replaced ASCII, chapter refs kept). SSA/memory layouts left as ASCII.

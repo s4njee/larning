@@ -1161,47 +1161,17 @@ Walking through a realistic end-to-end pipeline so all the previous concepts lan
 
 ### 14.1 The Architecture, at a Glance
 
-```
-   ┌──────────┐     ┌──────────┐    ┌──────────────┐
-   │ Postgres │     │  Stripe  │    │ Clickstream  │
-   │  (app)   │     │  (SaaS)  │    │    (web)     │
-   └────┬─────┘     └────┬─────┘    └──────┬───────┘
-        │                │                  │
-        │ Debezium       │ Fivetran/        │ Snowplow/
-        │ (CDC via WAL)  │ Airbyte          │ Segment
-        ▼                ▼                  ▼
-   ┌─────────────────────────────────────────────────┐
-   │  Kafka (or Confluent Cloud)                     │
-   │   topics: app.orders, app.users, stripe.charges │
-   └────────────────────────┬────────────────────────┘
-                            │
-                            │ Kafka Connect S3 sink
-                            ▼
-   ┌─────────────────────────────────────────────────┐
-   │  S3 (raw zone)                                   │
-   │   s3://lake/raw/app/orders/dt=2026-05-20/*.avro  │
-   └────────────────────────┬────────────────────────┘
-                            │
-                            │ Spark / Iceberg writer (hourly)
-                            ▼
-   ┌─────────────────────────────────────────────────┐
-   │  Iceberg tables (bronze layer)                   │
-   │   bronze.app__orders, bronze.stripe__charges    │
-   └────────────────────────┬────────────────────────┘
-                            │
-                            │ dbt (orchestrated by Dagster)
-                            ▼
-   ┌─────────────────────────────────────────────────┐
-   │  Snowflake (mart layer)                          │
-   │   marts.fct_orders, marts.dim_customers          │
-   └────────────────────────┬────────────────────────┘
-                            │
-                ┌───────────┼─────────────┐
-                ▼           ▼             ▼
-            ┌──────┐  ┌─────────┐   ┌──────────┐
-            │ BI   │  │ Reverse │   │  Feature │
-            │ tool │  │   ETL   │   │   store  │
-            └──────┘  └─────────┘   └──────────┘
+```mermaid
+graph TD
+  PG["Postgres (app)"] -->|"Debezium — CDC via WAL"| K
+  ST["Stripe (SaaS)"] -->|Fivetran / Airbyte| K
+  CS["Clickstream (web)"] -->|Snowplow / Segment| K
+  K["Kafka — topics: app.orders, app.users, stripe.charges"] -->|Kafka Connect S3 sink| S3
+  S3["S3 raw zone<br/>s3://lake/raw/app/orders/dt=.../*.avro"] -->|Spark / Iceberg writer, hourly| BR
+  BR["Iceberg bronze layer<br/>bronze.app__orders, bronze.stripe__charges"] -->|dbt, orchestrated by Dagster| MART
+  MART["Snowflake mart layer<br/>marts.fct_orders, marts.dim_customers"] --> BI[BI tool]
+  MART --> RE[Reverse ETL]
+  MART --> FS[Feature store]
 ```
 
 ### 14.2 Step by Step, with the Choices Called Out
