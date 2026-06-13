@@ -523,15 +523,15 @@ A **trace** is the DAG of spans for a single end-to-end request, identified by t
 
 Visually:
 
-```
-trace_id=abc
-├── span: HTTP POST /checkout         (api-gateway)   850ms
-│   ├── span: validate cart           (api-gateway)    30ms
-│   ├── span: GET /inventory          (inventory-svc) 200ms
-│   │   └── span: SELECT stock        (postgres)       80ms
-│   ├── span: POST /payment           (payment-svc)   500ms
-│   │   └── span: HTTPS api.stripe    (stripe)        420ms
-│   └── span: enqueue order_created   (kafka)          15ms
+```mermaid
+graph TD
+  A["POST /checkout — api-gateway · 850ms"]
+  A --> B["validate cart — api-gateway · 30ms"]
+  A --> C["GET /inventory — inventory-svc · 200ms"]
+  C --> D["SELECT stock — postgres · 80ms"]
+  A --> E["POST /payment — payment-svc · 500ms"]
+  E --> F["HTTPS api.stripe — stripe · 420ms"]
+  A --> G["enqueue order_created — kafka · 15ms"]
 ```
 
 The trace shows the *causal structure* of a request across processes. Metrics tell you p99 latency is 850ms; a trace tells you 420ms of it was Stripe.

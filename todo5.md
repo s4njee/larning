@@ -176,8 +176,10 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       cloud (request JWT → AssumeRoleWithWebIdentity → trust-policy match →
       short-lived creds; no stored secrets). *Follow-ups: job/step lifecycle,
       matrix/needs DAG.*
-- [ ] `OBSERVABILITY_STUDY_GUIDE.md` — Flow: a trace's span propagation across
-      services; the OTel collector pipeline. Flow: burn-rate alert decision.
+- [x] `OBSERVABILITY_STUDY_GUIDE.md` — Graph: a distributed trace as a causal
+      span tree across services (service + duration per span; replaced ASCII
+      waterfall). *Follow-ups: OTel collector pipeline, burn-rate alert
+      decision.*
 - [ ] `CLOUDFLARE_STUDY_GUIDE.md` — Seq: a request through the proxy pipeline
       (edge→cache→Worker→origin). Flow: the cache decision tree.
 - [ ] `AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md` — Graph: tenant/MG/subscription/RG
