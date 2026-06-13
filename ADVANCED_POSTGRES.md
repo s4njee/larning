@@ -116,10 +116,13 @@ The **[Write-Ahead Log](https://www.postgresql.org/docs/current/wal-intro.html)*
 
 ### The write path
 
-```
-Change → WAL record in wal_buffers → flushed to pg_wal/ on COMMIT (fsync)
-       → data page modified in shared_buffers (dirty)
-       → later flushed to the data file by a CHECKPOINT (or bgwriter)
+```mermaid
+graph TD
+  CH[Change to a row] --> WB[WAL record in wal_buffers]
+  CH --> SB[Data page modified in shared_buffers - dirty]
+  WB -->|"COMMIT: fsync — sequential, cheap"| PGW[pg_wal/ on disk - durable]
+  SB -->|"later: CHECKPOINT / bgwriter — scattered, expensive"| DF[Data file on disk]
+  PGW -.->|crash recovery replays forward| DF
 ```
 
 The data files lag WAL. On crash recovery, Postgres replays WAL from the last checkpoint forward. This is why a `COMMIT` only needs to fsync the (sequential, cheap) WAL, not the (scattered, expensive) data pages.

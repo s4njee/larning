@@ -123,8 +123,11 @@ their core and prose carries them poorly.
       query pipeline (parser→executor) on the subsystem stack (replaced ASCII,
       kept chapter cross-refs). B-tree/page layouts left as ASCII. *Follow-ups:
       WAL write path, 2PL lock acquisition.*
-- [ ] `ADVANCED_POSTGRES.md` / `POSTGRES.md` — Flow: query planner stages;
-      MVCC visibility decision. Seq: a transaction's WAL + checkpoint path.
+- [x] `ADVANCED_POSTGRES.md` — Flow: the WAL write path showing the
+      WAL-before-data decoupling (commit fsyncs cheap sequential WAL; data
+      pages lag, flushed by checkpoint; recovery replays forward; replaced
+      ASCII). *Follow-ups: planner stages, MVCC visibility decision; same for
+      `POSTGRES.md`.*
 - [ ] `POSTGRES_EXTENSIONS.md` — Graph: logical-replication/CDC topology
       (publisher→subscriber, Citus coordinator→workers).
 - [x] `SQLITE_STUDY_GUIDE.md` — State: the five lock states
