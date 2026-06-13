@@ -247,7 +247,7 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `DOTNET_FOR_PYTHON_DEVS.md` — Flow: the compilation model (C# source →
       IL → CLR loads → JIT to native). *Follow-up: Task vs Thread.*
 
-## Batch D — Web, frontend, apps — in progress
+## Batch D — Web, frontend, apps — ✅ COMPLETE (2026-06-13)
 
 - [x] `NEXTJS_STUDY_GUIDE.md` — Flow: how `next build` infers the rendering
       mode (request-time info → dynamic/streaming; else static, or ISR if
@@ -284,8 +284,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       codebase → Electron/Docker/Node, all hosting the same Fastify HTTP server;
       GUI decoupled over HTTP, so iOS is just another client) — the fact that
       makes the port feasible.
-- [ ] `CB8_ANDROID_STUDY_GUIDE.md` — Graph: the on-device-node architecture;
-      flow: SAF-vs-bookmark file access decision.
+- [x] `CB8_ANDROID_STUDY_GUIDE.md` — Graph: the two-phase porting strategy
+      (Phase 1 Compose client → existing CB8 `/api`; Phase 2 on-device library
+      via SAF + in-process readers + Room, same UI).
 
 ## Batch E — Security, AI, embedded, tools, the rest
 
@@ -330,9 +331,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 ---
 
 64 guide files + 2 bespoke pages (Caddy/Nginx, built from their `.py`
-generators) = 66 targets. Progress: Phase 0 ✅ complete; Batch A ✅ (12);
-Batch B ✅ (15); Batch C ✅ (13). 40 guides total carry diagrams. Next:
-Batch D (web/frontend/apps). Diagrams are **additive and tactical** — a guide
-is "done" here when
+generators) = 66 targets. Progress: Phase 0 ✅; Batch A ✅ (12); Batch B ✅ (15);
+Batch C ✅ (13); Batch D ✅ (13). 53 guides total carry diagrams. Next:
+Batch E (security/AI/embedded/tools) + the 2 bespoke pages. Diagrams are
+**additive and tactical** — a guide is "done" here when
 its 1–4 highest-value relational/temporal/state diagrams render as inline SVG
 on both themes, with spatial/byte-layout diagrams left as ASCII.

@@ -55,6 +55,19 @@ And one delta is a wash that surprises people: **device fragmentation matters le
 
 The two-phase plan survives unchanged, because it was derived from CB8's architecture, not from iOS: **Phase 1**, a native Kotlin client speaking the existing `/api` to a CB8 server the user already runs (the Docker/standalone deployments exist precisely to serve remote clients); **Phase 2**, an on-device library with local scanning, indexing, and in-process archive reading. The endpoint table, the `WebComicRecord` wire shape, the progress-write semantics, the thumbnail cache-buster contract — all established in iOS guide Parts 4–6 — are the same contract here, and this guide references rather than re-derives them.
 
+```mermaid
+graph LR
+  subgraph P1["Phase 1 — client for existing CB8 servers"]
+    K["Kotlin + Compose UI"] -->|"existing /api over HTTP"| SRV["CB8 server (Docker / standalone)"]
+  end
+  subgraph P2["Phase 2 — on-device library"]
+    SAF["SAF file access"] --> RD["in-process archive readers"]
+    RD --> ROOM[("Room: local index")]
+    ROOM --> UI2["same Compose UI"]
+  end
+  P1 ==>|"same wire contract, add a local backend"| P2
+```
+
 ---
 
 ## Part 2 — Choosing a Porting Strategy (the Android Version)
