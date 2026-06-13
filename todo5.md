@@ -280,8 +280,10 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `IOS_DEVELOPMENT_STUDY_GUIDE.md` — Flow: the SwiftUI declarative loop
       (state change → re-invoke body → diff view tree → minimal screen update →
       interaction mutates state). *Follow-ups: MVVM layers, .task cancellation.*
-- [ ] `CB8_IOS_STUDY_GUIDE.md` — Graph: nodejs-mobile two-phase architecture;
-      seq: the server-owns-completion request path.
+- [x] `CB8_IOS_STUDY_GUIDE.md` — Graph: the three-deployment architecture (one
+      codebase → Electron/Docker/Node, all hosting the same Fastify HTTP server;
+      GUI decoupled over HTTP, so iOS is just another client) — the fact that
+      makes the port feasible.
 - [ ] `CB8_ANDROID_STUDY_GUIDE.md` — Graph: the on-device-node architecture;
       flow: SAF-vs-bookmark file access decision.
 

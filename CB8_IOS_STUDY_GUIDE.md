@@ -39,6 +39,19 @@ CB8 runs three ways from one codebase: as an Electron desktop app, as a Docker c
 
 The Electron window is, in effect, just a privileged browser pointed at the embedded server. A LAN browser hitting `http://<host>:8008` gets the identical UI. This means CB8 already crossed the hardest bridge most Electron apps never cross: **the GUI is fully decoupled from the host process and talks to it over HTTP.** Many Electron apps wire their renderer to the main process through `ipcRenderer` calls that have no network equivalent; porting those to mobile means inventing an API first. CB8's API already exists, is already versioned by its own web client, and already handles authentication and multi-user state.
 
+```mermaid
+graph TD
+  CODE["One CB8 codebase"] --> EL["Electron desktop"]
+  CODE --> DK["Docker container"]
+  CODE --> ND["Node.js standalone"]
+  EL --> SRV["Same embedded Fastify server — HTTP API + web UI on :8008"]
+  DK --> SRV
+  ND --> SRV
+  SRV --> C1["Electron window (privileged browser)"]
+  SRV --> C2["LAN browser"]
+  SRV --> C3["future: native iOS client — just another HTTP consumer"]
+```
+
 ### The module map
 
 The layout, from the repository:
