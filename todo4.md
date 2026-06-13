@@ -159,7 +159,7 @@ Part, click-to-reveal explanation included.
 - [x] `AUTH_STUDY_GUIDE.md` — 5 quizzes (15 questions; sessions-vs-JWT/cookie-storage/401-vs-403, slow-hash/salt-rainbow/timing-enumeration, JWT-signed-not-encrypted/alg-pinning/HS-vs-RS, OAuth-vs-OIDC/PKCE/access-vs-ID-token, short+refresh-split/rotation-reuse-detection/revocation-cache-invalidation)
 - [x] `WEB_LLM_SECURITY_STUDY_GUIDE.md` — 5 quizzes (15 questions; IDOR-data-layer-auth/404-not-403/framework-cant-help, SSRF-CSRF-confused-deputy/metadata-endpoint/header-token-immune, SOP-enables-CSRF-token/CORS-reflection/localStorage-vs-cookie-threat-model, prompt-injection-no-data-channel/indirect-injection/delimiting-insufficient, output-as-untrusted/excessive-agency-blast-radius/shrink-not-stop)
 - [x] `KALI_LINUX_STUDY_GUIDE.md` — 5 quizzes (15 questions; purpose-built-distro/enumerate-before-exploit/post-ex-pathfinding, passive-vs-active-recon/subdomain-validation/version-string-hinge, online-vs-offline/hash-identification/reverse-shell-direction, AD-as-graph/Kerberoasting/NTLM-relay, trust-not-verify/ARP-spoof-MITM/verification-not-encryption)
-- [ ] `AI_AGENTS_STUDY_GUIDE.md`
+- [x] `AI_AGENTS_STUDY_GUIDE.md` — 5 quizzes (13 questions; workflow-vs-agent-who-controls/start-with-workflows/evaluator-optimizer, agent-loop-primitive/ReAct-is-the-loop/production-guardrails, tool-trust-boundary/descriptions-are-instructions, defense-in-depth-cheapest-first/output-guardrails, multi-agent-only-when-justified/handoffs-are-tools/sequential-pipeline-stable)
 - [ ] `LLM_APP_DEV_STUDY_GUIDE.md`
 - [ ] `ENTERPRISE_API_STUDY_GUIDE.md`
 - [ ] `TESTING_STUDY_GUIDE.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 58/65 (Batches 1–5 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 59/65 (Batches 1–5 complete).
