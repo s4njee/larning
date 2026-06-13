@@ -129,8 +129,9 @@ their core and prose carries them poorly.
       (publisher→subscriber, Citus coordinator→workers).
 - [ ] `SQLITE_STUDY_GUIDE.md` — State: WAL vs rollback-journal mode
       transitions; lock states (SHARED→RESERVED→EXCLUSIVE). 
-- [ ] `REDIS_STUDY_GUIDE.md` — Graph: replication + Sentinel failover topology;
-      Cluster hash-slot ownership. Seq: a failover.
+- [x] `REDIS_STUDY_GUIDE.md` — Graph: Sentinel + primary/replica topology
+      (replaced ASCII). Seq: the Sentinel failover (ODOWN→promote→reconfigure→
+      client rediscovery). *Follow-up: Cluster hash-slot ownership graph.*
 - [ ] `EBPF_STUDY_GUIDE.md` — Flow: program load → verifier → JIT → attach.
       Graph: where probe types hook into the kernel path.
 - [ ] `DATA_ENGINEERING_STUDY_GUIDE.md` — Graph: a lakehouse pipeline (sources

@@ -1450,15 +1450,20 @@ Reference: [Sentinel](https://redis.io/docs/latest/operate/oss_and_stack/managem
 
 Sentinel provides automatic failover — if the primary goes down, Sentinel promotes a replica and reconfigures the other replicas.
 
-```
-┌──────────┐  ┌──────────┐  ┌──────────┐
-│Sentinel 1│  │Sentinel 2│  │Sentinel 3│    (monitor + vote)
-└────┬─────┘  └────┬─────┘  └────┬─────┘
-     │             │             │
-     ▼             ▼             ▼
-┌──────────┐  ┌──────────┐  ┌──────────┐
-│ Primary  │→ │Replica 1 │  │Replica 2 │    (data nodes)
-└──────────┘  └──────────┘  └──────────┘
+```mermaid
+graph TB
+  subgraph Sentinels["Sentinels — monitor + vote (odd number)"]
+    S1[Sentinel 1]
+    S2[Sentinel 2]
+    S3[Sentinel 3]
+  end
+  subgraph Data["Data nodes"]
+    P[Primary] -->|replicates| R1[Replica 1]
+    P -->|replicates| R2[Replica 2]
+  end
+  S1 -.monitors.-> P
+  S2 -.monitors.-> P
+  S3 -.monitors.-> P
 ```
 
 ### How Failover Works
@@ -1469,6 +1474,23 @@ Sentinel provides automatic failover — if the primary goes down, Sentinel prom
 4. The selected replica is promoted to primary (`REPLICAOF NO ONE`)
 5. Other replicas are reconfigured to replicate from the new primary
 6. Clients are notified of the new primary's address
+
+```mermaid
+sequenceDiagram
+  participant S as Sentinels (quorum)
+  participant P as Primary
+  participant R as Best replica
+  participant C as Client
+  loop continuous
+    S->>P: PING
+  end
+  Note over S: no reply, quorum agrees → ODOWN
+  S->>S: elect leader Sentinel, pick best replica
+  S->>R: promote (REPLICAOF NO ONE)
+  S->>P: on return, reconfigure as replica
+  C->>S: who is the primary now?
+  S-->>C: new primary = R
+```
 
 ### Client Configuration
 
