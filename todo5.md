@@ -127,8 +127,9 @@ their core and prose carries them poorly.
       MVCC visibility decision. Seq: a transaction's WAL + checkpoint path.
 - [ ] `POSTGRES_EXTENSIONS.md` — Graph: logical-replication/CDC topology
       (publisher→subscriber, Citus coordinator→workers).
-- [ ] `SQLITE_STUDY_GUIDE.md` — State: WAL vs rollback-journal mode
-      transitions; lock states (SHARED→RESERVED→EXCLUSIVE). 
+- [x] `SQLITE_STUDY_GUIDE.md` — State: the five lock states
+      (UNLOCKED→SHARED→RESERVED→PENDING→EXCLUSIVE) in rollback-journal mode
+      (replaced ASCII). *Follow-up: WAL vs rollback-journal mode transitions.*
 - [x] `REDIS_STUDY_GUIDE.md` — Graph: Sentinel + primary/replica topology
       (replaced ASCII). Seq: the Sentinel failover (ODOWN→promote→reconfigure→
       client rediscovery). *Follow-up: Cluster hash-slot ownership graph.*

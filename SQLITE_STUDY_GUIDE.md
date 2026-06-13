@@ -735,11 +735,15 @@ COMMIT;  -- step 1 is committed, step 2 is not
 
 SQLite uses file-level locking with five states. Understanding these is essential for debugging concurrency issues:
 
-```
-  UNLOCKED ──→ SHARED ──→ RESERVED ──→ PENDING ──→ EXCLUSIVE
-  (nothing)    (reading)   (planning    (waiting     (writing)
-                            to write)    for readers
-                                         to finish)
+```mermaid
+stateDiagram-v2
+  [*] --> UNLOCKED
+  UNLOCKED --> SHARED: begin reading
+  SHARED --> RESERVED: intend to write (one allowed; readers still OK)
+  RESERVED --> PENDING: about to write (block new readers)
+  PENDING --> EXCLUSIVE: existing readers finished
+  EXCLUSIVE --> UNLOCKED: commit / rollback
+  note right of EXCLUSIVE: writing — no other locks coexist
 ```
 
 | State | Who can coexist | What it means |
