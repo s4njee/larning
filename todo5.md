@@ -310,8 +310,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `LLM_APP_DEV_STUDY_GUIDE.md` — Flow: the RAG pipeline (query→retrieve→
       rerank→inject→generate, with the offline chunk→embed→vector-store index;
       replaced ASCII). *Follow-ups: RAG-vs-finetune, tool calling.*
-- [ ] `ENTERPRISE_API_STUDY_GUIDE.md` — Seq: idempotency-key reservation flow;
-      flow: the rate-limit (token-bucket) decision; ETag optimistic-concurrency.
+- [x] `ENTERPRISE_API_STUDY_GUIDE.md` — Flow: idempotency-key handling (atomic
+      reserve → first-time execute / same-body replay / different-body reject /
+      in-flight 409). *Follow-ups: token-bucket rate limit, ETag concurrency.*
 - [x] `TESTING_STUDY_GUIDE.md` — Flow: the dependency-boundary test-double
       decision (real inside the boundary; fake/stub/mock outside by what the
       test needs). Pyramid/trophy left as ASCII (proportional/spatial).

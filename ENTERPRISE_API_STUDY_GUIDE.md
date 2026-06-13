@@ -183,6 +183,15 @@ Contract, from the server's perspective:
 - **Same key while the first attempt is still executing**: the race case. Don't run it twice in parallel; either block briefly or return `409 Conflict` with a "retry shortly" error so the client backs off and re-polls the same key.
 - **Keys expire.** Store them with a TTL (24h is common, Stripe's choice; long enough to cover any sane retry horizon, short enough to bound storage). Document the window.
 
+```mermaid
+graph TD
+  REQ["POST with Idempotency-Key"] --> RES{"atomically reserve the key<br/>(unique constraint, scoped per principal)"}
+  RES -->|"won the reservation — first time"| EXEC["execute, store result keyed by the key"] --> RET["return the result"]
+  RES -->|"exists, same request body"| REPLAY["replay the stored response — don't re-execute"]
+  RES -->|"exists, different body"| ERR["reject 422 / 409 — client bug"]
+  RES -->|"exists, first attempt still running"| RACE["409 Conflict — retry shortly"]
+```
+
 ### Implementing it properly
 
 The naive version — `if (seen(key)) return cached; else execute(); save(key)` — has a time-of-check/time-of-use race: two concurrent duplicates both pass the `seen()` check. The fix is to make **key reservation atomic and first**, using a uniqueness guarantee from your store. With SQL:
