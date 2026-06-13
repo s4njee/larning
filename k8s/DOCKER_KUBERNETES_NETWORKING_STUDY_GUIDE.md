@@ -33,13 +33,16 @@ The fourth piece is what lets the outside world in, and it is the one most worth
 
 Two higher-level concerns sit on top of these four primitives. **DNS-based service discovery** replaces brittle IP-chasing with stable names — containers and Pods resolve names like `db` or `redis` rather than memorizing addresses that change on every restart — and you will care far more about names than IPs in any real system. And **cross-host (overlay or routed) networking** extends the model beyond one machine: a single host's bridge can't reach a container on a different host, so Docker Swarm overlay networks and, more importantly, Kubernetes CNI plugins build a routing fabric that makes every container reachable from every node regardless of which physical machine it sits on. The full data path, end to end, looks like this:
 
-```text
-Docker published port (NAT at the host boundary):
-  browser → host:8080 → iptables DNAT → docker0 bridge → veth → container:80
-
-Kubernetes cluster path (Pod IPs are routable, no NAT between Pods):
-  client → LoadBalancer / Ingress / Gateway → Service VIP (kube-proxy rules)
-         → real Pod IP (routed by the CNI across nodes) → containerPort
+```mermaid
+graph LR
+  subgraph D["Docker published port — NAT at the host boundary"]
+    direction LR
+    BR[browser] --> HP[host:8080] -->|iptables DNAT| DK[docker0 bridge] -->|veth| CT[container:80]
+  end
+  subgraph K["Kubernetes cluster path — Pod IPs routable, no NAT between Pods"]
+    direction LR
+    CL[client] --> LB[LoadBalancer / Ingress / Gateway] --> VIP["Service VIP — kube-proxy rules"] -->|CNI routes across nodes| POD[real Pod IP : containerPort]
+  end
 ```
 
 ### 1.2 Docker Networking in Real Life

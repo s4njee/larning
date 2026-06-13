@@ -164,8 +164,10 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md` — Flow: the four gates
       (authentication→authorization/RBAC→admission→etcd, each independently
       able to reject; replaced ASCII). *Follow-up: 4Cs threat-model graph.*
-- [ ] `k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md` — Graph: pod→service→
-      endpoint→pod packet path; CNI topology.
+- [x] `k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md` — Graph: the two data
+      paths compared — Docker published-port (host→DNAT→docker0→veth→container)
+      vs Kubernetes (client→LB/Ingress→Service VIP→Pod IP via CNI); replaced
+      ASCII.
 - [x] `DOCKER_STUDY_GUIDE.md` — State: the HEALTHCHECK state machine
       (starting→healthy/unhealthy with the start-period grace window). Image
       layer/overlay stack left as prose (spatial). *Follow-up: namespaces/
