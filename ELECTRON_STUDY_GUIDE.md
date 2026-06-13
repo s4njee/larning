@@ -81,6 +81,12 @@ Every Electron app has three distinct execution contexts. Confusing which code r
 
 **The preload script** is the clever bit and the part with no web analogue. It runs *in the renderer's context* but *before your web page loads*, and it has access to a limited set of Node/Electron APIs **and** the page's `window` object. Its job is to be the **bridge**: it uses [`contextBridge`](https://www.electronjs.org/docs/latest/api/context-bridge) to expose a small, specific, validated API to the renderer — never raw power, only named functions. It's the API contract / gateway between your untrusted UI and your privileged backend. (Security details in Part 7; for now, just know the preload is *where you decide exactly what the UI is allowed to ask for*.)
 
+```mermaid
+graph LR
+  R["Renderer<br/>your UI — sandboxed, no Node access"] -->|"window.api.x()"| PRE["Preload bridge<br/>contextBridge: small validated API"]
+  PRE -->|"ipcRenderer.invoke / ipcMain.handle — IPC across the process boundary"| M["Main process<br/>Node.js, full OS access — exactly one"]
+```
+
 ### Why Three Processes? (The Reason Maps to Your Instincts)
 
 This split exists for the same reasons you separate a web client from a server: **security and stability.**

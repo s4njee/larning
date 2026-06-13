@@ -257,8 +257,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       seq: a form action's fail/enhance path.
 - [ ] `DJANGO_STUDY_GUIDE.md` — ER: model relationships; flow: a request
       through middleware→view→ORM. Seq: signals around `save()`.
-- [ ] `ELECTRON_STUDY_GUIDE.md` — Graph: the three-process model (main/
-      renderer/preload) + IPC edges. Seq: an `invoke` round-trip.
+- [x] `ELECTRON_STUDY_GUIDE.md` — Graph: the three-process model — sandboxed
+      renderer → preload contextBridge → privileged main process across the IPC
+      boundary.
 - [ ] `QT_STUDY_GUIDE.md` — Seq: signal→slot across thread affinity; flow:
       the event loop dispatch. Graph: parent-child ownership tree.
 - [x] `WEBSOCKETS_STUDY_GUIDE.md` — Seq: the HTTP→WS upgrade handshake (GET
