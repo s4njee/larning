@@ -151,7 +151,7 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       (replaced ASCII, chapter refs kept). SSA/memory layouts left as ASCII.
       *Follow-up: JIT tiered-compilation decision flow.*
 
-## Batch B — Infra, cloud, ops
+## Batch B — Infra, cloud, ops — ✅ COMPLETE (2026-06-13)
 
 - [x] `k8s/KUBERNETES_STUDY_GUIDE.md` — Seq: what happens on `kubectl apply`
       (every component watches the API server). State: Pod phase lifecycle
@@ -202,8 +202,10 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `ADVANCED_LINUX_STUDY_GUIDE.md` — Flow: the I/O path (app→VFS→fs→page
       cache→block layer→driver→device; replaced ASCII) and the copy-on-write
       fork + write-fault resolution. Memory-layout ASCII left as-is.
-- [ ] `LINUX_FUNDAMENTALS_STUDY_GUIDE.md` — State: process lifecycle; flow:
-      fork/exec; a signal's delivery path.
+- [x] `LINUX_FUNDAMENTALS_STUDY_GUIDE.md` — State: the process state machine
+      (R/S/D/T/Z transitions). Flow: fork+exec (fork copies, exec replaces the
+      image at the same PID; replaced ASCII). *Follow-up: signal delivery
+      path.*
 
 ## Batch C — Languages, runtimes, concurrency
 
@@ -305,8 +307,8 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 
 64 guide files + 2 bespoke pages (Caddy/Nginx, built from their `.py`
 generators) = 66 targets. Progress: Phase 0 ✅ complete; Batch A ✅ complete
-(12 guides); Batch B in progress (Kubernetes, Docker, Terraform, Git, GitHub
-Actions, Observability done — 6 of 15). 18 guides total carry diagrams.
-Diagrams are **additive and tactical** — a guide is "done" here when
+(12 guides); Batch B ✅ complete (15 guides). 27 guides total carry diagrams.
+Next: Batch C (languages/runtimes/concurrency). Diagrams are **additive and
+tactical** — a guide is "done" here when
 its 1–4 highest-value relational/temporal/state diagrams render as inline SVG
 on both themes, with spatial/byte-layout diagrams left as ASCII.

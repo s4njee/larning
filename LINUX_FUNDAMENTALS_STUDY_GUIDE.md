@@ -126,8 +126,11 @@ Every process in Linux (except PID 1) is created by **`fork()`**: the kernel *du
 
 Then, usually, the child calls **`exec()`** — which *replaces* its entire memory image with a new program (loaded from a binary on disk). `exec` does **not** create a new process (the PID stays the same); it *transforms* the existing one into a different program. So the idiom is:
 
-```text
-parent calls fork() → child (copy of parent) calls exec("new-program") → child is now new-program
+```mermaid
+graph LR
+  P[parent process] -->|"fork()"| C["child — exact copy of parent"]
+  P -->|continues with child's PID| P2[parent keeps running]
+  C -->|"exec('new-program')"| N["child is now new-program<br/>(same PID, new memory image)"]
 ```
 
 This `fork`+`exec` pair is how *every* program launch works — your shell, `systemd`, Docker, Kubernetes's kubelet. When you type `ls` in bash, bash `fork`s itself, the child `exec`s `/usr/bin/ls`, `ls` runs and exits, and bash (the parent) continues. The [Docker guide](DOCKER_STUDY_GUIDE.md)'s `docker run` ultimately does `fork`+`exec` of your container's entrypoint process, inside namespaces and cgroups (Part 8).
@@ -161,6 +164,24 @@ At any moment, a process is in one of these states (visible in `ps` and `/proc/[
 | **Zombie** | `Z` | finished executing but its parent hasn't `wait()`ed for it yet — the process is dead but its entry in the process table remains so the parent can read the exit status |
 
 **Zombies** are the state that confuses people. A zombie is *not* running and consumes *no* CPU or memory (its memory is already freed). It's just a process-table entry — a few bytes — waiting for its parent to call `wait()`. Normally this happens instantly, but if the parent is buggy (never calls `wait`) or if the parent died without cleaning up its children, zombies accumulate. They're mostly harmless individually, but a buildup can exhaust the PID space. When the parent dies, orphaned children are **re-parented to PID 1** (`systemd`), which `wait()`s on them and cleans up the zombies — this is one of PID 1's essential jobs, and it's why running your own app as PID 1 in a Docker container (without an init) can lead to zombie accumulation (the app doesn't `wait()` on children it didn't know about). The fix: use `tini` or `--init` in Docker, or `shareProcessNamespace` in Kubernetes — both are covered in the [Docker guide](DOCKER_STUDY_GUIDE.md).
+
+```mermaid
+stateDiagram-v2
+  state "Running (R)" as R
+  state "Sleeping, interruptible (S)" as S
+  state "Sleeping, uninterruptible (D)" as D
+  state "Stopped (T)" as T
+  state "Zombie (Z)" as Z
+  [*] --> R: scheduled
+  R --> S: wait for event (I/O, timer)
+  S --> R: event ready
+  R --> D: uninterruptible I/O (disk)
+  D --> R: I/O completes
+  R --> T: SIGSTOP / Ctrl-Z
+  T --> R: SIGCONT
+  R --> Z: exit()
+  Z --> [*]: parent wait()s
+```
 
 ### Threads
 
