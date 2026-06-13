@@ -284,6 +284,29 @@ It's not flashy, but it removes a surprising amount of duplicated code, and you'
 
 If you remember one thing from Part 2: **modern C++ is a philosophy before it's a feature list — RAII and value semantics for clear ownership, the Rule of Zero so the compiler writes your special members, move semantics for performance, `constexpr` to push work to compile time, concepts to constrain generics readably, ranges for composable pipelines, and sum types (`optional`/`variant`/`expected`) instead of nulls and error codes. Adopt the philosophy and the individual features become obvious.**
 
+```quiz
+Q: Why does RAII make the 2026 `process()` exception-safe where the 2005 version leaks?
+- [ ] Exceptions are disabled in modern C++
+- [x] Resources are owned by stack objects whose destructors run during stack unwinding, so an exception automatically closes the file and frees the buffer
+- [ ] `std::ifstream` catches exceptions internally
+- [ ] The compiler inserts `try/finally` blocks
+> RAII binds each resource's lifetime to a stack object: `std::ifstream` closes in its destructor, `std::vector` frees in its. When an exception propagates, the stack unwinds and every local destructor runs deterministically, so nothing leaks — no manual `fclose`/`delete` to skip. The manual 2005 version leaks precisely because an exception jumps over the cleanup calls. The rule follows: wrap every resource, never hand-manage `new`/`fopen` in application code.
+
+Q: Why is adding `std::move` to `return local_variable;` a mistake?
+- [ ] It's a syntax error
+- [x] It prevents copy elision (NRVO); the compiler already moves or elides the return, and the explicit `move` defeats the better optimization
+- [ ] `local_variable` becomes const
+- [ ] It double-frees the object
+> On a return statement the compiler applies copy elision or an implicit move automatically — often constructing the result in place with zero copies. Writing `std::move` forces a move and *disables* elision, so you get a guaranteed move where you could have had nothing at all. `std::move` is for transferring ownership of objects you're done with mid-function, not for returns.
+
+Q: What distinguishes Rule of Zero from Rule of Five?
+- [ ] Rule of Zero forbids destructors entirely
+- [x] If members manage themselves (smart pointers, containers), write none of the five special members; only when you directly hold a raw resource must you implement all five
+- [ ] Rule of Five is for templates, Rule of Zero for classes
+- [ ] They're the same with different names
+> When every member is self-managing, the compiler-generated destructor, copy/move constructors, and copy/move assignments are already correct — so you write zero (Rule of Zero), and adding them by hand only risks introducing bugs. If you hold a raw resource directly (a custom container or RAII wrapper), you must define all five consistently (Rule of Five), because omitting any one leaves a broken copy or move path.
+```
+
 ---
 
 ## Part 3 — Static Reflection
@@ -501,6 +524,29 @@ The mode is a **build-time flag**, not per-function. This means you can compile 
 
 If you remember one thing from Part 4: **contracts (`pre`/`post`/`contract_assert`) turn function specifications from comments into machine-checked, build-mode-selectable guarantees — express *programmer errors* (a violated precondition is a bug in the caller) with contracts, and keep exceptions/`std::expected` for *recoverable runtime conditions* that aren't bugs. The mode is a build flag, so you `enforce` in dev and `ignore`/`quick_enforce` in release.**
 
+```quiz
+Q: When should you use a contract `pre()` versus throwing an exception?
+- [ ] Always prefer exceptions; contracts are cosmetic
+- [x] A `pre` expresses a programmer error — a violated precondition is a bug in the caller; exceptions/`expected` handle recoverable runtime conditions that aren't bugs (file not found, bad input)
+- [ ] Contracts are for performance, exceptions for correctness
+- [ ] They're interchangeable
+> Contracts encode the *specification* — "the caller must guarantee X" — so a violation means someone called the function wrong, a bug to catch and fix, not recover from. Genuinely recoverable conditions from external sources (a missing file, a network failure) are normal control flow and belong in exceptions or `std::expected`. Mixing them up either crashes on recoverable errors or quietly tolerates real bugs.
+
+Q: Contracts' evaluation mode is a build-time flag, not per-function. Why does that design matter?
+- [ ] It lets each function pick its own mode
+- [x] You compile with `enforce` in dev to catch violations early and switch the whole program to `ignore`/`quick_enforce` in release for zero/minimal overhead — one flag, no code changes
+- [ ] It makes contracts run only on Tuesdays
+- [ ] It forces all contracts to always run
+> Because the mode applies build-wide, the same source gives you aggressive checking during development (every precondition enforced, terminating on violation) and a fast production binary (contracts ignored or minimally enforced) without touching the code. In `ignore` mode the compiler may even *assume* contracts hold and optimize on that basis — turning specifications into both safety nets and optimization hints.
+
+Q: What's the role of `contract_assert` compared to `pre`/`post`?
+- [ ] It replaces exceptions
+- [x] It checks internal invariants *within* a function body (a mode-aware replacement for `assert()`), whereas `pre`/`post` specify the function's external API contract
+- [ ] It only works in release builds
+- [ ] It's identical to `pre`
+> `pre` and `post` describe the function's interface — what callers must provide and what it guarantees in return — and are part of the API surface. `contract_assert` checks a mid-body invariant that isn't part of the public contract, replacing the old `assert()` macro with the same build-mode-selectable semantics. The split mirrors "specification at the boundary" versus "sanity check inside."
+```
+
 ---
 
 ## Part 5 — `std::execution` (Senders & Receivers)
@@ -680,9 +726,45 @@ task<std::string> fetch_page(std::string url) {
 }
 ```
 
+```mermaid
+sequenceDiagram
+  participant L as for-loop (caller)
+  participant G as fibonacci() coroutine
+  L->>G: first pull (begin iterating)
+  G-->>L: co_yield a — suspend, hand back value
+  Note over G: frame (a, b) preserved while suspended
+  L->>G: next pull
+  G->>G: resume after co_yield, advance a, b
+  G-->>L: co_yield next value — suspend again
+  Note over L: nothing computed until pulled (lazy)
+```
+
 The key mental model: a coroutine can **suspend and resume**, so `co_await` *looks* like a blocking call but actually yields the thread back to do other work — the same "stop waiting, don't stop the thread" idea as the [Python](PYTHON_CONCURRENCY.md) and Node async guides, at the language level. The honest caveat that's persisted since C++20: the standard shipped the *language machinery* (the compiler transforms) but minimal *library* support — for years you needed a third-party coroutine type (cppcoro, or a framework's `task`). C++23's `std::generator` filled the lazy-sequence gap, and C++26's `std::execution` provides the async task framework, so the coroutine story is finally becoming usable out of the box rather than requiring you to write your own `promise_type`.
 
 If you remember one thing from Part 5: **for everyday threading, `std::jthread` + `stop_token` and the C++20 primitives (`latch`, `barrier`, `counting_semaphore`, `atomic_ref`) are the modern default — `jthread` is to `thread` what `unique_ptr` is to `new`. Reach for `std::execution`'s composable senders/receivers (with structured concurrency, the RAII of async) when you need pipelines that transfer across execution contexts, and use coroutines (`co_await`/`co_yield`, `std::generator`) for sequential-looking async and lazy sequences.**
+
+```quiz
+Q: Why is `std::jthread` described as "to `thread` what `unique_ptr` is to `new`"?
+- [ ] It's faster than `std::thread`
+- [x] It's RAII: it auto-joins on destruction and carries a `stop_token` for cooperative cancellation, so you don't leak or forget to join the way a raw `std::thread` requires
+- [ ] It runs on the GPU
+- [ ] It disables exceptions
+> A raw `std::thread` must be explicitly `join`ed or `detach`ed or it terminates the program on destruction — the same manual-cleanup hazard as `new`/`delete`. `std::jthread` joins automatically in its destructor and integrates a `stop_token` for cooperative shutdown, making it the RAII default just as `unique_ptr` is for heap allocation. Reach for it before raw threads.
+
+Q: A coroutine uses `co_await` on a network read. What actually happens at that suspension point?
+- [ ] The thread blocks until the read completes
+- [x] The coroutine suspends and yields the thread back to do other work, resuming where it left off when the awaitable completes — "stop waiting, don't stop the thread"
+- [ ] The program spawns a new thread per await
+- [ ] The read is performed synchronously
+> `co_await` makes async code *look* sequential while actually suspending the coroutine and handing the thread back to the scheduler, so one thread can make progress on other work instead of blocking on I/O. The coroutine resumes at the suspension point once the operation finishes. It's the same "don't block the thread" idea as Python/Node async, expressed at the language level.
+
+Q: What's the honest caveat about C++ coroutines that persisted from C++20?
+- [ ] They never shipped
+- [x] C++20 shipped the language machinery (compiler transforms) but minimal library support, so for years you needed a third-party `task`/generator type; C++23's `std::generator` and C++26's `std::execution` finally fill that gap
+- [ ] They only work on Windows
+- [ ] They require writing assembly
+> The compiler transforms for `co_await`/`co_yield`/`co_return` landed in C++20, but the standard library shipped almost no usable coroutine *types*, so you had to bring cppcoro or a framework's `task` and often write your own `promise_type`. `std::generator` (C++23) covers lazy sequences and `std::execution` (C++26) provides the async task framework, so coroutines are finally usable out of the box.
+```
 
 ---
 
@@ -773,6 +855,29 @@ C++26 specifies that reading uninitialized variables is **erroneous behavior** (
 (Related, from C++23: **`if consteval`** lets a `constexpr` function branch on whether it's *currently* being evaluated at compile time, choosing a compile-time-friendly path versus a faster runtime path — the clean replacement for the `std::is_constant_evaluated()` idiom.)
 
 If you remember one thing from Part 6: **C++26's language polish removes long-standing friction — parameter pack indexing (`args...[N]`) kills recursive-template gymnastics, the `_` placeholder formalizes "don't care," `= delete("reason")` improves diagnostics, and uninitialized reads become *erroneous behavior* (trappable) rather than silently undefined. None are headliners, but together they make daily code cleaner and a bit safer.**
+
+```quiz
+Q: C++26 makes reading an uninitialized variable "erroneous behavior" — a new category distinct from undefined behavior. Why does that distinction matter for safety?
+- [ ] It makes the code compile faster
+- [x] Undefined behavior lets the compiler assume it never happens and produce arbitrary results; erroneous behavior is well-defined enough that implementations may zero-init or trap, making the bug deterministic and debuggable
+- [ ] It bans uninitialized variables entirely
+- [ ] It only affects pointers
+> Undefined behavior gives the optimizer license to do anything, so an uninitialized read can silently produce garbage or miscompile surrounding code — historically a top source of C++ CVEs. Reclassifying it as erroneous behavior means implementations are encouraged to zero-initialize or trap, turning a silent landmine into deterministic, observable behavior you can catch. It's a meaningful piece of Part 8's safety story without changing the language's opt-in nature.
+
+Q: How does parameter pack indexing (`args...[1]`) improve on the pre-C++26 approach?
+- [ ] It runs at runtime instead of compile time
+- [x] It directly accesses the Nth pack element, eliminating recursive template instantiations that were slow to compile and hard to read
+- [ ] It allows packs to be modified in place
+- [ ] It removes the need for templates
+> Before C++26, getting the Nth element of a parameter pack meant recursive templates or `std::tuple_element_t`/`std::get` gymnastics — verbose and a compile-time cost from all the instantiations. `args...[N]` (and `Ts...[N]` for types) is direct indexing, so variadic code becomes both faster to compile and dramatically more readable. It's representative of C++26's friction-removing polish.
+
+Q: What does the `_` placeholder variable add beyond being a conventional name?
+- [ ] It makes variables global
+- [x] It's a language-supported "don't care" that may be reused multiple times in one scope (unlike normal names), carries `[[maybe_unused]]`, and makes *reading* it a compile error
+- [ ] It deletes the value immediately
+- [ ] It's only valid in lambdas
+> Unlike any ordinary variable, multiple `_` bindings can coexist in the same scope, so `auto [_, b] = p1; auto [_, d] = p2;` is legal. It implicitly carries `[[maybe_unused]]` (no unused-variable warnings) and forbids reading it, encoding intent: "I'm deliberately discarding this." It formalizes the same `_` convention Python, Go, and Rust use.
+```
 
 ---
 
@@ -931,6 +1036,29 @@ The elephant in the room. The US government (CISA, NSA, FBI) has called for a sh
 - **Networked services parsing untrusted input.** This is where C++ memory bugs become CVEs.
 
 If you remember one thing from Part 8: **C++26 improves safety at the margins (contracts, erroneous-behavior for uninitialized reads, `expected`, `span`) but provides *no borrow checker, no lifetime annotations, and no safe default* — the "Safe C++" proposal was rejected in favor of not-yet-implemented Profiles. So safety in C++ is opt-in through discipline: adopt the modern subset aggressively, ban raw owning pointers, and make sanitizers (ASan/UBSan/TSan) and static analysis non-negotiable in CI. For greenfield safety-critical work, weigh Rust honestly.**
+
+```quiz
+Q: What is the fundamental memory-safety difference between C++26 and Rust?
+- [ ] C++26 added a borrow checker that matches Rust's
+- [x] C++ has no borrow checker, no lifetime annotations, and unsafety is the *default* — you opt into safety; Rust makes safety the default and requires explicit `unsafe`
+- [ ] Rust has no way to express unsafe code
+- [ ] C++26 prevents use-after-free at compile time
+> C++26 improves safety at the margins (contracts, `expected`, `span`, erroneous-behavior for uninitialized reads) but provides no compile-time system preventing use-after-free, dangling references, or data races — those stay the programmer's responsibility. The "Safe C++" lifetime proposal was rejected in favor of not-yet-implemented Profiles. The inversion is the crux: Rust is safe-by-default with opt-out `unsafe`; C++ is unsafe-by-default with opt-in discipline.
+
+Q: Given that the language won't enforce memory safety, what does the guide call "non-negotiable" in C++ CI?
+- [ ] Rewriting in Rust
+- [x] Running the test suite under sanitizers (ASan/UBSan/TSan) plus static analysis, since they catch lifetime and UB bugs the compiler won't
+- [ ] Disabling all exceptions
+- [ ] Using only `const` variables
+> With no borrow checker, the safety net is tooling: AddressSanitizer/UBSan/ThreadSanitizer run on your tests catch use-after-free, undefined behavior, and data races at runtime, and static analyzers (Clang-Tidy, Core Guidelines checks, `[[clang::lifetimebound]]`) catch many lifetime bugs at compile time. Fuzzing parsers adds more. This tooling discipline is what substitutes for language-level guarantees.
+
+Q: Per the guide, which scenario most justifies choosing Rust over C++ for new work?
+- [ ] Extending an existing Unreal Engine game
+- [ ] A team of expert C++ engineers with good discipline
+- [x] A greenfield, safety-critical service parsing untrusted network input, where memory bugs become CVEs
+- [ ] Interop-heavy kernel/driver code against C APIs
+> The guide is pragmatic: existing codebases, ecosystem lock-in (game engines, HPC), and expert-team discipline favor staying in C++, and interop-heavy systems lean C++ too. But greenfield safety-critical work — especially networked services parsing untrusted input, the classic source of memory-bug CVEs — is exactly where Rust's by-construction guarantees beat what C++ tooling can offer, so it's the case to weigh Rust honestly.
+```
 
 ---
 

@@ -78,6 +78,36 @@ Notice what's *not* on the list: "make the language faster." The language is alr
 
 If you remember one thing from Part 1: **Go compiles to native code with a runtime baked in, so you don't optimize by escaping an interpreter — you optimize by reducing allocations, easing GC pressure, laying out memory well, and controlling concurrency.** Those four are the entire game.
 
+```quiz
+Q: Why doesn't Go have Python's "escape to NumPy/C" or Node's "don't deoptimize the JIT" performance levers?
+- [ ] Go's interpreter is already as fast as C
+- [x] Go compiles ahead of time to native machine code — there's no interpreter to escape and no JIT to feed
+- [ ] Go forbids calling C entirely
+- [ ] Those levers exist but are rarely documented
+> Your Go code starts at native speed, so the big interpreter/JIT levers of other runtimes simply don't exist. What's left is the runtime baked into the binary: the allocator, the GC, the scheduler — which is why Go optimization is about allocations and concurrency.
+
+Q: What does a `[]Point` of 1,000 small structs look like in memory, versus Python's list of 1,000 objects?
+- [ ] The same — both are arrays of references
+- [x] One contiguous block of 1,000 structs inline — no pointers, no per-element heap objects, nothing for the GC to chase
+- [ ] 1,000 pointers to stack-allocated structs
+- [ ] A linked list of 24-byte nodes
+> Value semantics means the structs live inline in the slice's backing array: one allocation, cache-friendly iteration, zero GC tracing. The Python/Node default — N references to N heap objects — is exactly what `[]*Point` recreates, which is why value slices are preferred for small structs.
+
+Q: Per the guide's thesis, where does Go performance work concentrate?
+- [ ] Choosing faster syntax constructs and avoiding closures
+- [ ] Replacing the standard library with C bindings
+- [x] Reducing allocations, easing GC pressure, cache-friendly memory layout, and controlled concurrency
+- [ ] Tuning compiler optimization levels like -O3
+> The language is already fast; programs get faster by making less garbage and concurring better. Notably absent: "make the language faster" and "drop into C" — the latter is actively counterproductive (cgo's call overhead).
+
+Q: Why is a hello-world Go binary several megabytes?
+- [ ] Debug symbols that can't be removed
+- [x] It statically embeds the Go runtime — scheduler, GC, allocator, netpoller — so it runs anywhere with no dependencies
+- [ ] The compiler doesn't do dead-code elimination
+- [ ] All of the standard library is always included
+> The "fat binary" is the price of self-containment: every Go program ships its own runtime and needs nothing from the host. The linker does drop unused code — the floor is the runtime itself, which is also why deployment is `scp` and run.
+```
+
 ---
 
 ## Part 2 — The GMP Scheduler
@@ -102,12 +132,18 @@ The scheduler is built on three entities — memorize these, because every sched
 
 The model: **to run Go code, an M must hold a P.** A P has a queue of Gs; the M grabs a G from its P's queue and runs it. There are `GOMAXPROCS` Ps, so at most `GOMAXPROCS` goroutines execute Go code in parallel — but there can be *many* more Ms (threads blocked in syscalls don't hold a P).
 
-```text
-   P0 [G G G G]──M0──CPU      Ps  = GOMAXPROCS (logical processors, each a run queue)
-   P1 [G G]    ──M1──CPU      Ms  = OS threads (only run Go code while holding a P)
-   P2 [G G G]  ──M2──CPU      Gs  = goroutines (cheap, ~2KB stacks)
-                              global run queue: [G G]  (overflow / unparked Gs)
+```mermaid
+graph LR
+  G0["Gs: G G G G"] --> P0[P0 run queue]
+  G1["Gs: G G"] --> P1[P1 run queue]
+  G2["Gs: G G G"] --> P2[P2 run queue]
+  P0 --> M0[M0 OS thread] --> C0[CPU]
+  P1 --> M1[M1 OS thread] --> C1[CPU]
+  P2 --> M2[M2 OS thread] --> C2[CPU]
+  GRQ["global run queue<br/>overflow / unparked Gs"] -.work-steal / refill.-> P1
 ```
+
+(Ps = `GOMAXPROCS` logical processors, each owning a run queue; Ms = OS threads that run Go code only while holding a P; Gs = goroutines with ~2 KB stacks.)
 
 ### Work-Stealing Keeps Cores Busy
 
@@ -131,6 +167,43 @@ Originally Go's scheduler was *cooperative* — a goroutine yielded only at func
 **As of [Go 1.25](https://go.dev/doc/go1.25), the runtime is cgroup-aware** and sets `GOMAXPROCS` from the container's CPU quota automatically — a significant fix if you run Go in Kubernetes ([Kubernetes guide](k8s/KUBERNETES_STUDY_GUIDE.md)). On older Go versions, *still use `automaxprocs`* or set `GOMAXPROCS` explicitly to your CPU limit. Setting it too high in a constrained container wastes effort on scheduling and inflates GC parallelism; getting it right is one of the cheapest production wins available.
 
 If you remember one thing from Part 2: **the GMP scheduler multiplexes cheap goroutines onto `GOMAXPROCS` OS threads with work-stealing, routes around blocking syscalls, and turns blocking-style network code into async I/O via the netpoller — so you write simple sequential-looking goroutines and the runtime makes them efficient, provided `GOMAXPROCS` matches your real CPU budget.**
+
+```quiz
+Q: A goroutine makes a blocking file-read syscall. What happens to the other goroutines queued on its P?
+- [ ] They block until the syscall returns
+- [ ] They are moved to the global run queue and wait for a free CPU
+- [x] The runtime detaches the P from the blocked M and hands it to another M, so they keep running
+- [ ] The kernel preempts the syscall after 10 ms
+> This is why Go has no "never block the event loop" rule: an M stuck in the kernel doesn't take its P down with it. The blocked thread parks until the syscall returns; meanwhile a different thread runs the P's queue.
+
+Q: What exactly does GOMAXPROCS limit?
+- [ ] The total number of goroutines
+- [ ] The number of OS threads the process may create
+- [x] The number of Ps — how many goroutines can execute Go code simultaneously
+- [ ] The number of CPU cores the kernel assigns the process
+> GOMAXPROCS is the P count. There can be far more Ms (threads parked in syscalls don't hold a P) and millions of Gs; what's capped is parallel execution of Go code.
+
+Q: How does `conn.Read(buf)` — plain blocking-style code — achieve async-I/O efficiency in Go?
+- [ ] Each connection gets a dedicated OS thread
+- [x] The netpoller parks the goroutine and frees its P; epoll/kqueue readiness makes it runnable again
+- [ ] The compiler rewrites it into callback style
+- [ ] It spins on the socket with a 1 ms poll loop
+> The netpoller sits on the same OS primitives as libuv, but the runtime hides them: a goroutine waiting on the network costs ~2 KB of parked stack, not a thread. That's how hundreds of thousands of idle connections stay nearly free while the code reads sequentially.
+
+Q: Before Go 1.14, `for {}` in one goroutine could starve a whole P. Why can't it now?
+- [ ] Tight loops are compiled to include yield calls
+- [ ] The OS scheduler preempts the thread
+- [x] The runtime sends a signal to goroutines running ~10 ms or more, forcing an asynchronous preemption
+- [ ] Loops without function calls are rejected by the compiler
+> The old scheduler was cooperative — yields happened only at function calls, channel ops, and allocations. Async preemption closed the loophole (and gave the GC reliable safepoints), so CPU-bound goroutines no longer need `runtime.Gosched()` sprinkles.
+
+Q: A Go service runs in a container limited to 2 CPUs on a 64-core node, using Go 1.22. What's the trap?
+- [x] GOMAXPROCS defaults to 64 — far more Ps than the quota — causing scheduler contention and GC over-parallelism; fix with automaxprocs or an explicit setting
+- [ ] The container runtime blocks goroutine creation
+- [ ] Go refuses to start with fewer than 4 CPUs
+- [ ] The netpoller falls back to blocking mode
+> Pre-1.25 runtimes see the host's CPU count, not the cgroup quota. 64 Ps contending for 2 CPUs of quota burns the budget on scheduling and inflated GC parallelism. Go 1.25+ reads the cgroup automatically; older versions need uber's automaxprocs or an env var.
+```
 
 ---
 
@@ -207,6 +280,36 @@ When a value does go to the heap, Go's allocator (derived from tcmalloc) makes t
 
 If you remember one thing from Part 3: **stack allocation is free and generates no garbage; heap allocation costs you twice (allocator now, GC later). Escape analysis decides which you get, `-gcflags="-m"` shows you its decisions, and reducing heap escapes — fewer returned pointers, less interface boxing, preallocated buffers — is the single highest-return optimization in Go.**
 
+```quiz
+Q: Why does the guide call heap allocation "expensive twice"?
+- [ ] It requires two syscalls per allocation
+- [x] You pay the allocator now, and the GC must trace and free the object later
+- [ ] The value is copied twice on the way to the heap
+- [ ] Heap memory is twice as slow to access as stack memory
+> Stack allocation is a pointer bump that unwinds for free; a heap object costs allocator work up front and becomes permanent GC workload until it dies. That second, deferred cost is why allocation rate — not just allocation speed — drives Go performance.
+
+Q: Why does `func newUser() *User { u := User{...}; return &u }` allocate on the heap?
+- [ ] Taking any address always forces a heap allocation
+- [ ] Structs cannot live on the stack
+- [x] The caller holds a pointer to u after the function returns, so the value must outlive the frame
+- [ ] The compiler can't see through named return values
+> Escape analysis asks one question: can this value be referenced after the creating function returns? A returned pointer says yes, so the value escapes. But the converse matters too — a pointer used only *within* the function (and inlined callees) can stay on the stack. `-m` output is the truth.
+
+Q: Why are `fmt.Sprintf` and `log` calls quietly allocation-heavy in hot paths?
+- [x] Their variadic `any` parameters box concrete values onto the heap so the interface can point at them
+- [ ] They acquire a global formatting lock
+- [ ] String formatting always runs through reflection twice
+- [ ] They write to stderr synchronously
+> Storing a concrete value in an interface often requires a heap copy — that's interface boxing, the hidden allocator. Mitigations: keep formatting out of inner loops, prefer generics over `any`, and don't count on the small-integer cache.
+
+Q: What's the core skill the guide says separates Go engineers who guess from those who know?
+- [ ] Memorizing which standard-library functions allocate
+- [ ] Writing assembly for hot paths
+- [x] Reading `-gcflags="-m"` escape-analysis output to see line-by-line where garbage comes from
+- [ ] Disabling the GC and measuring the difference
+> "Use values not pointers" is a heuristic; the compiler's actual decisions are printed by `-m` (`escapes to heap`, `moved to heap`). That output, paired with `-benchmem`'s allocs/op, is the feedback loop all Go allocation work runs on.
+```
+
 ## Part 4 — The Garbage Collector
 
 Part 3 created garbage; this part is about what collects it, and how to make that cheap. Go's GC is a deliberate engineering trade — it optimizes for **low latency** above all, and understanding its design tells you exactly which knobs to turn (few) and which habits actually help (allocate less).
@@ -264,6 +367,36 @@ GODEBUG=gctrace=1 ./myserver
 [`runtime.ReadMemStats`](https://pkg.go.dev/runtime#ReadMemStats) (or the richer [`runtime/metrics`](https://pkg.go.dev/runtime/metrics) package) exposes the same numbers programmatically; export them to your metrics ([Observability guide](OBSERVABILITY_STUDY_GUIDE.md)) and watch GC CPU fraction and pause times. If GC CPU is high, you're allocating too much (go to Part 3); if pauses are the problem, that's rare with Go's GC and usually means an enormous live heap.
 
 If you remember one thing from Part 4: **Go's GC is concurrent and low-latency by design, and its cost scales with how much you allocate and how much you keep alive — so the real "GC tuning" is allocating less (Part 3), with two knobs worth knowing: `GOMEMLIMIT` (set it in containers, always) and `GOGC` (raise it to trade memory for throughput).**
+
+```quiz
+Q: What does Go's GC deliberately trade away to get sub-millisecond pauses?
+- [ ] Memory safety during concurrent marking
+- [x] Some throughput and extra CPU/memory — it runs concurrently with your program instead of stopping the world to work efficiently
+- [ ] Compatibility with multiple OS threads
+- [ ] Pointer stability — objects move during collection
+> Go optimizes latency first: tiny STW windows bookend a concurrent mark phase, paid for with write barriers and GC goroutines competing for CPU. (And it's non-compacting — objects never move — plus non-generational, the opposite of the JVM/V8 designs.)
+
+Q: With the default GOGC=100, when does the next collection trigger?
+- [ ] Every 100 milliseconds
+- [ ] When 100 MB has been allocated
+- [x] When the heap has doubled relative to the live set left by the previous collection
+- [ ] When the heap reaches 100% of GOMEMLIMIT
+> GOGC is a growth target: 100 means "collect when the heap grows 100%." Raising it to 200–400 makes GC run less often — more memory, less GC CPU — the classic memory-for-throughput trade.
+
+Q: A containerized Go service keeps getting OOM-killed by Kubernetes even though its live data fits comfortably in the limit. What's the likely cause and fix?
+- [ ] The kernel miscounts Go's memory; raise the pod limit
+- [x] The heap legitimately grows past the cgroup limit between GC cycles; set GOMEMLIMIT just under the limit so the GC enforces the ceiling
+- [ ] Goroutine stacks are leaking; lower GOMAXPROCS
+- [ ] The GC is disabled by default in containers
+> With only GOGC pacing it, the runtime happily lets the heap double before collecting — straight through a cgroup limit. GOMEMLIMIT (Go 1.19+) makes the GC spend CPU to stay under the ceiling. Leave GOGC=100 and set GOMEMLIMIT with headroom; note it's soft — a live set that truly exceeds it still OOMs.
+
+Q: The GC's cost is driven by exactly two things. Which pair?
+- [ ] Goroutine count and channel traffic
+- [ ] Binary size and pointer width
+- [x] How much live memory must be scanned, and how often allocation forces a cycle
+- [ ] Stack depth and interface count
+> Live heap sets the cost per cycle; allocation rate sets the frequency. Both levers reduce to the same advice — allocate less, retain less — which is why "GC tuning" in Go is mostly Part 3's escape work, not knob-turning.
+```
 
 ---
 
@@ -362,6 +495,43 @@ The CPU is fast; memory is slow; the cache bridges them — and *contiguous, poi
 A Go idiom with a performance payoff: types usable at their **zero value** (`sync.Mutex`, `bytes.Buffer`, `strings.Builder`) need no constructor and no allocation to initialize. `var b bytes.Buffer` is ready to use — no `new`, no heap. Designing your own types this way avoids constructor allocations and makes them cheaper to embed as struct fields.
 
 If you remember one thing from Part 5: **layout is performance — preallocate slices, prefer value slices (`[]T`) over pointer slices (`[]*T`) for small structs, order struct fields largest-to-smallest to cut padding, build strings with `strings.Builder`, and keep the data you touch together contiguous and pointer-free for the cache.**
+
+```quiz
+Q: What happens inside `append` when you grow a slice from nothing to 10,000 elements without preallocating?
+- [ ] One allocation of exactly 10,000 elements on first append
+- [x] A series of reallocations, each allocating a bigger backing array, copying every element, and leaving the old array as garbage
+- [ ] The slice grows in place with no copying
+- [ ] Each append allocates one element
+> Exceeding capacity allocates a new array (~2× growth, tapering to ~1.25×) and copies everything — allocation + copy + garbage, repeatedly. `make([]T, 0, n)` when you know n is the most common high-value slice optimization: one allocation, zero copies.
+
+Q: Why does `[]Point` usually beat `[]*Point` for small structs?
+- [ ] Pointers are 16 bytes in Go
+- [x] Values sit inline and contiguous — one allocation, cache-friendly iteration, nothing for the GC to trace — while pointers mean N heap objects and pointer-chasing
+- [ ] The compiler can't bounds-check pointer slices
+- [ ] Pointer slices can't be sorted
+> The pointer slice recreates the scattered-heap-object layout of Python/Node: N allocations, a cache miss per access, N objects on the GC's plate. This single layout choice often dominates data-heavy Go performance.
+
+Q: Reordering a struct's fields shrank it from 24 bytes to 16 with identical fields. How?
+- [x] Fields are aligned to their size, so ordering largest-to-smallest minimizes the padding the compiler inserts
+- [ ] The compiler compresses booleans into a bitfield when reordered
+- [ ] Smaller field names produce smaller structs
+- [ ] The 24-byte version included a hidden type tag
+> A bool before an int64 forces 7 bytes of padding to align the int64; do that twice and you've wasted a third of the struct. At slice-of-millions scale that's memory and cache density. The `fieldalignment` analyzer finds (and fixes) these automatically.
+
+Q: Why is `out += word` in a loop O(n²)?
+- [ ] The += operator locks a global string table
+- [x] Strings are immutable, so every += allocates a new string and copies everything accumulated so far
+- [ ] Go re-validates UTF-8 on each concatenation
+- [ ] It isn't — the compiler converts it to a builder automatically
+> Each iteration copies the whole prefix again: 1+2+…+n copies. `strings.Builder` (with an optional `Grow`) appends into one growing buffer for O(n). Same trap, same fix as `string(b)`/`[]byte(s)` conversions in hot paths — they copy too.
+
+Q: Two goroutines increment separate counters that happen to sit adjacent in one struct, and scaling collapses. Why?
+- [ ] Go serializes writes to the same struct
+- [x] False sharing — both counters share a 64-byte cache line, which ping-pongs between cores on every write
+- [ ] The struct's mutex is contended
+- [ ] The GC pins the struct during marking
+> No lock is involved: the hardware's cache-coherence protocol bounces the line between cores because writes to *different* fields touch the *same* line. The fix is padding hot per-CPU fields to a cache line (`_ [64]byte`) so each gets its own.
+```
 
 ---
 
@@ -480,6 +650,43 @@ It carries ~10× slowdown (so it's for tests/CI, not production), but it catches
 
 If you remember one thing from Part 6: **goroutines are cheap but bound them (`errgroup` with `SetLimit`); use atomics/mutexes for shared state and channels for orchestration; kill contention by sharding or going lock-free; cut GC pressure with `sync.Pool`; guarantee every goroutine an exit via `context` to avoid leaks; and always run tests with `-race`.**
 
+```quiz
+Q: For a hot request counter incremented millions of times per second, what's the right primitive?
+- [ ] A channel that a dedicated counting goroutine reads
+- [ ] A mutex-guarded int
+- [x] An atomic.Int64 — lock-free, roughly a single instruction
+- [ ] sync.Map with an "count" key
+> "Channels orchestrate; mutexes synchronize" — and for single-word state, atomics beat both by a wide margin. A channel op involves the scheduler and internal locks; using one as a counter is the classic misapplication of the "always use channels" folklore.
+
+Q: Profiling shows one mutex serializing all goroutines, and adding cores made it worse. Why worse, and what's the fix?
+- [x] More cores means more goroutines fighting the same lock; shard it into N mutexes keyed by hash(key) % N, or go lock-free
+- [ ] The mutex is too small; use a RWMutex everywhere
+- [ ] The GC pauses are growing with core count
+- [ ] GOMAXPROCS is too low
+> A contended lock is a serial section — Amdahl's law in miniature — so extra parallelism just deepens the queue. Striping cuts contention ~N×; per-goroutine local state merged at the end eliminates it entirely.
+
+Q: What's the catch with sync.Pool that makes it wrong as a cache?
+- [ ] Objects in a pool can't contain pointers
+- [ ] Get() blocks when the pool is empty
+- [x] The GC may drain the pool at any cycle — it's for transient, reconstructible objects only
+- [ ] Pools are limited to 1,024 objects
+> A pool's contract is "maybe you'll get a reused object, maybe nil" — perfect for per-request scratch buffers (huge allocation-rate savings), wrong for anything that must persist. And always Reset() what you Get(), or stale data leaks between requests.
+
+Q: What do you get from errgroup.WithContext + g.SetLimit(20) that 'go func() per item' doesn't give you?
+- [ ] Faster goroutine creation
+- [x] Bounded in-flight concurrency, first-error propagation with cancellation of the rest, and a single Wait for completion
+- [ ] Automatic retries of failed items
+- [ ] Per-goroutine timeouts
+> Unbounded spawning means unbounded simultaneous demand on whatever's downstream (connection pools, rate limits). errgroup is Go's closest thing to structured concurrency: capped fan-out, fail-fast via context, and no goroutine left running when Wait returns.
+
+Q: What is the characteristic Go memory leak?
+- [ ] A slice that grows without bound
+- [ ] Forgetting to call Close on a file
+- [x] A goroutine blocked forever — e.g. receiving on a channel nobody will send to, with no ctx.Done() escape — pinning its stack and captures
+- [ ] Circular references the GC can't break
+> Go's GC handles cycles fine; what it can't free is a live goroutine. Every long-lived receive needs a select with a cancellation path, and goleak in the test suite catches the ones you missed. (And run tests with -race — a data race corrupts the state you're tuning.)
+```
+
 ## Part 7 — The Compiler & PGO
 
 The Go compiler prioritizes *fast compilation* over the aggressive optimization of a GCC or LLVM — but it does enough that knowing its passes helps you write code it can optimize, and one modern feature (PGO) gives a free speedup with zero code changes.
@@ -522,6 +729,36 @@ CGO_ENABLED=0 go build ./...          # force pure-Go static binary (no libc dep
 A crucial myth to dispel: **calling C via [cgo](https://pkg.go.dev/cmd/cgo) is usually *slower*, not faster, for compute.** A cgo call is not an ordinary function call — it switches off the goroutine stack, pins the goroutine to its OS thread (interfering with the scheduler), and crosses a boundary the GC and inliner can't see through, costing on the order of **tens of nanoseconds per call** plus lost optimizations. The maxim is *"cgo is not Go."* Reach for cgo only to reuse an existing C library you can't reimplement — never expecting a speedup — and if you must, **batch** work into few large calls rather than many small ones to amortize the crossing. For pure computation, idiomatic Go (or Go assembly for the truly hot kernel) beats a cgo binding.
 
 If you remember one thing from Part 7: **write inlining-friendly hot paths, lean on `-gcflags="-m"` to see what the compiler did, turn on PGO for a free 2–14% on CPU-bound services, and never reach for cgo expecting speed — its call overhead usually makes things slower.**
+
+```quiz
+Q: Why does the guide call inlining "the gateway optimization"?
+- [ ] It produces the largest single speedup of any pass
+- [x] An inlined function's body becomes visible to the caller's optimization — its allocations can become stack allocations, its bounds checks can be eliminated
+- [ ] It is the only optimization Go performs
+- [ ] It removes the need for escape analysis
+> Call overhead is the small win; the big one is that inlining unlocks the passes that follow. A hot helper too large to inline blocks all of it — which is why "keep hot, tiny helpers simple" is a real optimization, verifiable with -gcflags="-m".
+
+Q: How do you enable PGO for a Go service?
+- [ ] go build -pgo=auto -O3
+- [x] Drop a representative production CPU profile next to main as default.pgo and rebuild — the compiler picks it up automatically
+- [ ] Annotate hot functions with //go:hot
+- [ ] Run the binary twice; the runtime self-optimizes
+> No flags, no code changes: the presence of default.pgo triggers profile-guided inlining and devirtualization on the paths that are actually hot in production, typically worth 2–14%. Keep the profile fresh in CI as the workload shifts.
+
+Q: You're tempted to rewrite a hot computation in C via cgo "for speed." What does the guide say?
+- [ ] Good idea — C is faster than Go for compute
+- [ ] Only do it for I/O-bound code
+- [x] cgo calls cost tens of nanoseconds each, pin goroutines to threads, and block inlining/GC visibility — it usually makes compute slower
+- [ ] cgo is fine as long as you pass pointers, not values
+> "cgo is not Go": the boundary crossing switches stacks and fights the scheduler, and the optimizer can't see through it. The Python instinct ("drop into C") is backwards here. Use cgo to reuse C libraries you can't rewrite, batch the calls — and for hot kernels, idiomatic Go or Go assembly wins.
+
+Q: Why are interface method calls slower than direct calls, and what fixes it on hot paths?
+- [ ] They acquire a lock on the method table; use sync.Once
+- [x] They dispatch indirectly and block inlining; devirtualization — much more effective with PGO — converts provable call sites to direct calls
+- [ ] They allocate on every invocation regardless of the receiver
+- [ ] Nothing — Go interfaces compile to direct calls already
+> An interface call goes through a method table, costing the indirection plus every optimization inlining would have enabled. When the compiler can prove (or PGO shows) the common concrete type, it emits a direct, inlinable call instead.
+```
 
 ---
 
@@ -607,6 +844,36 @@ The loop that ties it together: **benchmark** the hot path with `-benchmem` → 
 
 If you remember one thing from Part 8: **`pprof` (CPU/heap/goroutine/block/mutex, viewed as flame graphs) finds the bottleneck, `go test -bench -benchmem` with `b.Loop()` measures it with allocation counts, `benchstat` proves the change is real, and the execution tracer explains why concurrency isn't scaling — always measure before optimizing.**
 
+```quiz
+Q: In a heap profile, when do you optimize alloc_space versus inuse_space?
+- [ ] They're interchangeable views of the same number
+- [x] alloc_space (total allocated over time) drives GC pressure; inuse_space (currently live) drives memory footprint — for GC cost, target alloc_space
+- [ ] inuse_space for servers, alloc_space for CLIs
+- [ ] alloc_space only matters when the GC is disabled
+> A hot path can show tiny inuse_space while allocating gigabytes per minute that the GC must continuously chase. High GC CPU → look at alloc_space; high RSS → look at inuse_space. They answer different questions.
+
+Q: Why does the guide insist on benchstat with -count=10 instead of comparing two single benchmark runs?
+- [ ] benchstat runs the benchmarks in parallel for speed
+- [x] A single run is noise — benchstat compares distributions and reports whether the difference is statistically significant
+- [ ] Single runs skip the warmup iterations
+- [ ] go test caches single-run results
+> Thermal effects, scheduling, and cache state make one run meaningless. "−38% ns/op, p<0.05 over 10 runs" is a claim; "it looked faster once" is an anecdote. This is how performance changes get justified in review.
+
+Q: Your service has idle CPU cores but throughput won't scale. The CPU flame graph looks unremarkable. What's the right tool?
+- [ ] A longer CPU profile
+- [ ] The heap profile
+- [x] The execution tracer — it shows P utilization, goroutine blocking, GC interference, and scheduler latency over time
+- [ ] strace on the process
+> A CPU profile shows where running code spends time; it can't show *waiting*. The tracer's timeline reveals serialization — goroutines blocked on each other, idle Ps, GC assists — the class of problem that defines "not scaling."
+
+Q: Why watch allocs/op as closely as ns/op in benchmark output?
+- [x] Allocation count drives GC pressure, so it's often the truest predictor of production performance — and driving it to zero is a concrete target
+- [ ] allocs/op includes stack allocations
+- [ ] ns/op is unreliable on Linux
+- [ ] Benchmarks can't measure time correctly without it
+> A function can look fast in isolation while its allocations tax every future GC cycle — a cost the microbenchmark's ns/op barely sees but production feels. -benchmem (or b.ReportAllocs) makes the real cost visible; b.Loop() (Go 1.24+) keeps the measurement honest.
+```
+
 ---
 
 ## Part 9 — Performance Levers
@@ -674,6 +941,36 @@ Microarchitecture targeting (`GOAMD64=v3`), keeping hot functions inlinable (Par
 Worth restating as a lever *not* to pull: **cgo makes compute slower**, not faster, because of per-call overhead (Part 7). If you're tempted to "drop into C for speed," that instinct (correct in Python) is backwards in Go.
 
 If you remember one thing from Part 9: **the Go levers, in order, are algorithm → reduce allocations → `sync.Pool` → right-size concurrency → tune the runtime (`GOMEMLIMIT`!) → PGO → avoid reflection → buffer I/O → reduce copying → compiler/asm — and almost all of them reduce to "allocate less and concur better," because the language is already fast.**
+
+```quiz
+Q: Profiling confirms a hot spot. What's the first question before reaching for any Go-specific lever?
+- [ ] Can sync.Pool reuse the allocations here?
+- [x] Is this the right algorithm and data structure at all — is there an O(n²) or a linear scan a map would kill?
+- [ ] Should this be parallelized with errgroup?
+- [ ] Is the function small enough to inline?
+> Lever 1 is universal: no micro-optimization touches an algorithmic-class win. Only after the algorithm is right do the Go-specific levers — allocations, pooling, concurrency — pay properly.
+
+Q: JSON marshaling dominates your CPU profile. Why, and what are the escape routes?
+- [x] encoding/json is reflection-heavy; options are faster drop-ins (jsoniter, sonic), code generation (easyjson), or hand-written marshaling for the hottest types
+- [ ] JSON is I/O-bound; add bufio and it disappears
+- [ ] The GC is scanning the JSON strings; raise GOGC
+- [ ] Goroutines are contending on the encoder's lock
+> Reflection inspects types at runtime, per value, every time — and JSON is the most common place Go services pay for it. The same logic favors generics over interface{}+reflection in your own code: monomorphized at compile time, no boxing, no reflect.
+
+Q: A loop writes thousands of small lines straight to a net.Conn and is mysteriously slow. What's the cheap fix?
+- [ ] Switch the connection to UDP
+- [ ] Spawn a goroutine per write
+- [x] Wrap the conn in bufio.Writer so small writes batch into few syscalls — and remember to Flush
+- [ ] Preallocate the lines slice
+> Every unbuffered small write is a syscall. Buffering batches them — frequently a dramatic win for line-oriented network or file I/O. The classic bug is forgetting Flush, which silently truncates the tail.
+
+Q: Which environment-variable change is the highest-value runtime setting for containerized Go, per the guide?
+- [ ] GOGC=off to eliminate GC overhead
+- [ ] GODEBUG=gctrace=1
+- [x] GOMEMLIMIT set just under the container's memory limit
+- [ ] GOAMD64=v4
+> It prevents the between-GC-cycles OOM kill class outright, with no code change. GOMAXPROCS matching the CPU quota is its sibling win (automatic on Go 1.25+); GOGC=off is only for short-lived batch jobs that exit before memory runs out.
+```
 
 ## Part 10 — High-Performance Recipes
 
@@ -909,6 +1206,36 @@ When a Go program is too slow, work through this:
 ```
 
 If you remember one thing from Part 10: **profile first (and watch `allocs/op`), then pick the cheapest lever — preallocation, `strings.Builder`, `sync.Pool`, bounded `errgroup`, atomics, and `GOMEMLIMIT` cover the overwhelming majority of real Go performance wins, and almost all of them come back to allocating less.**
+
+```quiz
+Q: Per the decision tree, a Go program is too slow. What's step one?
+- [ ] Set GOMEMLIMIT and GOGC, then re-test
+- [ ] Run with -race to rule out data races
+- [x] Profile it — CPU flame graph plus -benchmem, with special attention to allocs/op
+- [ ] Rewrite the hot loop with preallocated slices
+> Every branch of the tree hangs off measurement: high allocs/op points to escape work, high GC CPU to allocation rate, idle Ps to contention. Picking a lever before profiling is how the wrong thing gets optimized.
+
+Q: The mutex profile shows a single map's lock is the bottleneck under heavy mixed read/write traffic. Which recipe applies?
+- [ ] Replace the map with sync.Map unconditionally
+- [x] Stripe it into N shards, each with its own lock, selected by hash(key) % N
+- [ ] Guard the map with a channel instead
+- [ ] Make the map read-only and rebuild it per write
+> Sharding cuts contention roughly N× because goroutines touching different keys rarely meet at the same lock. sync.Map only wins for its niche (read-mostly or disjoint key sets) — benchmark before assuming it beats a striped map.
+
+Q: What's the complete container recipe for a Go service with a 1 GiB memory limit and 2-CPU quota?
+- [x] GOMEMLIMIT≈900MiB for headroom, and GOMAXPROCS=2 (automatic on Go 1.25+, automaxprocs or explicit before that)
+- [ ] GOGC=off and GOMAXPROCS=64
+- [ ] Just raise the pod's memory limit until OOM kills stop
+- [ ] GOMEMLIMIT=1GiB exactly and GOGC=10
+> The two settings mirror the container's two limits: the soft memory ceiling (with headroom for non-heap memory) prevents between-cycle OOM kills, and a quota-matched P count prevents scheduler and GC over-parallelism.
+
+Q: Why does the guide pair every recipe's ns/op with allocs/op?
+- [ ] allocs/op is easier to reproduce across machines
+- [x] Because in Go the allocation count is usually the mechanism — the recipes win by making less garbage, and allocs/op is the proof
+- [ ] ns/op can't be trusted under b.Loop()
+- [ ] Reviewers expect both numbers by convention
+> Preallocation, Builder, pooling, value slices — nearly every recipe's speedup arrives via fewer heap allocations and less GC work. An optimization that improves ns/op but not allocs/op deserves suspicion: it may be measurement noise (run benchstat).
+```
 
 ---
 

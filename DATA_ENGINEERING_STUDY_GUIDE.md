@@ -137,6 +137,36 @@ How files are laid out in your data lake is as important as the format.
 
 A useful smell test: if your "small files problem" gets worse over time, you don't have a compaction story. Add one.
 
+```quiz
+Q: `SELECT AVG(price) FROM orders WHERE date = ...` on a 200-column table is ~50–100× cheaper on columnar storage. Why?
+- [x] Columnar stores each column contiguously, so the engine reads only the 2 columns touched and skips the other 198 — row storage interleaves all 200, forcing them all off disk
+- [ ] Columnar storage indexes every column by default
+- [ ] Columnar compresses queries, not data
+- [ ] Row storage can't compute averages
+> The same locality also makes columnar compress far better (similar values adjacent → dictionary/RLE/delta encoding). That's the highest-leverage storage fact: layout determines what's cheap.
+
+Q: What makes Parquet's footer so powerful for query performance?
+- [x] It holds per-row-group column statistics (min/max/null counts), so an engine can skip entire row groups whose ranges can't match the predicate — predicate pushdown
+- [ ] It compresses the whole file with ZSTD
+- [ ] It stores a B-tree index over every column
+- [ ] It caches query results
+> Reading the footer first lets the engine prune most of the file before touching data pages. Row-group and file sizing tune the filtering granularity (smaller = finer pruning, more metadata overhead).
+
+Q: When is Avro the right format, despite being bad for analytics scans?
+- [x] For streaming / Kafka messages — it's row-oriented, compact binary, carries its schema for forward/backward compatibility; it just lacks the column pruning analytics needs
+- [ ] For large analytical fact tables
+- [ ] For human-readable config files
+- [ ] Whenever you'd otherwise use Parquet
+> Row vs columnar is workload-shaped: Avro for record-at-a-time messaging with schema evolution, Parquet for column-pruned scans. Arrow is the in-memory columnar standard that the engines share.
+
+Q: Why is `user_id` almost always the wrong data-lake partition key while `date` is almost always right?
+- [x] High-cardinality keys like user_id produce millions of tiny partitions (the small-files problem — catastrophic object-store overhead); date has enough cardinality to prune usefully without exploding the partition count
+- [ ] user_id can't be used in WHERE clauses
+- [ ] date partitions compress better
+- [ ] Partition keys must be integers
+> Partition cardinality is the lever: high enough to prune, low enough to avoid tiny-file proliferation. Z-ordering/clustering handles secondary range filters without a second partition level.
+```
+
 ---
 
 ## Phase 3: Warehouses, Lakes, and Lakehouses
@@ -225,6 +255,29 @@ By 2026 the practical question is mostly "Iceberg or Delta?" and the answer is u
 - **Concurrent writes** require optimistic concurrency reconciliation; conflicts manifest as commit failures that your jobs must retry.
 
 References: [Apache Iceberg spec](https://iceberg.apache.org/spec/), [Delta Lake protocol](https://github.com/delta-io/delta/blob/master/PROTOCOL.md), ["What is a lakehouse?" (Databricks)](https://www.databricks.com/glossary/data-lakehouse)
+
+```quiz
+Q: What does an open *table* format (Iceberg/Delta) add on top of Parquet *files*?
+- [x] It makes many Parquet files behave as one ACID-transactional table — schema/partition evolution, time travel, concurrent writers — and decouples storage from the query engine
+- [ ] A faster compression codec than Parquet
+- [ ] An in-memory columnar layout
+- [ ] Automatic indexing of every column
+> The lakehouse promise: warehouse-grade semantics on commodity object storage with engine choice (Snowflake, Trino, Spark, Athena, DuckDB all reading the same Iceberg tables).
+
+Q: Why does the guide insist "compaction is not optional" on a lakehouse?
+- [x] Frequent writes accumulate small files and manifest bloat; without scheduled OPTIMIZE/rewrite_data_files, query performance decays roughly linearly with write frequency
+- [ ] Compaction is required for ACID transactions
+- [ ] Without it, time travel breaks
+- [ ] It's only needed for Delta, not Iceberg
+> Vacuum/expire_snapshots is the paired chore (old snapshots and orphaned files accumulate). Set a retention window long enough for time-travel recovery, short enough to control storage cost.
+
+Q: What's the modern ELT shift away from old-world ETL, and why did it happen?
+- [x] Load raw into the warehouse first, then transform in-place with SQL — because warehouse storage and compute got cheap, making in-warehouse transformation faster and easier to debug than in-flight transformation
+- [ ] Transform before loading to save storage
+- [ ] ELT eliminates the need for orchestration
+- [ ] ELT only works on streaming data
+> The cheap-compute/cheap-storage economics are what made "transform inside the warehouse with dbt" beat Informatica-style in-flight pipelines. Storage/compute separation (Snowflake's shift) is the architectural foundation under it.
+```
 
 ---
 
@@ -402,6 +455,36 @@ The DAG is the most underused feature in DE. When something breaks, click upstre
 - **Not pinning dbt-core / adapter versions** — auto-upgrades have broken production. Pin in `requirements.txt`.
 
 References: [dbt documentation](https://docs.getdbt.com/), [dbt best practices guide](https://docs.getdbt.com/best-practices), [Locally Optimistic — How we structure our dbt projects](https://www.locallyoptimistic.com/post/how-we-structure-our-dbt-projects/)
+
+```quiz
+Q: How does dbt build the dependency DAG that orders model execution?
+- [x] From `{{ ref('model') }}` and `{{ source(...) }}` calls — each ref is an edge, so dbt materializes models in topological order
+- [ ] From the alphabetical order of file names
+- [ ] From a manually maintained dependency list
+- [ ] From the warehouse's foreign keys
+> ref() is both how you reference another model's output and how dbt learns the graph. That DAG also drives the docs site, the most underused feature: click upstream when something breaks, downstream to see blast radius.
+
+Q: An incremental model's source can receive rows with `updated_at` *earlier* than the current MAX. What breaks, and what's a fix?
+- [x] Late-arriving data gets skipped by `WHERE updated_at > MAX(updated_at)`; widen the watermark window or use insert_overwrite of recent partitions
+- [ ] The model crashes on the next run
+- [ ] Duplicate rows are inserted
+- [ ] Nothing — MERGE handles it automatically
+> The watermark must match the source's actual update behavior. The deeper rule: an incremental model must produce the same output on full-refresh as incrementally, or it's a latent bug — test both.
+
+Q: Which incremental strategy fits an immutable event stream versus records that can update?
+- [x] append (just INSERT) for immutable events — cheapest; merge (MERGE on unique_key) when records can change
+- [ ] merge for everything, always
+- [ ] delete+insert for immutable events
+- [ ] view materialization for both
+> insert_overwrite (wholesale partition replace) is the idempotent-rerun favorite on BigQuery/Spark. The strategy choice is about correctness under reruns, not just cost.
+
+Q: dbt snapshots implement which slowly-changing-dimension pattern, and how?
+- [x] SCD Type 2 — each run adds rows whose tracked column changed, stamping the prior version's dbt_valid_to, producing a time-versioned history
+- [ ] SCD Type 1 — overwriting old values
+- [ ] SCD Type 3 — keeping one previous value in a column
+- [ ] No SCD support; you write it by hand
+> "What was X on date D?" is answerable only with Type 2 history. Snapshots give it declaratively via timestamp or check strategies — the right default when historical accuracy matters.
+```
 
 ---
 
@@ -584,6 +667,29 @@ In practice: **design for at-least-once + downstream idempotency** unless the co
 
 References: [Kafka documentation](https://kafka.apache.org/documentation/), ["Designing Data-Intensive Applications" Ch. 11 — Stream Processing](https://dataintensive.net/), [Flink documentation](https://nightlies.apache.org/flink/flink-docs-stable/)
 
+```quiz
+Q: What's the architectural win of "a topic is a durable, replayable log"?
+- [x] N independent consumers can each read at their own offset without affecting producers or each other — decoupling that batch file-drops don't give you
+- [ ] Messages are deleted once consumed
+- [ ] Ordering is guaranteed across the whole topic
+- [ ] It eliminates the need for schemas
+> Kafka ordering holds *within* a partition, not across them. The replayable-log property is what enables Kappa-style reprocessing and adding new consumers retroactively.
+
+Q: Why use a schema registry in production Kafka?
+- [x] Producers/consumers resolve schemas by ID (payload carries just the ID), giving forward/backward compatibility and strong typing instead of JSON soup that breaks on an upstream rename
+- [ ] It encrypts the messages
+- [ ] It guarantees exactly-once delivery
+- [ ] It replaces consumer groups
+> The cost is an extra service and producer↔registry coupling, worth it past hobby scale. Avro binary is also far smaller than JSON — storage efficiency on top of compatibility.
+
+Q: What's the practical default for delivery semantics into a warehouse, and why?
+- [x] At-least-once plus downstream idempotency (MERGE on unique_key) — true exactly-once needs coordinated transactions across producer, broker, and a sink that supports it
+- [ ] Exactly-once always; anything less is unacceptable
+- [ ] At-most-once, since duplicates are worse than loss
+- [ ] It doesn't matter for batch sinks
+> Kafka has exactly-once *within* Kafka-to-Kafka since 2017, but into a warehouse it depends on the sink. Designing for idempotent inserts is simpler and usually sufficient — reserve exactly-once for when duplicate cost is concrete and unacceptable.
+```
+
 ---
 
 ## Phase 10: Data Modeling
@@ -642,6 +748,29 @@ Your model is probably wrong if:
 - "What was X on date D?" is impossible to answer. You don't have SCD2 history.
 
 References: [The Data Warehouse Toolkit](https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/books/), [The Data Vault Guru](https://www.datavaultalliance.com/), [dbt — How we structure our dbt projects](https://docs.getdbt.com/best-practices/how-we-structure/1-guide-overview)
+
+```quiz
+Q: In Kimball dimensional modeling, what distinguishes a fact table from a dimension table?
+- [x] A fact is one row per event — foreign keys plus numeric measures (fct_orders); a dimension is the slowly-changing context that gives those keys meaning (dim_customers)
+- [ ] Facts are normalized, dimensions denormalized
+- [ ] Facts store history, dimensions don't
+- [ ] Dimensions are larger than facts
+> The star schema (one fact + its dimensions) matches how analysts think — "orders per customer per region per month" — and is what query engines optimize for. Snowflaking dimensions onto each other is the anti-pattern; flatten instead.
+
+Q: A customer's address changes and the business needs to answer "what was their address on date D?" Which SCD type, and what does it do?
+- [x] Type 2 — keep history with valid_from/valid_to columns, each version a separate row; Type 1 (overwrite) loses the old value entirely
+- [ ] Type 1, since it's simplest
+- [ ] Type 3, which keeps full history
+- [ ] No SCD type can answer this
+> "What was X on date D is impossible to answer" is a modeling smell test that means you lack Type 2 history. dbt snapshots implement it well.
+
+Q: When is One Big Table (OBT) the right choice over a star schema?
+- [x] As a mart layer for the hottest dashboards — denormalized, no query-time joins, matches how Snowflake/BigQuery love to scan — kept *on top of* a Kimball-modeled core for flexibility
+- [ ] As a wholesale replacement for all dimensional modeling
+- [ ] Only for streaming data
+- [ ] When storage is the primary cost concern
+> OBT trades storage and update-cost for join-free analyst ergonomics. The best-of-both pattern is dimensional core for flexibility plus a few OBTs for speed — not one or the other.
+```
 
 ---
 
@@ -1032,47 +1161,17 @@ Walking through a realistic end-to-end pipeline so all the previous concepts lan
 
 ### 14.1 The Architecture, at a Glance
 
-```
-   ┌──────────┐     ┌──────────┐    ┌──────────────┐
-   │ Postgres │     │  Stripe  │    │ Clickstream  │
-   │  (app)   │     │  (SaaS)  │    │    (web)     │
-   └────┬─────┘     └────┬─────┘    └──────┬───────┘
-        │                │                  │
-        │ Debezium       │ Fivetran/        │ Snowplow/
-        │ (CDC via WAL)  │ Airbyte          │ Segment
-        ▼                ▼                  ▼
-   ┌─────────────────────────────────────────────────┐
-   │  Kafka (or Confluent Cloud)                     │
-   │   topics: app.orders, app.users, stripe.charges │
-   └────────────────────────┬────────────────────────┘
-                            │
-                            │ Kafka Connect S3 sink
-                            ▼
-   ┌─────────────────────────────────────────────────┐
-   │  S3 (raw zone)                                   │
-   │   s3://lake/raw/app/orders/dt=2026-05-20/*.avro  │
-   └────────────────────────┬────────────────────────┘
-                            │
-                            │ Spark / Iceberg writer (hourly)
-                            ▼
-   ┌─────────────────────────────────────────────────┐
-   │  Iceberg tables (bronze layer)                   │
-   │   bronze.app__orders, bronze.stripe__charges    │
-   └────────────────────────┬────────────────────────┘
-                            │
-                            │ dbt (orchestrated by Dagster)
-                            ▼
-   ┌─────────────────────────────────────────────────┐
-   │  Snowflake (mart layer)                          │
-   │   marts.fct_orders, marts.dim_customers          │
-   └────────────────────────┬────────────────────────┘
-                            │
-                ┌───────────┼─────────────┐
-                ▼           ▼             ▼
-            ┌──────┐  ┌─────────┐   ┌──────────┐
-            │ BI   │  │ Reverse │   │  Feature │
-            │ tool │  │   ETL   │   │   store  │
-            └──────┘  └─────────┘   └──────────┘
+```mermaid
+graph TD
+  PG["Postgres (app)"] -->|"Debezium — CDC via WAL"| K
+  ST["Stripe (SaaS)"] -->|Fivetran / Airbyte| K
+  CS["Clickstream (web)"] -->|Snowplow / Segment| K
+  K["Kafka — topics: app.orders, app.users, stripe.charges"] -->|Kafka Connect S3 sink| S3
+  S3["S3 raw zone<br/>s3://lake/raw/app/orders/dt=.../*.avro"] -->|Spark / Iceberg writer, hourly| BR
+  BR["Iceberg bronze layer<br/>bronze.app__orders, bronze.stripe__charges"] -->|dbt, orchestrated by Dagster| MART
+  MART["Snowflake mart layer<br/>marts.fct_orders, marts.dim_customers"] --> BI[BI tool]
+  MART --> RE[Reverse ETL]
+  MART --> FS[Feature store]
 ```
 
 ### 14.2 Step by Step, with the Choices Called Out

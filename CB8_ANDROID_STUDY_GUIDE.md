@@ -55,6 +55,19 @@ And one delta is a wash that surprises people: **device fragmentation matters le
 
 The two-phase plan survives unchanged, because it was derived from CB8's architecture, not from iOS: **Phase 1**, a native Kotlin client speaking the existing `/api` to a CB8 server the user already runs (the Docker/standalone deployments exist precisely to serve remote clients); **Phase 2**, an on-device library with local scanning, indexing, and in-process archive reading. The endpoint table, the `WebComicRecord` wire shape, the progress-write semantics, the thumbnail cache-buster contract — all established in iOS guide Parts 4–6 — are the same contract here, and this guide references rather than re-derives them.
 
+```mermaid
+graph LR
+  subgraph P1["Phase 1 — client for existing CB8 servers"]
+    K["Kotlin + Compose UI"] -->|"existing /api over HTTP"| SRV["CB8 server (Docker / standalone)"]
+  end
+  subgraph P2["Phase 2 — on-device library"]
+    SAF["SAF file access"] --> RD["in-process archive readers"]
+    RD --> ROOM[("Room: local index")]
+    ROOM --> UI2["same Compose UI"]
+  end
+  P1 ==>|"same wire contract, add a local backend"| P2
+```
+
 ---
 
 ## Part 2 — Choosing a Porting Strategy (the Android Version)
@@ -85,6 +98,29 @@ The same calculus as iOS, with one Android-specific addendum: if the *real* goal
 ### Option 3 (recommended): native Kotlin + Jetpack Compose, two phases
 
 The same shape as the iOS plan: Phase 1 is a Compose client for existing CB8 servers — login, library grid, reader, progress — requiring zero upstream changes; Phase 2 adds the on-device library via SAF, Room, and in-process archive readers. Compose is assumed throughout (this is a new app in 2026; the View system earns no place here), minimum SDK 26 (covers effectively the whole fleet while keeping `java.time` and adaptive icons unconditional), target SDK current per Play's annual requirement.
+
+```quiz
+Q: The node-on-device approach (nodejs-mobile) is "impossible" on iOS but only "instructive" on Android. Which two iOS blockers heal on Android?
+- [ ] Native addons and battery review
+- [x] JIT is legal (V8 runs at full speed, not crippled interpreter mode) and process spawning is legal (so `node-7z` could shell out to a bundled 7-Zip binary via the jniLibs trick)
+- [ ] Cookie persistence and PDF rendering
+- [ ] App review and filesystem reach
+> iOS forbids both JIT (outside WebKit) and process spawning, which kill nodejs-mobile and `node-7z` respectively. Android allows writable-executable pages (JIT works) and lets binaries in the native-library dir execute (spawning works). What still doesn't heal: native addons need per-ABI cross-compilation on every bump, the bundle balloons ~40MB, Android's free process-killing is hostile to a stateful server, and Play flags long-running local servers — so it's a fascinating weekend you won't ship.
+
+Q: Why is the WebView/Capacitor wrapper "materially more attractive" on Android than iOS, yet still a stopgap?
+- [ ] Android webviews render faster
+- [x] Play has no 4.2-style hostility to wrappers (a self-hosted client clears the minimum-functionality bar), but the *product* objections survive — no on-device library, webview reader feel, no offline story
+- [ ] TWA fits CB8 perfectly
+- [ ] Android has no review at all
+> The policy risk that makes wrappers dicey on iOS is much lower on Play, and the platform even blesses the pattern with Trusted Web Activities — though TWA needs a public HTTPS origin CB8's private LAN servers don't have. So the wrapper's review obstacle softens, but the reasons it's the wrong destination (client-only, webview-grade reading, no offline) are unchanged. It's a better stopgap, not a better endpoint.
+
+Q: Why does the two-phase native plan survive unchanged from the iOS guide to the Android one?
+- [ ] Because Android and iOS APIs are identical
+- [x] The plan was derived from CB8's own architecture (server core serving remote clients, plus a standalone on-device mode), not from any one platform's rules — so the endpoint table, wire shape, and progress semantics are the same contract on both
+- [ ] Because Compose mandates it
+- [ ] Because the iOS guide is authoritative
+> CB8 already ships as Docker/standalone deployments meant to serve remote clients, so Phase 1 (a native client speaking the existing `/api`) and Phase 2 (an on-device library mirroring the Electron build) follow from the codebase, not the platform. The `WebComicRecord` shape, thumbnail cache-buster, and progress-write rules are platform-agnostic contracts, which is why this guide references the iOS Parts 4–6 rather than re-deriving them.
+```
 
 ### Strategy decision table (Android edition)
 
@@ -251,6 +287,29 @@ class PersistentCookieJar(context: Context) : CookieJar {
         cache.values.filter { it.matches(url) && it.expiresAt > System.currentTimeMillis() }
 
     fun clear() { cache.clear(); prefs.edit().clear().apply() }
+
+```quiz
+Q: iOS's `URLSession` persists and replays the CB8 session cookie automatically. What's the Android reality?
+- [ ] OkHttp does the same automatically
+- [x] OkHttp's default `CookieJar` is a no-op and the JDK `CookieManager` is in-memory only, so you must write a small *persistent* cookie store — otherwise login evaporates on process death
+- [ ] Android can't use cookies at all
+- [ ] Cookies require EncryptedSharedPreferences
+> better-auth's signed session cookie (30-day sliding window) must survive Android's free process-killing, but OkHttp won't store or replay any cookie without a `CookieJar`, and the stock implementations don't persist. A reader whose login vanishes after the OS reclaims the process is broken, so the persistent jar (backed by SharedPreferences) is a small but mandatory piece the iOS port never had to write.
+
+Q: Why configure `Json { ignoreUnknownKeys = true }` for the kotlinx-serialization models?
+- [ ] To make parsing faster
+- [x] kotlinx throws on unknown JSON fields by default (Swift's JSONDecoder ignores them), so without it, CB8 adding a field to `mapping.ts` upstream would crash deployed Android clients — a classic cross-platform drift bug
+- [ ] It's required for @Serializable to compile
+- [ ] To allow null values
+> The two platforms have opposite defaults: Swift silently ignores unknown keys, kotlinx-serialization rejects them. If the server evolves its wire shape (a normal, backward-compatible change), strict Android clients would fail to decode and crash while iOS clients sail on. Setting `ignoreUnknownKeys = true` aligns the behavior and is exactly the kind of subtle divergence a careful port catches before production.
+
+Q: The `ProgressUpdate` data class deliberately omits a `completed` field. Why?
+- [ ] completed is computed on the client
+- [x] The server auto-completes on the final page (`routes/progress.ts`), and duplicating that rule client-side would let completion semantics drift between the web, iOS, and Android clients — one place owns it
+- [ ] The field was deprecated
+- [ ] Booleans don't serialize in kotlinx
+> Same principle as the iOS port: a business rule encoded in two independent clients eventually diverges on edge cases. Since the server marks an item completed when progress reaches the last page, the Android client just reports `page`/`location` and lets the server decide — keeping all three clients consistent. The omission is intentional, documented in the code comment, not an oversight.
+```
 
     private fun key(c: Cookie) = "${c.domain}|${c.path}|${c.name}"
     // serialize/deserialize: name, value, domain, path, expiresAt, flags —
@@ -479,6 +538,22 @@ The iOS guide's three pipeline disciplines carry over with Android spellings:
 
 Reader chrome: tap-zone arbitration (center toggles chrome, edges page) via a `pointerInput` overlay that checks tap x-position; immersive mode with `WindowInsetsControllerCompat.hideSystemBars()`; a `Slider` bound to the pager with `animateScrollToPage`; hardware keys (arrows/space — and **volume keys**, an Android comic-reader tradition worth honoring) via `onKeyEvent`. Keep the screen on while reading: `FLAG_KEEP_SCREEN_ON` scoped to the reader destination only.
 
+```quiz
+Q: Why use Telephoto's `ZoomableAsyncImage` inside `HorizontalPager` rather than hand-rolling pinch-zoom?
+- [ ] Compose can't display images otherwise
+- [x] Pinch-zoom inside a pager — where a zoomed pan must scroll the image and only flip pages at the edge — is the same gesture-arbitration problem UIScrollView solved on iOS; Telephoto implements that pager-aware behavior so you don't re-derive it
+- [ ] Telephoto is faster than Coil
+- [ ] HorizontalPager requires it
+> The arbitration between intra-page pan and inter-page flip is the genuinely hard part, identical to the iOS `UIScrollView`-in-pager problem. Telephoto (built on Coil) implements the zoomable, pager-aware image with double-tap-to-zoom, so the reader gets correct gesture handling for free. And `reverseLayout = true` is the entire right-to-left manga feature, because CB8 tracks page indexes not directions — index `n` stays index `n`, keeping progress web-interoperable.
+
+Q: What's the Android-specific reader discipline the iOS guide didn't need, and how do you handle it?
+- [ ] Cookie persistence
+- [x] A conservative bitmap memory budget across 3GB-to-16GB devices — cap Coil's memory cache (~25%), keep decoded sizes screen-bounded via `?width=`, and clear the cache on `onTrimMemory` (the jetsam warning iOS never gives you)
+- [ ] Process spawning limits
+- [ ] PDF text selection
+> Android's device fragmentation shows up most in RAM: a reader must not assume a flagship's memory. Bounding Coil's cache, requesting screen-sized pages (full-res only when zoomed), and reacting to the system's `ComponentCallbacks2.onTrimMemory` signal by dropping cached bitmaps keeps the app alive on low-RAM phones. iOS gives no equivalent low-memory warning before jetsam, so this proactive trimming is genuinely Android-specific.
+```
+
 ---
 
 ## Part 7 — EPUB and PDF
@@ -536,6 +611,29 @@ Three Android-specific realities to design around:
 - **SAF traversal is slow** — `DocumentFile.listFiles()` does a content-provider round trip per directory, and naive recursion over a 5,000-file library takes minutes. Use `DocumentsContract.buildChildDocumentsUriUsingTree` with a projection of just `DOCUMENT_ID`, `DISPLAY_NAME`, `MIME_TYPE`, `SIZE`, `LAST_MODIFIED` and query each directory in one cursor pass. This is the difference between a scan that feels indexed and one that feels broken; it's the Android counterpart of the iOS guide's ImageIO-downsampling "hum vs. jetsam" point.
 - **App-private storage needs no permissions at all** — files imported into `filesDir`/`getExternalFilesDir` are simply yours. Offer "import a copy" (owned) vs "index in place" (SAF reference), the same owned/referenced split as iOS, and keep CB8's README promise: removing a library item deletes the row, never the file.
 - **"All files access" (`MANAGE_EXTERNAL_STORAGE`) is the tempting wrong answer.** It would make scanning trivial and Play restricts it to app categories CB8 doesn't fit; a file-manager-style permission declaration will bounce. SAF is the supported path; spend the effort on making it fast rather than on the appeal process. (For the F-Droid/sideload build flavor, this constraint relaxes — Part 12.)
+
+```quiz
+Q: What is the Storage Access Framework the Android analog of, and what makes folder access persist across launches?
+- [ ] The iOS Photos picker; nothing persists
+- [x] The iOS document picker plus security-scoped bookmark — `OpenDocumentTree` grants access and `takePersistableUriPermission` makes it survive relaunch, with the tree Uri stored in Room (as CB8 persists scan paths in its DB)
+- [ ] MANAGE_EXTERNAL_STORAGE; a manifest flag
+- [ ] A raw file path; the path itself persists
+> Android's sandbox, like iOS's, requires explicit user-granted access to outside folders. `ActivityResultContracts.OpenDocumentTree()` is the picker, and `takePersistableUriPermission` is the persistence mechanism (the bookmark equivalent) — you store the resulting tree Uri in your database. Broad "All files access" exists but Play restricts it to app categories CB8 doesn't fit, so SAF is the supported path.
+
+Q: Why is naive `DocumentFile.listFiles()` recursion a problem for scanning a large library, and what's the fix?
+- [ ] It can't read subdirectories
+- [x] Each `listFiles()` is a content-provider round trip, so recursing a 5,000-file tree takes minutes; query each directory once via `buildChildDocumentsUriUsingTree` with a minimal column projection in a single cursor pass
+- [ ] listFiles() requires MANAGE_EXTERNAL_STORAGE
+- [ ] It decodes images while listing
+> SAF traversal performance is a real engineering topic: the convenience `DocumentFile` API hides an IPC round trip per directory, which makes a big-library scan feel broken. Dropping to `DocumentsContract.buildChildDocumentsUriUsingTree` and reading just the columns you need (id, name, mime, size, modified) in one cursor per directory is the difference between an indexed-feeling scan and a hung one — the Android counterpart of the ImageIO "hum vs jetsam" discipline.
+
+Q: How does long-running background work (library scans, bulk downloads) compare between iOS and Android for this app?
+- [ ] Both are equally constrained
+- [x] Android makes it a first-class citizen via WorkManager, where iOS tightly budgets background time (`BGProcessingTask`) — so Android scans and offline syncs get dramatically simpler
+- [ ] iOS is more permissive than Android
+- [ ] Neither platform allows background scans
+> This is one of the deltas that cuts in Android's favor: WorkManager handles deferrable, guaranteed background work (with constraints like charging/unmetered) as a supported pattern, so a multi-thousand-file scan or a bulk offline download is straightforward. iOS's `BGProcessingTask` is a tightly-budgeted lottery, which is why the iOS guide steers scans into the foreground. Android lets them run properly in the background.
+```
 
 ### The Room schema
 
@@ -661,6 +759,29 @@ Recommendation: libarchive via a maintained binding if you want one path that ha
 ### Image format coverage
 
 CB8's `imageFilter.ts` set is `jpg jpeg png webp gif bmp jxl avif`. Android platform decoding: JPEG/PNG/WebP/GIF/BMP always; **AVIF from API 31**; **JPEG XL not at all** (as of current API levels). Coil + a libjxl-JNI decoder plugs the JXL gap if your library actually contains JXL pages (CB8 bundles `@jsquash/jxl` for the same reason — the web platform lacks JXL too, which is a hint about how often this matters: it does, for some manga archives). Keep the extension in the filter either way — a page you can't decode should surface as a broken-page error, not silently vanish from the page count, or page indexes drift from the server's and progress interop breaks. That invariant — **filter by the shared extension list, not by what the device can decode** — is exactly the kind of subtle contract the shared-spec porting discipline exists to protect.
+
+```quiz
+Q: CB8's CBR (RAR) extraction maps to more options on Android than iOS, but with the same conclusion shape. What's the key constraint that rules out the simplest pure-Kotlin option alone?
+- [ ] junrar is not Apache-licensed
+- [x] junrar handles RAR4 but not RAR5, which has been WinRAR's default since 2013 — so modern CBRs fail; you need libarchive-NDK, a convert-on-import path, or the bundled-7z trick to cover RAR5
+- [ ] RAR can't be read on Android at all
+- [ ] junrar requires the NDK
+> junrar is the tempting NDK-free first tier, but its RAR4-only support means a large fraction of real-world CBRs (RAR5) won't open. The honest options that cover RAR5 are libarchive via a JNI binding, converting CBR→CBZ at import, or the Android-only bundled-7z move. As on iOS, hide the choice behind the `ComicArchive` interface — and remember Phase 1 sidesteps it entirely, since the server delivers decoded images.
+
+Q: Why filter archive pages by CB8's shared extension list rather than by what the Android device can actually decode (e.g. dropping JXL on older APIs)?
+- [ ] Decodable formats change too often to track
+- [x] Page indexes must match the server's, so an undecodable page should surface as a broken-page error rather than vanish from the page count — dropping it would shift every later index and break progress interop
+- [ ] The filter list is faster to evaluate
+- [ ] Android can decode every format anyway
+> This is the subtle contract the shared-spec discipline protects: filtering by the canonical extension set keeps page index `n` meaning the same page everywhere. If the device silently omitted a JXL page it can't decode, the page count and all subsequent indexes would diverge from the server's, breaking cross-client resume. A page you can't render is a broken page, not a missing one — keep it in the sequence and show an error.
+
+Q: The bundled-7z trick (`lib7zz.so` in jniLibs, exec'd from nativeLibraryDir) is "the closest possible port of CB8's actual architecture." Why is it nonetheless reserved for the sideload flavor?
+- [ ] It doesn't actually work
+- [x] It carries ~6MB across ABIs, process-spawn latency, and the 7-Zip RAR codec's unrar-license rider — a problem for an F-Droid flavor and a heavier footprint than Play review prefers; the supported in-process options fit the store build better
+- [ ] Play bans all native binaries
+- [ ] It only works on rooted devices
+> It genuinely works (it *is* node-7z's design legally re-homed, exploiting Android's exec-from-native-library-dir allowance), but the costs — APK bloat, per-open spawn latency, and the unrar licensing clause riding the RAR codec — make it a poor fit for the Play build and the F-Droid (libre) flavor. So the recommendation reserves it for the sideload channel where size and licensing review matter less, using libarchive or convert-on-import for the store builds.
+```
 
 ### Porting `naturalSort.ts`
 

@@ -108,6 +108,29 @@ If the client is a browser, *where* the credential lives determines which attack
 
 If you remember one thing from Part 1: **separate AuthN ("who are you?", 401) from AuthZ ("may you?", 403); then choose your credential model deliberately — stateful sessions for most apps (simple, instantly revocable), stateless tokens when you genuinely need cross-domain or microservice statelessness — and in browsers prefer `HttpOnly; Secure; SameSite` cookies, because `SameSite` kills CSRF and `HttpOnly` kills XSS-theft.**
 
+```quiz
+Q: What's the core trade-off between stateful sessions and stateless JWTs?
+- [ ] Sessions are insecure; JWTs are secure
+- [x] Sessions allow instant revocation and always-fresh roles at the cost of a session-store lookup per request; JWTs verify by signature alone (stateless) but a signed token stays valid until it expires — revocation and staleness are hard
+- [ ] JWTs are always faster and better
+- [ ] Sessions can't scale at all
+> A session is a server-side record, so deleting it logs the user out *now* and each request re-reads current permissions — but every request hits the store. A JWT carries signed identity, so verification needs no lookup (great for microservices/edge), but you can't un-sign it: a revoked-but-unexpired token still validates, and a role change doesn't apply until expiry. The 2026 default is sessions for normal apps; tokens where statelessness genuinely pays.
+
+Q: In a browser, why do `HttpOnly; Secure; SameSite` cookies beat storing the credential in `localStorage`?
+- [ ] localStorage is slower to read
+- [x] `HttpOnly` blocks XSS theft (JS can't read the cookie) and `SameSite` neutralizes CSRF for free (the cookie isn't sent on cross-site requests); localStorage is XSS-readable, and the header approach you'd pair with it carries the XSS exposure
+- [ ] Cookies can't be stolen
+- [ ] localStorage doesn't work over HTTPS
+> The storage location picks your poison: `localStorage` is immune to CSRF (your code attaches it explicitly) but exposed to XSS (any injected script exfiltrates it); an `HttpOnly` cookie is immune to XSS theft but would be CSRF-exposed — except `SameSite=Lax/Strict` stops the browser sending it cross-site, closing CSRF. So the cookie gets both protections when client and API share a registrable domain; reserve the `Authorization` header for native/cross-domain cases.
+
+Q: A request to view another user's private data is rejected. Should it be a 401 or a 403, and why does the distinction matter?
+- [ ] 401, because the user isn't logged in
+- [x] 403 — the user is authenticated (AuthN succeeded, "who you are") but not authorized (AuthZ failed, "may you?"); conflating them leads to bugs like re-prompting login when the real issue is permissions
+- [ ] 404, to hide everything
+- [ ] Either; they're interchangeable
+> 401 means "I don't know who you are — authenticate," while 403 means "I know who you are, and you may not." Keeping AuthN and AuthZ separate clarifies both the response codes and the code: a logged-in user hitting a forbidden resource needs a 403, not a login redirect. (Sometimes you deliberately return 404 instead of 403 to avoid leaking that a resource exists — a separate, intentional choice.)
+```
+
 ---
 
 ## Part 2 — Passwords & Credential Storage
@@ -178,6 +201,29 @@ Hashing protects you *after* a DB leak. You also have to protect the live login 
 - **Account lockout** — temporary lock after N failures. Beware: aggressive lockout becomes a *denial-of-service* vector (an attacker locks out a victim on purpose). Prefer rate-limiting + step-up challenges (CAPTCHA, MFA) over hard lockout.
 - **Breached-password check** — reject passwords found in known breach corpora (the [Have I Been Pwned](https://haveibeenpwned.com/Passwords) k-anonymity API lets you check without sending the password). This is higher-value than most composition rules.
 - **Drop the silly rules.** Modern guidance ([NIST SP 800-63B](https://pages.nist.gov/800-63-3/sp800-63b.html)) is: require *length* (≥8, ideally allow long passphrases up to 64+), screen against breach lists, and **stop** forcing periodic rotation and arbitrary character-class rules — they push users toward `Password1!` and predictable mutations.
+
+```quiz
+Q: Why is SHA-256 the wrong choice for hashing passwords, even though it's a strong cryptographic hash?
+- [ ] SHA-256 is reversible
+- [x] It's designed to be *fast*, so an attacker with a leaked hash can try billions of guesses per second; password hashing wants to be deliberately slow and memory-hard (Argon2id, scrypt, bcrypt)
+- [ ] SHA-256 produces collisions easily
+- [ ] SHA-256 has no salt
+> A password hash is not a general-purpose hash. SHA-256's speed — a virtue for integrity checks — is exactly the liability here, because cracking a leaked hash is a guessing race and fast hashing lets the attacker guess faster. Purpose-built password hashes are intentionally slow and memory-hard (resisting GPU/ASIC cracking), tuned so one hash takes ~100–250ms. Argon2id is the 2026 default.
+
+Q: What attack does a unique per-password salt defeat, and who should generate it?
+- [ ] Brute force; you generate it manually
+- [x] Rainbow tables (precomputed hash lookups) and seeing which users share a password — and the library generates and embeds the salt automatically; don't roll your own
+- [ ] CSRF; the browser generates it
+- [ ] Timing attacks; the database generates it
+> A salt makes two identical passwords hash differently, so a precomputed rainbow table is useless and an attacker can't spot password reuse across accounts. Modern password-hash libraries generate a random salt per password and embed it (with the algorithm and parameters) in the output string, so verification re-extracts it — you store one self-contained string. Hand-rolling salt handling is a classic source of bugs.
+
+Q: In the login path, why hash a dummy password even when the username doesn't exist?
+- [ ] To log the failed attempt
+- [x] To equalize response timing — if "no such user" returned instantly while a real user's check took ~150ms, attackers could enumerate valid usernames by timing; the dummy hash hides which accounts exist
+- [ ] To rate-limit the attacker
+- [ ] Argon2 requires it
+> A timing difference between "user not found" (fast) and "user found, password checked" (slow) leaks account existence — user enumeration. Running an equivalent dummy hash on the missing-user branch makes both paths take roughly the same time, so an attacker can't distinguish valid from invalid usernames by latency. It's the same constant-time-comparison philosophy applied to the whole login flow.
+```
 
 If you remember one thing from Part 2: **store passwords as Argon2id (or bcrypt/scrypt) hashes — never a fast hash like SHA-256, never plaintext — let the library handle the per-password salt, tune the cost to ~100–250ms, equalize timing to prevent user enumeration, and defend the live endpoint with rate limiting and breached-password screening.**
 
@@ -338,6 +384,29 @@ A JWT library checks the signature, but *you* must insist on the rest. A "valid 
 
 If you remember one thing from Part 4: **a JWT is signed, not encrypted — readable by anyone, so never put secrets in it — and "the signature is valid" is not enough: pin the algorithm (kill `alg=none` and RS256→HS256 confusion), and verify `exp`, `aud`, and `iss` on every request. Use HS256 only inside a monolith; use RS256/JWKS the moment more than one service verifies.**
 
+```quiz
+Q: A JWT payload is "signed, not encrypted." What practical rule follows?
+- [ ] Always encrypt the whole token
+- [x] Never put secrets in the payload — anyone can Base64-decode and read the claims; the signature provides integrity and authenticity, not confidentiality
+- [ ] The payload is safe because it's hashed
+- [ ] Only the server can read the payload
+> Paste any JWT into jwt.io and the claims are plaintext — the signature only proves the token wasn't altered and came from the issuer, not that the contents are hidden. So a JWT is fine for non-secret identity claims (user id, roles, expiry) but never for passwords, API keys, or PII you wouldn't expose. Encrypted tokens are JWE, a separate and rarer mechanism.
+
+Q: Why must you pass an explicit `algorithms=["RS256"]` allowlist when verifying, rather than trusting the token's header?
+- [ ] To speed up verification
+- [x] To defeat the `alg=none` attack (an unsigned token naive libraries once accepted) and the RS256→HS256 confusion attack (an attacker re-signs with your *public* key treated as an HMAC secret); pinning the algorithm closes both
+- [ ] RS256 is faster than HS256
+- [ ] The header is encrypted
+> Letting the token dictate its own verification algorithm is the root of two classic forgeries: `{"alg":"none"}` with no signature, and tricking an RS256 verifier into running HS256 with the *public* key as the shared secret (which the attacker also has). Hardcoding the expected algorithm means the verifier ignores the attacker-controlled header and only accepts what you intended. A valid signature under the *wrong* algorithm is still a forgery.
+
+Q: When should you use HS256 versus RS256/ES256 for signing JWTs?
+- [ ] HS256 for distributed systems; RS256 for monoliths
+- [x] HS256 (one shared secret signs and verifies) only inside a monolith; RS256/ES256 (private key signs, public key verifies) the moment more than one service verifies — a verifier can check but not forge
+- [ ] Always HS256; it's simpler
+- [ ] They're interchangeable in all cases
+> With HS256 the verify secret *is* the sign secret, so every service that checks tokens can also mint them — acceptable when one codebase does both, dangerous when distributed (any leak forges arbitrary tokens). Asymmetric signing keeps the private key on the auth server and distributes only the public key (via a JWKS endpoint), so APIs verify without the power to forge. That's the standard for distributed systems and OIDC.
+```
+
 ## Part 5 — OAuth 2.0 & OpenID Connect
 
 OAuth 2.0 and OIDC are the standards behind "Log in with Google," third-party API access, and most modern SSO. They're widely misunderstood because the two solve *different* problems and are constantly conflated — so start there.
@@ -362,22 +431,18 @@ Memorize these; every flow is a conversation between them:
 
 This is *the* flow for essentially all modern apps — SPAs, mobile, and traditional web. It replaced the old Implicit Flow (now deprecated — it leaked tokens in URLs). **PKCE** ("pixie," [Proof Key for Code Exchange, RFC 7636](https://datatracker.ietf.org/doc/html/rfc7636)) is the addition that makes it safe for public clients that can't keep a secret.
 
-```text
-1. Client generates a random code_verifier, and code_challenge = SHA256(code_verifier).
-2. Client redirects user to the Authorization Server, sending the code_challenge.
-        ──►  https://auth.example.com/authorize?
-                response_type=code&client_id=...&redirect_uri=...&
-                scope=openid profile email&state=<csrf>&
-                code_challenge=<hash>&code_challenge_method=S256
-3. User logs in and consents.
-4. Auth Server redirects back to the Client with a one-time authorization_code.
-        ◄──  https://app.example.com/callback?code=<code>&state=<csrf>
-5. Client makes a BACK-CHANNEL POST to the token endpoint, sending the code
-   AND the original plaintext code_verifier.
-        ──►  POST /token  { code, code_verifier, client_id, redirect_uri }
-6. Auth Server computes SHA256(code_verifier); if it matches the code_challenge
-   from step 2, it returns the tokens.
-        ◄──  { access_token, id_token, refresh_token, expires_in }
+```mermaid
+sequenceDiagram
+  participant U as User / Browser
+  participant C as Client app
+  participant AS as Authorization Server
+  Note over C: generate code_verifier, code_challenge = SHA256(verifier)
+  C->>AS: redirect to /authorize (code_challenge, state, scope)
+  U->>AS: log in and consent
+  AS->>C: redirect to callback — one-time authorization_code + state
+  C->>AS: back-channel POST /token (code + plaintext code_verifier)
+  Note over AS: SHA256(code_verifier) must match the stored code_challenge
+  AS->>C: access_token, id_token, refresh_token
 ```
 
 **Why PKCE matters:** if an attacker intercepts the `authorization_code` in step 4 (e.g., a malicious app hijacking a mobile custom-URL-scheme redirect), they still can't exchange it for tokens in step 5 — they don't have the secret `code_verifier`, and the code alone is useless. PKCE binds the code to the client that started the flow. (The separate `state` parameter is a CSRF token for the redirect — always verify it on return.)
@@ -437,6 +502,29 @@ The auth-code+PKCE flow covers user-facing apps. Two others you'll meet:
 
 The **deprecated** ones to avoid: **Implicit** (tokens in the URL fragment — replaced by auth-code+PKCE) and **Resource Owner Password Credentials** (the app collects the user's password directly — defeats the entire point of OAuth; never use it).
 
+```quiz
+Q: What's the difference between OAuth 2.0 and OpenID Connect, and why does "log in with Google" need OIDC?
+- [ ] They're the same standard
+- [x] OAuth 2.0 *authorizes* (issues access tokens for resources, saying nothing verifiable about identity); OIDC adds an *authentication* layer with an ID token — using a bare OAuth access token as proof of login is a real vulnerability
+- [ ] OAuth is newer and replaces OIDC
+- [ ] OIDC is only for enterprises
+> OAuth answers "what may this app access?" — an access token grants scoped permission but doesn't verifiably identify the user or which app it was issued to. OIDC layers identity on top with an ID token. The classic mistake is treating "I got an access token for their profile" as "they're authenticated," which an attacker can exploit. For login, use OIDC; for delegated API access, use OAuth.
+
+Q: In the auth-code flow, how does PKCE protect a public client even if an attacker intercepts the authorization code?
+- [ ] It encrypts the code
+- [x] The client sends only `code_challenge = SHA256(code_verifier)` up front, then must present the secret `code_verifier` to redeem the code — an intercepted code is useless without the verifier, binding the code to the client that started the flow
+- [ ] It shortens the code's lifetime to one second
+- [ ] It signs the code with the client secret
+> PKCE binds the authorization code to the originating client via a one-way challenge: the auth server only releases tokens to whoever can produce the `code_verifier` whose hash it saw earlier. A malicious app hijacking a mobile redirect grabs the code but not the verifier, so the back-channel token exchange fails. This is why public clients (SPAs, mobile) that can't keep a secret can still use the flow safely. The separate `state` parameter handles CSRF on the redirect.
+
+Q: Why must the client never send an OIDC ID token to an API as an authorization credential?
+- [ ] ID tokens are encrypted
+- [x] The ID token proves *login to the client* and is meant for the client; the access token is what authorizes API calls. Sending the ID token to an API (or having the client parse the access token) confuses their distinct audiences and jobs
+- [ ] ID tokens expire too quickly
+- [ ] APIs can't read JWTs
+> The two tokens have different audiences: the ID token answers "who logged in?" for the client, the access token answers "what may the bearer do?" for the resource server. The client should treat the access token as opaque (only forward it) and never present the ID token as API authorization — it carries no statement about API permissions. Mixing them is a recurring broken-auth bug.
+```
+
 If you remember one thing from Part 5: **OAuth 2.0 authorizes (access tokens for APIs); OIDC authenticates (ID tokens for your app) — use OIDC for login, not bare OAuth. The auth-code flow with PKCE is the one flow for user-facing apps; keep the access token opaque to the client and never send the ID token to an API.**
 
 ---
@@ -484,6 +572,29 @@ Here's the question that exposes the cost of statelessness: *a user is banned, b
 4. **Push-based invalidation (CAE).** The API subscribes to an event stream from the identity provider; when a user is revoked, it receives an invalidation event and updates a local blocklist. This is essentially the [Distributed Systems guide](DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md)'s cache-invalidation problem — eventual consistency with a propagation delay you must bound.
 
 Recognize the shape: **revocation is fundamentally a distributed-cache-invalidation problem.** A JWT is a cached copy of an authorization decision; revoking it means invalidating that cache everywhere it's trusted, which is exactly as hard as cache invalidation always is. Stateful sessions sidestep this entirely (delete the record) — which is, again, why they're the better default for apps that don't need statelessness.
+
+```quiz
+Q: Why split the credential into a short-lived access token and a long-lived refresh token?
+- [ ] To reduce token size
+- [x] The access token (5–15 min) gives fast stateless verification on every request and limits the damage of theft; the long-lived refresh token is revocable and only sent to the auth server — so you get stateless speed on the hot path and real revocation on the cold path
+- [ ] Refresh tokens are faster to verify
+- [ ] Access tokens can't be stolen
+> This resolves the staleness/revocation weakness of pure JWTs. The access token is verified by signature alone (no lookup) but is useless within minutes if stolen and reflects role changes quickly; the refresh token lives server-side, is sent only to the auth server to mint new access tokens, and can be revoked. It's the hybrid that combines both Part 1 models.
+
+Q: What does refresh-token rotation with reuse detection accomplish?
+- [ ] It makes tokens never expire
+- [x] Each refresh issues a new token and invalidates the old one; if an already-invalidated token is ever presented again, the server treats it as theft and revokes the entire token family — turning a silent stolen-token compromise into a detectable, self-healing event
+- [ ] It rotates the signing key
+- [ ] It encrypts the refresh token
+> Rotation chains the refresh tokens (RT1→RT2→RT3), so a stolen-and-replayed old token surfaces as the impossible event of reusing an invalidated one. The server then locks out the whole family, forcing re-login: the victim logs back in, the thief is shut out. It's the single most valuable refresh-token feature and is baked into OAuth 2.1, especially for public clients that can't perfectly secure the token.
+
+Q: A user is banned but holds a valid, unexpired 15-minute access token. Why is stopping it "fundamentally a cache-invalidation problem"?
+- [ ] The token is stored in a CDN cache
+- [x] A JWT is a cached copy of an authorization decision verified by signature with no DB lookup, so revoking it means invalidating that cached decision everywhere it's trusted — solved by waiting it out, a `jti` blocklist, tiered live checks, or push-based invalidation
+- [ ] Caches are unrelated to tokens
+- [ ] You just delete the token from the database
+> The whole point of a stateless token is that the API trusts the signature without asking anyone, which is exactly why you can't un-issue it — the authorization decision is cached in the token itself, distributed to every verifier. Options trade cost for immediacy: accept the short window, check a small `jti` revocation set in Redis, do live checks only on sensitive actions, or push invalidation events. Stateful sessions sidestep this by just deleting the record.
+```
 
 If you remember one thing from Part 6: **pair a short-lived (5–15 min) stateless access token with a long-lived, revocable refresh token that rotates on every use and revokes the whole family on reuse — and accept that revoking an unexpired access token is a cache-invalidation problem, solved by keeping it short, checking a `jti` blocklist, or doing live checks on sensitive actions.**
 

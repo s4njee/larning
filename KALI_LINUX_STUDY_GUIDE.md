@@ -45,6 +45,39 @@ But the distribution is the least interesting thing about Kali. What matters is 
 
 The single most important habit this methodology instills is **enumerate before you exploit**. Beginners want to fire exploits; the work that actually finds the way in is the patient cataloguing of attack surface, because exploitation is trivial once you know the exact version of the exact service with the exact misconfiguration — and impossible when you're guessing. The rest of this guide is that methodology, phase by phase, with the technique explained before the tool that automates it.
 
+```mermaid
+graph LR
+  R["Reconnaissance<br/>build a model of the target"] --> S["Scanning + enumeration<br/>hosts, ports, exact versions"]
+  S --> A["Analysis<br/>match surface to known weaknesses"]
+  A --> E["Exploitation<br/>prove a weakness gives access"]
+  E --> PE["Post-exploitation<br/>privesc, lateral movement, persistence"]
+  PE --> RP["Reporting<br/>document the path and the fix"]
+  S -.enumerate before you exploit.-> E
+```
+
+```quiz
+Q: Why does Kali disable all network services by default and ship a wireless-injection-patched kernel?
+- [ ] To make it slower
+- [x] A box used to attack networks shouldn't itself be a soft target advertising services, and the kernel patches enable wireless attacks that mainline drivers omit — both reflect that Kali is a purpose-built offensive tool, not a daily-driver desktop
+- [ ] Those are accidental defaults
+- [ ] To comply with Debian policy
+> Kali's design choices encode its purpose: listening on nothing keeps the attacker's machine from being attackable, the injection-capable kernel makes wireless work that requires driver surgery elsewhere "just work," and strict repositories keep its version-matched tool set from breaking. The practical corollary is to run it in a snapshotted VM and resist bolting random software onto it.
+
+Q: What does "enumerate before you exploit" capture about the pentest methodology?
+- [ ] Exploitation is the hardest phase
+- [x] Exploitation is trivial once you know the exact vulnerable version and misconfiguration, and impossible when guessing — so the patient cataloguing of attack surface is the work that actually finds the way in; beginners fixate on exploits, professionals reach them last
+- [ ] You should skip reconnaissance
+- [ ] Scanners replace enumeration
+> The structured progression (recon → scan/enumerate → analyze → exploit → post-exploit → report) exists because each phase feeds the next, and the payoff is front-loaded: a great pentest is a great enumeration phase followed by a short, precise exploitation phase. Firing exploits blindly wastes effort; knowing the exact service-version-misconfiguration makes the exploit step a lookup.
+
+Q: In the methodology, what question does the post-exploitation phase answer, and why does it determine the engagement's value?
+- [ ] Whether a port is open
+- [x] "Now that you're in, how far can you go?" — privilege escalation, lateral movement, persistence, and reaching the assets that matter; initial access alone understates impact, so post-ex is what shows the real business risk
+- [ ] How to write the report
+- [ ] Which scanner to run
+> Gaining a foothold proves a weakness is real, but a defender needs to know the consequences: can that foothold become domain admin, reach the crown-jewel database, or persist undetected? Post-exploitation maps that blast radius, which is what converts "we got a shell on a web server" into a finding with measurable impact — the difference between a curiosity and a board-level risk.
+```
+
 ---
 
 ## 2. How Kali Organizes Its Tools
@@ -86,6 +119,29 @@ httpx-toolkit -l unique-subs.txt -title -tech-detect -o live-http.txt   # valida
 ```
 
 The mental model to carry out of this phase is that recon is *modeling*, not *attacking*. You are building a picture detailed enough that the next phase knows exactly where to look, and the quality of that picture determines everything downstream — a great pentest is usually a great reconnaissance phase followed by a short, precise exploitation phase, never the reverse.
+
+```quiz
+Q: What distinguishes passive from active reconnaissance, and why front-load passive?
+- [ ] Passive uses faster tools
+- [x] Passive gathers info from third parties (cert logs, DNS registrars, search engines) without ever touching the target, so it's invisible and undetectable; active touches the target directly and is detectable — every fact learned passively is gathered free and unseen
+- [ ] Passive is illegal; active is legal
+- [ ] They produce identical results
+> Passive recon queries datasets that already hold information about the target (certificate transparency, public DNS, breach data), so the target sees nothing. Active recon resolves the target's DNS or fetches its pages, which it can log. Front-loading passive means you build as much of the picture as possible without alerting the target or leaving a trace, reserving detectable active probes for what passive can't reveal.
+
+Q: Why is validating discovered subdomains (resolving and probing for live HTTP) a crucial step, not an optional one?
+- [ ] It speeds up the scan
+- [x] Discovery yields a list of *names*, but a name in a cert log isn't a live host — conflating "this subdomain exists" with "this serves an attackable app" wastes the entire next phase chasing dead names
+- [ ] Validation is required by law
+- [ ] Names can't be resolved otherwise
+> Certificate-transparency logs and DNS aggregation reveal subdomains an org may have forgotten, but many resolve to nothing or serve no application. The validation step (e.g. httpx probing which names actually answer HTTP and what they run) separates real attack surface from noise, so the next phase targets live, attackable hosts rather than burning time on names that lead nowhere.
+
+Q: Why is "Apache 2.4.49" a far more valuable finding than "port 80 open"?
+- [ ] Port numbers are unreliable
+- [x] The exact software and version is what you look up against known vulnerabilities — service/version detection (`nmap -sV` interrogating the service, not trusting the port number) turns an open port into a specific, searchable, often-exploitable fact
+- [ ] Port 80 is always a false positive
+- [ ] Version strings are encrypted
+> An open port only says something is listening; a port number is a convention, not a guarantee of what's behind it. Version detection connects and fingerprints the actual service, yielding the precise version string that hinges the whole assessment — because that's what maps to CVEs. NSE scripts and protocol-specific enumeration then push further, but the exact-version fact is what makes a port a target.
+```
 
 ---
 
@@ -177,6 +233,29 @@ hashcat -m 1000 hashes.txt merged.txt -r /usr/share/hashcat/rules/best64.rule
 
 The mental model: online attacks are about a handful of high-probability guesses against rate limits and lockouts; offline attacks are an unbounded guessing race won by wordlist quality and hash speed; and the most important number in the room is what *kind* of hash you have, because it sets the ceiling on what's possible.
 
+```quiz
+Q: Why are online password attacks limited to a few high-probability guesses while offline attacks can try billions per second?
+- [ ] Online services use stronger hashes
+- [x] Online guesses are network round-trips the target can see, rate-limit, and lock out; offline attacks compute hashes locally on your own hardware against a captured hash with no target involved and no rate limit
+- [ ] Offline attacks are illegal
+- [ ] Online attacks need a GPU
+> An online guess hits a live service that logs failures and enforces lockouts, so you're confined to spraying a handful of common passwords across many accounts. An offline attack works on hashes you already have, computing candidates on your own GPU with nothing throttling you — which is exactly why defenders use slow, memory-hard hashes: the entire defense is making each offline guess expensive.
+
+Q: Why is hash *identification* the critical first step before cracking?
+- [ ] It's required to download the hash
+- [x] Different algorithms need different cracking modes and crack at wildly different speeds — fast hashes (MD5, NTLM) fall in minutes while deliberately slow ones (bcrypt, Argon2) may be infeasible, which is itself a finding about the target's security
+- [ ] All hashes crack the same way
+- [ ] Identification reverses the hash
+> You can't reverse a hash, so cracking is a guessing race — and the algorithm sets the ceiling. Misidentifying it means using the wrong mode and getting nowhere; correctly identifying it tells you whether the crack is a minutes-long formality (a fast hash, often a misconfiguration to report) or practically impossible (a properly slow hash). The hash type is the most important fact in the room.
+
+Q: Why do Metasploit payloads carry your `LHOST`/`LPORT`, and what does a reverse shell exploit about firewalls?
+- [ ] To encrypt the connection
+- [x] A reverse shell makes the exploited victim connect *out* to the attacker's listener rather than the attacker connecting *in* — because outbound connections are far more often permitted than inbound — so the payload needs the attacker's address to "call home"
+- [ ] LHOST is the victim's address
+- [ ] Reverse shells bypass authentication
+> Most firewalls block unsolicited inbound connections but allow outbound traffic, so connecting *into* a victim usually fails. A reverse shell flips the direction: the payload running on the victim dials back to the attacker's waiting listener at `LHOST:LPORT`. This also illustrates Metasploit's exploit/payload separation — you pick *how* to get in and *what to do once in* independently, so one Meterpreter payload rides any exploit.
+```
+
 ---
 
 ## 7. Exploitation and Frameworks
@@ -232,6 +311,29 @@ bloodhound-ce-python -d lab.local -u analyst -p 'Password123!' -ns 192.0.2.10 -c
 
 The lesson AD teaches better than any other target is that post-exploitation is path-finding through a trust graph, and that almost every step needs careful scope handling and proof — because in a real engagement, the difference between "I demonstrated a path to Domain Admin" and "I actually became Domain Admin on a production domain" is enormous, and the methodology exists to keep you on the right side of it.
 
+```quiz
+Q: Why is attacking Active Directory "about relationships, not individual machines"?
+- [ ] AD has no individual hosts
+- [x] A domain is a graph of trust — users in groups, groups with rights over computers, sessions reachable by others — so compromise is rarely a single exploit but a *path* through that graph from a low-priv foothold to Domain Admin
+- [ ] AD can't be exploited per-host
+- [ ] Every machine is identical
+> Single-host attacks find a vulnerable service; AD attacks find a chain of trust misconfigurations and credential exposures linking your starting access to the target. This is why BloodHound is the signature tool — it ingests the domain's who-can-do-what-to-whom relationships and computes the shortest path to domain dominance, turning "I have one user's creds" into "here are four steps to Domain Admin."
+
+Q: How does Kerberoasting turn AD's own authentication protocol into a password-hash source?
+- [ ] It cracks the domain controller's key
+- [x] Any authenticated user can request a Kerberos service ticket for any service account, and that ticket is encrypted with a key derived from the service account's password — so you request it and crack it *offline*, no lockout
+- [ ] It relays the ticket to another server
+- [ ] It exploits a buffer overflow
+> Kerberoasting abuses a legitimate Kerberos feature: service tickets are encrypted with the service account's password-derived key, and requesting one is a normal authenticated action. Taking that ticket offline and cracking it (Section 6's offline attack) recovers weak service-account passwords with no online noise. It's the bridge between AD enumeration and the password-cracking phase.
+
+Q: What does an NTLM relay attack accomplish without ever cracking a password?
+- [ ] It brute-forces the hash faster
+- [x] It captures a victim's authentication attempt (often via name-resolution poisoning) and relays it to another server before it completes, authenticating *as the victim* — a pure trust-path attack needing no plaintext or cracking
+- [ ] It downgrades to Kerberos
+- [ ] It requires Domain Admin first
+> NTLM relay exploits the protocol's design: if you can position between a victim and a server and forward the live authentication exchange, the target server accepts you as the victim. No password, no hash cracking — just abusing the trust path. Pass-the-hash is the related idea (authenticate with the hash itself, since NTLM uses the hash as the secret). Both show AD attacks are often about credential *flow*, not credential *recovery*.
+```
+
 ---
 
 ## 9. Network Attacks: Sniffing, Spoofing, and Relay
@@ -257,6 +359,29 @@ wireshark                                         # then analyze a capture in de
 ```
 
 The unifying insight is that relay-style and on-path attacks depend on *trust paths*, not on breaking cryptography — they win by inserting themselves where a protocol assumed honesty, which is why the defenses are about *verification* (signing, mutual authentication, disabling the legacy fallback protocols) rather than encryption alone.
+
+```quiz
+Q: What single deep fact do ARP spoofing and LLMNR/NBT-NS poisoning both exploit?
+- [ ] Weak encryption keys
+- [x] Core protocols (ARP, LLMNR, NBT-NS, DHCP) were designed to trust, not verify — they authenticate nothing, so a machine that simply *answers* a question authoritatively is believed
+- [ ] Buffer overflows in network drivers
+- [ ] Predictable sequence numbers
+> These protocols come from cooperative-environment assumptions and don't verify who's answering. ARP spoofing forges replies claiming "I am the gateway"; Responder answers every LLMNR/NBT-NS broadcast with "yes, that's me." Both win by speaking up where they weren't supposed to, and the victim believes them because nothing checks. Every attack in this section is a variation on that theme.
+
+Q: How does ARP spoofing manufacture a man-in-the-middle position?
+- [ ] By cracking the gateway's password
+- [x] It broadcasts forged ARP replies telling the victim "I am the gateway" and the gateway "I am the victim," so both route traffic through the attacker — and because ARP has no authentication, both believe it
+- [ ] By flooding the switch's MAC table
+- [ ] By spoofing DNS responses
+> ARP maps IPs to hardware addresses and authenticates nothing, so an attacker who answers ARP queries with their own MAC for both endpoints inserts themselves into the conversation. Both sides now send traffic through the attacker, who can read and modify it. On a switched network you'd otherwise see only your own traffic — this is the active step that makes sniffing the rest possible.
+
+Q: Why does the guide say defenses against these attacks are "about verification rather than encryption alone"?
+- [ ] Encryption is too slow on networks
+- [x] Relay and on-path attacks abuse trust paths, not broken crypto — they insert themselves where a protocol assumed honesty, so the fixes are signing, mutual authentication, and disabling legacy fallback protocols, not just encrypting traffic
+- [ ] Encryption doesn't work on ARP
+- [ ] Verification is cheaper than encryption
+> Encrypting a channel doesn't help if the attacker is a legitimate-looking endpoint the protocol trusted — they're inside the conversation, not eavesdropping from outside. NTLM relay and name-resolution poisoning win by being believed, so the countermeasures verify identity (SMB signing, mutual auth, turning off LLMNR/NBT-NS) to close the trust gap that authentication-free protocols left open.
+```
 
 ---
 

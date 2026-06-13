@@ -39,6 +39,19 @@ CB8 runs three ways from one codebase: as an Electron desktop app, as a Docker c
 
 The Electron window is, in effect, just a privileged browser pointed at the embedded server. A LAN browser hitting `http://<host>:8008` gets the identical UI. This means CB8 already crossed the hardest bridge most Electron apps never cross: **the GUI is fully decoupled from the host process and talks to it over HTTP.** Many Electron apps wire their renderer to the main process through `ipcRenderer` calls that have no network equivalent; porting those to mobile means inventing an API first. CB8's API already exists, is already versioned by its own web client, and already handles authentication and multi-user state.
 
+```mermaid
+graph TD
+  CODE["One CB8 codebase"] --> EL["Electron desktop"]
+  CODE --> DK["Docker container"]
+  CODE --> ND["Node.js standalone"]
+  EL --> SRV["Same embedded Fastify server — HTTP API + web UI on :8008"]
+  DK --> SRV
+  ND --> SRV
+  SRV --> C1["Electron window (privileged browser)"]
+  SRV --> C2["LAN browser"]
+  SRV --> C3["future: native iOS client — just another HTTP consumer"]
+```
+
 ### The module map
 
 The layout, from the repository:
@@ -146,6 +159,29 @@ Reuse the React *knowledge* (not the React DOM code — shadcn/Tailwind componen
 
 This ordering mirrors CB8's own architecture (server core, multiple frontends) and front-loads the highest-value, lowest-risk work. Everything from here on builds Option 3, with the Appendix covering Option 1 as the quick alternative.
 
+```quiz
+Q: Why is running CB8's Node backend on-device (nodejs-mobile) ruled out as a trap rather than a real option?
+- [ ] Node is too slow on iOS
+- [x] iOS forbids spawning processes (so `node-7z`'s shell-out to 7-Zip dies on every archive), native addons must be cross-compiled per dependency bump, and iOS's aggressive app suspension fights a long-lived server process
+- [ ] Apple bans JavaScript entirely
+- [ ] Node can't render UI
+> The blockers are concrete to CB8: the archive layer shells out to a 7-Zip executable, but iOS prohibits process spawning, so you'd rewrite that layer anyway — defeating the point of shipping Node. Native addons (`better-sqlite3`, `sharp`) need fragile arm64 cross-compilation, and a server with open SQLite handles contradicts iOS's suspend-aggressively lifecycle. Rule it out deliberately.
+
+Q: The guide recommends native SwiftUI "in two phases." What's the ordering and why?
+- [ ] On-device library first, then a server client
+- [x] Phase 1 is a native client for existing CB8 servers (the `/api` already suffices, no codebase changes); Phase 2 adds standalone on-device library/archive/thumbnail support — front-loading the highest-value, lowest-risk work
+- [ ] Build everything at once
+- [ ] Ship the web wrapper permanently
+> CB8 already ships as a server whose purpose is multi-device access, so a SwiftUI app speaking the existing API is independently useful with zero backend changes — high value, low risk. The harder standalone mode (document import, GRDB indexing, in-process archive extraction, ImageIO thumbnails) comes second. This mirrors CB8's own server-core-plus-multiple-frontends architecture.
+
+Q: The Capacitor/WKWebView wrapper is called a legitimate first milestone but the "wrong destination." What's the central reason for an app whose job is reading?
+- [ ] Webviews can't display images
+- [x] The reader *is* the product — webview pinch-zoom fighting the webview's own gestures never feels as good as a native UIScrollView, and per-page HTTP fetching forecloses the native image pipeline (ImageIO downsampling, prefetch) that makes reading feel instant
+- [ ] Capacitor isn't allowed on the App Store
+- [ ] It requires rewriting the UI anyway
+> A wrapper is near-zero UI work and validates demand in a weekend, but for a reading app the reader experience dominates: native gestures and a tight image pipeline are what make it feel good, and a webview can't match them. Add App Review 4.2 (minimum-functionality) exposure and the client-only limitation (no real offline library), and it's a fine first milestone but not where you stop.
+```
+
 ### Strategy decision table
 
 | | Web wrapper / Capacitor | React Native | Native SwiftUI |
@@ -239,6 +275,22 @@ Compiled from the route handlers' regex matches:
 | `/api/admin/*`, `/api/settings/*` | Server admin | Scan paths, uploads, guest access, rescan interval |
 
 Two server behaviors matter to client design. **`?width=` resizing**: the server caches resized pages and serves them with `Cache-Control: public, max-age=86400`, so requesting pages at device-pixel width is both a bandwidth and a server-cache win — pass `Int(viewWidth * displayScale)`. **Progress auto-completion**: `PUT progress` with `page >= pageCount - 1` marks the item completed server-side unless the client says otherwise — so the iOS client should *not* duplicate that rule, or completion semantics will drift between clients.
+
+```quiz
+Q: Why should the iOS client *not* re-implement CB8's "mark completed on the last page" rule locally?
+- [ ] The client can't compute the last page
+- [x] The server already auto-completes when `PUT progress` has `page >= pageCount - 1`; duplicating the rule client-side risks the two implementations drifting, so completion semantics stay consistent only if one place owns them
+- [ ] Completion is purely cosmetic
+- [ ] It would violate App Review
+> When two clients each encode the same business rule independently, they inevitably diverge as edge cases (off-by-one page counts, spreads, partial reads) are handled differently. The server owns auto-completion, so the iOS app just reports its position and lets the server decide completion — keeping the web, desktop, and iOS clients in agreement. Re-deriving the rule is how cross-client state quietly drifts.
+
+Q: The guide stresses transcribing "the actual API as implemented (not a hypothetical REST design)." Why does that distinction matter for a port?
+- [ ] Hypothetical APIs are faster
+- [x] The client must match the server's real behavior — quirks like 0-indexed pages, `?width=` server-side resize with day-long caching, relative thumbnail URLs with cache-buster `v`, and username defaulting to `admin` — not an idealized contract that the server doesn't actually honor
+- [ ] REST design is always wrong
+- [ ] The server has no documentation
+> A port consumes the endpoints as they exist, so the source of truth is the route handlers and `mapping.ts`, not a cleaned-up REST sketch. Getting the real quirks right (page indexing, resize/caching semantics, cookie auth, the deliberately-path-free `WebComicRecord` wire shape) is what makes the native client interoperate with the existing web UI rather than subtly disagreeing with it.
+```
 
 ### Models
 
@@ -678,6 +730,29 @@ Three deliberate choices to note:
 
 Tap center toggles chrome (title bar, page slider, settings); tap left/right edges page backward/forward — same zones as CB8's touch UI. Build the slider on `comic.pageCount` and bind it to `currentPage`; add `.persistentSystemOverlays(.hidden)` and `.statusBarHidden` for immersion, and support hardware keyboards (arrow keys / space) with `.onKeyPress` — CB8's desktop reader has keyboard nav, and iPad users with keyboards expect parity.
 
+```quiz
+Q: Why wrap a `UIScrollView` for per-page zoom instead of hand-rolling pinch-zoom with SwiftUI's `MagnifyGesture`?
+- [ ] SwiftUI can't display images
+- [x] SwiftUI has no first-class pinch-zoom scroll container, and a `UIScrollView` nested in the pager naturally resolves the zoomed-pan-vs-page-flip conflict (the inner scroll wins while it has scrollable content) — gesture math you'd otherwise re-derive
+- [ ] MagnifyGesture is deprecated
+- [ ] UIScrollView renders faster
+> The genuinely hard part is gesture arbitration: when zoomed, horizontal drags must pan the image and only flip pages at the edge. A `UIScrollView` inside a `TabView`/`UIPageViewController` pager handles that for free — the inner scroll consumes the drag while it has room, the pager takes over at the boundary. Reimplementing it with `MagnifyGesture` re-solves a problem UIKit already solved, which is why the wrapper is the standard, boring, correct answer.
+
+Q: Why does the reader request pages at `?width=viewportWidth × scale` rather than full resolution?
+- [ ] To reduce server disk usage
+- [x] A high-res scan can be a 4000px-wide image; decoding those wholesale blows the memory budget and gets the app jetsam-killed — asking the server for device-pixel width offloads the downsample (cached per width), with full-res requested only when zoomed past ~2×
+- [ ] Smaller images are required by App Review
+- [ ] The server can't serve full resolution
+> Reader apps die on memory: decoding a 4000px PNG per page exhausts the budget fast. Requesting `viewportWidth × displayScale` pixels makes the server downsample (and cache the result for every client at that width), so the client only decodes what it can display. Only when the user zooms past roughly 2× do you fetch the full-resolution URL for the current page. This downsample-at-the-source discipline is core to a native image pipeline.
+
+Q: Why force pre-decode with `image.preparingForDisplay()` in the fetch task instead of letting `UIImage(data:)` decode lazily?
+- [ ] To compress the image further
+- [x] `UIImage(data:)` defers decode to first render by default, which stutters the page turn at exactly the wrong moment — pre-decoding off the main thread means the pager only ever blits ready images
+- [ ] It's required for caching
+- [ ] preparingForDisplay rotates the image
+> Lazy decode-on-render moves the expensive decode onto the main thread the instant a page becomes visible, causing a visible hitch during the turn. Forcing the decode in the background fetch task (via the async `byPreparingForDisplay()`) means by the time the pager shows the page it's already a ready-to-blit bitmap, keeping turns smooth. Decode-off-the-main-thread is one of the three deliberate reader-pipeline choices.
+```
+
 ---
 
 ## Part 7 — EPUB and PDF
@@ -781,6 +856,29 @@ func withFolderAccess<T>(_ folder: ImportedFolder,
 ```
 
 Decide the import policy per source: files added to Documents are *owned* (index in place); external folders are *referenced* (index via bookmark, like CB8 referencing files on disk without moving them — its README is emphatic that removal only deletes the DB row, never the file; keep that promise).
+
+```quiz
+Q: CB8's desktop scanner walks arbitrary folders, but iOS has no arbitrary filesystem. How does "scanning" change shape on iOS?
+- [ ] You can't read any files on iOS
+- [x] You work within the sandbox: the app's Documents directory (exposed via Files with the right Info.plist keys), `UIDocumentPickerViewController` to import or grant access to external folders (iCloud, USB, SMB), and security-scoped bookmarks to persist that access across launches
+- [ ] iOS requires uploading files to a server first
+- [ ] Only photos are accessible
+> The sandbox replaces "walk any path" with explicit, user-granted access. Files dropped into the app's Documents (with `UIFileSharingEnabled`/`LSSupportsOpeningDocumentsInPlace`) are directly readable; the document picker grants access to outside folders — including an SMB share, a killer feature for the NAS-owning audience whose Docker server scans the same share. Security-scoped bookmarks are the persistence mechanism, the iOS analog of CB8 storing scan paths in its DB.
+
+Q: Why does the on-device GRDB schema drop the `users`/`session`/`account`/`verification` tables from CB8's server schema?
+- [ ] GRDB doesn't support those table types
+- [x] Those are better-auth's multi-user web tables — meaningless on a single-user device — so per-user progress collapses into the comic row itself, which CB8 already maintains for the desktop case
+- [ ] To save disk space
+- [ ] iOS forbids storing user accounts
+> The server schema carries auth and multi-user machinery because it serves many users over the web; a personal on-device library has exactly one user, so the auth complex is dead weight. Progress that the server keys per-user folds back into the comic record directly — and conveniently CB8's desktop/Electron case already works this way, so the simplification mirrors existing code rather than inventing something new.
+
+Q: When the user removes a *referenced* external comic from the on-device library, what should happen to the file?
+- [ ] Delete the file from the external folder
+- [x] Only delete the database row, never the file — CB8's README is emphatic that referenced files are indexed in place and removal touches only the index; keeping that promise matters for trust
+- [ ] Move the file into Documents first
+- [ ] Ask the server to delete it
+> Owned files (copied into Documents) versus referenced files (accessed via security-scoped bookmark) have different removal semantics, and for referenced files the rule is index-only: the app never owns or destroys data sitting in the user's iCloud/USB/SMB folder. Deleting just the DB row mirrors CB8's documented desktop behavior and preserves user trust — surprising users by deleting their source files is a cardinal sin for a library app.
+```
 
 ### The GRDB schema: a deliberate subset
 
@@ -943,6 +1041,29 @@ CBR is RAR, and RAR is encumbered: the reference unrar source ships under a lice
 3. **Convert at the edge.** Detect CBR at import and repack to CBZ (extract → re-zip with ZIPFoundation). Storage cost during conversion, but afterward your reader has exactly one archive path. For *server* libraries this is moot — the server's node-7z handles CBR and the phone only ever sees decoded images over `/pages/:n`. Phase 1 gets CBR support for free; only local imports need this decision.
 
 Recommendation: UnrarKit for owned local files (compatibility beats purity for a reader app), and lean on the server path otherwise. Whatever you choose, route both formats through the `ComicArchive` protocol so the reader is format-blind, as `archiveLoader.ts` is.
+
+```quiz
+Q: Why extract individual ZIP entries to memory and keep `ComicArchive` handles in a small LRU, rather than unpacking the whole CBZ?
+- [ ] iOS forbids writing temp files
+- [x] A reader needs random access to any page's bytes, so reading the central directory and extracting single entries on demand fits page-jumping; the LRU avoids re-reading the ZIP central directory on every page turn — mirroring the server's archiveCache.ts
+- [ ] Full extraction is impossible in Swift
+- [ ] It's required for thumbnails
+> Page-jumping wants O(1) access to entry `n`, which ZIPFoundation gives by reading the central directory and extracting just that entry — no need to unpack megabytes of unused pages. But reopening and re-parsing the central directory on every turn is wasted work, so an LRU of open archive handles keyed by comic id (a direct port of CB8's `archiveCache.ts`) keeps the hot archives ready. Same problem, same solution as the server.
+
+Q: Phase 1 (server client) gets CBR support "for free" while Phase 2 (local imports) needs a real decision. Why the asymmetry?
+- [ ] CBR is only valid on servers
+- [x] In Phase 1 the server's node-7z extracts CBR and the phone only ever receives decoded images over `/pages/:n`, so RAR never touches the device; only local on-device imports must solve RAR extraction (libarchive, UnrarKit, or convert-to-CBZ at import)
+- [ ] Phase 2 drops CBR support
+- [ ] App Review bans CBR
+> The server already decodes every format and serves plain page images, so a Phase 1 client is format-agnostic — CBR is the server's problem. Standalone mode has no server, so the device must extract RAR itself, where the encumbered unrar license and partial libarchive support force a real choice (the guide recommends UnrarKit for owned files). Routing both formats through one `ComicArchive` protocol keeps the reader format-blind either way.
+
+Q: Why is porting `naturalSort.ts` called a "spec-fidelity exercise" where an "almost right" port is a real bug?
+- [ ] It's the slowest function to run
+- [x] It decides page order, so any deviation (e.g. not sorting numeric chunks as integers) shows page 10 between pages 1 and 2 — and the order must match the server's so shared progress indexes line up, which is why its test file comes along as the spec
+- [ ] Swift can't do string comparison
+- [ ] It affects thumbnail quality
+> Natural sort governs the canonical page sequence, and subtle rule differences (integer-compare numeric chunks, numeric-before-non-numeric, the "01" vs "1" fall-through) produce visibly wrong ordering. Worse, if the client's order diverges from the server's, page index `n` no longer means the same page, breaking cross-client progress. Porting the behavior exactly — bringing the original's test file as the spec — is what keeps both invariants intact.
+```
 
 ### Porting `naturalSort.ts` — the spec-fidelity exercise
 

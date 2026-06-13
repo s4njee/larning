@@ -33,9 +33,13 @@ import argparse
 import colorsys
 import hashlib
 import html as _html
+import json
 import os
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 
 import markdown
 
@@ -278,6 +282,163 @@ def restore_quiz_blocks(body, rendered):
 
 
 # --------------------------------------------------------------------------- #
+# Mermaid diagrams
+# --------------------------------------------------------------------------- #
+#
+# A fenced block with language `mermaid` is rendered to an inline SVG at build
+# time, so the generated pages stay self-contained (no client-side mermaid.js,
+# no network deps, works offline and on both themes). Because the site's CI
+# builds with Python only (no Node), rendered SVGs are cached on disk under
+# DIAGRAM_CACHE_DIR and committed alongside html/: a build reuses the cache and
+# only needs the `mmdc` renderer when a diagram is new or changed. A cache miss
+# with no renderer available fails the build loudly rather than dropping the
+# diagram.
+#
+#     ```mermaid
+#     sequenceDiagram
+#       Client->>Server: SYN
+#       Server->>Client: SYN-ACK
+#     ```
+#
+# On github.com the same fence renders natively, so the Markdown degrades fine.
+
+MERMAID_FENCE_RE = re.compile(r"^```mermaid[ \t]*\r?\n(.*?)^```[ \t]*$", re.S | re.M)
+
+# Bump when the render config below changes, to invalidate stale cached SVGs.
+MERMAID_CACHE_VERSION = "1"
+
+DIAGRAM_CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "diagram_cache")
+
+# Mermaid render config: a clean light-on-paper theme (the SVG sits on a fixed
+# light "figure card" via CSS, legible under both the black and light page
+# themes); transparent background so the card color shows through.
+_MERMAID_CONFIG = {"theme": "default", "themeVariables": {"fontFamily": "ui-sans-serif, system-ui, sans-serif"}}
+# Puppeteer args so Chromium launches headless in containers / CI / as root.
+_PUPPETEER_CONFIG = {"args": ["--no-sandbox", "--disable-setuid-sandbox"]}
+
+_mmdc_path_cache = None
+_render_config_files = None
+
+
+def _find_mmdc():
+    """Locate the mermaid-cli binary, or None if it isn't installed."""
+    global _mmdc_path_cache
+    if _mmdc_path_cache is not None:
+        return _mmdc_path_cache or None
+    env = os.environ.get("MMDC_PATH")
+    local = os.path.join(os.path.dirname(os.path.abspath(__file__)), "node_modules", ".bin", "mmdc")
+    candidates = [env, local, shutil.which("mmdc")]
+    _mmdc_path_cache = next((c for c in candidates if c and os.path.exists(c)), "") or shutil.which("mmdc") or ""
+    return _mmdc_path_cache or None
+
+
+def _render_config_paths():
+    """Write the mermaid + puppeteer config to temp files once per process."""
+    global _render_config_files
+    if _render_config_files is None:
+        cfg = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
+        json.dump(_MERMAID_CONFIG, cfg)
+        cfg.close()
+        pptr = tempfile.NamedTemporaryFile("w", suffix=".json", delete=False)
+        json.dump(_PUPPETEER_CONFIG, pptr)
+        pptr.close()
+        _render_config_files = (cfg.name, pptr.name)
+    return _render_config_files
+
+
+def _render_mermaid_svg(source):
+    """Shell out to mmdc to render `source` to an SVG string. Raises on failure."""
+    mmdc = _find_mmdc()
+    if not mmdc:
+        raise RuntimeError(
+            "mermaid diagram is not cached and the `mmdc` renderer was not found. "
+            "Install it with `npm install` (see package.json) or set MMDC_PATH, "
+            "then rebuild so the diagram cache is populated."
+        )
+    cfg_path, pptr_path = _render_config_paths()
+    with tempfile.TemporaryDirectory() as d:
+        in_path = os.path.join(d, "diagram.mmd")
+        out_path = os.path.join(d, "diagram.svg")
+        with open(in_path, "w", encoding="utf-8") as f:
+            f.write(source)
+        proc = subprocess.run(
+            [mmdc, "-i", in_path, "-o", out_path, "-c", cfg_path, "-p", pptr_path, "-b", "transparent"],
+            capture_output=True, text=True,
+        )
+        if proc.returncode != 0 or not os.path.exists(out_path):
+            raise RuntimeError(f"mmdc failed to render a diagram:\n{proc.stderr.strip() or proc.stdout.strip()}")
+        with open(out_path, encoding="utf-8") as f:
+            return f.read()
+
+
+def _namespace_svg_ids(svg, prefix):
+    """Prefix every id in an SVG (and all `#id` references, including the
+    embedded <style> selectors mermaid emits) so multiple diagrams on one page
+    don't collide on duplicate ids."""
+    ids = sorted(set(re.findall(r'\bid="([^"]+)"', svg)), key=len, reverse=True)
+    for old in ids:
+        new = f"{prefix}_{old}"
+        svg = re.sub(rf'\bid="{re.escape(old)}"', f'id="{new}"', svg)
+        svg = re.sub(rf'#{re.escape(old)}(?![\w-])', f'#{new}', svg)
+
+    # Mermaid itself reuses some element ids within one diagram (e.g. a sequence
+    # diagram's actor boxes appear at top and bottom with the same id). Those are
+    # unreferenced, so suffix the 2nd+ occurrence to keep ids unique and the
+    # markup valid; never touch an id that is referenced via `#id`.
+    referenced = set(re.findall(r'#([\w-]+)(?![\w-])', svg))
+    seen = {}
+
+    def dedupe(m):
+        ident = m.group(1)
+        seen[ident] = seen.get(ident, 0) + 1
+        if seen[ident] == 1 or ident in referenced:
+            return m.group(0)
+        return f'id="{ident}_{seen[ident]}"'
+
+    return re.sub(r'\bid="([^"]+)"', dedupe, svg)
+
+
+def _mermaid_svg(source):
+    """Return the inline SVG for a mermaid block, rendering + caching on miss."""
+    source = source.strip("\n")
+    key = hashlib.sha256(f"{MERMAID_CACHE_VERSION}\n{source}".encode("utf-8")).hexdigest()
+    cache_path = os.path.join(DIAGRAM_CACHE_DIR, f"{key}.svg")
+    if os.path.exists(cache_path):
+        with open(cache_path, encoding="utf-8") as f:
+            svg = f.read()
+    else:
+        svg = _render_mermaid_svg(source)
+        os.makedirs(DIAGRAM_CACHE_DIR, exist_ok=True)
+        with open(cache_path, "w", encoding="utf-8") as f:
+            f.write(svg)
+    return _namespace_svg_ids(svg, f"m{key[:10]}")
+
+
+def extract_mermaid_blocks(md_text):
+    """Replace ```mermaid fences with placeholder tokens; return (text, rendered).
+
+    Runs before escape_raw_html_tags() and Markdown conversion (like the quiz
+    fence) so the rendered SVG never gets HTML-escaped or reflowed.
+    """
+    rendered = []
+
+    def repl(m):
+        svg = _mermaid_svg(m.group(1))
+        token = f"MERMAIDPLACEHOLDER{len(rendered)}MERMAID"
+        rendered.append(f'<figure class="mermaid-diagram">{svg}</figure>')
+        return f"\n\n{token}\n\n"
+
+    return MERMAID_FENCE_RE.sub(repl, md_text), rendered
+
+
+def restore_mermaid_blocks(body, rendered):
+    for i, html_block in enumerate(rendered):
+        token = f"MERMAIDPLACEHOLDER{i}MERMAID"
+        body = body.replace(f"<p>{token}</p>", html_block).replace(token, html_block)
+    return body
+
+
+# --------------------------------------------------------------------------- #
 # Markdown -> HTML transform (shared with the bespoke builders)
 # --------------------------------------------------------------------------- #
 
@@ -323,6 +484,7 @@ def rewrite_local_markdown_links(body, link_rewrites):
 
 
 def transform(md_text, link_rewrites=None):
+    md_text, diagrams = extract_mermaid_blocks(md_text)
     md_text, quizzes = extract_quiz_blocks(md_text)
     md_text = escape_raw_html_tags(md_text)
     md = markdown.Markdown(
@@ -345,6 +507,7 @@ def transform(md_text, link_rewrites=None):
     body = re.sub(r'<pre><code class="([^"]*)">', norm_code, body)
     body = body.replace("<pre><code>", '<pre><code class="language-text">')
     body = restore_quiz_blocks(body, quizzes)
+    body = restore_mermaid_blocks(body, diagrams)
     body = rewrite_local_markdown_links(body, link_rewrites)
 
     # Build sidebar TOC from h2/h3 headings.

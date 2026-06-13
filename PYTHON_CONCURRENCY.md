@@ -152,6 +152,29 @@ Everything you need to carry from this part:
 
 If you remember one thing from Part 2: **the GIL lets only one thread run Python bytecode at a time — so threads parallelize *waiting* (I/O, where the GIL is released) but not *computing* (pure Python, where it's held); for CPU parallelism you need processes, and that single fact explains why "add threads" speeds up a scraper and slows down a number-cruncher.**
 
+```quiz
+Q: Why does adding 4 threads to a pure-Python CPU-bound loop often make it *slower* than running sequentially?
+- [ ] Threads have a memory leak
+- [x] The GIL is held during Python bytecode, so the threads serialize on it (only one runs at a time) and you pay context-switching overhead on top
+- [ ] Python threads run on a single slow core by design
+- [ ] The loop variable is shared between threads
+> The GIL allows only one thread to execute Python bytecode at any instant, so CPU-bound threads don't run in parallel — they take turns holding the lock, interleaving in ~5ms slices. You get no speedup and the added switching overhead frequently makes it a net loss. True CPU parallelism needs separate processes, each with its own GIL.
+
+Q: Why do threads genuinely help an I/O-bound web scraper despite the GIL?
+- [ ] The GIL doesn't apply to network code
+- [x] CPython releases the GIL during blocking I/O syscalls, so while one thread waits on the network another can run — the waits overlap
+- [ ] Scrapers are CPU-bound, which threads accelerate
+- [ ] Each request gets its own GIL
+> When a thread makes a blocking syscall (network read, disk, `time.sleep`), CPython drops the GIL so other threads run during the wait. Since an I/O-bound workload spends most of its time waiting, those waits overlap and throughput rises. The GIL only blocks *Python bytecode* execution, not time spent parked in a syscall.
+
+Q: A multithreaded program calls NumPy for heavy matrix math. Can it use multiple cores?
+- [ ] No — all Python code is GIL-bound
+- [x] Yes — GIL-aware C extensions like NumPy release the GIL around their compute-heavy C loops, so the parallel part runs in C with the lock dropped
+- [ ] Only if you disable the GIL
+- [ ] Only with ProcessPoolExecutor
+> Libraries like NumPy, pandas, Pillow, and lxml release the GIL during their C-level number crunching, so multithreaded code calling them can genuinely parallelize across cores — an underappreciated escape hatch. The GIL is held only for pure-Python bytecode; work that happens inside a GIL-releasing C loop is exempt. Always check the library's docs for this behavior.
+```
+
 ---
 
 ## Part 3 — Threading
@@ -215,6 +238,29 @@ The synchronization toolkit:
 - **`queue.Queue`** — a **thread-safe** queue; the *preferred* way to pass data between threads, because it handles all the locking for you. Prefer a `Queue` over shared state + manual locks wherever possible.
 
 The deeper point: **locks are correct but easy to get wrong** — too little locking gives races; too much gives deadlocks (two threads each waiting for a lock the other holds) and contention (threads serializing on a hot lock, erasing the concurrency you wanted). This fragility is a major reason `asyncio` (Part 6), which only switches at explicit `await` points, is attractive: between awaits, your code is atomic, so most of these races simply can't occur.
+
+```quiz
+Q: Two threads each run `counter += 1` a million times and the final value is less than 2,000,000. Why?
+- [ ] Integer overflow
+- [x] `counter += 1` is three bytecode ops (load, add, store), and a thread switch between load and store loses an update — a race on shared mutable state
+- [ ] The GIL caps the counter
+- [ ] Threads can't share globals
+> Despite looking atomic, `+= 1` is load-add-store, and the OS can switch threads at any bytecode boundary. Both threads can read the same value before either writes back, so one increment is lost (a lost update). The fix is a `Lock` around the critical section so only one thread is in it at a time — the cost of sharing memory between preemptively-scheduled threads.
+
+Q: Why does the guide recommend `queue.Queue` over shared state plus manual locks for passing data between threads?
+- [ ] Queues are faster than locks
+- [x] `queue.Queue` is thread-safe and handles all the locking internally, removing whole classes of race/deadlock bugs you'd risk hand-rolling
+- [ ] Queues bypass the GIL
+- [ ] Locks don't work across threads
+> A `Queue` encapsulates the synchronization, so producers and consumers hand off data without you writing (and getting wrong) the locking. Manual locks are correct but fragile — too little gives races, too much gives deadlocks and contention. Preferring the queue moves that fragility into well-tested library code.
+
+Q: When should you create a raw `threading.Thread` rather than use a `ThreadPoolExecutor`?
+- [ ] Always — pools are slower
+- [x] For a long-lived background/daemon thread doing periodic work, or when you need fine control over a specific thread; the pool is for "run these tasks concurrently"
+- [ ] Never — raw threads are deprecated
+- [ ] Only for CPU-bound work
+> A `ThreadPoolExecutor` manages thread lifecycle, caps concurrency, and returns results/exceptions through `Future`s, so it's the right tool for running a batch of tasks. A raw `Thread` is for the cases a pool doesn't fit: a persistent daemon doing periodic work, or fine-grained control of one specific thread. Reach for the pool by default.
+```
 
 ### Prefer the Pool to Raw Threads
 
@@ -285,6 +331,29 @@ Since there's no shared memory, you have a few options, in rough order of prefer
 - **`Manager`** — a server process that hosts shared objects (`list`, `dict`) accessible to all processes via proxies. Convenient but slow (every access is a round-trip); use sparingly.
 
 The cost of moving data is the thing that decides whether multiprocessing pays off: if each task does a lot of computation on a little data, processes win big. If each task does a little computation on a lot of data, the pickling/copying overhead can eat the entire benefit. **Coarse-grained tasks (lots of compute per chunk) are what multiprocessing is for.**
+
+```quiz
+Q: Why do processes achieve true CPU parallelism where threads can't?
+- [ ] Processes ignore the GIL entirely as a feature flag
+- [x] Each process is a separate interpreter with its own GIL and memory, so they run Python bytecode genuinely in parallel across cores
+- [ ] Processes are scheduled cooperatively
+- [ ] Processes share memory more efficiently
+> A single process's GIL serializes its threads, but separate processes each have their own interpreter and GIL, so nothing forces them to take turns — they execute on different cores simultaneously. That's the only built-in way to make pure-Python computation use more than one core, at the cost of no shared memory and pickle-based communication.
+
+Q: On `spawn`/`forkserver` platforms, why is the `if __name__ == "__main__":` guard mandatory?
+- [ ] It improves performance
+- [x] The child starts a fresh interpreter and re-imports your module, so without the guard the child re-runs your process-spawning code, exploding into infinite processes
+- [ ] It picks the start method automatically
+- [ ] It's only needed for threads
+> Unlike `fork` (which copies the parent's memory), `spawn`/`forkserver` children re-import the module to set up. Module-level code that creates processes would therefore run again in each child, recursively spawning more — a fork bomb. The guard ensures the spawning code runs only when the module is executed as the main program, not on re-import.
+
+Q: When does multiprocessing pay off versus when does its overhead eat the benefit?
+- [ ] It always wins for any workload
+- [x] Coarse-grained tasks (lots of compute per chunk, little data) win big; little compute on lots of data loses to pickling/copying overhead
+- [ ] It's best for I/O-bound work
+- [ ] Smaller tasks are always better
+> Because there's no shared memory, every argument and result is pickled, sent over a pipe, and unpickled — expensive. If a task crunches heavily on a small input, that compute dwarfs the transfer cost and processes parallelize beautifully. If it barely computes but moves large data, the serialization can consume the entire benefit (or worse). Multiprocessing is for coarse-grained, compute-heavy chunks; `shared_memory` helps when big numeric payloads must cross the boundary.
+```
 
 ### When Native Libraries Beat Multiprocessing
 
@@ -364,6 +433,29 @@ for fut in as_completed(futures):
         fut.result()                 # raises here if the task failed
     except Exception as e:
         log.error("task failed: %r", e)
+```
+
+```quiz
+Q: Why is `concurrent.futures` the recommended default over the low-level `threading`/`multiprocessing` modules?
+- [ ] It's the only one that releases the GIL
+- [x] It unifies threads and processes behind one identical executor API, so you pick the backend matching your I/O-vs-CPU classification and the rest of the code is the same
+- [ ] It runs faster than both
+- [ ] It removes the need for the `__main__` guard
+> `ThreadPoolExecutor` and `ProcessPoolExecutor` share the same interface, so swapping I/O-bound for CPU-bound is a one-line change. It manages worker lifecycle, returns results/exceptions through `Future`s, and the `with` block guarantees cleanup. You make the Part 1 classification, pick the executor, and write the same `submit`/`map` code either way.
+
+Q: When should you use `submit` + `as_completed` instead of `map`?
+- [ ] When you want results in input order
+- [x] When you want per-task error handling or to act on whichever task finishes first; `map` returns results in input order, `as_completed` yields them in completion order
+- [ ] map can't handle exceptions at all
+- [ ] as_completed is faster
+> `pool.map(fn, items)` is the simple "apply to everything, results in input order" case. `submit` returns a `Future` per task and `as_completed` yields them as they finish, letting you handle each result (and its exception) the moment it's ready and respond to the fastest first rather than blocking on a slow item earlier in the list.
+
+Q: You `pool.submit(process, url)` for many URLs but never retrieve the results. A few tasks raise exceptions. What happens?
+- [ ] The pool crashes and reports the errors
+- [x] The exceptions are stored on the Futures and surface only on `.result()` — never retrieving means they vanish silently and you never learn the tasks failed
+- [ ] Exceptions always print to stderr
+- [ ] The tasks are automatically retried
+> A task that raises doesn't crash the pool; the exception is captured on its `Future` and only re-raised when you call `.result()` (or when `map`'s iterator reaches that item). Fire-and-forget submission therefore swallows failures silently. Always retrieve every result — even just to log it — so errors surface instead of disappearing.
 ```
 
 ### Sizing the Pool
@@ -451,29 +543,17 @@ This is the part the whole guide exists to serve. You've seen each model; now de
 
 ### The Decision Tree
 
-```text
-Is the work CPU-bound or I/O-bound?  (watch a CPU monitor; profile if unsure)
-│
-├── CPU-BOUND (cores are the bottleneck)
-│   │
-│   ├── Is it numerical (arrays, dataframes, tensors)?
-│   │   └── YES → use a GIL-releasing native library (NumPy/Polars/PyTorch);
-│   │            it already parallelizes. No multiprocessing needed.
-│   │   └── NO (your own pure-Python compute) → ProcessPoolExecutor / multiprocessing
-│   │
-│   └── Need many cores on free-threaded Python 3.13+? → threads may now work (Part 9)
-│
-└── I/O-BOUND (waiting is the bottleneck)
-    │
-    ├── Do async-native libraries exist AND do you need high concurrency (1000s)?
-    │   └── YES → asyncio + aiohttp/httpx/asyncpg
-    │
-    ├── Is your library blocking, or is the codebase synchronous,
-    │   or is concurrency modest (dozens–hundreds)?
-    │   └── YES → ThreadPoolExecutor
-    │
-    └── Both at once (mostly async, a few blocking calls)?
-        └── asyncio + asyncio.to_thread() for the blocking parts
+```mermaid
+graph TD
+  Q{"CPU-bound or I/O-bound?<br/>watch a CPU monitor; profile if unsure"}
+  Q -->|CPU-bound| C{"Numerical?<br/>arrays, dataframes, tensors"}
+  C -->|yes| NLIB["GIL-releasing native lib<br/>NumPy / Polars / PyTorch — already parallel"]
+  C -->|"no — pure-Python compute"| PROC["ProcessPoolExecutor / multiprocessing"]
+  C -.->|free-threaded 3.13+| FT["threads may now work (Part 9)"]
+  Q -->|I/O-bound| IO{"High concurrency (1000s)<br/>AND async libs exist?"}
+  IO -->|yes| ASYNC["asyncio + aiohttp / httpx / asyncpg"]
+  IO -->|"blocking lib / sync codebase / modest concurrency"| TPE["ThreadPoolExecutor"]
+  IO -->|"mostly async, a few blocking calls"| HYB["asyncio + asyncio.to_thread()"]
 ```
 
 ### The Real Fork: ThreadPoolExecutor vs asyncio
@@ -517,6 +597,29 @@ asyncio uses a thread pool internally for exactly the "blocking library inside a
 - **Unsure if it's even your bottleneck?** → profile first. The right model depends on the *measured* bottleneck, not a guess.
 
 If you remember one thing from Part 7: **classify I/O vs CPU (that's most of the decision), then for I/O-bound work choose asyncio when async libraries exist and you need scale, otherwise a ThreadPoolExecutor — and for CPU-bound work use processes, or a GIL-releasing native library if the work is numerical.**
+
+```quiz
+Q: Your work is CPU-bound and numerical (large array operations). What's the recommended model?
+- [ ] ProcessPoolExecutor over hand-written loops
+- [x] A GIL-releasing native library (NumPy/Polars/PyTorch) — it already parallelizes in C, so no multiprocessing is needed
+- [ ] asyncio with to_thread
+- [ ] Raw threads
+> For numerical CPU work, libraries like NumPy/Polars/PyTorch run their heavy loops in C and release the GIL, so they already use multiple cores — reaching for multiprocessing on top adds pickling overhead for no benefit. Multiprocessing is the answer for your *own* pure-Python compute that no native library covers.
+
+Q: Both threads and asyncio overlap I/O waiting without CPU parallelism. So what's the deciding factor between them?
+- [ ] asyncio is always faster
+- [x] Library and scale: asyncio needs async-native libraries but scales to tens of thousands of coroutines; a ThreadPoolExecutor works with blocking libraries and slots into sync code but tops out in the hundreds
+- [ ] Threads give CPU parallelism, async doesn't
+- [ ] They're identical in every way
+> Neither beats the GIL, so the choice turns on ecosystem and concurrency level. asyncio requires `aiohttp`/`asyncpg`-style async libraries and is viral up the call stack, but handles 10k+ connections cheaply. A thread pool drops into existing synchronous code and works with blocking libraries unchanged, at the cost of a few-hundred ceiling. Blocking library or modest scale → threads; async libraries and high concurrency → asyncio.
+
+Q: You have a mostly-async app but must call one blocking, sync-only library. What's the idiomatic approach?
+- [ ] Rewrite the whole app to use threads
+- [x] Stay async and push the blocking call through `asyncio.to_thread()` so it runs in a thread pool without freezing the loop
+- [ ] Call it directly inside a coroutine
+- [ ] Move the whole app to multiprocessing
+> The models aren't either/or: `asyncio.to_thread(fn, *args)` offloads a blocking call onto a thread so the event loop keeps serving other coroutines. Calling the blocking library directly in a coroutine would stall the entire loop (the cardinal sin). This async-plus-thread-pool shape — and `run_in_executor` to a process pool for CPU work — is the common real-world hybrid.
+```
 
 ---
 

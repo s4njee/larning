@@ -320,14 +320,19 @@ def render_quiz(part_num):
 # --------------------------------------------------------------------------- #
 
 def build():
+    # Local import avoids a circular import: build_guide imports CSS/JS from here.
+    from build_guide import extract_mermaid_blocks, restore_mermaid_blocks
+
     with open(SRC, encoding="utf-8") as f:
         text = f.read()
 
+    text, diagrams = extract_mermaid_blocks(text)
     md = markdown.Markdown(
         extensions=["fenced_code", "tables", "toc", "attr_list", "sane_lists"],
         output_format="html5",
     )
     body = md.convert(text)
+    body = restore_mermaid_blocks(body, diagrams)
 
     # Normalize code language classes to `language-xxx`.
     def norm_code(m):
@@ -528,6 +533,11 @@ tbody tr:last-child td{border-bottom:none}
 /* add-ons: quiz + decision */
 .addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
   background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+/* Build-time-rendered mermaid diagrams: a light "figure card" so the SVG stays
+   legible under both the dark default and the light theme toggle. */
+.mermaid-diagram{margin:1.8em 0;padding:18px 16px;border:1px solid var(--border2);
+  border-radius:var(--radius);background:#fbfbfd;text-align:center;overflow-x:auto}
+.mermaid-diagram svg{max-width:100%;height:auto}
 .addon-head{padding:16px 18px 4px}
 .addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
   color:var(--accent);font-weight:700}

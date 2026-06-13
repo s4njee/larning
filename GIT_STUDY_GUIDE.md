@@ -88,12 +88,12 @@ An annotated tag is an object that points to a commit with a message, tagger, an
 
 ### The Whole Picture
 
-```
-commit ──→ tree ──→ blob (file contents)
-  │          │
-  │          └──→ tree (subdirectory) ──→ blob
-  │
-  └──→ parent commit ──→ tree ──→ ...
+```mermaid
+graph LR
+  C[commit] --> T[tree: root dir]
+  C -->|parent| C2[parent commit] --> T2[tree] --> ETC[...]
+  T --> B1[blob: file contents]
+  T --> ST[tree: subdirectory] --> B2[blob]
 ```
 
 Every commit captures the full state of the repository through its tree. Branches, tags, and HEAD are just pointers to commits.
@@ -104,6 +104,29 @@ Every commit captures the full state of the repository through its tree. Branche
 - **Git is fast** because comparing two snapshots is just comparing tree hashes — if the hash is the same, the entire subtree is identical, no need to recurse.
 - **Branches are cheap** — creating a branch is writing 41 bytes to a file (the hash).
 - **Understanding the object model makes every other Git concept obvious.** A merge is just a commit with two parents. A rebase is copying commits to new parents. A reset is moving a pointer.
+
+```quiz
+Q: Two branches both contain an identical, unchanged 500-line file. How many times is that file's content stored in `.git/objects`?
+- [ ] Once per branch, so twice
+- [x] Once — a blob is addressed by the hash of its contents, so identical content deduplicates automatically
+- [ ] Once per commit that references it
+- [ ] It depends on the file mode
+> Git is content-addressable: a blob's identity *is* the SHA-1 of its bytes, with no filename or path attached. Identical content produces an identical hash and therefore a single stored object, shared across every commit, branch, and path that references it. This is why branching and copying files is cheap.
+
+Q: A commit stores a tree pointer, not a diff. So how does `git show` produce a diff for that commit?
+- [ ] It reads a stored patch from the commit object
+- [x] Git reconstructs the diff on the fly by comparing the commit's tree to its parent's tree
+- [ ] It replays the reflog
+- [ ] Diffs are cached in `.git/diffs`
+> Each commit is a full snapshot — it points to a tree representing the entire repository state. Git computes diffs by comparing two trees, and because identical subtrees share a hash, it can skip any subtree whose hash matches and only recurse where things changed. That tree-hash comparison is also why Git is fast.
+
+Q: Why is creating a branch in Git essentially free?
+- [ ] It copies the working tree into a new directory
+- [ ] It duplicates all reachable commit objects
+- [x] A branch is just a ref — a file containing a 40-char commit hash — so creating one writes ~41 bytes
+- [ ] It compresses history into a pack file
+> Branches, tags, and HEAD are all just pointers to commits. Creating a branch writes a tiny ref file holding one commit hash; no objects are copied. The same insight explains the rest of Git: a merge is a commit with two parents, a rebase copies commits onto new parents, and a reset just moves a pointer.
+```
 
 ---
 
@@ -196,11 +219,16 @@ The index is the staging area between your working tree and the next commit. It'
 
 Git operates on three trees simultaneously:
 
-```
-Working Tree          Index (Stage)          HEAD (Last Commit)
-────────────          ─────────────          ──────────────────
-your actual files     what the next          what the last
-on disk               commit will contain    commit contained
+```mermaid
+graph LR
+  WT["Working Tree<br/>your actual files on disk"]
+  IX["Index / Stage<br/>what the next commit will contain"]
+  HD["HEAD<br/>what the last commit contained"]
+  WT -->|git add| IX
+  IX -->|git commit| HD
+  HD -->|git checkout / reset --hard| WT
+  IX -->|git reset / restore --staged| WT
+  HD -->|git reset --mixed| IX
 ```
 
 ```bash
@@ -270,6 +298,29 @@ git checkout --theirs file.py
 ```
 
 When you `git add` a conflicted file, the three stages collapse into stage 0 (resolved).
+
+```quiz
+Q: You've edited a file but `git diff` shows nothing, while `git diff --staged` shows your changes. What does that tell you?
+- [ ] The file is untracked
+- [x] Your changes are already staged — `git diff` compares working tree to index, `--staged` compares index to HEAD
+- [ ] The file is in a merge conflict
+- [ ] Git is misconfigured
+> `git diff` (no args) shows working-tree-vs-index, so it's empty once changes are staged; `git diff --staged` shows index-vs-HEAD, i.e. what the next commit will contain. The three-trees model — working tree, index, HEAD — is exactly what these two diffs let you inspect, and `git diff HEAD` shows the combined working-tree-vs-last-commit difference.
+
+Q: You made several unrelated edits to one file and want two clean, separate commits. Which tool is built for that?
+- [ ] `git stash`
+- [x] `git add -p`, which stages individual hunks so one file's edits can be split across commits
+- [ ] `git commit --amend`
+- [ ] `git reset --hard`
+> `git add -p` walks you through each hunk (with split and edit options), letting you stage only the changes belonging to one logical commit even though they live in the same file. It's the canonical way to keep commits coherent when your working tree mixes unrelated work — the alternative of committing the whole file forces unrelated changes together.
+
+Q: During a merge conflict, what does the index hold for each conflicted file?
+- [ ] Just your version until you resolve it
+- [x] Three versions — stage 1 (base/ancestor), stage 2 (ours), stage 3 (theirs) — which collapse to stage 0 when you `git add` the resolution
+- [ ] A single merged blob with conflict markers
+- [ ] Nothing; conflicts live only in the working tree
+> The index represents a conflict by holding all three inputs simultaneously: the common ancestor, your side, and the incoming side. That's what lets `git checkout --ours/--theirs` pick a side and tools reconstruct a three-way merge. Staging the resolved file collapses those three stages into the normal stage-0 entry, marking it resolved.
+```
 
 ---
 
@@ -532,6 +583,29 @@ After:   main ──A──B──E'──F'    (feature is now based on main)
          develop ──C──D          (unchanged)
 ```
 
+```quiz
+Q: Why does `git rebase main` produce commits with *new* hashes even though the changes are identical?
+- [ ] Rebase recompiles the diffs
+- [x] A commit's hash includes its parent, so replaying commits onto a new base changes their parents and therefore their hashes
+- [ ] Git randomizes hashes on rebase
+- [ ] The author timestamp is removed
+> A commit object hashes its tree, parent(s), author, and message — so changing the parent (which rebase does by replaying commits onto a new base) yields a different hash even when the tree change is the same. That's why `C` and `D` become `C'` and `D'`: same changes, new identities. It's also exactly why rebasing shared commits is dangerous.
+
+Q: What's the rule of thumb for when rebasing is safe versus when to merge?
+- [ ] Always rebase; merge is obsolete
+- [x] Rebase local commits before pushing; merge after pushing — because rebasing rewrites history others may already have
+- [ ] Always merge; rebase corrupts history
+- [ ] Rebase only on the main branch
+> Rebasing rewrites history by creating new commits, so if collaborators already have the old commits, your histories diverge and they're forced into painful recovery. The discipline is to clean up your own unpushed commits with rebase, then once they're shared, integrate with merge (which adds a commit rather than rewriting). "Rebase local, merge shared" captures it.
+
+Q: What does `git rebase --onto main develop feature` do?
+- [ ] Merges develop into main
+- [x] Transplants `feature`'s commits so they branch off `main` instead of `develop`, leaving develop unchanged
+- [ ] Deletes the develop branch
+- [ ] Rebases main onto feature
+> The three-argument form transplants a branch from one base to another: it takes the commits unique to `feature` (those after `develop`) and replays them onto `main`. This is how you re-parent a feature that was accidentally branched off the wrong base, without disturbing `develop` itself.
+```
+
 ---
 
 ## 7. Cherry-Pick
@@ -651,6 +725,29 @@ git revert -m 1 <merge-commit>
 | Undo a commit on a shared branch | `git revert <hash>` |
 | Discard uncommitted changes to a file | `git restore file.py` |
 | Unstage a file | `git restore --staged file.py` |
+
+```quiz
+Q: You want to undo your last commit but keep all its changes staged so you can recommit with a better message. Which reset mode?
+- [x] `git reset --soft HEAD~1` — moves the branch pointer but leaves index and working tree untouched
+- [ ] `git reset --hard HEAD~1`
+- [ ] `git reset --mixed HEAD~1`
+- [ ] `git revert HEAD`
+> `--soft` moves only the branch pointer back, leaving the index (and working tree) exactly as they were — so the commit's changes remain staged, ready to recommit. `--mixed` (the default) would additionally unstage them, and `--hard` would discard them entirely. `revert` is wrong here because it makes a *new* commit rather than undoing the last one.
+
+Q: Why is `git revert` the right tool to undo a commit that's already pushed to a shared branch, where `git reset --hard` is wrong?
+- [ ] revert is faster
+- [x] revert creates a new commit that inverts the change without rewriting history; reset moves the pointer, rewriting history others have already pulled
+- [ ] reset doesn't work on remote branches
+- [ ] revert automatically force-pushes
+> On a shared branch, rewriting history (what `reset --hard` does by moving the pointer to drop commits) breaks everyone who already has those commits, forcing painful recovery. `revert` instead appends a new commit that undoes the target's changes, leaving history intact and fast-forwardable for collaborators. Reset is for local-only cleanup; revert is for shared branches.
+
+Q: You ran `git reset --hard HEAD~3` and realize you needed those three commits. Are they gone?
+- [ ] Yes, `--hard` permanently deletes commits
+- [x] No — committed work is recoverable via the reflog until garbage collection prunes it
+- [ ] Only if you hadn't pushed them
+- [ ] Only the most recent one is recoverable
+> `--hard` discards *uncommitted* changes irretrievably, but the three commits still exist as objects; the branch pointer just no longer references them. The reflog records where HEAD was before the reset, so you can find those commit hashes and reset back. This is why "nothing is truly lost until gc runs" — the object model keeps unreachable commits around for a grace period.
+```
 
 ---
 
@@ -783,6 +880,22 @@ Reflog entries expire after 90 days by default (30 days for unreachable commits)
 # check expiration settings
 git config gc.reflogExpire          # default: 90 days
 git config gc.reflogExpireUnreachable  # default: 30 days
+```
+
+```quiz
+Q: After a bad `git rebase` you can't find your pre-rebase commits via `git log`. Why does the reflog still recover them?
+- [ ] The reflog stores a backup copy of every commit's diff
+- [x] The reflog records every position HEAD/branch refs held, so the pre-rebase commit hash is still listed even though no branch points to it
+- [ ] The reflog re-downloads them from the remote
+- [ ] `git log` is broken after a rebase
+> `git log` only shows commits reachable from current refs, so rebased-away commits become invisible to it — but they still exist as objects, and the reflog records each previous ref position. Finding the `HEAD@{n}` entry from before the rebase gives you the hash to `git reset --hard` back to. The reflog is local-only and is the primary "I lost my commits" recovery tool.
+
+Q: Why is the reflog described as local and temporary rather than a permanent history?
+- [ ] It's stored on the remote and synced down
+- [x] It lives only in your repository and entries expire (≈90 days, 30 for unreachable), after which gc can prune the objects
+- [ ] It's deleted on every commit
+- [ ] It only records merges
+> The reflog is your machine's record of where refs moved; it isn't pushed or shared, and a teammate's clone has its own. Entries expire on a timer (default 90 days, 30 for unreachable commits), and once expired the unreachable objects become eligible for garbage collection. So it's a generous safety net, not an eternal archive — recover lost work promptly rather than assuming it's there forever.
 ```
 
 ---
@@ -1037,6 +1150,29 @@ git branch --set-upstream-to=origin/feature
 
 # push and set upstream at the same time
 git push -u origin feature
+```
+
+```quiz
+Q: What does `origin/main` actually represent in your local repository?
+- [ ] A live connection to the remote's main branch
+- [x] A local snapshot ref recording where the remote's main was as of your last fetch — it only moves when you sync
+- [ ] The remote server's working directory
+- [ ] An alias for your local main
+> Git is distributed: your clone is a complete repository, and a remote-tracking branch like `origin/main` is just an ordinary local ref recording "where main was the last time I checked." It updates only on `fetch`/`pull`, never on its own. Internalizing this snapshot model is what makes every remote command obvious — they're all about *when* you copy commits and *what* you do with them.
+
+Q: Why is `git fetch` always safe while `git pull` can produce surprises?
+- [ ] fetch is read-only on the remote; pull writes to it
+- [x] fetch only updates remote-tracking branches and touches nothing you're working on; pull additionally merges/rebases into your current branch, where conflicts live
+- [ ] fetch is faster so there's less to go wrong
+- [ ] pull skips the working tree
+> `git fetch` downloads commits and advances refs like `origin/main`, leaving your local branch, index, and working tree untouched — so afterward you simply *know* what changed and can integrate at your leisure. `git pull` is fetch plus an immediate merge or rebase into your branch, conflating "find out what changed" with "integrate it now." Fetching first, inspecting, then integrating turns one unpredictable step into two predictable ones.
+
+Q: Why prefer `git push --force-with-lease` over `git push --force` after rewriting a feature branch?
+- [ ] It's faster
+- [x] It fails if someone else pushed commits you haven't fetched, rather than silently overwriting their work
+- [ ] It doesn't actually force-push
+- [ ] It automatically merges the remote changes
+> `--force-with-lease` checks that the remote branch still points where your remote-tracking ref says it does; if a teammate pushed in the meantime, the push is rejected instead of clobbering their commits. Plain `--force` overwrites unconditionally, which is how shared work gets lost. When a force-push is genuinely needed (e.g. after an interactive rebase), the lease variant is the safe default.
 ```
 
 ---

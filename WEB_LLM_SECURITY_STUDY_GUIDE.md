@@ -85,6 +85,29 @@ Testing for broken access control is mechanical and should be automated, because
 
 Prevention generalizes from the IDOR fix. Enforce authorization at the **data layer** so that every query is intrinsically scoped to the caller's tenant or ownership, deny by default so that a new endpoint is locked until someone deliberately opens it, use unguessable identifiers (UUIDs) as defense in depth so that enumeration is harder even if a check is missed, and never make an access decision based on a field the client controls. The deep lesson, the one that retires whole categories of this bug, is that **authentication and authorization are different problems solved in different places**: authentication happens once, at the door, when the session is established; authorization must happen at *every single object access*, on the server, every time, because the question "is this the right user?" and the question "may this user touch this specific thing?" are not the same question, and a surprising amount of "broken access control" is simply code that answered the first and forgot to ask the second.
 
+```quiz
+Q: An endpoint is `@login_required` and returns `db.invoices.find_one(id=invoice_id)`. Why is it still vulnerable (IDOR)?
+- [ ] login_required doesn't actually check the session
+- [x] It authenticated *who you are* but never authorized *what you may see* — any logged-in user can change the id and read another user's invoice; the fix scopes the query by owner (`find_one(id=..., owner_id=current_user.id)`)
+- [ ] The id should be a string
+- [ ] It needs rate limiting
+> Authentication and authorization are different questions solved in different places: the session check confirms the caller is logged in, but nothing confirms the invoice belongs to them. Incrementing the id reads someone else's. The robust fix puts the ownership check *inside the query* so no code path can fetch an unowned object — not a separate `if` a refactor might drop.
+
+Q: Why return `404` rather than `403` when a user requests an object they don't own?
+- [ ] 403 is deprecated
+- [x] A `403 Forbidden` confirms the object exists (just hidden from you), which an attacker enumerating ids happily collects; a `404` reveals nothing about whether that id is a real object belonging to someone else
+- [ ] 404 is faster
+- [ ] They're equivalent here
+> While 403 is the technically correct "you may not," it leaks existence — useful intel for someone walking ids to map your data. Returning 404 for both "doesn't exist" and "exists but not yours" denies the attacker that signal. It's a deliberate information-disclosure tradeoff, distinct from the general 401-vs-403 distinction, made specifically to frustrate enumeration.
+
+Q: Why can't a framework prevent broken access control automatically the way it can prevent SQL injection?
+- [ ] Frameworks don't try
+- [x] Access control is application logic specific to your domain's rules — no framework knows an invoice belongs to its owner and not whoever asks; you must enforce it at the data layer, deny by default, and never trust client-supplied roles
+- [ ] It requires a paid framework tier
+- [ ] SQL injection is harder to prevent
+> Parameterized queries are a general mechanism a framework can provide, but "may this user touch this specific thing?" depends entirely on your domain's ownership and tenancy rules, which the framework can't know. That's why it tops the OWASP list and why prevention is discipline: scope every query to the caller, lock new endpoints by default, and look up roles server-side from the authenticated identity rather than believing a client-supplied `"role": "admin"`.
+```
+
 ---
 
 ## Part 3 — Injection
@@ -179,6 +202,19 @@ Server-Side Request Forgery and Cross-Site Request Forgery are usually taught se
 
 SSRF arises whenever your server fetches a URL that the user supplied — a webhook callback, an image proxy, a link-preview generator, an "import from URL" feature. The attacker supplies a URL that points not outward but *inward*: at internal services that have no authentication because they assumed the network was trusted, at administrative interfaces bound to localhost, or — most devastatingly in the cloud — at the instance metadata endpoint `http://169.254.169.254/`, which on a misconfigured instance will hand out the temporary IAM credentials of the role the server is running as. An SSRF against the metadata endpoint is frequently a direct path from "image proxy" to "full cloud account compromise."
 
+```mermaid
+sequenceDiagram
+  participant A as Attacker
+  participant S as Your server (image proxy / webhook fetcher)
+  participant M as 169.254.169.254 (cloud metadata)
+  A->>S: supply an inward-pointing URL (http://169.254.169.254/...)
+  Note over S: server has ambient network authority — the confused deputy
+  S->>M: fetches the metadata URL on the attacker's behalf
+  M-->>S: temporary IAM credentials of the server's role
+  S-->>A: response body leaks the credentials
+  Note over A: image proxy becomes full cloud-account compromise
+```
+
 ```python
 import ipaddress, socket
 from urllib.parse import urlparse
@@ -217,6 +253,29 @@ def transfer():
 The two layers are complementary. `SameSite=Lax` (or `Strict`) is a browser-enforced baseline: the browser simply won't attach the cookie to a cross-site request, which neutralizes the basic form-submission attack at the platform level. The synchronizer token is the application-level belt to that suspenders: a random value tied to the session, embedded in your forms, and verified on submission — the attacker's page can't read it because the Same-Origin Policy (Part 8) forbids `evil.com` from reading your page's contents, and can't guess it because it's cryptographically random. A useful structural observation completes the picture: APIs that authenticate with an `Authorization` header bearing a token (rather than a cookie) are immune to CSRF *by construction*, because there is no ambient credential for the browser to attach automatically — the attacker's page would have to *know* the token to send it, and if they know the token they didn't need CSRF.
 
 The connective idea that makes both bugs one lesson: SSRF and CSRF are confused-deputy attacks, where you trick a trusted party — your server, or the victim's browser — into wielding its ambient authority on the attacker's behalf. Every defense reduces to the same move: validate the *intent* and the *destination* of a request rather than trusting that it reached you through a legitimate path.
+
+```quiz
+Q: Why are SSRF and CSRF described as "the same attack pointed in opposite directions"?
+- [ ] Both inject SQL
+- [x] Both are confused-deputy attacks abusing ambient authority — SSRF tricks your server into using its network position; CSRF tricks the victim's browser into attaching their session cookie — the attacker who can't reach the target directly makes a trusted party do it
+- [ ] Both steal passwords
+- [ ] Both require XSS first
+> The unifying pattern is ambient authority: SSRF exploits your server's privileged position *inside* the network (fetching a user URL that points inward), while CSRF exploits the browser's automatic cookie attachment (a malicious page triggers a request that rides the victim's session). In both, a deputy with standing authority is confused into acting for the attacker. Defenses validate the intent and destination of a request rather than the path it arrived by.
+
+Q: An image-proxy SSRF lets the attacker reach `http://169.254.169.254/`. Why is that often "full cloud account compromise," and what's the strongest defense?
+- [ ] It's a public website
+- [x] On a misconfigured cloud instance that endpoint hands out the temporary IAM credentials of the server's role; the strongest defense is architectural — put the URL fetcher in a network segment with no route to internal services or the metadata endpoint (plus IMDSv2 on AWS)
+- [ ] It only leaks the server's hostname
+- [ ] Blocking file:// is sufficient
+> The cloud instance metadata endpoint dispenses the role's temporary credentials, so an SSRF that reaches it escalates "fetch a URL" to "act as the server's IAM role." Application checks (scheme allowlist, reject private/loopback/link-local IPs, pin redirects) are the inner layer, but the outer, stronger one is network isolation so a missed check has nowhere to go. IMDSv2's required PUT-for-token closes the metadata path even if the fetcher is reachable.
+
+Q: Why are token-in-`Authorization`-header APIs immune to CSRF by construction?
+- [ ] They use HTTPS
+- [x] There's no ambient credential the browser auto-attaches — the attacker's page would have to *know* the token to send it, and if they know it they didn't need CSRF; CSRF depends on the browser silently attaching cookies
+- [ ] They validate the Origin header
+- [ ] Headers can't be forged
+> CSRF works because cookies are sent automatically to your domain regardless of who initiated the request. A bearer token in a header isn't attached by the browser; your JavaScript adds it explicitly, so a cross-site page can't cause an authenticated request without already possessing the token. That's why cookie-authenticated state-changing endpoints need `SameSite` plus a synchronizer token, while header-token APIs sidestep the whole class.
+```
 
 ---
 
@@ -309,6 +368,29 @@ A session cookie's flags are its armor, and three of them matter: `HttpOnly` mak
 
 Where to store an authentication token is a genuine tradeoff rather than a settled answer, and understanding it is understanding how XSS and CSRF interact. A token in an `HttpOnly` cookie is immune to theft by XSS (JavaScript can't read it) but, because it's a cookie the browser attaches automatically, it needs CSRF defense. A token in `localStorage` avoids CSRF (it's not an ambient credential; your code must attach it deliberately) but is readable by *any* XSS that runs on your page, so a single injection anywhere exfiltrates every user's token. The non-obvious insight is that these defenses *interact*: choosing where the token lives is choosing *which* attack you have to defend against. The modern default for first-party applications — `HttpOnly`, `Secure`, `SameSite` cookies plus CSRF tokens — is preferred not because it's invulnerable but because it moves you from the XSS threat model (which is large, sprawling, and hard to fully close) to the CSRF threat model (which is small and *completely* closable with the SameSite-plus-token combination). Pick the attack you can actually win.
 
+```quiz
+Q: Why does the Same-Origin Policy make the CSRF synchronizer token of Part 5 work?
+- [ ] SOP encrypts all requests
+- [x] SOP lets `evil.com` *make* requests to your site but not *read* the responses, so it can't extract the random CSRF token embedded in your pages — it can fire a blind request but can't supply the token
+- [ ] SOP blocks all cross-origin requests
+- [ ] The token is stored in an HttpOnly cookie
+> The Same-Origin Policy is the foundational browser rule: script on origin A can't read responses from origin B. That's why one tab can't read another's email — and why the CSRF token defends: the attacker's page can trigger a credentialed request but can't read your page to learn the token it must include. CSRF exploits the gap between making and reading; SOP closes the reading side, so the token closes the rest.
+
+Q: What's the catastrophic CORS misconfiguration, and why does "CORS doesn't add security" matter?
+- [ ] Setting Access-Control-Allow-Origin to a fixed origin
+- [x] Reflecting the request's own `Origin` header back *and* allowing credentials — any site the victim visits can then make credentialed reads of your API; CORS *relaxes* SOP, so over-relaxing hands away the protection
+- [ ] Forgetting the Vary header
+- [ ] Using HTTPS origins
+> CORS is a deliberate loosening of SOP to let trusted cross-origin clients read responses, so the danger is loosening too far. Echoing `Origin` back while allowing credentials tells the browser "whoever asked may read my authenticated responses" — a total SOP defeat. The fix is an explicit allowlist echoing only vetted origins, never wildcard-plus-credentials, with `Vary: Origin`. A CORS console error is the policy *working*, not a bug to silence by allowing everything.
+
+Q: Why is the `HttpOnly`+`Secure`+`SameSite` cookie + CSRF-token default preferred over storing the token in `localStorage`?
+- [ ] Cookies are faster
+- [x] It moves you from the large, hard-to-fully-close XSS threat model (localStorage is readable by any XSS) to the small, completely closable CSRF threat model (SameSite + synchronizer token) — you pick the attack you can actually win
+- [ ] localStorage doesn't persist
+- [ ] Cookies are immune to all attacks
+> Where the token lives chooses *which* attack you must defend. localStorage avoids CSRF but any single XSS exfiltrates every token — and XSS is a sprawling surface you can never be certain is fully closed. An HttpOnly cookie can't be read by XSS but is CSRF-exposed, except CSRF is small and fully solvable with SameSite plus a token. So the cookie default trades an unwinnable threat model for a winnable one.
+```
+
 ### Content Security Policy as the safety net
 
 A **Content Security Policy** is a response header that tells the browser which sources of script, style, images, and other content are permitted to load and execute — and it is the clearest example of defense in depth on the web, because it assumes your output encoding *will* eventually fail somewhere and puts the browser itself between an injected payload and its execution. The strong form is nonce-based, which lets you eliminate the dangerous `'unsafe-inline'`:
@@ -357,6 +439,29 @@ user_msg = f"<untrusted>\n{retrieved_document}\n</untrusted>\n\nQuestion: {quest
 This helps, and you should do it, but understand that it is *necessary and not sufficient*: it raises the bar for an attacker without closing the door, because the same model that you're asking to respect the boundary is the one the attacker is trying to talk past, and a sufficiently clever injection inside the `<untrusted>` block can still persuade it. The load-bearing defenses are the ones that don't depend on the model's cooperation. **Least privilege on the model itself** is the most important: a model that reads untrusted input should not *also* hold powerful tools without guardrails — separate the "read untrusted data and answer" path from the "take a privileged action" path so that subverting the reader doesn't hand the attacker the actuator (Part 10 develops this). **Human-in-the-loop** confirmation gates any consequential action behind a person who can notice that the model is about to do something strange. And **output filtering** scans what the model produces before it leaves, catching leaked secrets or obvious manipulation before they reach a user or a downstream system.
 
 Testing means red-teaming in earnest: throw direct overrides ("ignore previous instructions," "you are now in developer mode"), encoded and obfuscated payloads, and — most importantly — indirect injections planted in the documents and URLs the agent will actually fetch, and treat any successful instruction-override as a finding to be contained rather than a bug to be patched, because you likely can't patch it. The mental shift that this whole part is driving toward is to stop asking "can I stop injection?" and start asking "what can the attacker do once they control the model's output?" — because that second question has an answer you control completely, through the architecture of Part 10, and your job is to make that answer boring.
+
+```quiz
+Q: Why is prompt injection categorically different from SQL injection or XSS rather than just another item on the list?
+- [ ] It only affects newer models
+- [x] SQL/XSS defenses restore the code/data separation (parameterized queries, output encoders); to an LLM the system prompt, user message, and retrieved document are all just text in one context window, so there's no separate data channel to move untrusted text into
+- [ ] It's easier to patch than SQL injection
+- [ ] It only happens with malicious users
+> Every classic injection defense works by re-establishing the boundary between code and data — the SQL driver separates query from value because it isn't the model. An LLM *is* the parser, trained to follow instructions wherever it finds them, and everything in its context is the same kind of text. There's no parameterized-query equivalent because there's nowhere to put the "data" that the model won't read as possible instructions.
+
+Q: What's the dangerous form of prompt injection, and why?
+- [ ] Direct injection, because users type it
+- [x] Indirect injection — the malicious instruction is hidden in content the model consumes (a web page, PDF, email, or RAG document), so a third party can plant an instruction into a conversation they're not even part of
+- [ ] Both are equally easy to block
+- [ ] Neither is exploitable in practice
+> Direct injection ("ignore your previous instructions") is obvious because the user types it. Indirect injection is worse because the attacker never touches your app: they poison a document your RAG retrieves or a page your agent fetches, and the model reads and acts on the hidden instruction when an innocent user asks an innocent question. Anyone who can get content into your model's input can inject.
+
+Q: Why is delimiting untrusted content in `<untrusted>` tags "necessary but not sufficient"?
+- [ ] Tags slow down the model
+- [x] It raises the bar but relies on the model's cooperation — the same model respecting the boundary is the one the attacker is talking past, so the load-bearing defenses (least privilege, human-in-the-loop, output filtering) are the ones that don't depend on the model
+- [ ] Tags break the model's output format
+- [ ] It fully solves injection
+> Labeling data as "not instructions" helps the model resist obvious overrides, but a clever injection inside the block can still persuade it, because you're asking the model to police text the attacker crafted to be persuasive. Since prompt injection isn't reliably solvable, the real defenses are architectural and don't need the model to cooperate: scope its tools, gate consequential actions behind a human, and filter its output before it leaves.
+```
 
 ---
 
@@ -409,6 +514,29 @@ def refund_order(order_id: int, *, user_id: int):
 The contrast between the two tool designs *is* the security of the agent. A single `run_sql` tool means that any successful prompt injection — and Part 9 says one will eventually succeed — gives the attacker arbitrary database access, reads and writes, across every tenant. The narrow alternative gives the model only the specific, validated, least-privilege operations its task requires: `get_order_status` runs a fixed parameterized query on a read-only connection scoped to the calling user, so even a fully subverted model can do nothing through it but read order statuses for the right user; and `refund_order`, because it moves money, gates on human approval. The principles generalize: give each tool the narrowest possible scope and back it with a read-only or least-privilege credential, validate every argument the model supplies because the model is attacker-influenced, gate destructive or costly actions behind human confirmation, and run genuinely risky tools (arbitrary code execution, web browsing) in a sandbox with no network route to anything internal.
 
 The design rule worth tattooing on the architecture is that **the model's privileges are the attacker's privileges.** Once you have accepted that prompt injection can happen — and Part 9 insists you must — the entire security of an agent collapses to the question of how tightly you scoped its tools. A read-only, tenant-scoped, human-gated tool surface makes a subverted model an annoyance; a single broadly-privileged tool makes it a breach. The work of securing an agent is not, in the end, trying harder to stop injection; it is making the blast radius of a successful injection small enough not to matter.
+
+```quiz
+Q: What's the rule that fixes the entire "insecure output handling" class?
+- [ ] Always render model output as plain text
+- [x] Treat LLM output as untrusted user input — apply the same contextual encoding, schema validation, and never-eval defenses on the way *out* that you apply to user input on the way *in*, because injection makes the model's output attacker-influenced
+- [ ] Trust the model since it generated the text
+- [ ] Run the output through a second model
+> Feeding model output into an interpreter reaches every classic injection bug *through* the model: rendered as HTML it's XSS, in a SQL string it's SQLi, passed to a shell it's RCE. Since prompt injection means an attacker can control that output, the fix is to picture the LLM as an untrusted user living inside your backend — encode for the destination, validate structured output against a strict schema, and never pass model text to eval/shell/raw SQL.
+
+Q: Why is a single `run_sql(query)` tool catastrophic while narrow `get_order_status`/`refund_order` tools make a subverted model an annoyance?
+- [ ] run_sql is slower
+- [x] The model's privileges are the attacker's — one arbitrary-SQL tool means a successful injection gets read/write access across every tenant; narrow tools give only validated, least-privilege, tenant-scoped operations, so even a fully subverted model can do little harm
+- [ ] Narrow tools are easier to write
+- [ ] run_sql can't be parameterized
+> Accepting that injection will eventually succeed, the agent's security collapses to how tightly its tools are scoped. A god-tool hands the attacker everything the tool can do; a fixed parameterized read-only query scoped to the calling user lets a subverted model only read the right user's order status. Excessive agency is the confused-deputy attack with the LLM as deputy — the blast radius is whatever you granted.
+
+Q: After accepting prompt injection can't be reliably stopped, what does securing an agent actually reduce to?
+- [ ] Trying harder to detect injection
+- [x] Shrinking the blast radius — least-privilege tools backed by read-only/scoped credentials, validating every model-supplied argument, gating destructive actions behind human approval, and sandboxing risky tools away from internal networks
+- [ ] Switching to a more aligned model
+- [ ] Encrypting the system prompt
+> The mental shift is from "can I stop injection?" (no) to "what can the attacker do once they control the model's output?" (an answer you control completely). You make that answer boring through architecture: narrow validated tools, least-privilege credentials, human-in-the-loop on consequential actions, and sandboxes for genuinely risky capabilities. A subverted model with a tightly scoped tool surface is harmless; the work is in the scoping, not the stopping.
+```
 
 ---
 

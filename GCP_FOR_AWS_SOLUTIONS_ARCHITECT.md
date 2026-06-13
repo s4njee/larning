@@ -118,6 +118,16 @@ resource "google_storage_bucket" "assets" {
 
 In AWS you reason constantly about the **account** — your billing boundary, your isolation edge, the heavy unit you ration because spinning up and governing one is real work — organized into OUs under an Organization. GCP's foundational difference, the one that reshapes how you structure everything, is that it replaces the heavy account with a *lightweight project* inside a strict, mandatory hierarchy: **Organization → Folders → Projects → Resources**, with the rule that *every resource must belong to a project* — there is no equivalent of a "loose" resource floating outside the structure. A **project** is the rough analog of an AWS account as the isolation-and-billing unit, but it is so much cheaper to create and interconnect that the idiom inverts: where AWS teams ration accounts, GCP teams make *many* projects — commonly one per service per environment — because they all share a central **Billing Account**, nest under **Folders** for governance (the OU analog), and interconnect easily via Shared VPC. The mental shift to make early is "projects are cheap, make many," because designing a GCP estate as if projects were precious accounts produces a cramped, hard-to-govern structure.
 
+```mermaid
+graph TD
+  ORG["Organization<br/>root of the hierarchy"] --> FLD["Folders<br/>governance grouping (≈ AWS OUs)"]
+  FLD --> PRJ["Projects<br/>isolation & billing unit (≈ AWS account) — cheap, make many"]
+  PRJ --> RES["Resources — every resource lives in exactly one project"]
+  BILL["Billing Account"] -.linked to.-> PRJ
+```
+
+IAM policies set at the Organization or Folder level **inherit down** to every project and resource beneath, so you grant broadly at the top and narrowly where needed.
+
 Two naming subtleties trip up AWS architects and are worth pinning down. First, GCP overloads the word "tags": it has **labels** (free-form key-value pairs for querying, filtering, and cost breakdown — the closest match to AWS tags) *and* **tags** (a separate Resource Manager construct that can be referenced in IAM conditions and firewall rules to apply policy conditionally) — so "tag" means two different things depending on context, and you'll use labels for organization and tags for policy. Second, the geography model adds a tier above regions and zones: GCP defines **multi-regions** (a geographic area spanning several regions, like `us` or `eu`) that storage and database services use for *out-of-the-box geo-replication* — so where an AWS architect explicitly designs cross-region replication, several GCP services offer a multi-region location that handles it for you, a genuine simplification to know exists.
 
 ### Hands-On
@@ -147,6 +157,29 @@ gcloud services enable compute.googleapis.com run.googleapis.com --project=app-p
 - Design a folder and project structure for a multi-tenant application with `development`, `staging`, and `production` environments.
 - Contrast when you would separate components of an application into different Projects vs. different Folders.
 - Map an AWS account-per-environment topology to a GCP project-and-folder topology.
+
+```quiz
+Q: Why does the "AWS account → GCP project" mapping invert how many you create?
+- [ ] Projects cost more, so you make fewer
+- [x] A project is lightweight and easily interconnected, so the GCP idiom is many projects (often per service per environment) under shared folders and one billing account
+- [ ] Projects can't be deleted, so you reuse them
+- [ ] GCP limits you to one project per organization
+> An AWS account is a heavy boundary teams ration; a GCP project is cheap to create and interconnect (via Shared VPC) and shares a central billing account. So the idiom flips to "projects are cheap, make many" — commonly one per service per environment. Designing a GCP estate as if projects were precious accounts produces a cramped, hard-to-govern structure.
+
+Q: GCP "overloads" the word tags. What's the distinction between labels and tags?
+- [ ] They're identical; tags is just the newer name
+- [x] Labels are free-form key-value pairs for querying/filtering/cost; tags are a Resource Manager construct referenceable in IAM conditions and firewall rules for conditional policy
+- [ ] Labels are for billing only; tags are for billing only
+- [ ] Tags are AWS-only; GCP has just labels
+> GCP labels are the closest match to AWS tags — organization, filtering, cost breakdown. GCP *tags* are a separate construct that policy can reference: IAM conditions and firewall rules can apply conditionally based on a tag. So "tag" means two different things by context — use labels for organization, tags for policy.
+
+Q: What does a GCP multi-region location give you that an AWS architect normally designs explicitly?
+- [ ] Lower per-GB storage pricing
+- [x] Out-of-the-box geo-replication — storage/database services using a multi-region (like `us` or `eu`) handle cross-region replication for you
+- [ ] A single global IP address
+- [ ] Automatic cost optimization
+> GCP adds a tier above regions and zones: multi-regions span several regions, and several storage and database services offer a multi-region location that handles geo-replication automatically. Where an AWS architect explicitly builds cross-region replication, the GCP service can provide it as a location choice — a genuine simplification worth knowing exists.
+```
 
 ---
 
@@ -197,6 +230,29 @@ gcloud storage buckets add-iam-policy-binding gs://app-prod-assets \
 - Implement an IAM Condition that grants an external contractor access to BigQuery only during standard business hours.
 - Explain the security implications of granting a developer the `roles/iam.serviceAccountUser` role.
 - Map the concept of an AWS IAM Role assumed by an EC2 instance to a GCP Service Account attached to a Compute Engine instance.
+
+```quiz
+Q: In AWS you attach a policy to a principal ("Alice may read S3"). How does GCP invert this?
+- [ ] It attaches policies to IAM users only
+- [x] Policies attach to the *resource* ("this bucket grants Reader to Alice"), as a who/what/where triple inheriting down the org→folder→project→resource hierarchy
+- [ ] GCP has no concept of roles
+- [ ] Policies attach to regions
+> GCP's model is resource-centric: a binding sits on a resource and names a principal (who), a role (what), and inherits down from the scope it's attached to (where). Combined with IAM Conditions for fine-grained, conditional grants, this expresses least privilege without proliferating roles — but it means you reason about "what does this resource grant?" rather than "what is this user allowed?"
+
+Q: Why does GCP have "no native IAM users," and what's the implication for an AWS architect?
+- [ ] Users are disabled by default for security
+- [x] Human identities live in a directory (Cloud Identity, Workspace, or a federated IdP), so your identity strategy is choosing which directory GCP points at, not minting users inside GCP
+- [ ] You must create users via Terraform only
+- [ ] GCP only supports service accounts, never humans
+> Unlike `aws iam create-user`, GCP doesn't originate human identities — they come from a directory, and an existing Okta/Entra shop uses Workforce Identity Federation to authenticate users without syncing them into Google. So the human-identity decision is fundamentally "which directory do I federate?" rather than a set of users you manage in the cloud.
+
+Q: What does granting someone `roles/iam.serviceAccountUser` (actAs) on a service account let them do, and why is it a frequent CI gotcha?
+- [ ] It lets them delete the service account
+- [x] It lets them run workloads *as* that service account — so a deploy pipeline needs actAs to deploy as the SA, and missing it causes "why can't my CI deploy?"
+- [ ] It grants them billing access
+- [ ] It rotates the SA's keys automatically
+> A service account is unusual in being both a principal and a resource: others can be granted permission to *use* it via the Service Account User role (`actAs`). That's exactly the permission a deploy pipeline needs to launch something as the SA, and its absence is a classic source of CI deploy failures. Treat granting actAs like handing over that SA's permissions.
+```
 
 ---
 
@@ -249,6 +305,29 @@ gcloud compute firewall-rules create allow-https \
 - Design a hub-and-spoke topology using a Shared VPC where the hub project controls all egress via Cloud NAT, and spoke projects host the workloads.
 - Compare GCP's Global Load Balancing routing logic with AWS Route 53 latency-based routing combined with ALBs.
 - Configure a GCP firewall rule that allows port 80/443 traffic only to virtual machines running with a specific Service Account.
+
+```quiz
+Q: A GCP VPC is global. How does that change a multi-region topology versus AWS?
+- [ ] You need a Transit Gateway equivalent to connect regions
+- [x] Instances in different regions on the same VPC talk over Google's backbone with no peering or gateway, so the multi-VPC stitched topologies AWS forces are often unnecessary
+- [ ] Each region still needs its own VPC like AWS
+- [ ] Global VPCs can't have subnets
+> An AWS VPC is regional and a subnet is AZ-bound, so cross-region communication means peering or Transit Gateway. A GCP VPC spans all regions with regional subnets, so `us-central1` and `europe-west1` instances on one VPC communicate over the internal backbone directly — collapsing much of the cross-region plumbing AWS trains you to build.
+
+Q: GCP firewall rules can target instances by network tag *or service account*. Why is the service-account option notable?
+- [ ] It's faster to evaluate than tags
+- [x] It matches by *identity* rather than network position, so a rule can apply to "instances running as this SA" regardless of IP or tag
+- [ ] It's the only way to write a firewall rule
+- [ ] Service accounts replace CIDR ranges entirely
+> AWS filters by network position (security groups, NACLs). GCP firewall rules are one model targeted by tag, IP range, *or* service account — and targeting by SA means the rule follows workload identity, not where the instance sits in the address space. That's a cleaner expression of "these workloads may receive this traffic" than tag/CIDR alone.
+
+Q: Why is GCP's Cloud Load Balancing called out as collapsing multiple AWS pieces into one?
+- [ ] It's cheaper than an ALB
+- [x] It's software-defined and global — one anycast IP balances across worldwide backends, routing each user to the nearest healthy region, replacing Route 53 latency routing plus regional ALBs
+- [ ] It only works in one region
+- [ ] It requires Cloud CDN to function
+> GCP's global external load balancer presents a single anycast IP and routes each request to the closest healthy backend region automatically. That single resource does the job AWS assembles from Route 53 latency-based routing plus per-region ALBs — another expression of GCP's global-by-default networking design.
+```
 
 ---
 
@@ -398,6 +477,29 @@ resource "google_spanner_instance" "main" {
 - Contrast the architectural differences between deploying PostgreSQL on Cloud SQL, AlloyDB, and Cloud Spanner.
 - Analyze when an application requires Cloud Spanner over a traditional primary-replica relational database.
 - Design a high-availability failover topology for a Cloud SQL database instance across two zones.
+
+```quiz
+Q: What makes Cloud Spanner's combination of global distribution and strong consistency normally considered impossible, and how does it achieve it?
+- [ ] It relaxes consistency to eventual under load
+- [x] Global strong consistency usually needs heavy coordination; Spanner uses TrueTime (atomic clocks + GPS) to give bounded clock uncertainty and order transactions globally without that chatter
+- [ ] It restricts writes to one region at a time
+- [ ] It caches all reads in Memorystore
+> The CAP-theorem tension makes globally-distributed *and* strongly-consistent SQL hard because ordering transactions across continents normally demands expensive coordination. Spanner "cheats with hardware": TrueTime provides every node a tightly-bounded notion of "now" from atomic clocks and GPS, and Spanner waits out that bounded uncertainty to order transactions globally. There's no AWS equivalent, so a workload genuinely needing this is a real reason to choose GCP.
+
+Q: When should you reach for Cloud Spanner versus Cloud SQL or AlloyDB?
+- [ ] Always — Spanner is the cheapest option
+- [ ] For any PostgreSQL workload
+- [x] Only when you need horizontal write scale *and* strong consistency at global scale; otherwise Cloud SQL (≈RDS) or AlloyDB (≈Aurora-Postgres) is the right, cheaper answer
+- [ ] For caching frequently-read rows
+> Spanner is the signature product but also the expensive, specialized rung. The ladder is Cloud SQL for ordinary managed relational, AlloyDB when single-node Postgres runs out of headroom but you want to stay Postgres-compatible, and Spanner reserved for the genuine need: global horizontal write scale with strong consistency. Defaulting to Spanner for an app that doesn't need that combination overpays for capability it won't use.
+
+Q: How do Firestore and Cloud Bigtable divide the NoSQL space?
+- [ ] They're interchangeable document stores
+- [x] Firestore is the serverless document DB for application data; Bigtable is a wide-column store for petabyte-scale, low-latency, row-key-accessed workloads
+- [ ] Bigtable is for documents; Firestore is for caching
+- [ ] Both are relational engines
+> GCP's NoSQL splits by access pattern: Firestore (the DynamoDB/DocumentDB analog) suits flexible application documents with real-time sync, while Bigtable is a wide-column engine for enormous operational/analytical workloads accessed by row key — the engine behind Search and Maps. You match data shape and scale to the engine rather than treating one as the universal NoSQL answer.
+```
 
 ---
 
@@ -653,6 +755,29 @@ bq query --use_legacy_sql=false --dry_run 'SELECT * FROM `app-prod.sales.orders`
 - Run a BigQuery SQL query analyzing a public dataset, analyzing how slot allocation and partitioned tables affect query costs.
 - Design an ingestion pipeline using Cloud Pub/Sub, Cloud Dataflow, and BigQuery.
 - Deploy a Gemini model endpoint in Vertex AI, configuring system instructions and safety settings.
+
+```quiz
+Q: Which two AWS services does BigQuery collapse into one, and how is it billed?
+- [ ] Glue + EMR, billed per cluster-hour
+- [x] Redshift (warehouse) + Athena (ad-hoc SQL), billed by bytes scanned with no clusters to manage
+- [ ] Kinesis + Lambda, billed per invocation
+- [ ] DynamoDB + S3, billed per request
+> BigQuery is a serverless warehouse that separates compute from storage and runs SQL over petabytes without sizing or pausing clusters — so it's Redshift *and* Athena at once, without Redshift's cluster management or Athena's separateness. You pay for bytes scanned, which is why the data model directly drives cost.
+
+Q: What's the single most important BigQuery cost lever for an AWS architect used to Athena?
+- [ ] Choosing a larger slot reservation
+- [x] Partitioning and clustering tables so queries prune the scan — fewer bytes scanned, lower cost
+- [ ] Copying data into Redshift first
+- [ ] Running queries with `--dry_run` in production
+> Because billing is by bytes scanned, partitioning and clustering (so a `WHERE` clause prunes partitions instead of scanning the whole table) is the equivalent of partitioning S3 data for Athena — the highest-leverage cost control. `--dry_run` is useful to *estimate* the bytes before you pay, but it's the partition pruning that actually reduces the bill.
+
+Q: What does BigQuery Omni / BigLake enable that's distinctive for multi-cloud shops?
+- [ ] It copies S3 data into GCP automatically each night
+- [x] It runs BigQuery SQL over data sitting in AWS S3 or Azure Blob *without copying it into GCP*
+- [ ] It migrates Redshift clusters to BigQuery
+- [ ] It mirrors BigQuery tables to S3
+> BigQuery Omni and BigLake let you query data in place in another cloud's object storage using BigQuery's engine, so "our data is in S3/Blob but we want Google's analytics" doesn't require an ETL copy into GCP. That in-place cross-cloud query is a genuine differentiator for organizations whose data gravity sits outside GCP.
+```
 
 ---
 

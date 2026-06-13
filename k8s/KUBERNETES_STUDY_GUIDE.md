@@ -38,6 +38,27 @@ The remaining control-plane components are all **controllers** — control loops
 
 On every worker node, two components do the actual work. The **`kubelet`** is the node's agent: it watches the API server for Pods assigned to *its* node, and for each one it instructs the container runtime to pull images and start containers, then continuously reports their status back. The kubelet is what literally runs your workloads — the control plane decides *what* should run *where*, but the kubelet is the thing that makes containers exist. The **`kube-proxy`** programs the kernel's packet-handling rules (iptables, IPVS, or nftables) to implement Service load balancing, as the [networking guide](DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md) details — though modern eBPF dataplanes like Cilium increasingly replace it. Beneath both is the **container runtime** itself: Docker is no longer used directly here, with modern clusters running `containerd` or `CRI-O`, both speaking the standardized [CRI](https://kubernetes.io/docs/concepts/architecture/cri/) protocol the kubelet talks to. Around this core, almost every real cluster also runs a standard set of **addons** — CoreDNS for service discovery, metrics-server for resource metrics, a CNI plugin for Pod networking, CSI drivers for storage, and an Ingress controller for HTTP entry. (References: [kubelet](https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/), [kube-proxy modes](https://kubernetes.io/docs/reference/networking/virtual-ips/).)
 
+The single-front-door design shows up clearly in what actually happens when you `kubectl apply` a Deployment — every component reacts by *watching the API server*, never by calling each other directly:
+
+```mermaid
+sequenceDiagram
+  participant U as kubectl
+  participant API as kube-apiserver
+  participant E as etcd
+  participant Ctl as controllers
+  participant Sch as kube-scheduler
+  participant Kbl as kubelet
+  participant CRI as container runtime
+  U->>API: apply Deployment (desired state)
+  API->>E: persist object
+  Ctl->>API: watch → Deployment makes ReplicaSet makes Pods
+  Sch->>API: watch → see unscheduled Pod
+  Sch->>API: bind Pod to a node (filter + score)
+  Kbl->>API: watch → Pod assigned to my node
+  Kbl->>CRI: pull image, start containers
+  Kbl->>API: report status: Running
+```
+
 **Practice**: On a kind or minikube cluster, run `kubectl get pods -n kube-system` and identify each control-plane and node component. Then `kubectl get --raw /readyz?verbose` to see every health check the API server runs.
 
 ---
@@ -125,6 +146,36 @@ kubectl get pods -A
 kind delete cluster --name k8s-study
 ```
 
+```quiz
+Q: Why can the kube-apiserver be a stateless, horizontally-scalable service?
+- [x] It's the only component that talks to etcd; it holds no state itself, so any replica can serve any request — everything else reads/writes the cluster through it
+- [ ] It caches all state in memory and syncs replicas
+- [ ] It runs an embedded copy of etcd
+- [ ] It's actually stateful and can't be scaled
+> The single-front-door design (scheduler, controllers, kubelets, kubectl all go through the API server) is what makes the control plane resilient. etcd is the source of truth — lose it and you lose the cluster, so snapshot it and encrypt Secrets at rest.
+
+Q: What is "declarative reconciliation" and why does deleting a Deployment-owned Pod recreate it?
+- [x] You write desired state to spec; a controller continuously diffs it against actual state and acts to close the gap, never assuming its last action stuck — so recreating a deleted Pod is the ordinary output of a loop, not a special "self-healing feature"
+- [ ] A watchdog process restarts deleted Pods
+- [ ] The Pod has a restart flag set
+- [ ] etcd replays the deletion in reverse
+> spec is user-written desired state, status is controller-written observed state — you never edit status. The always-re-converging loop is why Kubernetes is robust against partial failure the way distributed systems must be.
+
+Q: A Service has no explicit list of its Pods. How does it find its backends?
+- [x] It holds a label *selector*; the set of Pods carrying matching labels *is* its backend — so a Pod joins or leaves by gaining or losing a label, with no registration
+- [ ] It queries the scheduler for Pod assignments
+- [ ] It reads an annotation listing the Pod IPs
+- [ ] The kubelet registers each Pod with the Service
+> Labels are the load-bearing relationship mechanism — the same way ReplicaSets find their Pods. Selectors are often immutable because changing what a controller owns could orphan or steal Pods.
+
+Q: Why is "a namespace is a security boundary" the most common misconception?
+- [x] Pods in different namespaces share nodes, kernel, and a flat Pod network — so cross-namespace traffic flows by default (without NetworkPolicy) and a container escape crosses namespace lines freely; namespaces scope names and attach RBAC/quota, they don't isolate
+- [ ] Namespaces do isolate; the misconception is the reverse
+- [ ] Namespaces only work with NetworkPolicy enabled
+- [ ] Namespaces isolate CPU but not network
+> Namespaces organize and scope. Real isolation takes NetworkPolicy, RBAC, and pod-security controls. They also shape DNS — a hardcoded short Service name can break when a workload moves namespace.
+```
+
 ---
 
 ## Phase 2: Workloads
@@ -149,6 +200,18 @@ A Pod is one or more containers that **share a network and IPC namespace**: they
 The kubelet manages each container's health through three kinds of **probe**, and confusing them is a leading cause of self-inflicted outages, so the distinction is worth holding precisely. The **`readinessProbe`** controls *traffic*: when it fails, the kubelet removes the Pod from its Services' endpoints, so requests stop flowing to it — and this is the probe to use liberally, because it is exactly what keeps rolling deploys healthy (a new Pod receives no traffic until it reports ready). The **`livenessProbe`** controls *restarts*: when it fails, the kubelet kills and restarts the container, which sounds helpful but is dangerous, because an aggressive liveness probe that trips under load restarts healthy-but-busy Pods and turns a load spike into a cascading restart storm — so reserve it strictly for genuine *deadlock* detection, the case where only a restart can recover. The **`startupProbe`** buys slow-starting apps room: it disables the liveness probe until the app has started, so a sixty-second JVM warmup isn't killed by a liveness check tuned for steady state. All three can probe via `httpGet`, `tcpSocket`, `exec`, or `grpc` (1.27+).
 
 Finally, the Pod's lifecycle and shutdown deserve care because they govern whether deploys are graceful. A Pod moves through phases `Pending` → `Running` → `Succeeded`/`Failed`, with `Unknown` meaning the kubelet hasn't reported recently (usually a node problem). On deletion, the kubelet sends `SIGTERM`, waits **`terminationGracePeriodSeconds`** (default 30), then `SIGKILL` — so an app with long in-flight work needs both a longer grace period and signal handling that actually drains on `SIGTERM`. The **`preStop` hook** runs *before* the `SIGTERM` and is the standard fix for the classic "requests fail during deploys" bug: a `preStop` of `sleep 10` gives the Service's endpoint removal time to propagate to every node's kube-proxy before the container starts shutting down, so in-flight requests aren't dropped by a Pod that's already gone from the load balancer's view but still receiving traffic. (References: [Pod lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/), [Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/), [Sidecar containers](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/).)
+
+```mermaid
+stateDiagram-v2
+  [*] --> Pending: created, awaiting schedule + image pull
+  Pending --> Running: containers started
+  Running --> Succeeded: all containers exited 0
+  Running --> Failed: a container exited non-zero
+  Pending --> Failed: cannot schedule / image pull error
+  Running --> Unknown: kubelet stopped reporting (node problem)
+  Succeeded --> [*]
+  Failed --> [*]
+```
 
 ---
 
@@ -299,6 +362,36 @@ spec:
 ```
 
 Use `concurrencyPolicy: Forbid` for jobs that should not overlap, and `Replace` only when killing the previous run is explicitly safe.
+
+```quiz
+Q: What's the difference between a readinessProbe and a livenessProbe, and why is an aggressive liveness probe dangerous?
+- [x] Readiness controls *traffic* (failure removes the Pod from Service endpoints); liveness controls *restarts* (failure kills the container) — an aggressive liveness probe trips under load and restarts healthy-but-busy Pods, turning a spike into a restart storm
+- [ ] They're interchangeable health checks
+- [ ] Liveness controls traffic, readiness controls restarts
+- [ ] Liveness is safer to use liberally
+> Use readiness liberally (it's what keeps rolling deploys healthy); reserve liveness strictly for genuine deadlock detection. startupProbe disables liveness during a slow warmup so a 60-second JVM start isn't killed.
+
+Q: Requests reserve resources; what does a Deployment do when you change a field under spec.template?
+- [x] It creates a *new* ReplicaSet and gradually scales it up while scaling the old one down (RollingUpdate) — changing image, resources, probes, or env under the template triggers this rollout
+- [ ] It restarts the existing Pods in place
+- [ ] It edits the running containers without replacing them
+- [ ] Nothing until you run kubectl rollout
+> Fields under spec.template replace Pods; fields outside it change controller behavior without replacement. The Deployment owns ReplicaSets, which own Pods — the owner-reference tree cascading deletion follows.
+
+Q: What does a preStop hook of `sleep 10` fix, and why?
+- [x] The "requests fail during deploys" bug — it delays SIGTERM so the Service's endpoint removal propagates to every node's kube-proxy before the container shuts down, so in-flight traffic isn't sent to a Pod already gone from the load balancer's view
+- [ ] It speeds up Pod termination
+- [ ] It forces a graceful database flush
+- [ ] It extends the liveness probe timeout
+> On deletion the kubelet sends SIGTERM, waits terminationGracePeriodSeconds (default 30), then SIGKILL. The preStop sleep covers the propagation race; the app still needs to actually drain on SIGTERM.
+
+Q: When should you use a StatefulSet instead of a Deployment, and what does it NOT give you?
+- [x] When you need stable per-replica identity and storage (predictable names web-0/web-1, per-Pod PVCs via volumeClaimTemplates, headless-Service DNS) — but it does NOT make a database highly available; failover is still your problem
+- [ ] When you need faster rolling updates
+- [ ] Whenever the workload writes to disk at all
+- [ ] StatefulSets give automatic HA for any database
+> Kubernetes provides identity and storage attachment; replication/failover needs an operator or your own logic. PVCs survive Pod deletion and aren't deleted with the StatefulSet by default — a feature and a footgun.
+```
 
 ---
 
@@ -558,6 +651,29 @@ Know the boundary:
 - TLS certificates usually come from cert-manager, a cloud load balancer integration, or a platform team's certificate workflow.
 - External DNS records are usually managed by ExternalDNS, Terraform, or cloud-native DNS automation.
 
+```quiz
+Q: A Service has no endpoints and traffic fails. What's the most likely cause?
+- [x] The selector doesn't match any *ready* Pods — either label mismatch or readiness probes failing (an unready Pod is removed from EndpointSlices)
+- [ ] The Service type is wrong
+- [ ] CoreDNS is down
+- [ ] The cluster IP wasn't allocated
+> EndpointSlices are the actual list of Pod IPs behind a Service, reconciled from the selector. "No endpoints" is the canonical Service-debug finding — check the selector against Pod labels and the readiness state.
+
+Q: Which Service type is the right default, and what's the role of NodePort?
+- [x] ClusterIP (in-cluster only) is the default and usually correct; NodePort opens a high port on every node and is mostly a building block, rarely the right user-facing choice
+- [ ] LoadBalancer, since it's external
+- [ ] NodePort, for direct access
+- [ ] ExternalName, which proxies traffic
+> LoadBalancer provisions a cloud L4 balancer (costs money per Service); ExternalName is just a DNS CNAME with no proxying. User-facing HTTP usually goes through an Ingress/Gateway in front of ClusterIP Services.
+
+Q: What's the layered boundary between a Service, an Ingress, and the Gateway API?
+- [x] A Service is L4 load balancing to Pods; Ingress is L7 HTTP routing to Services (needing a controller to do the work); Gateway API models the shared infrastructure more explicitly, splitting ops-owned Gateway from app-owned HTTPRoute
+- [ ] They're three names for the same thing
+- [ ] Ingress is L4, Service is L7
+- [ ] Gateway API replaces Services entirely
+> An Ingress resource is just config — it does nothing without a running Ingress controller (nginx, Traefik, cloud LB). Gateway API is the modern successor with cleaner platform/app team separation.
+```
+
 ---
 
 ## Phase 5: Scheduling & Resource Management
@@ -574,6 +690,29 @@ Know the boundary:
 - **Resource units**: CPU in cores (`500m` = 0.5 core). Memory in bytes (`Mi` = mebibytes, `M` = megabytes — they are *different*; almost always use `Mi`/`Gi`).
 - **Ephemeral storage** also has requests/limits. Exceeding the limit evicts the pod. Easy to overlook until a log-spam app brings down a node.
 - References: [Resource Management](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/), [QoS](https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/)
+
+```quiz
+Q: What's the difference between resource requests and limits?
+- [x] Requests are what the scheduler uses to place the Pod (it reserves that much); limits are what the kubelet enforces at runtime — exceeding a CPU limit throttles, exceeding a memory limit gets the container OOMKilled
+- [ ] Requests are runtime caps, limits are scheduling hints
+- [ ] They're the same value with different names
+- [ ] Limits are advisory only
+> The asymmetry matters: CPU over-limit is throttled (survivable), memory over-limit is killed (exit 137). Requests-without-limits on CPU plus a memory limit is a common production stance.
+
+Q: Why are CPU limits "controversial" while memory limits are always recommended?
+- [x] CPU throttling can cause latency spikes far worse than the CPU saved, so many shops set CPU requests only and size nodes correctly — but unbounded memory growth gets a Pod OOMKilled or evicts neighbors, so memory limits guard the node
+- [ ] CPU limits are deprecated
+- [ ] Memory limits cause throttling too
+- [ ] Both should always be omitted
+> The QoS classes follow from this: Guaranteed (requests==limits both) is evicted last, BestEffort (neither) first. The asymmetry in failure modes is why the advice differs per resource.
+
+Q: A Pod is stuck Pending with "0/6 nodes are available: insufficient cpu." What does it mean and what are the fixes?
+- [x] The Pod's CPU *requests* can't fit on any node — lower the requests, scale up nodes, or free capacity; it's a scheduling (filtering) failure, not a runtime one
+- [ ] The Pod exceeded its CPU limit
+- [ ] CoreDNS can't resolve the node
+- [ ] The image failed to pull
+> Pending means the scheduler couldn't place the Pod — read the describe events. Other common Pending causes: untolerated taint, unbound PVC, node-affinity/selector mismatch. "Read Events before guessing" is the first diagnostic habit.
+```
 
 Resource example:
 
@@ -790,6 +929,36 @@ Drain checklist:
 - Check PDBs before the maintenance window: `kubectl get pdb -A`.
 - Drain one node at a time unless you have modeled zone and capacity impact.
 - Remember that DaemonSet Pods are ignored by default; node agents must tolerate maintenance.
+
+```quiz
+Q: A container is in CrashLoopBackOff. What command shows you why, and what is the "backoff"?
+- [x] kubectl logs --previous (the last crashed instance's output); the backoff is exponential retry delay capped at 5 minutes between restart attempts
+- [ ] kubectl describe node, since it's a node problem
+- [ ] kubectl rollout undo
+- [ ] There's no way to see crashed-container logs
+> The current container is gone, so plain logs won't help — --previous gets the dead one's output. CrashLoopBackOff means start-then-exit repeatedly; the increasing delay is Kubernetes not hammering a broken container.
+
+Q: A Pod exited with code 137 and shows OOMKilled. What happened?
+- [x] The container exceeded its memory limit and the kernel killed it — either raise the limit or fix the leak (kubectl describe shows the reason)
+- [ ] The liveness probe failed
+- [ ] The node ran out of disk
+- [ ] The image was too large to load
+> 137 = 128 + 9 (SIGKILL), the OOM killer's signature. Evicted is different — that's the kubelet shedding Pods under node pressure (memory/disk/PIDs), checkable via node conditions.
+
+Q: A namespace is stuck Terminating forever. What's almost always the cause, and what should you do first?
+- [x] A finalizer holding deletion open — a controller hasn't finished cleaning up an external resource; investigate *why* before force-removing, since the finalizer usually means real cleanup is pending
+- [ ] etcd corruption; restore from backup
+- [ ] The API server is overloaded
+- [ ] A network partition
+> Finalizers are deletion-delaying cleanup hooks (the inverse of owner references). "Why won't this delete?" becomes a diagnosis once you know to grep for finalizers — force-removing can orphan the external resource they were cleaning up.
+
+Q: What does a PodDisruptionBudget do, and why should every production workload have one?
+- [x] It declares minimum availability (minAvailable: 2 or maxUnavailable: 1); the eviction API blocks `kubectl drain` from violating it, so voluntary disruptions (node maintenance, upgrades) can't take down too many replicas at once
+- [ ] It limits how much CPU a Pod can use
+- [ ] It prevents the scheduler from placing Pods
+- [ ] It restarts Pods on a schedule
+> PDBs only constrain *voluntary* disruptions (drains, not crashes). drain respects them, ignores DaemonSet Pods by default, and cordons before evicting — the safe node-maintenance sequence.
+```
 
 ### 6.4 Incident Walkthroughs
 

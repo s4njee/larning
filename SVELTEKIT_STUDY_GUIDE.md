@@ -38,6 +38,19 @@ The thing SvelteKit is *for* is what Harris calls a **transitional app**: a site
 
 Here is the lifecycle that question lives inside. A user requests `/dashboard`. The **server** (your Node process, a serverless function, an edge worker — Part 11) runs your server-side `load` functions, renders the page's components *to an HTML string*, and sends it. The browser displays that HTML immediately — the site is already usable. Then the JavaScript bundle arrives and **hydrates** the page: Svelte attaches event listeners and reactive state to the existing DOM rather than re-creating it. From that point on, the **client-side router** takes over: clicking an internal link doesn't trigger a full page load; instead, SvelteKit fetches just the *data* for the next route, runs the relevant `load` functions (some in the browser, some via request to the server — Part 4 is entirely about this), and swaps components in place. Server-rendered first paint, SPA-quality navigation afterward. Every part of this guide elaborates some stage of that lifecycle.
 
+```mermaid
+sequenceDiagram
+  participant B as Browser
+  participant S as Server
+  B->>S: GET /dashboard
+  S->>S: run server load(), render components to HTML
+  S-->>B: HTML — usable immediately (SSR first paint)
+  Note over B: JS bundle arrives, hydrates the existing DOM
+  B->>B: click an internal link
+  B->>S: fetch data for the next route (run load functions)
+  B->>B: client router swaps components in place (SPA navigation)
+```
+
 References: [SvelteKit introduction](https://svelte.dev/docs/kit/introduction), [Glossary (SSR, hydration, CSR)](https://svelte.dev/docs/kit/glossary).
 
 ### 1.2 Scaffolding a Project with `sv`
@@ -211,6 +224,29 @@ The timing semantics matter and are easy to get subtly wrong if you assume React
 The most important guidance is negative: **don't use `$effect` to synchronize state.** Writing one piece of state inside an effect because another changed is the path to circular updates and unpredictable ordering — that job belongs to `$derived`. A good heuristic from the docs: if your effect's body assigns to a reactive variable, you almost certainly want a derived (or a callback) instead. When you genuinely need to read state inside an effect *without* depending on it, wrap the read in `untrack(...)`.
 
 References: [`$effect`](https://svelte.dev/docs/svelte/$effect), [Lifecycle hooks](https://svelte.dev/docs/svelte/lifecycle-hooks) (`onMount`, `onDestroy`, and `tick` still exist and remain useful for DOM-timing work).
+
+```quiz
+Q: Why does `todos.push(...)` just work in Svelte 5 with no spread/immutability dance?
+- [ ] The compiler rewrites push into a reassignment
+- [x] `$state` wraps objects/arrays in a deep, lazy Proxy — property reads register dependencies and writes trigger updates at any depth, so direct mutation is tracked
+- [ ] Arrays are special-cased by the runtime
+- [ ] It doesn't work; you must reassign
+> Passing an object or array to `$state` produces a recursive Proxy: reads register fine-grained dependencies and writes (at any depth) trigger precise updates, so `todo.done = true` and `todos.push(...)` are both observed with no `setState` or immutability discipline. When deep proxying is wasted overhead (a big server payload you only ever replace), `$state.raw` opts out, and `$state.snapshot` gives a plain copy for proxy-hostile consumers.
+
+Q: "If your effect's body assigns to a reactive variable, you almost certainly want a derived instead." Why is state-syncing via `$effect` the most common Svelte 5 mistake?
+- [ ] Effects are slower than deriveds
+- [x] Writing one state because another changed invites circular updates and unpredictable ordering; `$derived` expresses "X is computed from Y" declaratively, with automatic tracking and laziness
+- [ ] Effects can't read reactive state
+- [ ] Deriveds run on the server, effects don't
+> `$state` plus `$derived` form a declarative dependency graph — most "keep X in sync with Y" problems are solved by making X a derived of Y. An effect that copies Y into X reintroduces imperative ordering, can cascade or loop, and forfeits laziness (a derived nothing reads costs nothing). `$effect` is for synchronizing with things *outside* the graph: DOM, timers, network, third-party libraries.
+
+Q: What's a key timing fact about `$effect` dependencies and SSR?
+- [ ] Effects run during SSR and track all reads
+- [x] Dependencies are only what the function reads *synchronously* (nothing after an `await` or in a `setTimeout` is tracked), and effects don't run during server-side rendering at all
+- [ ] Effects run before DOM updates by default
+- [ ] Dependencies must be declared in an array
+> An effect runs after mount and after DOM updates in a batched microtask, and it depends only on reactive state read synchronously during the run — reads after an `await` aren't tracked, a classic subtle bug. And effects belong to the browser's lifetime: SSR renders once, top to bottom, and ships HTML, so browser-only setup naturally lives in effects/`onMount` while top-level script code must be server-safe.
+```
 
 ### 2.5 `$props`, `$bindable`, and Component APIs
 
@@ -490,6 +526,29 @@ Errors and redirects in `load` use framework helpers that read like control flow
 
 **Practice:** build a blog index and post page with layout and page server loads, stream the comments with a nested promise and an `{#await}` block, and wire a refresh button to `invalidate('app:comments')`. Then watch the network tab while navigating between posts and verify which loads re-run and which don't — the dependency graph is much stickier once you've *seen* it.
 
+```quiz
+Q: When do you need a server load (`+page.server.ts`) versus a universal load (`+page.ts`)?
+- [ ] Server load is faster; universal is legacy
+- [x] Server load always runs on the server, so it can use the DB, cookies, locals, and secrets — but its return must be serializable; universal load also runs in the browser, can return anything (components, class instances) but must be unprivileged
+- [ ] They're interchangeable
+- [ ] Universal loads can read cookies
+> A server load never executes in the browser, which is what makes privileged access safe — and why its return value crosses a serialization boundary (devalue handles Dates/Maps/promises, but not functions or class instances). A universal load runs where it's used, so it serializes nothing and can return rich objects, but it must be safe to run in a hostile browser: no secrets, cookies, or locals. The honest default is server load; combine both when you want "fetch privately, reshape into rich objects."
+
+Q: Navigating from `/blog/foo` to `/blog/bar` re-runs the post load but not the root layout's user load. Why?
+- [ ] Layout loads only run once per session
+- [x] Each load is a node in a dependency graph tracking what it read (`params.slug`, searchParams, fetched URLs, `depends` keys); SvelteKit re-runs only loads whose tracked inputs changed
+- [ ] Pages always re-run everything
+- [ ] The user load is cached in localStorage
+> While a load runs, the framework records its inputs; on navigation it diffs and re-executes only affected nodes. The post load read `params.slug` (which changed), the layout's user load read none of the changed inputs. This is why shared data high in the tree is cheap, and why `invalidate('app:cart')` can surgically re-run exactly the loads that declared that dependency. The corollary: loads must be pure data declarations — side effects break the graph (they run on hover prefetch!).
+
+Q: In a server load returning `{ post: await db.getPost(...), comments: db.getComments(...) }`, what does the un-awaited promise do?
+- [ ] It's a bug — everything must be awaited
+- [x] Nested promises *stream*: the page is sent immediately with the awaited critical data, and the comments resolution streams into the same response later, consumed with `{#await}` in the template
+- [ ] It runs the query on the client instead
+- [ ] It silently drops the comments
+> Top-level properties are awaited (so `data` is present at render), but a nested un-awaited promise streams: SvelteKit sends the page right away and stitches the late data in when the promise settles. Keep critical content in the awaited part (streaming needs client JS), and always attach a `{:catch}` — a streamed rejection after the response begins can no longer become an error page.
+```
+
 ---
 
 ## Part 5 — Mutations: Form Actions and API Endpoints
@@ -617,6 +676,29 @@ For completeness: SvelteKit is incubating **remote functions** (`.remote.ts` fil
 
 **Practice:** build a CRUD admin page with named actions (`?/create`, `?/update`, `?/delete`), `fail`-based validation that repopulates fields, and `use:enhance` pending states on every button. Then disable JavaScript in dev tools and verify every flow still completes — that test is the whole philosophy of this part in one keystroke.
 
+```quiz
+Q: A form action's validation fails and returns `fail(400, { email, error })`. What happens, and why does it work with JavaScript disabled?
+- [ ] An exception page is shown
+- [x] SvelteKit re-renders the page with the returned object as the `form` prop — the template repopulates fields and shows the error; it's a plain POST and re-render, so no client JS is required
+- [ ] The browser shows a native alert
+- [ ] The form silently resets
+> `fail` returns the validation data with a status code, and the page re-renders with that object available as `form` — so `value={form?.email ?? ''}` repopulates the field (never the password) and the error renders next to the form that owns it. Because it's a standard POST and server re-render, the flow works before any JavaScript arrives; `redirect(303)` on success gives POST-redirect-GET so refresh never re-submits.
+
+Q: What does bare `use:enhance` change about a form, and what's the classic mistake in its callback form?
+- [ ] It converts the form to a JSON API
+- [x] It upgrades the full-page POST to a fetch-based submission with the same semantics (apply result, invalidate loads, reset form, follow redirects); the classic callback mistake is forgetting to call `update()`/`applyAction`, silently dropping redirects and errors
+- [ ] It disables the no-JS fallback
+- [ ] It validates fields client-side
+> Bare `use:enhance` emulates the no-JS behavior without the reload — updating the `form` prop, re-running loads, resetting on success, navigating on redirect. The callback form customizes (pending state, optimistic UI, don't-reset), but you must still call `update()` (or `applyAction(result)`) unless you deliberately replace the default — otherwise redirects and failures vanish silently.
+
+Q: When is a `+server.ts` endpoint the right tool instead of a form action?
+- [ ] For every mutation — endpoints are more RESTful
+- [x] When the caller isn't your own page: webhooks, mobile apps, JSON feeds/RSS, polling from client code, or verbs beyond POST — for your own page's mutations, actions give no-JS fallback, typed `form` results, and automatic invalidation free
+- [ ] Only for GET requests
+- [ ] When you need cookies
+> The decision is who the caller is. Form actions own page mutations: progressive enhancement, `form`-prop validation UX, and load invalidation come free. Endpoints serve callers that aren't your page — Stripe webhooks, mobile clients, file downloads, PUT/PATCH/DELETE APIs. The beginner inversion (building `/api/*` and fetching it from your own components) costs all the action benefits and gains nothing.
+```
+
 ---
 
 ## Part 6 — Hooks, Server-Only Modules, and Auth
@@ -743,6 +825,29 @@ With state placed correctly, the classic UX patterns become small. **Pending fee
 
 **Practice:** build a searchable admin list where filters and pagination live entirely in the URL, an edit drawer rides on shallow routing, half-typed input survives back navigation via snapshots, and the theme lives in a shared `.svelte.ts` module. Then deliberately write the module-scope user bug from 7.2 in a dev server and hit it from two browsers at once — seeing the leak once inoculates you forever.
 
+```quiz
+Q: Why is `export let currentUser` in a server module a data leak rather than a convenience?
+- [ ] Exports can't be reassigned
+- [x] On the server, module scope is shared by every concurrent request — user B's load can overwrite it between user A's write and read, so user A renders user B's data, intermittently, under load
+- [ ] It prevents the build from completing
+- [ ] It only leaks in dev mode
+> On the client a module-scoped variable belongs to one user's tab, but a server process serves many users concurrently from the same module scope. Stashing per-user data there is a race that shows the wrong person's data with no error or warning. The rules: per-request state lives in `event.locals` (fresh per request), loads *return* data rather than stashing it, and per-user caching belongs in real keyed infrastructure, not module scope.
+
+Q: What makes `src/lib/server/` a *structural* security guarantee rather than discipline?
+- [ ] Files there are encrypted
+- [x] Importing a server-only module from anything that could reach the browser is a *build error* with the import chain printed — the leak becomes impossible, not just unlikely
+- [ ] It's just a naming convention
+- [ ] The folder is gitignored
+> "I'm pretty sure this only runs on the server" isn't a security model when server and client code interleave file by file. Modules in `$lib/server` (or `*.server.ts`) are enforced server-only: a component or universal load importing one — even transitively — fails the build. The private `$env` modules get the same treatment, and only `PUBLIC_`-prefixed variables are allowed into client-reachable modules.
+
+Q: Why doesn't protecting only a `+layout.server.ts` load secure its child pages?
+- [ ] Layouts can't read cookies
+- [x] A page's server load can be invoked directly on client-side navigation without the layout's load re-running, so the guard is skipped — protect the pages themselves (or use a `handle`-level guard)
+- [ ] Layout loads run after page loads
+- [ ] It does protect them fully
+> Load functions re-run based on their own dependencies (Part 4's graph), so a client-side navigation can call a page's server load without re-invoking the parent layout's. Authorization therefore belongs at every server boundary that touches protected data — each load/action/endpoint re-checks `locals.user`, or a `handle` hook guards the path prefix for the whole subtree. Checking `data.user` in a component only hides a button; the client is the other side of the trust boundary.
+```
+
 ---
 
 ## Part 8 — Rendering Strategies: SSR, CSR, and Prerendering
@@ -780,6 +885,29 @@ The skill is mixing them: in one app, `(marketing)/` group prerendered with `csr
 Three questions per route. *Is the content identical for every visitor?* If yes and it changes only on deploy, prerender it. *Does the first paint matter to someone who isn't logged in yet — a crawler, a link preview, a first-time visitor?* If yes, keep SSR on. *Does the page meaningfully exist without JavaScript?* If it's all canvas/WebGL or device APIs, `ssr = false` and accept the trade; if it's fully inert, consider `csr = false` and ship nothing. When in doubt, the default (SSR + CSR) is never *wrong* — it's the other modes that need justification. Note that these dials also constrain deployment: a fully prerendered app can use `adapter-static` and a CDN, while anything with SSR or actions needs a runtime — which is exactly the adapter decision of Part 11.
 
 **Practice:** take one small app and ship it twice — fully prerendered, then SSR — and write down what changed in the build output. Add one browser-only tool page with `ssr = false` and one inert legal page with `csr = false`, and justify each route's strategy in a sentence. If you can't, the default was right.
+
+```quiz
+Q: What's the eligibility rule for `prerender = true` on a route?
+- [ ] The route must have no load function
+- [x] Any two users must get the same content and the page can't depend on request-time inputs — no cookies, no per-user data, no form actions targeting it
+- [ ] The route must be under 100KB
+- [ ] Only the home page can be prerendered
+> Prerendering runs the load once at build and writes static HTML every visitor shares, so the content must be identical for all users and independent of request-time state. Content sites, docs, and marketing pages fit naturally; the cost is that updates need a rebuild. SvelteKit discovers dynamic prerenderable routes by crawling links, supplemented by an `entries` export.
+
+Q: When is `ssr = false` the right call, and what do you give up?
+- [ ] For every authenticated page
+- [x] For pages that meaningfully can't exist without JavaScript (canvas/WebGL tools, device APIs) — you give up server-rendered first paint and crawler-visible content, shipping an empty shell that renders client-side
+- [ ] For SEO-critical landing pages
+- [ ] Whenever load functions are slow
+> Disabling SSR means the server sends a shell and everything renders in the browser — acceptable when the page is inherently client-only (a drawing tool, a hardware-API gadget) and the SSR pass would fail or render nothing useful anyway. For content anyone (including crawlers and link previews) should see fast, keep SSR on. The guide's rule: the default (SSR + CSR) is never wrong; the other modes need justification.
+
+Q: A heavy charting library is imported in a layout. Why is that a payload problem, and what's the fix?
+- [ ] Layouts can't import libraries
+- [x] Code-splitting is per route, but a layout's imports land in every child page's critical path — import heavy, rarely-used dependencies dynamically inside the handler/effect that needs them
+- [ ] Charts only work with ssr = false
+- [ ] The fix is prerendering the layout
+> SvelteKit code-splits automatically per route, but a layout wraps many routes, so its static imports ship with all of them. A dynamic `await import('chart.js')` inside the code path that actually uses it keeps the library out of the critical bundle until needed. The same "don't squander the defaults" logic applies to data: loads should return what the page renders, not whole rows, since over-fetching inflates both the query and the HTML-embedded payload.
+```
 
 ---
 

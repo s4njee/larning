@@ -54,6 +54,22 @@ Neither is strictly better. But they fail and succeed in opposite places, and kn
 
 If you remember one thing from Part 1: **Node async is uniform and unavoidable; Python async is fragmented and optional.** Every advantage and disadvantage that follows is a downstream consequence of those two sentences.
 
+```quiz
+Q: Why is Node's async ecosystem uniform while Python's is fragmented?
+- [ ] Node has better package management
+- [x] Node began non-blocking with no synchronous past to stay compatible with, so the whole npm ecosystem returns Promises; Python bolted asyncio onto a 20-year-old synchronous ecosystem, creating a parallel async stack beside the blocking one
+- [ ] Python doesn't support async at all
+- [ ] Node forbids synchronous code
+> Node started in 2009 around "I/O should never block," so every platform API is async by default and libraries grew up returning Promises universally. Python's asyncio arrived in 3.4 (2014) into an ecosystem (`requests`, `psycopg2`, Django, the scientific stack) that was entirely synchronous, so it sits *beside* those rather than replacing them. That history is the root of every later difference.
+
+Q: What's the trade-off captured by "Python's async is optional"?
+- [ ] It means async is always slower in Python
+- [x] Async is a choice on a workbench that also holds threads and processes — a benefit when async is wrong — but you're forever one `import requests` away from accidentally blocking the loop
+- [ ] It means Python has no event loop
+- [ ] It means you can't mix sync and async
+> Because async is opt-in (`asyncio.run()`), Python lets you pick threads or processes when async is the wrong tool, and the non-async ecosystem is often nicer to work in. The cost is fragmentation and footguns: two ecosystems, explicit loop management, and the ever-present risk of dropping a blocking library into async code. Node's "async is unavoidable" eliminates that choice and that footgun at the cost of mandatory async even when a sync script would be clearer.
+```
+
 ---
 
 ## Part 2 — The Execution Model Side by Side
@@ -228,6 +244,29 @@ This is why a common Python performance bug — `await`ing coroutines one at a t
 
 If you remember one thing from Part 3: **JS async functions are eager (calling = starting); Python coroutines are lazy (calling = describing).** A forgotten `await` runs-unobserved in JS and never-runs in Python — and concurrency is implicit-on-call in JS, explicit-via-scheduling in Python.
 
+```quiz
+Q: What's the core eager-vs-lazy difference between a JS `async` function call and a Python `async def` call?
+- [ ] Both start running immediately
+- [x] JS eagerly runs the body up to the first `await` and returns an in-flight Promise; Python runs none of the body, returning an inert coroutine object that does nothing until awaited or scheduled
+- [ ] Python runs immediately; JS is lazy
+- [ ] Neither executes until the event loop starts
+> Calling a JS async function *starts the work* — the body executes synchronously to the first `await` and you get a Promise that's already in flight. Calling a Python coroutine *describes the work* — it returns an object that's done nothing until you `await` it or wrap it in a Task. This single semantic split drives the opposite bugs and concurrency ergonomics that follow.
+
+Q: A developer forgets `await` on a database write in each language. What happens?
+- [ ] Both silently skip the write
+- [x] In JS the write still runs (eager) as a floating promise — unawaited, errors become unhandled rejections; in Python the coroutine never runs at all, emitting a "never awaited" warning
+- [ ] Both crash immediately
+- [ ] JS skips it; Python runs it twice
+> JS eagerness means the forgotten write executes in the background, out of order, and any exception becomes an unhandled rejection (a crash in modern Node). Python laziness means the coroutine is just a discarded object — the write never happens, but you get a `RuntimeWarning`. The guide argues Python's "nothing happened plus a warning" is safer to diagnose than JS's "something happened unobserved and maybe crashed later."
+
+Q: Why does the Python performance bug of "awaiting coroutines one at a time in a loop runs sequentially" have no direct JS equivalent?
+- [ ] JS loops are faster
+- [x] In JS the promises are already in flight the moment the functions are called, so they overlap; in Python coroutines are inert until you schedule them with `create_task`/`gather`
+- [ ] Python can't run things concurrently
+- [ ] JS automatically parallelizes loops
+> JS eagerness starts each async call concurrently on invocation, so even `Promise.all` over already-called functions just awaits hot work. Python requires explicit scheduling — `gather`/`create_task` wraps coroutines in Tasks — so `await a(); await b()` in sequence runs them one after another. The flip side: JS's eagerness makes accidental fire-and-forget (floating promises) too easy.
+```
+
 ## Part 4 — Coroutines, Promises, Tasks & Futures
 
 The two languages model "an async result" with different numbers of concepts. JavaScript has essentially **one** (the Promise). Python has **three** (coroutine, Task, Future). Knowing the mapping is what lets you translate code in your head.
@@ -340,6 +379,29 @@ Both are sane; the JS variant is more dangerous because of the floating-promise 
 
 If you remember one thing from Part 4: **JS has one concept (Promise, eager, uncancellable); Python has three (coroutine/Task/Future, lazy, with first-class cancellation).** The combinators map closely, but Python's cancellable Tasks are a real capability advantage that Node only approximates with manual `AbortSignal` plumbing.
 
+```quiz
+Q: JS models async results with one concept (Promise); Python uses three. What are Python's three and how do they map?
+- [ ] Promise, async, await
+- [x] Coroutine (inert description), Task (scheduled, running, cancellable), Future (low-level eventual result) — the Task/Future is the closest analogue to a Promise
+- [ ] Thread, process, coroutine
+- [ ] gather, wait, race
+> A Python coroutine is the inert object from calling `async def` (no JS equivalent, since JS calls start work). A Task is a coroutine scheduled on the loop — running concurrently and cancellable, the rough analogue of an in-flight Promise. A Future is the low-level eventual-result primitive a Task is built on. JS collapses "describe" and "in flight" into the single eager Promise.
+
+Q: Why can't a plain JavaScript Promise be cancelled, and what's the workaround?
+- [ ] Promises are immutable, so cancellation would corrupt them
+- [x] Promises are eager — the work is already running with no built-in stop; the workaround is `AbortController`/`AbortSignal`, but it's cooperative and only works if the operation explicitly accepts the signal
+- [ ] You cancel a Promise with `.cancel()`
+- [ ] Promises auto-cancel on timeout
+> Because a Promise represents work already in flight, there's no built-in way to halt it — awaiting longer or not doesn't change the underlying operation. `AbortController` lets you signal cancellation, but the async operation must opt in by accepting an `AbortSignal` and checking it (`fetch` does; an arbitrary Promise doesn't). Python, by contrast, can cancel *any* Task via `task.cancel()`, injecting `CancelledError` at the next await.
+
+Q: What's the trade-off the guide identifies between Python's and Node's cancellation models?
+- [ ] Python's is simpler; Node's is more capable
+- [x] Python wins on capability (any Task cancellable, automatic propagation, shield/finally cleanup) but loses on simplicity; Node's is cruder but explicit — no invisible injected exception, only signal-aware ops are cancellable
+- [ ] They're equivalent
+- [ ] Node can cancel anything; Python can't
+> Python's cancellation is first-class and powerful but adds real complexity: `CancelledError` can be accidentally swallowed by a broad `except Exception`, and cleanup ordering is subtle. Node's model only cancels operations that declared a signal, which is less capable but more explicit and predictable. Python is materially better when you genuinely need to cancel complex in-flight work; for most CRUD services `AbortSignal` suffices.
+```
+
 ---
 
 ## Part 5 — The Colored Function Problem
@@ -363,6 +425,14 @@ async def handler(req):  return await load_page(req.id) # must be red too
 ```
 
 Mechanically, this is the same in both: `await` requires an `async` caller, all the way up to the entry point. No difference here.
+
+```mermaid
+graph TD
+  H["handler(req) — forced async"] --> LP["load_page(id) — forced async"]
+  LP --> GU["get_user(id) — forced async"]
+  GU --> DB["db.query(...) — async I/O: the 'red' leaf"]
+  DB -. "await needs an async caller, so red spreads up the whole stack" .-> H
+```
 
 ### Why Python Suffers More: The Two-Ecosystem Tax
 
@@ -422,6 +492,29 @@ Worth noting for completeness: Python has an escape from the color problem that 
 **Opinion:** The color problem is inherent to `async`/`await` and unavoidable in both — but Python pays a *second, optional tax* (the ecosystem split) that Node doesn't. You can write perfectly correct async Python and still kill your throughput by importing `requests` out of habit. That said, Python's `to_thread` bridge and the gevent option mean Python is more *flexible* about crossing the boundary. Net: **Node's uniformity is the bigger practical win**, because "you cannot accidentally pick the blocking library" eliminates an entire bug class — but Python's bridges are more powerful when you *do* need to mix worlds.
 
 If you remember one thing from Part 5: **both languages have contagious function colors, but Python suffers more because it has a parallel sync ecosystem you must consciously avoid — while Node's "everything is async already" eliminates the choice and the footgun.**
+
+```quiz
+Q: The "colored function" contagion (async creeps up the whole call stack) — how does it compare between Python and Node?
+- [ ] It only affects Python
+- [x] Mechanically identical in both: `await` requires an `async` caller all the way up to the entry point — the difference is in the *consequences*, not the contagion itself
+- [ ] Node has no function colors
+- [ ] Python avoids it with decorators
+> Both languages split functions into sync ("blue") and async ("red"), and in both, making one function async forces every caller up the chain to become async too. That mechanical contagion is the same. What differs is the downstream cost, which Part 5 argues hits Python harder for an ecosystem reason.
+
+Q: Why does Python suffer *more* from going async than Node, despite identical contagion?
+- [ ] Python's await is slower
+- [x] Python has a parallel synchronous ecosystem, so going async means re-selecting your whole dependency stack into async variants (requests→httpx, psycopg2→asyncpg) — and picking wrong silently blocks the loop; Node has only the async library
+- [ ] Node has more libraries
+- [ ] Python can't mix sync and async
+> In Python almost every I/O task has two competing libraries — the famous synchronous default and an async one you must consciously choose — so adopting async forces a stack-wide re-selection where a wrong choice silently freezes the loop. In Node there's just `pg` returning Promises because everything does. This two-ecosystem tax is the practical heart of "Python async is fragmented, Node's is cohesive."
+
+Q: What's the notorious trap with `asyncio.run()` as the door from sync into async code?
+- [ ] It can only be called once per program
+- [x] You can't call it if a loop is already running (e.g. in Jupyter or a library), raising `RuntimeError: asyncio.run() cannot be called from a running event loop`
+- [ ] It blocks forever
+- [ ] It requires `await`
+> `asyncio.run()` creates and runs a fresh event loop, so calling it where one is already running (Jupyter notebooks, inside a library, nested async) raises a RuntimeError. The `nest_asyncio` monkeypatch exists to work around this but is best avoided. It's a friction point specific to Python's optional-async model, where sync and async code constantly meet at boundaries.
+```
 
 ---
 
@@ -506,6 +599,29 @@ Both languages block on **CPU-bound** work — that's an inherent property of a 
 **Opinion:** This is Node's clearest, most decisive structural advantage in the entire comparison. Eliminating accidental I/O blocking removes the most common and most insidious async bug Python developers hit. Python's mitigations (`to_thread`, async-native libraries, debug mode) are good and make the problem manageable — but "manageable footgun" loses to "footgun doesn't exist." **Score this one firmly for Node.**
 
 If you remember one thing from Part 6: **both freeze on CPU work, but only Python lets you freeze on I/O by grabbing the wrong library — and because that failure is silent (no error, just secret serialization under load), it's the most dangerous async trap in either language, and Node structurally avoids it.**
+
+```quiz
+Q: What is Node's "clearest structural advantage" regarding blocking the event loop?
+- [ ] Node is faster at CPU work
+- [x] You cannot accidentally pick a blocking *network* library because none exist on the platform — eliminating Python's most common async bug ("used `requests` instead of `httpx`")
+- [ ] Node has no event loop to block
+- [ ] Node runs each request on its own thread
+> Both languages block on CPU-bound work (a tie — inherent to a single-threaded loop), but they differ on I/O. Every Node I/O API is non-blocking by default and the blocking ones are clearly `Sync`-suffixed, so the whole "accidentally used a synchronous library" category doesn't exist. Python's most-Googled way to do something is often the blocking way, making that footgun ever-present.
+
+Q: Why is "it works but it's secretly serial" called among the worst failure modes?
+- [ ] It throws an obscure exception
+- [x] There's no error — a blocking call grabs the single thread so requests process one at a time; it looks fine in dev with one user and only shows up as mysteriously bad throughput under load
+- [ ] It corrupts the database
+- [ ] It only happens on Windows
+> A blocking call in an async handler freezes the whole loop for its duration, so under concurrency every request serializes — but nothing crashes or warns. Development with one user looks perfect; production throughput is inexplicably poor. Silent degradation that only appears under load is far harder to catch than a loud crash.
+
+Q: You must call a blocking sync-only HTTP client and also run a CPU-heavy parse inside a Python async handler. What are the correct fixes?
+- [ ] Both via `asyncio.to_thread`
+- [x] Blocking I/O → `asyncio.to_thread` (GIL released during I/O); CPU-bound → a separate process via `run_in_executor(ProcessPoolExecutor, ...)`; better still, use an async-native library for the I/O
+- [ ] Run both directly in the coroutine
+- [ ] Both via a ProcessPoolExecutor
+> A thread handles blocking *I/O* because the GIL is released during the syscall, keeping the loop free. CPU-bound work needs a separate process to bypass the GIL. And the cleanest fix for the I/O case is to avoid the blocking library entirely (httpx/asyncpg). Calling either directly in the coroutine would freeze the loop — the trap this part is about.
+```
 
 ## Part 7 — Structured Concurrency & Primitives
 

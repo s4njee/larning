@@ -57,6 +57,29 @@ Almost every control in this guide — authentication, authorization, admission,
 
 The last premise is cultural. Kubernetes defaults are tuned to make a cluster *work* the moment you stand it up, which means they are tuned *against* security: Pods can reach every other Pod on the network with no policy in place; a workload with no `securityContext` can run as root; a Secret is base64, not encryption; a freshly created ServiceAccount is mounted into every Pod that uses it whether the app needs the API or not. Production security is, to a first approximation, the disciplined work of *intentionally tightening every default that ships open* — and the rest of this guide is a tour of which ones, in what order, and what each one stops.
 
+```quiz
+Q: "Our EKS cluster is managed, so security is handled." What's wrong with this?
+- [x] "Managed" means managed *uptime and patching* of the control plane, not managed *security* — RBAC, NetworkPolicy, Pod hardening, secrets, and workload identity are entirely yours
+- [ ] Managed clusters can't run NetworkPolicies
+- [ ] The provider owns your RBAC too
+- [ ] Managed clusters are less secure than self-managed
+> The most expensive misconception in the managed world. The provider hands you a running, reachable API server and leaves authorization to you. Secure outside-in (4Cs — you can't secure an inner layer against a compromised outer one), audit inside-out.
+
+Q: Why is "what is the blast radius when this fails?" a better question than "is this secure?"
+- [x] Things will fail (credentials leak, Pods get exploited, mistakes get merged), so the only actionable design question is how far the damage spreads — a control that only works when nothing else went wrong isn't a security control
+- [ ] "Is this secure?" is always answerable yes/no
+- [ ] Blast radius only matters for network security
+- [ ] It's a way to avoid implementing controls
+> The four permanent premises: a credential will leak, a Pod will be exploited, a node will be partially compromised, a mistake will be merged. Layered controls exist so a single failure is caught by *some other* layer — the partial-failure premise of distributed systems applied to security.
+
+Q: Why is the kubelet API (port 10250) a dangerous "API server bypass"?
+- [x] It's a direct exec/logs/run interface into Pods that bypasses the API server's auth/authz/admission/audit entirely — so it must require authentication (never --anonymous-auth=true); attackers often never authenticate to the API server because they found a side door
+- [ ] It's where the scheduler runs
+- [ ] It only serves metrics
+- [ ] It's encrypted and safe by default
+> Every control (authn, authz, admission, audit) concentrates at the API server — a gift and a liability. etcd, the read-only kubelet port (10255), and static Pods are the other bypass paths to name and lock down.
+```
+
 ---
 
 ## Part 2 — Authentication: Who Are You
@@ -67,9 +90,15 @@ Authentication answers one question — *what identity is making this API reques
 
 Every request to the API server passes through four sequential gates, and understanding the sequence is most of understanding Kubernetes access control:
 
-```
-request → [ Authentication ] → [ Authorization ] → [ Admission ] → persisted to etcd
-            who are you?         may you?            mutate/validate
+```mermaid
+graph LR
+  REQ[API request] --> AN{"Authentication<br/>who are you?"}
+  AN -->|reject| X[denied]
+  AN -->|identity| AZ{"Authorization / RBAC<br/>may you?"}
+  AZ -->|reject| X
+  AZ -->|allow| AD{"Admission<br/>mutate / validate"}
+  AD -->|reject| X
+  AD -->|accept| ETCD[(persisted to etcd)]
 ```
 
 Authentication establishes the identity; authorization (Part 3) decides whether that identity may perform the action; admission (Part 4) gets the last word, mutating or rejecting the object even after authorization passed. A request that fails any gate is rejected, and — critically — these are *independent* layers, so a misconfiguration in one is often caught by another. The flow is documented at [Controlling Access to the Kubernetes API](https://kubernetes.io/docs/concepts/security/controlling-access/).
@@ -129,6 +158,29 @@ The reasoning is pure blast radius: most application containers never call the K
 
 For Pods that need to talk to *cloud* APIs (read an S3 bucket, a GCS object, a Key Vault secret), the right pattern is **cloud workload identity** — EKS IRSA / Pod Identity, GKE Workload Identity, AKS Workload Identity — which exchanges the Pod's projected Kubernetes token for short-lived cloud credentials with no long-lived secret stored anywhere. The anti-pattern it replaces, putting static cloud access keys in a Kubernetes Secret, is one of the most common ways a single exploited Pod becomes a cloud-account breach, because that key is long-lived, broadly scoped, and sitting in cleartext-to-the-Pod environment variables.
 
+```quiz
+Q: Why is OIDC the production answer for human cluster access, and what should RBAC bind to?
+- [x] The IdP is the single source of truth for identity and group membership (off-boarding, MFA, rotation happen in one place) and tokens are short-lived; RBAC binds to IdP *groups*, never individual emails
+- [ ] OIDC tokens never expire, so they're convenient
+- [ ] X.509 client certs are the production standard
+- [ ] OIDC replaces the need for authorization
+> Static tokens and basic auth can't be revoked without an API-server restart; client certs can't be revoked at all (no CRL). Group-based bindings make access reviews tractable and keep RBAC stable as people come and go.
+
+Q: Why turn off automountServiceAccountToken for app containers that don't call the Kubernetes API?
+- [x] The automounted token is a credential to the API server — for a container that never uses it, it's *pure* attack surface an exploited process can read and replay; mounting it only where needed shrinks "every Pod is a foothold" to "only the few that legitimately talk to the API"
+- [ ] It speeds up Pod startup
+- [ ] The token is required for DNS to work
+- [ ] It prevents the Pod from being scheduled
+> Pure blast-radius reasoning. Modern clusters use bound, projected tokens (audience-scoped, time-limited, auto-rotated) instead of legacy never-expiring Secret tokens — removing the long-lived token from etcd.
+
+Q: A Pod needs to read an S3 bucket. What's the right pattern and the anti-pattern it replaces?
+- [x] Cloud workload identity (IRSA / GKE Workload Identity / AKS) exchanges the Pod's projected K8s token for short-lived cloud credentials with no stored secret — replacing static cloud access keys in a Kubernetes Secret, which turn one exploited Pod into a cloud-account breach
+- [ ] Mount the AWS keys as environment variables
+- [ ] Use a shared cluster-wide IAM role
+- [ ] Store the keys in a ConfigMap
+> Static keys are long-lived, broadly scoped, and sit cleartext-to-the-Pod. Workload identity issues short-lived, narrowly-scoped credentials with nothing durable to steal.
+```
+
 ---
 
 ## Part 3 — Authorization: What You May Do (RBAC)
@@ -182,6 +234,29 @@ Some RBAC grants look narrow but are, transitively, a path to total control, and
 - **The `*` wildcard** on resources or verbs grants permissions on resources that *don't exist yet* — a CRD installed next month is automatically in scope. Enumerate; never wildcard.
 
 The unifying instinct: when reviewing a Role, don't ask "does this look broad?" — ask "what is the most damaging thing the holder can do by *combining* these verbs?" The answer is frequently "more than the author intended."
+
+```quiz
+Q: RBAC is "purely additive — there are no deny rules." What does this force on your design?
+- [x] You can't grant broad access then carve out exceptions (there are none) — you must grant only what's needed from zero, so least privilege is the only model the system supports
+- [ ] You can add deny rules with a ClusterRole
+- [ ] Permissions subtract when bound to multiple groups
+- [ ] It means RBAC can't restrict anything
+> A subject's permissions are the union of everything bound to them and their groups. The four objects: Role (namespaced) / ClusterRole (cluster-scoped) granted by RoleBinding (one namespace) / ClusterRoleBinding (whole cluster).
+
+Q: Which of these narrow-looking RBAC grants is secretly close to cluster-admin?
+- [x] `create` on Pods in a namespace — the holder can schedule a Pod that mounts the host filesystem, runs privileged, or mounts another ServiceAccount's token, making "can deploy" close to "can root the node"
+- [ ] `get` on ConfigMaps
+- [ ] `list` on Services
+- [ ] `watch` on Events
+> Also secretly-admin: get/list on Secrets (reads every credential in cleartext — the API server decrypts on read), escalate/bind on Roles (self-escalation), impersonate (act as anyone), and the `*` wildcard (covers resources that don't exist yet). Review by asking what the *combination* enables.
+
+Q: How do you verify (and assert in CI) what a subject can do?
+- [x] kubectl auth can-i — e.g. `can-i create pods --as=system:serviceaccount:payments:default -n payments` — used both to confirm a grant works and to assert a sensitive permission is *absent*
+- [ ] kubectl describe rolebinding
+- [ ] Reading the RBAC YAML manually
+- [ ] There's no way to test RBAC
+> The goal state most clusters are far from: small named human groups with scoped namespace access, ServiceAccounts with exactly their workload's permissions, and cluster-admin held by approximately nobody day-to-day.
+```
 
 ### Auditing and the practical workflow
 
@@ -244,6 +319,29 @@ spec:
 
 Whichever engine you choose, three operational truths apply. First, run policies in audit/warn mode before enforce — a too-strict policy that rejects every Deployment is an outage, and the engine's mistakes are *your* mistakes. Second, a validating webhook is in the critical path of every relevant API write, so its availability is your cluster's availability — set `failurePolicy` deliberately (`Fail` is more secure but means a down webhook blocks deploys; `Ignore` is more available but means a down webhook is a policy bypass), and exclude `kube-system` so a broken policy can't brick the control plane. Third, **admission control is enforcement, not detection** — it stops bad objects at creation but says nothing about what's already running or what changes out-of-band, which is why Part 9's audit and runtime layers exist alongside it.
 
+```quiz
+Q: Why is admission control able to enforce "no privileged Pods" when RBAC cannot?
+- [x] RBAC reasons about verbs and resources, not field *values*; admission control sees the object's fields, so it's where policies like "no privileged: true," "images from our registry," "every namespace has limits" are enforced
+- [ ] RBAC can express it with a deny rule
+- [ ] Admission runs before authentication
+- [ ] They enforce the same things
+> Admission is the last gate before persistence, running on every create/update. Mutating runs first (set safe defaults), validating second (sees the final object, accept/reject) — the ordering lets you default-then-enforce.
+
+Q: What's the safe rollout discipline for Pod Security Admission, and what's its deliberate limitation?
+- [x] Start with warn + audit only (see what *would* be rejected without breaking anything), fix workloads, then promote to enforce — and PSA enforces *only* the three fixed Pod Security Standards, so "images from our registry" needs a policy engine
+- [ ] Enforce restricted everywhere immediately
+- [ ] PSA can express arbitrary custom rules
+- [ ] PSA replaces NetworkPolicy
+> Three independent modes (enforce/audit/warn) make the rollout safe — the same start-in-observe-mode discipline as any enforcement change. PSA's three standards: privileged, baseline, restricted.
+
+Q: A validating webhook policy engine is in the critical path of every relevant API write. What does that mean for failurePolicy?
+- [x] Its availability is your cluster's availability — Fail is more secure but a down webhook blocks deploys; Ignore is more available but a down webhook is a policy bypass; either way, exclude kube-system so a broken policy can't brick the control plane
+- [ ] failurePolicy doesn't affect availability
+- [ ] Fail is always the right choice
+- [ ] Webhooks run async and can't block writes
+> And admission is enforcement, not detection — it stops bad objects at creation but says nothing about what's already running or changed out-of-band, which is why audit and runtime layers exist alongside it.
+```
+
 ---
 
 ## Part 5 — Workload & Container Hardening
@@ -302,6 +400,29 @@ The `privileged: true` setting deserves its own sentence: it disables essentiall
 ### When process isolation isn't enough
 
 For genuinely hostile multi-tenancy — running untrusted code, a SaaS that executes customer workloads — shared-kernel isolation is the wrong trust boundary, and the answer is a **sandboxed runtime**: **gVisor** (a user-space kernel that intercepts the container's syscalls so they never reach the host kernel directly) or **Kata Containers** (a lightweight VM per Pod, restoring a hardware isolation boundary). Both are wired in per-workload through a `RuntimeClass`, so you can run most Pods on the fast default runtime and reserve the heavier sandbox for the untrusted ones. Knowing these exist — and knowing that the default `runc` is *not* a security boundary against determined untrusted code — is the senior judgment call this section builds toward.
+
+```quiz
+Q: "It's just a container, it's sandboxed." When is this false?
+- [x] Always, in the cases that matter — a container is a Linux process sharing the host kernel, isolated by namespaces and cgroups; a kernel vuln or a misconfig handing kernel privilege is a host compromise. runc is not a security boundary against determined untrusted code
+- [ ] Only on older kernels
+- [ ] Containers are fully VM-isolated
+- [ ] It's true unless privileged: true is set
+> Container isolation is kernel isolation. For genuinely hostile multi-tenancy, use a sandboxed runtime (gVisor's user-space kernel, or Kata's VM-per-Pod) via RuntimeClass. Hardening is shrinking what the process can ask the kernel for.
+
+Q: Which single securityContext line is described as the highest-leverage, and why?
+- [x] capabilities: drop: ["ALL"] — Linux capabilities slice root's power into ~40 pieces, containers get a permissive default set, and almost every app needs *none*; drop all, add back only what's provably required
+- [ ] privileged: false
+- [ ] runAsUser: 10001
+- [ ] fsGroup: 10001
+> The full hardened set works together: runAsNonRoot (escape lands as nobody), allowPrivilegeEscalation: false (no_new_privs, closes the setuid re-escalation path), readOnlyRootFilesystem (defeats write-a-payload attacks), seccompProfile: RuntimeDefault (blocks dangerous syscalls).
+
+Q: Why is privileged: true effectively "root on the node"?
+- [x] It disables essentially all the hardening at once — full capabilities, host device access — so the single most valuable cluster-wide policy is "no privileged Pods outside a short allowlist of system namespaces," every instance a reviewed exception
+- [ ] It only grants extra CPU
+- [ ] It's required for any networking
+- [ ] It's the same as runAsRoot
+> Privileged containers are occasionally legitimate (CNI agent, storage driver, node monitor) but never the default. Each must be a documented, named exception — and a cluster-wide deny policy catches the accidental privileged: true that gets merged.
+```
 
 ---
 

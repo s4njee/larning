@@ -68,6 +68,29 @@ You write code on your "big" computer, **cross-compile** it for the ESP32's arch
 
 If you remember one thing from Part 1: **the ESP32 is a complete computer on a chip that runs one program forever with no OS, no shell, and tiny fixed memory — you cross-compile on your big machine, flash the binary over USB, and debug by reading serial output. It is a programmable circuit, not a small Linux box, and every other difference flows from that.**
 
+```quiz
+Q: What's the fundamental difference between a microcontroller (ESP32) and a microprocessor (Raspberry Pi's SoC)?
+- [ ] The ESP32 is just slower
+- [x] A microcontroller integrates CPU, RAM, flash, and peripherals on one chip and runs one program directly forever with no OS — it's a programmable circuit; a microprocessor needs external RAM/storage and an OS, making it a small computer
+- [ ] They're the same; "ESP32" is a brand
+- [ ] The Pi has no CPU
+> The Pi boots Linux off an SD card, runs processes, and has a shell and filesystem — a small computer. The ESP32 is a complete computer on a single chip that you flash with firmware that runs on boot: no OS, no shell, no ls, no package manager. Every other difference (your program never returns, you own everything, resources are tiny and fixed) flows from this single distinction.
+
+Q: On an ESP32, what happens when you run out of the ~520KB of SRAM?
+- [ ] The OS kills the offending process
+- [x] The chip crashes and reboots — there's no swap, no virtual memory, no OOMKilled event; memory discipline is survival, not optimization
+- [ ] It swaps to flash automatically
+- [ ] It allocates more RAM
+> With no operating system, there's nothing to virtualize memory, swap to disk, or kill a runaway process — the resources are tiny and fixed. Exhausting RAM simply crashes the chip into a reboot. This is why embedded memory management is a survival concern: you account for every allocation because there's no safety net catching you when you overrun.
+
+Q: Why is the development loop "cross-compile + flash" rather than running code directly on the chip?
+- [ ] The ESP32 can't compile but can interpret
+- [x] There's no OS or toolchain on the chip to build or launch programs, so you compile on your big machine to a firmware binary, flash it over USB, the chip reboots and runs it, and you debug by reading serial output
+- [ ] Flashing is faster than running
+- [ ] It's a licensing requirement
+> The ESP32 has no shell, compiler, or process model — it just runs whatever firmware is in its flash on boot. So you build the binary on your computer (where the toolchain lives), transfer it over USB to the chip's flash, and the chip restarts into it. With no debugger console on-device, `printf`-over-serial (115200 baud to a serial monitor) is the primary debugging channel.
+```
+
 ---
 
 ## Part 2 — The Chip & the Boards
@@ -321,6 +344,29 @@ void loop() {
 
 Two rules every ISR must follow, and both bite hard if ignored: **keep it tiny and fast** (an ISR blocks everything else while it runs — set a flag, don't do real work), and **mark shared variables `volatile`** so the compiler doesn't optimize away reads of a value it thinks "can't change." The pattern — ISR sets a flag, main loop does the work — is the safe, standard shape.
 
+```quiz
+Q: A button wired to an input pin reads randomly HIGH and LOW when untouched. Why, and what's the fix?
+- [ ] The pin is broken
+- [x] A disconnected input *floats* — it picks up electrical noise instead of a defined level; a pull resistor (internal `INPUT_PULLUP` ties it to 3.3V so it reads HIGH idle, the button pulls it to GND) gives it a stable default
+- [ ] The button needs debouncing
+- [ ] The pin needs more current
+> An input pin has no inherent voltage; with nothing driving it, it floats and flips on ambient noise. A pull-up weakly ties it to 3.3V (reads HIGH idle, LOW when the button connects it to ground), or a pull-down does the reverse. The ESP32's internal pulls (`INPUT_PULLUP`) cover most cases — except input-only pins 34–39, which have none and need an external resistor.
+
+Q: Why does a single human button press sometimes register as 5–20 presses, and how is it fixed?
+- [ ] The CPU is too fast to read buttons
+- [x] The metal contacts physically *bounce* for a few milliseconds, making/breaking contact repeatedly; debouncing ignores further changes for a short window (e.g. 50ms) after a transition so one press fires once
+- [ ] The pull resistor is wrong
+- [ ] An interrupt is required
+> Mechanical contacts don't switch cleanly — they chatter as they settle, and the fast ESP32 sees each bounce as a separate edge. Debouncing filters this in software (suppress changes within ~50ms of the last) or hardware (an RC filter). It's a microcosm of embedded work: clean digital logic must defend against a noisy analog physical world.
+
+Q: An interrupt service routine (ISR) must "do the minimum and set a flag." Why those two rules — tiny/fast and `volatile`?
+- [ ] ISRs can't call functions
+- [x] An ISR blocks everything else while it runs, so doing real work there stalls the system — set a flag and handle it in the main loop; and shared variables need `volatile` so the compiler doesn't optimize away re-reads of a value it assumes can't change
+- [ ] volatile makes the ISR faster
+- [ ] ISRs run on the other core
+> An interrupt preempts all other code, so a long ISR freezes the device — the standard pattern is ISR-sets-flag, loop-does-work. And because the ISR changes a variable "outside normal flow," `volatile` tells the compiler the value really can change between reads, preventing it from caching a stale value. Skipping either rule produces hangs or phantom missed events that are maddening to debug.
+```
+
 ### A Note on Persistent Storage
 
 There's no filesystem you browse, but you *can* persist data across reboots. Two mechanisms:
@@ -392,6 +438,29 @@ void setup() {
 | **UART** | 2 (TX, RX) | configurable | 1 (point-to-point) | GPS, modules, MCU-to-MCU |
 
 The good news: you rarely speak these protocols by hand. A sensor comes with a **library** (`Adafruit_BME280`, `TinyGPS++`, an OLED driver) that wraps the bus details, so your code is `bme.readTemperature()`, not raw register pokes. Knowing *which bus* a part uses tells you how to wire it and which library to grab.
+
+```quiz
+Q: In a networked ESP32 project, why must you read analog sensors on ADC1 pins (32–39) specifically?
+- [ ] ADC1 is more accurate
+- [x] ADC2 doesn't work while Wi-Fi is on (the radio uses it), so any sensor read on an ADC2 pin fails in a connected project — ADC1 pins keep working alongside Wi-Fi
+- [ ] ADC2 pins are output-only
+- [ ] ADC1 is faster to sample
+> The Wi-Fi radio shares the ADC2 hardware, so attempts to read ADC2 channels return errors (or junk) whenever Wi-Fi is active. Since most ESP32 projects are networked, you route analog sensors to ADC1 pins. Two further honest caveats: the ADC is noisy and non-linear (average and calibrate for precision), and it's 12-bit (0–4095 maps 0–3.3V).
+
+Q: The ESP32 can't output an arbitrary voltage on most pins, yet you can dim an LED smoothly. How?
+- [ ] It uses the DAC on every pin
+- [x] PWM — it switches the pin HIGH/LOW very fast and varies the *duty cycle* (fraction of time HIGH); averaged over time, 25% duty ≈ 25% brightness, and the same trick drives servos and motor speed
+- [ ] It lowers the supply voltage
+- [ ] It can't — LEDs are only on/off
+> Pulse-Width Modulation fakes a proportional output from a purely digital pin: the LED (or motor, or servo) responds to the *average* of a fast on/off square wave, set by the duty cycle. On the ESP32 the LEDC peripheral generates this. Two true DAC channels exist (GPIO 25/26) for real analog output, but PWM is the workhorse for dimming, speed control, and tone generation.
+
+Q: How do you decide which of I2C, SPI, or UART a sensor uses, and why does it usually not matter to your code?
+- [ ] You configure the bus protocol by hand each time
+- [x] The part's datasheet tells you (I2C = 2 shared addressed wires and the sensor default, SPI = faster with a chip-select per device, UART = point-to-point) — but a library wraps the bus so your code is `bme.readTemperature()`, not raw register pokes; you mainly need to know which bus to wire
+- [ ] All sensors use I2C
+- [ ] The ESP32 auto-detects the protocol
+> Knowing the bus tells you how to wire the part (two wires vs four-plus-CS) and which library to grab, but you rarely speak the protocol directly — `Adafruit_BME280`, `TinyGPS++`, and OLED drivers handle the transactions. I2C suits many slow addressed sensors on shared wires, SPI suits fast devices like displays and SD cards, UART suits point-to-point modules like GPS. Pick by the datasheet, then let the library abstract it.
+```
 
 If you remember one thing from Part 5: **the ADC reads voltages (0–4095 for 0–3.3V, noisy, ADC1 only with Wi-Fi), PWM fakes analog output by varying duty cycle (LEDs, servos, motors), and most sensors connect over one of three buses — I2C (two shared wires, the sensor default), SPI (fast, more wires), or UART (point-to-point) — almost always behind a library so you call `readTemperature()`, not the bus directly.**
 
@@ -503,6 +572,29 @@ The ESP32 has **two cores**: **Core 0** ("PRO_CPU") and **Core 1** ("APP_CPU"). 
 
 If you remember one thing from Part 6: **the ESP32 secretly runs FreeRTOS on two cores — `delay()` blocking everything is the cardinal beginner bug, fixed with the non-blocking `millis()` pattern or real FreeRTOS tasks (use `vTaskDelay` to yield, size stacks generously, pass data via queues not shared variables), and Core 0 runs the Wi-Fi stack, so don't starve it.**
 
+```quiz
+Q: Why does `delay(1000)` in `loop()` freeze the device, and what's the non-blocking fix?
+- [ ] delay() is too imprecise
+- [x] `delay()` blocks — for that whole second nothing else runs (button presses missed, packets wait), the embedded version of "never block the event loop"; the `millis()` pattern checks whether enough time has *passed* instead of waiting, letting other work run in between
+- [ ] delay() consumes too much power
+- [ ] The fix is a longer delay
+> Blocking for a second means the single loop can't read inputs, service Wi-Fi, or update a display during that time. The cooperative `millis()` pattern flips waiting into checking: `if (millis() - last >= interval)` does the timed work and falls through to run everything else continuously. It's the same don't-block-the-loop lesson from the Python/Node async guides, applied on bare metal.
+
+Q: What's the practical difference between `vTaskDelay()` and `delay()` in a FreeRTOS task?
+- [ ] vTaskDelay is more accurate
+- [x] `vTaskDelay()` *yields* the CPU so the scheduler runs other tasks while this one "sleeps," whereas the mental model for `delay()` is a busy block; the cooperative-sleep model is what lets multiple tasks run concurrently
+- [ ] vTaskDelay never returns
+- [ ] They can't be used together
+> In a multi-task design, a task that needs to wait should yield the core so others make progress — that's `vTaskDelay`. Picturing it as "cooperative sleep" (vs `delay` as "block") is the right model, even though Arduino-ESP32's `delay()` actually calls `vTaskDelay` under the hood. Tasks also each get a fixed stack sized at creation — too small overflows and crashes, so size generously (~2–4KB).
+
+Q: The Wi-Fi stack runs on Core 0 by default while your `loop()` runs on Core 1. Why does that matter?
+- [ ] Core 0 is faster
+- [x] It's the one place "you own everything" breaks — the radio genuinely needs CPU time, so a task hogging the Wi-Fi core makes the network stutter or drop; pin a busy/timing-critical task to the other core with `xTaskCreatePinnedToCore` when they fight
+- [ ] You must never use Core 0
+- [ ] Bluetooth disables Core 1
+> The networking stack isn't free — it needs scheduler time on Core 0, and starving it causes dropped connections. Most projects are fine on defaults, but when a CPU-heavy or tightly-timed task competes with Wi-Fi, pinning it to Core 1 (or deliberately parallelizing across both) resolves the contention. It's the practical exception to the bare-metal "nothing else is running" assumption.
+```
+
 ---
 
 ## Part 7 — Wi-Fi, Bluetooth & Networking
@@ -611,6 +703,15 @@ void setup() {
 void loop() {}                          // never reached — setup() sleeps before returning
 ```
 
+```mermaid
+graph TD
+  W["Wake = reboot — RAM wiped, RTC memory survives"] --> SU["setup() runs from the top"]
+  SU --> JOB["do one job: read sensor, connect Wi-Fi, transmit"]
+  JOB --> ARM["arm a wake source (timer / GPIO / touch)"]
+  ARM --> SLEEP["deep sleep — ~10 µA"]
+  SLEEP -->|timer fires or GPIO event| W
+```
+
 `RTC_DATA_ATTR` is how you keep a little state across the "reboot" — the RTC memory (~8KB) survives deep sleep when SRAM doesn't, so counters, calibration, and "what state was I in" go there. Wake sources are flexible: a **timer** (every N minutes), a **GPIO** (a door sensor or button — wake only when something happens), the **touch** peripheral, or the **ULP coprocessor** (below).
 
 ### Wringing Out the Last Microamps
@@ -625,6 +726,29 @@ Getting from "works" to "lasts years" is a series of refinements, and they're wh
 ### The Battery Math
 
 The payoff calculation, worth doing for any battery project: with a 2000 mAh battery, a device that wakes for 3 seconds every 10 minutes — drawing ~150mA awake and ~10µA asleep — averages roughly *0.085 mA*, which is **on the order of two years** on that battery. The same device using `delay()` instead of deep sleep (staying awake at ~150mA) lasts about **half a day**. That ~1000× difference is entirely the sleep strategy — which is why this part exists and why deep sleep is the defining skill of battery IoT.
+
+```quiz
+Q: Why is deep sleep the "workhorse" for battery IoT, and what mental adjustment does it require?
+- [ ] It overclocks the CPU
+- [x] It drops draw from ~200mA to ~10µA (a 20,000× cut), and waking is essentially a *reboot* — code runs from the top with RAM wiped — so you design "do one job, sleep, repeat from scratch," persisting any needed state in RTC memory (`RTC_DATA_ATTR`)
+- [ ] It keeps Wi-Fi connected while idle
+- [ ] It pauses the program in place and resumes
+> Most sensor jobs are bursty (read, send, idle for minutes), so the win is making the idle draw near-zero. Deep sleep does that, but it's not a pause — the CPU restarts and `setup()` runs again, SRAM cleared. Hence the pattern: each wake reads the sensor, transmits, arms a timer, and sleeps before returning. A small amount of state (counters, calibration, last AP channel) survives in the ~8KB RTC memory via `RTC_DATA_ATTR`.
+
+Q: For a deep-sleep sensor, why is "connect to Wi-Fi fast" often the single biggest battery win?
+- [ ] Wi-Fi uses no power once connected
+- [x] The radio is the power hog — connecting takes seconds at ~200mA, dominating each wake's energy; caching a static IP and the AP's channel/BSSID in RTC memory skips DHCP and scanning, cutting wake time from ~5s to under 1s
+- [ ] Faster connection improves signal strength
+- [ ] DHCP drains the battery directly
+> Energy per cycle is roughly current × awake-time, and the awake time is dominated by the Wi-Fi handshake (scan, DHCP, association) at full radio power. Shrinking that window — by remembering the network details so the chip can rejoin immediately — slashes the most expensive part of every wake. Since the device sleeps cheaply either way, minimizing awake time is the whole game, and Wi-Fi connect is the biggest chunk of it.
+
+Q: The chip sleeps at ~10µA, yet a dev board may last far less than the battery math predicts. Why?
+- [ ] The battery math is wrong
+- [x] The ~10µA figure is the *chip alone* — a dev board's always-on power LED, USB-serial chip, and voltage regulator can each draw milliamps in sleep, dwarfing the ESP32; real battery products use a custom or low-power board
+- [ ] Deep sleep doesn't work on dev boards
+- [ ] The USB cable drains current
+> Low-power figures describe the bare ESP32, but a typical dev board surrounds it with components that ignore your sleep code: a power LED burning ~5mA continuously alone destroys the budget. "Mind the board, not just the chip" — for years-long battery life you remove or avoid those parasitic draws with a custom PCB or a board designed for low standby (e.g. an Adafruit Feather), so the system, not just the chip, sleeps at microamps.
+```
 
 If you remember one thing from Part 8: **battery life is almost entirely about minimizing awake time — deep sleep drops draw from ~200mA to ~10µA (a 20,000× cut), waking is effectively a reboot (persist state in `RTC_DATA_ATTR` memory), and the biggest practical win is connecting to Wi-Fi fast (static IP + cached channel) because the radio is the power hog. Done right, the same battery lasts years instead of a day.**
 

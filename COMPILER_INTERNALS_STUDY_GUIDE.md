@@ -34,16 +34,22 @@ Primary references: Bob Nystrom, [*Crafting Interpreters*](https://craftinginter
 
 Every language implementation — gcc, CPython, V8, tsc — is a variation on one pipeline, and fixing it in mind gives every later chapter an address:
 
-```
-source text
-  │  lexer        → tokens                      (Ch. 2)
-  │  parser       → syntax tree                 (Ch. 3)
-  │  analysis     → resolved, typed tree        (Ch. 4–6)   ← the "frontend" ends here
-  │  lowering     → intermediate representation (Ch. 7)
-  │  optimizer    → better IR                   (Ch. 8)     ← the "middle end"
-  │  codegen      → machine code / bytecode     (Ch. 9, 11)
-  │  link/load    → a runnable program          (Ch. 10)    ← the "backend" ends here
-  └─ runtime      → GC, JIT, dispatch           (Ch. 11–13) ← runs alongside your program
+```mermaid
+graph TD
+  SRC[source text] --> LEX
+  subgraph FE["Frontend — knows the language, not the machine"]
+    LEX["lexer → tokens (Ch. 2)"] --> PAR["parser → syntax tree (Ch. 3)"]
+    PAR --> AN["analysis → resolved, typed tree (Ch. 4-6)"]
+  end
+  subgraph ME["Middle end — language- and machine-neutral IR"]
+    LOW["lowering → IR (Ch. 7)"] --> OPT["optimizer → better IR (Ch. 8)"]
+  end
+  subgraph BE["Backend — knows the machine, not the language"]
+    CG["codegen → machine code / bytecode (Ch. 9, 11)"] --> LL["link/load → runnable program (Ch. 10)"]
+  end
+  AN --> LOW
+  OPT --> CG
+  LL -.runs alongside your program.-> RT["runtime → GC, JIT, dispatch (Ch. 11-13)"]
 ```
 
 The frontend knows everything about the language and nothing about the machine; the backend knows everything about the machine and nothing about the language; the IR in the middle is the treaty between them. This separation is not just pedagogy — it is the actual industrial structure: LLVM is a middle-and-back-end that a dozen frontends (C, C++, Rust, Swift, Zig, Julia) share, which is why "write a frontend, get world-class optimization free" has shaped two decades of language design.
@@ -256,6 +262,36 @@ Forty lines of mechanism worth internalizing: the parser is **predictive** (it d
 4. Break the lab parser's input mid-statement and improve its behavior: implement panic-mode recovery (skip to the next `;`), and make it report *three* errors in a three-error file instead of dying on the first.
 5. Read [PEP 617](https://peps.python.org/pep-0617/)'s motivation section. Which concrete Python syntax was blocked by the old LL(1) parser, and what does the PEG parser trade for the flexibility (hint: memory, and what the `|` operator means)?
 
+```quiz
+Q: Why is the frontend/backend split with an IR "treaty" in the middle an industrial structure, not just pedagogy?
+- [x] LLVM is a shared middle-and-back-end that a dozen frontends (C, C++, Rust, Swift, Zig, Julia) target — so "write a frontend, get world-class optimization free" shaped two decades of language design
+- [ ] It makes compilers easier to document
+- [ ] The IR runs faster than machine code
+- [ ] It's required by the C standard
+> The frontend knows the language and nothing about the machine; the backend the reverse. That clean separation is why new languages bootstrap on LLVM instead of writing optimizers from scratch.
+
+Q: What does the lexer rule "maximal munch" decide?
+- [x] At each point, consume the longest token that matches — so `>=` is one token not two, and `forty` is an identifier not `for`+`ty`
+- [ ] It strips all whitespace before parsing
+- [ ] It matches keywords before identifiers
+- [ ] It enables backtracking on ambiguity
+> Keywords are the subtlety: lex them *as identifiers* then check a keyword table, or `format` lexes as `for`+`mat`. Maximal munch plus the keyword-table check is most of a real lexer's tokenizing logic.
+
+Q: In the expression grammar, why does `1 + 2 * 3` parse as `1 + (2*3)`?
+- [x] Each precedence level consumes the next *tighter* level as its atom and loops on its own operators — so `term` (the +/- level) can only see `*`-products as atoms, never raw additions
+- [ ] The lexer reorders by precedence
+- [ ] Multiplication tokens sort first
+- [ ] A separate precedence pass rewrites the tree
+> The layering is the entire trick for expression grammars. In the Pratt-parser version, the same effect comes from the `min_prec` parameter — `+1` in the recursive call makes operators left-associative.
+
+Q: Why did production compilers (clang, rustc, tsc, V8) choose hand-written recursive descent over LR/LALR parser generators?
+- [x] Error messages, error *recovery*, and freedom to handle ugly grammar corners by just writing code — an IDE parser must produce a best-effort tree for continuously-broken code, which shift/reduce tables make miserable
+- [ ] Recursive descent parses more grammars
+- [ ] Generated parsers are slower at runtime
+- [ ] LR parsers can't handle precedence
+> The textbooks favor LR for accepting more grammars; industry favors recursive descent because error recovery is the requirement they underweight. tsc is the extreme — it builds an AST for *anything* and defers all judgment to the checker.
+```
+
 ---
 
 ## Chapter 4 — ASTs, Names, and Semantic Analysis
@@ -455,6 +491,29 @@ The reading keys: `%locals` are SSA values (registers without limit — Ch. 9's 
 3. Compile a five-line function at `-O0` and run just mem2reg (`opt -passes=mem2reg f.ll -S`). Count `alloca`/`load`/`store` before and after; describe what the pass proved about each promoted variable.
 4. Dump rustc's MIR for a function with a `for` loop (`cargo rustc -- --emit=mir` or the Rust Playground's MIR button). Find: the desugared iterator protocol, the CFG blocks, and one `StorageLive`/`StorageDead` pair — what is the *latter* bookkeeping for (hint: Ch. 6.2)?
 
+```quiz
+Q: Why is the AST the wrong data structure for optimization?
+- [x] It's shaped like source (nested, named, syntactic) while optimizers need flow (what computes what, what reaches where) — so compilers lower it into an IR of atomic operations in basic blocks connected by a control-flow graph
+- [ ] It's too small to hold optimization metadata
+- [ ] ASTs can't represent loops
+- [ ] It loses type information
+> Real compilers run a tower of IRs (rustc: AST → HIR → MIR → LLVM IR), each lowering exposing more machine detail. The rule: run each analysis at the highest level that still expresses what it needs.
+
+Q: What does Static Single Assignment (SSA) form give optimizers "for free"?
+- [x] Def-use chains *are* the representation — every variable is assigned once, so "who computes this value?" has exactly one answer, collapsing constant propagation, DCE, and value numbering into near-graph-rewrites
+- [ ] Faster register allocation
+- [ ] Automatic parallelization
+- [ ] Type checking
+> Before SSA, each optimization needed bespoke iterative dataflow analysis. SSA is why every serious optimizer (LLVM, GCC GIMPLE, TurboFan, HotSpot C2, Go's backend) is SSA-based. φ-nodes select the right version where control flow merges.
+
+Q: At `-O0` LLVM IR is full of `alloca`/`load`/`store`; at `-O1` they're gone. What happened?
+- [x] The mem2reg pass promoted memory back into SSA values — proving each stack variable could live in a register instead of memory
+- [ ] The optimizer inlined the loads
+- [ ] -O1 disables memory safety checks
+- [ ] The linker removed them
+> mem2reg is the gateway: most optimizations operate on SSA values, not memory traffic. That's why diffing -O0 against -O2 LLVM IR permanently changes what "the compiler optimized it" means.
+```
+
 ---
 
 ## Chapter 8 — Optimization
@@ -487,6 +546,29 @@ Inlining stops at what the compiler can see, and separate compilation traditiona
 3. Get the vectorizer to talk: a float-array loop with `-O3 -Rpass=loop-vectorize`, then break it three ways (potential aliasing via two pointer params; a cross-iteration dependency; an early-exit branch) and read `-Rpass-missed`'s explanation for each.
 4. Write the multiply-shift strength-reduction table empirically: compile `x*2`, `x*7`, `x*9`, `x/2` (signed!), `x%8` at `-O2` and explain each emitted sequence — the signed-division one is subtler than it looks.
 5. Run a small CPU-bound program under PGO (clang: `-fprofile-instr-generate` → run → `-fprofile-instr-use`) and measure. Then write one sentence on why V8 doesn't need this flag.
+
+```quiz
+Q: `for (int i = 0; i <= n; i++)` vectorizes better than the same loop with `unsigned i`. Why?
+- [x] Signed overflow is UB in C, so the compiler may assume `i` never wraps, making the trip count computable; unsigned wraparound is *defined*, so it must emit code correct for the wrap case
+- [ ] Signed integers are faster on x86
+- [ ] The vectorizer rejects unsigned types
+- [ ] Unsigned loops can't be unrolled
+> Optimizations are theorems derived from the language's axioms. UB *buys* performance by letting the optimizer assume it never happens — and "the compiler broke my code" decodes to "my code asserted an axiom I didn't mean." -fsanitize=undefined finds it.
+
+Q: Why is inlining called "the enabling optimization" when call overhead is minor?
+- [x] Its real product is context — after inlining, constants flow into the callee, branches on arguments fold, and the abstraction tax of small functions drops to zero; "zero-cost abstraction" IS inlining plus folding/DCE cleanup
+- [ ] It eliminates the stack frame
+- [ ] It's the only optimization that touches loops
+- [ ] It reduces binary size
+> This is why "many small functions" is free in optimized builds and why C++/Rust iterator chains compile to loops — each closure inlines into the loop skeleton, then folding/DCE dissolve the scaffolding. The cost is code growth, hence size-budget heuristics.
+
+Q: A loop the vectorizer "should obviously" optimize declines silently. What's the most common silent gatekeeper?
+- [x] Alias analysis — nearly every reordering needs "do these pointers overlap?", the answer is usually "maybe," and "maybe" kills the transformation; restrict and Rust's &mut-noalias exist to answer it
+- [ ] The optimization level is too low
+- [ ] The loop has too many iterations
+- [ ] Floating-point is disabled
+> This is why Fortran beat C at numerics for decades (no aliasing by rule). -Rpass-missed makes clang explain *why* it declined — a criminally underused flag. Phase ordering is the other systemic truth: passes enable each other with no optimal order.
+```
 
 ---
 
@@ -628,6 +710,36 @@ Type feedback makes TurboFan/C2 *speculative* compilers: "this site has only eve
 4. Demonstrate the array-kind ratchet: fill an array with ints, benchmark a sum; write one `1.5` into it; re-benchmark. Find the V8 element-kind documentation that names what happened.
 5. Compare the philosophies in one experiment: the same numeric loop in CPython 3.13 (`PYTHON_JIT=1` if available), PyPy, and Node. Relate the three results to method-vs-tracing-vs-copy-and-patch and to warmup.
 
+```quiz
+Q: Why are modern VMs tiered (V8: Ignition → Sparkplug → Maglev → TurboFan)?
+- [x] Startup and peak speed want opposite compilers — cheap tiers run immediately and profile; only the hot sliver of code earns the expensive optimizing tier, so compile time is spent only where running time concentrates
+- [ ] Each tier targets a different CPU
+- [ ] Older tiers exist for backward compatibility
+- [ ] More tiers always means faster code
+> Most code in a real app runs forever in the cheap tiers, which is the correct allocation. A function may run thousands of times in the interpreter before the baseline compiler touches it.
+
+Q: How do hidden classes + inline caches turn `obj.x` from a hash lookup into struct-speed access?
+- [x] The VM gives objects built the same way a shared *shape* with properties in fixed slots; each access site caches "(shape → offset)" so later executions are one shape-compare plus a direct slot load
+- [ ] It precomputes every possible property at startup
+- [ ] It converts objects to arrays
+- [ ] It caches the value, not the offset
+> "Initialize all properties in the constructor, same order" makes objects share a shape (monomorphic sites — fast). Conditional/reordered property addition forks the transition chain; dynamic keys defeat the mechanism entirely (use a Map).
+
+Q: What makes a JIT's speculation safe, and what's the failure mode?
+- [x] Each speculative assumption is protected by a cheap guard that, on failure, triggers deoptimization — reconstructing interpreter state and resuming; the failure mode is deopt loops, where a site keeps deopting and recompiling slower than never optimizing
+- [ ] Speculation never fails if types are consistent
+- [ ] Guards are checked only at compile time
+- [ ] Deoptimization restarts the whole program
+> Speculation is why JITs beat AOT on dynamic languages: AOT must be correct for all inputs, a JIT for *observed* inputs plus an escape hatch. node --trace-deopt names the function, reason, and site — the most instructive half hour in the chapter.
+
+Q: HotSpot aggressively inlines through a call site with only one loaded implementation, then adds an "uncommon trap." What is it speculating on?
+- [x] The *world* — class-hierarchy analysis says only one implementation is loaded, so it inlines; if a new class ever loads and falsifies the assumption, the uncommon trap deoptimizes
+- [ ] The argument values
+- [ ] The available registers
+- [ ] The garbage collector's state
+> The JVM speculates on the world's shape, not just on values — a strictly more powerful (and more fragile) bet than value speculation. It's why JVM peak performance is famously good and famously warmup-dependent.
+```
+
 ---
 
 ## Chapter 13 — Garbage Collection and Memory Runtimes
@@ -653,6 +765,36 @@ The collector you need depends on the garbage you make. Languages with **value t
 3. Write the write-barrier cost experiment in Go: sum over `[]T` vs `[]*T` (same data) with GC forced (`runtime.GC()` between runs, `GODEBUG=gctrace=1`). Attribute the difference between mutator and GC time.
 4. Trigger and fix allocation-rate pressure: a Go or Java hot loop allocating a buffer per iteration vs. a reused/pooled buffer — compare GC logs, not just latency. Which §13.3 lever did you pull?
 5. Explain, in tri-color terms, the exact race a concurrent collector without write barriers loses: give the three-object, two-step interleaving where a live object is freed.
+
+```quiz
+Q: Reference counting frees deterministically. What's its defining weakness and how do refcounting languages cope?
+- [x] Cycles — two objects referencing each other never hit zero; CPython runs a separate generational cycle collector on top, Swift uses weak/unowned (strong edges vs back edges)
+- [ ] It's slower than tracing for all workloads
+- [ ] It can't free large objects
+- [ ] It requires stop-the-world pauses
+> Refcounting also has hidden write traffic (every pointer assignment mutates two counts — cache-line pings), which plus the GIL is why CPython's counts were a multicore problem (hence immortal objects, biased counting). Tracing collects cycles for free by deferring cost to collection time.
+
+Q: What empirical fact justifies generational garbage collection, and what does the split cost?
+- [x] The generational hypothesis — most objects die young — so a small nursery is collected often and cheaply (only survivors are touched); the price is the write barrier on every pointer store, recording old→young edges
+- [ ] Old objects are larger, so they're collected separately
+- [ ] It eliminates fragmentation entirely
+- [ ] The split removes the need for roots
+> Write barriers are why "GC overhead" exists even between pauses — a few percent on all mutator writes, buying order-of-magnitude cheaper collections. They're also the hook on which all concurrent collection hangs (tri-color invariant keeping).
+
+Q: How is GC pressure a program-design variable you can act on this week?
+- [x] Allocation *rate* drives GC cost more than heap *size* (per-request buffers are a nursery tax — pool them), and pointer *density* drives trace cost (a []struct traces as one slab; a []*struct is a pointer-chase per element)
+- [ ] Only the runtime author can affect GC cost
+- [ ] Bigger heaps always mean slower GC
+- [ ] Finalizers reliably free resources promptly
+> The struct-of-arrays instinct helps the GC for the same reason it helps cache — the collector is just another graph walker. And finalizers are not destructors: they run late, maybe never; deterministic cleanup belongs to defer/with/RAII.
+
+Q: Why does a value-types language (Go, Rust) need less from its garbage collector than "everything is a heap object" (classic JVM)?
+- [x] Value types let data live in stacks, arrays, and registers — no header, no trace, no barrier — so allocation rate and pointer density drop, where JVM-style heaps maximize both and ask heroic collectors (plus escape analysis) to cope
+- [ ] Value types are reference counted
+- [ ] They don't need a GC at all
+- [ ] Their objects are smaller
+> Go's GC is tuned monomaniacally for low pause at the cost of throughput and compaction precisely because a values-first language makes less garbage. Escape analysis (the JIT's SROA) quietly un-heaps what it can prove local.
+```
 
 ---
 

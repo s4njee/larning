@@ -59,23 +59,20 @@ Vim has a handful of modes. You'll live in the first two; the rest are specializ
 - **Replace mode** — typing overwrites existing characters instead of inserting. Niche.
 - **Operator-pending mode** — a brief, almost invisible mode you're in *between* pressing an operator and its motion (the moment after `d`, waiting for the `w`). You don't think of it as a mode, but it's the conceptual engine behind the whole grammar.
 
-```text
-                 i a o I A O s c ...
-        ┌────────────────────────────────►┌──────────────┐
-        │                                  │  INSERT mode  │
-        │              <Esc>               │ (type text)   │
-        │   ◄──────────────────────────────└──────────────┘
- ┌──────┴───────┐  v V <C-v>   ┌──────────────┐
- │  NORMAL mode │ ───────────► │  VISUAL mode  │
- │ (commands —  │  ◄────────── │ (select then  │
- │  home base)  │    <Esc>     │   operate)    │
- └──────┬───────┘              └──────────────┘
-        │  :  /  ?      ┌────────────────────┐
-        │ ────────────► │  COMMAND-LINE mode │
-        │  ◄─────────── │ (:w :s /search ... )│
-        │   <CR>/<Esc>  └────────────────────┘
-        ▼
-   (everything returns to Normal — when in doubt, press <Esc>)
+```mermaid
+stateDiagram-v2
+  state "Normal (commands — home base)" as N
+  state "Insert (type text)" as I
+  state "Visual (select then operate)" as V
+  state "Command-line (:w :s /search)" as C
+  [*] --> N
+  N --> I: i a o I A O s c ...
+  I --> N: Esc
+  N --> V: v V Ctrl-v
+  V --> N: Esc
+  N --> C: : / ?
+  C --> N: CR / Esc
+  note right of N: when in doubt, press Esc to return to Normal
 ```
 
 The golden rule for survival: **when you're lost, press `<Esc>` (or `<C-[>`) until you're back in Normal mode**, then think. Everything radiates from Normal.
@@ -262,6 +259,29 @@ gqip   re-wrap the current paragraph to text width
 None of these needed to be memorized individually. Each is just *verb + noun*. When you hit a new editing situation, the question is never "what's the command for this?" — it's "what's the verb, what's the noun?" and you assemble it.
 
 If you remember one thing from Part 3: **edits are sentences — `operator + motion/text-object`, optionally multiplied by a count.** Learn the verbs and nouns separately, and every combination is yours without ever studying it.
+
+```quiz
+Q: Why is learning 3 operators and 8 motions described as more powerful than memorizing 24 separate commands?
+- [ ] Vim only has 3 operators total
+- [x] Any operator composes with any motion, so the combinations multiply — you get all 24 edits free instead of memorizing each
+- [ ] The extra commands are deprecated
+- [ ] Operators are faster to type than full commands
+> The leverage is composition: `d`, `c`, `y` each pair with `w`, `$`, `}`, etc., so you never learn `dw`, `cw`, `yw`, `d$`… as distinct commands — you learn verbs and nouns separately and assemble the one you need. The question stops being "what's the command for this?" and becomes "what's the verb, what's the noun?"
+
+Q: What's the practical difference between `dw` and `diw` when the cursor sits in the middle of a word?
+- [ ] They're identical
+- [x] `dw` deletes from the cursor forward (position-dependent); `diw` deletes the whole word regardless of where in it the cursor sits
+- [ ] `diw` only works in Insert mode
+- [ ] `dw` deletes the whole word, `diw` deletes one character
+> A motion like `w` covers text *from the cursor* to where it lands, so `dw` leaves the part of the word before the cursor. A text object like `iw` names a complete structural unit, so `diw` removes the entire word position-independently. That structure-naming is what makes text objects the biggest "faster than a normal editor" lever.
+
+Q: What does `3d2w` delete, and why?
+- [ ] 3 words
+- [ ] 5 words
+- [x] 6 words — the count before the operator and the count before the motion multiply (3 × 2)
+- [ ] 32 words
+> A count can sit before the operator, before the motion, or both, and when both are present they multiply. So `3d2w` is "do (delete 2 words) 3 times" = 6 words. Counts turn "repeat this a few times" into one command, composing with the verb+noun grammar rather than being a separate feature.
+```
 
 ## Part 4 — Motions
 
@@ -460,6 +480,29 @@ Two extensions worth knowing now (full plugin treatment in Part 10), because the
 
 If you remember one thing from Part 5: **stop selecting text and start naming structure.** `ci"`, `dap`, `cit`, `yi{` — describe the unit and the operation, and Vim finds the boundaries for you. This is the habit that makes editing feel telepathic.
 
+```quiz
+Q: Your cursor is somewhere inside a long string and you type `ci"`. What happens, and why is it position-independent?
+- [ ] It deletes from the cursor to the next quote
+- [x] It deletes the entire quoted contents and enters Insert mode, because `i"` names the structure (inside the quotes) regardless of cursor position
+- [ ] It only works if the cursor is on a quote character
+- [ ] It changes the character under the cursor
+> `i"` is a text object describing "inside the quotes," so Vim locates the surrounding quotes and operates between them no matter where in the string the cursor sits — three keys versus a careful mouse drag. You describe *what* you mean (the string's contents) and let Vim find the boundaries, which is the whole speed lever.
+
+Q: What's the difference between `cit` and `dat` on `<p>hello world</p>`?
+- [ ] They're the same
+- [x] `cit` changes the *inner* contents (keeping the tags); `dat` deletes the whole element *around* (including the tags)
+- [ ] `cit` deletes the tags; `dat` keeps them
+- [ ] Both leave the tags but differ in mode
+> The inner/around distinction is the lever: `it` is the tag's contents, `at` is the entire element. So `cit` clears `hello world` and leaves `<p></p>` ready to type into, while `dat` removes `<p>hello world</p>` entirely. Picking `i` vs `a` is how you say "the thing" versus "the thing and its delimiters."
+
+Q: To change every `format(` call to `render(` with review, the guide suggests `/format(<CR>`, then `cwrender<Esc>`, then `n . n .`. What role does `.` play?
+- [ ] It searches for the next match
+- [x] It repeats the last change, so combined with `n` (next match) you apply the same edit match-by-match with full control
+- [ ] It undoes the change
+- [ ] It confirms a substitution prompt
+> `.` repeats the last edit, and `n` jumps to the next search hit, so `n .` walks the file applying the identical change while letting you skip any match you don't want — a reviewed find-and-replace without a dialog. This text-object-plus-search-plus-dot combination is lightweight refactoring built from composable primitives.
+```
+
 ---
 
 ## Part 6 — Changing Text & Registers
@@ -543,6 +586,29 @@ Every delete and yank goes into a **register** — a named clipboard. Vim has ma
 - Enable **persistent undo** (`set undofile`) and the undo history survives closing and reopening the file — undo across sessions.
 
 If you remember one thing from Part 6: **`.` is your repeat button and `"0`/`"_` keep your clipboard from betraying you.** Make changes small and repeatable so `.` can do the rest, and reach for the yank or black-hole register the moment a delete would clobber something you wanted to paste.
+
+```quiz
+Q: You yank a word with `yiw`, then `diw` to delete some junk, then `p` — and Vim pastes the junk, not your word. Why?
+- [ ] `yiw` doesn't actually copy anything
+- [x] The delete overwrote the unnamed register that `p` reads from; the yank is still safe in `"0`
+- [ ] `p` always pastes the most recent delete only
+- [ ] Insert mode cleared the register
+> Plain `p` reads the unnamed register `""`, which holds the *most recent* delete or yank — so the `diw` clobbered your yanked word there. The fixes all exploit register separation: paste with `"0p` (the yank register, which deletes never touch), delete into the black hole with `"_diw` so the yank survives, or assign a named register. This is the single most common Vim paste frustration.
+
+Q: What makes the dot-repeat workflow (`A;<Esc>` then `j .` `j .`) effective for adding a semicolon to many lines?
+- [ ] `.` opens a substitution dialog
+- [x] `.` re-runs the entire last change including the typed text, so paired with a repeatable motion you apply the edit location-by-location with eyes on each
+- [ ] `j` automatically repeats the edit
+- [ ] It only works on consecutive lines
+> `.` repeats the last change in full — operator, motion, and any inserted text — at the new cursor position. Combining a small self-contained change with a repeatable motion (`j`, `n`, `;`) lets you sweep an edit across many spots while reviewing each, which is faster to *start* than a replace dialog and keeps a human in the loop.
+
+Q: How does uppercase-named-register append (`"Ayy`) differ from `"ayy`?
+- [ ] `"Ayy` yanks to the system clipboard
+- [x] `"ayy` overwrites register `a`; `"Ayy` appends to it — useful for collecting scattered lines into one place
+- [ ] `"Ayy` is invalid syntax
+- [ ] They're identical
+> Lowercase names overwrite the register; the uppercase form of the same letter appends to it. So `"Ayy` on several lines accumulates them all in register `a`, which you then paste together with `"ap` — exactly the tool for gathering non-adjacent lines before pasting them as a block.
+```
 
 ## Part 7 — Search & Substitute
 
@@ -650,6 +716,29 @@ Now `.` `.` `.` walks through the file replacing each occurrence, and because yo
 
 If you remember one thing from Part 7: **`:%s` for blanket replacements, `:g/pat/normal …` for "run this edit on every matching line," and `*`-then-`cgn`-then-`.` for replace-with-review.** These three collapse the bulk-editing tasks that take minutes of clicking into seconds.
 
+```quiz
+Q: In `:%s/old/new/gc`, what do the `%`, `g`, and `c` each contribute?
+- [ ] `%` = case-insensitive, `g` = global, `c` = count
+- [x] `%` = whole-file range, `g` = replace all occurrences per line, `c` = confirm each replacement
+- [ ] `%` = current line, `g` = first match only, `c` = comment
+- [ ] They're all optional decoration
+> The range prefix (`%` = whole file) chooses which lines, and flags change behavior: `g` replaces every match on a line rather than just the first, and `c` prompts y/n/a/q for each. Without `g`, only the first hit per line changes; without `c`, it's silent. Knowing the range/flag structure cold is what makes `:s` precise.
+
+Q: What does `:g/console/normal A // debug` do, and why is it often simpler than recording a macro?
+- [ ] Deletes every line with "console"
+- [x] Runs the Normal-mode keystrokes `A // debug` on every line matching "console" — a one-shot macro across all matches at once
+- [ ] Searches for "console" without editing
+- [ ] Comments out the whole file
+> `:g/pattern/normal {keys}` executes Normal-mode commands on each matching line in a single pass, so it's effectively a macro applied to every match without the record/replay ceremony. When the edit is "do this same thing to every line containing X," `:g`-plus-`:normal` is frequently the most direct tool.
+
+Q: Why is `*` then `cgn` then `.` `.` called "Vim's answer to multiple cursors"?
+- [ ] It places literal cursors on every match
+- [x] `gn` selects the next match of the last search so `cgn` changes it, and `.` repeats jump-and-change in one keystroke — with `n` to skip, giving per-instance control
+- [ ] It only works with the substitute command
+- [ ] It changes all matches simultaneously
+> Rather than literal multiple cursors, this fuses search, change, and dot-repeat: `cgn` changes the next search match, and `.` re-runs "find next match and change it" as a single keystroke. Because you can press `n` to skip a match you want to keep, it's reviewed find-and-replace at one keystroke per edit — the idiomatic Vim multi-cursor.
+```
+
 ---
 
 ## Part 8 — Macros
@@ -701,6 +790,29 @@ Both apply an edit repeatedly, and they overlap:
 - Reach for a **macro** when the transformation spans multiple lines per iteration, needs to navigate unpredictably, or you want to *watch* it run a few times with `@a` before committing with `{count}@a`.
 
 If you remember one thing from Part 8: **a macro is a recorded sentence of edits — make each one start from a known spot, use structural motions, and end on the next item**, then let `{count}@a` apply it across the whole file while you do something else.
+
+```quiz
+Q: Inside a macro, why prefer structural motions like `f,`, `ci"`, `$` over "move right three times"?
+- [ ] Structural motions are fewer keystrokes
+- [x] They adapt to lines of different lengths and content, so the macro doesn't break on the first line that doesn't match a fixed assumption
+- [ ] Counted motions can't be recorded
+- [ ] `$` is faster than `lll`
+> A macro replays keystrokes literally, so a counted motion that assumed a specific layout corrupts any line shaped differently. Structural motions (find a comma, change inside quotes, jump to line end) locate their target by *content*, making each iteration robust across varied lines. Combined with starting from a known column and ending on the next item, that's what lets `{count}@a` flow cleanly down the whole file.
+
+Q: How does running `99@a` conveniently stop at the right place when applying a macro down a file?
+- [ ] It counts the lines first and matches exactly
+- [x] A macro halts when a motion fails (e.g. `j` on the last line), so an over-large count simply runs out and stops
+- [ ] 99 is a special "to end of file" value
+- [ ] It pauses for confirmation at the end
+> When a motion inside the macro can't move (like `j` past the final line), the macro errors and the whole run halts. So you give a deliberately large count and let it self-terminate at the end of the file rather than counting lines precisely. The same failure-stops-replay behavior is what makes recursive macros (calling `@a` as the last step) terminate on their own.
+
+Q: When is `:g/pattern/normal {keys}` the better choice than recording a macro?
+- [ ] Always — macros are obsolete
+- [x] When the edit applies to lines matching a pattern and each edit is self-contained — it's a one-liner with no recording
+- [ ] When the transformation spans many lines per iteration
+- [ ] When you want to watch it run before committing
+> `:g`-plus-`:normal` shines for "apply this self-contained edit to every line matching X" — no record/replay needed. A macro earns its keep when an iteration spans multiple lines, needs unpredictable navigation, or you want to watch `@a` run a few times before unleashing `{count}@a`. They overlap; the dividing line is per-line-match-and-self-contained versus multi-line-and-navigational.
+```
 
 ---
 

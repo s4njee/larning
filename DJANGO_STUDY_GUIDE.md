@@ -154,14 +154,14 @@ If you remember one thing from Part 1: **Django's value is integration — and i
 
 Everything Django does happens inside one pipeline, and internalizing it is the single highest-leverage piece of Django knowledge — it's the framework's equivalent of Linux's "everything is a file." When a request arrives:
 
-```text
-web server (gunicorn/uvicorn)
-  → WSGI/ASGI handler builds an HttpRequest
-    → middleware, top of MIDDLEWARE list downward   (request phase)
-      → URL resolver matches a path → view
-        → view returns an HttpResponse (or raises)
-      ← middleware, bottom of the list upward       (response phase)
-  ← handler serializes the HttpResponse
+```mermaid
+graph TD
+  WS["web server (gunicorn / uvicorn)"] --> H["WSGI/ASGI handler builds an HttpRequest"]
+  H --> MW1["middleware — top of MIDDLEWARE downward (request phase)"]
+  MW1 --> URL["URL resolver matches a path → view"]
+  URL --> V["view returns an HttpResponse (or raises)"]
+  V --> MW2["middleware — bottom of the list upward (response phase)"]
+  MW2 --> OUT["handler serializes the HttpResponse"]
 ```
 
 Each middleware is an onion layer wrapping everything below it. `SecurityMiddleware` sees the request first and the response last; the view sits at the center. **Order in the `MIDDLEWARE` setting is therefore behavior, not style**: `AuthenticationMiddleware` must follow `SessionMiddleware` because it reads the session to figure out who `request.user` is; `CsrfViewMiddleware` must run before any view that processes a POST. Most "why is `request.user` an AnonymousUser?" and "why is my header missing?" bugs are ordering bugs. Docs: [middleware topic guide](https://docs.djangoproject.com/en/stable/topics/http/middleware/), [middleware reference](https://docs.djangoproject.com/en/stable/ref/middleware/) (read the one-paragraph description of every default middleware once — it pays for itself forever).
@@ -345,6 +345,29 @@ Two Django 5.x additions worth knowing: [`db_default`](https://docs.djangoprojec
 
 If you remember one thing from Part 3: **models are where domain rules become schema — `on_delete` is a business decision, constraints belong in the database, string fields use `blank=True, default=""` not `null=True`, and abstract base classes are the inheritance pattern you actually use.**
 
+```quiz
+Q: Why does the canonical Django string field use `blank=True, default=""` and *not* `null=True`?
+- [ ] NULL strings crash PostgreSQL
+- [x] Allowing both `NULL` and `""` creates two indistinguishable "empty" states that quietly break filters and unique constraints — one empty representation is enough for strings
+- [ ] null=True is deprecated
+- [ ] default="" is required by forms
+> `null` is database-level (may the column store SQL NULL?) and `blank` is validation-level (may a form leave it empty?). For strings, permitting both NULL and empty-string gives two different "empty" values that `filter(summary="")` and unique constraints treat differently. So strings get `blank=True, default=""`; non-string optional fields like a nullable datetime correctly use `null=True, blank=True` together.
+
+Q: Why is `on_delete` called "a business rule wearing a keyword argument"?
+- [ ] It only affects query speed
+- [x] CASCADE deletes children with the parent (comments on a post), PROTECT blocks deletion while references exist (an author's published work), SET_NULL orphans the reference ("deleted user") — choosing by reflex instead of by domain is how production data disappears
+- [ ] It's always CASCADE in practice
+- [ ] It controls database indexing
+> Each option encodes a different domain decision about what happens to dependent rows: meaningless-without-parent children cascade, valuable referenced work is protected, and attribution can be nulled while the row survives. The choice silently determines whether a single delete wipes related data, so it deserves a deliberate domain answer per relationship, not a copy-pasted default.
+
+Q: Field validators and `choices` run during `full_clean()` — which forms call but `save()` does not. What follows?
+- [ ] save() always validates anyway
+- [x] `Post.objects.create(...)` happily writes values every validator would reject — so validators are UX, and invariants that must always hold belong in database constraints
+- [ ] You must call save() twice
+- [ ] Validators run in the database
+> Model validation is a trapdoor: nothing in `save()`/`create()` invokes `full_clean()`, so code paths bypassing forms write unvalidated data. That's exactly why the guide pushes `CheckConstraint`/`UniqueConstraint` — the database enforces them against every writer, including raw SQL and future code that forgets to validate. Validators improve form errors; constraints guarantee invariants.
+```
+
 ---
 
 ## Part 4 — The ORM: QuerySets Are Descriptions, Not Results
@@ -487,6 +510,29 @@ Post.objects.published().by(user).with_related()
 QuerySet methods (opt-in, chainable) are usually better than overriding a manager's `get_queryset()` (which changes the *default universe of rows* for everyone — powerful for soft-delete patterns, dangerous because it hides data from the admin and from future you; if you do it, keep an `all_objects = models.Manager()` escape hatch). Docs: [managers](https://docs.djangoproject.com/en/stable/topics/db/managers/).
 
 If you remember one thing from Part 4: **QuerySets are lazy descriptions — so chain freely, but know your evaluation points; fix N+1 with `select_related` (single-valued, JOIN) and `prefetch_related` (multi-valued, second query); push arithmetic and logic into the database with `F`/`Q`; and keep django-debug-toolbar open while you build.**
+
+```quiz
+Q: A view fetches 50 posts in one query, then the template renders `{{ post.author.username }}` per post — and the page runs 51 queries. Why?
+- [ ] The template engine is buggy
+- [x] The listing fetched `author_id` but not the author rows, so each lazy `post.author` access runs its own SELECT — the classic N+1; fix with `select_related("author")`
+- [ ] Templates always query per variable
+- [ ] The posts queryset wasn't evaluated
+> The ORM makes related-object access look free, and it isn't: each `post.author` finds no cached author and helpfully queries for it, so 50 posts cost 1 + 50 queries. It works in dev with 5 rows and falls over in production. `select_related` JOINs single-valued relations into the original query; `prefetch_related` handles many-valued ones with a second query stitched in Python. Keep debug-toolbar open and pin counts with `assertNumQueries`.
+
+Q: Why is `Post.objects.filter(pk=pk).update(view_count=F("view_count") + 1)` correct where read-modify-write `post.view_count += 1; post.save()` is a bug?
+- [ ] update() is faster but otherwise equivalent
+- [x] Read-modify-write races — two concurrent requests both read 41 and both write 42, losing an increment; `F()` makes the database do the arithmetic atomically in one UPDATE
+- [ ] save() doesn't persist integers
+- [ ] F() caches the value
+> The Python-side increment has a window between read and write where another request can interleave, losing updates. `F("view_count") + 1` compiles to `SET view_count = view_count + 1`, so the database performs the arithmetic atomically against the current value. Use `F` expressions whenever an update depends on the column's existing value.
+
+Q: When do you need `Q` objects instead of plain keyword filters?
+- [ ] For any filter with more than one condition
+- [x] For boolean logic keyword arguments can't express — OR (`Q(a) | Q(b)`), NOT (`~Q(...)`) — since keyword filters can only AND
+- [ ] Q is required for foreign-key lookups
+- [ ] Q objects avoid SQL injection
+> Multiple keyword arguments in `filter()` are always ANDed. `Q` objects add OR and NOT and compose dynamically (`q |= Q(tag__name=t)` in a loop), making them the backbone of search and optional-filter code. Plain keyword filters remain fine — and are combined with Q objects by AND — for the conditions that don't need the extra logic.
+```
 
 ---
 
@@ -961,6 +1007,29 @@ This pattern — *authorization is filtering* — is robust because list views, 
 
 If you remember one thing from Part 9: **create a custom user model before your first migration — `class User(AbstractUser): pass` is enough — reference it via `settings.AUTH_USER_MODEL`/`get_user_model()`, and implement per-object authorization as queryset filtering, not scattered if-statements.**
 
+```quiz
+Q: Why does the guide insist on `class User(AbstractUser): pass` *before* the first migration, even with nothing customized?
+- [ ] AbstractUser is faster than the default
+- [x] Swapping the user model after tables exist is one of Django's most painful migrations — every FK references it; an empty subclass costs nothing now and keeps the door open forever
+- [ ] The default User lacks passwords
+- [ ] It's required by the admin
+> The user model is referenced by foreign keys throughout your schema (and `AUTH_USER_MODEL` is baked into migrations), so changing it mid-project means rewriting migration history against live data — notorious enough that the docs recommend a custom model up front. An empty `AbstractUser` subclass behaves identically but lets you add fields later with a normal migration. Always reference it via `settings.AUTH_USER_MODEL`/`get_user_model()`, never a hardcoded import.
+
+Q: Why is "authorization is filtering" (scoping `get_queryset` to `author=self.request.user`) more robust than permission if-statements in each view?
+- [ ] Querysets are faster than if-statements
+- [x] List, detail, and edit views all derive from the same scoped queryset so they can't disagree; the wrong user gets a 404 (leaking nothing about what exists), and it's enforced where data is fetched, not in a check someone can forget
+- [ ] It avoids writing permissions entirely
+- [ ] Django requires it for UpdateView
+> Django's built-in permissions are model-level ("can change posts at all"), not per-object. Scoping the queryset makes per-object authorization a WHERE clause: an unauthorized object effectively doesn't exist for that user, every view sharing the queryset is automatically consistent, and there's no scattered check to omit. Reach for django-guardian/rules only when access is genuinely *assignable* rather than derivable from relationships.
+
+Q: What's the role of a custom authentication backend like `ApiKeyBackend`?
+- [ ] It replaces sessions with tokens
+- [x] `authenticate()` walks `AUTHENTICATION_BACKENDS` until one returns a user, so a ~40-line backend adds LDAP/SSO/API-key auth while sessions, `request.user`, and permission checks keep working unchanged
+- [ ] It bypasses the user model
+- [ ] It's needed for password hashing
+> Backends are the pluggable seam: each gets a chance to turn credentials into a user, returning `None` to pass ("not my kind of credential"). Because the rest of the system consumes only the resulting user, new auth methods integrate without touching sessions or permissions — backends even participate in `has_perm` aggregation, which is the hook django-guardian uses. Knowing the seam exists is the difference between "Django can't do our SSO" and a small file.
+```
+
 ---
 
 ## Part 10 — The Admin
@@ -1352,6 +1421,29 @@ The check-then-decrement is safe because concurrent calls queue on the row lock.
 
 If you remember one thing from Part 13: **business operations deserve one named, explicit function wrapping its writes in `atomic` and deferring its side effects with `on_commit` — reserve signals for code you don't own, and never trust `post_save` to mean "committed."**
 
+```quiz
+Q: A `post_save` receiver sends a confirmation email. What's the timing bug?
+- [ ] post_save fires only on updates, not creates
+- [x] `post_save` fires *before the transaction commits*, so the email can celebrate a write that subsequently rolls back
+- [ ] Emails can't be sent from signals
+- [ ] The receiver runs twice per save
+> `post_save` means "the save() call finished," not "the data is committed" — inside an `atomic` block the transaction may still roll back after the signal fired, leaving you having emailed about a write that never happened. Anything with external reach (emails, webhooks, task enqueues, cache eviction) belongs in `transaction.on_commit`, which runs only after a successful commit and never on rollback.
+
+Q: When are signals the right tool versus an explicit service function?
+- [ ] Signals are always cleaner — they decouple everything
+- [x] Signals fit code you *can't* edit (third-party apps) and genuinely incidental side effects; for your own workflows, a named service function states the whole operation in one greppable, testable place
+- [ ] Service functions can't use transactions
+- [ ] Signals are deprecated
+> The community critique is that signals make control flow invisible: `post.save()` reveals nothing about the cache invalidation and emails about to happen, and you grep for receivers to find out. They're a framework-extension mechanism, not an application architecture. Operations spanning multiple models, external services, or queued work deserve one explicit function wrapping writes in `atomic` and deferring side effects with `on_commit` — called from views, admin, and commands alike.
+
+Q: Why does `reserve_stock` use `select_for_update()` instead of the `F()`-expression one-liner from Part 4?
+- [ ] F() doesn't work inside atomic
+- [x] The decision depends on the value being changed ("fail if insufficient") — `F()` can't express check-then-decrement, so a row lock makes concurrent calls queue while the check and write happen atomically
+- [ ] select_for_update is faster
+- [ ] F() is only for reads
+> `F("available") - quantity` updates atomically but can't refuse when stock is insufficient — the check would race. `select_for_update()` inside `atomic` takes a row lock until commit, so concurrent reservations queue and each sees the post-decrement value of the last. Keep locked sections short and mind lock ordering across multiple rows: deadlock pages are written in exactly this code.
+```
+
 ---
 
 ## Part 14 — Async Django, Celery & Background Work
@@ -1581,6 +1673,29 @@ Beyond the framework's automatic layer, three application-level habits round out
 One more application-layer corner: **file uploads**. Validate size and content type server-side; never trust the client's filename for storage decisions; serve user uploads from a separate domain or with `Content-Disposition: attachment` where feasible (an uploaded HTML file served inline from your origin is stored XSS with extra steps); and remember `ImageField`'s Pillow check verifies the file *is* an image, not that it's harmless.
 
 If you remember one thing from Part 16: **Django's defaults already defeat the classic attacks — your job is to not turn them off (`|safe`, `@csrf_exempt`, f-string SQL, `fields = "__all__"` are the off-switches), to configure the transport layer, and to test authorization yourself because the framework can't.**
+
+```quiz
+Q: `Post.objects.raw("... WHERE title = %s", [user_input])` is safe but the f-string version is an injection. Why?
+- [ ] raw() always sanitizes its first argument
+- [x] The parameterized form sends user input as a bound parameter the database never interprets as SQL; the f-string splices it into the SQL text itself — you wrote the injection by hand
+- [ ] f-strings are slower
+- [ ] raw() is deprecated
+> The ORM's protection is parameterization — input travels as data, never as SQL text — and it survives `raw()`/`cursor.execute()` only if you keep using parameters. Any f-string or %-format building SQL is a grep-able finding. The same principle holds in every language: never assemble queries from strings containing user input.
+
+Q: When is `@csrf_exempt` legitimate, and when is it "an incident report with a future date"?
+- [ ] Never — CSRF protection must cover everything
+- [x] Legitimate for endpoints that don't use cookies — a webhook verified by signature (Stripe/GitHub) or header-token-authenticated APIs; illegitimate as a workaround for "the token was annoying from my SPA"
+- [ ] Always fine on POST endpoints
+- [ ] Only in DEBUG mode
+> CSRF attacks ride the session cookie the browser attaches automatically, so endpoints authenticated without cookies (signature-verified webhooks, JWT-in-header APIs) are inherently immune and may be exempted. But exempting a cookie-authenticated endpoint because the token integration was inconvenient removes the actual defense — that's the off-switch the guide warns about. Audit each `@csrf_exempt` like you'd audit `|safe`.
+
+Q: Why is `fields = "__all__"` in a ModelForm or serializer a mass-assignment vulnerability?
+- [ ] It exposes the database schema in errors
+- [x] Every model field becomes user-editable — a request can set `is_admin` or any privileged column the form was never meant to accept; explicit `fields` lists are the defense
+- [ ] It breaks migrations
+- [ ] It disables validation entirely
+> `"__all__"` binds whatever fields exist on the model — including ones added later — to user input. An attacker posts `is_admin=true` alongside legitimate fields and the form happily assigns it. Enumerating `fields` explicitly means new columns are private until deliberately exposed, and the form's accepted surface is reviewable in the diff. It's the framework-level version of never trusting client-supplied field lists.
+```
 
 ---
 

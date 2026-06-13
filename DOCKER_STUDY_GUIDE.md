@@ -91,6 +91,22 @@ The default storage driver on modern Docker is `overlay2`. Each layer is a direc
 - **Density is high** because containers don't duplicate the kernel or a full OS.
 - **Isolation is weaker than VMs** — the shared kernel is a larger attack surface.
 
+```quiz
+Q: What are the three isolation mechanisms that turn a regular Linux process into a container?
+- [x] Namespaces (what it can see — PID, net, mnt, etc.), cgroups (what it can use — CPU/memory/IO limits), and a union filesystem (read-only image layers + a writable copy-on-write layer)
+- [ ] A hypervisor, a guest kernel, and virtual hardware
+- [ ] chroot, sudo, and seccomp
+- [ ] A VM, a network bridge, and a volume
+> A container is not a VM — it shares the host kernel, which is the fundamental security difference. --memory and --cpus map to cgroup limits; a memory-limit breach OOM-kills, a CPU-limit breach throttles.
+
+Q: What does the user namespace let you do that the others don't, security-wise?
+- [x] Map UID 0 inside the container to an unprivileged UID on the host (rootless) — so root in the container isn't root on the host; without it, container root IS host root and an escape gives host root
+- [ ] Isolate the network stack
+- [ ] Limit memory usage
+- [ ] Hide host processes
+> "Containers share the host kernel" means a kernel vuln or misconfig handing kernel privilege is a host compromise — the larger attack surface versus VMs. User namespaces (rootless Docker) shrink the blast radius of an escape.
+```
+
 ---
 
 ## 2. Images & Layers
@@ -155,6 +171,36 @@ RUN tar xzf file.tar.gz && rm file.tar.gz
 RUN curl -o file.tar.gz https://example.com/file.tar.gz \
     && tar xzf file.tar.gz \
     && rm file.tar.gz
+```
+
+```quiz
+Q: Why does a container with a "gigabyte image" start in milliseconds?
+- [x] Nothing is copied at startup — overlayfs gives the container an empty writable layer over the shared read-only image stack, and copy-on-write copies individual files lazily, only on write
+- [ ] The image is decompressed into RAM first
+- [ ] Docker pre-boots a minimal OS
+- [ ] The kernel caches the whole image
+> Copy-on-write plus union mounts is the whole value proposition: cheap to start, cheap to store (ten containers share one on-disk copy of the layers), cheap to run many. Two images on python:3.12-slim share that base layer's bytes once.
+
+Q: Splitting a download and its cleanup across two RUN instructions bloats the image. Why?
+- [x] Each instruction creates a layer, and a layer is the *changes* relative to the one below — the file added in layer 1 still occupies space even though layer 2 deletes it; combine download+extract+rm in one RUN
+- [ ] Two RUNs run twice as slowly
+- [ ] The cache invalidates both layers
+- [ ] rm doesn't work across layers
+> Layers are additive tar diffs; a later deletion can't shrink an earlier layer. The same reasoning drives ordering for cache efficiency — minimize layers that carry transient files.
+
+Q: Why pin image *digests* rather than *tags* in production?
+- [x] Tags are mutable pointers (python:3.12 points to different images over time); a digest (python@sha256:...) is an immutable content hash, giving reproducible builds
+- [ ] Digests pull faster
+- [ ] Tags can't be used in Dockerfiles
+- [ ] Digests are smaller
+> A rebuild months later against the same tag can silently get a different base image. Digests freeze exactly which bytes you depend on — the reproducibility guarantee tags can't give.
+
+Q: A RUN apt-get install line stays cached even though apt would fetch newer packages today. Why?
+- [x] Docker's cache key for RUN is the exact command *string* plus parent layers — same string, same parent = cache hit, regardless of what the command would produce now
+- [ ] Docker re-runs apt and compares output
+- [ ] The cache checks package checksums
+- [ ] RUN instructions are never cached
+> COPY/ADD cache on file checksums (changed file → miss); RUN caches on the command text. This is why instruction *order* matters enormously and why you sometimes need --no-cache or a cache-busting arg for "always fresh" steps.
 ```
 
 ---
@@ -332,6 +378,22 @@ CMD ["node", "dist/index.js"]
 ```
 
 **Result**: the final image contains only the runtime (`node:22-slim`), the compiled output, and production dependencies. No TypeScript compiler, no dev dependencies, no source code. Images shrink from hundreds of MB to tens.
+
+```quiz
+Q: In a multi-stage build, what ends up in the final image?
+- [x] Only the last stage — previous stages exist purely to produce artifacts that you COPY --from into the final one, so build toolchains, dev dependencies, and source never ship
+- [ ] All stages, concatenated
+- [ ] The largest stage
+- [ ] The first stage plus the last
+> This is why a Go service can build in golang:1.23 and ship FROM scratch (~10-20MB, just the static binary and TLS certs). The build-vs-run split shrinks images from hundreds of MB to tens and removes the compiler from your attack surface.
+
+Q: Why does the Node multi-stage example COPY package.json and run npm ci *before* COPY . .?
+- [x] Layer-cache efficiency — dependencies change rarely, so caching the npm install layer means a source-only change reuses it; copying everything first would bust the dependency cache on every code edit
+- [ ] npm requires it
+- [ ] It reduces the number of stages
+- [ ] Source files must come last alphabetically
+> Order instructions from least-to-most frequently changing. The dependency-manifest-then-install-then-source pattern is the single most impactful Dockerfile caching trick, applicable in every ecosystem (Cargo, pip, go mod).
+```
 
 ### Go — The Extreme Case
 
@@ -887,6 +949,16 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 Container states: `starting` → `healthy` / `unhealthy`. Docker doesn't automatically restart unhealthy containers, but Compose `depends_on` and orchestrators (Swarm, Kubernetes) use health status.
 
+```mermaid
+stateDiagram-v2
+  [*] --> starting
+  note right of starting: start-period grace window — failures don't count
+  starting --> healthy: probe succeeds
+  starting --> unhealthy: still failing after start-period
+  healthy --> unhealthy: probe fails (retries exceeded)
+  unhealthy --> healthy: probe succeeds again
+```
+
 ```bash
 # check health status
 docker inspect --format '{{.State.Health.Status}}' mycontainer
@@ -925,6 +997,22 @@ docker run -d --restart unless-stopped myapp
 | `unless-stopped` | Like `always`, but don't restart if the container was manually stopped |
 
 `unless-stopped` is the right default for most production services — it survives host reboots but respects manual `docker stop`.
+
+```quiz
+Q: What does a HEALTHCHECK tell Docker that the container being "running" doesn't?
+- [x] Whether the container is actually *working* (e.g. answering /health), not just that its process exists — states go starting → healthy/unhealthy, and start-period gives a grace window where failures don't count
+- [ ] How much memory it's using
+- [ ] Whether to restart it automatically
+- [ ] Its exit code
+> A process can be up but deadlocked or not-yet-ready. Docker doesn't auto-restart unhealthy containers, but Compose depends_on and orchestrators consume the status. start-period is the equivalent of Kubernetes' startupProbe for slow boots.
+
+Q: Why is `unless-stopped` the right restart-policy default for production services?
+- [x] It restarts the container on failure and survives host reboots, but respects a manual `docker stop` (unlike `always`, which would restart even something you deliberately stopped)
+- [ ] It restarts only on a zero exit code
+- [ ] It never restarts, which is safest
+- [ ] It's the only policy that works with health checks
+> `no` (default) won't survive a crash; `on-failure` won't survive a reboot; `always` ignores your manual stop. `unless-stopped` is the pragmatic middle — resilient but not insubordinate.
+```
 
 ---
 
@@ -1120,6 +1208,29 @@ Reference: [Rootless mode](https://docs.docker.com/engine/security/rootless/)
 8. Don't store secrets in images (use BuildKit secrets, runtime secrets management)
 9. Use `.dockerignore` to exclude sensitive files from build context
 10. Keep Docker and base images updated
+
+```quiz
+Q: Why is "run as non-root" the number-one Docker security improvement?
+- [x] By default container processes run as root, and with user namespaces disabled (the default) that maps to root on the host — so an app compromise plus a container escape gives host root; a USER directive makes the escape land as an unprivileged user
+- [ ] Root processes are slower
+- [ ] Non-root containers start faster
+- [ ] It's required by the OCI spec
+> The USER directive is the cheapest, highest-impact hardening. It pairs with --cap-drop ALL (add back only what's needed), --read-only root filesystem, --security-opt no-new-privileges, and the default seccomp profile.
+
+Q: What does --cap-drop ALL --cap-add NET_BIND_SERVICE accomplish?
+- [x] Strips all ~40 Linux capabilities (the fine-grained slices of root's power) and adds back only the one needed to bind ports below 1024 — most apps need none, so dropping all and adding selectively is least privilege
+- [ ] It disables networking entirely
+- [ ] It grants the container full root
+- [ ] It's only for privileged containers
+> Docker keeps a permissive default capability set; almost every app needs fewer. Better still, bind a high port and need zero capabilities. The same drop-all-add-back discipline appears in Kubernetes securityContext.
+
+Q: Why pair --read-only with --tmpfs /tmp?
+- [x] A read-only root filesystem defeats write-a-payload/drop-a-tool attacks by making the image immutable at runtime — but most apps need *some* writable scratch space, so you mount tmpfs (RAM-backed, ephemeral) explicitly for /tmp and similar
+- [ ] tmpfs makes the container faster
+- [ ] Read-only mode requires tmpfs to boot
+- [ ] It encrypts /tmp
+> Read-only root is high-leverage hardening that needs the few writable paths declared explicitly. tmpfs keeps that scratch space in memory and out of the persistent layer — the standard pairing.
+```
 
 ---
 

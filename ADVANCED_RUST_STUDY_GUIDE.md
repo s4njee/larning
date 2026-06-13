@@ -145,6 +145,36 @@ fn main() {
 
 Two details carry the rest of the guide. First, **`move` is the bridge to concurrency**: `thread::spawn` and `tokio::spawn` require the closure to own everything it touches, because the spawning stack frame may be gone before the closure runs — that's the `'static` bound made concrete (Part 2), and it's why spawn closures are almost always `move`. Second, **an `async` block is the same compiler trick** — a generated struct holding captured state, implementing `Future` instead of `Fn` — which is why every question you learn to ask about a closure (*what does it capture? by value or reference? is it `Send`?*) will be asked again, verbatim, about futures in Parts 6–7. Closures are the rehearsal; async is the performance.
 
+```quiz
+Q: Why do iterator chains compile to tight loops while a Vec of Box<dyn Shape> pays per call?
+- [ ] Iterators are implemented in the compiler, not the library
+- [x] Generics monomorphize — the optimizer sees concrete types and inlines through them; dyn dispatch is an indirect vtable call that blocks inlining
+- [ ] Box adds a null check on every access
+- [ ] Trait objects are reference-counted
+> Monomorphization stamps out a specialized copy per concrete type (paying compile time and binary size); dyn compiles once and erases the type behind a fat pointer. Defaults: generics for hot paths, dyn for heterogeneous collections and API seams — and the hybrid (generic signature, dyn internals) when both costs bite.
+
+Q: Iterator uses an associated type (type Item) but From uses a generic parameter (From<T>). What question decides between them?
+- [ ] Which one compiles faster
+- [x] How many implementations should exist per implementing type — associated type means exactly one; generic parameter means many, selected per call site
+- [ ] Whether the trait needs to be dyn-compatible
+- [ ] Whether the type is Sized
+> A type iterates over one Item, so users never annotate it; String converts From<&str> and From<char> and more, so the parameter selects among impls. Get it backwards and you either lose flexibility or drown in inference ambiguity.
+
+Q: You can't impl serde::Serialize for chrono::DateTime in your app crate. Why, and what's the escape?
+- [ ] DateTime is #[non_exhaustive]; ask upstream for support
+- [x] The orphan rule — both trait and type are foreign, and two crates doing this could give one program two conflicting impls; wrap DateTime in a local newtype and implement on that
+- [ ] serde traits are sealed
+- [ ] You can — it just needs unsafe
+> Coherence guarantees at most one impl per (type, trait) pair in the universe, so resolution never depends on link order. The newtype is zero-cost (same layout) — and earns a second job making invariants unrepresentable (UserId(u64) vs OrderId(u64)).
+
+Q: Why are closures passed to thread::spawn and tokio::spawn almost always `move` closures?
+- [ ] move closures run faster
+- [x] The spawned code may outlive the spawning stack frame, so the 'static bound demands the closure own its captures rather than borrow doomed locals
+- [ ] Non-move closures can't implement FnOnce
+- [ ] The runtime copies non-move captures anyway
+> Borrowed captures would dangle once the spawning frame returns. move makes the closure self-sufficient — and the same capture analysis (what's captured? is it Send?) is exactly what you'll re-run on async blocks, which are the same compiler-generated-struct trick.
+```
+
 ---
 
 ## Part 2 — Lifetimes, Variance, and the Shape of Borrowing
@@ -194,6 +224,29 @@ You need variance actively in two situations: deciphering the otherwise-mystifyi
 One ownership shape is flatly inexpressible in safe Rust: **a struct holding a reference into itself**. The borrow checker has no vocabulary for "field b borrows from field a of the same value," and there's a hard mechanical reason beneath the syntactic one — Rust values are *movable by memcpy, always*; a move would copy the struct while its internal pointer kept aiming at the old address. Every workaround is really a redesign: store indices instead of references, split the owner and the view into separate structs, or use `Rc` to make the "self"-reference an ordinary shared owner.
 
 File this limitation carefully rather than as trivia, because it is **the** reason async Rust has `Pin`: an `async fn`'s generated state machine routinely holds borrows across `.await` points — references into its own captured locals — making it exactly the self-referential struct safe Rust forbids. The language's solution was not to allow self-reference generally, but to make *not-moving* a checkable promise. That story is Part 6.2; the groundwork is laid here.
+
+```quiz
+Q: tokio::spawn requires T: 'static. What does that bound actually demand?
+- [ ] T must be stored in a global or leaked
+- [x] T contains no non-'static borrows — it's self-sufficient, owning its data or referencing only process-lifetime data; a freshly created String qualifies
+- [ ] T must live for the entire program
+- [ ] T must be Copy
+> The most misread bound in Rust: it's about what T *contains*, not how long it lives. The task may run arbitrarily late, so it can't hold borrows of the spawning frame. The fix is a clone or an Arc — not Box::leak gymnastics.
+
+Q: Why is `&mut Vec<&'long str>` NOT usable where `&mut Vec<&'short str>` is expected, when the same shortening is fine for shared references?
+- [ ] Mutable references can't be coerced at all
+- [x] Through &mut the callee could *write* a short-lived reference into your long-lived Vec, which you'd later read as long-lived — a dangling pointer by type-system sleight of hand
+- [ ] Vec is invariant because it owns heap memory
+- [ ] 'long and 'short must be declared covariant explicitly
+> Shared references are covariant (shortening a read-only view is harmless); &mut's pointee is invariant because writes flow the other way. The "obviously fine" nested-borrow error is the compiler blocking a real exploit.
+
+Q: Why does safe Rust flatly forbid a struct holding a reference into itself?
+- [ ] The borrow checker limit is temporary and Polonius will allow it
+- [x] Every Rust value must survive being moved by memcpy — a move would copy the struct while its internal pointer kept aiming at the old address
+- [ ] Self-references create reference-count cycles
+- [ ] It's allowed with #[repr(C)]
+> There's no vocabulary for "field b borrows field a of the same value" because movability is unconditional. Workarounds are redesigns (indices, owner/view split, Rc). And this exact wall is why async needs Pin: futures hold borrows across .await — self-references — so immobility had to become a checkable promise.
+```
 
 ---
 
@@ -254,6 +307,36 @@ assert_eq!(*counter.lock().unwrap(), 10);
 ```
 
 Interior mutability does not repeal "shared XOR mutable" — it **relocates the check**. `RefCell` enforces the borrow rules at runtime (and a violation is a *panic*, which is the trade you accepted); `Mutex` enforces them by making violators wait; `Cell` enforces them by never handing out a reference at all (you can only copy values in and out, which is also why it's zero-cost). Two production notes that separate journeyman from senior usage: a `Mutex` poisoned by a panicking thread returns `Err` from `lock()` forever after — decide a policy (`.unwrap()` to propagate the panic is usually right; `.lock().unwrap_or_else(|e| e.into_inner())` to shrug is sometimes right) instead of discovering the question in production; and `RefCell` in a struct is a design smell *exactly when* the struct is also `Send`-adjacent — it's the single most common reason a type mysteriously stops being `Sync` (Part 4 explains why).
+
+```quiz
+Q: Why is Option<Box<T>> exactly pointer-sized, with no separate tag?
+- [ ] The compiler stores the tag in a thread-local table
+- [x] The niche optimization — Box can never be null, so None is encoded as the forbidden zero value inside the payload itself
+- [ ] Option is special-cased to one bit
+- [ ] It isn't — Option always adds a word
+> Enums smuggle their discriminant into payload values the payload type forbids (null for pointers, zero for NonZeroU64). That's how Rust's "nullable pointer" costs exactly what C's does while being impossible to dereference unchecked — the zero-cost promise delivered by layout.
+
+Q: Two Rc values point at each other. What happens, and what's the fix?
+- [ ] The cycle collector frees them eventually
+- [x] Neither refcount ever reaches zero — a silent leak; make the back-edge a Weak, whose upgrade() returns Option because the target may be gone
+- [ ] The program panics on drop
+- [ ] Rc forbids cyclic assignment at compile time
+> Reference counting has no cycle detection — Rust has no tracing GC to save you. The pattern: ownership edges strong, back-edges weak (children Rc, parent Weak). Rc in both directions with no Weak is a leak you've already written.
+
+Q: What's the actual difference between Cell, RefCell, and Mutex for mutating through a shared reference?
+- [ ] They're interchangeable; only performance differs
+- [x] All relocate the "shared XOR mutable" check: Cell only copies values in/out (zero-cost), RefCell checks borrow rules at runtime and panics on violation, Mutex makes violators wait
+- [ ] Only Mutex actually allows mutation
+- [ ] RefCell is the thread-safe version of Cell
+> Interior mutability never repeals the aliasing rule — it moves enforcement from compile time to a different mechanism. The choice is which failure mode you accept: impossibility (Cell), panic (RefCell), or blocking (Mutex) — and only Mutex's check works across threads.
+
+Q: When does Cow<'a, str> earn its place in a signature?
+- [x] When a function usually returns its input unchanged but occasionally must allocate a modified copy — it documents "I allocate only when I must"
+- [ ] When the string must be shared across threads
+- [ ] As a faster general replacement for String
+- [ ] When the caller needs interior mutability
+> Clone-on-write is Borrowed(&'a T) | Owned(T): a sanitizer returns the borrow for the 99% of clean inputs and allocates only for the 1% needing escapes. It's a precision instrument for conditional ownership, not a default string type.
+```
 
 ---
 
@@ -325,6 +408,36 @@ let total: u64 = (0..10_000_000u64)
 ```
 
 What makes this safe where the equivalent OpenMP pragma is a prayer: the closure must be `Send + Sync`-compatible, captured borrows are checked, and any attempt to mutate shared state without synchronization simply doesn't compile. The mental sorting that should become reflex — and that Part 7 will sharpen from the other side: **Rayon for CPU-bound parallelism, async for I/O-bound concurrency.** They compose (a Tokio service handing image-resize work to a Rayon pool via `spawn_blocking`), but using either for the other's job produces the two classic performance bug reports: "async made my number crunching slower" and "my web server has 10,000 threads."
+
+```quiz
+Q: Why is Rc<T> deliberately not Send?
+- [ ] Rc is too slow to be worth sharing
+- [x] Its refcount is non-atomic — moving an Rc across threads would race the count itself; the compiler stops you and the fix is Arc
+- [ ] Rc contains a raw pointer
+- [ ] Send requires the Copy trait
+> Send/Sync are derived structurally — a type is thread-safe iff its fields are — so the compiler computes the answer and the error names the offending field. "Suddenly not Send" almost always means a stray Rc, RefCell (→ Mutex), or raw pointer.
+
+Q: What does thread::scope provide that thread::spawn can't?
+- [x] Spawned threads may borrow the enclosing frame's locals, because the scope guarantees every thread joins before it returns
+- [ ] Threads that run at higher priority
+- [ ] Automatic panic recovery
+- [ ] More than 1,024 concurrent threads
+> spawn demands 'static because the thread may outlive the spawner. scope turns "all threads join here" into a structural guarantee the borrow checker can use — so fork-join work on borrowed data needs no Arc at all. Reaching for Arc where a scope would do is a tool-ordering tell.
+
+Q: Why do channel-based pipelines structurally avoid the classic deadlock?
+- [ ] Channels detect deadlocks at runtime and panic
+- [x] Sending moves ownership — there's nothing to lock, so there's no lock order to invert
+- [ ] Channels are faster than mutexes
+- [ ] The runtime serializes all channel operations
+> Two mutexes acquired in different orders is the textbook deadlock; a flow of owned messages has no shared state to contend over. Decision rule: channels when work decomposes into messages; Arc<Mutex> when many workers genuinely converge on one structure.
+
+Q: A million CPU-bound items need processing. Threads, async, or Rayon?
+- [ ] tokio::spawn per item — tasks are cheap
+- [x] Rayon's par_iter — work-stealing data parallelism across cores, with Send/Sync making the closure provably race-free
+- [ ] One thread per item
+- [ ] async with buffer_unordered
+> Rayon for CPU-bound parallelism, async for I/O-bound concurrency — using either for the other's job yields "async made my math slower" or "my server has 10,000 threads." They compose via spawn_blocking when a service needs both.
+```
 
 ---
 
@@ -408,6 +521,36 @@ fn store_max(slot: &AtomicUsize, candidate: usize) {
 
 Atomics are the right tool for **counters, flags, sequence numbers, and the occasional published pointer** ([`arc-swap`](https://docs.rs/arc-swap/) packages the read-mostly-config case properly). Full lock-free *data structures* are a different sport: the ABA problem (the value you compare against was changed and changed *back* — your CAS succeeds, your invariant doesn't), memory reclamation (when may a removed node be freed, given lock-free readers may still hold it — the problem epoch-based schemes in [`crossbeam-epoch`](https://docs.rs/crossbeam-epoch/) exist to solve), and orderings interacting across multiple locations. The senior move is almost always a vetted crate — [`crossbeam`](https://docs.rs/crossbeam/)'s queues and deques, `arc-swap`, a sharded counter — and a `Mutex` for everything that profiling hasn't proven hot. An uncontended `Mutex` lock is ~20 nanoseconds; the bar for "the lock is the bottleneck" is higher than intuition suggests, and Part 10's tools tell you whether you've cleared it. When you *do* write lock-free code, Part 11's `loom` is how you test it against every legal interleaving rather than the ones your laptop happened to schedule.
 
+```quiz
+Q: In the publish-a-flag example, why must the writer use Release and the reader Acquire — what goes wrong with Relaxed on both?
+- [ ] Relaxed loads can tear the value
+- [x] Nothing orders the DATA write with the flag: the reader can legally see READY == true while reading the *old* DATA — undefined behavior that x86's strong ordering masks and ARM executes
+- [ ] Relaxed is only valid for integers under 64 bits
+- [ ] The spin loop would never terminate
+> Acquire/Release is the handshake: a Release store publishes everything the thread did before it to any Acquire load that sees it — it's how every lock and channel works underneath. Relaxed buys atomicity only; "works on my machine, corrupts on the ARM server" is a missing half of this pair.
+
+Q: When is Ordering::Relaxed actually correct?
+- [x] For self-contained values like counters and statistics, where you need atomicity but no ordering relationship with other memory
+- [ ] Never — it exists only for benchmarks
+- [ ] Whenever performance matters more than correctness
+- [ ] Only inside Mutex-protected regions
+> fetch_add(1, Relaxed) on a hit counter is exactly right: no torn updates, no lost increments, and nobody infers other memory state from the count. The moment a value *publishes* other data, you need the Release/Acquire handshake.
+
+Q: Why prefer compare_exchange_weak inside a retry loop?
+- [ ] It's stronger than compare_exchange
+- [x] It may fail spuriously on some architectures in exchange for being cheaper — and the loop was already handling failure, so spurious failures cost nothing
+- [ ] It cannot suffer from the ABA problem
+- [ ] It doesn't require an Ordering argument
+> The CAS loop (read, compute, install-if-unchanged, retry) is the building block of everything cleverer than fetch_add. weak maps better to LL/SC architectures like ARM; reserve the strong version for one-shot, non-looping attempts.
+
+Q: Profiling hasn't shown a lock to be hot, but you're tempted to go lock-free anyway. What does the guide say?
+- [ ] Lock-free is always worth it for future-proofing
+- [x] An uncontended Mutex lock is ~20 ns — the bar for "the lock is the bottleneck" is high; use vetted crates (crossbeam, arc-swap) when proven, and loom-test anything hand-written
+- [ ] Rewrite with SeqCst everywhere to be safe
+- [ ] Spin-locks are a good middle ground
+> Lock-free data structures bring ABA, memory reclamation, and multi-location ordering — a different sport. SeqCst-as-talisman usually signals unidentified requirements; the senior move is a Mutex until the profiler objects, and loom when you do cross the line.
+```
+
 ---
 
 ## Part 6 — Async I: The Model
@@ -481,6 +624,29 @@ Why `Pin` feels alien is worth saying out loud: it solves a problem most languag
 ### 6.3 Reading async signatures like a professional
 
 Assemble Parts 1, 2, and 6, and async type errors become legible. An `async` block is a compiler-generated struct capturing its environment (closure rules, 1.5). It is `Send` iff everything held across its awaits is `Send` (auto-trait structural rule, 4.1) — *held across awaits*, not merely used: a non-`Send` value created and dropped between awaits is fine. It satisfies `'static` iff it captures no borrows (2.2) — hence `move` blocks and cloned `Arc`s before a `spawn`. The notorious error — *"future cannot be sent between threads safely"* with three screens of types — is the compiler walking that structural derivation and showing you the path; the actionable line is the one naming **which value** is `!Send` and **which await** it lives across. The fix is almost always one of three: scope the value to end before the await, replace it with a `Send` equivalent (`Rc` → `Arc`, `RefCell` → `Mutex`), or — when the task genuinely needn't move threads — run it on a `LocalSet` (Part 7.6).
+
+```quiz
+Q: You call an async fn and nothing happens. Why?
+- [x] Futures are lazy — calling the fn only constructs the state machine; nothing runs until it's awaited or spawned onto an executor
+- [ ] The runtime queues it behind existing tasks
+- [ ] async fns require #[tokio::main] to be callable
+- [ ] The future panicked silently
+> async fn desugars to fn(...) -> impl Future: the body hasn't begun. This is the first async bug everyone files against themselves — and it's total laziness, stronger than Python's coroutines: no executor sees the future until you hand it over.
+
+Q: What turns an async fn into the self-referential struct safe Rust forbids — and how does Pin resolve it?
+- [ ] Recursion; Pin allocates each frame on the heap
+- [x] Any borrow held across an .await becomes a pointer into the future's own state; Pin makes "this value will never move again" a typed promise, extracted before polling begins
+- [ ] Captured Rc values; Pin makes them atomic
+- [ ] Nothing — async structs are always movable
+> The state machine stores both the data and the borrow of it while suspended. Rather than forbid such futures (they're the common case), Rust made immobility checkable: executors only poll through Pin<&mut F>. Unpin opts nearly every ordinary type out, which is why you mostly just use pin! or Box::pin.
+
+Q: The compiler says "future cannot be sent between threads safely." What's the actionable information?
+- [ ] The runtime needs more worker threads
+- [x] The line naming which !Send value lives across which .await — fix by scoping it to end before the await, swapping it for a Send equivalent, or running on a LocalSet
+- [ ] The future is too large to move
+- [ ] You must add Send to your trait bounds
+> A future is Send iff everything held *across* its awaits is Send — created-and-dropped between awaits is fine. The three screens of types are the structural derivation; the fix is one of three moves (scope it, Rc→Arc / RefCell→Mutex, or LocalSet).
+```
 
 ---
 
@@ -599,6 +765,36 @@ The compiler usually catches this (the guard is `!Send`, so the spawned future i
 
 When "it's slow" arrives without a stack trace: [`tokio-console`](https://github.com/tokio-rs/console) is the async profiler — live per-task poll counts, poll durations, and wake patterns that make a blocking task or a busy-loop waker glow on the screen; the [`tracing`](https://docs.rs/tracing/) crate (Part 13) gives you structured, span-scoped causality through async boundaries where thread-based loggers produce confetti; and runtime metrics ([`Handle::metrics`](https://docs.rs/tokio/latest/tokio/runtime/struct.Handle.html#method.metrics)) expose queue depths and blocking-pool counts to your dashboards. Instrument before you have the incident; the async runtime is exactly the part of your system that a conventional profiler sees worst.
 
+```quiz
+Q: A Tokio service shows latency cliffs and late timers while CPU sits idle. What's the likely class of bug?
+- [ ] Too few tokio worker threads configured
+- [x] Something is blocking a worker — std::fs, a sync client, or heavy compute parked on the async pool; ship it to spawn_blocking (or Rayon for sustained compute)
+- [ ] The channel buffers are too small
+- [ ] GC pauses in the allocator
+> Workers are few and tasks are many: one blocked worker removes 1/Nth of total capacity, and cooperative budgeting can't rescue code that never reaches an .await. tokio-console makes the pathological poll times glow.
+
+Q: In a select! loop, what does "cancellation safety" ask of each arm's future?
+- [x] If this future is dropped right now — at any await — is any state left half-mutated or any message lost? Losers of select! are dropped, and drop means cancel
+- [ ] Whether the future catches panics
+- [ ] Whether it completes within a deadline
+- [ ] Whether it's Send + 'static
+> An async Rust future evaporates at whatever await it last parked on. recv() is cancel-safe (the message stays queued); read_exact is not (partial bytes are gone). Treat every .await in cancellable code as a possible last line of the function.
+
+Q: Why does the guide insist on bounded channels by default?
+- [ ] Unbounded channels are slower per message
+- [x] A bounded channel makes a slow consumer slow its producers — honest backpressure — where an unbounded one converts the same situation into an OOM kill hours later, far from the cause
+- [ ] Bounded channels preserve message ordering
+- [ ] tokio deprecated unbounded channels
+> Every queue is a policy decision. Backpressure makes load tell the truth at the point of origin; unbounded buffering defers the failure and detaches it from its cause — the worst possible debugging gift.
+
+Q: Holding a std::sync::Mutex guard across an .await is the canonical async footgun. What's the fix hierarchy?
+- [ ] Switch to a spin lock
+- [x] First restructure so the guard drops before the await; second, tokio::sync::Mutex if the lock genuinely must span it; third, reconsider — maybe a channel-owned actor
+- [ ] Always use tokio::sync::Mutex everywhere
+- [ ] Wrap the lock in catch_unwind
+> A lock assumes a bounded critical section; an await is unbounded. The compiler usually catches it (the guard is !Send) — and the principle generalizes: minimize the overlap between held locks and suspension points, or meet the deadlock at 4 a.m.
+```
+
 ---
 
 ## Part 8 — Unsafe Rust
@@ -651,6 +847,36 @@ You no longer have to *wonder* whether your unsafe code is sound on the cases yo
 
 Implementing the Part 4 marker traits by hand is the type-level version of the same contract — you're asserting a thread-safety property the structural derivation couldn't see (typical case: a struct holding a raw pointer into a C library you know to be thread-safe). The assertion is load-bearing for every downstream user, so it earns the same SAFETY-comment treatment, plus an honest check of *both* claims separately: `Send` (may the value move threads? — not if the C library uses thread-local state) and `Sync` (may two threads call through `&self` concurrently? — not unless the C side is internally synchronized). Wrong answers here are the worst kind of unsoundness: invisible locally, and they convert your users' safe code into data races.
 
+```quiz
+Q: What does the unsafe keyword actually disable?
+- [ ] The borrow checker, inside the block
+- [x] Nothing — it permits five extra operations (raw-pointer deref, unsafe fn calls, unsafe trait impls, static mut access, union fields) while every safe-Rust rule still applies
+- [ ] Lifetime checking and the type system
+- [ ] Bounds checks on slices
+> unsafe is a transfer of proof obligation, not an off switch: "the compiler can't verify this, so I vouch for it." Vouch wrongly and you get UB — which licenses the optimizer to assume the violation never happens and transform your program accordingly.
+
+Q: What makes split_at_mut the model of legitimate production unsafe?
+- [x] A fully safe signature no caller can cause UB through, a runtime assert closing the one hole, and a SAFETY comment stating the invariant relied on
+- [ ] It avoids unsafe entirely by cloning the slice
+- [ ] It's only compiled in release mode
+- [ ] It uses transmute, the approved primitive
+> The shape is the lesson: small audited core, safe abstraction over it, the proof written down. If you can't write the SAFETY comment, you aren't ready to write the block — and clippy::undocumented_unsafe_blocks can enforce the habit.
+
+Q: What's the policy the guide derives about Miri?
+- [ ] Run it once before each major release
+- [x] Any crate containing unsafe runs its tests under Miri in CI — it interprets your code against the aliasing models and reports UB as an error with a trace
+- [ ] Use it only when debugging a crash
+- [ ] Miri replaces the need for SAFETY comments
+> Miri turns "I wonder if this is sound" into a test failure with a trace, for the cases you exercise. It's slow and can't see FFI, but the standard library itself is developed under it — matching that bar is table stakes for unsafe code.
+
+Q: Why is a wrong `unsafe impl Send` worse than most unsafe bugs?
+- [ ] It fails to compile downstream
+- [x] It's invisible locally and converts *users'* safe code into data races — the assertion is load-bearing for everyone downstream
+- [ ] It only affects performance
+- [ ] The compiler inserts runtime checks to catch it
+> Hand-implementing the marker traits asserts what structural derivation couldn't see. Check both claims separately: Send (thread-local state on the C side says no) and Sync (concurrent &self calls need internal synchronization) — and write the SAFETY comment.
+```
+
 ---
 
 ## Part 9 — FFI: Crossing the C Boundary
@@ -694,6 +920,29 @@ Don't hand-write declarations at scale: [`bindgen`](https://rust-lang.github.io/
 
 For specific high-level targets, skip raw C glue entirely: [PyO3](https://pyo3.rs/) (Python), [napi-rs](https://napi.rs/) (Node), [UniFFI](https://mozilla.github.io/uniffi-rs/) (mobile) generate the boundary with the hazards above already handled — the same thin-unsafe-core principle, industrialized.
 
+```quiz
+Q: Why does every struct shared with C need #[repr(C)]?
+- [x] Default Rust layout may reorder fields to minimize padding — without repr(C), the struct's bytes mean different things on each side of the boundary
+- [ ] C compilers reject Rust's field names otherwise
+- [ ] repr(C) enables the niche optimization
+- [ ] It's only needed for structs containing pointers
+> repr(Rust) gives the compiler layout freedom; repr(C) pins declared order and C padding rules. The same fact from Part 3 — source order doesn't predict layout — becomes a correctness requirement the moment bytes cross the ABI.
+
+Q: Rust allocates a struct and hands the pointer to C. Who frees it, and how?
+- [ ] C calls free() on it — that's what the C ABI means
+- [x] Rust must — export a free function built on Box::from_raw, because memory must be freed by the allocator that allocated it
+- [ ] Either side; modern allocators are compatible
+- [ ] Nobody — FFI pointers are static by convention
+> Box::into_raw hands ownership out; Box::from_raw takes it back for Rust's allocator to free. Mixing allocators "works" until it corrupts a heap on a platform where they differ — same story for strings via CString::into_raw/from_raw.
+
+Q: What must every Rust function exported to C do about panics?
+- [ ] Nothing — panics become C error codes automatically
+- [x] Contain them — a panic unwinding into C frames is undefined behavior; wrap fallible bodies in catch_unwind and return an error code
+- [ ] Compile with panic = "unwind"
+- [ ] Re-export them as C++ exceptions
+> Unwinding across an extern "C" boundary is UB, full stop. catch_unwind at every export converts panics into error codes; the "C-unwind" ABI exists for deliberately propagating unwinds through C++-style frames, not as an excuse to skip the catch.
+```
+
 ---
 
 ## Part 10 — Performance Engineering
@@ -711,6 +960,29 @@ Release-profile settings in `Cargo.toml` that move real numbers ([profiles refer
 ### 10.3 Measurement, or it didn't happen
 
 The toolchain: [`criterion`](https://docs.rs/criterion/) for microbenchmarks (statistically sound, regression-detecting; [`divan`](https://docs.rs/divan/) is the lighter modern alternative), [`cargo flamegraph`](https://github.com/flamegraph-rs/flamegraph) for where wall-time goes, [`dhat`](https://docs.rs/dhat/) for where *allocations* come from (the flamegraph of the other resource), `perf stat` for IPC and cache misses when you're optimizing seriously, and `cargo build --timings` when the thing that's slow is the build itself (monomorphization bloat shows up here — Part 1.1's hybrid trick is the cure). The two rules that prevent self-deception: **always `--release`** (debug builds are 10–100× slower and differently shaped — every conclusion drawn from one is noise), and **benchmark the realistic case** (criterion's micro-numbers on hot loops are honest; your service's p99 is governed by allocator behavior, cache pressure, and contention that micros don't see — close the loop with the flamegraph under production-shaped load).
+
+```quiz
+Q: What does "zero-cost abstraction" actually promise about an iterator chain?
+- [ ] It performs no work at runtime
+- [x] Zero overhead versus the equivalent hand-written loop — it monomorphizes and inlines to the same code, but costs you explicitly order (Box<dyn>, Arc::clone, collect) are still real
+- [ ] It never allocates under any circumstances
+- [ ] It compiles faster than the manual loop
+> The promise is relative, not absolute: filter/map/sum becomes the tight loop you'd have written. Senior performance work is noticing the costs you ordered without meaning to — a vtable here, an atomic clone in a hot loop there, a 16 KB buffer held across an await making a 16 KB future.
+
+Q: Which single change is called the highest return-on-effort optimization in this part?
+- [ ] Rewriting hot paths with SIMD intrinsics
+- [x] Swapping the global allocator for jemalloc or mimalloc — two lines, routinely 5–20% throughput for allocation-heavy multithreaded services
+- [ ] panic = "abort" in the release profile
+- [ ] Sprinkling #[inline(always)]
+> #[global_allocator] is a two-line experiment with a real payoff profile. lto = "thin" and codegen-units = 1 are the other cheap knobs; PGO and target-cpu=native follow for the dedicated. Measure on your workload — allocators trade footprint for speed differently.
+
+Q: Why is benchmarking a debug build self-deception?
+- [x] Debug builds are 10–100× slower and *differently shaped* — bottlenecks move, so every conclusion is noise; always measure --release
+- [ ] Debug builds disable atomics
+- [ ] Debug symbols inflate cache pressure slightly
+- [ ] It's fine if you scale the numbers by a constant
+> Without optimization, iterators don't inline and bounds checks don't lift — the profile points at different code than production runs. The companion rule: micro-numbers are honest about hot loops, but p99 is governed by allocator, cache, and contention effects only a production-shaped flamegraph sees.
+```
 
 ---
 
@@ -767,6 +1039,36 @@ The basics are built in (`#[test]`, `cargo test`, integration tests in `tests/`,
 
 [Clippy](https://doc.rust-lang.org/clippy/) is not optional equipment: `cargo clippy -- -D warnings` in CI, with the lint groups tuned per project (the `pedantic` group has real signal for libraries; `undocumented_unsafe_blocks` should be `deny` anywhere Part 8 applies). `cargo fmt --check` ends formatting discussions. [`cargo-audit`](https://docs.rs/cargo-audit/)/[`cargo-deny`](https://embarkstudios.github.io/cargo-deny/) gate known-vulnerable and license-incompatible dependencies. The principle uniting this part with the rest of the guide: Rust's culture pushes *every* property it can — memory safety, thread safety, API misuse, even style — to the earliest checkable moment. Your test suite is for the properties that remain.
 
+```quiz
+Q: Why "thiserror for libraries, anyhow for applications"?
+- [x] A library's errors are part of its contract — precise enums callers can match on; an application mostly propagates, needing ergonomics and a context trail more than types
+- [ ] anyhow is faster at runtime
+- [ ] thiserror doesn't work in binaries
+- [ ] They're interchangeable; the split is historical
+> Typed at the boundaries, opaque in the middle: #[from] makes the library side ceremony-free with ?, while .context() strings give operators errors that read like a story. Design note: model error variants by what the caller can *do* (retry? fatal? caller-bug?), not by which function threw.
+
+Q: What does #[tokio::test(start_paused = true)] change?
+- [ ] Tests run on a single thread
+- [x] Timers become virtual — a one-hour sleep advances instantly to the next timer, so timeout/retry/backoff logic gets fast, deterministic tests
+- [ ] Panics are converted to test failures
+- [ ] All I/O is mocked automatically
+> Paused time removes the classic excuse for not testing time-dependent behavior: no real sleeps, no flakiness. Retry backoff that would take minutes of wall clock runs in milliseconds, deterministically.
+
+Q: When is loom mandatory rather than nice-to-have?
+- [x] Any hand-written atomics — loom explores every legal interleaving and memory-model outcome, turning once-a-quarter heisenbugs into deterministic failures; without it the code is untested by definition
+- [ ] Any use of tokio::spawn
+- [ ] Code using Mutex or RwLock from std
+- [ ] All async code
+> Your laptop's scheduler exercises a handful of interleavings; the memory model permits vastly more. loom shims std::sync and model-checks the space. The verification ladder: clippy everywhere, Miri on unsafe, loom on atomics, proptest/fuzzing on parsers.
+
+Q: What makes fuzzing Rust different from fuzzing C?
+- [ ] Rust fuzzers run faster
+- [x] In safe Rust, anything the fuzzer finds is a logic bug or panic, not memory corruption — and a crash in unsafe code is a soundness bug you urgently wanted to know about
+- [ ] Rust code can't be fuzzed without FFI shims
+- [ ] cargo-fuzz only finds UTF-8 issues
+> In C a fuzzer hunts memory corruption; Rust's type system already abolished that class in safe code, so findings classify cleanly. Parsers and decoders are the natural targets — pair with proptest for invariant-style coverage.
+```
+
 ---
 
 ## Part 12 — Macros
@@ -797,6 +1099,29 @@ Two properties make these safer than C's text macros: they're **hygienic** (iden
 Proc macros are *compiler plugins*: functions from `TokenStream` to `TokenStream`, living in a dedicated crate, in three flavors — **derive** (`#[derive(Serialize)]` — by far the most important: serde, thiserror, clap all live here), **attribute** (`#[tokio::main]`, rewriting the item they adorn), and **function-like** (`sqlx::query!`, which famously checks your SQL against a live database *at compile time*). The universal implementation stack is [`syn`](https://docs.rs/syn/) (parse the tokens into a syntax tree) + [`quote`](https://docs.rs/quote/) (template the output tokens), and the shape is always the same: parse the input item, walk its fields/variants, generate an impl.
 
 You should be able to *read* a derive macro before you ever write one — pick `thiserror`'s source over a lunch break; it's a few hundred lines and demystifies the whole genre. Write one when, and only when, you find yourself maintaining the same impl by hand across many types: the cost side of the ledger (a separate crate, `syn`'s compile-time weight, opaque error spans unless you work at them, and tooling that can't see through you) is real, which is why the ecosystem's pattern is a few excellent proc-macro crates used by everyone rather than proc macros sprinkled through application code.
+
+```quiz
+Q: What makes macro_rules! macros safer than C preprocessor macros?
+- [x] They're hygienic (introduced identifiers can't capture the caller's variables) and operate on parsed token trees, not text
+- [ ] They're expanded at runtime where errors can be caught
+- [ ] They can only expand to expressions
+- [ ] They require unsafe blocks to define
+> Hygiene plus typed fragments ($x:expr, $name:ident) means no C-style "evaluated the argument twice" or accidental variable capture. The $( ... )* repetition is also why vec![1, 2, 3] can exist in a language without variadic functions.
+
+Q: When does the guide say to reach for a macro at all?
+- [ ] Whenever a function would need more than three arguments
+- [x] Only for structural duplication that functions and generics can't remove — trait impls over many primitive types, table-driven tests, small DSLs; exhaust the type system first
+- [ ] To inline hot code paths
+- [ ] To avoid writing documentation
+> Macros don't typecheck until expansion, produce worse errors, and resist refactoring tools. "Exhaust the type system first" is an ordering, not a platitude — it's what keeps codebases readable.
+
+Q: How does a derive macro like #[derive(Serialize)] actually work?
+- [ ] The compiler has serde's logic built in
+- [x] It's a compiler plugin — a function from TokenStream to TokenStream that parses the type with syn, walks its fields, and generates an impl with quote
+- [ ] It generates code at runtime via reflection
+- [ ] It modifies the struct's memory layout
+> All three proc-macro flavors (derive, attribute like #[tokio::main], function-like like sqlx::query!) share the syn + quote stack and the same shape: parse, walk, generate. Reading thiserror's few hundred lines demystifies the genre.
+```
 
 ---
 
@@ -842,6 +1167,29 @@ Every queue in the system is a policy decision. **Bounded channels** (`mpsc::cha
 ### 13.3 Observability
 
 [`tracing`](https://docs.rs/tracing/) is the standard: structured events inside **spans** that follow causality across `.await`s and `spawn`s (the `#[instrument]` attribute macro gives a function a span with its arguments as fields for one line of code), with subscribers fanning out to JSON logs, OpenTelemetry, or the console. Add `tokio-console` (Part 7.7) in staging for runtime-level visibility, and a metrics facade ([`metrics`](https://docs.rs/metrics/) or OpenTelemetry) for the dashboards. The async-specific discipline: never log-and-drop a `JoinHandle`'s error — task panics that vanish silently are the async equivalent of an empty `catch` block, and wiring `JoinSet` results into error logs is what makes 3 a.m. debuggable.
+
+```quiz
+Q: In the graceful-shutdown pattern, why does the drain step live *after* the select! loop rather than inside it?
+- [x] Inside the loop it's in the cancellable region — the drain is must-complete work, so it runs after the cancellation branch breaks out, with a timeout as the ceiling
+- [ ] select! arms can't contain I/O
+- [ ] The CancellationToken can't fire twice
+- [ ] Rust's Drop handles draining automatically
+> The loop body must be cancellation-safe because shutdown is a select! arm; the flush/ack work that must finish lives outside the cancellable region. The final await gets a timeout so a stuck task becomes a logged forced-exit, not a hung deploy — and async Drop doesn't exist, so teardown is explicit.
+
+Q: What does CancellationToken add over a plain watch channel for shutdown?
+- [ ] It forcibly kills tasks that ignore it
+- [x] It's clonable and hierarchical — cancelling a parent fires every child token, so a task tree shuts down as a tree
+- [ ] It bypasses cancellation safety concerns
+- [ ] It works without an async runtime
+> Tokens compose with task structure: each long-lived task selects on its token, and one cancel() at the root reaches the whole hierarchy. Tasks still stop only at their next await — cooperative cancellation, like everything async.
+
+Q: Why is dropping a JoinHandle without checking its result an operational bug?
+- [ ] It leaks the task's memory permanently
+- [x] A panic in that task vanishes silently — the async equivalent of an empty catch block; wire JoinSet results into error logs
+- [ ] It cancels the task immediately
+- [ ] It blocks the worker thread
+> Detached tasks are untracked failure domains. The structured-concurrency smell test from Part 7 applies: if you can't answer "who awaits this task and what happens when it fails?", the spawn will eventually page someone — with no log line to start from.
+```
 
 ---
 

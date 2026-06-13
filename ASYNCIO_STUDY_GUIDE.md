@@ -84,6 +84,29 @@ Take on this cost when the workload is genuinely I/O-bound and concurrency is hi
 
 References: [asyncio — Asynchronous I/O](https://docs.python.org/3/library/asyncio.html), [Developing with asyncio](https://docs.python.org/3/library/asyncio-dev.html).
 
+```quiz
+Q: What is the single value proposition of asyncio, stated precisely?
+- [ ] It makes individual operations faster
+- [ ] It runs your code on multiple CPU cores
+- [x] It eliminates idle waiting on I/O — while one coroutine waits on the network, the event loop runs another on the same thread
+- [ ] It replaces the need for a database
+> Async doesn't speed up any single operation or add cores — it stops the thread from sitting idle during I/O waits. When a coroutine parks on a network call, the loop runs other ready coroutines, so 100 requests that each wait 200ms finish in roughly one request's time instead of 100×. Keeping that lens — "async removes idle I/O waiting, nothing else" — explains every later decision.
+
+Q: Why does async do nothing for a CPU-bound workload, and what's worse, it actively harms?
+- [ ] It can't import numeric libraries
+- [x] CPU-bound work isn't waiting on I/O, so there's no idle time to reclaim; worse, a long computation in a coroutine blocks the entire event loop and stalls every other task
+- [ ] Async makes computation slower by 2x
+- [ ] CPU work requires threads, which async forbids
+> Async only wins by overlapping I/O waits, and a CPU-bound task is busy computing, not waiting — there's nothing to interleave. And because the event loop is cooperative (single thread), a long synchronous computation never yields, freezing all other tasks until it finishes. CPU-bound work needs multiple processes or a native-threaded library, not asyncio.
+
+Q: Why does asyncio scale to tens of thousands of concurrent operations where a thread pool tops out in the hundreds?
+- [ ] Coroutines run in parallel on many cores
+- [x] A parked coroutine is a small object (KBs) on one thread, while each thread carries an OS stack (MBs) plus context-switch cost, so coroutines are far cheaper to multiply
+- [ ] Threads can't do I/O
+- [ ] Coroutines never block
+> A suspended coroutine is just a lightweight object the event loop tracks, costing kilobytes, so one thread can juggle tens of thousands. OS threads each carry a megabyte-ish stack and incur preemptive context-switching, so memory and switching cost dominate in the hundreds. That density is exactly why async is the right model for 5,000 outbound requests or 50,000 WebSocket connections.
+```
+
 ---
 
 ## Part 2 — The Execution Model
@@ -147,6 +170,22 @@ Three "awaitable" things exist, and knowing the difference clears up most confus
 
 - **Future** — a low-level placeholder for a result that will exist later. You rarely create Futures directly; libraries use them under the hood. A Task *is* a kind of Future.
 
+A Task moves through a small lifecycle — it runs on the single thread until it hits an `await`, yields control back to the loop, and resumes when what it awaited is ready:
+
+```mermaid
+stateDiagram-v2
+  [*] --> Pending: create_task(coro)
+  Pending --> Running: loop schedules it
+  Running --> Suspended: hits await, yields to loop
+  Suspended --> Running: awaited result ready
+  Running --> Done: returns a result
+  Running --> Failed: raises an exception
+  Running --> Cancelled: .cancel() raises CancelledError
+  Done --> [*]
+  Failed --> [*]
+  Cancelled --> [*]
+```
+
 ```python
 # Awaiting a coroutine directly = sequential. Total time ≈ 2 seconds.
 async def sequential():
@@ -159,6 +198,29 @@ async def concurrent():
     t2 = asyncio.create_task(fetch_user(2))   # scheduled, starts running
     a = await t1                               # both are already in flight;
     b = await t2                               # we just wait for their results
+```
+
+```quiz
+Q: `coro = greet()` prints nothing. Why, and what does it actually return?
+- [ ] `greet` has a bug
+- [x] Calling an `async def` doesn't run it — it returns a coroutine *object*, a paused computation that only progresses when awaited, wrapped in a Task, or passed to `asyncio.run`
+- [ ] It runs but suppresses output
+- [ ] It runs on a background thread immediately
+> An `async def` call constructs a coroutine object rather than executing the body — the function only makes progress when something *drives* it. Forgetting to await is the source of the `coroutine 'x' was never awaited` warning. This is the foundational surprise: in async, creating the work and running the work are separate steps.
+
+Q: Two `await`s appear in a coroutine. Where can another task run and mutate shared state, and where is your code uninterrupted?
+- [ ] Anywhere, at any time, preemptively
+- [x] Other tasks can run *at* each `await`; between two `await`s your coroutine runs without interruption, since scheduling is cooperative
+- [ ] Never — coroutines are fully isolated
+- [ ] Only between functions, not statements
+> Cooperative scheduling means control only leaves your coroutine at `await` points, so the code between two awaits is an atomic critical section no other task can interleave with. That's why asyncio rarely needs locks for pure-CPU sequences but *does* need them when a critical section spans an `await`. The flip side: code with no `await` never yields and can hold the loop hostage.
+
+Q: `await fetch_user(1)` then `await fetch_user(2)` takes ~2s, but wrapping each in `create_task` first takes ~1s. Why?
+- [ ] create_task uses two threads
+- [x] Awaiting a coroutine directly runs it to completion before the next line (sequencing); `create_task` schedules it on the loop so both are in flight concurrently, and you then just await their results
+- [ ] create_task skips the network call
+- [ ] Direct await is a bug
+> Awaiting a bare coroutine is sequential — it runs fully before control returns. `create_task` hands the coroutine to the loop immediately so it starts making progress at its own await points, alongside others; awaiting the tasks afterward just collects results from work already in flight. The Task is the unit of concurrency; a plain awaited coroutine gives only sequencing.
 ```
 
 The difference between `sequential` and `concurrent` above is the difference between "using asyncio" and "benefiting from asyncio." It is *the* thing people get wrong (Part 10 calls it accidental serialization). `await some_coroutine()` in a loop is sequential; you need Tasks — or the higher-level `gather`/`TaskGroup` of Part 3 — to actually run things at the same time.
@@ -264,6 +326,29 @@ except* ValueError as eg:
 For new code on 3.11+, **default to `TaskGroup`**; reach for `gather` mainly when you specifically want `return_exceptions=True` semantics (collect-all-including-failures) or you're on an older Python.
 
 References: [`asyncio.TaskGroup`](https://docs.python.org/3/library/asyncio-task.html#task-groups), [PEP 654 — Exception Groups](https://peps.python.org/pep-0654/).
+
+```quiz
+Q: `asyncio.gather(fetch(1), fetch(2), fetch(3))` where the calls take 1s, 2s, 3s — how long, and in what order are results returned?
+- [ ] 6s, in completion order
+- [x] ~3s (the slowest), with results in *input* order regardless of which finished first
+- [ ] 3s, in completion order
+- [ ] 1s, only the fastest result
+> `gather` runs the awaitables concurrently, so total time is the slowest one, not the sum. Crucially it returns results positionally in the order you passed them, not the order they completed — so `results[0]` is always `fetch(1)`'s result. When you want results as they finish instead, that's `as_completed`.
+
+Q: By default, if one awaitable in `gather` raises, what happens to the others?
+- [ ] They're all cancelled cleanly
+- [x] `gather` propagates the first exception immediately, but the other tasks keep running unobserved — you lose their results and may get un-retrieved-exception warnings
+- [ ] The whole program crashes instantly
+- [ ] The exception is silently swallowed
+> Default `gather` surfaces the first error right away while leaving the siblings running in the background, now orphaned — a real footgun. Pass `return_exceptions=True` to collect failures as objects alongside successes (good for tolerable partial failure), or use a `TaskGroup`, which cancels the rest and cleans up properly when one fails.
+
+Q: Why is `TaskGroup` (3.11+) preferred over `gather` for fail-fast concurrent work?
+- [ ] It's faster
+- [x] It's structured concurrency — tasks can't outlive the block, so no leaked/GC'd tasks; on failure it cancels the rest and surfaces multiple errors as an `ExceptionGroup` handled with `except*`
+- [ ] It runs tasks on multiple cores
+- [ ] It never raises exceptions
+> A `TaskGroup` owns its tasks: the `async with` block won't exit until all finish, eliminating the "keep a strong reference" footgun and "Task was destroyed" error. If a task fails it cancels the others rather than leaving them unobserved, and concurrent failures arrive as an `ExceptionGroup` you destructure with `except*`. Reach for `gather` mainly when you specifically want `return_exceptions=True` semantics.
+```
 
 ### 3.3 `asyncio.as_completed` — Process Results as They Arrive
 
@@ -402,6 +487,29 @@ Tying Parts 3 and 4 together, because the difference bites in production:
 - **`TaskGroup`** — the first exception cancels all siblings, then *all* exceptions that occurred are raised together as an `ExceptionGroup` (handle with `except*`). Nothing leaks.
 
 The practical guidance: for "all of these must succeed or we abort cleanly," `TaskGroup` is correct because it cancels and reports everything. For "run all of these and tell me which succeeded and which failed," `gather(return_exceptions=True)` is the tool. Plain `gather` with default exception handling is the one to be wary of — it's easy to reach for and easy to leak work with.
+
+```quiz
+Q: `task.cancel()` is called. What actually happens to the coroutine?
+- [ ] It's killed instantly mid-statement
+- [x] A `CancelledError` is scheduled to raise at the coroutine's next `await`, after which it unwinds normally, running `finally` and `async with` cleanup
+- [ ] The task is removed from memory immediately
+- [ ] Nothing until you await it twice
+> Cancellation isn't a kill switch — it injects `CancelledError` at the next await point, and the coroutine unwinds like any exception, honoring `finally` and context-manager cleanup. A direct consequence: a coroutine in a tight synchronous loop with no `await` can't be cancelled at all (and also blocks the loop). And if you catch `CancelledError` to clean up, you must re-raise it or you've told asyncio you refused cancellation.
+
+Q: Since Python 3.8, `asyncio.CancelledError` inherits from `BaseException`, not `Exception`. Why does that design matter?
+- [ ] It makes cancellation faster
+- [x] So a blanket `except Exception` won't accidentally swallow a cancellation — cancellation flows past handlers meant for real errors
+- [ ] So you can catch it with `except Exception`
+- [ ] It has no practical effect
+> By sitting outside the `Exception` hierarchy, `CancelledError` passes through `except Exception` handlers, which is exactly what you want: catching "real errors" shouldn't silently absorb a cancel request and break timeouts or `TaskGroup` shutdown. Writing `except BaseException` or bare `except:` *will* catch it — almost always a bug. Catch `Exception` for errors; let `CancelledError` propagate.
+
+Q: Why prefer `asyncio.timeout(5)` (3.11+) over `asyncio.wait_for(aw, 5)`, and why is a timeout "mandatory" on external calls?
+- [ ] timeout is the only one that works
+- [x] `asyncio.timeout` wraps a whole block (not just one awaitable) and supports absolute deadlines; a timeout is mandatory because library defaults (e.g. aiohttp's 5 minutes) are almost never what you want
+- [ ] wait_for doesn't raise on timeout
+- [ ] timeout disables cancellation
+> `asyncio.timeout` is a context manager covering everything in its block, with `timeout_at` for sharing an absolute deadline across operations, making it more flexible than the single-awaitable `wait_for`. And because default library timeouts are often huge (aiohttp's is 5 minutes), an explicit budget on any external call is essential — otherwise a hung dependency can park your task far longer than intended.
+```
 
 ---
 
@@ -580,6 +688,29 @@ async def main():
 ```
 
 The decision rule restated: **blocking I/O → `to_thread`; CPU-bound → `ProcessPoolExecutor` via `run_in_executor`; genuinely async I/O → just `await` it.** Mixing these up is the root of most "async didn't help" disappointments.
+
+```quiz
+Q: A handler calls `time.sleep(2)` instead of `await asyncio.sleep(2)`. What's the impact under concurrency?
+- [ ] Only that one request is delayed 2s
+- [x] The entire event loop is frozen for 2 seconds — every other in-flight task stalls, because synchronous code never yields and there's one loop on one thread
+- [ ] It runs on a background thread automatically
+- [ ] It raises a RuntimeWarning and continues
+> `time.sleep` is synchronous, so it holds the single loop thread for the full 2 seconds without ever yielding, freezing all other coroutines. `await asyncio.sleep` instead parks the coroutine and lets the loop run others. This is the cardinal sin: it looks fine with one user in dev and collapses under load, producing the misleading "my async server isn't faster" symptom.
+
+Q: You must call a blocking sync library and a CPU-heavy function. What's the correct offloading for each?
+- [ ] Both via `asyncio.to_thread`
+- [x] Blocking I/O → `asyncio.to_thread` (the GIL releases during I/O syscalls); CPU-bound → `ProcessPoolExecutor` via `run_in_executor` (a separate process/core, since the GIL serializes Python bytecode)
+- [ ] Both via `ProcessPoolExecutor`
+- [ ] Just `await` them directly
+> A thread works for blocking *I/O* because the GIL is released during the syscall, so the thread runs in parallel with the loop. CPU-bound Python can't be parallelized by threads (the GIL serializes bytecode), so it needs a separate *process* on another core. Genuinely async I/O you just `await`. Mixing these up — e.g. threading CPU work — is why "async didn't help."
+
+Q: Why does reading a large file need `aiofiles` or `to_thread` rather than a plain `open().read()` in a coroutine?
+- [ ] Files can't be opened in async functions
+- [x] There's no truly async disk file I/O on most systems, so an ordinary file read blocks the loop even though it feels like I/O — it must be pushed to a thread
+- [ ] `open` raises inside a coroutine
+- [ ] aiofiles makes disk reads faster
+> Sockets can be non-blocking at the OS level, but ordinary disk reads/writes generally cannot, so a synchronous `read()` of a big file blocks the single loop thread just like `time.sleep`. `aiofiles` (and the underlying `to_thread`) move that blocking read onto a thread pool so the loop keeps serving other tasks. It's a subtlety because file access *feels* like the I/O async should handle natively.
+```
 
 References: [`asyncio.to_thread`](https://docs.python.org/3/library/asyncio-task.html#asyncio.to_thread), [Running in threads / executors](https://docs.python.org/3/library/asyncio-eventloop.html#executing-code-in-thread-or-process-pools).
 

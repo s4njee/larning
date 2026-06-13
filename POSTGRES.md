@@ -548,6 +548,43 @@ EXPLAIN SELECT * FROM orders WHERE customer_id = 42 AND status = 'paid';
 -- Might show: BitmapAnd(BitmapIndexScan on idx_customer, BitmapIndexScan on idx_status)
 ```
 
+```quiz
+Q: Why does the guide say to use `text` plus a CHECK constraint instead of `varchar(n)`?
+- [ ] text is stored more compactly than varchar
+- [x] They perform identically in Postgres — varchar(n) is just text with a length check, and a CHECK is easier to change later
+- [ ] varchar can't be indexed
+- [ ] text supports Unicode and varchar doesn't
+> Unlike some databases, Postgres has no performance difference between them. char(n) is the one to avoid (space padding). The general principle: pick the most specific type — numeric for money (never float), timestamptz over timestamp, inet over text.
+
+Q: "No two bookings may overlap for the same room." Which constraint expresses this?
+- [ ] A UNIQUE constraint on (room_id, during)
+- [x] An EXCLUDE USING GIST constraint: (room_id WITH =, during WITH &&)
+- [ ] A CHECK constraint comparing the range bounds
+- [ ] A BEFORE INSERT trigger is the only way
+> UNIQUE only catches exact duplicates — overlapping ranges differ. Exclusion constraints generalize uniqueness to any operator: "no two rows where room_id is equal AND during overlaps." It needs btree_gist and is checked race-free by the engine, which no application-level check can guarantee.
+
+Q: You need a CHECK constraint on a large, busy table without an outage. What's the pattern?
+- [x] ADD CONSTRAINT ... NOT VALID (instant, applies to new writes), then VALIDATE CONSTRAINT in a second pass that doesn't block writes
+- [ ] Add it during a maintenance window — there's no online path
+- [ ] Wrap the ALTER in a SERIALIZABLE transaction
+- [ ] CREATE CONSTRAINT CONCURRENTLY
+> A plain ADD CONSTRAINT scans every row under a strong lock. NOT VALID skips the scan but enforces the rule for all new writes; VALIDATE later checks existing rows with a much weaker lock. Same philosophy as CREATE INDEX CONCURRENTLY.
+
+Q: Queries filter on customer_id and status separately, and sometimes together. Do you need three indexes?
+- [ ] Yes — one per column plus a composite
+- [x] Often just the two single-column indexes — the planner can combine them with a bitmap AND for the combined query
+- [ ] No — one composite index serves all three patterns equally
+- [ ] Indexes can't be combined; use a UNION
+> Bitmap scans let the planner AND/OR multiple indexes in one query, so you don't reflexively need a composite for every pair. The composite still wins when the combined query is hot (and its column order matters: equality first, then range/sort).
+
+Q: Why prefer a partial index like ON users (email) WHERE deleted_at IS NULL?
+- [x] It indexes only the rows you actually query — smaller, hotter in cache, cheaper to maintain than indexing all rows including the soft-deleted 99%
+- [ ] Partial indexes are the only way to index nullable columns
+- [ ] It automatically filters every query on the table
+- [ ] Full indexes can't enforce uniqueness
+> The index covers exactly the live subset, so it's a fraction of the size and the write path skips it for dead rows. The query must include the matching predicate for the planner to use it — that's the contract.
+```
+
 ---
 
 ## Query Features
@@ -929,6 +966,43 @@ ORDER BY s DESC;
 SELECT name FROM users ORDER BY name <-> 'Alicia' LIMIT 5;
 ```
 
+```quiz
+Q: When would you pick `json` over `jsonb`?
+- [ ] When you need GIN indexing
+- [x] Only when you must preserve exact whitespace and key order — jsonb is parsed, deduplicated, and indexable, and is the right default
+- [ ] When documents exceed 1 MB
+- [ ] When you query with the @> operator
+> json stores raw text and reparses on every access; jsonb stores a parsed binary form that supports containment operators and GIN indexes. The legacy text format is for fidelity requirements, nothing else.
+
+Q: What's the trade between GIN (data) and GIN (data jsonb_path_ops) on a jsonb column?
+- [x] jsonb_path_ops is smaller and faster but only accelerates @> containment; the default opclass also supports key-existence operators (?, ?|, ?&)
+- [ ] jsonb_path_ops adds support for JSONPath queries
+- [ ] The default opclass is deprecated
+- [ ] jsonb_path_ops indexes only top-level keys
+> Pick by query shape: if your access pattern is containment (@>), the path-ops index is the leaner choice. For one hot scalar field, an expression index on (data->>'field') beats both.
+
+Q: "Most recent order per customer" in one pass — what's the Postgres idiom?
+- [ ] GROUP BY customer_id with MAX(created_at) joined back
+- [x] SELECT DISTINCT ON (customer_id) ... ORDER BY customer_id, created_at DESC
+- [ ] A window function is the only way
+- [ ] LIMIT 1 inside a plain subquery
+> DISTINCT ON keeps the first row per group under the given ordering — Postgres-specific and indispensable. The join-back GROUP BY works but is verbose and often slower; LATERAL is the tool when you need top-N rather than top-1.
+
+Q: What does the production full-text setup look like, per the guide?
+- [ ] to_tsvector() called in every query's WHERE clause
+- [x] A stored generated tsvector column (with setweight for title vs body), a GIN index on it, and ts_rank for ordering
+- [ ] LIKE '%word%' over a trigram index
+- [ ] An external search engine is always required
+> Computing the tsvector per query re-parses every row. The generated column computes it once per write, the GIN index makes @@ fast, and weights make title matches outrank body matches.
+
+Q: Users want fast substring search — LIKE '%ali%' — on names. What makes that indexable?
+- [x] pg_trgm with a GIN (name gin_trgm_ops) index — trigrams make infix LIKE and similarity ranking fast
+- [ ] A B-tree index on name
+- [ ] A hash index on name
+- [ ] Nothing — leading-wildcard LIKE can't use indexes
+> B-trees only help anchored prefixes (LIKE 'ali%'). Trigram indexes decompose strings into 3-grams, accelerating infix matches, the % similarity operator, and <-> nearest-neighbor ordering — fuzzy search without leaving Postgres.
+```
+
 ---
 
 ## Transactions & Isolation
@@ -1111,6 +1185,43 @@ WHEN NOT MATCHED THEN
 
 Gotcha: `MERGE` does not detect concurrent inserts like `ON CONFLICT` does. For pure upsert, `ON CONFLICT` is still the safe pick.
 
+```quiz
+Q: Under Read Committed, two SELECTs in one transaction return different results. Bug?
+- [ ] Yes — transactions always see one snapshot
+- [x] No — Read Committed takes a fresh snapshot per *statement*; a whole-transaction snapshot requires Repeatable Read
+- [ ] Yes — this indicates corruption
+- [ ] Only if the table is unlogged
+> This is the defining (and surprising) property of the default level. Repeatable Read pins one snapshot for the transaction — at the price of serialization failures you must retry. Choose the level from the anomalies the workload can tolerate.
+
+Q: Why is a transaction left open for hours a database-wide hazard, not just a local one?
+- [x] MVCC must keep every row version that transaction might still see, so VACUUM can't reclaim dead rows anywhere — bloat grows across the whole database
+- [ ] It holds an ACCESS EXCLUSIVE lock on its tables
+- [ ] It consumes a WAL segment per minute
+- [ ] Other transactions queue behind it
+> The open snapshot pins the xmin horizon globally. This is the most-repeated operational warning in the companion guide: idle-in-transaction connections block vacuum, inflate bloat, and ultimately risk wraparound.
+
+Q: Your SERIALIZABLE transaction failed with SQLSTATE 40001. What's the correct response?
+- [ ] Downgrade to Read Committed
+- [x] Retry the entire transaction — serialization failure is the designed behavior, not an error to patch around
+- [ ] Add FOR UPDATE to every SELECT
+- [ ] Increase deadlock_timeout
+> SSI aborts one transaction rather than permit an anomaly; the retry loop is the contract you accepted for the guarantee. Repeatable Read can raise it too on concurrent updates.
+
+Q: Ten workers must each claim a different queued job without colliding or waiting on each other. The idiom?
+- [ ] SELECT ... FOR UPDATE and let them queue
+- [x] SELECT ... FOR UPDATE SKIP LOCKED LIMIT 1 — each worker locks an unclaimed row and skips ones already locked
+- [ ] An advisory lock per job ID
+- [ ] LOCK TABLE jobs IN EXCLUSIVE MODE per worker
+> SKIP LOCKED turns a table into a work queue: no double-processing (row locks), no convoy (no waiting on locked rows). Plain FOR UPDATE serializes the workers; NOWAIT errors instead of skipping.
+
+Q: When is MERGE the wrong choice versus INSERT ... ON CONFLICT?
+- [x] For a pure concurrent upsert — MERGE doesn't detect concurrent inserts the way ON CONFLICT's unique-constraint anchor does
+- [ ] When you need to update matched rows
+- [ ] When the target has a primary key
+- [ ] MERGE is always preferable since PG15
+> ON CONFLICT rides a unique index, making it race-safe for upserts (EXCLUDED is the would-be row). MERGE is more expressive — matched/not-matched branches, DELETE actions — but a concurrent insert between its scan and action can still error.
+```
+
 ---
 
 ## CTEs & Window Functions
@@ -1291,6 +1402,43 @@ REFRESH MATERIALIZED VIEW daily_revenue;
 
 -- Non-blocking (needs the unique index above)
 REFRESH MATERIALIZED VIEW CONCURRENTLY daily_revenue;
+```
+
+```quiz
+Q: Code written before PG12 relied on a CTE to force one-time evaluation, and it broke. Why?
+- [x] Plain CTEs are now inlined into the outer query when beneficial — the old fence behavior requires marking the CTE MATERIALIZED
+- [ ] CTEs were removed in PG12
+- [ ] Recursive CTEs replaced plain ones
+- [ ] The CTE name shadowed a table
+> The optimization-fence behavior was an implementation detail people leaned on. Since PG12, inlining usually helps (predicates push down), but code depending on single evaluation of an expensive expression needs the explicit MATERIALIZED keyword.
+
+Q: What distinguishes a window function from GROUP BY aggregation?
+- [ ] Window functions are faster
+- [x] Window functions compute over a partition while keeping every row — running totals, ranks, and LAG/LEAD next to the row's own columns
+- [ ] GROUP BY supports ordering and windows don't
+- [ ] Window functions can't use SUM or COUNT
+> GROUP BY collapses rows; OVER (PARTITION BY ... ORDER BY ...) annotates them. "Each order plus the customer's running total" is impossible with GROUP BY alone and one line with a window.
+
+Q: "Top 3 most recent orders per customer" — which construct fits naturally?
+- [ ] DISTINCT ON, three times
+- [x] LEFT JOIN LATERAL (SELECT ... WHERE customer_id = c.id ORDER BY created_at DESC LIMIT 3) — a per-row subquery in the FROM clause
+- [ ] GROUP BY with array_agg and unnest
+- [ ] A recursive CTE
+> LATERAL lets a subquery reference earlier FROM items, running per outer row — the natural top-N-per-group tool, and typically index-friendly (one small ordered scan per customer). DISTINCT ON gives top-1 only.
+
+Q: REFRESH MATERIALIZED VIEW CONCURRENTLY fails on your matview. What's missing?
+- [x] A unique index on the materialized view — CONCURRENTLY diffs against the existing contents and needs it
+- [ ] The matview must be created WITH (concurrent = true)
+- [ ] A trigger on the underlying table
+- [ ] Superuser privileges
+> The non-blocking refresh works by computing the new result and applying differences, which requires a unique key to match rows. Without it you're stuck with the blocking refresh that locks readers out.
+
+Q: What does a writable CTE let you do in one statement?
+- [ ] Make a view accept INSERTs
+- [x] Run DML and consume its RETURNING rows downstream — e.g. DELETE expired sessions and insert an audit row per deleted user atomically
+- [ ] Update two tables with one UPDATE keyword
+- [ ] Bypass triggers on the target table
+> WITH deleted AS (DELETE ... RETURNING ...) INSERT ... SELECT FROM deleted is the move-and-log idiom: one atomic statement, no application round-trip between the steps.
 ```
 
 ---
@@ -1648,6 +1796,43 @@ CREATE POLICY admin_all ON documents TO admin USING (true);
 
 Role attribute `BYPASSRLS` skips policies entirely (for replication tools, etc.).
 
+```quiz
+Q: When does partitioning a big table actually pay off?
+- [ ] Any table over 10 GB
+- [x] Time-series with retention (dropping a partition is instant; DELETE-ing millions of rows is not) and workloads whose queries filter on the partition key, enabling pruning
+- [ ] Tables with many indexes
+- [ ] Whenever writes are slow
+> Partitioning is not sprinkle-on performance: queries that don't filter on the key must now plan across every partition, and unique constraints must include the key. The two winning shapes are retention-by-DROP and prune-by-predicate.
+
+Q: CREATE INDEX ON posts (slugify(title)) fails unless slugify is declared IMMUTABLE. Why?
+- [x] An index stores computed values at write time — if the function could return different results for the same input, the stored entries would silently disagree with the queries
+- [ ] IMMUTABLE functions run faster
+- [ ] Only built-in functions can back indexes
+- [ ] It's a syntax requirement with no semantic meaning
+> Volatility is a contract the planner relies on: IMMUTABLE (pure), STABLE (constant within a scan), VOLATILE (anything). Lying about it (marking a time-dependent function IMMUTABLE) produces an index that returns wrong answers.
+
+Q: Why must a SECURITY DEFINER function pin its search_path?
+- [ ] To improve plan caching
+- [x] It runs with its owner's privileges, so a caller who can shadow an object name in an earlier schema could hijack what the function references — pin search_path = pg_catalog, public
+- [ ] SECURITY DEFINER disables schema resolution otherwise
+- [ ] To make the function IMMUTABLE
+> The function executes as its (privileged) owner while name resolution follows the *caller's* environment unless pinned — a classic privilege-escalation vector. The fix is one SET clause in the definition.
+
+Q: What are LISTEN/NOTIFY's limits that push you to a real queue?
+- [x] Notifications are delivered only on COMMIT, aren't durable (a disconnected listener misses them), and don't replicate
+- [ ] Payloads are limited to 64 bytes
+- [ ] Only one listener per channel is allowed
+- [ ] NOTIFY blocks until the listener acknowledges
+> It's lightweight in-database pub/sub — perfect for cache-invalidation pokes where a missed message is harmless. Anything needing durability, replay, or delivery guarantees needs an actual queue (or a jobs table with SKIP LOCKED).
+
+Q: Your app connects as the role that owns the tables. What does that mean for your RLS policies?
+- [ ] Nothing — policies apply to all roles equally
+- [x] They're silently bypassed — table owners skip RLS unless you FORCE ROW LEVEL SECURITY; the app role should not own the tables
+- [ ] Policies become advisory warnings
+- [ ] Only WITH CHECK policies still apply
+> Owner bypass is the classic RLS deployment mistake: everything works in testing because the owner sees all rows. Separate the migration/owner role from the runtime role (or FORCE) — and make sure the policy predicate is indexable, or every read becomes a seq scan.
+```
+
 ---
 
 ## Roles & Permissions
@@ -1932,6 +2117,43 @@ SELECT * FROM users WHERE id = :user_id;
 \timing on
 \x auto
 \pset null '(null)'
+```
+
+```quiz
+Q: "I granted SELECT on all tables in the schema, but the table created yesterday isn't readable." What was missed?
+- [ ] The grant needs to be re-run after every restart
+- [x] GRANT ON ALL TABLES covers only existing tables — future objects need ALTER DEFAULT PRIVILEGES
+- [ ] The new table is in a different tablespace
+- [ ] Schema USAGE was revoked
+> The perennial permissions surprise: grants attach to objects that exist at grant time. Default privileges are the standing rule for objects created later — set them per schema alongside the bulk grant.
+
+Q: What's the actual difference between COPY and psql's \copy?
+- [x] COPY reads/writes files on the *server* (needs server-file privileges); \copy streams through the client connection with no special rights
+- [ ] \copy is slower because it parses CSV in psql
+- [ ] COPY only supports binary format
+- [ ] They're aliases
+> Same protocol and format underneath; the file lives on different machines. App drivers expose the client-side form too (e.g. copy_expert) — it's the fastest load path available to ordinary roles.
+
+Q: Why does the fast-load pattern stage into an UNLOGGED table first?
+- [ ] Unlogged tables have no indexes to slow inserts
+- [x] Unlogged skips WAL, making the load much faster — and the durability loss is acceptable because staging data is re-creatable (truncated on crash)
+- [ ] It bypasses all constraints
+- [ ] Unlogged tables live in RAM only
+> Staging absorbs the bulk insert at WAL-free speed; the final INSERT INTO real table is then one set-based, logged operation. Add: drop/recreate indexes around the load and raise maintenance_work_mem.
+
+Q: In Postgres there are no separate "users" and "groups." What's the model?
+- [x] Only roles — a role with LOGIN acts as a user; granting membership in a role makes it act as a group
+- [ ] Users live in pg_user, groups in pg_group, with different commands
+- [ ] Groups exist only at the OS level
+- [ ] Roles are deprecated in favor of users
+> One abstraction: build function-shaped group roles (readers, writers), grant privileges to those, grant membership to login roles. Access reviews become "who's in writers" — and least privilege bounds what a leaked connection string can do.
+
+Q: What does postgres_fdw give you, and what should you verify in EXPLAIN?
+- [ ] A copy of the remote table refreshed nightly
+- [x] Remote tables queryable as local ones — verify predicates and joins are pushed down to the remote server rather than pulling whole tables across
+- [ ] Logical replication under another name
+- [ ] Read-only access to CSV files
+> FDWs federate queries; performance lives or dies on pushdown. A plan that filters locally after fetching the remote table is the failure mode to catch — EXPLAIN shows what was shipped to the remote.
 ```
 
 ---

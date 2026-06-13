@@ -267,6 +267,29 @@ In PySide6 the same tree exists, layered with Python's reference counting: a par
 
 If you remember one thing from Part 2: **moc gives every QObject a runtime self-description — that's what powers signals/slots and QML — and the parent-child tree is the memory manager: parent your QObjects and let the tree delete them, exactly once, in one place.**
 
+```quiz
+Q: Why does Qt need moc (the Meta-Object Compiler) at all?
+- [ ] To speed up compilation
+- [x] Standard C++ has almost no runtime introspection — Qt generates the class's self-description (name, signals, slots, properties) at build time, which is what powers signals/slots, QML bindings, and by-name property access
+- [ ] To convert C++ to QML
+- [ ] To replace the C++ compiler
+> A compiled C++ object can't list its methods or call one by string name, but Qt needs exactly that for `connect()`, QML's `thermostat.target = 22.5`, and property animation. moc scans for `Q_OBJECT` and emits a static `QMetaObject` plus the signal implementations and an index-based dispatch function. The classic "undefined reference to vtable" error almost always means moc never ran on that class.
+
+Q: `delete window;` with no other deletes frees the central widget, layout, and button too. What makes this safe rather than a leak-or-double-free hazard?
+- [ ] Qt uses garbage collection
+- [x] Parent-child ownership: a parent deletes all its children recursively, and the bookkeeping is bidirectional — a manually-deleted child removes itself from its parent's list first, so nothing is freed twice
+- [ ] Widgets are stack-allocated internally
+- [ ] The compiler inserts the deletes
+> Heap-allocate QObjects, parent them, and let the tree manage lifetimes — that's the intended idiom, not a leak. The corollary rules: don't wrap parented QObjects in smart pointers (two owners = double delete), stack-allocate only parentless roots, and use `deleteLater()` when the object might still be in use up the call stack (it dies when control returns to the event loop).
+
+Q: Why must a capturing-lambda `connect()` always include a context object (the third argument)?
+- [ ] It's required syntax since Qt 6
+- [x] The context severs the connection when it's destroyed (otherwise a lambda capturing `this` can fire after `this` is deleted — a classic crash) and determines which thread the lambda runs in
+- [ ] It makes the lambda faster
+- [ ] It enables string-based connects
+> Without a context, the connection outlives the objects the lambda captures, so a later emit calls into freed memory. With `this` as context, destruction of the receiver automatically disconnects, and the lambda executes in the context object's thread — the same mechanism that makes cross-thread queued delivery safe in Part 10. Rule: never write a capturing-lambda connection without one.
+```
+
 ---
 
 ## Part 3 — The Event Loop: Qt's Heartbeat
@@ -338,6 +361,29 @@ protected:
 The `accept()`/`ignore()` calls matter more than they look: an ignored event *propagates* to the parent widget, which is how a click on a passive child still reaches the container that cares about it. There's also `installEventFilter()` ([docs](https://doc.qt.io/qt-6/qobject.html#installEventFilter)) for intercepting another object's events without subclassing — handy, occasionally indispensable, easy to overuse.
 
 If you remember one thing from Part 3: **one loop per thread dispatches everything — input, painting, timers, network readiness, queued signals, deferred deletions — so your callbacks must return fast, and anything slow belongs in async APIs or another thread, never in a slot on the UI thread.**
+
+```quiz
+Q: A slot makes a synchronous 8-second server call and the whole window freezes — no repaint, dead input. Why?
+- [ ] The network call crashed the render thread
+- [x] The slot is a callback running *inside* the event loop's dispatch step — while it runs the loop isn't looping, so paint events, input, timers, and queued signals all wait
+- [ ] Qt throttles slow applications
+- [ ] The window manager killed the process
+> Everything after `app.exec()` runs as callbacks invoked by the loop, and the loop can't process the next event until the current callback returns. A slow slot stalls painting, queues input unprocessed, and makes the OS declare the app unresponsive. The UI thread's only job is to keep the loop spinning — slow work goes to async APIs or a worker thread.
+
+Q: Old code "fixes" freezes by calling `processEvents()` inside long loops. Why is that a red flag?
+- [ ] processEvents is deprecated
+- [x] It makes the function re-entrant — the user can click the button again mid-task and events fire against half-mutated state — the source of legendarily unreproducible bugs; the honest fixes are async APIs and worker threads
+- [ ] It leaks memory
+- [ ] It only works on Windows
+> Manually pumping the queue mid-task means arbitrary other code (including the same slot, triggered again) runs while your function is half-done. State invariants you assumed hold across the function body no longer do. Treat `processEvents()` in application code as a smell pointing at work that belongs off the UI thread.
+
+Q: What's the difference between handling events and connecting signals?
+- [ ] They're two names for the same mechanism
+- [x] Events come from outside (OS) and are delivered top-down to one object via overridable `*Event()` methods — the *implementing* layer; signals are emitted by objects about themselves and broadcast to subscribers — the *composing* layer
+- [ ] Signals are faster than events
+- [ ] Events only exist in widgets
+> A `QPushButton` receives low-level mouse events, interprets them, and emits the high-level `clicked()` signal. You override `*Event` methods when building a component's behavior (and call `accept()`/`ignore()` to control propagation to the parent); you `connect()` signals when wiring components together. If you're writing `connect` you're composing; if you're overriding `mousePressEvent` you're implementing.
+```
 
 ---
 
@@ -627,6 +673,29 @@ class DeviceModel(QAbstractListModel):
 
 If you remember one thing from Part 6: **keep data in a model object that answers rowCount/data by role and announces every mutation with begin/end pairs or dataChanged — then views (Widgets and QML alike), sorting, filtering, and editing all attach to it without your data ever being copied into a UI.**
 
+```quiz
+Q: Why does inserting into a model require the `beginInsertRows`/`endInsertRows` pair *around* the mutation?
+- [ ] It locks the model against other threads
+- [x] The pair is how views learn the model's *shape* changed, letting them update selections, scroll positions, and visible items incrementally — skipping it makes views silently desynchronize or crash, the number-one model/view bug
+- [ ] It's only needed for tree models
+- [ ] It batches the inserts for speed
+> Views attached to a model maintain their own derived state (what's visible, what's selected). The begin call announces *before* mutation so they can prepare; the end call says it's done so they update incrementally. `dataChanged` is the lighter sibling for value changes within existing cells. The announce-then-mutate discipline is the whole model contract — break it and the views can't trust the shape they're rendering.
+
+Q: Why must `data()` stay cheap (no I/O, no heavy allocation)?
+- [ ] It's called once per row at load
+- [x] It's called *constantly* during scrolling and painting — every visible cell, every repaint, for every role — so anything slow there makes the view stutter
+- [ ] Qt caches all data() results forever
+- [ ] Slow data() throws an exception
+> The view pulls data on demand as cells become visible, repaint, or change roles, so `data()` is on the hot path of every scroll frame. It should be a lookup into your existing structures. Expensive derivation belongs precomputed in the model's storage (updated via the announcement discipline), not computed per call.
+
+Q: How do you add sorting and live filtering to a model-backed table without touching your data?
+- [ ] Re-sort the underlying QList on every keystroke
+- [x] Interpose a `QSortFilterProxyModel` between model and view — the proxy presents a sorted/filtered *view* of the source while the model's data never moves
+- [ ] Subclass the view and override paint
+- [ ] Copy filtered rows into a second model
+> The proxy pattern is the payoff of model/view separation: `proxy->setSourceModel(model); view->setModel(proxy)` and header-click sorting plus `setFilterFixedString` filtering work against the proxy's mapping, leaving your data untouched and every other attached view unaffected. The same source model can simultaneously feed a desktop table and a QML list — which is exactly why data is never copied into a UI.
+```
+
 ---
 
 ## Part 7 — QML & Qt Quick: The Declarative Stack
@@ -829,6 +898,29 @@ Keep the boundary honest: QML/JavaScript should own presentation and interaction
 
 If you remember one thing from Part 7: **QML is a dependency-tracked binding engine over a GPU scene graph — declare state as properties, let bindings propagate it, never assign over a binding, and keep logic in C++/Python types registered into QML modules (not stringly context properties) so the boundary stays typed, testable, and tool-checkable.**
 
+```quiz
+Q: `text: "Count: " + window.count` in QML differs from an assignment how?
+- [ ] It runs once at startup like any assignment
+- [x] It's a live property binding — the engine records which properties the expression read and re-evaluates it whenever any of them changes, with no observer wiring
+- [ ] It polls window.count every frame
+- [ ] It requires a connect() call elsewhere
+> A binding is a dependency-tracked expression: reading `window.count` during evaluation subscribes the binding, and any change re-runs it and updates the property. The same applies to the color ternary and to geometry. State flows downward through bindings; events flow upward through signal handlers — the framework builds the dependency graph for you.
+
+Q: After `someText.text = "hi"` in a signal handler, the text never updates from its original binding again. Why?
+- [ ] Strings can't be bound
+- [x] Imperatively assigning to a bound property *destroys the binding permanently* — a classic "my UI stopped updating" bug; state changes should go through the properties the binding depends on
+- [ ] The handler runs in another thread
+- [ ] Bindings re-attach on the next frame
+> A binding survives only until something assigns over it; the imperative write replaces the live expression with a static value. The fix is to mutate the upstream state (`window.count++`) and let the binding propagate, or use `Qt.binding()` if you genuinely must restore one. This one rule prevents a whole category of silent UI staleness.
+
+Q: Why does the guide prefer registering C++ types into QML modules (`QML_ELEMENT` + `qt_add_qml_module`) over `setContextProperty`?
+- [ ] Context properties are slower at runtime
+- [x] Context properties are stringly-typed and ambient — invisible to tooling (no autocomplete or qmllint), undeclared in any import, and awkward to test; registered types are instantiated, type-checked, and tool-checkable like built-ins
+- [ ] setContextProperty was removed in Qt 6
+- [ ] Registered types skip the meta-object system
+> `setContextProperty("api", ...)` injects a name every QML file can use but nothing declares — tooling can't see it, qmllint can't check calls against it, and tests must recreate the injection. Registering the type into a module makes the boundary explicit: QML imports it, instantiates it, and the engine type-checks property access. Fine for prototypes; large codebases drown in ambient context properties.
+```
+
 ---
 
 ## Part 8 — Talking to the World: Network & Devices
@@ -1002,6 +1094,19 @@ Now the precise signal/slot semantics, completing Part 2's preview. `connect()`'
 
 Read the auto-connection row again, because it's the whole design: emit a signal from a worker thread at an object living in the main thread, and Qt copies the arguments, posts an event, and the slot runs safely on the main thread when its loop gets there. **Cross-thread signals are queued events** (Part 3's model) — which means thread-safe UI updates require no locks, no condition variables, nothing: just emit. The decision is made per-emission, at runtime, by comparing the *currently executing* thread against the receiver's affinity. This is the mechanism every pattern below leans on.
 
+```mermaid
+sequenceDiagram
+  participant W as Worker thread
+  participant Q as Main thread event loop
+  participant S as Slot (receiver lives in main thread)
+  W->>W: emit signal(value)
+  Note over W: receiver in another thread, so AutoConnection queues
+  W->>Q: copy args into an event, post to receiver's loop
+  Note over W: emit returns immediately, no blocking
+  Q->>S: loop delivers the event, runs the slot on the main thread
+  Note over S: thread-safe UI update, no locks needed
+```
+
 ### Pattern One: Qt Concurrent for One-Shot Work
 
 For "run this function off the main thread and give me the result" — parsing a big file, a heavy computation, a thumbnail batch — skip threads entirely and use `QtConcurrent::run()` ([docs](https://doc.qt.io/qt-6/qtconcurrent-index.html)), which executes a callable on the global thread pool and returns a `QFuture`; a `QFutureWatcher` converts completion into a signal on your thread:
@@ -1055,6 +1160,29 @@ Choosing between the patterns is straightforward: **Qt Concurrent for one-shot c
 In PySide6 every word above applies — affinity, connection types, worker objects — plus one Python-specific fact: the GIL means Python threads don't parallelize *CPU-bound Python code* (see the [Python Concurrency guide](PYTHON_CONCURRENCY.md)). Worker threads still deliver exactly what GUI apps need most — keeping I/O, database, and C-extension work (NumPy releases the GIL) off the UI thread — but for parallel pure-Python computation you'd reach for `multiprocessing`. The freeze rule is unchanged: long Python code in a slot blocks the loop just as surely as long C++.
 
 If you remember one thing from Part 10: **every QObject lives in one thread, only that thread may touch it, and auto-connected signals bridge threads by queuing the call into the receiver's event loop — so put background work in worker objects (or QtConcurrent), communicate only by signals, and you get thread safety without writing a single lock.**
+
+```quiz
+Q: In the worker-object pattern, why is calling `worker->doSomething()` directly from the GUI thread the exact bug the pattern exists to prevent?
+- [ ] Direct calls are slower than signals
+- [x] A direct call executes the method *in the GUI thread* against state owned by the worker's thread — a data race; emitting a signal connected to the worker's slot queues the call into the worker's event loop instead
+- [ ] The compiler forbids it
+- [ ] It deadlocks immediately
+> Thread affinity means the worker's state belongs to the worker's thread. A direct method call runs wherever the caller is, so the GUI thread mutates worker-owned state concurrently with the worker. Auto-connected signals detect the cross-thread case and queue the invocation into the receiver's loop, so the slot runs in the right thread. State stays inside the worker, messages cross the boundary, no mutexes — the actor model from parts you already had.
+
+Q: Why is "subclass QThread and override run()" discouraged in favor of `moveToThread` with a worker object?
+- [ ] Subclassing is slow
+- [x] The QThread *object* lives in the thread that created it (breeding wrong-thread slot calls), and a custom `run()` replaces the default one — which is just `exec()`, the event loop that queued delivery needs
+- [ ] run() can't access members
+- [ ] moveToThread is the only API since Qt 6
+> `QThread` is not the thread; it's a QObject managing one. Code in an overridden `run()` executes in the new thread, but slots on the QThread subclass run in the creating thread — a recurring confusion. And replacing `run()` discards the default event loop, so queued signals into the thread never arrive. The worker-object pattern keeps `exec()` running and moves your logic in as a passenger (created parentless, since parented objects can't change threads).
+
+Q: When do you choose QtConcurrent::run versus a QThread worker object?
+- [ ] QtConcurrent for C++, QThread for Python
+- [x] QtConcurrent for one-shot computations on a pooled thread (no event loop, pure-ish work); a worker-object QThread for long-lived stateful services that own resources and react to commands
+- [ ] They're interchangeable
+- [ ] QThread is deprecated
+> `QtConcurrent::run` borrows a pool thread for a single computation — combined with `QFutureWatcher` (or `.then()` with a context) the result lands back on the UI thread safely. But the lambda runs outside any event loop, so it can't host thread-affine objects, sockets, or per-thread DB connections. A device poller or sync engine that owns state and a socket wants the worker-object pattern with its own running loop.
+```
 
 ---
 

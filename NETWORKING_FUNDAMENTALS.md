@@ -143,6 +143,36 @@ Modern cloud and overlay networks use **VXLAN** (a UDP-encapsulated extension) t
 
 References: [IEEE 802.3 (Ethernet)](https://standards.ieee.org/standard/802_3-2018.html), [IEEE 802.1Q (VLAN)](https://standards.ieee.org/standard/802_1Q-2018.html), [RFC 826 (ARP)](https://datatracker.ietf.org/doc/html/rfc826)
 
+```quiz
+Q: As a packet crosses 15 routers to another country, what changes and what stays the same?
+- [ ] Both MAC and IP addresses change at every hop
+- [x] The Ethernet frame is stripped and rebuilt with new MACs at every hop; the IP source/destination stay the same end to end (only TTL and checksum change)
+- [ ] Nothing changes — that's the point of routing
+- [ ] The IP addresses are rewritten at each AS boundary
+> Ethernet is hop-local; IP is end-to-end. That's why your laptop needs only the gateway's MAC and the destination's IP to reach anything on Earth — each router handles the next hop's link-layer addressing.
+
+Q: Your host knows the destination's IP on the local subnet but needs its MAC. What happens?
+- [x] ARP — a "who has this IP?" broadcast; the owner replies with its MAC, and the OS caches the mapping
+- [ ] The router answers from its routing table
+- [ ] DNS returns a MAC alongside the A record
+- [ ] The switch translates IP to MAC in hardware
+> ARP is the bridge between the two identifier systems, and it's L2 broadcast — it never crosses routers (each subnet runs its own). Its trust-everyone design is also why ARP spoofing works, mitigated by TLS above and switch features below. IPv6 replaces it with NDP.
+
+Q: How does a switch know which port to send a frame to — and what does it do when it doesn't know?
+- [x] It learns MAC→port mappings by watching source MACs of incoming frames; unknown destinations get flooded to every port except the source
+- [ ] It queries the router's ARP table
+- [ ] It broadcasts everything, like a hub
+- [ ] An administrator programs the MAC table
+> The self-learning MAC (CAM) table is what makes switches plug-and-play; flooding on unknown destinations is normal behavior, not a malfunction. Switches are pure L2 — their own IP exists only for management.
+
+Q: Why do VLANs exist when you could just use separate switches?
+- [ ] VLANs are faster than physical separation
+- [x] They split one physical switched network into isolated broadcast domains — segmentation (guests vs servers), multi-tenancy, and trunk ports carrying many VLANs over one link
+- [ ] They encrypt traffic between ports
+- [ ] They extend the MTU beyond 1500
+> A 4-byte 802.1Q tag turns one fabric into many logical networks. The 4096-VLAN ceiling is why clouds and Kubernetes overlays use VXLAN (~16M IDs) — the same idea, UDP-encapsulated to scale.
+```
+
 ---
 
 ## Phase 3: IP and Routing
@@ -351,6 +381,36 @@ Use security groups for almost everything. NACLs for coarse subnet-level policy 
 
 References: [RFC 3022 (Traditional NAT)](https://datatracker.ietf.org/doc/html/rfc3022), [RFC 5389 (STUN)](https://datatracker.ietf.org/doc/html/rfc5389), [Linux Conntrack tools](https://conntrack-tools.netfilter.org/)
 
+```quiz
+Q: A routing table has both 192.168.1.0/24 and 0.0.0.0/0 routes. A packet for 192.168.1.50 uses which, and why?
+- [x] The /24 — longest-prefix match: the most specific matching route always wins
+- [ ] The default route — it's evaluated first
+- [ ] Whichever has the lower metric
+- [ ] Both; the packet is duplicated
+> Specificity beats order and metric (metric only breaks ties between equally specific routes). This single rule explains VPN split tunneling, container routes, and most "why did it go out that interface" mysteries.
+
+Q: Your "public IP" on mobile shows as 100.64.x.x. What does that tell you?
+- [ ] You have a globally routable address
+- [x] You're behind carrier-grade NAT — the ISP NATs your traffic again, so inbound connections and port forwarding are impossible
+- [ ] Your device fell back to link-local addressing
+- [ ] You're on an IPv6-only network
+> 100.64.0.0/10 is the CGNAT range. Double NAT is why peer-to-peer needs STUN/TURN/ICE and why "host a server on mobile" doesn't work. (169.254.x.x would mean DHCP failed; 10/172.16/192.168 are ordinary RFC1918.)
+
+Q: What makes a firewall "stateful," concretely?
+- [x] It tracks flows in a conntrack table, so a rule can allow "established/related" — outbound connections get their replies back without opening inbound ports
+- [ ] It saves its rules across reboots
+- [ ] It inspects application payloads
+- [ ] It rate-limits per source IP
+> Stateless filtering must allow whole ports in both directions; conntrack lets one rule recognize replies. The same table powers NAT — and its size limits and timeouts are real production failure modes.
+
+Q: "I can reach my server via its public IP from outside, but not from inside my own LAN." What's missing?
+- [ ] An A record for the internal IP
+- [x] Hairpin NAT (NAT loopback) — the router must translate traffic from inside addressed to its own public IP back inside; many home routers don't
+- [ ] IPv6 connectivity
+- [ ] A static route on the server
+> The packet goes LAN → router's public IP → should U-turn back into the LAN, which requires the router to apply both DNAT and SNAT on the same flow. The workaround is split-horizon DNS: resolve the name to the internal IP inside the LAN.
+```
+
 ---
 
 ## Phase 5: Transport Layer
@@ -408,16 +468,14 @@ Key flags:
 
 ### 5.3 The Three-Way Handshake
 
-```
-Client                              Server
-  |                                    |
-  |-------- SYN seq=X ---------------->|
-  |                                    |
-  |<------ SYN-ACK seq=Y ack=X+1 ------|
-  |                                    |
-  |-------- ACK ack=Y+1 -------------->|
-  |                                    |
-  |-------- (data flows) -------------|
+```mermaid
+sequenceDiagram
+  participant C as Client
+  participant S as Server
+  C->>S: SYN seq=X
+  S->>C: SYN-ACK seq=Y, ack=X+1
+  C->>S: ACK ack=Y+1
+  Note over C,S: ESTABLISHED — data flows
 ```
 
 1. Client sends SYN with its initial sequence number.
@@ -433,40 +491,18 @@ Initial sequence numbers are randomized (RFC 6528) to prevent off-path spoofing.
 
 You don't memorize this, but you should be able to read it when debugging:
 
-```
-        +---------+
-        | CLOSED  |
-        +---------+
-             | active open: send SYN
-             v
-        +----------+
-        | SYN_SENT |
-        +----------+
-             | recv SYN-ACK, send ACK
-             v
-       +-------------+
-       | ESTABLISHED |  <--- data flows here
-       +-------------+
-             | active close: send FIN
-             v
-        +-----------+
-        | FIN_WAIT_1 |
-        +-----------+
-             | recv ACK
-             v
-        +-----------+
-        | FIN_WAIT_2 |
-        +-----------+
-             | recv FIN, send ACK
-             v
-        +-----------+
-        | TIME_WAIT |  <--- linger here ~60s
-        +-----------+
-             |
-             v
-        +---------+
-        | CLOSED  |
-        +---------+
+```mermaid
+stateDiagram-v2
+  [*] --> CLOSED
+  CLOSED --> SYN_SENT: active open / send SYN
+  SYN_SENT --> ESTABLISHED: recv SYN-ACK / send ACK
+  note right of ESTABLISHED: data flows here
+  ESTABLISHED --> FIN_WAIT_1: active close / send FIN
+  FIN_WAIT_1 --> FIN_WAIT_2: recv ACK
+  FIN_WAIT_2 --> TIME_WAIT: recv FIN / send ACK
+  note right of TIME_WAIT: linger ~2 MSL (30-120s)
+  TIME_WAIT --> CLOSED: timeout
+  CLOSED --> [*]
 ```
 
 A few specific states matter operationally:
@@ -526,6 +562,43 @@ TCP has a built-in keepalive mechanism: after `tcp_keepalive_time` (default 2 ho
 Without keepalives, an idle connection can linger forever (in EST state on your side, but the other end and any intermediate NATs have long forgotten). The next write times out only when the OS gives up on retransmits — minutes later.
 
 References: [RFC 9293 (TCP)](https://datatracker.ietf.org/doc/html/rfc9293), [RFC 768 (UDP)](https://datatracker.ietf.org/doc/html/rfc768), [BBR paper](https://research.google/pubs/pub45646/), [Cloudflare on TCP TIME_WAIT](https://blog.cloudflare.com/this-is-strictly-a-violation-of-the-tcp-specification/)
+
+```quiz
+Q: Thousands of TIME_WAIT sockets vs thousands of CLOSE_WAIT sockets — which is the bug?
+- [ ] TIME_WAIT — connections should close instantly
+- [x] CLOSE_WAIT — the peer sent FIN but your application never called close(); TIME_WAIT is the protocol working as designed (absorbing stray packets after an active close)
+- [ ] Both indicate kernel misconfiguration
+- [ ] Neither; both are cosmetic
+> TIME_WAIT is mostly harmless (watch ephemeral-port exhaustion at extremes). CLOSE_WAIT piles mean an fd leak in your code — the kernel can't close what the app still holds.
+
+Q: A request-response protocol stalls ~200 ms on every small write. What's the classic interaction?
+- [x] Nagle's algorithm holding the small write for an ACK, while delayed ACK holds the ACK hoping to piggyback — fix with TCP_NODELAY
+- [ ] TCP slow start on every request
+- [ ] DNS lookups per request
+- [ ] The receive window closing
+> Two well-intentioned optimizations deadlocking each other is the famous pitfall. Modern HTTP stacks set TCP_NODELAY; anyone writing raw sockets for request-response traffic must too.
+
+Q: What's the difference between flow control and congestion control?
+- [ ] Two names for the same mechanism
+- [x] Flow control protects the receiver (its advertised window); congestion control protects the network (sender's estimate) — the sender uses the minimum of the two windows
+- [ ] Flow control is for UDP, congestion for TCP
+- [ ] Congestion control only activates on packet loss
+> Different victims, different mechanisms. And congestion control is the part that keeps the internet alive — BBR (model-based) vs CUBIC (loss-reactive) is why cross-continent transfers can double in throughput with one sysctl.
+
+Q: An idle pooled connection dies silently and the next query hangs for minutes. Which TCP default is implicated?
+- [x] Keepalive's 2-hour default — far longer than NAT/firewall conntrack timeouts, so middleboxes forget the flow while both ends believe it's alive
+- [ ] TIME_WAIT's 60-second linger
+- [ ] The 1500-byte MTU
+- [ ] Delayed ACK's 200 ms timer
+> Without keepalives well under the NAT timeout (or application-layer pings, or validate-on-borrow), long-idle connections become zombies. The 2-hour kernel default is wrong for essentially every production system.
+
+Q: Why do DNS, game traffic, and VoIP choose UDP?
+- [ ] UDP has better congestion control
+- [x] They'd rather lose a datagram than wait — retransmission and ordering are wrong trade-offs for tiny request/reply or latest-state-wins traffic, and TCP's handshake adds an RTT
+- [ ] UDP is encrypted by default
+- [ ] Firewalls handle UDP better
+> UDP's "barely a protocol" is the feature: the application owns the reliability policy. QUIC takes it further — reliability, streams, and TLS rebuilt over UDP, escaping TCP's kernel ossification.
+```
 
 ---
 
@@ -637,6 +710,36 @@ Common pathologies:
 `dig +stats www.example.com` shows query time. Anything above 50ms warrants investigation.
 
 References: [RFC 1034/1035 (DNS)](https://datatracker.ietf.org/doc/html/rfc1034), [RFC 9499 (DNS Terminology)](https://datatracker.ietf.org/doc/html/rfc9499), [DNS for Rocket Scientists](https://www.zytrax.com/books/dns/)
+
+```quiz
+Q: What's the difference between the resolver your laptop queries and the nameservers it queries in turn?
+- [x] Your laptop asks a recursive resolver (1.1.1.1, the ISP's), which walks root → TLD → authoritative nameservers and caches the answer
+- [ ] Laptops query root servers directly
+- [ ] Authoritative servers forward to recursives
+- [ ] They're the same servers in different modes
+> Recursive vs authoritative is the structural distinction people blur: recursives do the walking and caching; authoritatives own the zone data. "DNS is down" debugging starts with figuring out which side is failing.
+
+Q: Why can't example.com (the apex) be a CNAME to your CDN?
+- [ ] CNAMEs are limited to subdomains by convention
+- [x] A CNAME can't coexist with other records at the same name — and the apex must hold SOA/NS records; providers work around it with ALIAS/flattening or HTTPS records
+- [ ] CDNs forbid apex pointing
+- [ ] It can, since RFC 9499
+> The exclusivity rule is in the protocol. www.example.com can CNAME freely; the apex needs provider-specific flattening (Cloudflare, Route 53) or the modern HTTPS/SVCB records.
+
+Q: You're migrating a service to a new IP next week. What's the TTL play?
+- [x] Drop the TTL low (60–300 s) a day or more in advance so caches expire fast, make the change, then raise it back
+- [ ] Raise the TTL so resolvers hold the new record longer
+- [ ] Set TTL to zero permanently
+- [ ] TTL doesn't affect migrations
+> Caches honor the TTL they fetched, so lowering it only helps once old long-TTL entries have expired — hence the advance notice. And "propagation" is stochastic: some resolvers ignore TTLs in both directions.
+
+Q: What does DoH (DNS over HTTPS) change, and what's the trade-off?
+- [ ] It makes DNS responses tamper-proof via signatures
+- [x] Queries are encrypted and indistinguishable from normal HTTPS — ISPs can't observe or inject — but resolution centralizes onto a few large providers
+- [ ] It eliminates the need for recursive resolvers
+- [ ] It's faster than UDP in all cases
+> DoH/DoT solve the privacy/injection problem of plaintext port-53 DNS (integrity-by-signature is DNSSEC's job, a separate mechanism). The centralization concern is real: the ISP can't see your queries, but Cloudflare or Google now can.
+```
 
 ---
 
@@ -812,6 +915,36 @@ Negotiation: HTTP/2 via ALPN at TLS handshake. HTTP/3 via the `Alt-Svc` HTTP hea
 
 References: [RFC 9110 (HTTP semantics)](https://datatracker.ietf.org/doc/html/rfc9110), [RFC 9113 (HTTP/2)](https://datatracker.ietf.org/doc/html/rfc9113), [RFC 9114 (HTTP/3)](https://datatracker.ietf.org/doc/html/rfc9114), [RFC 9000 (QUIC)](https://datatracker.ietf.org/doc/html/rfc9000)
 
+```quiz
+Q: Why can a censoring middlebox block HTTPS connections by hostname despite the encryption?
+- [x] SNI in the ClientHello is plaintext — the requested hostname is visible before encryption starts; ECH (Encrypted Client Hello) is the still-rolling-out fix
+- [ ] The middlebox decrypts TLS with ISP certificates
+- [ ] DNS leaks the hostname, not TLS
+- [ ] HTTP Host headers are sent before the handshake
+> The ClientHello must be readable for negotiation, and SNI rides in it. It's also how one IP serves many HTTPS sites (the server picks the right cert) — the same field serving both virtual hosting and censorship.
+
+Q: How do client and server agree to speak HTTP/2 rather than HTTP/1.1?
+- [ ] An Upgrade header on the first HTTP request
+- [x] ALPN — the ClientHello lists protocols (h2, http/1.1), the server picks one during the TLS handshake
+- [ ] Trying port 8443 first
+- [ ] HTTP/2 is assumed for all TLS connections
+> Negotiation happens inside TLS, before any HTTP bytes. HTTP/3 is different: discovered out-of-band via Alt-Svc headers or DNS HTTPS records, then dialed over UDP/443.
+
+Q: HTTP/2 multiplexes streams, yet one lost packet stalls all of them. Why — and what's HTTP/3's answer?
+- [x] TCP delivers bytes in order, so a gap blocks everything behind it regardless of stream; QUIC gives each stream independent ordering over UDP, so loss stalls only its own stream
+- [ ] HPACK compression requires full ordering
+- [ ] It doesn't — HTTP/2 streams are independent end to end
+- [ ] HTTP/3 eliminates retransmission entirely
+> HTTP/2 fixed request-level head-of-line blocking and inherited transport-level HOL blocking from TCP. Moving streams into the transport (QUIC) is HTTP/3's core structural change — plus combined TLS+transport handshake and connection migration.
+
+Q: When a TLS connection resumes with a session ticket / PSK, what's gained and what's the 0-RTT caveat?
+- [x] The full handshake (cert chain, verification) is skipped — and 0-RTT data can ride the first packet, but it's replayable, so only idempotent requests belong there
+- [ ] Resumption removes encryption overhead for the session
+- [ ] Nothing — resumption is a TLS 1.2 legacy
+- [ ] 0-RTT is safe for any request under TLS 1.3
+> The cert chain dominates first-handshake bytes; resumption skips it. 0-RTT's replay window is why a "POST /transfer" must never be 0-RTT data — servers and clients restrict it to safe methods.
+```
+
 ---
 
 ## Phase 9: Load Balancing
@@ -960,6 +1093,36 @@ If you've never paid attention to v6, the operational habits to pick up:
 - The 7-day-renewable SLAAC prefix can change; long-lived ACLs against host addresses fail.
 
 References: [Cloudflare's eBPF posts](https://blog.cloudflare.com/tag/ebpf/), [Cilium documentation](https://docs.cilium.io/), [APNIC IPv6 measurement](https://stats.labs.apnic.net/ipv6)
+
+```quiz
+Q: When do you need an L7 load balancer instead of L4?
+- [x] When routing depends on application data — path/host-based routing, TLS termination with SNI, auth or rate limiting at the LB
+- [ ] Whenever the protocol is TCP
+- [ ] For latency-critical paths
+- [ ] L7 is always preferable when available
+> L4 forwards connections without reading payloads — fast, protocol-agnostic, right for non-HTTP and raw scale. L7 reads HTTP and can act on it. Real edges often stack both: L4 outside for scale, L7 inside for smarts.
+
+Q: Why is "power of two choices" the recommended default algorithm over plain least-connections?
+- [ ] It's simpler to implement
+- [x] Sampling two random backends and picking the less-loaded avoids the herd effect where every new connection piles onto the single currently-least-loaded backend
+- [ ] It guarantees perfect balance
+- [ ] It preserves session affinity
+> Pure least-connections creates synchronized stampedes onto whichever backend looks idle; P2C gets nearly all the benefit with none of the pathology. Round-robin is fine only for homogeneous backends and short requests.
+
+Q: Why is a /health endpoint that queries the database a fleet-wide outage waiting to happen?
+- [x] One database hiccup makes every backend fail its check simultaneously, so the LB ejects the entire pool — health checks should be shallow and local
+- [ ] Database queries are too slow for check intervals
+- [ ] Health endpoints can't make outbound calls
+- [ ] It leaks credentials in logs
+> A shared dependency in the health path converts a partial failure into total removal of capacity. Keep the LB check to "am I running"; deeper dependency checks belong to separate, non-ejecting monitoring.
+
+Q: Deploys are 502ing a few users every rollout. Which LB feature is missing?
+- [ ] Sticky sessions
+- [x] Connection draining — stop sending new requests to the departing backend and let in-flight requests finish before removal
+- [ ] Outlier detection
+- [ ] Weighted round-robin
+> Yanking a backend mid-request resets its connections. Draining (graceful shutdown at the LB) is supported nearly everywhere and forgotten constantly — it's the difference between invisible deploys and a 502 spike on each one.
+```
 
 ---
 
@@ -1440,6 +1603,43 @@ echo "=== curl test ==="; curl -sSI https://example.com/ -w 'HTTP %{http_code}, 
 ```
 
 References: [RFC 8305 (Happy Eyeballs v2)](https://datatracker.ietf.org/doc/html/rfc8305), [Cloudflare on PMTUD black holes](https://blog.cloudflare.com/path-mtu-discovery-in-practice/), [Vincent Bernat — Linux TIME_WAIT](https://vincent.bernat.ch/en/blog/2014-tcp-time-wait-state-linux)
+
+```quiz
+Q: After setting up a VPN, small pages load but large downloads hang. What's the mechanism?
+- [x] A PMTUD black hole — the tunnel shrank the MTU, oversized DF packets need an ICMP "fragmentation needed" reply, and a firewall drops that ICMP, so the sender retransmits the same too-big packet forever
+- [ ] The VPN's encryption can't handle large payloads
+- [ ] DNS over the VPN is timing out
+- [ ] TCP slow start resets inside tunnels
+> Small responses fit; full-size segments vanish silently. Fixes: MSS clamping at the tunnel, explicit tunnel MTU, or letting the ICMP through. The signature — small works, big hangs, tunnel involved — should trigger this diagnosis instantly.
+
+Q: What problem does Happy Eyeballs (RFC 8305) solve?
+- [ ] DNS servers returning stale records
+- [x] Broken IPv6 paths causing 30+ second TCP timeouts — it races v6 and v4 in parallel (v6 gets a ~200 ms head start) and uses whichever connects first
+- [ ] Browsers opening too many connections
+- [ ] CDN selection across regions
+> Dual-stack with a dead v6 path would otherwise hang every connection. The flip side for operators: broken AAAA records become an invisible 200 ms tax on happy-eyeballs clients — monitor the v6 path even though nobody complains.
+
+Q: An idle-heavy connection pool to a remote DB starts throwing resets after hours of uptime. The likeliest culprit?
+- [x] A NAT/stateful firewall between them expired the flow from its conntrack table — both ends think the connection is alive; the middlebox forgot it
+- [ ] The DB hit max_connections
+- [ ] TLS session tickets expired
+- [ ] The pool exceeded the ephemeral port range
+> The trio of fixes: TCP keepalives under the NAT timeout, periodic pool recycling, validate-on-borrow. The failure is invisible until the next write because TCP has no liveness without traffic.
+
+Q: A busy proxy starts failing with EADDRNOTAVAIL when connecting to one upstream. What's exhausted?
+- [ ] File descriptors
+- [x] Ephemeral source ports for that destination — ~28K ports with 60 s TIME_WAIT caps you near 466 connections/sec per destination IP+port
+- [ ] The conntrack table
+- [ ] The upstream's accept backlog
+> Each (src IP, src port, dst IP, dst port) tuple must be unique. Fixes: widen ip_local_port_range, tcp_tw_reuse, client-side pooling, more source IPs, or more destination IPs — each one multiplies the namespace.
+
+Q: "Connection refused" vs "connection timeout" — what does each tell you?
+- [x] Refused: the host is reachable and replied with a RST (nothing listening, or active reject). Timeout: no reply at all — silent firewall drop, routing problem, or dead host
+- [ ] Both mean the service is down
+- [ ] Refused means a firewall; timeout means no service
+- [ ] Timeout is DNS, refused is TCP
+> The distinction halves the search space: refused exonerates the network path; timeout indicts it. It's the first fork in the "application can't connect" playbook.
+```
 
 ---
 

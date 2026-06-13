@@ -323,6 +323,14 @@ SwiftUI's `@State`, `@Binding`, `@Environment`, `@AppStorage` are all property w
 
 SwiftUI is a declarative UI framework: you describe *what* the UI should look like for a given state, and the framework figures out *how* to update the screen when the state changes. This is fundamentally different from UIKit (imperative: you mutate views directly).
 
+```mermaid
+graph LR
+  S["State changes<br/>@State / @Observable"] --> B["SwiftUI re-invokes body<br/>(views are cheap structs)"]
+  B --> R["framework diffs new vs old view tree"]
+  R --> U["applies the minimal screen updates"]
+  U -.user interaction mutates state.-> S
+```
+
 ### Your First View
 
 ```swift
@@ -482,6 +490,29 @@ Text("Hello")
 .disabled(isLoading)
 .redacted(reason: .placeholder)    // skeleton loading effect
 .opacity(isVisible ? 1 : 0)
+```
+
+```quiz
+Q: `Text("Hi").padding().background(.blue)` versus `Text("Hi").background(.blue).padding()` — why do they look different?
+- [ ] They render identically
+- [x] Modifiers apply inner-to-outer, each wrapping the previous result: the first pads then colors the padded area (blue extends past the text); the second colors tight around the text then pads outside it (transparent margin)
+- [ ] `.background` can only be applied once
+- [ ] The order only matters for animations
+> Each modifier returns a *new* view wrapping the prior one, so the chain order is the nesting order. Padding-then-background colors the enlarged (padded) view; background-then-padding colors the text snugly and adds transparent space around the colored box. This "modifiers wrap, order matters" rule is the most common SwiftUI layout surprise.
+
+Q: A SwiftUI view is a `struct` whose `body` returns `some View`. What does that design imply?
+- [ ] Views are expensive heap objects you reuse
+- [x] Views are cheap value types describing the UI for the current state; SwiftUI recreates `body` freely on state change and diffs it — you compose by nesting, and modifiers return new views rather than mutating
+- [ ] `some View` means the type is dynamic at runtime
+- [ ] body runs on a background thread
+> Because views are lightweight structs, SwiftUI can recompute `body` cheaply whenever state changes and reconcile the result — the declarative model. You never mutate a view in place (modifiers return new views); you change *state* and let the framework re-derive the UI. `some View` is an opaque return type letting the compiler keep the concrete (often huge) view type while you write `some View`.
+
+Q: For a long scrollable list, why prefer `LazyVStack` over a plain `VStack` inside a `ScrollView`?
+- [ ] LazyVStack scrolls faster
+- [x] `LazyVStack` only creates views for items as they become visible, where a plain `VStack` builds all of them up front — lazy rendering keeps memory and startup cost bounded for large lists
+- [ ] VStack can't go inside ScrollView
+- [ ] LazyVStack animates by default
+> A `VStack` realizes every child immediately, so a thousand-row list builds a thousand views before anything appears. `LazyVStack` (and `List`, `LazyHStack`, `LazyVGrid`) instantiate rows on demand as they scroll into view and can release off-screen ones, which is what makes long lists performant. Use lazy containers whenever the item count is large or unbounded.
 ```
 
 ### SF Symbols
@@ -688,6 +719,29 @@ struct SettingsView: View {
 | `@Observable` class + `@Environment` | No (injected from above) | Shared services (auth, settings, network) |
 | `@AppStorage` | Yes (backed by UserDefaults) | Simple persisted preferences |
 
+```quiz
+Q: What does SwiftUI do when a `@State` value changes?
+- [ ] It mutates the view in place
+- [x] It re-invokes the view's `body` and diffs the result to update only the changed UI — `@State` is owned by the view and drives this re-render
+- [ ] It posts a notification you must observe
+- [ ] Nothing until you call `setNeedsDisplay`
+> SwiftUI is declarative: `body` is a pure function of state, and changing `@State` tells the framework to recompute `body` and reconcile the difference against the screen. `@State` should hold simple value types local to the view (Int, Bool, small structs); complex model objects and shared state belong in `@Observable` classes, not `@State` value storage.
+
+Q: Why does `@Observable` (iOS 17+) re-render more efficiently than the older `ObservableObject`/`@Published`?
+- [ ] It caches the entire view tree
+- [x] It tracks reads granularly — a view re-renders only when the *specific properties it actually reads* change, whereas any `@Published` change re-rendered every view observing that object
+- [ ] It runs on a background thread
+- [ ] It disables animations
+> The `@Observable` macro instruments property access so SwiftUI knows exactly which properties each view depends on, re-rendering only those affected by a given mutation. `ObservableObject` fired `objectWillChange` for *any* `@Published` write, re-rendering every observing view regardless of what it read. The macro also drops boilerplate: no `@Published` per property, and views own instances with plain `@State`.
+
+Q: You have an `AuthManager` that login state, the profile screen, and a settings screen all need. Which wrapper combination fits?
+- [ ] `@State` in each view that needs it
+- [x] An `@Observable` class injected once with `.environment(authManager)` at the root and read via `@Environment(AuthManager.self)` anywhere in the tree
+- [ ] `@Binding` passed down through every intermediate view
+- [ ] `@AppStorage` for the whole object
+> Shared services that many distant views depend on are the environment's job: inject the `@Observable` instance once near the root, and any descendant reads it with `@Environment(AuthManager.self)` without prop-drilling through intermediate views. `@State` owns a view-local instance; `@Binding` threads one value to a child; `@AppStorage` is for simple persisted preferences, not service objects.
+```
+
 ---
 
 ## Part 4 — Navigation
@@ -779,6 +833,22 @@ struct HomeView: View {
         }
     }
 }
+```
+
+```quiz
+Q: In `NavigationStack`, what's the relationship between `NavigationLink(value:)` and `navigationDestination(for:)`?
+- [ ] The link directly instantiates the destination view
+- [x] The link pushes a *value* onto the stack, and `navigationDestination(for:)` maps that value type to the view to show — decoupling "what to navigate to" from "how to build it"
+- [ ] They're redundant; you only need the link
+- [ ] navigationDestination replaces NavigationStack
+> The data-driven model separates intent from construction: a `NavigationLink(value: recipe)` says "navigate to this value," and a single `navigationDestination(for: Recipe.self)` declares how any `Recipe` value becomes a detail view. This is what enables programmatic navigation — appending values to a `NavigationPath` drives the same destination resolution without a tapped link.
+
+Q: Why bind `NavigationStack(path: $router.path)` to an `@Observable` router holding a `NavigationPath`?
+- [ ] To make navigation animations smoother
+- [x] It makes the navigation stack *programmatically controllable* — any view can append/remove routes (deep links, "go to root", back) by mutating the shared path, decoupled from the view hierarchy
+- [ ] NavigationStack requires a router
+- [ ] It disables the back button
+> Binding the stack to an observable `NavigationPath` turns navigation into state you can drive from anywhere: a router injected via the environment lets a deep-linked button push `.profile(userId:)`, a logout flow call `goToRoot()`, etc., all by editing the path array. Without it, navigation is implicit in `NavigationLink` taps and hard to control from code.
 ```
 
 ### Tab Navigation
@@ -1011,6 +1081,22 @@ func processItems(_ items: [Item]) async {
 
 SwiftUI's `.task` modifier automatically cancels the task when the view disappears — you don't need to manage this manually.
 
+```quiz
+Q: Why attach async work with `.task { ... }` rather than starting a `Task {}` in `onAppear`?
+- [ ] `.task` runs on a background thread
+- [x] `.task` ties the work to the view's lifetime and automatically cancels it when the view disappears, so you don't leak a running task or update a gone view
+- [ ] `onAppear` can't call async functions
+- [ ] `.task` retries on failure automatically
+> `.task` scopes the async work to the view: it starts when the view appears and cancels when it disappears, giving you cooperative cancellation for free (a navigated-away screen's fetch stops). A bare `Task {}` in `onAppear` keeps running after the view is gone unless you manually store and cancel it — a common source of wasted work and "updating a dead view" bugs.
+
+Q: Why mark a SwiftUI view model `@MainActor`, given that view bodies already run on the main actor?
+- [ ] To make it run faster
+- [x] So all its property mutations happen on the main thread — UI-bound state must update on the main actor, and `@MainActor` guarantees it even when the view model is touched from background async contexts
+- [ ] @MainActor disables concurrency
+- [ ] It's required for @Observable to compile
+> SwiftUI reads view-model state while rendering on the main actor, so that state must be mutated there too — updating UI-driving properties off the main thread is a classic crash/glitch source. Marking the `@Observable` view model `@MainActor` makes the compiler enforce main-thread access; its `async` methods can still `await` background work, and results land back on the main actor automatically.
+```
+
 ---
 
 ## Part 6 — Architecture
@@ -1129,6 +1215,22 @@ struct ArticleListView: View {
         }
     }
 }
+```
+
+```quiz
+Q: In MVVM, why is the repository defined as a `protocol` (`ArticleRepository`) that the view model depends on, rather than a concrete network class?
+- [ ] Protocols are faster than classes
+- [x] It abstracts the data source so the view model doesn't know whether data comes from network, database, or cache — and lets tests inject a fake repository for fast, deterministic unit tests
+- [ ] SwiftUI requires repositories to be protocols
+- [ ] It's needed for Codable
+> Depending on a protocol inverts the dependency: the view model is written against an interface, and `RemoteArticleRepository` (or a `MockArticleRepository` in tests) satisfies it. This makes the data layer swappable (add caching, change backends) and the view model testable without real network calls — you inject a stub that returns canned articles or throws, and assert the view model's state transitions.
+
+Q: What's each layer's responsibility in the SwiftUI MVVM split?
+- [ ] The view holds business logic; the model renders UI
+- [x] The view renders state and forwards user actions with no business logic; the @Observable/@MainActor view model holds state and logic and calls repositories; the model is plain Codable/Identifiable data
+- [ ] The view model renders the UI directly
+- [ ] The repository owns the view's state
+> The discipline keeps each layer thin and testable: views are pure state-renderers that delegate actions upward, the view model owns the state machine and orchestrates repositories (on the main actor for UI safety), and models are inert value types. Business logic in views or networking in models is the smell MVVM exists to prevent — and the protocol-based repository keeps the view model free of data-source details.
 ```
 
 ### Project Structure: Feature-Based

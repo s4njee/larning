@@ -85,6 +85,36 @@ Typical latency is **sub-millisecond** for most operations on a local network, w
 - **Complex queries** — no JOINs, no secondary indexes (without modules), no SQL. If you need ad-hoc queries, use a database.
 - **Large values** — storing 100MB blobs in Redis works but wastes memory and blocks the event loop during I/O. Use object storage for large files.
 
+```quiz
+Q: Why is every single Redis command atomic "for free," with no locks needed?
+- [x] A single thread executes each command to completion before starting the next — there's no concurrency to interleave, so INCR, LPUSH, and SET NX can't race
+- [ ] Redis acquires a global mutex per command
+- [ ] Each data structure has its own lock
+- [ ] Atomicity requires MULTI/EXEC around every command
+> The single-threaded command loop is the source of Redis's most useful guarantee. Nearly every pattern — counters, locks, rate limiters, reliable queues — works *because* of it, which is why the same patterns are subtle on a multi-threaded store.
+
+Q: What's the sharp edge of Redis's single-threaded execution?
+- [x] A slow O(N) command (KEYS * on a huge keyspace, SMEMBERS on a giant set) blocks the entire server — every other client waits, since there's no second thread
+- [ ] Throughput is capped at one operation per millisecond
+- [ ] Writes block reads but not other writes
+- [ ] It can only use one CPU core for networking
+> "Keep every operation O(1) or O(log N)" isn't just performance advice — one O(N) command on big data stalls all clients. This is why data-structure choice is an availability concern, not only a correctness one.
+
+Q: When is Redis the wrong tool?
+- [x] As the sole source of truth for data you can't lose, for datasets larger than RAM, and for ad-hoc queries (no JOINs or SQL) — use Postgres as the truth and Redis as a derived cache
+- [ ] For caching and session storage
+- [ ] For rate limiting and leaderboards
+- [ ] For pub/sub and queues
+> Redis persists but isn't a database — an AOF everysec crash can lose a second. The mental model is "remote shared data-structure server in RAM," excellent for derived/ephemeral state, wrong for the durable record.
+
+Q: Beyond being in-memory, what else makes Redis fast and shapes its guarantees?
+- [x] The single-threaded command loop — no locks, no context switches, no cache-line bouncing — plus purpose-built C data structures and the compact RESP protocol
+- [ ] Multi-threaded command execution across cores
+- [ ] A built-in query optimizer
+- [ ] Disk-backed memory mapping
+> In-memory is the obvious half; the single thread is the consequential half. Background threads exist only for I/O and persistence — the command execution that defines Redis's semantics is single-threaded.
+```
+
 ---
 
 ## 2. Strings
@@ -555,6 +585,22 @@ def get_players_around(r, game_id, user_id, window=5):
     start = max(0, rank - window)
     end = rank + window
     return r.zrevrange(f"leaderboard:{game_id}", start, end, withscores=True)
+
+```quiz
+Q: How does a sorted set make "top 10 of a million players" sub-millisecond?
+- [x] It pairs a skip list (ordered, O(log N) rank/range) with a hash table (O(1) score lookup) — fetching the top ten touches ~twenty skip-list nodes, not a million
+- [ ] It keeps a precomputed sorted array refreshed on every write
+- [ ] It scans all members and sorts on each query
+- [ ] It caches the leaderboard in a separate string
+> The dual structure is why sorted sets answer membership, score, rank, and ranges all cheaply — the right choice whenever you need ordering by a numeric key alongside membership.
+
+Q: When is a sorted set the *wrong* choice, given the single-threaded rule?
+- [x] When the range you fetch (M) is huge — returning a million-element ZRANGE is O(N) and blocks the server
+- [ ] When you need O(1) score lookups
+- [ ] When members must be unique
+- [ ] Whenever there are more than 1000 members
+> The per-operation costs are great until you ask for a giant slice. ZRANGE 0 -1 on a massive set is the leaderboard equivalent of KEYS * — the size of the result, not the structure, is the hazard.
+```
 ```
 
 ### Practical: Rate Limiter (Sliding Window)
@@ -921,6 +967,36 @@ CONFIG SET maxmemory-policy allkeys-lfu
 
 **Recommendation**: `allkeys-lfu` for most cache workloads. `noeviction` for data you can't afford to lose (but then you must monitor memory and scale before hitting the limit).
 
+```quiz
+Q: Why must you never run KEYS in production, and what replaces it?
+- [x] KEYS scans the whole keyspace and blocks the single thread until done (seconds on millions of keys); SCAN iterates in non-blocking batches with a cursor
+- [ ] KEYS returns stale results; SCAN is fresher
+- [ ] KEYS requires admin privileges
+- [ ] KEYS doesn't support patterns
+> KEYS is the textbook O(N)-blocks-everything command. SCAN trades a single big stall for many small, resumable steps — the same reason UNLINK is preferred over DEL for large values.
+
+Q: How does Redis actually expire keys, and what's the consequence?
+- [x] Lazily on access, plus active sampling (~10×/sec it checks 20 random TTL keys, repeating if >25% expired) — so expired keys can briefly linger in memory until sampled or evicted
+- [ ] A background thread deletes each key the instant its TTL passes
+- [ ] Keys expire only when the next snapshot runs
+- [ ] Expiration is checked on every command globally
+> Expiry is probabilistic, not instantaneous. That's why memory can sit above the live set briefly, and why eviction policy matters under pressure even with TTLs everywhere.
+
+Q: Which eviction policy is the recommended default for a cache, and why not noeviction?
+- [x] allkeys-lfu (or allkeys-lru) — evict the least-used keys to make room; noeviction returns errors on writes once maxmemory is hit, which silently breaks a cache unless you're monitoring
+- [ ] volatile-ttl, since it respects TTLs
+- [ ] allkeys-random, for even distribution
+- [ ] noeviction, the safest default
+> LFU keeps consistently-hot keys and sheds cold ones — ideal cache behavior. noeviction is correct only for can't-lose data, and then you must scale before hitting the limit.
+
+Q: What's the danger of running Redis with no maxmemory set?
+- [x] It grows until the OS OOM-killer terminates the process, potentially taking down the whole server
+- [ ] It silently stops accepting writes at 75% RAM
+- [ ] It automatically spills to disk
+- [ ] Nothing — Redis self-limits by default
+> Always set maxmemory and an eviction policy. Unbounded growth ending in an OOM kill is mistake #2 in the catalog — the failure is sudden and total.
+```
+
 ---
 
 ## 10. Pub/Sub
@@ -1121,6 +1197,36 @@ Use Lua when you need to read a value, make a decision, then write — MULTI/EXE
 
 **Caution**: long-running Lua scripts block the entire Redis server. Keep scripts short and fast. Redis has a default timeout of 5 seconds (`lua-time-limit`), after which clients can interrupt.
 
+```quiz
+Q: A command in a MULTI/EXEC block fails. What happens to the others?
+- [x] They still execute — Redis transactions guarantee isolation (no interleaving), not rollback; there is no ROLLBACK
+- [ ] All commands are rolled back atomically
+- [ ] Execution halts at the failing command
+- [ ] The whole EXEC returns an error and nothing runs
+> "Transaction" in Redis means "no other client interleaves," not database-style atomicity. A queued command that errors at EXEC time doesn't undo the rest — a frequent surprise for SQL-trained users.
+
+Q: You need to read a balance, decide, then write — atomically. MULTI/EXEC or Lua?
+- [x] Lua — it reads, branches, and writes in one server-side atomic execution; MULTI/EXEC can't do conditional read-then-write without WATCH and a retry loop
+- [ ] MULTI/EXEC, which supports IF inside the block
+- [ ] Pipelining, which guarantees atomicity
+- [ ] Neither; use WATCH alone
+> MULTI/EXEC queues commands blindly — no value is visible to branch on. Lua executes atomically on the single thread, so read-decide-write is one round trip with true atomicity.
+
+Q: How does WATCH make a transaction safe against concurrent modification?
+- [x] Optimistic locking — if any watched key changes between WATCH and EXEC, EXEC returns nil and the transaction aborts, so the client retries
+- [ ] It locks the watched keys exclusively until EXEC
+- [ ] It queues other writers behind the transaction
+- [ ] It snapshots the keys and merges changes
+> WATCH is compare-and-set, not a lock — nobody is blocked. The transfer pattern loops on WatchError until it wins, which is how you do safe read-modify-write without Lua.
+
+Q: Why does pipelining speed up a batch of independent commands?
+- [x] It sends all commands in one batch without waiting for each response, eliminating per-command network round-trip latency
+- [ ] It executes the commands in parallel on multiple threads
+- [ ] It compresses the commands
+- [ ] It skips the RESP protocol
+> Pipelining attacks latency, not server work — the commands still run one at a time on the single thread. It's the cure for "100 SETs = 100 round trips," turning them into one.
+```
+
 ---
 
 ## 12. Pipelining
@@ -1313,6 +1419,29 @@ def write(key, value):
     primary.set(key, value)
 ```
 
+```quiz
+Q: How does RDB snapshotting avoid pausing the server, and what's the gotcha?
+- [x] Redis fork()s a child that writes the snapshot via copy-on-write while the parent serves traffic — but on a write-heavy large dataset the parent dirties many pages, spiking memory and slowing the fork as page tables grow
+- [ ] It pauses all writes for the duration of the save
+- [ ] It streams the dataset to disk on the main thread
+- [ ] It uses a background thread that shares memory locklessly
+> COW lets the snapshot reflect a consistent moment without stopping. The cost is memory pressure under heavy writes — the same fork+COW trick (and tax) that Redis's BGSAVE shares with PostgreSQL's autovacuum-style forks.
+
+Q: What does RDB's "snapshot" nature mean for data loss versus AOF?
+- [x] A crash between snapshots loses every write since the last one (possibly minutes); AOF logs each command, so everysec fsync caps loss at ~1 second
+- [ ] RDB loses nothing; AOF loses everything on crash
+- [ ] Both lose the same amount of data
+- [ ] AOF cannot recover after a crash
+> RDB is great for compact backups and fast restarts but is a point-in-time dump. The production standard runs both: AOF everysec for the data-loss floor, RDB for backups and quick restart.
+
+Q: Redis replication is asynchronous by default. What's the consequence for consistency?
+- [x] Writes return before replicas confirm, so a replica can lag and a primary failure can lose unreplicated writes — read-your-writes requires reading from the primary (or using WAIT)
+- [ ] Replicas are always perfectly in sync
+- [ ] Reads from replicas are strongly consistent
+- [ ] Writes block until all replicas ack
+> Async replication trades durability for latency, exactly as the Distributed Systems guide describes. WAIT N timeout gives on-demand synchronous confirmation for critical writes.
+```
+
 ---
 
 ## 15. Redis Sentinel
@@ -1321,15 +1450,20 @@ Reference: [Sentinel](https://redis.io/docs/latest/operate/oss_and_stack/managem
 
 Sentinel provides automatic failover — if the primary goes down, Sentinel promotes a replica and reconfigures the other replicas.
 
-```
-┌──────────┐  ┌──────────┐  ┌──────────┐
-│Sentinel 1│  │Sentinel 2│  │Sentinel 3│    (monitor + vote)
-└────┬─────┘  └────┬─────┘  └────┬─────┘
-     │             │             │
-     ▼             ▼             ▼
-┌──────────┐  ┌──────────┐  ┌──────────┐
-│ Primary  │→ │Replica 1 │  │Replica 2 │    (data nodes)
-└──────────┘  └──────────┘  └──────────┘
+```mermaid
+graph TB
+  subgraph Sentinels["Sentinels — monitor + vote (odd number)"]
+    S1[Sentinel 1]
+    S2[Sentinel 2]
+    S3[Sentinel 3]
+  end
+  subgraph Data["Data nodes"]
+    P[Primary] -->|replicates| R1[Replica 1]
+    P -->|replicates| R2[Replica 2]
+  end
+  S1 -.monitors.-> P
+  S2 -.monitors.-> P
+  S3 -.monitors.-> P
 ```
 
 ### How Failover Works
@@ -1340,6 +1474,23 @@ Sentinel provides automatic failover — if the primary goes down, Sentinel prom
 4. The selected replica is promoted to primary (`REPLICAOF NO ONE`)
 5. Other replicas are reconfigured to replicate from the new primary
 6. Clients are notified of the new primary's address
+
+```mermaid
+sequenceDiagram
+  participant S as Sentinels (quorum)
+  participant P as Primary
+  participant R as Best replica
+  participant C as Client
+  loop continuous
+    S->>P: PING
+  end
+  Note over S: no reply, quorum agrees → ODOWN
+  S->>S: elect leader Sentinel, pick best replica
+  S->>R: promote (REPLICAOF NO ONE)
+  S->>P: on return, reconfigure as replica
+  C->>S: who is the primary now?
+  S-->>C: new primary = R
+```
 
 ### Client Configuration
 
@@ -1435,6 +1586,29 @@ redis-cli --cluster rebalance existing-node:6379
 
 **Use Sentinel** when your dataset fits on a single machine and you need automatic failover.
 **Use Cluster** when you need more capacity than one machine can provide.
+
+```quiz
+Q: Why does Redis Cluster map keys to 16,384 hash slots instead of directly to nodes?
+- [x] The key→slot mapping is fixed arithmetic (CRC16 mod 16384); nodes own slot *ranges*, so resharding moves slots — only the keys in moved slots relocate, avoiding the rehash-everything catastrophe
+- [ ] Slots make lookups O(1) instead of O(log N)
+- [ ] 16,384 is the maximum number of keys per node
+- [ ] It enables multi-key commands across nodes
+> The indirection is the whole trick: adding a 4th node to 3 migrates ~a quarter of the slots and leaves the rest untouched. 16,384 is small enough to gossip as a bitmap, large enough to spread across hundreds of nodes.
+
+Q: MGET across two keys fails in Cluster with a CROSSSLOT error. Why, and what's the fix?
+- [x] Multi-key commands require all keys in one slot (a single node must execute atomically); wrap a shared portion in {braces} so they hash to the same slot — {user:1001}:name and {user:1001}:email co-locate
+- [ ] The keys need to be on the same physical disk
+- [ ] MGET isn't supported in Cluster at all
+- [ ] Run ANALYZE to rebalance the slots
+> Hash tags force data locality you must plan up front: keys touched together must be co-located, or the cluster won't let you touch them together. Horizontal scaling pushes locality into your key design.
+
+Q: When do you choose Cluster over Sentinel?
+- [x] When you need more capacity than one machine's RAM (or write scaling across multiple primaries); Sentinel gives HA/failover but keeps all data on one primary
+- [ ] Always — Cluster supersedes Sentinel
+- [ ] When you need multi-key operations to always work
+- [ ] When the dataset fits comfortably on one node
+> Sentinel is HA for a single-node dataset; Cluster is HA plus horizontal sharding. Cluster costs you the multi-key constraint and more operational complexity, so use it when capacity genuinely demands it.
+```
 
 ---
 

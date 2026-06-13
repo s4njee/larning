@@ -326,6 +326,15 @@ function watchEffect(fn) {
 }
 ```
 
+```mermaid
+graph LR
+  E["effect runs<br/>(e.g. a component's render fn)"] -->|reads state| GET["get trap / ref .value getter"]
+  GET -->|track| DEP[("dependency map<br/>(target, key) → subscribers")]
+  MUT["state mutated"] -->|set trap / .value setter| TRIG["trigger"]
+  TRIG -->|look up subscribers| DEP
+  TRIG -->|re-run| E
+```
+
 Three properties of this design are worth dwelling on, because they explain Vue's ergonomics:
 
 - **Dependencies are discovered by running, not declared.** There is no dependency array to maintain and therefore no stale-dependency bug. If your effect reads `a.value` this run, it depends on `a` — period.
@@ -375,6 +384,29 @@ Both create reactive state; the API surface differs:
 `reactive` reads more cleanly — no `.value` — and is tempting for grouped state like form models. But it has three sharp edges that `ref` doesn't: it can't hold primitives; it can't be reassigned (replacing a fetched object wholesale, a constant need in real apps, silently breaks every existing subscription); and it invites destructuring, which silently breaks reactivity. `ref`'s one cost is `.value`, which is visible, mechanical, and — per the model above — *informative*.
 
 The community and the official docs have landed on the same default: **use `ref` for everything; reach for `reactive` only for a cohesive group of properties you will always access through the object and never replace** (a form model you mutate field-by-field is the classic legitimate case). Consistency matters more than the choice: a codebase that mixes both styles per-variable makes every reader re-derive which access pattern applies.
+
+```quiz
+Q: Why does a `ref` require `.value` in script while `reactive` objects don't?
+- [ ] `.value` is legacy syntax Vue keeps for compatibility
+- [x] A Proxy can only wrap an object, so primitives can't be observed directly; `ref` boxes the value in a container whose `.value` getter/setter is the interception point for tracking
+- [ ] `.value` makes refs faster
+- [ ] reactive is deprecated
+> JavaScript offers no way to intercept reads/writes of a standalone primitive, so Vue can't track `let count = 0; count = 1`. A `ref` puts the value in a small object whose `.value` property has a getter (tracks) and setter (triggers) — `.value` is literally the door reactivity walks through. `reactive` works directly because a Proxy can wrap an object's property accesses; primitives have no such handle.
+
+Q: `const { count } = reactive({ count: 0 })` then mutating `state.count` doesn't update `count`. Why?
+- [ ] Destructuring is forbidden in Vue
+- [x] Destructuring reads the property once and copies the current *value* into a plain local binding with no link to the proxy, so future reads bypass the get trap and nothing subscribes
+- [ ] reactive only tracks the first property
+- [ ] count needs to be a computed
+> Reactivity lives in object property access — the get/set traps. Destructuring is just "read `state.count` once, copy the number into a new variable," and that local number has no connection to the proxy, so no effect ever tracks it. The fix is `toRefs(state)`, which gives each property as a ref; copying a ref copies the trackable container, not the value, so destructuring stays reactive.
+
+Q: An effect contains `if (show.value) text.value else 'hidden'`. While `show` is false, mutating `text.value` triggers nothing. Why is that correct?
+- [ ] It's a bug in dependency tracking
+- [x] Dependencies are re-collected each run by what's actually *read*; with `show` false the effect never reads `text`, so it isn't subscribed to it — no point re-running for a value it isn't displaying
+- [ ] text needs to be in a dependency array
+- [ ] Vue caches the branch result
+> Vue discovers dependencies by running the effect and recording every reactive read, re-collected each run. With `show` false, `text.value` is never read, so the effect doesn't subscribe to `text` and changing it does nothing. This per-run, per-property tracking is why there's no dependency array to maintain (no stale-deps bug) and why Vue skips re-renders React would need manual memoization to avoid.
+```
 
 Round out the toolbox with the escape hatches, each comprehensible from the model: `shallowRef`/`shallowReactive` track only the top level (use for large data structures or class instances where deep proxying is wasted cost — pair `shallowRef` with `triggerRef` to notify manually after deep mutation); `readonly()` wraps a proxy whose set trap warns instead of triggering (expose state without granting mutation); `markRaw()` brands an object "never proxy this" (essential for third-party instances — a Chart.js chart or a Map from a mapping library will misbehave if its internal identity checks meet a proxy wrapper); and `toRaw()` recovers the original target from a proxy at interop boundaries.
 
@@ -633,6 +665,29 @@ Props pass *data*; slots pass *markup*. A component with a `<slot/>` renders wha
 
 Named slots (`#header` is shorthand for `v-slot:header`) let a component own *layout* while the parent owns *content* — the `$slots.header` check makes the wrapper element conditional on the parent actually providing content, a small touch that separates polished components from rigid ones.
 
+```quiz
+Q: A child component mutates one of its props directly. Why is this a design smell, not just a style nit?
+- [ ] Props are too slow to mutate
+- [x] Props are one-way and read-only — the child would fight the parent, and the next parent re-render stomps the change; to alter the value the child must emit an event asking the parent
+- [ ] Mutating props deletes them
+- [ ] Vue forbids props entirely
+> Data flows down through props and notifications flow up through events. A child writing to a prop breaks that direction: the parent owns the value, so its next render overwrites the child's mutation, producing confusing bugs. When a child needs to *derive* from a prop, use a `computed`; when it needs to *change* it, emit an event. Vue warns in dev precisely because this violates the contract.
+
+Q: `defineModel()` returns a ref that feels writable. What actually happens when you assign to it?
+- [ ] It mutates the parent's variable directly
+- [x] It desugars to a `modelValue` prop plus an `update:modelValue` emit, so writing emits to the parent and one-way data flow is preserved — the parent stays the owner
+- [ ] It creates a local copy disconnected from the parent
+- [ ] It throws unless the parent is reactive
+> `v-model` on a component is sugar for a prop/event pair, and `defineModel` collapses that into a single ref. Assigning to the ref doesn't reach into parent state; under the hood it emits `update:modelValue` and the parent updates its own binding. So two-way *convenience* is preserved without breaking the props-down/events-up rule — useful for inputs/toggles the parent owns, and `defineModel('title')` pairs with `v-model:title` for multiple bindings.
+
+Q: Slot content the parent writes can see the parent's state but not the child's by default. What mechanism lets the child expose its data to that markup?
+- [ ] provide/inject
+- [x] Scoped slots — the child passes data out through the slot (e.g. `<slot :item="item" />`) and the parent receives it as slot props, so the child owns logic/iteration while the parent owns each row's appearance
+- [ ] Emitting an event with the data
+- [ ] A computed prop
+> Slot content compiles in the *parent's* scope, so it can't see the child's internal state directly. Scoped slots invert that: the child binds data onto the `<slot>`, and the parent destructures it in the slot template. This is the renderless/headless pattern — a list component owns fetching and iteration while letting the parent decide what each item looks like — combining child logic with parent presentation.
+```
+
 The crucial scoping rule: slot content is compiled in the **parent's** scope. The markup the parent writes can see the parent's state, not the child's. Which immediately raises the question scoped slots answer: what if the child has data the parent's markup *needs* — say, a list component that owns fetching and iteration, while the parent decides what each row looks like? The child passes data *out through the slot*, and the parent receives it as slot props:
 
 ```vue
@@ -816,6 +871,29 @@ The rules that keep composables honest are few: call them at the top level of se
 
 Finally, the design question Part 6 deferred: logic reuse via composable or via renderless component? The modern answer leans strongly composable — it imposes no component boundary, returns plain reactive values you can combine freely, and is cheaper (no extra instance). Renderless components earn their keep when the reused thing is intrinsically tied to *template structure* — it must wrap children, manage slots, or place itself in the tree (e.g., a `<DropZone>` that needs to be an element with listeners and render different slot content per drag state). Rule of thumb: state and behavior → composable; behavior that owns markup structure → renderless component.
 
+```quiz
+Q: How does a composable differ from a React hook regarding call order?
+- [ ] Composables must also follow rules-of-hooks call order
+- [x] A composable runs *once* per component during setup, so there's no "every render" — no rules about consistent call order across re-renders to worry about
+- [ ] Composables can be called conditionally anywhere
+- [ ] Composables run on every render like hooks
+> Because setup runs once and reactivity tracks dependencies by execution, a composable is just function calls made once during setup — there's no re-render loop re-invoking it, so React's call-order rules don't apply. The one rule that remains: call composables at the top level of setup (or another composable), never inside an `await`/callback/condition, because lifecycle hooks register against the currently-initializing instance.
+
+Q: Why does a composable return an object of *refs* (with `readonly` where appropriate) rather than a `reactive()` object?
+- [ ] reactive is slower
+- [x] Consumers destructure the return value, and refs survive destructuring (the ref is the container) while a reactive object would lose reactivity when destructured — readonly views also prevent consumers mutating state they shouldn't
+- [ ] reactive can't hold functions
+- [ ] It's purely stylistic
+> Returning refs lets callers write `const { data, loading } = useFetch(...)` and keep reactivity, since copying a ref copies the trackable box. A `reactive()` return would break the moment a consumer destructured it, exactly the Part 4 hazard. Wrapping state consumers must not mutate in `readonly()` keeps the data-flow direction legible — they read, the composable owns writes.
+
+Q: A composable like `useEventListener` takes `MaybeRefOrGetter` and calls `toValue(target)` *inside* a reactive effect. What does that buy?
+- [ ] It makes the composable synchronous
+- [x] It makes the composable re-reactive to its arguments — pass a ref or getter and the effect re-runs when it changes (e.g. re-attaching the listener when a template ref's element appears)
+- [ ] It avoids needing cleanup
+- [ ] It disables tracking
+> Accepting a raw value, ref, or getter and unwrapping with `toValue` inside a `watchEffect` means a reactive input is read each run, so the composable responds to its arguments changing — a template ref passed as `target` causes the listener to re-attach when the element mounts or swaps. Paired with `onCleanup` removing the old listener, no consumer can leak. These disciplines (flexible inputs, built-in cleanup, composability) generalize to every composable.
+```
+
 ---
 
 ## Part 9 — Vue Router
@@ -934,6 +1012,29 @@ onBeforeRouteLeave(() => {
 
 Guards can be async (return a Promise) — the router waits, which enables fetch-before-navigate flows. The trade-off versus fetch-in-component is responsiveness semantics: blocking in a guard means the old page stays visible until data is ready (no spinner, but a "dead" click if slow); fetching in the component shows the new page instantly with a loading state. Modern UX mostly prefers the latter; reserve guard-blocking for cheap checks like permissions.
 
+```quiz
+Q: Navigating from `/users/1` to `/users/2` doesn't re-run `onMounted`, so an onMounted fetch goes stale. Why, and what's the idiomatic fix?
+- [ ] The router caches the page HTML
+- [x] The same matched route with different params *reuses the component instance* (no remount); the fix is `watch(() => route.params.id, load, { immediate: true })`, which covers both first load and every param change
+- [ ] You must call router.go(0) to force a reload
+- [ ] onMounted is broken in Vue Router
+> Same route, different params means Vue reuses the instance for efficiency — no unmount/remount, no second `onMounted`. Since `route` is reactive state, the idiomatic fix is a watcher on the param with `immediate: true`: one watcher handles the initial load and all subsequent param changes, strictly better than a mount-time fetch that never re-runs.
+
+Q: What are the three outcomes a modern navigation guard expresses, and how?
+- [ ] next(), next(false), next(route) callbacks
+- [x] By return value — return a location to redirect, `false` to cancel, nothing (undefined) to allow
+- [ ] Throwing, returning, or logging
+- [ ] Only allow or cancel; redirects need a plugin
+> The modern guard API is return-value-based: returning a route location redirects (the canonical auth pattern returns the login route with `query.redirect` carrying the intended destination), returning `false` cancels, returning nothing allows. The older `next()` callback style still works but shouldn't be written anew. Guards come in three scopes: global `beforeEach` for app policy, per-route `beforeEnter`, and in-component `onBeforeRouteLeave` for cases like unsaved-changes protection.
+
+Q: When should data fetching block in an async guard versus happen in the component?
+- [ ] Always block in the guard — it avoids spinners
+- [x] Guard-blocking keeps the old page visible until data is ready (a "dead" click if slow); fetch-in-component shows the new page instantly with a loading state — modern UX mostly prefers the latter, reserving guards for cheap checks like permissions
+- [ ] Always fetch in the component — guards can't be async
+- [ ] Neither; fetch globally at app start
+> Both work, but the semantics differ: an async guard makes the router wait, so a slow fetch leaves the user staring at the old page wondering if their click registered. Component-side fetching navigates immediately and shows a skeleton/spinner. The guide's recommendation: prefer in-component fetching for data, and use guard-blocking only for fast checks (auth/permissions) where the wait is imperceptible.
+```
+
 ---
 
 ## Part 10 — State Management with Pinia
@@ -996,6 +1097,29 @@ const { add, checkout } = cart               // actions: plain destructure is fi
 The trap is Part 4 verbatim: a store instance is a `reactive()` object, so `const { total } = cart` copies a dead snapshot. `storeToRefs(cart)` is `toRefs` that skips functions — use it for state and getters; actions are plain functions and destructure freely. This one line is behind a remarkable share of "my component doesn't update" questions in Vue forums.
 
 Conventions that keep stores healthy at scale: **one store per domain** (`useAuthStore`, `useCartStore`), not one mega-store; stores may call other stores (call `useOtherStore()` inside the action that needs it), but keep the dependency graph acyclic; and keep stores **thin** — state plus the transitions on that state. Complex orchestration ("submit order: validate, charge, clear cart, redirect, toast") reads better as a composable that *uses* several stores than as a store action that knows about routing and toasts.
+
+```quiz
+Q: `const { total } = cart` (a Pinia store) gives a value that never updates, but `const { total } = storeToRefs(cart)` works. Why?
+- [ ] storeToRefs is faster
+- [x] A store instance is a `reactive()` object, so plain destructuring copies a dead snapshot; `storeToRefs` is `toRefs` (skipping functions) so state/getters stay linked — actions, being functions, destructure freely
+- [ ] total is a private field
+- [ ] You must always use storeToRefs for everything
+> The trap is Part 4 verbatim: destructuring a reactive object severs the property access and copies the current value. `storeToRefs(cart)` converts each state/getter into a ref that delegates to the store, preserving reactivity, while leaving actions out (they're plain functions you can destructure directly). This one line resolves a large share of "my component doesn't update" Pinia questions.
+
+Q: What does a Pinia setup-syntax store add over a DIY module-scoped ref in a composable?
+- [ ] Faster reactivity
+- [x] Single per-app (and per-request on SSR) instance, Vue Devtools integration with time-travel, plugin targets like persistence, and SSR safety — the DIY pattern is not SSR-safe
+- [ ] It uses a different reactivity engine
+- [ ] Nothing — they're identical
+> A store is just a composable whose state is app-scoped, so the machinery (`ref`, `computed`, functions) is familiar. `defineStore` adds the tooling: one instance per app, live Devtools inspection and time-travel, plugin hooks (one-line localStorage persistence), and per-request SSR state that serializes to the client. A module-level ref shared across requests on the server would leak one user's state into another's — which is why DIY globals aren't SSR-safe.
+
+Q: The guide calls lifting state to a global store "to be safe" the most common Vue architecture mistake. Why?
+- [ ] Global stores are slow
+- [x] Most state should stay local; needlessly globalizing it buys action-at-a-distance for nothing — Pinia earns its place only for genuinely cross-cutting state two distant routes both touch
+- [ ] Pinia can't hold local state
+- [ ] Global state breaks reactivity
+> Since reactivity works identically in a component, a provide/inject subtree, or a store, "where should this state live?" is the real question — and the cheapest correct answer is usually local. Hoisting everything global makes state mutable from anywhere, harder to reason about, and coupled across the app for no benefit. Reserve the store (session, cart, notifications) for state that's truly shared across distant parts; keep the rest local.
+```
 
 ### The Store Instance API and Plugins
 

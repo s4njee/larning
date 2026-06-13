@@ -54,6 +54,18 @@ Every type in TypeScript is a **set of possible values**. This single idea expla
 
 This is why `never` is the bottom type (assignable to everything — the empty set is a subset of every set) and `unknown` is the top type (everything is assignable to it).
 
+```mermaid
+graph BT
+  NV["never — bottom (no values)"] --> S[string]
+  NV --> N[number]
+  NV --> B[boolean]
+  S --> U["unknown — top (every value)"]
+  N --> U
+  B --> U
+```
+
+Arrows read "is assignable to": `never` flows up into every type, every type flows up into `unknown`. (`any` sits outside this lattice — it's assignable *both* ways because it switches type-checking off.)
+
 ### Structural Typing, Not Nominal
 
 TypeScript doesn't care about what a type is *called* — it cares about what **shape** it has. If two types have the same structure, they're compatible:
@@ -69,6 +81,29 @@ const c: Coordinate = p;  // fine — same shape
 This is fundamentally different from Java/C# (nominal typing) where `Point` and `Coordinate` would be unrelated types.
 
 Reference: [Type Compatibility](https://www.typescriptlang.org/docs/handbook/type-compatibility.html)
+
+```quiz
+Q: If types are sets of values, why is `never` assignable to every other type?
+- [ ] Because `never` means "any value"
+- [x] `never` is the empty set, and the empty set is a subset of every set, so it satisfies any "is a subset of" assignability check
+- [ ] Because the compiler special-cases it
+- [ ] Because `never` is the same as `any`
+> Assignability is "is a subset of," and the empty set is trivially a subset of everything — so a value of type `never` (of which there are none) can stand in anywhere. That makes `never` the bottom type. Symmetrically, `unknown` is the top type because every value is a member of it, so everything is assignable *to* `unknown`.
+
+Q: Two interfaces `Point` and `Coordinate` both have `{ x: number; y: number }`. Why can you assign one to the other in TypeScript but not in Java?
+- [ ] TypeScript ignores types at runtime
+- [x] TypeScript is structurally typed — compatibility is by shape, not by name — whereas Java is nominal and treats differently-named types as unrelated
+- [ ] The interfaces were declared in the same file
+- [ ] `interface` always merges identical shapes
+> TypeScript cares about the *shape* a type has, not what it's called, so any two types with the same structure are interchangeable. Nominal systems like Java/C# treat `Point` and `Coordinate` as distinct regardless of identical fields. This structural model is why duck-typed JavaScript objects fit TypeScript naturally — and why you sometimes need branded types (Section 14) to *force* nominal distinctions.
+
+Q: Given the set model, what is the type `A & B` (intersection)?
+- [ ] The values in A or B
+- [x] The values that are in *both* A and B — set intersection
+- [ ] The values in A but not B
+- [ ] Always `never`
+> `A | B` is set union (in A or in B) and `A & B` is set intersection (in both). For object types this means `A & B` has all the properties of both, since a value must satisfy both shapes. It's only `never` when the constraints are genuinely incompatible (e.g. `string & number`), because no value lives in both sets.
+```
 
 ---
 
@@ -378,6 +413,29 @@ function area(shape: Shape): number {
 // branch will fail to compile because shape won't be assignable to never
 ```
 
+```quiz
+Q: What does the return type `pet is Fish` (a type predicate) tell the compiler?
+- [ ] That `pet` is always a Fish
+- [x] That when the function returns `true`, the argument should be narrowed to `Fish` in the caller's scope
+- [ ] That Fish and Bird are the same type
+- [ ] That the function throws if pet isn't a Fish
+> A user-defined type guard's predicate connects the boolean result to a narrowing: TypeScript treats a `true` return as evidence the argument is `Fish` (and the `else` branch as `Bird`). Without the predicate, the function would just return `boolean` and no narrowing would occur. It's how you extend control-flow analysis past the built-in `typeof`/`instanceof`/`in` checks.
+
+Q: In the exhaustiveness pattern, why does assigning `shape` to `const _exhaustive: never` catch a forgotten case?
+- [ ] `never` accepts any value, so it always compiles
+- [x] After all known cases are handled, a fully-handled union narrows to `never`; adding a new variant leaves a non-`never` type that won't assign to `never`, failing compilation
+- [ ] It throws at runtime on unknown shapes
+- [ ] `never` is an alias for `default`
+> In the `default` branch, if every variant has been handled, `shape` has narrowed to `never` and the assignment succeeds. Add a new `Shape` variant and forget its `case`, and `shape` is now that variant — not assignable to `never` — so the compiler flags it. This turns "did I handle every case?" into a compile-time guarantee rather than a runtime surprise.
+
+Q: How does an `asserts val is string` function differ from a `val is string` type guard?
+- [ ] They're identical
+- [x] The assertion function narrows by *throwing* if the condition fails (control continues only when true), rather than returning a boolean you branch on
+- [ ] `asserts` works only on numbers
+- [ ] `asserts` runs at compile time only
+> A predicate guard returns a boolean you test in an `if`. An `asserts val is string` function instead narrows for the *rest of the scope* on the assumption it either threw or the condition held — so after calling it, `val` is `string` with no branch needed. It models runtime invariant checks (validate-or-throw) at the type level.
+```
+
 ---
 
 ## 6. Functions: Overloads, Callbacks & `this`
@@ -594,6 +652,29 @@ const user = { id: 1, name: "Alice", email: "a@b.com" };
 const subset = pick(user, ["name", "email"]);
 // type: Pick<{ id: number; name: string; email: string }, "name" | "email">
 // = { name: string; email: string }
+```
+
+```quiz
+Q: In `getProperty<T, K extends keyof T>(obj: T, key: K): T[K]`, what does constraining `K extends keyof T` buy you?
+- [ ] It makes the function faster
+- [x] It guarantees `key` is a real property of `obj`, and the return type `T[K]` is the precise type of that property — so `getProperty(user, "age")` is a compile error
+- [ ] It forces all keys to be strings
+- [ ] It copies the object
+> `keyof T` is the union of `T`'s property names, so `K extends keyof T` restricts `key` to valid keys and rejects `"age"`. The indexed-access return `T[K]` then yields exactly that property's type (`string` for `"name"`), preserving precision through the lookup. This is the canonical type-safe property-access pattern generics enable.
+
+Q: Why does `const a = identity("hello")` infer `T` as the literal `"hello"` rather than requiring you to write `identity<string>`?
+- [ ] Because identity is a built-in
+- [x] TypeScript infers type arguments from the call's actual arguments, so explicit type arguments are usually unnecessary
+- [ ] Because the function has no constraints
+- [ ] Because string literals can't be widened
+> Generic type-parameter inference reads the argument types at the call site, so `T` is filled in automatically — explicit `<string>` is rarely needed. This is what lets generic code stay ergonomic: you write `map(["a"], s => s.length)` and both `T` and `U` are inferred. You only supply explicit type arguments when inference can't determine them.
+
+Q: What is the purpose of a generic *constraint* like `T extends { length: number }`?
+- [ ] To default T to a length-bearing type
+- [x] To restrict which types T may be, so the body can safely use members the constraint guarantees (here, `.length`)
+- [ ] To make T optional
+- [ ] To convert T into a number
+> Without a constraint, a generic `T` could be anything, so the body can't assume any properties. `T extends { length: number }` narrows the allowed types to those with a numeric `length`, letting `item.length` type-check while still accepting strings, arrays, or anything else shaped that way — and rejecting `number`. Constraints trade some generality for the ability to operate on the type.
 ```
 
 ---
@@ -940,6 +1021,29 @@ type A = StringHead<["hello", 42]>;  // "hello"
 type B = StringHead<[42, "hello"]>;  // never
 ```
 
+```quiz
+Q: `type ToArray<T> = T extends unknown ? T[] : never`. Why does `ToArray<string | number>` give `string[] | number[]` rather than `(string | number)[]`?
+- [ ] Because arrays can't hold unions
+- [x] When the checked type is a bare type parameter, the conditional *distributes* over the union, applying separately to each member
+- [ ] Because `unknown` excludes unions
+- [ ] It's a compiler bug
+> A conditional type whose checked type is a bare `T` distributes across unions: `ToArray<string | number>` becomes `ToArray<string> | ToArray<number>`. To suppress distribution you wrap both sides in tuples (`[T] extends [unknown]`), yielding `(string | number)[]`. This distribution is exactly why built-in `Exclude<T, U> = T extends U ? never : T` filters union members one at a time.
+
+Q: What does the `infer` keyword do in `type ReturnOf<T> = T extends (...args: any[]) => infer R ? R : never`?
+- [ ] It asserts T is a function
+- [x] It pattern-matches the type and binds a new type variable `R` to the matched part (here, the function's return type) for use in the true branch
+- [ ] It runs the function to get its return value
+- [ ] It defaults R to `any`
+> `infer R` declares a placeholder inside the `extends` pattern that TypeScript unifies with whatever occupies that position — the return type, an array element, a Promise's inner type, a tuple's head. If the pattern matches, `R` is available in the true branch; otherwise the false branch runs. It's structural pattern-matching at the type level, and it's how utilities like `ReturnType` and `Awaited` are built.
+
+Q: Why does `Exclude<"a" | "b" | "c", "a">` evaluate to `"b" | "c"`?
+- [ ] It removes the first element
+- [x] Distribution applies `T extends "a" ? never : T` to each member; `"a"` becomes `never`, the others stay, and `never` vanishes from the union
+- [ ] It alphabetically sorts and drops the first
+- [ ] It only works on two-member unions
+> `Exclude<T, U> = T extends U ? never : T` distributes over the union, testing each member against `"a"`: `"a"` maps to `never` while `"b"` and `"c"` map to themselves. Since `never` is the empty set, it disappears when unioned, leaving `"b" | "c"`. The whole behavior rests on distributive conditionals plus `never`'s identity in unions.
+```
+
 ---
 
 ## 13. Enums vs Union Literals
@@ -1074,6 +1178,29 @@ function parseEmail(input: string): Email {
 function sendWelcome(email: Email) {
   // guaranteed to be validated — can't pass a raw string
 }
+```
+
+```quiz
+Q: `type UserId = string; type OrderId = string`. Why does `getUser(orderId)` compile even though they're "different" types?
+- [ ] TypeScript ignores type aliases
+- [x] Both are structurally just `string`, and a plain alias adds no distinguishing shape, so they're interchangeable
+- [ ] `getUser` accepts any argument
+- [ ] Aliases are erased so all become `any`
+> A type alias is only a name for an existing type; `UserId` and `OrderId` are both literally `string`, and structural typing compares shape, not name. So nothing stops you passing one where the other is expected — a real source of mixed-up-ID bugs. Branding adds a phantom property to force a nominal distinction the structural system would otherwise collapse.
+
+Q: In `type UserId = string & { readonly __brand: "UserId" }`, what is the `__brand` property and does it exist at runtime?
+- [ ] A real string field set to "UserId"
+- [x] A phantom/compile-only property that makes the type nominally distinct; it doesn't exist at runtime, and the `as` cast acts as the constructor
+- [ ] A method that validates the value
+- [ ] A field that must be assigned manually
+> The intersection with `{ __brand: "UserId" }` gives the type a unique shape no plain `string` has, so `OrderId` (branded differently) isn't assignable to it. The property is never actually created — it's a type-level marker — so the value remains a normal string at runtime, and the `as UserId` cast in the factory function is what "constructs" the branded value.
+
+Q: How do validated branded types (e.g. `parseEmail(input): Email`) make a function like `sendWelcome(email: Email)` safer?
+- [ ] They check the email at runtime inside sendWelcome
+- [x] Because only `parseEmail` can mint an `Email` (after validating), the type signature guarantees any `Email` argument was already validated — a raw string won't compile
+- [ ] They convert the string to lowercase
+- [ ] They make sendWelcome accept any string
+> By making the brand obtainable only through `parseEmail` (which validates and casts), the `Email` type becomes a proof-of-validation token. `sendWelcome(email: Email)` then can't be called with an unvalidated raw string — the compiler rejects it — so the validation invariant is enforced at the boundary once, not re-checked everywhere. It encodes "this string passed validation" into the type.
 ```
 
 ---
@@ -1216,6 +1343,29 @@ string, number, boolean, object, ...
 literal types ("hello", 42, true)
    ↑
 never            ← bottom type (assignable to everything)
+```
+
+```quiz
+Q: Both `any` and `unknown` accept any value. What's the critical difference when you try to *use* the value?
+- [ ] `any` is faster
+- [x] `unknown` is not assignable to anything (and you can't call methods on it) until you narrow it; `any` disables all checking in both directions
+- [ ] `unknown` only holds objects
+- [ ] `any` requires narrowing, unknown doesn't
+> Everything is assignable *to* both, but `any` is also assignable *from* — it bypasses checking entirely and propagates, silently disabling type safety across call chains. `unknown` blocks all use until you prove the type with a guard, making it the safe choice for API responses, parsed JSON, and user input. Reach for `unknown` and narrow; avoid `any` outside migration and untyped-library escape hatches.
+
+Q: Why is a `void` return type not the same as an `undefined` return type, especially for callbacks?
+- [ ] `void` means the function throws
+- [x] A `void`-returning callback is allowed to return *any* value (it's ignored), so functions returning something still satisfy it — `undefined` would reject them
+- [ ] They're identical
+- [ ] `void` can only annotate variables
+> `void` signals "the return value is not meant to be used," so a `() => void` callback accepts an implementation that happens to return a value (like `arr.push(x)` returning a number) — the value is simply discarded. An explicit `() => undefined` would reject that, since `number` isn't `undefined`. This is precisely why `Array.forEach` works with callbacks that return things.
+
+Q: Which statement correctly places `never` and `unknown` in the type hierarchy?
+- [ ] `never` is the top type; `unknown` is the bottom
+- [x] `unknown` is the top type (everything assignable to it); `never` is the bottom type (assignable to everything)
+- [ ] Both are top types
+- [ ] `any` sits below `never`
+> `unknown` sits at the top — every value belongs to it, so anything can be assigned to `unknown`. `never` sits at the bottom — it has no values, so it's assignable to every type while nothing (except `never`) is assignable to it. This is the set model again: top = the universal set, bottom = the empty set.
 ```
 
 ---

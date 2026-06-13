@@ -102,6 +102,36 @@ If you do nothing else, install these on every non-trivial production database:
 
 All five are either contrib or supported on every major managed platform. The first three are the non-negotiables.
 
+```quiz
+Q: Why is "just install extension X" a platform question, not a SQL question, on a managed service?
+- [x] The server-side files (control file, SQL scripts, shared library) must already exist on the host before CREATE EXTENSION works — and which files are present is what the provider controls
+- [ ] Managed services disable CREATE EXTENSION entirely
+- [ ] Extensions require a separate license per database
+- [ ] The SQL syntax differs between providers
+> CREATE EXTENSION runs an already-installed script in your database; it can't conjure the files. That's why the RDS/Cloud SQL/Azure supported-extensions list is the hard constraint to check before designing around any extension.
+
+Q: What makes an extension require a server restart to install?
+- [x] It hooks deep into the server (planner/executor hooks, background workers, shared memory) and must be in shared_preload_libraries, registering hooks in _PG_init() before backends fork
+- [ ] All third-party extensions need a restart
+- [ ] It writes to the WAL during installation
+- [ ] Restarts are only needed for untrusted extensions
+> pg_stat_statements, pgaudit, pg_cron, citus, timescaledb all preload. The hooks and shared-memory requests run before backends exist — so you owe a maintenance window and a place in the boot sequence, not a live CREATE EXTENSION.
+
+Q: Why can't a non-superuser install plpython3u on a managed service, while pgvector often installs fine?
+- [x] plpython3u is *untrusted* (filesystem/network access) so it needs superuser, which you never truly have on managed services; trusted extensions (since PG13) can be installed with just CREATE on the database
+- [ ] pgvector is a contrib module and plpython3u isn't
+- [ ] plpython3u is deprecated
+- [ ] Managed services ban all procedural languages
+> Trusted-vs-untrusted is the root cause of ~90% of "why can't I install X." Anything touching the filesystem, network, or an untrusted PL requires superuser; providers curate a trusted list and gate the rest.
+
+Q: An extension versions independently of PostgreSQL. What two upgrade paths must you rehearse?
+- [x] ALTER EXTENSION ... UPDATE (runs the migration-script chain) and the server major-version upgrade with the extension installed — pg_upgrade needs compatible extension binaries for the new major to exist, or a lagging extension blocks the whole cluster
+- [ ] Only the server upgrade; extensions auto-migrate
+- [ ] Only ALTER EXTENSION; the server upgrade is unaffected
+- [ ] Neither — extensions are frozen at install time
+> A third-party extension that lags the PostgreSQL release cycle can gate your entire cluster's upgrade — which is exactly why PostGIS and TimescaleDB publish explicit upgrade choreography.
+```
+
 ---
 
 ## 4. Observability & Operations
@@ -192,6 +222,36 @@ ALTER TABLE bookings ADD EXCLUDE USING GIST (room_id WITH =, during WITH &&);
 
 **[`uuid-ossp`](https://www.postgresql.org/docs/current/uuid-ossp.html)** — ⚠️ Caution (mostly obsolete) · *contrib*. Historically the UUID generator; modern Postgres has built-in `gen_random_uuid()` (v4) and **v18 adds native [`uuidv7()`](https://www.postgresql.org/docs/18/functions-uuid.html)** (time-ordered, so B-tree inserts go to the right edge instead of spraying the whole index — the [internals guide](DATABASE_INTERNALS_STUDY_GUIDE.md) Ch. 3 explains why that's a 2× index-size difference). On 13–17 wanting UUIDv7, [`pg_uuidv7`](https://github.com/fboulnois/pg_uuidv7) fills the gap. Prefer built-ins.
 
+```quiz
+Q: In pg_stat_statements, why rank by total time rather than mean time?
+- [x] The 2 ms query called 50M times/day costs more aggregate load than the 4 s report run twice — total time finds the real cost centers
+- [ ] Mean time isn't recorded by the extension
+- [ ] Total time is more accurate per call
+- [ ] Mean excludes buffer reads
+> It normalizes queries (stripping constants) and keeps the top N by configurable max, evicting the rest — and on ORM apps with unparameterized SQL, that eviction churn making numbers unreliable is itself a finding: parameterize.
+
+Q: pg_repack rebuilds a bloated table "online." How, and what's the cost?
+- [x] It builds a shadow copy, captures concurrent changes via a trigger, replays them, then swaps relfilenodes under a brief ACCESS EXCLUSIVE lock — needing ~2× disk and a PK/unique-not-null index, versus VACUUM FULL's lock-for-the-whole-rewrite
+- [ ] It compresses pages in place with no extra disk
+- [ ] It runs entirely lock-free with no exclusive lock at all
+- [ ] It requires taking the database offline
+> The brief final lock can still queue behind long transactions (use --wait-timeout), and the trigger adds write overhead during the rebuild — but it's seconds of lock instead of the entire rewrite duration.
+
+Q: What does hypopg let you do that changes index design on huge tables?
+- [x] Create a hypothetical index (metadata only, no build, no disk, session-visible) and ask the planner whether it *would* use it — turning "build for six hours and hope" into an interactive EXPLAIN loop
+- [ ] Build indexes 10× faster
+- [ ] Automatically drop unused indexes
+- [ ] Compress existing indexes
+> It composes with EXPLAIN and can also hide *existing* indexes (hypopg_hide_index) to test "is this 300 GB index load-bearing?" before you actually drop it.
+
+Q: Why does pg_trgm make `LIKE '%substring%'` indexable when a B-tree can't?
+- [x] It decomposes strings into trigrams and GIN-indexes the *set*, so substring match becomes a containment probe over trigram sets rather than a left-anchored prefix scan
+- [ ] It rewrites LIKE into an equality comparison
+- [ ] It builds a B-tree on reversed strings
+- [ ] It caches every substring of every row
+> B-trees only serve left-anchored prefixes (LIKE 'abc%'). Trigram GIN indexes are large and write-amplifying on hot text, and 1–2 char patterns extract no useful trigrams and fall back to scans — but for typo-tolerant substring search they're the default "search without a search engine."
+```
+
 ---
 
 ## 6. Geospatial: PostGIS & Friends
@@ -263,6 +323,36 @@ Production notes: HNSW builds are heavy — give `maintenance_work_mem` gigabyte
 - **[ParadeDB / pg_search](https://docs.paradedb.com/)** (pgrx/Rust) — **BM25 relevance-ranked full-text search** (the Elasticsearch ranking model) as a Postgres index, built on Tantivy. The honest positioning: native FTS ranks by `ts_rank` (no corpus statistics — no IDF), so relevance quality plateaus; pg_search brings real BM25, faceting, and fuzzy querying — the strongest "retire the Elasticsearch cluster" story, and the natural hybrid-search partner for pgvector (BM25 + vector + reciprocal rank fusion in one SQL statement).
 - **[VectorChord](https://github.com/tensorchord/VectorChord)** — successor to pgvecto.rs; RaBitQ-based quantized indexing aimed at the same large-scale niche. Credible engineering; smaller ecosystem. pgvector remains the safe default until your scale says otherwise.
 - **[pgai](https://github.com/timescale/pgai) / [PostgresML](https://postgresml.org/)** — ⚠️ Caution as architecture: in-database embedding generation and model inference (pgai calls embedding APIs and auto-syncs an embeddings column; PostgresML runs models *in* the server with GPUs). Convenient for prototypes; think hard before coupling your OLTP database's availability to model downloads, GPU drivers, or third-party API latency. Embedding generation usually belongs in the application tier; the *storage and search* belong in Postgres.
+
+```quiz
+Q: PostGIS `geography` vs `geometry` — which is the decision that matters, and what's the classic quiet bug?
+- [x] geography gives correct distances on lat/long with no projection knowledge (slower, fewer functions); geometry is faster/fuller but you must ST_Transform to a local planar SRID — and getting projection wrong fails silently with plausible-looking wrong numbers
+- [ ] geometry is for points, geography for polygons
+- [ ] They're interchangeable aliases
+- [ ] geography requires a separate index type
+> Also index-relevant: ST_DWithin is index-driven; a bare ST_Distance < x is not — write the former. PostGIS is also the extension most likely to gate your next pg_upgrade, so its version choreography belongs in the runbook.
+
+Q: TimescaleDB's headline features tempt you, but you're committed to Amazon RDS. What's the problem?
+- [x] TimescaleDB isn't available on RDS or Aurora at all — and the Apache-2 edition omits compression, continuous aggregates, and most policies (the reasons you wanted it), with the full set under the source-available TSL license
+- [ ] It works on RDS but requires a restart
+- [ ] It's available but caps hypertables at 1 TB
+- [ ] RDS only supports the columnar half
+> The availability deal-breaker should be discovered early. For many time-series workloads the plain-Postgres stack — range partitioning + BRIN + pg_partman + pg_cron — gets ~80% of the value with zero lock-in and universal availability.
+
+Q: An ANN index serves `ORDER BY embedding <=> $1 LIMIT k`. You add a selective WHERE filter and get too few results. Why?
+- [x] The index returns the k nearest *before* the filter applies, so post-filtering leaves fewer than k (or falls back to exact scan) — "filtered vector search" is the area to test hardest; pgvector 0.8+ added iterative scans to mitigate
+- [ ] The WHERE clause disables the index entirely
+- [ ] HNSW doesn't support LIMIT
+- [ ] The filter must be a vector comparison too
+> HNSW vs IVFFlat is the build/recall tradeoff (HNSW: better recall, heavy build; IVFFlat: cheap build, needs representative data, drifts) — but both are approximate by design, and the filter-ordering gotcha is the one every deployment hits.
+
+Q: When does columnar storage (citus/hydra) or postgresql-hll earn adoption over plain Postgres?
+- [x] Columnar when scans are dominated by narrow column subsets over wide tables (5–20× faster aggregates); hll when you repeatedly COUNT(DISTINCT) across dimensions — its sketches union losslessly so per-day rolls up to per-month without re-scanning
+- [ ] Always — row storage is obsolete for analytics
+- [ ] Only when the dataset exceeds 1 PB
+- [ ] Never; partitioning covers every case
+> The plain baseline (partitioning + BRIN + rollup matviews + parallel hash aggregation) handles low-billions reporting fine. Graduate on specific criteria: column-subset scans, repeated distinct-counting, or data already in Parquet (pg_duckdb).
+```
 
 ---
 
@@ -348,6 +438,19 @@ EXPLAIN (VERBOSE) SELECT count(*) FROM ext.orders WHERE region = 'EU';  -- read 
 
 **[Citus](https://docs.citusdata.com/)** — 🧪 Specialist (transformative, but a commitment) · *third-party (Microsoft)*. Turns Postgres into a **distributed, horizontally-sharded** database: a coordinator routes queries to worker nodes holding shards of your tables. The model in four verbs: `create_distributed_table('events', 'tenant_id')` (rows hash-distributed by the **distribution column**), `create_reference_table('plans')` (small tables replicated to every worker so joins stay local), single-tenant queries route to one worker (full SQL, low latency), cross-tenant analytics fan out and parallelize (with SQL restrictions where operations would require cross-worker data movement). Multi-tenant SaaS is the sweet spot precisely because the tenant ID makes every transactional query single-shard.
 
+```mermaid
+graph TD
+  App[Client] -->|SQL| C["Coordinator — routes queries, holds metadata"]
+  C -->|"single-tenant query → one shard"| W1
+  C -->|"cross-tenant analytics → fan out, parallelize"| W2
+  C --> W3
+  subgraph workers["Worker nodes"]
+    W1["Worker 1<br/>events shards + plans (reference)"]
+    W2["Worker 2<br/>events shards + plans (reference)"]
+    W3["Worker 3<br/>events shards + plans (reference)"]
+  end
+```
+
 ```sql
 CREATE EXTENSION citus;
 SELECT create_distributed_table('events', 'tenant_id');
@@ -403,6 +506,36 @@ SELECT jobid, status, return_message FROM cron.job_run_details ORDER BY start_ti
 **[`pglogical`](https://github.com/2ndQuadrant/pglogical)** — 🧪 Specialist · *third-party (EDB)*. The extension that *was* logical replication before PG10, still ahead of core on a shrinking list: conflict handling for multi-master-ish topologies, sequence replication, fine-grained row/column routing on older versions. Its remaining killer app is **major-version upgrades with near-zero downtime** on platforms that support it for that purpose (replicate 13 → 17, cut over). For new architectures, exhaust native logical replication first; the gap closes every release.
 
 **[`pg_failover_slots`](https://github.com/EnterpriseDB/pg_failover_slots)** — 🧪 Specialist · *third-party (EDB)*. Backports "logical slots survive failover" to PG ≤ 16 by syncing slot state to standbys. If you run logical consumers on an HA cluster below 17, this closes the gap where a failover silently kills your CDC pipeline; on 17+, use the native [failover slot support](https://www.postgresql.org/docs/current/logical-replication-failover.html) instead. A textbook example of the extension lifecycle: born to fill a core gap, obsoleted by core absorbing it — the happy ending for an extension.
+
+```quiz
+Q: Why prefer application-side encryption with a KMS over pgcrypto for high-sensitivity data?
+- [x] Encrypting inside the database means keys and plaintext transit the server — they can surface in query strings, log_statement output, and pg_stat_statements; pgcrypto is for when the server must compute on/search the plaintext
+- [ ] pgcrypto uses weak ciphers
+- [ ] KMS is faster than pgcrypto
+- [ ] pgcrypto can't hash passwords
+> pgcrypto does password hashing right (crypt() + gen_salt('bf'), not bare SHA) and is the tool for moderate-sensitivity column encryption — but for the highest sensitivity, keep the database seeing only ciphertext via app-side KMS encryption.
+
+Q: A trigger calls an external API via pgsql-http on every commit. What's the failure mode?
+- [x] The backend doing network I/O holds its snapshot, locks, and connection slot for the call's duration — a slow third-party API becomes database unavailability, pinning the vacuum horizon
+- [ ] The HTTP response is cached incorrectly
+- [ ] It bypasses RLS policies
+- [ ] Nothing — HTTP calls are async by default
+> pg_net's async background-worker design exists precisely to mitigate this, but the architectural default should be LISTEN/NOTIFY or an outbox table consumed by an application worker. In-database HTTP is for genuinely-can't-otherwise cases.
+
+Q: What's the single decision that "decides everything" when adopting Citus?
+- [x] The distribution column — it must appear in unique constraints and most joins; choosing wrong means a re-distribution migration, and single-shard routing (e.g. by tenant_id) is what keeps transactional queries fast
+- [ ] The number of worker nodes
+- [ ] Whether to use reference tables
+- [ ] The PostgreSQL major version
+> Multi-tenant SaaS is the sweet spot because tenant_id makes every transactional query single-shard. Cross-shard transactions use 2PC with its blocking windows, so you design to avoid them — and "we'll shard later" is exactly as painful as re-partitioning always is.
+
+Q: What operational hazard applies to every CDC/logical-replication setup, regardless of tool?
+- [x] An unconsumed replication slot pins WAL forever — disk fills and the server eventually stops; monitor pg_replication_slots.wal_status and set max_slot_wal_keep_size
+- [ ] Logical replication corrupts the primary
+- [ ] Slots automatically expire after 24 hours
+- [ ] CDC requires disabling autovacuum
+> No CDC tool (Debezium, wal2json, hand-rolled) excuses you from watching slot WAL retention. Failover slots (native in 17, backported by pg_failover_slots below) close the related hole where promotion silently kills the pipeline.
+```
 
 ---
 

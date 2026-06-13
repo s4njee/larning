@@ -162,6 +162,43 @@ For database servers and JVM workloads, NUMA misalignment (the process runs on n
 
 If you remember one thing from Part 1: **the scheduler picks the task with the lowest virtual runtime (CFS) or earliest virtual deadline (EEVDF), nice values adjust the weight, and Kubernetes CPU limits work by throttling tasks when they exhaust their CFS bandwidth quota — which is why CPU-limited containers are slow even on idle nodes. Check `cpu.stat` for `nr_throttled`.**
 
+```quiz
+Q: A container with a CPU limit is slow even though its node has plenty of idle CPU. Why?
+- [ ] The kernel deprioritizes containerized processes
+- [x] It exhausted its CFS bandwidth quota for the period, so all its tasks are throttled until the next period — regardless of idle CPUs
+- [ ] CPU limits also limit memory bandwidth
+- [ ] The scheduler migrated it to a slower core
+> CPU limits are enforced as quota-per-period (e.g. 200ms per 100ms = 2 CPUs); exhaust the quota and the cgroup is frozen until the next period even on an idle node. This is the #1 K8s CPU issue — check `nr_throttled` in `cpu.stat`, and note many teams set requests but omit limits for exactly this reason.
+
+Q: How does CFS decide which task runs next?
+- [ ] The task that has been runnable the longest
+- [ ] The task with the highest nice value
+- [x] The task with the lowest virtual runtime — the one that has been treated most unfairly
+- [ ] Round-robin through the run queue
+> CFS tracks how much CPU each task has consumed as `vruntime` (weighted by nice) and always runs the leftmost task in its red-black tree — the one with the least accumulated runtime. Fair sharing emerges naturally from always picking the most-starved task.
+
+Q: Why pin a latency-sensitive process to specific cores with `taskset`?
+- [x] Migrating between cores leaves the L1/L2 cache cold — pinning preserves cache locality
+- [ ] Pinned processes get a higher scheduling priority
+- [ ] Unpinned processes cannot use more than one core
+- [ ] It exempts the process from cgroup limits
+> Affinity doesn't change priority; it avoids the microseconds-to-milliseconds migration penalty of warming a new core's cache. For the gold standard, combine it with `isolcpus` so the pinned cores have zero contention from other tasks.
+
+Q: What did EEVDF add over CFS, and what door did it open?
+- [ ] A complete rewrite of scheduling semantics that breaks CFS tuning
+- [x] Virtual deadlines that improve latency fairness for interactive tasks, and the foundation for `sched_ext` custom eBPF schedulers
+- [ ] Support for real-time SCHED_FIFO tasks in the fair class
+- [ ] Per-cgroup run queues
+> EEVDF picks the eligible task with the earliest virtual deadline, so latency-sensitive tasks get scheduled promptly even beside CPU hogs — mostly transparent otherwise. Its bigger significance is `sched_ext` (6.12+): loadable custom schedulers written in eBPF, no kernel rebuild.
+
+Q: A database on a two-socket server shows mysteriously slow queries; CPU and disk look fine. What NUMA explanation fits?
+- [ ] The second socket is disabled by default
+- [x] The process runs on one node while its memory lives on the other, so every access pays remote-memory latency — often a 10–30% penalty
+- [ ] NUMA systems cannot run databases efficiently
+- [ ] The scheduler refuses to run tasks near their memory
+> NUMA misalignment looks like "slow queries" but is memory latency: remote access costs 1.5–2× local. Check `numastat` for "Other Node" hits and consider `numactl --cpunodebind/--membind` to align CPU and memory placement.
+```
+
 ---
 
 ## Part 2 — Memory Management
@@ -201,6 +238,16 @@ ps aux | grep myapp
 ```
 
 **Copy-on-write (COW):** when `fork()` creates a child, the kernel doesn't copy the parent's memory. It marks all pages as read-only in both parent and child, pointing to the same physical frames. Only when either process *writes* to a page does the kernel copy it — the write triggers a page fault, the kernel allocates a new frame, copies the data, and updates the page table. This makes `fork()` cheap regardless of process size, and is why Redis's background save (`BGSAVE`) can fork a multi-GB process almost instantly.
+
+```mermaid
+graph TD
+  F["fork()"] --> M["mark all pages read-only in parent + child<br/>(both point at the same physical frames)"]
+  M --> RD["reads: shared frames, no copy"]
+  M --> WR["a process writes to a page"]
+  WR --> PF["write traps: page fault"]
+  PF --> AL["kernel allocates a new frame, copies the page"]
+  AL --> UP["update page table; the write proceeds"]
+```
 
 ### Huge Pages
 
@@ -356,6 +403,43 @@ numactl --preferred=0 ./myapp        # prefer node 0, fall back to others
 
 If you remember one thing from Part 2: **Linux uses all free memory as page cache (so "no free memory" usually means "great caching, not a problem" — check `available` instead of `free`), swappiness controls the balance between evicting cache and swapping, and the OOM killer's behavior in containers is controlled by cgroup memory limits (`memory.max` for hard kill, `memory.high` for graceful throttling) — and Kubernetes sets `oom_score_adj` by QoS class to decide which pod dies first.**
 
+```quiz
+Q: `free -h` shows 1 GB free and 18 GB in buff/cache on a 32 GB server. Is the server low on memory?
+- [ ] Yes — only 1 GB is left for new processes
+- [ ] Yes — the cache is locked and cannot be released
+- [x] No — page cache is reclaimable on demand; the `available` column is what new processes can actually get
+- [ ] It depends on the swap size
+> The kernel deliberately uses all idle memory to cache file data and gives it back under pressure. "No free memory" usually means "great caching" — judging by `free` instead of `available` is the classic misreading of this output.
+
+Q: Why can Redis fork a 30 GB process for a background save almost instantly?
+- [x] fork() uses copy-on-write — parent and child share read-only page mappings, and pages are copied only when written
+- [ ] Redis compresses its memory before forking
+- [ ] The kernel swaps the parent out during the fork
+- [ ] fork() only copies the stack, never the heap
+> fork() duplicates page tables, not memory: both processes point at the same frames marked read-only, and a write triggers a fault that copies just that page. That's what makes `BGSAVE` cheap — though heavy write traffic during the save still costs copies.
+
+Q: Why do Redis and MongoDB recommend disabling Transparent Huge Pages?
+- [ ] Huge pages are slower than 4 KB pages for all workloads
+- [x] THP's background compaction causes latency spikes, and partially-used 2 MB pages waste memory
+- [ ] THP is incompatible with fork()
+- [ ] Huge pages cannot be swapped under any configuration
+> Huge pages themselves are a win for TLB pressure — the problem is the *transparent* machinery: the kernel shuffling memory to create contiguous 2 MB blocks stalls latency-sensitive processes. Explicit `hugetlbfs` pre-allocation gets the TLB benefit without the compaction spikes.
+
+Q: What's the difference between `memory.max` and `memory.high` in cgroups v2?
+- [ ] memory.high is the per-process limit, memory.max is per-cgroup
+- [ ] They are synonyms from different kernel versions
+- [x] memory.max OOM-kills on breach; memory.high throttles with reclaim pressure, giving the app time to adapt
+- [ ] memory.high only applies to page cache
+> `memory.max` is the hard wall (K8s `limits.memory`): exceed it and something dies. `memory.high` slows the offender down instead — often the more production-friendly behavior, though Kubernetes doesn't natively expose it yet.
+
+Q: Two pods are on a node under memory pressure: one Guaranteed (requests == limits), one BestEffort. Which dies first, and why?
+- [x] BestEffort — Kubernetes sets its oom_score_adj to 1000, while Guaranteed pods get -997
+- [ ] Guaranteed — it uses the most memory
+- [ ] Whichever allocated most recently
+- [ ] The kubelet picks randomly to be fair
+> The OOM killer ranks by oom_score (memory share adjusted by oom_score_adj), and Kubernetes encodes QoS directly into that adjustment: BestEffort pods are pre-marked as preferred victims, Guaranteed pods are nearly immune.
+```
+
 ---
 
 ## Part 3 — The I/O Stack
@@ -364,26 +448,14 @@ The I/O path from your application's `write()` call to bits on the storage devic
 
 ### The I/O Path
 
-```
-Application
-    │
-    ▼
- VFS (Virtual File System)         ← file-system-agnostic layer
-    │
-    ▼
- Filesystem (ext4, xfs, btrfs)    ← translates files to blocks
-    │
-    ▼
- Page Cache                        ← buffered I/O lives here
-    │
-    ▼
- Block Layer                       ← I/O scheduling, merging, plugging
-    │
-    ▼
- Device Driver (NVMe, SCSI, etc.)  ← talks to hardware
-    │
-    ▼
- Storage Device (SSD, HDD, NVMe)
+```mermaid
+graph TD
+  APP[Application] --> VFS["VFS — file-system-agnostic layer"]
+  VFS --> FS["Filesystem: ext4 / xfs / btrfs — files to blocks"]
+  FS --> PC["Page Cache — buffered I/O lives here"]
+  PC --> BL["Block Layer — I/O scheduling, merging, plugging"]
+  BL --> DRV["Device Driver — NVMe, SCSI, ..."]
+  DRV --> DEV["Storage Device — SSD, HDD, NVMe"]
 ```
 
 ### Buffered vs. Direct I/O
@@ -539,6 +611,43 @@ Key metrics: **IOPS** (operations/sec — matters for databases), **throughput**
 The `--fsync=1` flag makes fio call fsync after every write — the realistic scenario for databases. Without it, writes land in the page cache and look impossibly fast.
 
 If you remember one thing from Part 3: **`write()` only goes to the page cache — data isn't durable until `fsync`/`fdatasync`, use `none` scheduler for NVMe, and io_uring is the modern high-performance I/O interface that eliminates per-operation syscall overhead through shared-memory ring buffers — and it's increasingly used for networking too, not just disk.**
+
+```quiz
+Q: Your process called `write()` and it returned success. The machine then loses power. Is the data safe?
+- [ ] Yes — write() returning success means the data is on disk
+- [x] No — write() only copied the data to the page cache; durability requires fsync/fdatasync to have completed
+- [ ] Yes, if the file was opened read-write
+- [ ] Only the metadata is lost
+> Buffered writes land in memory and are flushed later by writeback. Surviving a *process* crash, yes; a *system* crash, no. This is why databases fdatasync the WAL on every commit — and why fsync latency is the most latency-critical number in a database's life.
+
+Q: Why should NVMe drives use the `none` I/O scheduler?
+- [x] NVMe devices have their own sophisticated internal queueing — a software scheduler on top just adds latency
+- [ ] none enables write caching that other schedulers disable
+- [ ] NVMe doesn't support reordering, so scheduling is impossible
+- [ ] none is required for io_uring to work
+> Reordering and merging made sense for disks with seek heads; NVMe has massive internal parallelism and queue management in hardware. mq-deadline/bfq still earn their keep on HDDs and SATA SSDs — the scheduler choice is per-device.
+
+Q: What is the core mechanism that makes io_uring fast?
+- [ ] It compresses I/O requests before submission
+- [ ] It uses a faster filesystem format
+- [x] Two shared-memory ring buffers between userspace and kernel, so I/O is submitted and completed without a syscall per operation
+- [ ] It bypasses the block layer entirely
+> The submission and completion queues are shared memory: requests and results move without per-operation syscalls (and with SQPOLL, with no syscalls at all). Batching plus registered buffers is the whole trick — and it works for network I/O too, not just disk.
+
+Q: Why do databases like PostgreSQL and RocksDB use O_DIRECT?
+- [ ] It makes writes durable without fsync
+- [x] They manage their own buffer pool, and going through the page cache would double-cache every page
+- [ ] It is required for files larger than 2 GB
+- [ ] It enables parallel writes to the same file
+> A database already caches pages in its own buffer pool; the kernel caching them again wastes half the memory. O_DIRECT moves data straight between the app's (page-aligned) buffers and the device — and it does nothing for durability, which still needs fsync semantics.
+
+Q: An fio random-write benchmark without `--fsync=1` reports astonishing numbers for a database-like workload. What's wrong?
+- [ ] fio cannot measure random writes
+- [ ] The drive is lying about its capacity
+- [x] The writes are landing in the page cache, not the device — without fsync the benchmark measures memory speed, not storage durability
+- [ ] Random writes are always faster than sequential
+> A database fsyncs its log on every commit, so the honest benchmark must too. Without `--fsync=1` you're benchmarking writeback caching — impressive and irrelevant.
+```
 
 ---
 
@@ -720,6 +829,43 @@ curl --unix-socket /var/run/docker.sock http://localhost/version
 PostgreSQL, MySQL, Redis, and Docker all prefer Unix domain sockets for local connections. Performance difference vs. TCP loopback is typically 30–50% higher throughput and lower latency.
 
 If you remember one thing from Part 4: **nftables replaces iptables with a cleaner, faster, atomic-update model; BBR congestion control is better than Cubic for internet traffic; SO_REUSEPORT enables per-CPU accept() parallelism; IPVS is O(1) for Service load balancing while iptables is O(n); conntrack table exhaustion kills connections on busy nodes; and Unix domain sockets bypass the TCP/IP stack entirely for same-host IPC.**
+
+```quiz
+Q: How does BBR differ from Cubic congestion control?
+- [ ] BBR disables congestion control for trusted networks
+- [x] Cubic backs off in reaction to packet loss; BBR builds a model of bottleneck bandwidth and minimum RTT and paces to it
+- [ ] BBR only works on loopback interfaces
+- [ ] Cubic is for IPv6, BBR for IPv4
+> Loss-based control treats every drop as congestion, which cripples throughput on links with random loss. BBR probes for the actual bandwidth and RTT, so it sustains throughput on lossy WAN/internet paths — pair it with the `fq` qdisc.
+
+Q: What does SO_REUSEPORT buy a server like Nginx or Envoy?
+- [ ] It lets the server bind privileged ports without root
+- [x] Multiple workers each bind the same port and the kernel hash-distributes incoming connections across them — per-CPU accept parallelism
+- [ ] It reuses TIME_WAIT sockets for new connections
+- [ ] It merges duplicate connections from the same client
+> Without it, one listener socket means one accept queue and a thundering herd on wakeup. With it, each worker has its own socket on the same port and the kernel load-balances at the socket level. (Recycling TIME_WAIT sockets is `tcp_tw_reuse` — a different knob.)
+
+Q: Why is IPVS strongly recommended over iptables mode for Kubernetes clusters with thousands of Services?
+- [x] iptables evaluates rules sequentially — O(n) per packet — while IPVS uses an O(1) hash lookup
+- [ ] iptables cannot do NAT
+- [ ] IPVS bypasses conntrack entirely
+- [ ] iptables only supports 1,024 rules
+> kube-proxy in iptables mode generates rules that degrade badly past a few thousand Services; every packet walks the chain. IPVS was built as an in-kernel L4 load balancer with proper algorithms (rr, lc, sh…) and constant-time lookup.
+
+Q: Connections to a busy Kubernetes node are randomly failing, and dmesg shows "nf_conntrack: table full, dropping packet." What's happening?
+- [ ] The NIC ring buffer is overflowing
+- [ ] TCP backlog is exhausted; raise somaxconn
+- [x] The connection-tracking table is full, so new connections are dropped — raise nf_conntrack_max or shorten TIME_WAIT tracking
+- [ ] The node ran out of ephemeral ports
+> Every NAT'd/stateful-firewalled connection occupies a conntrack entry. When the table fills, new flows are silently dropped — a classic load-balancer/K8s-node failure that looks like random network flakiness until you read dmesg.
+
+Q: Why are Unix domain sockets faster than TCP to 127.0.0.1?
+- [ ] They use a faster network card driver
+- [x] They bypass the TCP/IP stack entirely — no checksums, no routing, no protocol headers
+- [ ] They are backed by shared memory with zero copies
+- [ ] Loopback TCP is rate-limited by the kernel
+> Loopback TCP still runs the full transport stack. A Unix socket is just kernel buffer-to-buffer data movement with socket semantics (typically 30–50% better throughput) — which is why Postgres, Redis, and Docker default to them for local clients. Data is still copied; it's the stack that's skipped.
+```
 
 ---
 
@@ -921,6 +1067,43 @@ For Go, the [`cilium/ebpf`](https://github.com/cilium/ebpf) library is the stand
 
 If you remember one thing from Part 5: **eBPF lets you run custom programs inside the kernel — safely, with no recompilation — at hook points across networking, scheduling, security, and filesystems. In 2026, Cilium (networking), Tetragon/Falco (security), and bpftrace (tracing) are the three most impactful eBPF applications, and `sched_ext` (custom schedulers in eBPF) is the most exciting new development.**
 
+```quiz
+Q: What makes it safe to run user-supplied eBPF programs inside the kernel?
+- [ ] They run in a userspace sandbox with kernel privileges
+- [x] The verifier statically proves every program terminates and never touches invalid memory before it can load
+- [ ] They run with reduced CPU priority
+- [ ] The kernel snapshots its state and rolls back on a crash
+> eBPF safety is proof, not isolation: bounded loops, validated pointer accesses, a 512-byte stack, no sleeping, only approved helpers. The price is the verifier rejecting programs it can't prove safe — the main friction of writing eBPF.
+
+Q: Why can XDP drop 10+ million packets per second per core when iptables manages 1–2 million?
+- [ ] XDP rules are compiled to faster bytecode than iptables rules
+- [x] XDP runs in the network driver before the kernel even allocates the per-packet sk_buff, skipping the whole stack for dropped packets
+- [ ] XDP offloads filtering to the NIC's TCP engine
+- [ ] iptables is single-threaded
+> Most of the cost of dropping a packet in netfilter is everything that happened before the verdict: sk_buff allocation and stack traversal. XDP's hook point is at the earliest possible moment — which is exactly why Cloudflare and Facebook use it for DDoS mitigation.
+
+Q: What problem does CO-RE (with BTF) solve?
+- [ ] It lets eBPF programs run on Windows
+- [ ] It compiles eBPF programs faster
+- [x] It lets one compiled eBPF binary run across kernel versions — the loader fixes up struct field offsets at load time
+- [ ] It removes the verifier's instruction limit
+> Kernel struct layouts shift between versions, so eBPF tools used to need compilation against each target's headers. BTF ships the kernel's type info; CO-RE relocates field accesses at load time — the thing that made portable production eBPF tooling possible.
+
+Q: How do eBPF programs get data out to userspace?
+- [ ] By writing to files in /tmp
+- [ ] Via return values from the hook function
+- [x] Through maps — shared structures like hash maps, per-CPU arrays, and ring buffers readable from both sides
+- [ ] Over a loopback TCP socket
+> Maps are the kernel/userspace bridge: a tracing tool's eBPF half increments a per-CPU hash or pushes events into a ring buffer, and the userspace half reads them. Choosing the right map type (e.g. per-CPU to avoid lock contention) is a real design decision.
+
+Q: What does Cilium do that iptables-based kube-proxy fundamentally cannot?
+- [ ] Route packets between pods on different nodes
+- [x] Enforce L7 policies (HTTP method, gRPC service) — and implement Services in O(1) eBPF instead of O(n) rule chains
+- [ ] Track connection state
+- [ ] Support NetworkPolicy at all
+> iptables matches on L3/L4 headers; it has no view of HTTP. Cilium's eBPF datapath sees application protocols, so "allow GET /healthz but not POST /admin" becomes a network policy — while also replacing the per-Service rule chains with constant-time lookups.
+```
+
 ---
 
 ## Part 6 — Performance Analysis
@@ -1079,6 +1262,36 @@ memleak-bpfcc -p 12345 10        # track allocations for 10 seconds
 ```
 
 If you remember one thing from Part 6: **use the USE Method (Utilization, Saturation, Errors) as a checklist for every resource, `perf stat` IPC tells you if you're CPU-bound or memory-bound, flame graphs show where time is spent (on-CPU) or waited (off-CPU), and most performance problems show up as high utilization or saturation on one specific resource — find that resource first.**
+
+```quiz
+Q: `perf stat` shows a workload running at 0.4 instructions per cycle. What does that tell you?
+- [ ] The CPU is too slow — buy a higher clock speed
+- [x] The workload is likely memory-bound — the CPU is stalling on cache misses, so a faster clock won't help
+- [ ] The code has too many branches
+- [ ] The process is being throttled by its cgroup
+> Low IPC means cycles are passing without instructions retiring — the CPU is waiting on memory. The fix is better cache utilization and access patterns, not more GHz. High IPC (>1.0) is when you're genuinely compute-bound.
+
+Q: A service is slow but its CPU usage is low. What analysis do you reach for?
+- [ ] An on-CPU flame graph from perf record
+- [x] Off-CPU analysis (e.g. offcputime) — the time is going to waiting: I/O, locks, or scheduling delays
+- [ ] perf stat to check IPC
+- [ ] A memory leak detector
+> On-CPU profiling only explains time spent computing. Slow-but-idle means the process is blocked — and off-CPU stacks show exactly where it sleeps: futex waits point at lock contention, epoll_wait at I/O dependencies.
+
+Q: In a flame graph, what does the x-axis represent?
+- [ ] Time, left to right
+- [ ] Thread IDs
+- [x] Nothing temporal — frames are sorted alphabetically, and a frame's width is the share of samples containing it
+- [ ] Call depth
+> The most common flame-graph misreading is assuming left-to-right is chronological. It isn't: width = how much of total time a code path accounts for, which is what tells you where optimization pays off.
+
+Q: How do the USE and RED methods relate?
+- [ ] They are competing methodologies; pick one
+- [x] RED describes the user's experience of a service (rate, errors, duration); USE finds the saturated resource that explains it
+- [ ] USE is for cloud, RED is for bare metal
+- [ ] RED replaced USE in modern practice
+> They're two ends of the same investigation: RED tells you requests are slow and failing; walking USE across CPU, memory, disk, and network tells you *why* — typically one resource at high utilization or saturation.
+```
 
 ---
 
@@ -1312,6 +1525,43 @@ Modern Linux kernels ship with hardening features enabled by default:
 
 If you remember one thing from Part 7: **defense in depth — Unix permissions (DAC) + MAC (SELinux or AppArmor) + seccomp (syscall filtering) + capabilities (fine-grained root) + audit (logging) + systemd sandboxing (namespace/filesystem isolation). Each layer catches what the others miss, and `systemd-analyze security` tells you how well your service unit is hardened.**
 
+```quiz
+Q: What does Mandatory Access Control (SELinux/AppArmor) add that Unix permissions can't provide?
+- [ ] Faster permission checks
+- [x] Administrator-defined policy that binds even the file's owner — so a compromised process can't use all of its user's permissions
+- [ ] Per-user disk quotas
+- [ ] Encryption of protected files
+> DAC's weakness is that the owner controls access: pop a process and you inherit everything its user can do. Under MAC, nginx running as `httpd_t` can read `httpd_sys_content_t` and nothing else — no matter what the file modes say.
+
+Q: Why is seccomp syscall filtering such an effective container defense?
+- [x] Every kernel interaction is a syscall, so denying mount, ptrace, and friends removes whole classes of escape even for root in the container
+- [ ] It prevents the container from using too much CPU
+- [ ] It encrypts syscall arguments
+- [ ] It replaces the need for user namespaces
+> A compromised process can only do what its syscall allowlist permits — Docker's default profile blocks ~44 dangerous calls. It's the "what can you even ask the kernel" layer, complementing capabilities ("what would the kernel let you do").
+
+Q: What's the core difference between SELinux and AppArmor?
+- [ ] SELinux is for containers, AppArmor for hosts
+- [x] SELinux attaches labels to every process and object and polices label pairs; AppArmor writes rules against filesystem paths
+- [ ] AppArmor cannot confine network access
+- [ ] SELinux only works on Red Hat kernels
+> Label-based enforcement is more granular and survives file moves/hardlinks (the label travels with the object), at the cost of a steep learning curve; path-based profiles are far easier to author. RHEL-family defaults to SELinux, Ubuntu/Debian/SUSE to AppArmor.
+
+Q: After writing a new systemd unit, what does `systemd-analyze security myapp` give you?
+- [ ] A CVE scan of the binary
+- [x] A 0–10 exposure score with a per-directive checklist of sandboxing options the unit isn't using
+- [ ] A list of open ports
+- [ ] SELinux denials for the service
+> It audits the unit's use of the systemd.exec sandbox — ProtectSystem, CapabilityBoundingSet, SystemCallFilter, MemoryDenyWriteExecute and the rest — and scores how exposed the service is. Use it as the post-write checklist.
+
+Q: Why keep auditd rules (e.g. watching /etc/passwd and execve) on production systems that already have MAC and seccomp?
+- [ ] auditd blocks attacks the other layers miss
+- [x] Prevention layers don't record history — the audit trail is what compliance and incident response need to reconstruct what actually happened
+- [ ] auditd improves syscall performance
+- [ ] It's only needed when SELinux is disabled
+> auditd doesn't prevent anything; it remembers. When something does get through, "who exec'd what, who touched the shadow file, which logins failed" is the difference between an investigation and a guess — and PCI-DSS/HIPAA/SOC 2 demand it.
+```
+
 ---
 
 ## Part 8 — Advanced Filesystems & Storage
@@ -1521,6 +1771,43 @@ Docker volumes and Kubernetes `hostPath` volumes are bind mounts under the hood.
 
 If you remember one thing from Part 8: **ext4 is the safe default, XFS for high-throughput, Btrfs for snapshots and data integrity; LVM lets you resize and manage storage flexibly; LUKS encryption is transparent with minimal overhead on modern CPUs; and Docker's overlay filesystem is just overlayfs — read-only lower layers plus a writable upper layer with copy-on-write.**
 
+```quiz
+Q: You need cheap snapshots and end-to-end data checksums from the filesystem itself. Which one?
+- [ ] ext4 — it's the battle-tested default
+- [ ] XFS — it's built for high throughput
+- [x] Btrfs — copy-on-write makes snapshots native and it checksums data as well as metadata
+- [ ] Any of them, with mdadm underneath
+> ext4 and XFS checksum only their metadata and have no native snapshots (you'd bolt on LVM). Btrfs's CoW design gives both — with the caveat that its RAID 5/6 is still considered fragile. And remember XFS can grow but never shrink.
+
+Q: When a container writes to a file that lives in a read-only image layer, what does overlayfs do?
+- [ ] Rejects the write — image layers are immutable
+- [ ] Modifies the image layer in place
+- [x] Copies the file up to the writable upper layer first, and the modified copy shadows the original
+- [ ] Creates a symlink in the upper layer
+> That's copy-up, overlayfs's copy-on-write. Deletes work with the same trick inverted: a whiteout file in the upper layer hides the lower one. This is exactly Docker's layer model — `lowerdir` stack of image layers, `upperdir` for the container's changes.
+
+Q: What does LVM thin provisioning let you do?
+- [x] Create volumes whose nominal size exceeds the pool, with space consumed only as data is actually written
+- [ ] Make volumes that compress data transparently
+- [ ] Encrypt volumes without LUKS
+- [ ] Use disks of different speeds in one volume
+> Thin volumes draw from a pool on write — like memory overcommit for storage. Powerful for many sparse volumes, with the matching hazard: if the pool itself fills, every thin volume on it has a very bad day. Monitor pool usage.
+
+Q: What's the performance cost of LUKS full-disk encryption on a modern server CPU?
+- [ ] Roughly 50% — encrypt only what's sensitive
+- [x] Minimal (single-digit percent) thanks to AES-NI hardware instructions
+- [ ] It depends entirely on the filesystem on top
+- [ ] Reads are free but writes cost ~30%
+> With AES-NI doing the cipher work in hardware, LUKS overhead is typically 1–5% — transparent to the filesystem and applications above it. The old "encryption is too slow for production" instinct predates hardware AES.
+
+Q: A Docker volume keeps throwing permission errors inside the container. Where's the actual problem?
+- [ ] Docker's volume driver needs to be reinstalled
+- [x] On the host — volumes are bind mounts, so the container sees the host directory's ownership and modes as-is
+- [ ] In the image's USER directive
+- [ ] In the overlay upper layer
+> Volumes and hostPath mounts are bind mounts: the same inodes visible at a second path, no translation. If UID 1000 in the container can't write, it's because UID 1000 can't write that host directory — fix it on the host (or align UIDs).
+```
+
 ---
 
 ## Part 9 — Kernel Tuning
@@ -1685,6 +1972,36 @@ dkms status
 ```
 
 If you remember one thing from Part 9: **most sysctl defaults are fine — the ones worth changing are `somaxconn` (raise for busy servers), `tcp_tw_reuse` (faster socket recycling), `swappiness` (lower for databases), `tcp_congestion_control=bbr` (better internet throughput), `fs.inotify.max_user_watches` (raise for IDEs and file watchers), and `nf_conntrack_max` (raise for busy load balancers/K8s nodes).**
+
+```quiz
+Q: A busy web server drops connections under load spikes even though the application is healthy. Which sysctl is the first suspect?
+- [ ] vm.swappiness
+- [x] net.core.somaxconn — the accept backlog; pending connections beyond it are dropped before the app ever sees them
+- [ ] fs.file-max
+- [ ] kernel.pid_max
+> somaxconn caps the queue of completed-but-not-yet-accepted connections. A burst that outruns the app's accept rate overflows it and the kernel drops the excess — invisible in app logs because the app never saw them. Raise it (with the app's own backlog argument) for busy servers.
+
+Q: Why does Redis documentation tell you to set vm.overcommit_memory=1?
+- [ ] It makes Redis use huge pages
+- [x] Its fork-based background save needs to "allocate" the parent's address space; heuristic overcommit can refuse the fork even though COW means little is actually copied
+- [ ] It disables the OOM killer for Redis
+- [ ] It locks Redis memory so it can't swap
+> fork() nominally doubles the address space, and the kernel's heuristic mode may reject it on a half-full box. Overcommit mode 1 always allows it — the realistic bet, since copy-on-write means the child shares nearly everything. The trade-off: allocation failures become OOM-killer events instead.
+
+Q: Your IDE or webpack watcher suddenly can't see file changes in a big repo. Which limit did you hit?
+- [x] fs.inotify.max_user_watches — the default of 8192 watches is far too small for large trees
+- [ ] fs.file-max
+- [ ] net.core.somaxconn
+- [ ] vm.max_map_count
+> Each watched file/directory consumes an inotify watch, and the per-user default is tiny. VS Code, webpack, and sync tools routinely need hundreds of thousands — it's one of the most common developer-machine sysctl bumps (max_map_count is the same story, but for Elasticsearch's mmaps).
+
+Q: What's the trade-off encoded in vm.dirty_ratio?
+- [ ] Read latency vs. write latency
+- [x] Write throughput vs. data at risk — more dirty pages batched means fewer, larger flushes but more unsynced data lost on a crash
+- [ ] CPU usage vs. memory usage
+- [ ] Filesystem journal size vs. speed
+> Dirty pages are buffered writes not yet on disk. Raise the ratio and you batch I/O nicely; crash and everything dirty is gone (unless the app fsync'd). Lower it for write-heavy boxes where a crash must lose little; raise it for throughput when the data is re-creatable.
+```
 
 ---
 
@@ -1891,6 +2208,43 @@ systemctl list-units --failed           # show failed units
 ```
 
 If you remember one thing from Part 10: **the boot sequence is firmware (UEFI) → bootloader (GRUB) → kernel → initramfs (load drivers, mount root) → systemd (PID 1, parallel service startup), and `systemd-analyze blame` shows you which services are making boot slow. When things go wrong, `journalctl -b -1` shows you the previous boot's logs.**
+
+```quiz
+Q: Why does initramfs exist at all?
+- [ ] To display the boot splash screen
+- [x] The kernel needs storage drivers to mount the root filesystem, but those drivers may live *in* the root filesystem — initramfs breaks the chicken-and-egg by shipping them in memory
+- [ ] To verify the kernel's signature
+- [ ] To run filesystem checks before mounting
+> The pre-loaded memory filesystem carries just enough (RAID/LVM/NVMe drivers, LUKS tooling) to assemble and mount the real root, then pivots to it and execs systemd. It's also why you must regenerate it (update-initramfs/dracut) after storage-stack changes.
+
+Q: A server takes two minutes to boot. What's the first command to run?
+- [ ] dmesg | head -50
+- [ ] cat /var/log/boot.log
+- [x] systemd-analyze blame (and critical-chain) — it attributes boot time to specific units
+- [ ] strace -p 1
+> blame sorts units by startup time; critical-chain shows the longest dependency path. The usual culprits surface immediately — a network-wait-online service, a slow device, a misbehaving unit — no log spelunking needed.
+
+Q: Why does systemd boot faster than SysV init?
+- [x] It builds a dependency graph from unit files and starts everything in parallel that dependencies allow; SysV ran scripts strictly in sequence
+- [ ] systemd units are compiled, SysV scripts are interpreted
+- [ ] systemd skips hardware detection
+- [ ] It defers all service startup until after login
+> The After=/Requires=/Wants= graph means independent services start concurrently instead of waiting in a numbered queue. That's also why ordering bugs in unit files manifest as races — parallelism is the default.
+
+Q: What does UEFI Secure Boot actually verify?
+- [ ] That the disk is encrypted
+- [ ] That the BIOS settings are unchanged
+- [x] That the bootloader and kernel are signed by a trusted key, blocking rootkits from inserting themselves into the boot chain
+- [ ] That all systemd units are unmodified
+> Each stage validates the next stage's signature before handing off, so tampered boot components refuse to load. It ends at the kernel — protecting userspace is the job of the Part 7 layers (and dm-verity/lockdown beyond this guide).
+
+Q: The server crashed overnight and rebooted. Where do you read what happened?
+- [ ] /var/log/lastboot
+- [x] journalctl -b -1 — the journal from the previous boot
+- [ ] dmesg, which preserves messages across reboots
+- [ ] systemd-analyze plot
+> dmesg's ring buffer dies with the reboot; the journal (when persistent) keeps per-boot history, and -b -1 selects the previous one. Pair it with systemctl list-units --failed after rescue boots.
+```
 
 ---
 

@@ -72,6 +72,36 @@ The controller-manager, the scheduler, and many operators run multiple replicas 
 
 If you remember one thing from Part 1: **Kubernetes is etcd (a consensus-replicated database) fronted by the API server, driven by independent reconciliation loops (controllers) that watch desired state and converge reality to match it — and the control plane's health depends on etcd latency, API-server fairness, and webhook performance.**
 
+```quiz
+Q: Why is etcd disk latency the control plane's performance ceiling?
+- [x] etcd fsyncs the WAL on every write (Raft durability), so slow disks cause leader elections, API-server timeouts, and cascading failures — production etcd needs local NVMe, not network volumes
+- [ ] etcd holds all state in memory and latency doesn't matter
+- [ ] The API server caches everything, bypassing etcd
+- [ ] etcd only writes during backups
+> The same fsync-on-commit story as any consensus log. etcd also has a 2 GB default size limit (raisable to 8 GB) and needs compaction/defrag — uncontrolled Events or stale CRD instances can approach the ceiling.
+
+Q: Why is the controller architecture "level-triggered, not edge-triggered," and what does that buy?
+- [x] A controller reads the *current* desired and actual state and closes the gap, rather than reacting to a history of events — so it can miss an event (restart, network hiccup) and catch up on the next pass; idempotency is built in
+- [ ] It reacts to each event exactly once, in order
+- [ ] It requires controllers to coordinate with each other
+- [ ] It replays the etcd log to rebuild state
+> "Desired says 3 replicas, actual has 2, create one" survives any missed event. Multiple controllers collaborate without talking — each watches a different resource and uses etcd (via the API server) as the shared medium.
+
+Q: You see `429 Too Many Requests` from the API server. What's happening, and what's the right response?
+- [x] API Priority and Fairness is throttling a flow — likely a runaway controller flooding the API with list calls; investigate the offending client rather than blindly raising limits
+- [ ] etcd is out of disk
+- [ ] The cluster needs more master nodes
+- [ ] A webhook timed out
+> APF classifies requests into priority levels and flow schemas with concurrency budgets, so one misbehaving controller can't starve kubectl or the scheduler. The 429 is a signal to find the offender.
+
+Q: Why is a slow admission webhook a "global control-plane tax," and when is failurePolicy: Fail dangerous?
+- [x] Its latency adds to every API call that matches it; failurePolicy: Fail means the webhook's unavailability blocks all matching operations — which can deadlock a cluster if the webhook itself can't start
+- [ ] Webhooks run async and don't affect latency
+- [ ] Fail is always safer than Ignore
+- [ ] Webhooks only run during deploys
+> Mutating webhooks run before validating ones, so validators see the final object. Monitor webhook latency, and reserve failurePolicy: Fail for webhooks whose availability you can guarantee.
+```
+
 ---
 
 ## Part 2 — The API Machinery & Extension Model
@@ -165,11 +195,48 @@ Every API mutation passes through a chain of **admission controllers** — built
 
 The order is important: mutating happens first, so validating webhooks see the *final* object. For policy enforcement (Part 6), validating admission policies — including the newer **CEL-based ValidatingAdmissionPolicy** (GA in 1.30, no webhook required) — are the modern tool.
 
+```mermaid
+graph TD
+  REQ[API create / update request] --> AUTHN{Authentication}
+  AUTHN -->|fail| R1[401]
+  AUTHN -->|ok| AUTHZ{Authorization / RBAC}
+  AUTHZ -->|deny| R2[403]
+  AUTHZ -->|allow| MUT["Mutating admission webhooks<br/>inject sidecars, defaults, labels"]
+  MUT --> SCH{"Schema validation<br/>OpenAPI / built-in"}
+  SCH -->|invalid| R3[422 rejected]
+  SCH -->|valid| VAL{"Validating admission<br/>webhooks + CEL policies"}
+  VAL -->|reject| R4[rejected]
+  VAL -->|accept| ETCD[(persist to etcd)]
+```
+
 ### Server-Side Apply and Field Ownership
 
 **Server-Side Apply (SSA)** is the modern approach to declarative management, replacing `kubectl apply`'s client-side three-way merge with a **server-side field-ownership model**. Each field in an object is tagged with its **manager** (who last set it), and conflicts (two managers trying to set the same field) are explicit rather than silently merged. SSA matters for operators (Part 3) because it lets a controller and a human both manage *different fields* of the same object without clobbering each other — the controller owns `.status`, the user owns `.spec`, and SSA tracks the boundary.
 
 If you remember one thing from Part 2: **the Kubernetes API is an extensible framework — CRDs add new resource types with full validation and subresources, admission webhooks enforce policy, and Server-Side Apply tracks field ownership — so "extending Kubernetes" is adding rows to its database and controllers that act on them, using the same machinery the built-ins use.**
+
+```quiz
+Q: After you apply a CRD, what can your new Widget resource do on its own?
+- [x] Nothing but exist in etcd — you can create/get/watch/delete Widgets, but they sit inert; making them *do* something requires an operator (a controller)
+- [ ] It automatically creates the Deployments it describes
+- [ ] It runs the reconciliation loop built into the CRD
+- [ ] It validates other resources
+> A CRD is "just storage" — it registers a new GVR and (via OpenAPI v3 schema) validates instances. The /status subresource separates user-written spec from controller-written status; the controller is the half that acts.
+
+Q: A CRD serves both v1 and v1alpha2. Which version does etcd actually store?
+- [x] The *storage version* — the others are computed on the fly by conversion webhooks; managing multi-version evolution with conversion and deprecation is one of the harder parts of a production CRD
+- [ ] Both, duplicated
+- [ ] Always the newest version
+- [ ] Whichever the client requested
+> The stability contract: v1 (GA) won't break backward-compatibly, v1beta1 may change under a 3-release policy, v1alpha1 can vanish anytime. One resource served at multiple versions is normal; the storage version is the canonical bytes.
+
+Q: What does Server-Side Apply's field-ownership model solve that client-side apply doesn't?
+- [x] It tags each field with its *manager*, so a controller (owning .status) and a human (owning .spec) can manage different fields of the same object without clobbering each other — conflicts become explicit
+- [ ] It applies manifests faster
+- [ ] It eliminates the need for CRDs
+- [ ] It encrypts the object in etcd
+> Client-side apply did a three-way merge that could silently lose changes. SSA tracks who set what at the server, making it the right tool for operators that share objects with humans or other controllers.
+```
 
 ---
 
@@ -268,6 +335,29 @@ Hard-won lessons from every production operator team:
 - **Watch for flaky tests** from eventual consistency — the API server and your controller are async; use polling/retries in tests, not `time.Sleep`.
 
 If you remember one thing from Part 3: **an operator is a CRD + a level-triggered, idempotent reconciliation loop that watches desired state, drives actual state, and writes status — scaffold it with Kubebuilder, own your resources with owner references, and keep reconcile fast and idempotent.**
+
+```quiz
+Q: What does an operator actually encode that a plain Deployment can't?
+- [x] Domain/operational knowledge — "how to run and operate a specific application" (replication setup, failover, backups, upgrades) — turning runbooks into a reconciliation loop watching a CRD
+- [ ] Faster Pod scheduling
+- [ ] A custom container runtime
+- [ ] Encrypted storage
+> The user declares intent (PostgresCluster with replicas: 3); the operator handles mechanism (StatefulSets, Services, replication, failover). It's the step from *using* Kubernetes to *programming* it.
+
+Q: Why must a Reconcile function be idempotent, and how is that achieved?
+- [x] The work-queue can call reconcile multiple times on the same state (missed events, restarts), so running it twice must be a no-op — achieved with check-then-act, CreateOrUpdate, or Server-Side Apply, never "create and hope"
+- [ ] Idempotency makes reconcile faster
+- [ ] It's required only for stateful operators
+- [ ] The framework enforces it automatically
+> Level-triggered + idempotent is the core discipline: read desired, read actual, compute diff, act — any event sequence leading to the same state produces the same outcome. It's why a restarted operator loses no progress.
+
+Q: Why call SetControllerReference on resources your operator creates?
+- [x] Owner references are how Kubernetes cascades deletion — deleting the Widget then garbage-collects the Deployment/Service it created; without them, child resources become orphans
+- [ ] It grants the operator RBAC permissions
+- [ ] It speeds up reconciliation
+- [ ] It writes to the status subresource
+> Owner references build the deletion tree. The other rules: status reflects reality (only the controller writes it), requeue with backoff on transient failure, and don't block the reconcile goroutine on long-running work.
+```
 
 ---
 
@@ -436,6 +526,22 @@ Multi-tenant clusters need **cost visibility** — which team is consuming how m
 
 If you remember one thing from Part 6: **multi-tenancy is layered enforcement — RBAC for authorization, ResourceQuotas for capacity, LimitRanges for per-Pod defaults, NetworkPolicies for network isolation, and a policy engine (Kyverno/CEL) for everything else — and without these layers, a shared cluster is a shared footgun.**
 
+```quiz
+Q: Multi-tenancy on a shared cluster needs layered enforcement. What does each layer do?
+- [x] RBAC authorizes *who* can do what, ResourceQuotas cap a namespace's total capacity, LimitRanges set per-Pod defaults/bounds, NetworkPolicies isolate traffic, and a policy engine (Kyverno/CEL) covers everything else
+- [ ] A single namespace setting provides all of it
+- [ ] RBAC alone is sufficient
+- [ ] NetworkPolicies handle authorization
+> No single control isolates tenants — namespaces scope names but don't isolate. The layers are complementary: skip ResourceQuotas and one tenant starves the cluster; skip NetworkPolicies and tenants reach each other freely.
+
+Q: Why is a ResourceQuota without a LimitRange an incomplete setup?
+- [x] A ResourceQuota that counts CPU/memory requires every Pod to *declare* requests/limits, or it rejects the Pod — a LimitRange supplies the per-Pod defaults so existing manifests without explicit resources still admit
+- [ ] LimitRanges replace ResourceQuotas
+- [ ] ResourceQuotas only work cluster-wide
+- [ ] They do the same thing
+> ResourceQuota enforces the namespace total; LimitRange fills in and bounds per-container values. Together they make capacity governance work without requiring every team to annotate every Pod.
+```
+
 ---
 
 ## Part 7 — GitOps & Continuous Delivery
@@ -503,6 +609,22 @@ The final link in the chain: when CI builds a new container image, *something* m
 - **Argo CD Image Updater** — similar, Argo CD-native.
 
 If you remember one thing from Part 7: **GitOps makes Git the single source of truth for cluster state, with an in-cluster controller (Argo CD or Flux) that continuously reconciles reality to match — giving you audit trails, drift detection, instant rollback (revert the commit), and no direct cluster access from CI.**
+
+```quiz
+Q: What's the defining shift GitOps makes versus a CI pipeline that runs `kubectl apply`?
+- [x] An in-cluster controller (Argo CD/Flux) continuously *pulls* desired state from Git and reconciles reality to match — so CI never touches the cluster, and you get drift detection and audit trails for free
+- [ ] It deploys faster
+- [ ] It eliminates the need for manifests
+- [ ] It replaces etcd with Git
+> Git becomes the single source of truth; the controller is the reconciliation loop (the same pattern as every controller). CI builds and pushes images + commits manifests; it gets no cluster credentials.
+
+Q: With GitOps, how do you roll back a bad deploy, and why is drift detection valuable?
+- [x] Revert the commit — the controller reconciles back to the previous state; drift detection catches anyone who changed the cluster directly (out-of-band kubectl edits) and reverts them to Git's truth
+- [ ] Run kubectl rollout undo on the cluster
+- [ ] Restore an etcd snapshot
+- [ ] Manually re-apply old manifests
+> Rollback is just `git revert`, fully audited. Drift detection enforces that the cluster equals Git — direct edits become visible and reversible, which is most of GitOps's operational value.
+```
 
 ---
 

@@ -101,6 +101,29 @@ Before reaching for a full agent, Anthropic identifies five composable patterns 
 | **Orchestrator-workers** | Central LLM plans and delegates to worker LLMs | Complex tasks with unpredictable sub-steps |
 | **Evaluator-optimizer** | One LLM generates, another evaluates and requests improvements | Iterative quality refinement (code, writing) |
 
+```quiz
+Q: What is the defining distinction between a *workflow* and an *agent*?
+- [ ] Agents use bigger models
+- [x] In a workflow, your code controls the execution path (you design the branching, the LLM fills in steps); in an agent, the LLM controls the path — it decides which tool to call, what to do with the result, and when to stop
+- [ ] Workflows can't call tools
+- [ ] Agents are always multi-model
+> The spectrum runs single-call → chain → workflow → agent → multi-agent, and the line between workflow and agent is *who controls the flow*. A routing workflow's `if category == "billing"` is your code deciding; an agent's loop hands that decision to the model each turn. Everything that follows — guardrails, cost control, observability — exists because the LLM, not your code, is now driving.
+
+Q: What's the guide's principle for choosing between workflows and agents?
+- [ ] Always use agents — they're more capable
+- [x] Start with workflows; only graduate to agents when the task genuinely requires dynamic decision-making — when you can't predict the steps in advance
+- [ ] Always use multi-agent systems for reliability
+- [ ] Use agents whenever you call an LLM
+> Handing control to the model buys flexibility but costs predictability, cost control, and debuggability. If you *can* predict the steps, a workflow (prompt chaining, routing, parallelization) is simpler, cheaper, and more reliable — and Anthropic's five composable patterns cover most production cases. Reserve full agents for genuinely open-ended tasks like "research this and write a report" where the steps can't be enumerated ahead of time.
+
+Q: A task needs one model to draft code and another to critique it and request fixes, iterating until quality is met. Which composable pattern is that?
+- [ ] Prompt chaining
+- [ ] Routing
+- [x] Evaluator-optimizer
+- [ ] Parallelization
+> Evaluator-optimizer pairs a generator with an evaluator that reviews and requests improvements, looping for iterative quality refinement — ideal for code and writing. Prompt chaining is sequential single-pass steps, routing classifies and dispatches, and parallelization runs independent subtasks at once. Recognizing which pattern fits keeps you from reaching for a full agent when a structured workflow would do.
+```
+
 The most successful production systems use these simpler patterns. Autonomous agents are powerful but fragile — reserve them for tasks that truly need open-ended tool use and dynamic planning.
 
 ---
@@ -154,6 +177,18 @@ def agent(goal: str, tools: list, max_steps: int = 20) -> str:
 ```
 
 This is the entire agent. Everything else is optimization, safety, and orchestration layered on top.
+
+```mermaid
+graph TD
+  G[goal] --> CALL["call the model with messages + tools"]
+  CALL --> D{"stop_reason?"}
+  D -->|end_turn| DONE["return the answer"]
+  D -->|tool_use| EXEC["execute the requested tool(s)"]
+  EXEC --> APPEND["append tool results to messages"]
+  APPEND --> STEP{"max_steps reached?"}
+  STEP -->|no| CALL
+  STEP -->|yes| STOP["give up — hit the step limit"]
+```
 
 ### The Same Loop, OpenAI Version
 
@@ -281,6 +316,29 @@ def reflexion_agent(goal: str, tools: list, max_attempts: int = 3) -> str:
 
 **When to use:** tasks where quality matters more than speed — code generation, writing, analysis. The cost is 2–3× (multiple passes), but accuracy improves significantly.
 
+```quiz
+Q: What is the agent loop, fundamentally?
+- [ ] A framework-specific abstraction
+- [x] The core primitive every agent implements: send messages+tools to the LLM, and while it keeps requesting tool calls, execute them, append the results, and loop — stopping when the model signals it's done
+- [ ] A way to call multiple models in parallel
+- [ ] A retry mechanism for failed API calls
+> The minimal agent is ~30 lines: a loop that calls the model with the conversation and tool definitions, checks whether it wants to call a tool, runs the tool, feeds the result back, and repeats until the model stops requesting tools. "Everything else is optimization, safety, and orchestration layered on top." Recognizing this primitive demystifies every framework — they all wrap this loop.
+
+Q: Modern models "do ReAct naturally with tool use." What does that mean?
+- [ ] You must prompt the exact "Thought/Action/Observation" format
+- [x] The tool-use loop *is* ReAct — the model reasons in its response, calls a tool, sees the result, and reasons again, so you get reason-and-act interleaving without explicitly prompting the format
+- [ ] ReAct requires a separate planning model
+- [ ] ReAct is obsolete
+> ReAct (Reason + Act) interleaves thinking and tool calls, and the standard tool-use loop produces exactly that pattern for free: each turn the model reasons about what it knows, requests an action, and incorporates the observation. You no longer hand-prompt the Thought/Action/Observation scaffolding — the native tool-calling loop delivers it, which is why ReAct is "the most common pattern."
+
+Q: A production agent loop adds a cost circuit breaker and loop detection. Why are these essential beyond the minimal loop?
+- [ ] To make the agent faster
+- [x] Because the LLM controls the flow, it can run away — spending unbounded money or repeating the same actions; a cost cap and repetition detector bound the blast radius of an agent that doesn't know when to stop
+- [ ] They improve model accuracy
+- [ ] They're required by the API
+> An agent decides its own steps, so without guardrails it can loop forever or rack up cost on a task it can't complete. The production loop tracks cumulative cost and aborts past a budget, and detects repetitive behavior (the same tool calls cycling) to break out of stuck states. These — plus tool allowlists, human approval gates, and timeouts — turn the elegant minimal loop into something safe to run unattended.
+```
+
 ### The Agent Loop Production Checklist
 
 A production agent loop adds these concerns to the minimal loop:
@@ -388,6 +446,22 @@ The LLM never executes tools. It generates a structured request (tool name + arg
          │              TRUST BOUNDARY                    │
          └────────────── Never trust the model's ─────────┘
                          tool call blindly
+```
+
+```quiz
+Q: In tool use, what does the LLM actually do, and where is the "trust boundary"?
+- [ ] The model executes the tool directly
+- [x] The LLM only generates a structured request (tool name + arguments); your code validates and executes it — the boundary is that you must never execute the model's tool call blindly, because the arguments are model-controlled and potentially attacker-influenced
+- [ ] The external API authenticates the model
+- [ ] The model and your code share memory
+> The model never runs anything — it emits "call get_user with id=123," and your code decides whether and how to execute that. This is the critical security boundary: arguments come from a model that can be prompt-injected, so you validate them like untrusted input, enforce an allowlist of permitted tools, and gate destructive actions. The model proposes; your code disposes.
+
+Q: Why does the guide say "descriptions are instructions" for tool definitions?
+- [ ] Descriptions are shown to end users
+- [x] The model decides whether and when to call a tool based primarily on its description, so a vague one ("Search for things") causes wrong tool selection while a clear one (trigger, scope, limitations) guides correct use
+- [ ] Descriptions are required by the schema
+- [ ] Longer descriptions are always better
+> The tool description is the model's only guide to the tool's purpose, so it functions as a prompt: state exactly when to use it ("when the user asks about HR policies"), what it returns, and when *not* to use it ("do NOT use for general questions"). Parameter descriptions similarly constrain what values the model passes. Investing in precise descriptions is the cheapest way to improve tool-selection accuracy.
 ```
 
 ### Tool Definition Best Practices
@@ -767,6 +841,22 @@ User Response
 ```
 
 Not every request needs every layer. Route by risk: low-risk queries skip Layer 3, high-risk actions get all layers plus human approval.
+
+```quiz
+Q: Why does defense-in-depth order guardrail layers from rule-based → ML classifier → LLM call?
+- [ ] Newer techniques go first
+- [x] Cheapest/fastest first — regex and allowlists (<10ms) catch obvious cases before paying for an ML classifier (50–200ms) or an LLM call (500–3000ms), and you route by risk so low-risk queries skip the expensive layers
+- [ ] LLM calls are the least accurate
+- [ ] Rule-based checks are the most thorough
+> Each layer is more capable but more expensive and slower, so you filter cheaply first: a regex blocks known injection patterns instantly, an ML classifier handles toxicity/jailbreak detection, and an LLM call evaluates nuanced policy only when needed. Routing by risk means a benign query short-circuits early while a high-risk action runs every layer plus human approval. Spending the same budget on every request would be wasteful.
+
+Q: Why are output guardrails (schema check, PII redaction, action audit) necessary in addition to input guardrails?
+- [ ] Input checks are unreliable
+- [x] The model's output is attacker-influenceable (via prompt injection through tools/data) and can hallucinate or leak PII, so you validate what leaves the system, not just what enters — the same untrusted-output principle from LLM security
+- [ ] Output checks replace input checks
+- [ ] Schemas can't be checked on input
+> Input filtering can't catch everything — indirect injection rides in through retrieved documents and tool results, so the model can produce unsafe output even from clean-looking input. Validating the output (schema conformance, PII redaction, hallucination checks, auditing any actions) is the second half of treating model output as untrusted. Defense in depth means guarding both boundaries, not assuming a clean input guarantees a clean output.
+```
 
 ### Input Guardrails
 
@@ -1237,6 +1327,29 @@ def sequential_pipeline(input_data: str, agents: list[Agent]) -> str:
 ```
 
 Most stable pattern. Use when the processing steps are well-defined and always happen in the same order.
+
+```quiz
+Q: What's the principle for deciding whether to use a multi-agent system?
+- [ ] Always use multiple agents for reliability
+- [x] Multi-agent adds complexity, latency, and cost — use it only when the task genuinely benefits from specialization across domains or from parallelism, not for "diverse perspectives" a single agent could provide
+- [ ] Use it whenever you have more than one tool
+- [ ] Use it to reduce cost
+> Splitting into specialist agents is justified by genuine multi-domain expertise needs, routing parts to different models, or parallel subtask processing. It is *not* justified for a single-domain task or when you just want varied viewpoints (a single agent with chain-of-thought handles that). Each agent boundary adds orchestration overhead and latency, so the simpler single-agent design wins until specialization or parallelism actually pays.
+
+Q: In the OpenAI handoff pattern, what does declaring `handoffs=[billing_agent, technical_agent]` on a triage agent actually create?
+- [ ] A shared memory pool
+- [x] Tools the triage agent can call (`transfer_to_billing_agent`, etc.) — invoking one passes control, with the full conversation context, to that specialist agent
+- [ ] A parallel execution group
+- [ ] A fallback chain on error
+> Handoffs are implemented as auto-generated tools: each declared target becomes a `transfer_to_X` tool the triage agent may call, and calling it routes the conversation (and its context) to that agent. This reuses the tool-calling mechanism for orchestration — the triage agent "decides" to hand off the same way it decides any tool call, which fits the model-controls-the-flow nature of agents.
+
+Q: Why is the sequential pipeline (Research → Analysis → Writing → Review) called "the most stable pattern"?
+- [ ] It uses the fewest tokens
+- [x] Each agent's output feeds the next in a fixed, well-defined order, so there's no dynamic delegation to go wrong — it's deterministic, making it the right choice when the processing steps are known and always the same
+- [ ] It runs all agents in parallel
+- [ ] It needs no orchestrator
+> A sequential pipeline is essentially a chain of specialist agents with no runtime decision about who runs when — the control flow is fixed code, like a workflow. That determinism is exactly what makes it stable and debuggable. Reserve the dynamic orchestrator-workers pattern (a central LLM decomposing and delegating) for when the sub-steps genuinely can't be predicted in advance.
+```
 
 #### Fan-Out / Fan-In
 

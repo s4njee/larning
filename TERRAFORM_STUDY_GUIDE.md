@@ -79,7 +79,39 @@ When you run `terraform plan`, Terraform reconciles **three views of the world**
 
 The plan is the computed difference, and you should read it as a **contract**: these exact creations, updates, and destructions, in this order, and nothing else. Everything in professional Terraform practice flows from treating the plan that way — saving plans to a file so the thing reviewed is the thing applied, reviewing replacements like schema migrations, refusing to apply a plan you don't understand. A surprising diff is never noise; it's one of the three inputs disagreeing with the others, and your job is to figure out which one and why.
 
+```mermaid
+graph LR
+  CFG["Configuration — what you wrote"] --> PLAN{{"terraform plan: diff engine"}}
+  STATE["State — what Terraform remembers creating (address → real ID)"] --> PLAN
+  REAL["Reality — what the provider reports on refresh"] --> PLAN
+  PLAN --> C["Contract: exact creates / updates / destroys, in order"]
+  C -->|you approve| APPLY[terraform apply]
+```
+
 If you remember one thing from Part 1: **Terraform builds a dependency graph from references, asks providers to translate nodes into API calls, and plans by diffing config against state against reality — every confusing behavior you'll ever see is one of those three inputs disagreeing.**
+
+```quiz
+Q: What does it mean that Terraform is "declarative means convergent"?
+- [x] You describe the end state and Terraform figures out the steps — so `apply` twice against an unchanged world produces zero changes the second time; Terraform *is* the existence-check-and-reconcile machinery a script would make you write by hand
+- [ ] It runs the same commands every time regardless of state
+- [ ] It only creates resources, never updates them
+- [ ] Convergence means it retries failed operations
+> When convergence breaks (a re-run shows changes you didn't make), Terraform is telling you something true — drift, a provider default, an unstable expression — not malfunctioning.
+
+Q: How does Terraform know a subnet depends on its VPC, given you never wrote depends_on?
+- [x] The reference `aws_vpc.main.id` inside the subnet creates a graph edge — Terraform builds a DAG from references, so dependencies are inferred from data flow; independent branches run in parallel
+- [ ] It alphabetizes resources
+- [ ] Resources are created in file order
+- [ ] depends_on is always required
+> Model dependencies as data, not ordering hacks. If you're writing depends_on everywhere, a dependency usually isn't expressed as data flow (a module isn't exporting the output the next layer needs).
+
+Q: A `terraform plan` reconciles three views of the world. Which three, and how should you read the plan?
+- [x] Configuration (what you wrote), State (what Terraform remembers creating, mapping addresses to real IDs), and Reality (what the provider reports on refresh) — read the plan as a *contract* of exact changes, and a surprising diff means one of the three disagrees
+- [ ] Dev, staging, and prod
+- [ ] HCL, JSON, and YAML
+- [ ] Past, present, and future state files
+> "A surprising diff is never noise" — it's the three inputs disagreeing, and your job is to find which and why. This is why pros save plans to a file so the reviewed plan is the applied plan.
+```
 
 ---
 
@@ -546,6 +578,22 @@ This is correct usage: a genuine ordering requirement the API enforces but the s
 
 If you remember one thing from Part 4: **prefer `for_each` over `count` because instances keyed by stable names survive refactoring while positional indexes cascade — and treat every `lifecycle` argument and `depends_on` as a documented exception to the model, not a habit.**
 
+```quiz
+Q: Why prefer for_each over count for creating multiple resources?
+- [x] for_each keys instances by stable names (a map/set), so adding or removing one doesn't disturb the others; count uses positional indexes, so removing the middle item re-indexes everything after it, cascading into destroy-and-recreate
+- [ ] for_each is faster
+- [ ] count can't create more than 10 resources
+- [ ] for_each works without state
+> The classic count footgun: delete users[1] from a list of 5 and Terraform recreates users[2..4] because their addresses shifted. for_each addresses by key, so identity survives refactoring. Use count only for genuinely positional/toggle cases.
+
+Q: How should you treat lifecycle arguments like prevent_destroy or ignore_changes, and depends_on?
+- [x] As documented exceptions to the model, not habits — each one overrides Terraform's normal reconciliation, so it deserves a comment explaining why; reaching for them routinely usually means a dependency should be expressed as data flow instead
+- [ ] As best-practice defaults on every resource
+- [ ] As performance optimizations
+- [ ] As required for production
+> ignore_changes papers over drift; depends_on forces ordering the graph should infer. They're valid tools for real edge cases (a field a separate system mutates, a hidden API dependency) but each is a deviation to justify.
+```
+
 ---
 
 ## Part 5 — State: The Source of Record
@@ -630,6 +678,22 @@ Note the quoting — bracketed, quoted instance keys collide with shell syntax, 
 
 If you remember one thing from Part 5: **state is the authoritative mapping from config addresses to real-world object IDs — Terraform cannot update, destroy, or even notice anything without it, it contains your secrets in plaintext, and every safe way to change it is a command or block, never a text editor.**
 
+```quiz
+Q: What is Terraform state, and why can't Terraform work without it?
+- [x] The authoritative mapping from config addresses (aws_subnet.app) to real-world IDs (subnet-0a1b2c3d) — without it Terraform can't update, destroy, or even notice an existing object, because it wouldn't know which real resource a config block refers to
+- [ ] A cache that speeds up plans but is optional
+- [ ] A log of past applies
+- [ ] A copy of your HCL files
+> Lose the state-to-reality mapping and Terraform would try to recreate everything (it sees config but no record of what it made). State is the source of record, which is why every mutation goes through a command or block.
+
+Q: Why must you never edit the state file with a text editor?
+- [x] State is structured and consistency-critical; safe changes go through commands (state mv, import, rm) or blocks (moved, import, removed) that keep it valid — and it contains secrets in plaintext, so it's also a credential to protect
+- [ ] The file is encrypted and unreadable
+- [ ] Editing it is fine if you reformat the JSON
+- [ ] Text editors corrupt the checksums only
+> Hand-editing risks an inconsistent state that breaks every future plan. Because state holds secrets (resource attributes like passwords) in cleartext, access to state is access to those secrets — control it like production credentials.
+```
+
 ---
 
 ## Part 6 — Backends, Locking & Remote State
@@ -709,6 +773,15 @@ data "terraform_remote_state" "network" {
 It works, and it creates the tightest possible coupling between roots — the consumer can read *all* outputs and needs *read access to the entire state file*, secrets included. A looser pattern that scales better: have the producing root publish the handful of values consumers need into a parameter store (SSM, Consul, even tagged resources found via plain data sources), so consumers depend on a published interface rather than on another team's state file. Treat `terraform_remote_state` as acceptable within a team, suspicious across teams.
 
 If you remember one thing from Part 6: **shared infrastructure needs remote, encrypted, versioned, locked state — a correctly configured S3/GCS/azurerm backend is table stakes, locking is what stands between you and two concurrent applies corrupting the source of record, and access to state is access to its secrets.**
+
+```quiz
+Q: Why does shared infrastructure need a remote backend with locking, not local state?
+- [x] State locking prevents two concurrent applies from corrupting the source of record — without it, two people running apply simultaneously can interleave writes and produce inconsistent state; remote backends also make state shared, encrypted, and versioned
+- [ ] Remote backends are faster
+- [ ] Local state can't store secrets
+- [ ] It's only needed for compliance
+> Local state on one laptop can't be shared or locked. A correctly configured S3/GCS/azurerm backend is table stakes for teams: locking serializes applies, versioning enables recovery, encryption protects the plaintext secrets, and shared access lets the team collaborate on one source of record.
+```
 
 ---
 
@@ -956,6 +1029,22 @@ And one rule about *when*: write the pattern inline twice before extracting a mo
 Put Parts 7 and 9 together and the standard production architecture emerges: **shared modules underneath, environment roots on top**. Modules encode *how we build a network / database / service* once, with versions; each environment root (`live/prod`, `live/staging`) is a thin assembly layer that picks module versions, supplies environment-specific values, and owns its own state and credentials. Code is reused aggressively; **state is never shared** between environments. Distribution-wise, teams progress through stages as they grow — modules in the same repo, then a dedicated modules repo consumed by Git tag, then a private registry (HCP Terraform ships one; so do GitLab and others) once "infrastructure modules" become a product with consumers, versioning policy, and upgrade notes. *Terraform: Up & Running* dedicates its best chapters to exactly this progression, and the [terraform-aws-modules](https://github.com/terraform-aws-modules) GitHub org is the reference example of mature open-source module design worth reading for style alone.
 
 If you remember one thing from Part 9: **modules are typed functions for infrastructure — single-purpose, deliberately-interfaced, provider-agnostic inside, version-pinned at every remote call site — and production Terraform is thin environment roots composing versioned shared modules, sharing code but never state.**
+
+```quiz
+Q: What's the right mental model for a Terraform module, and what does "production Terraform" look like?
+- [x] A typed function for infrastructure — single-purpose, with a deliberate input/output interface, version-pinned at every remote call site; production is thin environment roots composing versioned shared modules, sharing *code* but never *state*
+- [ ] A copy-paste template you fork per environment
+- [ ] A wrapper that hides the provider entirely
+- [ ] A state file shared across all environments
+> "Share code, not state" is the key discipline: dev and prod call the same versioned module but keep separate state. Pinning the module version at the call site means an upgrade is a deliberate, reviewable bump, not a surprise.
+
+Q: Why pin module versions at every remote call site?
+- [x] So a change to the shared module doesn't silently alter every consumer's next plan — the version bump becomes a deliberate, reviewable event, the same reproducibility discipline as pinning provider and Terraform versions
+- [ ] To make plans run faster
+- [ ] Modules don't work without a version
+- [ ] To reduce the module's size
+> An unpinned module reference (or a moving branch) means someone else's edit can change your infrastructure on your next apply. Pinning makes upgrades intentional — and the no-changes plan after a bump confirms it was safe.
+```
 
 ---
 
@@ -1236,6 +1325,22 @@ resource "aws_db_instance" "main" {
 Trace the whole path: the password is fetched ephemerally, passed through a write-only argument, set on the database — and appears in neither plan nor state at any point. The `_wo_version` counter exists because Terraform can't diff a value it refuses to store; you tell it when the value changed. This pair of features (plus provider support, which is still rolling out across resources) is the first time Terraform-managed secrets can be genuinely absent from state rather than merely redacted — and it's version-gated, so check `required_version` before designing around it ([ephemeral values docs](https://developer.hashicorp.com/terraform/language/values/variables#exclude-values-from-state), [write-only arguments docs](https://developer.hashicorp.com/terraform/language/resources/ephemeral/write-only)). Worth knowing for the landscape discussion: OpenTofu attacked the same problem from a different angle with client-side **state encryption** (OpenTofu 1.7+), which encrypts the whole artifact rather than excluding values from it ([Part 15](#part-15--the-landscape-opentofu-terragrunt--alternatives)).
 
 If you remember one thing from Part 12: **`sensitive` redacts display while state stores plaintext — so control state access like production credentials, keep secrets out of code and committed tfvars, and on 1.10/1.11+ use ephemeral values with write-only arguments to keep secrets out of state entirely.**
+
+```quiz
+Q: You mark a variable `sensitive = true` and apply. Where can the secret value still be read in plaintext?
+- [ ] Nowhere — `sensitive` encrypts the value end to end
+- [x] In the state file, which stores the resolved value unencrypted
+- [ ] Only in the provider's memory, never on disk
+- [ ] In the plan output, but never in state
+> `sensitive` is purely a display filter: it redacts the value in `plan`/`apply` output and `terraform output`, but the value is still written to state as plaintext. That is why you must treat state access as equivalent to handing over the secrets themselves — encrypt the backend, lock down who can read it, and prefer ephemeral/write-only mechanisms when you want the secret to never land in state at all.
+
+Q: Why are ephemeral values and write-only arguments (Terraform 1.10/1.11+) a stronger guarantee than `sensitive` for a database password?
+- [ ] They compress the value so it can't be reconstructed
+- [ ] They move the secret into the lock table instead of state
+- [x] The value is used during the run but never persisted to state
+- [ ] They mark the value sensitive automatically in the UI
+> `sensitive` only hides the value while it still sits in state in cleartext. Ephemeral values exist only for the duration of a single run and are never written to state or plan files, and write-only arguments let a provider consume a secret without storing it back — so a leaked state file simply doesn't contain the password. That is a structural guarantee, not just a redacted display.
+```
 
 ---
 

@@ -106,6 +106,29 @@ Different models for different jobs:
 
 The right model depends on your task's complexity, latency requirements, cost budget, and privacy constraints. Most production systems use multiple models — a cheap model for routing and a capable model for generation.
 
+```quiz
+Q: "LLMs are stateless" — what does that mean for building a chatbot with memory?
+- [ ] The model forgets within a single response
+- [x] Each API call is independent; "memory" is just stuffing prior conversation back into the input every call — there's no persistent server-side state between requests
+- [ ] You must fine-tune the model per user
+- [ ] The provider stores your conversation automatically
+> An LLM call is a pure function of its input tokens, so the model has no recollection of previous calls. A multi-turn conversation works only because *you* resend the accumulated history each time. This is why context-window management and cost matter — every turn re-pays for the whole history — and why "memory" features are an application-layer concern (summarize, retrieve, or truncate the history you resend), not a model capability.
+
+Q: Why does output token count, not input size, dominate latency?
+- [ ] Output tokens are larger
+- [x] Each generated token is a separate forward pass through the model produced sequentially, so a long response takes proportionally longer — while the input is processed in one batched pass
+- [ ] Input is cached and free
+- [ ] The model validates each output token twice
+> Generation is autoregressive: the model emits one token, appends it, and runs again for the next, so producing N output tokens means N sequential forward passes. The input (however large) is encoded in a single parallel pass. That's why latency scales with output length, and why asking for concise output or streaming the response improves perceived speed — and why pricing separates (cheaper) input tokens from (pricier) output tokens.
+
+Q: A "confident-sounding answer can be completely fabricated." Why is that inherent to how LLMs work?
+- [ ] The model is poorly trained
+- [x] An LLM predicts plausible continuations of text, not facts — it samples likely next tokens, so a fluent, confident-sounding answer is just a high-probability continuation that may have no grounding in truth
+- [ ] Hallucination only happens at high temperature
+- [ ] It only fabricates when asked trick questions
+> The model is a next-token predictor optimizing for plausibility, not a knowledge base optimizing for accuracy. Fluency and confidence are properties of likely text, independent of whether the content is true, so a fabrication can read exactly like a fact. This is the foundational reason RAG and citation-grounding exist: to anchor the model's plausible-sounding output to verifiable sources rather than trusting its parametric "knowledge."
+```
+
 ---
 
 ## 2. Anatomy of an API Call
@@ -396,6 +419,22 @@ response = client.messages.create(
 
 JSON mode guarantees valid JSON syntax but doesn't guarantee the JSON matches your schema.
 
+```quiz
+Q: What's the difference between "JSON mode" and schema-constrained output?
+- [ ] JSON mode is slower
+- [x] JSON mode guarantees syntactically valid JSON but not that it matches your schema (fields could be missing or wrong-typed); schema-constrained output validates against a JSON Schema/Pydantic model, guaranteeing structure
+- [ ] They're the same feature
+- [ ] Schema mode only works for OpenAI
+> JSON mode solves the "the model wrapped it in markdown fences / added prose / produced a trailing comma" problem — you get parseable JSON. But it can still omit a required field or put a string where you wanted a number. Schema-constrained output (OpenAI's `response_format=Model`, or Anthropic's tool-as-schema trick) goes further by enforcing the actual shape, which is the strongest guarantee for production.
+
+Q: Why does Anthropic's structured-output approach define a "tool" that's really just a schema?
+- [ ] Tools are faster than JSON mode
+- [x] Tool definitions carry a strict input schema the model must populate, so forcing a tool call (with `tool_choice`) coerces the model's output into that schema — reusing the validated tool-calling mechanism for guaranteed structured extraction
+- [ ] It avoids needing an API key
+- [ ] Tools can't return text
+> Tool use already requires the model to emit arguments conforming to the tool's `input_schema`, so you can define an `extract_product` "tool" whose schema is your desired output shape and force the model to call it. The "tool call" arguments *are* your structured data, validated against the schema — a clean way to get schema-constrained output on a provider whose primary structured mechanism is tool calling.
+```
+
 ### Schema-Constrained Output
 
 The strongest guarantee — the API validates output against a JSON schema:
@@ -631,17 +670,16 @@ RAG gives the model access to external knowledge by retrieving relevant document
 
 ### The Pattern
 
-```
-User question
-    │
-    ▼
-Retrieve relevant documents (search)
-    │
-    ▼
-Inject documents into prompt as context
-    │
-    ▼
-Model generates answer grounded in the documents
+```mermaid
+graph TD
+  Q[User question] --> R["retrieve relevant documents (vector / hybrid search)"]
+  R --> RR["rerank top results (optional)"]
+  RR --> INJ["inject documents into the prompt as context"]
+  INJ --> GEN["model generates an answer grounded in the documents"]
+  subgraph idx["Index time (offline)"]
+    DOCS[documents] --> CH[chunk] --> EMB[embed] --> VS[(vector store)]
+  end
+  VS -.searched by.-> R
 ```
 
 ### Step 1: Chunking
@@ -788,6 +826,29 @@ top_chunks = reranked[:5]
 ```
 
 Reranking models (like Cohere Rerank or cross-encoders) score query-document pairs jointly, which is more accurate than the independent embedding comparison used in initial retrieval. The trade-off is latency.
+
+```quiz
+Q: What problem does RAG solve, and how?
+- [ ] It makes the model larger
+- [x] It gives the model access to external/private knowledge by retrieving relevant documents and injecting them into the prompt as context — so the LLM answers questions about your data without fine-tuning, grounded in the retrieved text
+- [ ] It permanently teaches the model new facts
+- [ ] It replaces the need for prompts
+> RAG anchors the model's plausible-but-possibly-fabricated output to actual source documents. At query time you retrieve relevant chunks and put them in the context window, instructing the model to answer only from them. This both adds knowledge the model never trained on (your docs) and reduces hallucination, all without changing the model's weights — the key contrast with fine-tuning.
+
+Q: Why combine vector search with keyword search (hybrid search + RRF)?
+- [ ] Keyword search is always more accurate
+- [x] Vector search captures semantic similarity but misses exact matches like product names, error codes, and IDs; keyword (BM25) search catches those, and Reciprocal Rank Fusion merges both rankings for better recall
+- [ ] To reduce embedding cost
+- [ ] Hybrid search is required by vector databases
+> Embeddings match meaning, so "how do I reset my password" finds relevant prose — but they're weak on literal tokens like `ERR_4032` or a SKU, where an exact term match matters more than semantics. Running both and fusing the ranked lists (RRF) gets the strengths of each: semantic recall plus exact-match precision. It's a cheap, high-leverage improvement over vector-only retrieval.
+
+Q: Why does the RAG pipeline retrieve broadly (top-20) and then rerank to top-5, rather than just taking the top-5 from the initial search?
+- [ ] To use more context window
+- [x] Initial retrieval optimizes for *recall* (find anything potentially relevant cheaply via independent embedding comparison); a reranker scores query-document pairs *jointly* for *precision*, reordering the broad candidate set far more accurately at the cost of latency
+- [ ] Reranking is free
+- [ ] The vector DB requires it
+> The two stages have different jobs: fast approximate retrieval casts a wide net (recall), and a slower cross-encoder reranker — which reads the query and each document together rather than comparing pre-computed vectors independently — reorders for true relevance (precision). Feeding only the reranked top results into the prompt gives the model the best-quality context without wasting the window on marginally-relevant chunks. The cost is the reranker's added latency.
+```
 
 ### Citations
 
@@ -1119,6 +1180,22 @@ def cached_llm(query):
 
 Use with caution — semantic similarity doesn't guarantee the same answer is appropriate (context-dependent questions, time-sensitive data).
 
+```quiz
+Q: When does prompt caching pay off, and what does it actually cache?
+- [ ] It caches the model's final answer
+- [x] It reuses the processed representation of a long *static prefix* (system prompt, few-shot examples, retrieved docs) across requests that share it — valuable when a long fixed prefix precedes a short varying user message; cached input tokens run ~90% cheaper
+- [ ] It works only for identical full requests
+- [ ] It caches output tokens
+> Prompt caching stores the model's internal processing of a prefix, so subsequent calls with the same prefix skip re-processing it — cheaper and faster. The win requires the structure of "big static prefix + small variable suffix": a long system prompt or document set reused across many short questions. It's not response caching (that's semantic caching) and the cache has a short TTL (~5 min) refreshed on each hit.
+
+Q: Why must semantic caching (serving a cached response for a similar query) be used with caution?
+- [ ] It's slower than calling the model
+- [x] Semantic similarity doesn't guarantee the *same answer is appropriate* — context-dependent or time-sensitive questions can look similar but need different answers, so a cache hit can serve a wrong or stale response
+- [ ] It can't store embeddings
+- [ ] It only works at temperature 0
+> Two queries close in embedding space ("what's the weather today" vs "what's the weather tomorrow," or the same question asked by different users with different context) may demand different answers. Serving a cached response based purely on similarity risks returning something subtly wrong or out of date. Prompt caching (reusing a prefix the model still fully processes per request) is safe; response caching trades correctness for cost and needs a high threshold and careful scoping.
+```
+
 ### Response Caching for Deterministic Tasks
 
 For tasks with deterministic expected output (classification, extraction from the same document), cache by input hash:
@@ -1444,6 +1521,29 @@ The best systems often combine all three:
 Fine-tuned model (consistent format + domain style)
     + RAG (current knowledge from your database)
     + Prompt engineering (task-specific instructions)
+```
+
+```quiz
+Q: You need the model to answer using your company's up-to-date internal docs. Which approach, and why not fine-tuning?
+- [ ] Fine-tuning, to bake the docs into the weights
+- [x] RAG — retrieve the relevant docs at query time; fine-tuning facts is wrong because baked-in facts can hallucinate or go stale, and updating means retraining
+- [ ] Prompting with the whole document corpus inline
+- [ ] None — the model already knows
+> The decision framework's first branch: need specific, up-to-date *information* → RAG. Fine-tuning changes behavior, not reliable knowledge — facts pressed into weights can be misremembered (hallucinated) and become stale the moment the source changes, with retraining as the only fix. RAG keeps knowledge external and fresh: update the index and the answers update.
+
+Q: When is fine-tuning genuinely the right tool?
+- [ ] To teach the model new facts cheaply
+- [x] For consistent adherence to a behavior/format across thousands of cases, replacing a large model with a cheaper fine-tuned small one on a narrow high-volume task, or a style/reasoning pattern that can't be expressed in a prompt
+- [ ] For one-off or frequently-changing tasks
+- [ ] Whenever prompting feels slow
+> Fine-tuning deeply changes *behavior* and is worth its days-to-weeks setup when you need that behavior reliably at scale — a fixed output format across thousands of requests, a small fast model matching a big one's quality on a narrow task, or a style no prompt captures. It's wrong for facts (RAG), one-off capabilities (not worth the cost), and fast-changing tasks (retraining is slow).
+
+Q: What does the comparison table reveal about prompting's running cost versus fine-tuning's?
+- [ ] Prompting is always cheaper
+- [x] Prompting has near-zero setup but *higher* running cost (long prompts with examples re-sent every call), while fine-tuning has high setup but *lower* running cost (the behavior is in the weights, so prompts can be short)
+- [ ] They cost the same per call
+- [ ] Fine-tuning eliminates all per-call cost
+> The trade is setup-versus-ongoing: few-shot prompting works in minutes but you pay for those example tokens on every request forever; fine-tuning costs days upfront but then short prompts suffice because the behavior is baked in. For high-volume narrow tasks, the per-call savings from a fine-tuned model can repay the training cost — which is exactly when fine-tuning earns its place.
 ```
 
 ---

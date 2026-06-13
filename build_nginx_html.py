@@ -67,24 +67,16 @@ Nginx's defining design choice is its **event-driven, asynchronous, non-blocking
 
 The process model:
 
+```mermaid
+graph TD
+  M["master process (runs as root)<br/>reads/validates config, binds :80/:443,<br/>manages worker lifecycle, binary upgrades"]
+  M -->|forks| W0["worker 0 — event loop"]
+  M -->|forks| W1["worker 1 — event loop"]
+  M -->|forks| WN["worker N — event loop"]
+  M -->|forks| CM["cache manager / loader"]
 ```
-┌──────────────────────────────────────────────┐
-│  master process (runs as root)                │
-│   - reads & validates config                  │
-│   - binds privileged ports (80/443)           │
-│   - manages worker lifecycle, signals         │
-│   - performs binary upgrades                   │
-└───────────────┬──────────────────────────────┘
-                │ forks
-   ┌────────────┼────────────┬───────────────┐
-   ▼            ▼            ▼               ▼
-┌────────┐ ┌────────┐ ┌────────┐      ┌──────────────┐
-│worker 0│ │worker 1│ │worker N│      │cache manager │
-│event   │ │event   │ │event   │      │cache loader  │
-│loop    │ │loop    │ │loop    │      └──────────────┘
-└────────┘ └────────┘ └────────┘
- (one per CPU core, run as unprivileged user)
-```
+
+Workers run one per CPU core as an unprivileged user; the master handles no requests itself.
 
 - **Master process** runs as root, reads config, binds to ports 80/443, and forks workers. It does not handle requests itself.
 - **Worker processes** do all the actual request handling. Each is single-threaded and runs an event loop. The recommended count is one per CPU core (`worker_processes auto`).
@@ -2002,11 +1994,16 @@ def render_quiz(part_num):
 
 
 def transform(md_text):
+    # Local import avoids a circular import: build_guide imports CSS/JS from here.
+    from build_guide import extract_mermaid_blocks, restore_mermaid_blocks
+
+    md_text, diagrams = extract_mermaid_blocks(md_text)
     md = markdown.Markdown(
         extensions=["fenced_code", "tables", "toc", "attr_list", "sane_lists"],
         output_format="html5",
     )
     body = md.convert(md_text)
+    body = restore_mermaid_blocks(body, diagrams)
 
     def norm_code(m):
         cls = m.group(1)

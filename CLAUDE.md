@@ -21,12 +21,16 @@ guide they must follow.
 - `html/` — generated site, **committed to the repo**. GitHub Pages deploys
   from it via `.github/workflows/pages.yml` (the workflow rebuilds before
   publishing, but keep the committed output current anyway).
+- `diagram_cache/` — build-time-rendered mermaid SVGs, keyed by a hash of the
+  diagram source, **committed to the repo** (see Diagrams below).
 - `README.md` — site README with a summary paragraph per guide.
 
 ## Build commands
 
 ```bash
 python3 build_all_guides.py        # rebuild the whole site into html/
+npm install                        # one-time: install the mermaid renderer
+                                   # (only needed to add/change a diagram)
 ```
 
 There are no tests; the verification step is rebuilding and spot-checking the
@@ -207,11 +211,31 @@ Placement and quality:
 - ATX headings (`#`/`##`/`###`), `---` rules between major parts.
 - Fenced code blocks with a language tag.
 - Self-check quizzes are fenced `quiz` blocks (see the Quizzes section).
+- Diagrams are fenced `mermaid` blocks (see Diagrams below).
 - Raw `<angle-bracket>` tokens in prose (generics, placeholders) are
   HTML-escaped by the build, but inside backticks or fences they pass
   through — prefer backticks for them anyway.
 - Sibling-guide links are relative paths to the `.md` file from the linking
   file's directory (so from `k8s/`, link `../REDIS_STUDY_GUIDE.md`).
+
+## Diagrams
+
+A fenced ` ```mermaid ` block is rendered to an **inline SVG at build time**, so
+pages stay self-contained (no client-side `mermaid.js`, no network deps, works
+offline and on both themes). `build_guide.py` shells out to the `mmdc`
+(`@mermaid-js/mermaid-cli`) renderer and caches each SVG under `diagram_cache/`
+keyed by a hash of the source. Because CI builds with Python only, **the cache
+is committed**: a rebuild reuses it and only needs `mmdc` when a diagram is new
+or changed (run `npm install` once to get it). A cache miss with no renderer
+fails the build loudly rather than silently dropping the diagram. Commit the
+new/changed `diagram_cache/*.svg` alongside the Markdown and `html/`.
+
+Use diagrams **tactically** (the per-guide plan lives in `todo5.md`): reach for
+mermaid when the point is *who talks to whom, in what order, or in what state* —
+sequence diagrams, state machines, flowcharts/decision trees, architecture and
+ER graphs. **Leave ASCII** for spatial/exact-layout art (memory and byte/packet
+layouts, B-tree page layouts, directory trees) where monospace alignment is the
+content. Budget ~1–4 diagrams per guide; a weak diagram is worse than none.
 
 ## Definition of done for a guide
 

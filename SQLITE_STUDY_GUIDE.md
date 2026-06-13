@@ -314,6 +314,36 @@ SELECT datetime(1705329000, 'unixepoch'); -- back to text
 
 Best practice: store dates as ISO 8601 text (`'2024-01-15 14:30:00'`) or as Unix timestamps (integers). Both work with SQLite's date functions and sort correctly.
 
+```quiz
+Q: INSERT INTO t VALUES ('not_a_number') succeeds on a column declared INTEGER. Why is this a design decision, not a bug?
+- [x] Manifest typing — the type belongs to the value, not the column, mirroring the dynamic host languages SQLite embeds in; STRICT tables (3.37+) opt into enforcement
+- [ ] The parser silently casts all strings
+- [ ] INTEGER affinity only applies to indexes
+- [ ] It is a bug, fixed in SQLite 4
+> Column declarations create *affinity* (a storage preference), not a constraint. The default fits one flexible application talking to its own file; rigidity is available via STRICT when you want the database to guard types — inverting the server-database assumption.
+
+Q: What does declaring a column VARCHAR(255) actually do in SQLite?
+- [ ] Enforces a 255-character limit
+- [x] Nothing but assign TEXT affinity — the name contains "CHAR"; the length is ignored entirely
+- [ ] Creates a fixed-width column for speed
+- [ ] Raises an error; VARCHAR isn't a valid type
+> Affinity is matched on the type-name string: anything with INT → INTEGER, CHAR/CLOB/TEXT → TEXT, BLOB/none → BLOB, REAL/FLOA/DOUB → REAL, else NUMERIC. Length limits need a CHECK constraint or a STRICT-adjacent discipline.
+
+Q: How should you store timestamps in SQLite, which has no date type?
+- [ ] As locale-formatted strings like '1/15/2024'
+- [x] ISO 8601 text or Unix-timestamp integers — both sort correctly and work with the built-in date functions
+- [ ] As BLOBs of packed time structs
+- [ ] You can't; use a companion file
+> The date/time functions speak three representations (ISO text, Julian-day reals, Unix integers). Ambiguous formats sort wrong and break the function suite — mistake #6 in the guide's catalog.
+
+Q: In the SQLite pipeline, what does your SQL actually become before it runs?
+- [x] A VDBE bytecode program (~187 opcodes) — sqlite3_prepare compiles it; the register-based VM executes it over the B-tree and pager layers
+- [ ] A parse tree interpreted node by node
+- [ ] Native machine code via JIT
+- [ ] A sequence of pager read/write calls directly
+> Tokenizer → parser → code generator → VDBE → B-tree → pager → VFS. EXPLAIN shows the actual opcodes; EXPLAIN QUERY PLAN shows the planner's strategy — the latter is your daily tool.
+```
+
 ---
 
 ## 4. SQL Feature Coverage
@@ -635,6 +665,36 @@ SELECT * FROM sqlite_stat1;
 6. **Don't over-index** — each index slows down INSERT/UPDATE/DELETE and uses disk space
 7. **Covering indexes** — if a query only needs a few columns, include them all in the index
 
+```quiz
+Q: A query filters on `(created_at)` alone but your index is `(user_id, created_at)`. Will it help?
+- [x] Not efficiently — a multi-column index only serves prefixes, so it covers (user_id) and (user_id, created_at) but not created_at by itself
+- [ ] Yes — SQLite uses any column in the index
+- [ ] Yes, after running ANALYZE
+- [ ] Only if created_at is the table's rowid
+> Composite indexes are leftmost-prefix structures. A predicate on the second column without the first must scan (or get its own index). Order the columns to match your query's equality-then-range pattern.
+
+Q: EXPLAIN QUERY PLAN shows `USING COVERING INDEX`. What does that mean for performance?
+- [x] Every column the query needs is in the index, so SQLite never touches the table B-tree — one tree descent instead of two
+- [ ] The index covers all rows including deleted ones
+- [ ] A temporary index was built for this query
+- [ ] The index is being rebuilt
+> The table-is-a-B-tree design means a normal secondary-index hit costs two descents (index → rowid → table). A covering index collapses that to one — the cheapest non-rowid path SQLite offers.
+
+Q: Why does the guide say to "always run ANALYZE after bulk data loads"?
+- [x] ANALYZE populates sqlite_stat1 with distribution statistics; without them the planner guesses at selectivity and join order, often badly
+- [ ] ANALYZE rebuilds all indexes for density
+- [ ] It compacts the database file
+- [ ] It enables the query planner, which is off by default
+> The planner needs to know how selective each index is to choose index-vs-scan and join order. Fresh after a load, the stats are absent or stale — the planner is flying blind until ANALYZE runs.
+
+Q: `SEARCH users USING INTEGER PRIMARY KEY` vs `SEARCH users USING INDEX idx` — which is faster and why?
+- [x] The rowid path — INTEGER PRIMARY KEY aliases the rowid, so the lookup hits the table B-tree directly with no secondary-index indirection
+- [ ] The named index, because it's purpose-built
+- [ ] They're identical
+- [ ] Neither; both are full scans
+> Rowid lookups are the fastest possible: the table *is* a B-tree keyed on rowid, so one descent finds the row. A secondary index finds the rowid first, then descends the table — two trees.
+```
+
 ---
 
 ## 6. Transactions, Concurrency & Locking
@@ -675,11 +735,15 @@ COMMIT;  -- step 1 is committed, step 2 is not
 
 SQLite uses file-level locking with five states. Understanding these is essential for debugging concurrency issues:
 
-```
-  UNLOCKED ──→ SHARED ──→ RESERVED ──→ PENDING ──→ EXCLUSIVE
-  (nothing)    (reading)   (planning    (waiting     (writing)
-                            to write)    for readers
-                                         to finish)
+```mermaid
+stateDiagram-v2
+  [*] --> UNLOCKED
+  UNLOCKED --> SHARED: begin reading
+  SHARED --> RESERVED: intend to write (one allowed; readers still OK)
+  RESERVED --> PENDING: about to write (block new readers)
+  PENDING --> EXCLUSIVE: existing readers finished
+  EXCLUSIVE --> UNLOCKED: commit / rollback
+  note right of EXCLUSIVE: writing — no other locks coexist
 ```
 
 | State | Who can coexist | What it means |
@@ -800,6 +864,36 @@ Use WAL mode **almost always**. The only reasons not to:
 2. You're on a system without shared-memory support
 3. You're using a network filesystem (WAL doesn't work there either, but neither does anything else reliably)
 
+```quiz
+Q: What is SQLite's core concurrency bet, and why is it acceptable for its use case?
+- [x] One writer at a time, total — a write takes an exclusive lock on the whole database; acceptable because SQLite is embedded in one app where simultaneous writers are rare and single-writer simplicity (no deadlocks, no lock manager) is worth more
+- [ ] Row-level locking like a server database
+- [ ] Multi-version concurrency for writers
+- [ ] No locking at all; the app must coordinate
+> The opposite bet from server databases. WAL mode then recovers *reader* concurrency (readers never block the writer and vice versa), giving read-heavy embedded workloads the parallelism they actually need without the machinery they don't.
+
+Q: You get SQLITE_BUSY immediately on a write under contention. What's the standard fix and the better transaction pattern?
+- [x] Set PRAGMA busy_timeout so it waits instead of failing, and use BEGIN IMMEDIATE for write transactions to take the RESERVED lock up front
+- [ ] Retry in a tight loop with no delay
+- [ ] Switch to EXCLUSIVE mode for all reads
+- [ ] Disable journaling
+> Busy timeout is operational hygiene, not optional tuning. BEGIN IMMEDIATE fails fast (or queues) at the start rather than succeeding on reads and then hitting the upgrade race when you finally write — the classic SQLITE_BUSY-on-upgrade trap.
+
+Q: In WAL mode, how does a reader see recent changes without blocking the writer?
+- [x] It reads the main database but consults the WAL index (-shm) to redirect any page with a newer committed frame, pinned to its snapshot's WAL position for the transaction's life
+- [ ] It waits for the writer to checkpoint first
+- [ ] It reads directly from the -wal file only
+- [ ] The writer copies changed pages to each reader
+> The reader's snapshot is a WAL position; it sees the database as of that frame while the single writer appends beyond it. That redirection is exactly what buys "readers never block the writer."
+
+Q: A long-lived read transaction in WAL mode makes the -wal file grow without bound. Why?
+- [x] A checkpoint can only recycle WAL frames up to the oldest reader's position — a long reader pins the log, so frames accumulate and every new reader pays to consult a larger WAL index
+- [ ] WAL files never shrink by design
+- [ ] Auto-checkpoint is disabled in WAL mode
+- [ ] The writer stopped committing
+> The reader-pins-the-log pathology is the direct analog of a long PostgreSQL transaction pinning the vacuum horizon. Same disease (long transaction), different organ — alert on transaction age.
+```
+
 ---
 
 ## 8. Performance Tuning
@@ -919,6 +1013,36 @@ start = time.perf_counter()
 conn.execute("SELECT COUNT(*) FROM big_table")
 elapsed = time.perf_counter() - start
 print(f"Query took {elapsed:.3f}s")
+```
+
+```quiz
+Q: Why is wrapping 10,000 inserts in one transaction the single most impactful SQLite optimization?
+- [x] Each implicit transaction does its own fsync (~100/sec); one transaction means one fsync at the end, reaching 50,000–100,000+ inserts/sec
+- [ ] It bypasses the VDBE compilation step
+- [ ] It disables index maintenance until commit
+- [ ] It enables parallel writers
+> Without an explicit BEGIN/COMMIT, every statement is its own durable transaction. fsync is the bottleneck; batching amortizes one disk sync over thousands of rows — the difference between hundreds and tens of thousands per second.
+
+Q: What does `PRAGMA synchronous = NORMAL` trade away, and why is it safe in WAL mode?
+- [x] It syncs only at checkpoints rather than every commit — a crash can lose the last few commits but never corrupts the database, because WAL frame checksums still guarantee a clean recovery
+- [ ] It disables fsync entirely, risking corruption
+- [ ] It only affects read performance
+- [ ] It makes writes non-durable in all modes
+> NORMAL in WAL mode is the popular middle setting: durability of the last few commits traded for far fewer fsyncs, corruption still impossible. Same shape of bargain as PostgreSQL's synchronous_commit=off.
+
+Q: What does `PRAGMA mmap_size` buy, and what's the risk it introduces?
+- [x] Memory-mapped reads avoid read() syscalls and copies (faster for read-heavy work) — at the cost that I/O errors arrive as signals and a stray pointer write in the host process can corrupt the mapped database
+- [ ] It allocates a fixed in-memory copy of the whole database
+- [ ] It enables concurrent writers via shared memory
+- [ ] It has no downside; always set it to maximum
+> The trade is characteristically SQLite: the *application* gets to make it. Mapping the file into the process address space exposes the database to the host's bugs — a real consideration the embedding decides on.
+
+Q: Why use a prepared statement re-bound in a loop instead of building SQL strings?
+- [x] It compiles the SQL to VDBE bytecode once and re-runs with new parameters — skipping parse+plan each iteration, and eliminating SQL injection
+- [ ] It commits automatically after each row
+- [ ] It bypasses the busy timeout
+- [ ] It stores results in the page cache
+> "Prepare once, step many" is the core SQLite performance idiom — the program plus cursors is reused. String-building re-parses every time and opens an injection hole.
 ```
 
 ---
@@ -2275,6 +2399,36 @@ INSERT INTO t VALUES ('not_a_number');
 -- use STRICT tables if you want enforcement
 CREATE TABLE t (age INTEGER) STRICT;
 INSERT INTO t VALUES ('not_a_number');  -- ERROR
+```
+
+```quiz
+Q: A new connection silently ignores your foreign-key constraints. What did you forget?
+- [x] PRAGMA foreign_keys = ON — FK enforcement is off by default, per connection, a compatibility fossil and a top SQLite footgun
+- [ ] To declare the columns as REFERENCES
+- [ ] To run ANALYZE
+- [ ] To enable WAL mode
+> The pragma must be set on every connection, every time. Schema declarations without it are documentation, not enforcement — and PRAGMA foreign_key_check audits the damage after the fact.
+
+Q: `SELECT * FROM users WHERE id NOT IN (SELECT manager_id FROM teams)` returns zero rows unexpectedly. Why?
+- [x] NOT IN with a subquery that produces any NULL returns no rows — three-valued logic makes the comparison UNKNOWN; use NOT EXISTS instead
+- [ ] NOT IN isn't supported in SQLite
+- [ ] The subquery needs an index
+- [ ] id must be the rowid for NOT IN to work
+> A single NULL in the IN-list poisons the whole NOT IN. NOT EXISTS sidesteps the NULL semantics entirely — the standard fix, and the same trap exists in PostgreSQL.
+
+Q: When is AUTOINCREMENT actually needed over plain INTEGER PRIMARY KEY?
+- [x] Only when you must guarantee rowids are never reused — INTEGER PRIMARY KEY already auto-increments but may reuse the id of a deleted last row; AUTOINCREMENT prevents that via sqlite_sequence, at a small cost
+- [ ] Always, for any primary key
+- [ ] When the table has more than a million rows
+- [ ] When using WAL mode
+> Plain INTEGER PRIMARY KEY gives you auto-incrementing ids for free. AUTOINCREMENT adds a sqlite_sequence lookup to forbid reuse — wasteful unless your application semantics truly depend on monotonic, never-reused ids.
+
+Q: When does a WITHOUT ROWID table pay off, and when does it hurt?
+- [x] It helps for lookup/junction tables with non-integer or composite primary keys (saves the rowid, clusters by PK); it hurts for large rows, since the full row sits in the B-tree interior nodes
+- [ ] It always saves space and is strictly better
+- [ ] It only works on tables under 1000 rows
+- [ ] It disables secondary indexes
+> WITHOUT ROWID clusters the table directly on your declared PK — great for country codes or many-to-many junctions with small rows, counterproductive when wide rows bloat the interior nodes and shrink fanout.
 ```
 
 ---

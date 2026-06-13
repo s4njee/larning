@@ -32,17 +32,18 @@ Primary references: Andy Pavlo's [CMU 15-445/645](https://15445.courses.cs.cmu.e
 
 Every relational engine, however different its skin, decomposes into the same stack — worth fixing as a map before descending:
 
-```
-SQL text
-  │  parser            → parse tree (grammar only; "is this SQL?")
-  │  analyzer/rewriter → query tree (names resolved, views expanded)
-  │  planner/optimizer → plan tree (the *how*: scans, joins, order)   Ch. 8
-  │  executor          → rows (iterators / bytecode)                  Ch. 9
-  ├─ access methods    → tables & indexes as trees and heaps          Ch. 2–3, 10
-  ├─ buffer manager    → pages cached in memory, pinned, dirtied      Ch. 4
-  ├─ transaction mgr   → visibility, isolation, locks                 Ch. 6–7
-  ├─ WAL / journal     → durability and crash recovery                Ch. 5
-  └─ storage           → files, fsync, the operating system
+```mermaid
+graph TD
+  SQL[SQL text] -->|"grammar: is this SQL?"| P[parser]
+  P -->|parse tree| A[analyzer / rewriter]
+  A -->|"query tree: names resolved, views expanded"| PL["planner / optimizer — Ch. 8"]
+  PL -->|"plan tree: scans, joins, order"| EX["executor — Ch. 9"]
+  EX -->|rows| OUT[result]
+  EX -.runs on.-> AM["access methods: trees and heaps — Ch. 2-3, 10"]
+  AM --> BM["buffer manager: cached, pinned, dirtied pages — Ch. 4"]
+  BM --> TM["transaction mgr: visibility, isolation, locks — Ch. 6-7"]
+  TM --> WAL["WAL / journal: durability and crash recovery — Ch. 5"]
+  WAL --> ST["storage: files, fsync, the operating system"]
 ```
 
 The two case studies instantiate the stack at opposite ends of the architecture spectrum:
@@ -163,6 +164,36 @@ Note what never happens: **PostgreSQL data files don't shrink** in normal operat
 6. Take a real table from one of your projects and reorder its columns by descending `typalign`. Measure the size delta with `pg_column_size(row(...))` per representative row and `pg_relation_size` after a rewrite. At what row width does the saving stop mattering relative to the 23-byte header?
 7. Delete 90% of a large table's rows in both systems. Chart file size, `pg_relation_size` + FSM contents (`pg_freespace` extension) vs. `PRAGMA freelist_count`, before and after `VACUUM` (PostgreSQL), `VACUUM` (SQLite), and inserts of new rows. Reconcile every number you see with §2.5.
 
+```quiz
+Q: Why do slotted pages address rows by slot number instead of byte offset?
+- [x] So a page can compact its rows in place without invalidating addresses — every index entry stores (page, slot), and slots stay stable while physical positions move
+- [ ] Slot numbers compress better than offsets
+- [ ] Byte offsets can't exceed 64 KB
+- [ ] It allows variable page sizes
+> The indirection is the load-bearing trick: defragmentation after deletes moves bytes but not identities. If PostgreSQL indexes stored byte offsets, the first compaction would silently point every index at the wrong rows.
+
+Q: PostgreSQL spends ~23 bytes per row version on the tuple header. What does that purchase, and what's SQLite's counterpart?
+- [ ] Compression metadata; SQLite uses zlib instead
+- [x] MVCC visibility (xmin/xmax/ctid/infomask) — readers and writers never block each other; SQLite's rows carry almost no overhead and it pays in concurrency (one writer, total)
+- [ ] Checksums; SQLite checksums the WAL instead
+- [ ] Index back-pointers; SQLite stores them in the schema
+> Storage layout is policy made permanent: PostgreSQL prepays bytes for concurrent visibility on every row; SQLite's varint-packed records are denser, and the missing machinery resurfaces as the single-writer rule.
+
+Q: Why can `(a int4, b int8, c int4, d int8)` occupy more space than the same columns ordered `(b, d, a, c)`?
+- [x] C-style alignment — int8 needs 8-byte boundaries, so the interleaved order inserts padding after each int4; descending-alignment ordering packs perfectly
+- [ ] The catalog stores column names with each row
+- [ ] PostgreSQL sorts columns alphabetically on disk
+- [ ] It can't; row size is order-independent
+> 24 bytes of data occupying 32 is a free 10–20% on narrow-tuple tables — of heap, cache, WAL FPIs, and backups. SQLite has no alignment at all (records are parsed every read) — the opposite end of the same trade.
+
+Q: After a mass DELETE, the data files didn't shrink in either system. Bug?
+- [ ] Yes — VACUUM should return the space to the OS
+- [x] No — both mark space reusable internally (FSM / freelist); files shrink only via rewrite (VACUUM FULL/pg_repack; SQLite VACUUM) or trailing-page truncation
+- [ ] Only on filesystems without sparse-file support
+- [ ] The space returns after the next checkpoint
+> "Disk didn't drop after the big delete" is §2.5 working as designed: the ledger of free space lives beside (PostgreSQL forks) or inside (SQLite freelist) the data, ready for reuse — reclaiming it for the OS costs a rewrite.
+```
+
 ---
 
 ## Chapter 3 — B-Trees
@@ -214,6 +245,36 @@ The general lesson, stated once: **in any MVCC system, "delete" is a promise to 
 5. PostgreSQL's split inserts the parent separator *after* releasing the split pages, and may crash in between. Argue (from the right-link + high-key invariants) that searches remain correct in the interim, and name the kind of consistency this resembles from the Distributed Algorithms guide.
 6. Produce index bloat on purpose: a PostgreSQL table with a `bigserial` index, delete every odd-keyed row, and inspect with `pgstatindex` (leaf density, deleted pages). Explain why inserting *new, larger* keys doesn't reuse the holes, then `REINDEX CONCURRENTLY` and re-measure. Repeat the experiment in SQLite and compare via `sqlite3_analyzer` — which system self-healed more, and by which §3.4 mechanism?
 7. Why can't PostgreSQL recycle a half-dead page as soon as it's unlinked? Construct the concrete use-after-free: an in-flight index scan, the page recycled and split into a different part of the key space, and the wrong rows returned. Identify the exact horizon test that prevents it.
+
+```quiz
+Q: Why is "a billion rows in 3–4 page reads" the B-tree's standing offer?
+- [x] Fanout of hundreds per interior page makes height ⌈log_f N⌉ tiny, and the top levels are effectively always cached — so a point lookup is one or two real I/Os regardless of N
+- [ ] B-trees hash keys to fixed positions
+- [ ] Leaves are kept in memory by the kernel
+- [ ] The contract only holds for integer keys
+> Height 3–4 at f≈200–500 is the whole argument, cashed by the buffer pool keeping roots and internals resident. Hashing matches the O(1) but forfeits ranges and ordered scans — why every general-purpose engine chose the tree.
+
+Q: In Lehman–Yao, a reader descends to a child that split before it arrived. How does it recover without locks?
+- [ ] It restarts the descent from the root
+- [x] The sought key exceeding the page's high key tells it the key moved right; it follows the right-sibling link, possibly several times
+- [ ] The parent's lock prevents this case
+- [ ] The split blocks until all readers finish
+> Make readers tolerate stale parent information and hand them a recovery edge — the same optimistic-concurrency move as everywhere else, and why B-tree contention almost never shows in PostgreSQL profiles. A crash between split and parent-separator insert leaves a correct, merely slower, tree.
+
+Q: Why do random UUIDv4 keys bloat an insert-heavy index compared to sequential keys?
+- [x] Monotonic inserts hit the rightmost leaf and get the uneven split policy (~90%+ packed); random keys spray across all leaves, splitting everywhere at ~50% utilization
+- [ ] UUIDs are larger, so fewer fit per page
+- [ ] UUID comparison is slower than integer comparison
+- [ ] They don't — the difference is only in heap order
+> Size matters too, but the split policy is the mechanism: append-order fills pages nearly full; random-order leaves them half-empty everywhere. UUIDv7 exists precisely to restore key monotonicity.
+
+Q: An index entry's row was deleted yesterday, yet the entry is still in the index. Why is that correct?
+- [ ] It's a bug vacuum will log
+- [x] In MVCC, "delete" is a promise to delete later — the deleting transaction might have aborted, and concurrent snapshots may still need the entry; removal happens in stages, each gated by a proof no one can still see it
+- [ ] Indexes are append-only by design
+- [ ] The entry is removed at the next checkpoint, not vacuum
+> Killed-tuple hints, bottom-up deletion, vacuum's bulk pass, and half-dead page recycling are four instances of the same proof obligation at four granularities. Where an engine keeps those proofs *is* its garbage-collection architecture.
+```
 
 ---
 
@@ -319,6 +380,43 @@ Reading your own log is the graduation exercise of this chapter; here is the map
 7. Explain the super-journal protocol's atomicity argument: enumerate the crash points (before/after each journal write, before/after the super-journal unlink) and show each recovers to all-or-nothing across two ATTACHed databases. Which file plays the role of the 2PC coordinator's decision log?
 8. PITR thought experiment: you restore a PostgreSQL cluster to yesterday 14:00 and resume writes. Explain, via timelines, why tonight's archive doesn't collide with this morning's, and what would go wrong in a timeline-less design.
 
+```quiz
+Q: At the instant a PostgreSQL COMMIT returns, what is guaranteed to be on disk?
+- [ ] The modified heap and index pages
+- [x] The WAL through the commit record — data pages may be arbitrarily stale; crash recovery replays the log forward from the last checkpoint
+- [ ] Both the WAL and the data pages
+- [ ] Nothing until the next checkpoint
+> The two rules — WAL-before-data and commit-equals-WAL-flush — are what make lazy page writing safe. The log is the truth; the random-access files are an optimization that may lag.
+
+Q: Why does PostgreSQL's crash recovery have no undo pass, when ARIES-style engines need one?
+- [x] MVCC is the undo log — aborted transactions' rows are simply never marked committed, and vacuum collects them; old versions already live in the heap
+- [ ] PostgreSQL forbids aborting transactions mid-write
+- [ ] The checkpointer undoes uncommitted changes before flushing
+- [ ] It does — pg_xact is the undo log
+> The elegant interlock: version-keeping for concurrency doubles as crash-abort handling, amortized into the table. What it costs instead is vacuum — the bill arrives in Chapter 6.
+
+Q: Why does WAL volume spike right after every checkpoint?
+- [ ] The checkpointer writes its progress into the WAL
+- [x] Full-page images — the first modification of each page after a checkpoint logs the entire page, protecting redo against torn (half-written) pages
+- [ ] Group commit disables until the checkpoint finishes
+- [ ] Autovacuum is scheduled after checkpoints
+> Redo against a corrupt base is garbage, so the first touch logs a known-good image. Spreading checkpoints (max_wal_size) reduces FPI traffic; pg_waldump --stats shows the share directly.
+
+Q: In SQLite's rollback-journal mode, what single event IS the commit?
+- [x] Deleting/invalidating the journal file — with the journal present, recovery rolls back; with it gone, the in-place writes simply are the database
+- [ ] The fsync of the database file
+- [ ] Writing a commit record into the journal
+- [ ] Releasing the EXCLUSIVE lock
+> One atomic filesystem event flips the meaning of the main file. WAL mode inverts the roles (append pages to the log, checkpoint later) — and its cumulative frame checksums make a torn tail self-detecting: crash-atomicity from arithmetic.
+
+Q: What's the lesson of fsyncgate (2018)?
+- [ ] fsync should be called twice for safety
+- [x] The OS contract is part of your correctness proof — Linux could clear the error and drop dirty pages after one failed fsync, so "retry" silently lost data; the fix was PANIC and recover from WAL
+- [ ] Buffered I/O is always unsafe for databases
+- [ ] Only network filesystems lie about durability
+> A database is a program that has stopped trusting the operating system politely. The assumed semantics ("failed fsync is retryable") was never written down where anyone thought — and the storage contract is an axiom of every crash-safety proof.
+```
+
 ---
 
 ## Chapter 6 — MVCC and Transaction Isolation
@@ -376,6 +474,43 @@ Both systems' MVCC implementations share one enemy worth elevating from the bull
 6. State precisely why write skew is impossible in SQLite, and what the application gives up to obtain that (answer in terms of the throughput model of Ch. 7).
 7. Demonstrate the subtransaction cliff: a long transaction with 100 savepoints held open, concurrent read throughput measured before and after the 64th. Find the wait events, and rewrite the workload to stay under the cache (or to use one transaction per retry instead of savepoints).
 8. Two wraparounds: query `pg_database.datfrozenxid` age *and* `datminmxid` age on a busy cluster. Construct a workload (hint: hot FK parent row + concurrent `FOR SHARE`) that advances multixact age much faster than xid age, and explain why monitoring only the first leaves a blind spot.
+
+```quiz
+Q: A freshly bulk-loaded table generates a wave of *writes* the first time it's read. Why?
+- [x] Hint bits — the first reader resolves each tuple's commit status against pg_xact and stamps the result into t_infomask, dirtying the pages
+- [ ] The first read builds the visibility map
+- [ ] Autovacuum triggers on first access
+- [ ] Index-only scans materialize on demand
+> Per-tuple pg_xact lookups forever would be ruinous, so visibility resolution is cached in the tuple itself — making even SELECTs write. The eternally surprising production observation, with a one-line explanation.
+
+Q: An UPDATE qualifies as HOT only under two conditions. Which?
+- [ ] The table has no indexes and fillfactor is 100
+- [x] No indexed column changed, and the new version fits on the same page — then indexes keep pointing at the old line pointer, which redirects to the on-page chain
+- [ ] The row is smaller than 2 KB and not TOASTed
+- [ ] The transaction is read-committed
+> HOT averts the index amplification of heap MVCC (every update otherwise inserts into every index). It's the mechanical content of "fillfactor < 100 on hot-update tables" and "don't index columns you update constantly."
+
+Q: One forgotten IDLE IN TRANSACTION session — what's the blast radius?
+- [ ] Just the rows that session touched
+- [x] Cluster-wide: vacuum can only remove versions older than the oldest active snapshot, so garbage accumulates everywhere; SQLite's analog is a long reader pinning the WAL
+- [ ] Only the session's own connection memory
+- [ ] Nothing until it issues a write
+> MVCC converts long readers from a locking problem into a garbage problem — quieter, compounding, no deadlock to page anyone. Alert on transaction age, not just on locks.
+
+Q: Two transactions each read "≥2 doctors on call," then each takes a different doctor off call; both commit under REPEATABLE READ. What happened, and what stops it?
+- [x] Write skew — snapshot isolation's signature anomaly; SERIALIZABLE (SSI) detects the dangerous dependency structure and aborts one with SQLSTATE 40001, which the application must retry
+- [ ] A lost update — fixed by SELECT FOR UPDATE NOWAIT
+- [ ] Nothing — REPEATABLE READ forbids this
+- [ ] A dirty read — impossible in PostgreSQL
+> Each transaction's snapshot was internally consistent; the combination violated the invariant. SSI tracks read/write antidependencies with non-blocking SIREAD locks and aborts on the dangerous pattern. SQLite never meets the anomaly: one writer at a time makes serializability trivial — by giving up write concurrency.
+
+Q: "We added retry-with-savepoint loops and the whole database got slow." What's the mechanism?
+- [x] The 64-subxid cache — a transaction exceeding 64 savepoints/EXCEPTION blocks overflows, forcing every snapshot cluster-wide to chase pg_subtrans parent pointers
+- [ ] Savepoints take table locks
+- [ ] Each savepoint forces a WAL flush
+- [ ] Subtransactions disable HOT updates
+> Each backend caches 64 sub-xids; past that, everyone pays the SLRU lookup tax to resolve visibility. Invisible until you know the number 64 — the canonical SLRU cliff.
+```
 
 ---
 
@@ -506,6 +641,43 @@ Sorting, the one heavyweight operator SQLite can't compile away, gets its own ma
 4. Measure the prepared-statement effect in SQLite: 10⁵ point lookups via re-prepared text vs. one prepared statement re-bound. Attribute the difference to specific lifecycle stages.
 5. Why does `LIMIT 10` cost almost nothing under Volcano but a hash aggregate under it still consumes its whole input? Classify operators into pipelining vs. *pipeline breakers* and re-read your plan from (1) marking each.
 
+```quiz
+Q: "Why won't it use my index?!" — per the worked cost formula, which three suspects cover essentially every case?
+- [x] Selectivity too large, heap correlation too low (each hit is a random page), or random_page_cost lying about the hardware
+- [ ] Index bloat, stale statistics, lock contention
+- [ ] The index is too new, too large, or unanalyzed
+- [ ] Parallelism disabled, JIT disabled, wrong collation
+> The index path's swingy term is heap visits: s·P sequential when correlated, s·T random pages when not — and at random_page_cost=4, a 1% uncorrelated scan can cost more than the seq scan. Now you can compute it instead of cargo-culting.
+
+Q: Why does one 10× row-estimate error at the bottom of a plan become a catastrophe three joins up?
+- [x] Estimation errors compound roughly multiplicatively through joins — 10× becomes 1000×, by which point the join order and algorithms chosen are pathological
+- [ ] The executor allocates memory from the bottom estimate
+- [ ] Errors only matter at the top node
+- [ ] The planner re-estimates at each level, resetting the error
+> The independence assumption is the original sin (city='SF' AND state='CA' multiplies to near-zero), and CREATE STATISTICS exists to declare the dependency. Most "the planner went insane" incidents are compounding, not any single bad guess.
+
+Q: A prepared query was fast five times, then suddenly slow forever. What happened?
+- [x] The generic-plan switch — after five custom plans, PostgreSQL adopts a value-independent generic plan if it doesn't look worse; with skewed data the average-selectivity assumption picks the wrong shape
+- [ ] The plan cache filled and evicted it
+- [ ] Statistics auto-updated mid-session
+- [ ] JIT compilation kicked in
+> The five-execution heuristic trades planning time for plan stability — and skew breaks the bargain. EXPLAIN EXECUTE reveals the mode; plan_cache_mode = force_custom_plan pins it.
+
+Q: When does a Bitmap Heap Scan beat a plain Index Scan?
+- [ ] When the predicate matches under ten rows
+- [x] At medium selectivity on scattered data — it collects ctids first, then visits heap pages in physical order, converting random I/O to sequential (and can AND/OR multiple indexes)
+- [ ] Only when work_mem exceeds the table size
+- [ ] When the index is a covering index
+> The hybrid's whole purpose is I/O ordering: same pages, sequential visit pattern. Under memory pressure it degrades to lossy per-page bits gracefully. Index-only scans are the other specialist — no heap visits at all, but only for VM-certified pages.
+
+Q: Why is "prepare once, step many" the core SQLite performance idiom?
+- [x] sqlite3_prepare compiles SQL to a VDBE bytecode program; re-binding and re-running skips parse and plan entirely — a function call instead of a round trip
+- [ ] Prepared statements bypass the journal
+- [ ] The VDBE caches result rows between runs
+- [ ] It avoids taking the write lock
+> The statement is the program plus its cursors. This is the "replacement for fopen()" architecture cashing out: per-statement overhead can undercut a client-server round trip by orders of magnitude.
+```
+
 ---
 
 ## Chapter 10 — Beyond the B-Tree: Other Indexes, and the LSM Road Not Taken
@@ -593,6 +765,43 @@ Both projects publish honest taxonomies (SQLite's ["How To Corrupt An SQLite Dat
 3. Demonstrate the schema cookie: prepare a statement, `ALTER TABLE` from another connection, step the statement. Observe the recompile-or-`SQLITE_SCHEMA` behavior, and map it to how PostgreSQL invalidates cached plans on DDL (relcache invalidation messages).
 4. Corrupt a scratch SQLite database deliberately (flip a byte in a b-tree page with `dd`): compare what (a) a normal query, (b) `PRAGMA quick_check`, (c) `PRAGMA integrity_check` each detect. Repeat against a checksummed PostgreSQL cluster page and read the error. Which layer of §11.2 caught it in each case?
 5. Take a live, mid-write copy of each database the *wrong* way (plain `cp` during a write loop) and the right way (`pg_basebackup`; SQLite backup API / `VACUUM INTO`). Verify both copies with §11.2's tools and explain every failure you produced, citing the Ch. 5 mechanism that the naive copy violated.
+
+```quiz
+Q: Which ALTER TABLE is the one that takes down the Tuesday deploy?
+- [ ] ADD COLUMN x int (nullable, no default)
+- [ ] DROP COLUMN
+- [x] ALTER COLUMN TYPE int4 → int8 — a full table rewrite; binary-coercible changes (varchar→text) are catalog-only, but a representation change copies everything
+- [ ] ADD COLUMN y int DEFAULT 7 on v11+
+> The binary question for any DDL: catalog-only or rewrite? Nullable adds, constant defaults (v11+, via attmissingval), and drops are metadata; type changes that alter bytes are rewrites — minutes to hours, double disk, exclusive lock.
+
+Q: How do you add a NOT NULL (or any constraint) to a huge live table without stopping the world?
+- [x] Two phases: ADD CONSTRAINT ... NOT VALID (instant, enforces new writes), then VALIDATE CONSTRAINT (concurrent scan under a weak lock)
+- [ ] SET NOT NULL inside a transaction
+- [ ] Disable autovacuum first
+- [ ] There's no online path; schedule downtime
+> The two-phase pattern — promise now, prove later — is the general shape of online DDL; CREATE INDEX CONCURRENTLY is the same philosophy for indexes (with the INVALID-on-failure caveat). And remember lock_timeout: even catalog-only DDL queues.
+
+Q: What's the top-five SQLite footgun hiding in its constraint enforcement?
+- [x] Foreign keys are OFF by default per connection — PRAGMA foreign_keys=ON, every connection, forever; the default is a compatibility fossil
+- [ ] CHECK constraints are parsed but never enforced
+- [ ] UNIQUE allows duplicate NULL-adjacent values
+- [ ] Triggers don't fire inside transactions
+> Schema declarations without the pragma are documentation, not enforcement. PRAGMA foreign_key_check exists to audit the damage retroactively.
+
+Q: Per the RUM conjecture, why isn't "B-tree vs LSM" a fashion question?
+- [x] Read, Update/write, and Memory/space overheads can't all be minimized at once — every storage structure picks coordinates; B-trees buy cheap predictable reads/ranges, LSMs buy sequential write-dominated ingest
+- [ ] LSMs are strictly newer and better
+- [ ] B-trees are only for spinning disks
+- [ ] The conjecture says they're equivalent
+> The triangle is the unifying frame: B-tree pays page-sized random writes; LSM pays compaction rewrites (10–30× write amp, but sequential) and multi-run reads (bloom-filtered). PostgreSQL and SQLite rightly sit at the read/range corner for their workloads.
+
+Q: What's the canonical way to corrupt an SQLite database, per its own documentation?
+- [ ] Killing the process mid-transaction
+- [x] Two writers through NFS whose POSIX locking is fake — the coordination happens through file locks, and a filesystem that lies about them breaks the single-writer invariant
+- [ ] Using WAL mode on a 32-bit system
+- [ ] Running VACUUM during a read
+> kill -9 is survivable by design (that's Chapter 5's whole job). The killers are broken platform contracts (fake locks, lying fsync), host-process bugs scribbling on shared address space, and operator surgery like cp'ing a live .db without its -wal — which is why the Online Backup API and VACUUM INTO exist.
+```
 
 ---
 
