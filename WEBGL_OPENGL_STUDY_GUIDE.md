@@ -329,6 +329,29 @@ When a GL program draws nothing, ask:
 
 Most bugs are wrong state, wrong data layout, or wrong coordinates.
 
+```quiz
+Q: Why does GL documentation constantly say "current binding," and what does that mean for a call like `gl.bufferData`?
+- [ ] Bindings are version numbers
+- [x] Objects aren't passed to most calls — you bind them to named targets (`ARRAY_BUFFER`, `TEXTURE_2D`...), and later calls operate on whatever's currently bound: current bindings are hidden inputs
+- [ ] Bindings encrypt buffer contents
+- [ ] Bindings only matter in WebGL 1
+> GL is a state machine: `gl.bufferData(gl.ARRAY_BUFFER, ...)` uploads into whatever buffer was last bound to `ARRAY_BUFFER`, not a buffer you name in the call. The same goes for texture parameters, framebuffer attachments, and vertex attributes. Forgetting which object is currently bound — or having another code path rebind something — is the root of a large class of GL bugs.
+
+Q: `drawTransparentThing()` enables blending and draws, then later opaque geometry renders wrong. What happened?
+- [ ] Blending corrupted the depth buffer
+- [x] A state leak — enable bits like `BLEND` are global to the context, so the forgotten `gl.disable(gl.BLEND)` left blending on for unrelated subsequent draws
+- [ ] The shaders were unlinked
+- [ ] The opaque geometry needs blending too
+> Context state persists until changed, so any function that flips state and doesn't restore it silently changes the meaning of every later draw call. Disabling on exit fixes the symptom; large renderers go further — centralizing state changes, sorting draws by material, and caching state so GL is only called when state actually changes.
+
+Q: `gl.drawArrays(gl.TRIANGLES, 0, 3)` draws nothing and there's no error. Per the debugging rule, what kind of problem is it most likely to be?
+- [ ] A GPU driver bug
+- [x] Wrong state, wrong data layout, or wrong coordinates — check viewport, program-in-use, attribute setup, uniforms, clip-space position, depth/cull/scissor/blend state, framebuffer completeness, and getError, in that order
+- [ ] A shader compile error (those always throw)
+- [ ] The canvas element is too small to render
+> A draw call is only meaningful given a dozen pieces of pre-configured state (program, framebuffer, viewport, attributes, textures, uniforms, test settings). When nothing appears, the systematic checklist beats guessing: most "draws nothing" bugs are a missing enable, an attribute pointing at the wrong buffer, or geometry outside clip space — not exotic failures.
+```
+
 ---
 
 ## Part 4 - The Rendering Pipeline
@@ -494,6 +517,29 @@ These are not shader code, but they strongly affect the result.
 
 The framebuffer is the destination for rendering. The default framebuffer is the canvas. Custom framebuffers let you render into textures for shadow maps, post-processing, picking, deferred rendering, and intermediate passes.
 
+```quiz
+Q: What is the one job a vertex shader is *required* to do?
+- [ ] Compute lighting per vertex
+- [x] Write a clip-space position to `gl_Position` — everything else (passing colors, normals, UVs to varyings) is optional
+- [ ] Sample textures
+- [ ] Output the final pixel color
+> The vertex shader runs once per vertex and must produce the clip-space position the rest of the pipeline (primitive assembly, clipping, rasterization) consumes. Outputting interpolated data via varyings is common but optional; final pixel color is the fragment shader's job. A vertex itself is just one logical record of input data — position, normals, bone weights, whatever you define.
+
+Q: A triangle has one red, one green, and one blue vertex, yet the fragment shader paints a smooth gradient. Where does that come from?
+- [ ] The fragment shader blends the three colors manually
+- [x] Rasterization interpolates the vertex shader's varying outputs across the triangle, so each fragment receives its own interpolated color
+- [ ] The GPU applies a default gradient texture
+- [ ] Blending with the framebuffer
+> Rasterization converts each primitive into fragments (candidate pixels), and every varying the vertex shader wrote is interpolated across the primitive's surface — color, UVs, normals alike. The fragment shader just reads its already-interpolated input. This automatic interpolation is the bridge between per-vertex data and per-pixel shading.
+
+Q: What happens between `gl_Position` (clip space) and the visible region check?
+- [ ] Nothing — clip space is final
+- [x] The perspective divide: GL divides `clip.xyz` by `clip.w` to get normalized device coordinates, visible when each component is within -1..1 (WebGL's depth range, unlike WebGPU/D3D's 0..1)
+- [ ] Multiplication by the viewport matrix only
+- [ ] Conversion to integer pixel coordinates directly
+> The vertex shader outputs homogeneous clip-space coordinates; dividing by `w` (the perspective divide) yields NDC, where the visible cube is -1..1 on all axes in WebGL/OpenGL convention. That `w` divide is what makes perspective projection work — distant points have larger `w` and shrink toward the center. WebGPU and Direct3D use a 0..1 depth range, a porting gotcha.
+```
+
 ---
 
 ## Part 5 - GLSL ES: The Shader Language
@@ -621,6 +667,29 @@ Common choices:
 | `highp` | Coordinates, lighting, physically sensitive math |
 
 Use `highp` when correctness requires it, but remember that old mobile GPUs may have weaker support or performance for high precision in fragment shaders.
+
+```quiz
+Q: What's the difference in scope between an `attribute`/`in`, a `uniform`, and a `varying`/`out`→`in`?
+- [ ] They're three names for the same input
+- [x] An attribute is per-vertex input; a uniform is constant for an entire draw call; a varying is written per-vertex and interpolated to per-fragment between the two shader stages
+- [ ] Attributes are per-fragment; uniforms are per-vertex
+- [ ] Varyings are constants you set from JavaScript
+> The three differ by how often they vary: attributes feed distinct data to each vertex (positions, UVs), uniforms hold a value fixed across every vertex and fragment of one draw (a matrix, a light color), and varyings bridge the stages — the vertex shader writes one, rasterization interpolates it, and the fragment shader reads the interpolated result. Knowing which storage class a value needs is most of writing correct shaders.
+
+Q: Porting a WebGL 1 fragment shader to WebGL 2 (`#version 300 es`), which change is required?
+- [ ] Nothing changes
+- [x] `varying` becomes `in`, `gl_FragColor` is replaced by a user-declared `out vec4`, and `texture2D` becomes `texture` (and `attribute` becomes `in` in the vertex shader)
+- [ ] You must remove all uniforms
+- [ ] Precision declarations are no longer allowed
+> GLSL ES 3.00 modernizes the syntax: the `attribute`/`varying` keywords become the unified `in`/`out`, the built-in `gl_FragColor` gives way to explicitly declared output variables, and sampling functions drop their dimensionality suffix (`texture2D` → `texture`). These are mechanical but mandatory — a 1.00 shader won't compile under a `#version 300 es` directive.
+
+Q: Why must WebGL fragment shaders declare a float precision (e.g. `precision mediump float;`)?
+- [ ] It's optional decoration
+- [x] Fragment shaders have no default float precision in WebGL, so you must pick one — `highp` for coordinates/lighting where correctness matters, `mediump` for many mobile-friendly calculations, accepting weaker `highp` support on old mobile GPUs
+- [ ] It sets the screen resolution
+- [ ] It controls the number of color channels
+> Unlike vertex shaders (which default to `highp`), WebGL fragment shaders require an explicit default float precision. The choice trades accuracy for speed/compatibility: `highp` is needed for position math and lighting but may be slow or unsupported on older mobile hardware, while `mediump` suffices for many color computations. Picking deliberately avoids both visual artifacts and needless mobile slowdowns.
+```
 
 ### Uniforms
 
@@ -1199,6 +1268,29 @@ gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 
 This flips source image data during texture upload. Use it intentionally, not as a random fix.
 
+```quiz
+Q: "GL does not have a camera." What does that mean in practice?
+- [ ] You can't move the viewpoint in GL
+- [x] The camera is math you provide — a view matrix (the inverse of the camera transform) and a projection matrix, multiplied into each vertex in your shader; if the camera moves right, the world moves left
+- [ ] The browser supplies the camera
+- [ ] Only orthographic views are possible
+> There's no camera object in the API; the coordinate chain (model → world → view → clip) is implemented entirely by matrices you compute and upload as uniforms. The view matrix is the inverse of where the camera "is," and the projection matrix maps camera space to clip space. `lookAt(eye, target, up)` from a library like gl-matrix builds the view matrix; the GPU only ever sees `gl_Position`.
+
+Q: A scene with near plane 0.001 and far plane 100000 shows flickering surfaces (z-fighting). Why?
+- [ ] The GPU is overheating
+- [x] Depth precision is spread across the near-far range non-linearly, concentrated near the near plane — an extreme range leaves too little precision to distinguish distant surfaces; push the near plane out as far as the scene allows
+- [ ] The far plane culls the geometry
+- [ ] Blending is enabled
+> Depth buffer precision is finite and heavily weighted toward the near plane, so a tiny near value squanders nearly all precision in the first few units, leaving co-planar distant surfaces indistinguishable — they flicker as rasterization rounds differently per frame. The highest-leverage fix is raising the near plane; shrinking the far plane helps less.
+
+Q: Rendering looks blurry on a high-DPI display. What's the usual cause?
+- [ ] Wrong texture filter
+- [x] Canvas CSS size and drawing-buffer size are different things — the buffer must be sized to `clientWidth × devicePixelRatio` (and the viewport updated) or the browser upscales a low-res buffer
+- [ ] Mipmaps are missing
+- [ ] The shader precision is too low
+> A canvas styled at 800×600 CSS pixels still has a default drawing buffer that may not account for the device pixel ratio; the browser then stretches the smaller buffer across more physical pixels — blur. Set `canvas.width/height` to CSS size times `devicePixelRatio` and call `gl.viewport` to match. "If it looks blurry, check drawing buffer size" is the rule.
+```
+
 ---
 
 ## Part 9 - Textures, Samplers, and Pixel Data
@@ -1623,6 +1715,29 @@ drawOnlyInsideMask();
 ```
 
 Stencil is powerful but state-heavy. Encapsulate it carefully.
+
+```quiz
+Q: Why are transparent objects typically drawn with depth *writes* disabled (`gl.depthMask(false)`) but depth *testing* still on?
+- [ ] To make them render faster
+- [x] They should still be occluded by nearer opaque geometry (test on), but writing their depth would block other transparent fragments behind them from blending through (write off)
+- [ ] Depth has no effect on transparency
+- [ ] It prevents z-fighting on opaque objects
+> Depth testing and depth writing are independent. A transparent surface needs to *test* against the depth buffer so an opaque wall in front still hides it, but if it *wrote* depth it would mask later transparent fragments behind it, breaking the see-through blending. Keep the test, drop the write — the standard transparent-pass configuration.
+
+Q: What's the standard recipe for correct alpha blending in a scene with both opaque and transparent objects?
+- [ ] Draw everything in load order with blending always on
+- [x] Draw opaque objects first (depth test + writes on), then sort transparent objects far-to-near and draw them with blending on and depth writes off
+- [ ] Draw transparent objects first, then opaque
+- [ ] Disable the depth buffer entirely
+> Over-blending (`src*srcAlpha + dst*(1-srcAlpha)`) depends on draw order, so transparent surfaces must be composited back-to-front after the opaque pass has filled the depth buffer. Opaque-first with depth writes establishes occlusion; sorted transparents with depth-write-off blend correctly against it. It's still imperfect for intersecting transparent geometry — that needs order-independent transparency or depth peeling.
+
+Q: Sprites show dark or bright halos around their edges. What's the likely cause?
+- [ ] Wrong texture wrap mode
+- [x] Mismatched premultiplied-alpha conventions — the blend function and the texture's alpha premultiplication disagree, so edge texels composite wrong; align `UNPACK_PREMULTIPLY_ALPHA_WEBGL` and the `blendFunc`
+- [ ] Missing mipmaps
+- [ ] The depth test is rejecting edges
+> Premultiplied alpha means RGB is already scaled by alpha; straight (non-premultiplied) alpha doesn't. If your upload setting and `blendFunc` assume different conventions, the partially-transparent edge texels blend with the wrong weighting, producing dark fringes (treating premultiplied as straight) or bright ones (vice versa). Being deliberate about both ends — `UNPACK_PREMULTIPLY_ALPHA_WEBGL` and `gl.blendFunc(ONE, ONE_MINUS_SRC_ALPHA)` for premultiplied — removes the halos.
+```
 
 ---
 
