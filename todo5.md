@@ -219,8 +219,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `ADVANCED_NODEJS_STUDY_GUIDE.md` — Flow: the libuv event-loop phase cycle
       (timers→pending→idle/prepare→poll→check→close→next iteration; replaced
       ASCII).
-- [ ] `ASYNCIO_STUDY_GUIDE.md` — Seq: event loop scheduling await points;
-      state: a Task's lifecycle (pending→done/cancelled).
+- [x] `ASYNCIO_STUDY_GUIDE.md` — State: the Task lifecycle (pending→running⇄
+      suspended-at-await→done/failed/cancelled), making cooperative scheduling
+      concrete.
 - [ ] `PYTHON_CONCURRENCY.md` — Flow: GIL held-vs-released decision; the
       model-choice decision tree (thread/process/async).
 - [ ] `PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md` — Side-by-side flow: both event

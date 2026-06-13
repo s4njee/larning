@@ -170,6 +170,22 @@ Three "awaitable" things exist, and knowing the difference clears up most confus
 
 - **Future** — a low-level placeholder for a result that will exist later. You rarely create Futures directly; libraries use them under the hood. A Task *is* a kind of Future.
 
+A Task moves through a small lifecycle — it runs on the single thread until it hits an `await`, yields control back to the loop, and resumes when what it awaited is ready:
+
+```mermaid
+stateDiagram-v2
+  [*] --> Pending: create_task(coro)
+  Pending --> Running: loop schedules it
+  Running --> Suspended: hits await, yields to loop
+  Suspended --> Running: awaited result ready
+  Running --> Done: returns a result
+  Running --> Failed: raises an exception
+  Running --> Cancelled: .cancel() raises CancelledError
+  Done --> [*]
+  Failed --> [*]
+  Cancelled --> [*]
+```
+
 ```python
 # Awaiting a coroutine directly = sequential. Total time ≈ 2 seconds.
 async def sequential():
