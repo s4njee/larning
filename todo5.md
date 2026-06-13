@@ -46,38 +46,43 @@ adding none.
 
 ---
 
-## Phase 0 — Infrastructure (do first, before any guide)
+## Phase 0 — Infrastructure — ✅ COMPLETE (2026-06-13)
 
 The site's pages are **self-contained, no-network-deps** (see `ToDo.md`), so
 the runtime-`mermaid.js` options are both wrong: a CDN `<script>` breaks
 offline/air-gapped viewing and the black-theme guarantee, and inlining the
 ~3 MB library into every one of 67 pages is absurd. **Render at build time to
-inline SVG instead** — zero client JS, fully self-contained, themeable.
+inline SVG instead** — zero client JS, fully self-contained, themeable. The
+extra constraint that drove the design: **CI builds with Python only** (no
+Node), so rendered SVGs are cached on disk and committed; CI reuses the cache
+and only a *new/changed* diagram needs the `mmdc` renderer locally.
 
-- [ ] **Add `mermaid` fenced-block support to `build_guide.py`.** A ` ```mermaid `
-      block is intercepted *before* code-block rendering and
-      `escape_raw_html_tags()` (same bypass the `quiz` fence already uses), its
-      body shelled out to `mmdc` (`@mermaid-js/mermaid-cli`) to produce an SVG,
-      and the SVG inlined inside `<div class="mermaid-diagram">…</div>`.
-      Fail the build loudly if `mmdc` is missing or a diagram fails to parse —
-      never emit a half-rendered or escaped block.
-- [ ] **Theme the SVG to match the pages.** Pass a mermaid theme/config (dark
-      background, the page accent color for node strokes) so diagrams read on
-      the black default theme; verify they're still legible on the light theme
-      toggle (SVG `currentColor` where possible, or a CSS filter).
-- [ ] **Cache rendered SVGs** keyed by a hash of the diagram source, so a full
-      `build_all_guides.py` doesn't re-shell `mmdc` for unchanged diagrams
-      (the build is run constantly; mmdc is slow to spawn).
-- [ ] **Graceful GitHub fallback.** On github.com a ` ```mermaid ` block renders
-      natively, so the Markdown source degrades fine — confirm the fence
-      doesn't break sibling-link rewriting or the TOC (same checks as the quiz
-      fence).
-- [ ] **Document it in `CLAUDE.md`** (Markdown conventions + a short "Diagrams"
-      note: when to reach for mermaid vs ASCII, per the tactical rule above).
-- [ ] **Pilot end to end** on `DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md`: convert its
-      Raft RPC round to a sequence diagram and its replication topology to a
-      graph; rebuild; confirm inline SVG, no escaping artifacts, legible on
-      both themes, TOC unaffected.
+- [x] **`mermaid` fenced-block support in `build_guide.py`.** A ` ```mermaid `
+      block is intercepted before `escape_raw_html_tags()` and Markdown (same
+      bypass the `quiz` fence uses; extracted *first* so it survives both),
+      rendered via `mmdc` to an SVG, and inlined inside
+      `<figure class="mermaid-diagram">…</figure>`. SVG ids are namespaced
+      per-diagram (and mermaid's own duplicate actor ids de-duped) so multiple
+      diagrams on a page don't collide.
+- [x] **Cache + CI strategy.** SVGs cached under `diagram_cache/<sha>.svg`
+      keyed by `CACHE_VERSION + source`, committed to the repo. Cache hit →
+      no renderer needed (CI path). Cache miss + no `mmdc` → build fails loudly
+      (`_render_mermaid_svg` raises) rather than dropping the diagram.
+      `package.json` declares `@mermaid-js/mermaid-cli`; `node_modules/` and
+      `package-lock.json` gitignored.
+- [x] **Theming.** SVG rendered on a transparent background and presented on a
+      fixed light "figure card" (`.mermaid-diagram` CSS in `build_caddy_html.py`)
+      so it's legible under both the black default and the light theme toggle.
+      (Accent-tinting node strokes is a possible later refinement.)
+- [x] **Graceful GitHub fallback + TOC/escaping safety.** On github.com the
+      fence renders natively; the inlined SVG is a `<figure>` so it never enters
+      the h2/h3 TOC, and extraction-before-escape means no `&amp;lt;` artifacts.
+- [x] **Documented in `CLAUDE.md`** (repo layout, build commands, Markdown
+      conventions, a "Diagrams" subsection with the tactical rule).
+- [x] **Piloted on `DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md`** — replication
+      topologies (graph) + Raft log-replication commit flow (sequence). Full
+      build clean: 2 figures, 0 id collisions, 0 placeholder leaks, 0
+      double-escapes, all `url(#…)` references resolve, TOC unaffected.
 
 ## Working method (per guide)
 
@@ -98,10 +103,11 @@ inline SVG instead** — zero client JS, fully self-contained, themeable.
 These earn the most diagrams: protocols, state machines, and topologies are
 their core and prose carries them poorly.
 
-- [ ] `DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md` — **pilot.** Seq: Raft leader
-      election + log replication RPC round; 2PC commit. Graph: replication
-      topologies (leader/follower, multi-leader, leaderless quorum). State:
-      a node's view through a partition.
+- [x] `DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md` — **pilot done.** Graph: the three
+      replication topologies (single-leader/multi-leader/leaderless). Seq: Raft
+      log-replication commit flow (append→majority-ack→commit→apply, plus the
+      lagging-follower log-match repair). *Possible follow-ups: leader-election
+      sequence, 2PC commit, a node's view through a partition.*
 - [ ] `DISTRIBUTED_ALGORITHMS_STUDY_GUIDE.md` — Seq: Paxos prepare/accept
       rounds; flow: FLP/quorum intersection. State: Raft term transitions.
 - [ ] `NETWORKING_FUNDAMENTALS.md` — Seq: TCP 3-way handshake + teardown;
@@ -264,7 +270,8 @@ their core and prose carries them poorly.
 ---
 
 64 guide files + 2 bespoke pages (Caddy/Nginx, built from their `.py`
-generators) = 66 targets. Progress: 0/66 (Phase 0 infrastructure not yet
-started). Diagrams are **additive and tactical** — a guide is "done" here when
+generators) = 66 targets. Progress: Phase 0 ✅ complete; 1/66 guides done
+(Distributed Systems pilot). Diagrams are **additive and tactical** — a guide
+is "done" here when
 its 1–4 highest-value relational/temporal/state diagrams render as inline SVG
 on both themes, with spatial/byte-layout diagrams left as ASCII.

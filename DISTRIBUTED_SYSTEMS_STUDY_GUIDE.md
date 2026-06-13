@@ -258,6 +258,23 @@ Essentially every replicated system is one of three shapes, distinguished by **w
 
 **3. Leaderless (Dynamo-style).** Any replica accepts writes; the client (or a coordinator) writes to several replicas and reads from several, using **quorums** to get consistency. This is **Cassandra**, **Riak**, **ScyllaDB**, and Amazon's original **Dynamo**. No leader means no failover step — the system just keeps serving — at the cost of pushing consistency decisions onto every read and write.
 
+```mermaid
+graph TB
+  subgraph SL["Single-leader"]
+    C1[Client] -->|all writes| L1[Leader]
+    L1 -->|replicate| F1a[Follower]
+    L1 -->|replicate| F1b[Follower]
+  end
+  subgraph ML["Multi-leader"]
+    LA[Leader A] <-->|replicate + resolve conflicts| LB[Leader B]
+  end
+  subgraph LL["Leaderless"]
+    C3[Client] -->|quorum write| R1[Replica]
+    C3 -->|quorum write| R2[Replica]
+    C3 -->|quorum write| R3[Replica]
+  end
+```
+
 ### Synchronous vs. Asynchronous, and Replication Lag
 
 When the leader gets a write, does it wait for followers before acking the client?
@@ -442,6 +459,24 @@ Paxos is correct and influential — and notoriously hard to understand and *eve
 2. Leader appends it to its own log (uncommitted) and sends `AppendEntries` to followers.
 3. Once a **majority** have written the entry to *their* logs, the leader marks it **committed**, applies it to its state machine, and replies to the client.
 4. Followers learn the commit point from later `AppendEntries` and apply it too.
+
+```mermaid
+sequenceDiagram
+  participant C as Client
+  participant L as Leader
+  participant F1 as Follower (in-sync)
+  participant F2 as Follower (lagging)
+  C->>L: command
+  L->>L: append to log (uncommitted)
+  L->>F1: AppendEntries(prevIdx, prevTerm, entry)
+  L->>F2: AppendEntries(prevIdx, prevTerm, entry)
+  F1-->>L: success
+  Note over L: majority acked → entry committed
+  L->>L: apply to state machine
+  L-->>C: reply
+  F2-->>L: reject (log mismatch)
+  L->>F2: AppendEntries backed up to re-sync
+```
 
 `AppendEntries` includes the index and term of the *preceding* entry; a follower rejects it if that doesn't match its log (the **Log Matching Property**), forcing the leader to back up and re-sync that follower until logs converge. This is how a follower that fell behind or has divergent uncommitted entries gets repaired.
 
