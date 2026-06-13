@@ -226,8 +226,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `PYTHON_CONCURRENCY.md` — Flow: the model-choice decision tree
       (CPU-vs-I/O-bound → native lib / processes / asyncio / threads / hybrid;
       replaced ASCII), the guide's central decision.
-- [ ] `PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md` — Side-by-side flow: both event
-      loops; the colored-function call path.
+- [x] `PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md` — Graph: the colored-function
+      contagion — one async leaf (`db.query`) forces every caller up the stack
+      to become async (red spreads upward).
 - [ ] `TYPESCRIPT_STUDY_GUIDE.md` — Flow: conditional-type distribution; the
       type-narrowing decision. (Mostly fine as prose — max 1–2.)
 - [ ] `CPP26_STUDY_GUIDE.md` — Seq: coroutine suspend/resume; flow: RAII

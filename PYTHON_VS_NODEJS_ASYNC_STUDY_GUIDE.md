@@ -426,6 +426,14 @@ async def handler(req):  return await load_page(req.id) # must be red too
 
 Mechanically, this is the same in both: `await` requires an `async` caller, all the way up to the entry point. No difference here.
 
+```mermaid
+graph TD
+  H["handler(req) — forced async"] --> LP["load_page(id) — forced async"]
+  LP --> GU["get_user(id) — forced async"]
+  GU --> DB["db.query(...) — async I/O: the 'red' leaf"]
+  DB -. "await needs an async caller, so red spreads up the whole stack" .-> H
+```
+
 ### Why Python Suffers More: The Two-Ecosystem Tax
 
 The contagion is identical; the **consequences** are not, because of a fact from Part 1: **Python has a parallel synchronous ecosystem, and Node does not.**
