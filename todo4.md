@@ -146,7 +146,7 @@ Part, click-to-reveal explanation included.
 - [x] `SVELTEKIT_STUDY_GUIDE.md` — 5 quizzes (15 questions; runes deep-proxy/$derived-not-$effect/effect-timing-SSR, server-vs-universal-load/dependency-graph/streaming, form-actions fail-path/use:enhance/actions-vs-endpoints, module-scope-SSR-leak/$lib-server-structural/layout-guard-trap, prerender-eligibility/ssr-false/layout-payload)
 - [x] `DJANGO_STUDY_GUIDE.md` — 5 quizzes (15 questions; null-vs-blank/on_delete/validation-trapdoor, lazy-querysets/N+1/F-and-Q, custom-user-early/authorization-is-filtering/auth-backends, post_save-pre-commit/signals-vs-services/select_for_update, SQL-param/csrf_exempt/mass-assignment)
 - [x] `ELECTRON_STUDY_GUIDE.md` — 5 quizzes (15 questions; three-process model/preload-bridge/macOS-lifecycle, IPC least-privilege/invoke-vs-push/serialization, nodeIntegration-mistake/path-intent/ship-the-browser, electron-rebuild-ABI/client-migrations/sync-sqlite, signed-updates/staged-rollout/utilityProcess)
-- [ ] `QT_STUDY_GUIDE.md`
+- [x] `QT_STUDY_GUIDE.md` — 5 quizzes (15 questions; moc/parent-child-ownership/lambda-context, event-loop blocking/processEvents-smell/events-vs-signals, model begin-end-pairs/cheap-data()/proxy-models, QML bindings/assign-over-binding/QML_ELEMENT-vs-context, worker-object affinity/QThread-misconception/QtConcurrent-vs-worker)
 - [ ] `WEBSOCKETS_STUDY_GUIDE.md`
 - [ ] `WEBGL_OPENGL_STUDY_GUIDE.md`
 - [ ] `WEBGPU_STUDY_GUIDE.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 48/65 (Batches 1–4 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 49/65 (Batches 1–4 complete).
