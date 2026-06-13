@@ -199,9 +199,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       parent links) and the three trees (working/index/HEAD) with the commands
       that move data between them (both replaced ASCII). *Follow-up: fetch vs
       pull sequence.*
-- [ ] `ADVANCED_LINUX_STUDY_GUIDE.md` — Flow: process→syscall→kernel path;
-      a page fault's resolution. State: process states. (Diagram-dense; leave
-      the memory-layout ASCII, convert the flows/states.)
+- [x] `ADVANCED_LINUX_STUDY_GUIDE.md` — Flow: the I/O path (app→VFS→fs→page
+      cache→block layer→driver→device; replaced ASCII) and the copy-on-write
+      fork + write-fault resolution. Memory-layout ASCII left as-is.
 - [ ] `LINUX_FUNDAMENTALS_STUDY_GUIDE.md` — State: process lifecycle; flow:
       fork/exec; a signal's delivery path.
 

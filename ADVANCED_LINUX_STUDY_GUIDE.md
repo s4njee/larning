@@ -239,6 +239,16 @@ ps aux | grep myapp
 
 **Copy-on-write (COW):** when `fork()` creates a child, the kernel doesn't copy the parent's memory. It marks all pages as read-only in both parent and child, pointing to the same physical frames. Only when either process *writes* to a page does the kernel copy it — the write triggers a page fault, the kernel allocates a new frame, copies the data, and updates the page table. This makes `fork()` cheap regardless of process size, and is why Redis's background save (`BGSAVE`) can fork a multi-GB process almost instantly.
 
+```mermaid
+graph TD
+  F["fork()"] --> M["mark all pages read-only in parent + child<br/>(both point at the same physical frames)"]
+  M --> RD["reads: shared frames, no copy"]
+  M --> WR["a process writes to a page"]
+  WR --> PF["write traps: page fault"]
+  PF --> AL["kernel allocates a new frame, copies the page"]
+  AL --> UP["update page table; the write proceeds"]
+```
+
 ### Huge Pages
 
 The default 4 KB page size means a 1 GB working set needs 262,144 page table entries. The TLB can only cache a few thousand entries, so large working sets cause constant TLB misses.
@@ -438,26 +448,14 @@ The I/O path from your application's `write()` call to bits on the storage devic
 
 ### The I/O Path
 
-```
-Application
-    │
-    ▼
- VFS (Virtual File System)         ← file-system-agnostic layer
-    │
-    ▼
- Filesystem (ext4, xfs, btrfs)    ← translates files to blocks
-    │
-    ▼
- Page Cache                        ← buffered I/O lives here
-    │
-    ▼
- Block Layer                       ← I/O scheduling, merging, plugging
-    │
-    ▼
- Device Driver (NVMe, SCSI, etc.)  ← talks to hardware
-    │
-    ▼
- Storage Device (SSD, HDD, NVMe)
+```mermaid
+graph TD
+  APP[Application] --> VFS["VFS — file-system-agnostic layer"]
+  VFS --> FS["Filesystem: ext4 / xfs / btrfs — files to blocks"]
+  FS --> PC["Page Cache — buffered I/O lives here"]
+  PC --> BL["Block Layer — I/O scheduling, merging, plugging"]
+  BL --> DRV["Device Driver — NVMe, SCSI, ..."]
+  DRV --> DEV["Storage Device — SSD, HDD, NVMe"]
 ```
 
 ### Buffered vs. Direct I/O
