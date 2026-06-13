@@ -949,6 +949,16 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 
 Container states: `starting` → `healthy` / `unhealthy`. Docker doesn't automatically restart unhealthy containers, but Compose `depends_on` and orchestrators (Swarm, Kubernetes) use health status.
 
+```mermaid
+stateDiagram-v2
+  [*] --> starting
+  note right of starting: start-period grace window — failures don't count
+  starting --> healthy: probe succeeds
+  starting --> unhealthy: still failing after start-period
+  healthy --> unhealthy: probe fails (retries exceeded)
+  unhealthy --> healthy: probe succeeds again
+```
+
 ```bash
 # check health status
 docker inspect --format '{{.State.Health.Status}}' mycontainer

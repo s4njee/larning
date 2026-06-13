@@ -163,8 +163,10 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       admission decision path. Graph: the threat model.
 - [ ] `k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md` — Graph: pod→service→
       endpoint→pod packet path; CNI topology.
-- [ ] `DOCKER_STUDY_GUIDE.md` — Graph: namespaces/cgroups isolation; image
-      layer/overlay stack. State: container restart-policy transitions.
+- [x] `DOCKER_STUDY_GUIDE.md` — State: the HEALTHCHECK state machine
+      (starting→healthy/unhealthy with the start-period grace window). Image
+      layer/overlay stack left as prose (spatial). *Follow-up: namespaces/
+      cgroups isolation concept graph.*
 - [ ] `TERRAFORM_STUDY_GUIDE.md` — Flow: plan→apply diff-as-contract; the
       resource DAG. Seq: remote-state lock acquisition.
 - [ ] `ANSIBLE_STUDY_GUIDE.md` — Seq: a play's task→module→handler flow across
