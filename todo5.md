@@ -182,8 +182,10 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       hierarchy; Entra-vs-RBAC split.
 - [ ] `GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md` — Graph: org→folder→project→resource
       hierarchy; global VPC topology.
-- [ ] `GIT_STUDY_GUIDE.md` — Graph: object model (commit→tree→blob) DAG;
-      the three trees (working/index/HEAD) flow. Seq: fetch vs pull.
+- [x] `GIT_STUDY_GUIDE.md` — Graph: the object model (commit→tree→blob with
+      parent links) and the three trees (working/index/HEAD) with the commands
+      that move data between them (both replaced ASCII). *Follow-up: fetch vs
+      pull sequence.*
 - [ ] `ADVANCED_LINUX_STUDY_GUIDE.md` — Flow: process→syscall→kernel path;
       a page fault's resolution. State: process states. (Diagram-dense; leave
       the memory-layout ASCII, convert the flows/states.)

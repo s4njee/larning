@@ -88,12 +88,12 @@ An annotated tag is an object that points to a commit with a message, tagger, an
 
 ### The Whole Picture
 
-```
-commit ──→ tree ──→ blob (file contents)
-  │          │
-  │          └──→ tree (subdirectory) ──→ blob
-  │
-  └──→ parent commit ──→ tree ──→ ...
+```mermaid
+graph LR
+  C[commit] --> T[tree: root dir]
+  C -->|parent| C2[parent commit] --> T2[tree] --> ETC[...]
+  T --> B1[blob: file contents]
+  T --> ST[tree: subdirectory] --> B2[blob]
 ```
 
 Every commit captures the full state of the repository through its tree. Branches, tags, and HEAD are just pointers to commits.
@@ -219,11 +219,16 @@ The index is the staging area between your working tree and the next commit. It'
 
 Git operates on three trees simultaneously:
 
-```
-Working Tree          Index (Stage)          HEAD (Last Commit)
-────────────          ─────────────          ──────────────────
-your actual files     what the next          what the last
-on disk               commit will contain    commit contained
+```mermaid
+graph LR
+  WT["Working Tree<br/>your actual files on disk"]
+  IX["Index / Stage<br/>what the next commit will contain"]
+  HD["HEAD<br/>what the last commit contained"]
+  WT -->|git add| IX
+  IX -->|git commit| HD
+  HD -->|git checkout / reset --hard| WT
+  IX -->|git reset / restore --staged| WT
+  HD -->|git reset --mixed| IX
 ```
 
 ```bash
