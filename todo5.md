@@ -256,8 +256,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       (ref→effect→re-render); flow: a component's update cycle.
 - [ ] `SVELTEKIT_STUDY_GUIDE.md` — Flow: universal-vs-server load resolution;
       seq: a form action's fail/enhance path.
-- [ ] `DJANGO_STUDY_GUIDE.md` — ER: model relationships; flow: a request
-      through middleware→view→ORM. Seq: signals around `save()`.
+- [x] `DJANGO_STUDY_GUIDE.md` — Flow: the request/response pipeline (server→
+      handler→middleware down→URL→view→middleware up→response; replaced ASCII),
+      the guide's top mental model. *Follow-ups: ER model, save() signals.*
 - [x] `ELECTRON_STUDY_GUIDE.md` — Graph: the three-process model — sandboxed
       renderer → preload contextBridge → privileged main process across the IPC
       boundary.

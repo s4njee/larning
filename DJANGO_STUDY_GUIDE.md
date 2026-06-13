@@ -154,14 +154,14 @@ If you remember one thing from Part 1: **Django's value is integration — and i
 
 Everything Django does happens inside one pipeline, and internalizing it is the single highest-leverage piece of Django knowledge — it's the framework's equivalent of Linux's "everything is a file." When a request arrives:
 
-```text
-web server (gunicorn/uvicorn)
-  → WSGI/ASGI handler builds an HttpRequest
-    → middleware, top of MIDDLEWARE list downward   (request phase)
-      → URL resolver matches a path → view
-        → view returns an HttpResponse (or raises)
-      ← middleware, bottom of the list upward       (response phase)
-  ← handler serializes the HttpResponse
+```mermaid
+graph TD
+  WS["web server (gunicorn / uvicorn)"] --> H["WSGI/ASGI handler builds an HttpRequest"]
+  H --> MW1["middleware — top of MIDDLEWARE downward (request phase)"]
+  MW1 --> URL["URL resolver matches a path → view"]
+  URL --> V["view returns an HttpResponse (or raises)"]
+  V --> MW2["middleware — bottom of the list upward (response phase)"]
+  MW2 --> OUT["handler serializes the HttpResponse"]
 ```
 
 Each middleware is an onion layer wrapping everything below it. `SecurityMiddleware` sees the request first and the response last; the view sits at the center. **Order in the `MIDDLEWARE` setting is therefore behavior, not style**: `AuthenticationMiddleware` must follow `SessionMiddleware` because it reads the session to figure out who `request.user` is; `CsrfViewMiddleware` must run before any view that processes a POST. Most "why is `request.user` an AnonymousUser?" and "why is my header missing?" bugs are ordering bugs. Docs: [middleware topic guide](https://docs.djangoproject.com/en/stable/topics/http/middleware/), [middleware reference](https://docs.djangoproject.com/en/stable/ref/middleware/) (read the one-paragraph description of every default middleware once — it pays for itself forever).
