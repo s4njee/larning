@@ -486,6 +486,13 @@ A playbook is a YAML file containing a list of *plays*. A play binds a set of ho
 
 Execution order within a play: `pre_tasks` → roles (in declaration order) → `tasks` → `post_tasks` → handlers (only those notified). Handlers run *once at the end of the play*, no matter how many tasks notified them — that's the point.
 
+```mermaid
+graph LR
+  PRE[pre_tasks] --> ROLES[roles, in order] --> TASKS[tasks] --> POST[post_tasks] --> H["notified handlers<br/>run once each, at play end"]
+  TASKS -.->|"changed task notifies"| Q[("handler queue<br/>de-duplicated")]
+  Q -.-> H
+```
+
 ### 4.2 Tasks
 
 A task is a name (optional but please always provide one), a module invocation, and metadata:

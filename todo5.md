@@ -175,8 +175,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `TERRAFORM_STUDY_GUIDE.md` — Flow: the three-inputs diff (config + state
       + reality → plan-as-contract → apply), the guide's central thesis.
       *Follow-ups: resource DAG, remote-state lock acquisition sequence.*
-- [ ] `ANSIBLE_STUDY_GUIDE.md` — Seq: a play's task→module→handler flow across
-      control node and targets.
+- [x] `ANSIBLE_STUDY_GUIDE.md` — Flow: play execution order (pre_tasks→roles→
+      tasks→post_tasks→handlers) with the deferred, de-duplicated handler queue
+      (notified handlers run once at play end).
 - [x] `GITHUB_ACTIONS_STUDY_GUIDE.md` — Seq: the OIDC token exchange to a
       cloud (request JWT → AssumeRoleWithWebIdentity → trust-policy match →
       short-lived creds; no stored secrets). *Follow-ups: job/step lifecycle,
