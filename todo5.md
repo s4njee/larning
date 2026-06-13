@@ -216,8 +216,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       a value's ownership/move lifecycle. (Leave memory layouts ASCII.)
 - [ ] `ADVANCED_PYTHON_STUDY_GUIDE.md` — Flow: the import system; descriptor
       lookup order. (Diagram-dense — pick the flows.)
-- [ ] `ADVANCED_NODEJS_STUDY_GUIDE.md` — Flow: the event-loop phases
-      (timers→pending→poll→check→close); a request through libuv.
+- [x] `ADVANCED_NODEJS_STUDY_GUIDE.md` — Flow: the libuv event-loop phase cycle
+      (timers→pending→idle/prepare→poll→check→close→next iteration; replaced
+      ASCII).
 - [ ] `ASYNCIO_STUDY_GUIDE.md` — Seq: event loop scheduling await points;
       state: a Task's lifecycle (pending→done/cancelled).
 - [ ] `PYTHON_CONCURRENCY.md` — Flow: GIL held-vs-released decision; the

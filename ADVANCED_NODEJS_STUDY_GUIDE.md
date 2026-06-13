@@ -259,23 +259,14 @@ Most event-loop explanations are wrong or dangerously oversimplified. The event 
 
 The event loop runs in a cycle (the official [event loop guide](https://nodejs.org/en/learn/asynchronous-work/event-loop-timers-and-nexttick) is the canonical reference for this part). Each iteration ("tick") has these phases, in this order:
 
-```text
-   ┌───────────────────────────┐
-   │        timers              │   setTimeout / setInterval callbacks
-   ├───────────────────────────┤
-   │     pending callbacks      │   deferred I/O callbacks from the previous cycle
-   ├───────────────────────────┤
-   │       idle, prepare        │   internal use only
-   ├───────────────────────────┤
-   │         poll               │   retrieve new I/O events; execute I/O callbacks
-   │                           │   (this is where Node spends most of its time)
-   ├───────────────────────────┤
-   │         check              │   setImmediate callbacks
-   ├───────────────────────────┤
-   │     close callbacks        │   socket.on('close', ...) etc.
-   └──────────┬────────────────┘
-              │
-              └── next iteration ──►
+```mermaid
+graph TD
+  T["timers — setTimeout / setInterval callbacks"] --> PC["pending callbacks — deferred I/O from previous cycle"]
+  PC --> IP["idle, prepare — internal use only"]
+  IP --> POLL["poll — retrieve new I/O events, run I/O callbacks<br/>(where Node spends most of its time)"]
+  POLL --> CHK["check — setImmediate callbacks"]
+  CHK --> CLOSE["close callbacks — socket.on('close', ...)"]
+  CLOSE -->|next iteration| T
 ```
 
 1. **Timers** — runs callbacks whose timers (`setTimeout`/`setInterval`) have elapsed. Note: timers are checked at the *start* of each iteration, not with millisecond precision; a `setTimeout(fn, 100)` fires "at or after 100 ms," not exactly at 100.
