@@ -299,8 +299,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       replaced ASCII). *Follow-ups: refresh-token rotation, session-vs-JWT.*
 - [ ] `WEB_LLM_SECURITY_STUDY_GUIDE.md` — Flow: SSRF confused-deputy path;
       CSRF token-check flow; the prompt-injection data/instruction confusion.
-- [ ] `KALI_LINUX_STUDY_GUIDE.md` — Flow: the recon→exploit→post-ex kill chain;
-      graph: AD attack graph (Kerberoast/NTLM-relay paths).
+- [x] `KALI_LINUX_STUDY_GUIDE.md` — Flow: the pentest kill chain (recon→scan/
+      enumerate→analysis→exploit→post-ex→reporting) with the "enumerate before
+      you exploit" habit. *Follow-up: AD attack graph.*
 - [x] `AI_AGENTS_STUDY_GUIDE.md` — Flow: the agent loop (call model → stop_reason
       end_turn=done / tool_use=execute+append+loop → max_steps guard),
       visualizing the minimal-loop code. *Follow-ups: workflow-vs-agent

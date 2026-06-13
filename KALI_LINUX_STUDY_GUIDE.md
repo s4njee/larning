@@ -45,6 +45,16 @@ But the distribution is the least interesting thing about Kali. What matters is 
 
 The single most important habit this methodology instills is **enumerate before you exploit**. Beginners want to fire exploits; the work that actually finds the way in is the patient cataloguing of attack surface, because exploitation is trivial once you know the exact version of the exact service with the exact misconfiguration — and impossible when you're guessing. The rest of this guide is that methodology, phase by phase, with the technique explained before the tool that automates it.
 
+```mermaid
+graph LR
+  R["Reconnaissance<br/>build a model of the target"] --> S["Scanning + enumeration<br/>hosts, ports, exact versions"]
+  S --> A["Analysis<br/>match surface to known weaknesses"]
+  A --> E["Exploitation<br/>prove a weakness gives access"]
+  E --> PE["Post-exploitation<br/>privesc, lateral movement, persistence"]
+  PE --> RP["Reporting<br/>document the path and the fix"]
+  S -.enumerate before you exploit.-> E
+```
+
 ```quiz
 Q: Why does Kali disable all network services by default and ship a wireless-injection-patched kernel?
 - [ ] To make it slower
