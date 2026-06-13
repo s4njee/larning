@@ -55,6 +55,7 @@ GUIDES = [
     ("LINUX_NETWORKING_STUDY_GUIDE.md", "html/linux-networking-study-guide.html", {"auto": True}),
     ("ESP32_STUDY_GUIDE.md", "html/esp32-study-guide.html", {"auto": True}),
     ("RASPBERRY_PI_STUDY_GUIDE.md", "html/raspberry-pi-study-guide.html", {"accent": "#c51a4a", "brand": "RPi"}),
+    ("SYSTEMD_STUDY_GUIDE.md", "html/systemd-study-guide.html", {"auto": True, "brand": "sd"}),
     ("GIT_STUDY_GUIDE.md", "html/git-study-guide.html", {"auto": True}),
     ("VIM_STUDY_GUIDE.md", "html/vim-study-guide.html", {"auto": True}),
     ("DATA_ENGINEERING_STUDY_GUIDE.md", "html/data-engineering-study-guide.html", {"auto": True}),
@@ -115,7 +116,7 @@ CATEGORIES = [
     ]),
     ("Systems, OS, and hardware", [
         "advanced-linux-study-guide.html", "linux-fundamentals-study-guide.html",
-        "linux-networking-study-guide.html",
+        "linux-networking-study-guide.html", "systemd-study-guide.html",
         "esp32-study-guide.html", "raspberry-pi-study-guide.html",
         "git-study-guide.html", "vim-study-guide.html",
     ]),

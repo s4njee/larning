@@ -299,6 +299,11 @@ This guide is a depth-first treatment of the Swift programming language in 2026.
 
 [Open on GitHub](https://github.com/s4njee/larning/blob/main/SWIFT_STUDY_GUIDE.md)
 
+### systemd
+This guide is a depth-first treatment of systemd for system administrators who use it daily but have only ever copied `.service` snippets — built on one model: everything is a *unit*, units declare *dependencies*, and the manager (PID 1) tracks every process through *cgroups*. It works through the mental model and why systemd replaced SysV init, unit-file anatomy and the `/etc` vs `/usr/lib` override hierarchy with drop-ins (`systemctl edit`/`cat`/`daemon-reload`), service units in depth (the `Type=` readiness contract — simple vs notify vs oneshot — the `Exec*` family, `Restart=` and the start limiter that stops crash loops, and the service state machine), the two orthogonal dependency axes (requirement `Wants`/`Requires` vs ordering `Before`/`After`, the pairing that fixes flaky-on-reboot races) and targets as runlevel replacements (and how `enable` is just a `.wants/` symlink), the boot process with `systemd-analyze blame`/`critical-chain`, the journal (structured field queries, persistent storage, rotation, rate limiting), timers as a better cron (`OnCalendar`, monotonic triggers, `Persistent=`), resource control via the cgroup slice hierarchy (`MemoryHigh` throttles vs `MemoryMax` kills, `CPUQuota` cap vs `CPUWeight` share, `systemd-cgtop`), sandboxing and hardening (`DynamicUser`, `ProtectSystem`, capabilities, seccomp, and the `systemd-analyze security` exposure score), socket/path/on-demand activation (how it de-races boot), and a day-to-day operator's toolbox ending in an end-to-end hardened-service walkthrough. Quizzes and build-time mermaid diagrams (the boot target chain, the service state machine, the cgroup slice tree, the socket-activation sequence) throughout.
+
+[Open on GitHub](https://github.com/s4njee/larning/blob/main/SYSTEMD_STUDY_GUIDE.md)
+
 ### Terraform
 This guide treats Terraform as an infrastructure workflow tool, not just a syntax exercise. It emphasizes how providers, state, modules, plans, and applies fit into a safe and repeatable provisioning process.
 
