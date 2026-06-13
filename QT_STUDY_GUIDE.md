@@ -1094,6 +1094,19 @@ Now the precise signal/slot semantics, completing Part 2's preview. `connect()`'
 
 Read the auto-connection row again, because it's the whole design: emit a signal from a worker thread at an object living in the main thread, and Qt copies the arguments, posts an event, and the slot runs safely on the main thread when its loop gets there. **Cross-thread signals are queued events** (Part 3's model) — which means thread-safe UI updates require no locks, no condition variables, nothing: just emit. The decision is made per-emission, at runtime, by comparing the *currently executing* thread against the receiver's affinity. This is the mechanism every pattern below leans on.
 
+```mermaid
+sequenceDiagram
+  participant W as Worker thread
+  participant Q as Main thread event loop
+  participant S as Slot (receiver lives in main thread)
+  W->>W: emit signal(value)
+  Note over W: receiver in another thread, so AutoConnection queues
+  W->>Q: copy args into an event, post to receiver's loop
+  Note over W: emit returns immediately, no blocking
+  Q->>S: loop delivers the event, runs the slot on the main thread
+  Note over S: thread-safe UI update, no locks needed
+```
+
 ### Pattern One: Qt Concurrent for One-Shot Work
 
 For "run this function off the main thread and give me the result" — parsing a big file, a heavy computation, a thumbnail batch — skip threads entirely and use `QtConcurrent::run()` ([docs](https://doc.qt.io/qt-6/qtconcurrent-index.html)), which executes a callable on the global thread pool and returns a `QFuture`; a `QFutureWatcher` converts completion into a signal on your thread:

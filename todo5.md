@@ -264,8 +264,10 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `ELECTRON_STUDY_GUIDE.md` — Graph: the three-process model — sandboxed
       renderer → preload contextBridge → privileged main process across the IPC
       boundary.
-- [ ] `QT_STUDY_GUIDE.md` — Seq: signal→slot across thread affinity; flow:
-      the event loop dispatch. Graph: parent-child ownership tree.
+- [x] `QT_STUDY_GUIDE.md` — Seq: cross-thread queued signal delivery (worker
+      emits → args copied into an event posted to the receiver's loop → slot
+      runs on the main thread, lock-free). *Follow-up: parent-child ownership
+      tree.*
 - [x] `WEBSOCKETS_STUDY_GUIDE.md` — Seq: the HTTP→WS upgrade handshake (GET
       Upgrade → 101 Switching Protocols → full-duplex framing). *Follow-ups:
       backplane fan-out, connection lifecycle + 1006/close.*
