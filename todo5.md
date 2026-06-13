@@ -110,9 +110,10 @@ their core and prose carries them poorly.
       sequence, 2PC commit, a node's view through a partition.*
 - [ ] `DISTRIBUTED_ALGORITHMS_STUDY_GUIDE.md` — Seq: Paxos prepare/accept
       rounds; flow: FLP/quorum intersection. State: Raft term transitions.
-- [ ] `NETWORKING_FUNDAMENTALS.md` — Seq: TCP 3-way handshake + teardown;
-      DNS resolution chain; a packet's path through the layers. State: the
-      TCP state machine (the canonical one ASCII always mangles).
+- [x] `NETWORKING_FUNDAMENTALS.md` — Seq: TCP three-way handshake (replaced
+      ASCII). State: the TCP state machine, active-open/active-close path
+      (replaced ASCII). *Follow-ups: DNS resolution chain, packet path through
+      the layers.*
 - [ ] `LINUX_NETWORKING_STUDY_GUIDE.md` — Graph: netfilter/iptables chain
       traversal; namespace + veth + bridge topology. Flow: a packet through
       the routing decision.

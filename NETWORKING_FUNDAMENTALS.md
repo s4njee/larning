@@ -468,16 +468,14 @@ Key flags:
 
 ### 5.3 The Three-Way Handshake
 
-```
-Client                              Server
-  |                                    |
-  |-------- SYN seq=X ---------------->|
-  |                                    |
-  |<------ SYN-ACK seq=Y ack=X+1 ------|
-  |                                    |
-  |-------- ACK ack=Y+1 -------------->|
-  |                                    |
-  |-------- (data flows) -------------|
+```mermaid
+sequenceDiagram
+  participant C as Client
+  participant S as Server
+  C->>S: SYN seq=X
+  S->>C: SYN-ACK seq=Y, ack=X+1
+  C->>S: ACK ack=Y+1
+  Note over C,S: ESTABLISHED — data flows
 ```
 
 1. Client sends SYN with its initial sequence number.
@@ -493,40 +491,18 @@ Initial sequence numbers are randomized (RFC 6528) to prevent off-path spoofing.
 
 You don't memorize this, but you should be able to read it when debugging:
 
-```
-        +---------+
-        | CLOSED  |
-        +---------+
-             | active open: send SYN
-             v
-        +----------+
-        | SYN_SENT |
-        +----------+
-             | recv SYN-ACK, send ACK
-             v
-       +-------------+
-       | ESTABLISHED |  <--- data flows here
-       +-------------+
-             | active close: send FIN
-             v
-        +-----------+
-        | FIN_WAIT_1 |
-        +-----------+
-             | recv ACK
-             v
-        +-----------+
-        | FIN_WAIT_2 |
-        +-----------+
-             | recv FIN, send ACK
-             v
-        +-----------+
-        | TIME_WAIT |  <--- linger here ~60s
-        +-----------+
-             |
-             v
-        +---------+
-        | CLOSED  |
-        +---------+
+```mermaid
+stateDiagram-v2
+  [*] --> CLOSED
+  CLOSED --> SYN_SENT: active open / send SYN
+  SYN_SENT --> ESTABLISHED: recv SYN-ACK / send ACK
+  note right of ESTABLISHED: data flows here
+  ESTABLISHED --> FIN_WAIT_1: active close / send FIN
+  FIN_WAIT_1 --> FIN_WAIT_2: recv ACK
+  FIN_WAIT_2 --> TIME_WAIT: recv FIN / send ACK
+  note right of TIME_WAIT: linger ~2 MSL (30-120s)
+  TIME_WAIT --> CLOSED: timeout
+  CLOSED --> [*]
 ```
 
 A few specific states matter operationally:
