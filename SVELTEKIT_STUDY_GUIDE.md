@@ -38,6 +38,19 @@ The thing SvelteKit is *for* is what Harris calls a **transitional app**: a site
 
 Here is the lifecycle that question lives inside. A user requests `/dashboard`. The **server** (your Node process, a serverless function, an edge worker — Part 11) runs your server-side `load` functions, renders the page's components *to an HTML string*, and sends it. The browser displays that HTML immediately — the site is already usable. Then the JavaScript bundle arrives and **hydrates** the page: Svelte attaches event listeners and reactive state to the existing DOM rather than re-creating it. From that point on, the **client-side router** takes over: clicking an internal link doesn't trigger a full page load; instead, SvelteKit fetches just the *data* for the next route, runs the relevant `load` functions (some in the browser, some via request to the server — Part 4 is entirely about this), and swaps components in place. Server-rendered first paint, SPA-quality navigation afterward. Every part of this guide elaborates some stage of that lifecycle.
 
+```mermaid
+sequenceDiagram
+  participant B as Browser
+  participant S as Server
+  B->>S: GET /dashboard
+  S->>S: run server load(), render components to HTML
+  S-->>B: HTML — usable immediately (SSR first paint)
+  Note over B: JS bundle arrives, hydrates the existing DOM
+  B->>B: click an internal link
+  B->>S: fetch data for the next route (run load functions)
+  B->>B: client router swaps components in place (SPA navigation)
+```
+
 References: [SvelteKit introduction](https://svelte.dev/docs/kit/introduction), [Glossary (SSR, hydration, CSR)](https://svelte.dev/docs/kit/glossary).
 
 ### 1.2 Scaffolding a Project with `sv`

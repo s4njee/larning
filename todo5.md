@@ -255,8 +255,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `VUE_STUDY_GUIDE.md` — Graph: the reactivity track/trigger cycle (effect
       reads → get trap tracks into the dependency map → mutation's set trap
       triggers → re-runs the effect), the guide's central mental model.
-- [ ] `SVELTEKIT_STUDY_GUIDE.md` — Flow: universal-vs-server load resolution;
-      seq: a form action's fail/enhance path.
+- [x] `SVELTEKIT_STUDY_GUIDE.md` — Seq: the transitional-app lifecycle (server
+      load + SSR HTML → hydrate → client-router SPA navigation). *Follow-ups:
+      universal-vs-server load, form-action enhance path.*
 - [x] `DJANGO_STUDY_GUIDE.md` — Flow: the request/response pipeline (server→
       handler→middleware down→URL→view→middleware up→response; replaced ASCII),
       the guide's top mental model. *Follow-ups: ER model, save() signals.*
