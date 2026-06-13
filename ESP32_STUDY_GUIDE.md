@@ -703,6 +703,15 @@ void setup() {
 void loop() {}                          // never reached — setup() sleeps before returning
 ```
 
+```mermaid
+graph TD
+  W["Wake = reboot — RAM wiped, RTC memory survives"] --> SU["setup() runs from the top"]
+  SU --> JOB["do one job: read sensor, connect Wi-Fi, transmit"]
+  JOB --> ARM["arm a wake source (timer / GPIO / touch)"]
+  ARM --> SLEEP["deep sleep — ~10 µA"]
+  SLEEP -->|timer fires or GPIO event| W
+```
+
 `RTC_DATA_ATTR` is how you keep a little state across the "reboot" — the RTC memory (~8KB) survives deep sleep when SRAM doesn't, so counters, calibration, and "what state was I in" go there. Wake sources are flexible: a **timer** (every N minutes), a **GPIO** (a door sensor or button — wake only when something happens), the **touch** peripheral, or the **ULP coprocessor** (below).
 
 ### Wringing Out the Last Microamps

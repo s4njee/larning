@@ -319,9 +319,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [ ] `BLENDER_STUDY_GUIDE.md` — Graph: object→datablock instancing relations;
       flow: the modifier stack evaluation order; EEVEE-vs-Cycles decision.
       (Diagram-dense — pick the relational ones.)
-- [ ] `ESP32_STUDY_GUIDE.md` — Flow: boot→app_main; deep-sleep wake cycle;
-      decision: blocking delay vs vTaskDelay vs millis. (Leave pin/memory
-      maps ASCII.)
+- [x] `ESP32_STUDY_GUIDE.md` — Flow: the deep-sleep wake cycle (wake=reboot →
+      setup from top → one job → arm wake source → deep sleep → repeat), the
+      defining battery-IoT pattern. Pin/memory maps left as ASCII.
 - [ ] `RASPBERRY_PI_STUDY_GUIDE.md` — Flow: the boot chain (bootcode→start.elf
       →kernel→device tree); decision: undervoltage→throttle. (Leave GPIO
       pinout ASCII.)
