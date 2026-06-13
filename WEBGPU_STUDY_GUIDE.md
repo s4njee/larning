@@ -328,19 +328,17 @@ GPU APIs are powerful, but they are not automatically the best user-interface to
 
 ### Decision Tree
 
-```text
-Do you need GPU rendering or compute?
-  no -> use DOM/CSS/SVG/Canvas 2D
-  yes ->
-    Do you need broad compatibility on older browsers/devices?
-      yes -> WebGL or high-level library with WebGL fallback
-      no ->
-        Do you need compute shaders, storage buffers, or modern engine architecture?
-          yes -> WebGPU
-          no ->
-            Are you using an existing library?
-              yes -> choose the best backend the library supports
-              no -> WebGL for simpler graphics, WebGPU for long-term control
+```mermaid
+graph TD
+  Q1{"Need GPU rendering or compute?"}
+  Q1 -->|no| DOM["DOM / CSS / SVG / Canvas 2D"]
+  Q1 -->|yes| Q2{"Need broad compatibility on<br/>older browsers/devices?"}
+  Q2 -->|yes| WGL1["WebGL, or a library with WebGL fallback"]
+  Q2 -->|no| Q3{"Need compute shaders, storage buffers,<br/>or modern engine architecture?"}
+  Q3 -->|yes| WGPU1["WebGPU"]
+  Q3 -->|no| Q4{"Using an existing library?"}
+  Q4 -->|yes| LIB["choose the best backend the library supports"]
+  Q4 -->|no| FINAL["WebGL for simpler graphics,<br/>WebGPU for long-term control"]
 ```
 
 ### Progressive Enhancement Strategy

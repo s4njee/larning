@@ -272,8 +272,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `WEBGL_OPENGL_STUDY_GUIDE.md` — Flow: the rendering pipeline (vertex
       buffers→vertex shader→assembly→clip→raster→fragment shader→depth/stencil→
       blend→framebuffer; replaced ASCII), marking the programmable stages.
-- [ ] `WEBGPU_STUDY_GUIDE.md` — Flow: explicit pipeline setup vs GL state;
-      seq: async command submission. *(Low ASCII density — adds new.)*
+- [x] `WEBGPU_STUDY_GUIDE.md` — Flow: the WebGL-vs-WebGPU decision tree
+      (compatibility/compute/library questions; replaced ASCII). *Follow-up:
+      command-encoder→queue.submit async flow.*
 - [ ] `IOS_DEVELOPMENT_STUDY_GUIDE.md` — Flow: SwiftUI body re-evaluation;
       graph: MVVM layer responsibilities. State: `.task` cancellation.
 - [ ] `CB8_IOS_STUDY_GUIDE.md` — Graph: nodejs-mobile two-phase architecture;
