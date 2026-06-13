@@ -139,7 +139,7 @@ Part, click-to-reveal explanation included.
 - [x] `RUST_FOR_PYTHON_DEVS.md` — 5 quizzes (15 questions; ownership third-answer/move/Copy-vs-Clone, borrowing shared-XOR-mutable & NLL, enums-as-ADTs/Option/exhaustive-match, Option-vs-Result/?-operator/thiserror-vs-anyhow, fearless-concurrency/Arc-Mutex/Send-Sync)
 - [x] `DOTNET_FOR_PYTHON_DEVS.md` — 5 quizzes (15 questions; var-inference/nullable-refs/IL-JIT, struct-value-copy & records-value-equality, LINQ deferred-execution/re-execution/IQueryable-SQL, GC-vs-IDisposable/using/throw-preserves-trace, Task-not-thread/WhenAll/avoid-.Result)
 
-## Batch 5 — Web, frontend, and apps
+## Batch 5 — Web, frontend, and apps (COMPLETE)
 
 - [x] `NEXTJS_STUDY_GUIDE.md` — 5 quizzes (15 questions; app-router filesystem/persistent-layouts/route-groups, use-client-door/serialization/children-slot, rendering-inference/ISR/streaming-Suspense, four-caches/tag-invalidation/use-cache, server-actions-public-endpoint/forms-progressive/route-handlers)
 - [x] `VUE_STUDY_GUIDE.md` — 5 quizzes (15 questions; ref-.value-interception/destructuring-breaks/branch-deps, props-one-way/defineModel-desugar/scoped-slots, composables-run-once/return-refs/toValue-reactive-args, router instance-reuse/guard-return-values/guard-vs-component-fetch, storeToRefs-trap/Pinia-vs-DIY/local-first)
@@ -152,7 +152,7 @@ Part, click-to-reveal explanation included.
 - [x] `WEBGPU_STUDY_GUIDE.md` — 5 quizzes (15 questions; explicit-pipelines-vs-state/async-model/compute-capability, adapter-vs-device/usage-flags/immutable-pipelines, WGSL address-spaces/uniform-layout/binding-match, compute bounds-check/keep-on-GPU/workgroup-dispatch, async-error-scopes/labels/black-screen-bisection)
 - [x] `IOS_DEVELOPMENT_STUDY_GUIDE.md` — 5 quizzes (12 questions; declarative-body/modifier-order/LazyVStack, @State-rerender/@Observable-granular/@Environment-shared, NavigationStack value-destination/router-path, .task-cancellation/@MainActor-viewmodel, MVVM repository-protocol/layer-responsibilities)
 - [x] `CB8_IOS_STUDY_GUIDE.md` — 5 quizzes (14 questions; nodejs-mobile-trap/two-phase-strategy/wrapper-limits, server-owns-completion/actual-API-fidelity, UIScrollView-zoom/index-interop/page-prefetch, sandbox-scanning/auth-tables-dropped/referenced-file-removal, ZIP-random-access-LRU/CBR-phase-asymmetry/naturalSort-fidelity)
-- [ ] `CB8_ANDROID_STUDY_GUIDE.md`
+- [x] `CB8_ANDROID_STUDY_GUIDE.md` — 5 quizzes (14 questions; node-on-device-heals-two-blockers/wrapper-Play-friendly/architecture-derived-plan, persistent-CookieJar/ignoreUnknownKeys/no-completed-field, Telephoto-zoom/bitmap-budget-onTrimMemory, SAF-vs-bookmark/cursor-traversal-perf/WorkManager, RAR5-junrar-gap/filter-by-extension/bundled-7z-sideload)
 
 ## Batch 6 — Security, AI, and the rest
 
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 54/65 (Batches 1–4 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 55/65 (Batches 1–5 complete).
