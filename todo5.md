@@ -296,7 +296,8 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 
 64 guide files + 2 bespoke pages (Caddy/Nginx, built from their `.py`
 generators) = 66 targets. Progress: Phase 0 ✅ complete; Batch A ✅ complete
-(12 guides). Diagrams are **additive and tactical** — a guide
-is "done" here when
+(12 guides); Batch B in progress (Kubernetes, Docker, Terraform, Git, GitHub
+Actions, Observability done — 6 of 15). 18 guides total carry diagrams.
+Diagrams are **additive and tactical** — a guide is "done" here when
 its 1–4 highest-value relational/temporal/state diagrams render as inline SVG
 on both themes, with spatial/byte-layout diagrams left as ASCII.
