@@ -54,6 +54,18 @@ Every type in TypeScript is a **set of possible values**. This single idea expla
 
 This is why `never` is the bottom type (assignable to everything — the empty set is a subset of every set) and `unknown` is the top type (everything is assignable to it).
 
+```mermaid
+graph BT
+  NV["never — bottom (no values)"] --> S[string]
+  NV --> N[number]
+  NV --> B[boolean]
+  S --> U["unknown — top (every value)"]
+  N --> U
+  B --> U
+```
+
+Arrows read "is assignable to": `never` flows up into every type, every type flows up into `unknown`. (`any` sits outside this lattice — it's assignable *both* ways because it switches type-checking off.)
+
 ### Structural Typing, Not Nominal
 
 TypeScript doesn't care about what a type is *called* — it cares about what **shape** it has. If two types have the same structure, they're compatible:
