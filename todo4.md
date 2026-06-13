@@ -162,7 +162,7 @@ Part, click-to-reveal explanation included.
 - [x] `AI_AGENTS_STUDY_GUIDE.md` — 5 quizzes (13 questions; workflow-vs-agent-who-controls/start-with-workflows/evaluator-optimizer, agent-loop-primitive/ReAct-is-the-loop/production-guardrails, tool-trust-boundary/descriptions-are-instructions, defense-in-depth-cheapest-first/output-guardrails, multi-agent-only-when-justified/handoffs-are-tools/sequential-pipeline-stable)
 - [x] `LLM_APP_DEV_STUDY_GUIDE.md` — 5 quizzes (13 questions; stateless/output-latency/hallucination-inherent, JSON-mode-vs-schema/tool-as-schema, RAG-grounds-knowledge/hybrid-search/retrieve-then-rerank, prompt-cache-prefix/semantic-cache-caution, RAG-for-facts/when-to-fine-tune/prompt-vs-finetune-cost)
 - [x] `ENTERPRISE_API_STUDY_GUIDE.md` — 5 quizzes (14 questions; method-semantics-contract/code-vs-detail/return-full-resource, exactly-once-effect/atomic-key-reservation/idempotency-composes, additive-evolution/Hyrum-observability, offset-pagination-bug/ETag-optimistic-concurrency/filter-allowlist, three-problems-one-429/token-bucket-by-principal/cooperative-429)
-- [ ] `TESTING_STUDY_GUIDE.md`
+- [x] `TESTING_STUDY_GUIDE.md` — 5 quizzes (15 questions; confidence-per-cost/testability-is-design/trust-cost, pyramid-economics/mock-forest/coverage-theater, one-reason-to-fail/behavior-vs-call-assertions/private-method-smell, dependency-boundary-rule/fakes-vs-mocks/contract-tests, eventual-consistency-poll/fake-clock-retries/idempotency-superpower)
 - [ ] `BLENDER_STUDY_GUIDE.md`
 - [ ] `ESP32_STUDY_GUIDE.md`
 - [ ] `RASPBERRY_PI_STUDY_GUIDE.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 61/65 (Batches 1–5 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 62/65 (Batches 1–5 complete).

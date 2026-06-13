@@ -109,6 +109,29 @@ The ideal loop is:
 
 When testing feels painful, do not only ask "how do I mock this?" Ask "why is this behavior hard to observe?" Hard-to-test code often reveals hidden design problems: global state, time calls embedded everywhere, tangled I/O, giant methods, implicit dependencies, or unclear ownership boundaries.
 
+```quiz
+Q: The guide says the goal is not "write every possible test." What is it instead?
+- [ ] Maximize code coverage percentage
+- [x] Buy the most confidence per unit of cost — tests sample behavior and combine imperfect signals, so you pick the ones whose failure changes a decision
+- [ ] Test every line at least once
+- [ ] Write only end-to-end tests
+> Tests don't prove correctness mathematically; they sample behavior, combining examples, edge cases, properties, integration, contract, and E2E checks into confidence. Since each test has real costs (authoring, runtime, maintenance, diagnosis, trust), the economic question is what confidence each buys. "The highest-value test is the one whose failure changes a decision" — a test everyone ignores is background noise, not a safety net.
+
+Q: When testing a piece of code feels painful, what's the more productive question than "how do I mock this?"
+- [ ] "Which mocking library is best?"
+- [x] "Why is this behavior hard to observe?" — hard-to-test code often reveals design problems like global state, embedded time calls, tangled I/O, or unclear ownership
+- [ ] "Can I skip this test?"
+- [ ] "Should I use more integration tests?"
+> Test pain is a design smell, not just a tooling gap. Reaching straight for mocks treats the symptom; asking why the behavior is hard to observe surfaces the cause — globals, scattered `now()` calls, I/O tangled with logic, giant methods, implicit dependencies. Fixing the testability problem usually improves the production design too, which is why TDD's pressure on testability is a design feedback loop.
+
+Q: Why does the guide care about the test-cost dimension "Trust" alongside runtime and maintenance?
+- [ ] Trust is about access control
+- [x] A flaky or irrelevant test costs confidence — when failures are nondeterministic or false, people start ignoring the suite, and an ignored test is background noise rather than a safety net
+- [ ] Trust measures code coverage
+- [ ] Trust only matters in CI
+> A test's value collapses if people stop believing its failures. Flakiness (nondeterminism, shared state) and false positives erode trust until red builds get rubber-stamped — at which point a real regression slips through unnoticed. So trust is a first-class cost: a few reliable, decision-changing tests beat many noisy ones, because the suite's worth is only as high as the team's willingness to act on it.
+```
+
 ---
 
 ## Part 2 - The Test Portfolio
@@ -199,6 +222,29 @@ Common unhealthy shapes:
 | Mock forest | Unit tests mock every collaborator and verify calls | Test observable behavior; move mocks to process/network boundaries. |
 | Coverage theater | High line coverage, low defect detection | Add branch, edge, property, and mutation checks. |
 | Flake swamp | Failures are rerun instead of fixed | Quarantine briefly, assign owner, track flake rate. |
+
+```quiz
+Q: The test pyramid prescribes many small fast tests and few broad slow ones. What's the actual justification?
+- [ ] It's an industry standard
+- [x] Economics, not ideology — broad tests are slower, harder to diagnose, and more likely to fail for reasons unrelated to your change, so you push behavior to the cheapest level that can prove it
+- [ ] Unit tests find more bugs than E2E
+- [ ] Broad tests are less accurate
+> Treat the pyramid as an economic model. Lower layers are fast, deterministic, specific in their failures, and owned by the code's authors; upper layers cover critical paths but cost more per test in runtime and diagnosis. The "testing trophy" isn't a contradiction — it's the same idea applied to UI, where static analysis and component tests give better value than tiny implementation-level unit tests. The principle: use the cheapest test that can fail for the right reason.
+
+Q: A "mock forest" anti-portfolio has unit tests mocking every collaborator and verifying calls. Why is that unhealthy, and what's the fix?
+- [ ] Mocks are slow
+- [x] It couples tests to implementation (verifying calls rather than observable behavior), so they break on safe refactors and detect few real bugs; the fix is to test observable behavior and push mocks out to process/network boundaries
+- [ ] Mocking libraries are unreliable
+- [ ] You should never mock anything
+> When every test mocks every collaborator and asserts "method X was called," it's testing the code's structure, not its behavior — refactoring breaks the tests even though nothing user-visible changed, and the assertions verify wiring trivia. Testing the observable result and reserving doubles for true boundaries (network, filesystem, external services) yields tests that survive refactoring and catch real regressions.
+
+Q: "Coverage theater" shows high line coverage but low defect detection. What does that reveal about coverage as a metric?
+- [ ] Coverage tools are broken
+- [x] Executing a line isn't asserting its behavior — high coverage can coexist with weak oracles; branch, edge, property, and mutation testing measure whether tests actually *catch* defects, not just touch code
+- [ ] Coverage should always be 100%
+- [ ] Line coverage is the best metric
+> Line coverage counts whether code ran during tests, not whether a wrong result would fail a test. You can run every line while asserting almost nothing. Mutation testing closes this gap by altering production code and checking the tests catch it — a direct measure of defect detection. Coverage is a useful floor (untested code is risky) but a poor ceiling; the question is whether failures change decisions.
+```
 
 ### Coverage Is a Map, Not a Goal
 
@@ -317,6 +363,29 @@ discount_service.apply.assert_called_once()
 ```
 
 Call assertions are useful at true boundaries: sending an email, publishing an event, writing a metric, charging a card. They are weaker inside the domain core.
+
+```quiz
+Q: "One assertion per test" is called too rigid. What's the better rule?
+- [ ] As many assertions as possible
+- [x] One *reason to fail* — a test may need several assertions to describe one behavior, but it shouldn't conflate many independent behaviors (which makes failures ambiguous and the test fragile)
+- [ ] Exactly three assertions
+- [ ] No assertions, only mocks
+> A signup test asserting the user's email, status, and that a welcome email was sent describes *one* behavior (successful signup) and is fine. A `test_signup` that also checks duplicate handling, validation, audit logging, and metrics has many reasons to fail, so a failure doesn't tell you what broke. Split by behavior, not by assertion count — the goal is a clear, single diagnosis per failure.
+
+Q: Why does `assert cart.total_cents() == 4200` survive refactoring while `tax_calculator.calculate.assert_called_once_with(...)` doesn't?
+- [ ] The first is faster
+- [x] The first asserts observable behavior (the result), so it passes as long as the total is correct however it's computed; the second asserts an internal call, so renaming or restructuring the calculation breaks it even when behavior is unchanged
+- [ ] Call assertions are always wrong
+- [ ] The second tests a private method
+> Behavior-oriented assertions check *what the code does* as seen from outside; implementation-coupled assertions check *how* it does it. Refactors change the how while preserving the what, so call-verification tests generate false failures. Call assertions earn their place only at true boundaries (sending email, charging a card, publishing an event) where the call itself *is* the observable effect — not inside the domain core.
+
+Q: Why is testing private methods usually a design smell?
+- [ ] Private methods can't be imported
+- [x] If a private method holds complex behavior worth testing independently, that's a signal to extract it as a smaller public unit — testing through the private surface couples tests to internals and hides a missing abstraction
+- [ ] Private methods are never important
+- [ ] You should make everything public
+> Reaching into private methods to test them is a workaround for a structural issue: the behavior deserves its own named, public boundary. Extracting it into a small public unit (in the same module) makes it directly and stably testable, improves the design, and keeps tests behavior-oriented. Testing the private internals instead locks the tests to the current implementation and signals an abstraction trying to get out.
+```
 
 ### Make Data Small and Explicit
 
@@ -539,6 +608,29 @@ Consumer contract:
 - "Billing service retries 502 but not 400."
 
 Tools vary by stack: Pact, Spring Cloud Contract, protobuf/gRPC compatibility checks, OpenAPI schema checks, AsyncAPI event checks, and homegrown contract suites can all work. The key is to test the boundary as a shared asset, not as folklore.
+
+```quiz
+Q: What's "the dependency boundary rule" for deciding what to replace with test doubles?
+- [ ] Mock everything for speed
+- [x] Use real collaborators *inside* your boundary; replace collaborators *outside* it — so a billing service uses real invoice/tax logic but fakes the payment gateway, email sender, and clock
+- [ ] Replace everything your code calls
+- [ ] Only mock the database
+> The rule keeps the behavior you own genuinely exercised while isolating what you don't control. Inside the boundary (your domain logic), real collaborators mean the test verifies actual behavior and survives refactoring. Outside (payment gateways, email, external APIs, the clock), doubles prevent charging cards, sending emails, and flakiness from external uptime. A unit test needing five internal mocks signals the unit is too large or the test asserts implementation.
+
+Q: Why do "fakes beat mocks when behavior matters"?
+- [ ] Fakes are faster to write
+- [x] A fake models behavior over time (a `FakeEmailSender` records what was sent so you can assert outcomes), whereas a mock typically just verifies a call was made — fakes let tests check observable results rather than interactions
+- [ ] Mocks can't be used for email
+- [ ] Fakes never drift from reality
+> A fake is a working lightweight implementation (an in-memory repo, a recording email sender), so tests assert *what happened* (`fake_email.sent[-1]["template"] == "welcome"`) — behavior-oriented and refactor-stable. Mocks verifying calls couple to interactions. The caveat: fakes can drift from the real dependency, so contract tests keep them honest, and complex fakes should also be tested against the real thing somewhere.
+
+Q: What problem do contract tests solve that fakes alone don't?
+- [ ] They make fakes run faster
+- [x] Every fake can drift from the real dependency; contract tests verify provider and consumer still agree on request/response/event shape and semantics — testing the boundary as a shared asset rather than folklore
+- [ ] They replace integration tests entirely
+- [ ] They remove the need for fakes
+> A fake encodes your *assumptions* about a dependency, and those assumptions silently rot as the real service evolves. Contract tests pin the agreement explicitly — the provider proves "duplicate idempotency key returns the same result," the consumer proves "I send the idempotency key and treat 402 as non-retryable." This catches the drift a passing-against-a-stale-fake test would miss, keeping both sides of a boundary compatible.
+```
 
 ### Patch Where Looked Up
 
@@ -2114,6 +2206,29 @@ Scenarios:
 - retry logs/metrics include attempt count.
 
 Avoid tests that wait real seconds. They are slow and flaky.
+
+```quiz
+Q: Why is `await publishEvent(event); expect(await readProjection()).toEqual(expected)` a bad test for an eventually-consistent system?
+- [ ] readProjection is too slow
+- [x] It races the projection — the read may happen before the asynchronous projection catches up, so the test is flaky; poll with `expectEventually` (retry until the assertion passes or times out) instead
+- [ ] Events can't be published in tests
+- [ ] toEqual doesn't work on projections
+> Eventual consistency means the write and the derived read are decoupled in time, so a synchronous read-right-after-write sometimes sees stale or missing data — intermittent failures that erode trust. Polling with a bounded retry (`expectEventually`) waits for convergence deterministically. But polling is only half the story: you also test duplicate/out-of-order events, replay, idempotency keys, and dead-letter behavior — the invariants, not just the happy path.
+
+Q: Why test retry/backoff logic with a *fake clock* rather than letting the test wait real seconds?
+- [ ] Real clocks are inaccurate
+- [x] Tests that wait real time are slow and flaky; a fake clock lets you advance time instantly and deterministically, so you can assert delays increase, jitter stays in bounds, and max attempts are honored without sleeping
+- [ ] Fake clocks find more bugs
+- [ ] The real clock can't be read in tests
+> Backoff logic is about *time* — escalating delays, jitter, max attempts — and exercising it with real sleeps makes the suite crawl and introduces timing nondeterminism. Injecting a controllable clock turns "wait 8 seconds" into "advance the fake clock 8 seconds" instantly, making the test fast and reliable. Controlling sources of nondeterminism (time, randomness, scheduling) is the general trick for testing distributed behavior.
+
+Q: Why is idempotency called "a testing superpower" for distributed systems?
+- [ ] It eliminates the need for tests
+- [x] It's a clean invariant — applying a command twice has the same externally visible result as once — that you can assert directly (duplicate callback doesn't double-charge, retried create returns the same resource, migration runs twice safely)
+- [ ] It makes tests run in parallel
+- [ ] It removes the need for mocks
+> Distributed systems retry, redeliver, and replay, so duplicates are inevitable (the Enterprise API guide's "exactly-once effect"). Idempotency gives you a single, checkable property covering all of it: run the operation twice and assert the system state and outputs match running it once. That invariant is far easier to test thoroughly than enumerating every duplicate-delivery scenario, which is why it anchors the test strategy for queues, payments, and migrations.
+```
 
 ### Message Queues
 
