@@ -301,8 +301,10 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       CSRF token-check flow; the prompt-injection data/instruction confusion.
 - [ ] `KALI_LINUX_STUDY_GUIDE.md` — Flow: the recon→exploit→post-ex kill chain;
       graph: AD attack graph (Kerberoast/NTLM-relay paths).
-- [ ] `AI_AGENTS_STUDY_GUIDE.md` — Flow: the agent loop (ReAct: think→act→
-      observe); decision: workflow-vs-agent. Graph: multi-agent handoffs.
+- [x] `AI_AGENTS_STUDY_GUIDE.md` — Flow: the agent loop (call model → stop_reason
+      end_turn=done / tool_use=execute+append+loop → max_steps guard),
+      visualizing the minimal-loop code. *Follow-ups: workflow-vs-agent
+      decision, multi-agent handoffs.*
 - [ ] `LLM_APP_DEV_STUDY_GUIDE.md` — Flow: a RAG request (retrieve→rerank→
       generate); decision: RAG-vs-finetune. Seq: tool/function calling.
 - [ ] `ENTERPRISE_API_STUDY_GUIDE.md` — Seq: idempotency-key reservation flow;

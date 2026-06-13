@@ -178,6 +178,18 @@ def agent(goal: str, tools: list, max_steps: int = 20) -> str:
 
 This is the entire agent. Everything else is optimization, safety, and orchestration layered on top.
 
+```mermaid
+graph TD
+  G[goal] --> CALL["call the model with messages + tools"]
+  CALL --> D{"stop_reason?"}
+  D -->|end_turn| DONE["return the answer"]
+  D -->|tool_use| EXEC["execute the requested tool(s)"]
+  EXEC --> APPEND["append tool results to messages"]
+  APPEND --> STEP{"max_steps reached?"}
+  STEP -->|no| CALL
+  STEP -->|yes| STOP["give up — hit the step limit"]
+```
+
 ### The Same Loop, OpenAI Version
 
 ```python
