@@ -118,6 +118,16 @@ resource "google_storage_bucket" "assets" {
 
 In AWS you reason constantly about the **account** — your billing boundary, your isolation edge, the heavy unit you ration because spinning up and governing one is real work — organized into OUs under an Organization. GCP's foundational difference, the one that reshapes how you structure everything, is that it replaces the heavy account with a *lightweight project* inside a strict, mandatory hierarchy: **Organization → Folders → Projects → Resources**, with the rule that *every resource must belong to a project* — there is no equivalent of a "loose" resource floating outside the structure. A **project** is the rough analog of an AWS account as the isolation-and-billing unit, but it is so much cheaper to create and interconnect that the idiom inverts: where AWS teams ration accounts, GCP teams make *many* projects — commonly one per service per environment — because they all share a central **Billing Account**, nest under **Folders** for governance (the OU analog), and interconnect easily via Shared VPC. The mental shift to make early is "projects are cheap, make many," because designing a GCP estate as if projects were precious accounts produces a cramped, hard-to-govern structure.
 
+```mermaid
+graph TD
+  ORG["Organization<br/>root of the hierarchy"] --> FLD["Folders<br/>governance grouping (≈ AWS OUs)"]
+  FLD --> PRJ["Projects<br/>isolation & billing unit (≈ AWS account) — cheap, make many"]
+  PRJ --> RES["Resources — every resource lives in exactly one project"]
+  BILL["Billing Account"] -.linked to.-> PRJ
+```
+
+IAM policies set at the Organization or Folder level **inherit down** to every project and resource beneath, so you grant broadly at the top and narrowly where needed.
+
 Two naming subtleties trip up AWS architects and are worth pinning down. First, GCP overloads the word "tags": it has **labels** (free-form key-value pairs for querying, filtering, and cost breakdown — the closest match to AWS tags) *and* **tags** (a separate Resource Manager construct that can be referenced in IAM conditions and firewall rules to apply policy conditionally) — so "tag" means two different things depending on context, and you'll use labels for organization and tags for policy. Second, the geography model adds a tier above regions and zones: GCP defines **multi-regions** (a geographic area spanning several regions, like `us` or `eu`) that storage and database services use for *out-of-the-box geo-replication* — so where an AWS architect explicitly designs cross-region replication, several GCP services offer a multi-region location that handles it for you, a genuine simplification to know exists.
 
 ### Hands-On

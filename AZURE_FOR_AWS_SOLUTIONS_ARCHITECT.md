@@ -105,6 +105,16 @@ resource sa 'Microsoft.Storage/storageAccounts@2023-01-01' = {
 
 In AWS, the structural unit you reason about constantly is the **account** — your billing boundary, your blast radius, your governance edge — organized into OUs under an Organization, with regions and availability zones beneath. The first thing to internalize about Azure is that the same job is done by a *deeper hierarchy* with one genuinely new layer that has no AWS equivalent, and getting comfortable with that hierarchy is most of getting comfortable with Azure: a **Microsoft Entra tenant** is the identity boundary (roughly the directory your whole organization lives in), beneath it **management groups** nest to organize governance (the analog of OUs), beneath those sit **subscriptions** (the closest match to an AWS account — a billing and quota boundary you'd typically use one of per environment), and inside each subscription live **resource groups**, which is the layer that surprises everyone.
 
+```mermaid
+graph TD
+  T["Microsoft Entra tenant<br/>identity boundary"] --> MG["Management groups<br/>nest for governance (≈ AWS OUs)"]
+  MG --> SUB["Subscriptions<br/>billing & quota boundary (≈ AWS account)"]
+  SUB --> RG["Resource groups<br/>hard lifecycle containers — az group delete cascades"]
+  RG --> R["Resources — VMs, storage, databases, ..."]
+```
+
+Azure Resource Manager treats each level as a **scope**, and RBAC role assignments and Azure Policy assigned at any level **inherit downward** to everything beneath it.
+
 A resource group is *not* a tag, and treating it like one is the most common early mistake. It is a hard **lifecycle container and deployment scope**: every resource belongs to exactly one resource group, `az group delete` cascades to everything inside it, and deployments, RBAC scopes, and policy all attach naturally at that level. Where an AWS architect's instinct is "one account per environment, tags for workloads within," the idiomatic Azure split is "one *subscription* per environment, then many *resource groups* by workload inside it" — so the resource group becomes the unit you create and destroy together, the thing you'd previously have approximated with a CloudFormation stack plus tag conventions, now made first-class and enforced.
 
 Underneath all of this is **Azure Resource Manager (ARM)**, the single control plane through which every create, read, update, and delete flows, regardless of whether you used the portal, the CLI, or Bicep. Many Azure concepts that feel arbitrary at first click into place once you think in ARM's terms of *scopes* (management group → subscription → resource group → resource, with permissions and policy inheriting down the chain) and *resource providers*. One more difference worth wiring in early because it changes network and HA design: Azure **subnets are regional**, spanning all availability zones in a region, rather than being pinned to a single AZ the way AWS subnets are — so where an AWS architect places one subnet per AZ and distributes across them, an Azure architect places one regional subnet and makes zone-redundancy a property of the resources in it, layering availability zones and **paired regions** (Azure's built-in regional DR pairing) for high availability.
