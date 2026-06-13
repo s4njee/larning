@@ -193,36 +193,13 @@ On the ESP32, boot is invisible — power on, your code runs 200 ms later. On th
 
 The Pi's boot is unusual — it starts on the **GPU**, not the CPU:
 
-```
-Power on
-   ↓
-┌───────────────────────────────────┐
-│ Stage 1: On-chip ROM bootloader   │  Hardcoded in SoC silicon.
-│ (VideoCore GPU)                   │  Reads bootcode.bin from SD card.
-└─────────────┬─────────────────────┘
-              ↓
-┌───────────────────────────────────┐
-│ Stage 2: bootcode.bin             │  GPU firmware from SD card.
-│ (still on the GPU)               │  Initializes SDRAM.
-│                                   │  Loads start.elf.
-└─────────────┬─────────────────────┘
-              ↓
-┌───────────────────────────────────┐
-│ Stage 3: start.elf               │  GPU firmware. Reads config.txt.
-│ (GPU, reads config.txt)          │  Loads the Linux kernel + DTB.
-│                                   │  Releases the ARM CPU from reset.
-└─────────────┬─────────────────────┘
-              ↓
-┌───────────────────────────────────┐
-│ Stage 4: Linux kernel             │  Runs on the ARM CPU.
-│ (kernel8.img or kernel7l.img)    │  Mounts root filesystem.
-│                                   │  Starts PID 1 (init/systemd).
-└─────────────┬─────────────────────┘
-              ↓
-┌───────────────────────────────────┐
-│ Stage 5: systemd                  │  Starts services in parallel.
-│ (init system)                    │  Network, SSH, your application.
-└───────────────────────────────────┘
+```mermaid
+graph TD
+  P[Power on] --> S1["Stage 1: on-chip ROM bootloader (VideoCore GPU)<br/>reads bootcode.bin from the SD card"]
+  S1 --> S2["Stage 2: bootcode.bin (still on the GPU)<br/>initializes SDRAM, loads start.elf"]
+  S2 --> S3["Stage 3: start.elf (GPU)<br/>reads config.txt, loads kernel + DTB, releases the ARM CPU"]
+  S3 --> S4["Stage 4: Linux kernel (ARM CPU)<br/>mounts root filesystem, starts PID 1"]
+  S4 --> S5["Stage 5: systemd (init)<br/>starts services in parallel: network, SSH, your app"]
 ```
 
 On Pi 4/5 and Zero 2 W with updated firmware: `bootcode.bin` is replaced by an on-SoC bootloader in newer firmware, but the overall flow is the same.

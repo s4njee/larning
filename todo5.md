@@ -322,9 +322,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `ESP32_STUDY_GUIDE.md` — Flow: the deep-sleep wake cycle (wake=reboot →
       setup from top → one job → arm wake source → deep sleep → repeat), the
       defining battery-IoT pattern. Pin/memory maps left as ASCII.
-- [ ] `RASPBERRY_PI_STUDY_GUIDE.md` — Flow: the boot chain (bootcode→start.elf
-      →kernel→device tree); decision: undervoltage→throttle. (Leave GPIO
-      pinout ASCII.)
+- [x] `RASPBERRY_PI_STUDY_GUIDE.md` — Flow: the 5-stage boot pipeline (GPU ROM
+      → bootcode.bin → start.elf → Linux kernel → systemd), showing the
+      GPU-starts-not-CPU twist. GPIO pinout left as ASCII.
 - [x] `VIM_STUDY_GUIDE.md` — State: the mode machine (Normal↔Insert/Visual/
       Command-line, with the keys that switch and Esc returning to Normal;
       replaced ASCII). *Follow-up: operator+motion grammar graph.*
