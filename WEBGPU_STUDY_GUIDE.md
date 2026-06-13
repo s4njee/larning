@@ -259,6 +259,29 @@ WebGL wins reach. WebGPU wins capability.
 
 If you need maximum compatibility today, WebGL is still hard to beat. If you need compute, modern rendering, high object counts, GPU-side simulation, or a future-facing engine architecture, WebGPU is the better target.
 
+```quiz
+Q: What's the fundamental programming-model difference between WebGL and WebGPU?
+- [ ] WebGPU is slower but easier
+- [x] WebGL uses mutable global context state (current buffer/program/texture/blend) while WebGPU uses explicit immutable pipeline objects, bind groups, and recorded command buffers — more ceremony upfront, more reliable at scale
+- [ ] WebGPU has no shaders
+- [ ] They use the same API with different names
+> WebGL's state machine means any code path can change global state and break a later draw if it forgets to restore it. WebGPU bundles render state into immutable pipelines, resources into bind groups, and work into command encoders that you record then submit. The cost is verbosity for simple examples; the payoff is large-system reliability and a higher performance ceiling.
+
+Q: WebGPU's command submission "returns before GPU work has necessarily completed." Why is that async model the right design?
+- [ ] To hide errors from the developer
+- [x] It matches real GPU execution — the CPU records work and the GPU consumes it later — so errors surface via error scopes/events and reading results uses promises, avoiding synchronous CPU↔GPU stalls
+- [ ] Because JavaScript can't be synchronous
+- [ ] To make the API harder to misuse
+> Synchronous queries like WebGL's `gl.getError()` force the browser and GPU processes to coordinate immediately, stalling the pipeline. WebGPU embraces the reality that the GPU runs behind the CPU: submission queues work and returns, validation and errors report asynchronously, and reading GPU buffers back is a promise. The model reflects the hardware instead of papering over it.
+
+Q: What capability does WebGPU have that WebGL fundamentally lacks?
+- [ ] Textures
+- [x] First-class compute shaders with storage buffers — general GPGPU (physics, image processing, ML inference) rather than abusing fragment shaders and textures for computation
+- [ ] The ability to draw triangles
+- [ ] Hardware acceleration
+> WebGL was designed to draw; you can coerce fragment shaders and textures into doing computation, but it's awkward and limited. WebGPU adds `@compute` shaders and read-write storage buffers as native concepts, opening GPU-side simulation, particles, data transforms, and local ML inference. That compute capability — plus the modern explicit model — is the main reason to choose WebGPU when reach isn't the deciding factor.
+```
+
 ---
 
 ## Part 3 - When to Use WebGPU and When to Use WebGL
@@ -560,6 +583,29 @@ device.queue.submit([commandBuffer]);
 
 This is the explicit API style. Record, finish, submit.
 
+```quiz
+Q: Why does WebGPU split the GPU into an *adapter* and a *device*?
+- [ ] The adapter renders; the device handles input
+- [x] The adapter is the browser's representation of a GPU option and exposes available features/limits; the device is the connection you actually use, created with the specific features and limits you request
+- [ ] They're the same object with two names
+- [ ] The device is for compute, the adapter for graphics
+> You query an adapter to discover what a given GPU *can* do (`adapter.features`, `adapter.limits`), then request a device enabling only the features your app actually uses. This two-step makes capability negotiation explicit: you opt into optional features deliberately and keep fallbacks, rather than assuming every GPU supports everything.
+
+Q: A buffer created with only `GPUBufferUsage.VERTEX` fails when you call `queue.writeBuffer` into it. Why?
+- [ ] writeBuffer only works on textures
+- [x] Usage flags are binding — a buffer can only be used in the ways declared at creation, so writing into it requires also including `COPY_DST`
+- [ ] The buffer is too small
+- [ ] VERTEX buffers are read-only forever
+> WebGPU validates that every use of a resource matches the usage flags it was created with. `queue.writeBuffer` is a copy into the buffer, which needs `COPY_DST`; a vertex buffer you upload to therefore needs `VERTEX | COPY_DST`. Declaring usage up front lets the driver place and manage memory optimally — but it means you must anticipate every way a buffer will be used.
+
+Q: You need the same geometry drawn with two different blend modes. What does WebGPU's pipeline model require?
+- [ ] Toggle blend state with a setter before each draw
+- [x] Create two pipelines — pipelines are immutable, baking shaders, blending, topology, and formats into one object, so different state means a different pipeline
+- [ ] Use one pipeline and pass blend mode as a uniform
+- [ ] Re-encode the shader at draw time
+> Unlike WebGL's mutable global state, a WebGPU `GPURenderPipeline` is an immutable bundle of all render state validated once at creation. This front-loads validation (draw calls are cheap and can't fail on state mismatch) but means any change to blending, shaders, or formats requires building another pipeline. Bind groups, by contrast, are the mutable part you swap per draw to point at different resources.
+```
+
 ---
 
 ## Part 5 - WGSL: The Shader Language
@@ -699,6 +745,29 @@ Practical beginner rule:
 | Writing to read-only storage | Use `read_write` where needed |
 | Using runtime array outside storage buffer | Runtime-sized arrays belong in storage buffers |
 | Out-of-bounds indexing | Check lengths or dispatch exact work sizes |
+
+```quiz
+Q: What do WGSL address spaces like `uniform`, `storage`, and `workgroup` declare?
+- [ ] The shader stage a variable belongs to
+- [x] Where a variable's memory lives and its access rules — read-only uniform buffers, readable/writable storage buffers, shared workgroup memory for compute, per-invocation private data
+- [ ] The variable's numeric precision
+- [ ] The bind group index
+> Every WGSL resource variable names its address space, making memory placement explicit: `var<uniform>` for small read-only data, `var<storage, read>`/`var<storage, read_write>` for larger buffers, `var<workgroup>` for memory shared across a compute workgroup, and `private`/`function` for local data. This explicitness is part of WGSL's safety/portability design — the compiler knows exactly how each value is accessed.
+
+Q: A WGSL struct `{ color: vec4<f32>, scale: f32 }` is 20 bytes of data, but writing 20 bytes from JavaScript produces wrong values. Why?
+- [ ] vec4 isn't supported in uniforms
+- [x] Uniform buffers follow WGSL alignment/padding rules — a struct doesn't pack like a tight JavaScript object, so the real buffer size is larger; match the layout, pad to aligned chunks, or use a helper
+- [ ] f32 must come before vec4
+- [ ] The buffer needs STORAGE usage
+> WGSL's std140-style layout aligns members (a `vec4` to 16 bytes, etc.) and inserts padding, so a CPU-side struct must reproduce those offsets exactly — assuming it packs like a JS object is a classic bug. The practical defense: use `Float32Array`, group values into 4-float chunks, keep matrices as 16 floats, and verify offsets. Both sides must agree on byte layout because JavaScript writes bytes and WGSL reads typed values.
+
+Q: WGSL attributes like `@group(0) @binding(1)` in a shader must line up with what on the JavaScript side?
+- [ ] The vertex buffer stride
+- [x] The bind group's entries — the `@group`/`@binding` numbers must match the group index and `binding` values in the `createBindGroup` call, or the shader reads the wrong (or no) resource
+- [ ] The canvas dimensions
+- [ ] The workgroup size
+> Bind groups connect shader resource declarations to actual buffers/textures by number: `@group(0) @binding(1)` in WGSL pairs with bind group 0's entry `{ binding: 1, ... }`. Mismatched numbers are a top WebGPU bug, which is why the guide advises keeping the WGSL bindings and the JavaScript entries side by side. The same kind of agreement applies to vertex attribute formats (`float32x3` ↔ a `vec3<f32>` location).
+```
 
 ---
 
@@ -1469,6 +1538,29 @@ GPU compute -> GPU render
 
 This is how particle systems, GPU culling, simulations, and post-processing become fast.
 
+```quiz
+Q: A compute shader with `@workgroup_size(64)` dispatched as `dispatchWorkgroups(Math.ceil(length / 64))` corrupts memory when `length` isn't a multiple of 64. Why, and what's the fix?
+- [ ] The workgroup size must equal the length
+- [x] Rounding the dispatch up launches extra invocations past the data end that write out of bounds; pass the real length as a uniform and `return` early when `global_invocation_id.x >= length`
+- [ ] 64 is too large a workgroup
+- [ ] The buffer needs MAP_WRITE
+> `dispatchWorkgroups` works in whole workgroups, so `ceil(length/64)` over-launches: for length 100 it runs 128 invocations, and indices 100–127 index past the array. The bounds check inside the shader (compare the builtin invocation id against a length uniform and bail) is mandatory — always reconcile dispatch size against actual data size.
+
+Q: Why does the guide stress keeping compute output on the GPU (`GPU compute → GPU render`) rather than reading it back?
+- [ ] CPU memory is smaller
+- [x] GPU→CPU→GPU readback (via `mapAsync`) forces synchronization and a slow round trip; if the output feeds rendering, consuming it directly in a GPU buffer/texture avoids the stall — this is what makes particle systems and simulations fast
+- [ ] Readback corrupts the data
+- [ ] The CPU can't read GPU buffers at all
+> Mapping a buffer back to the CPU requires waiting for the GPU to finish and copying across the PCIe boundary — expensive, and it serializes CPU and GPU. When compute results are themselves rendering inputs (particle positions, culled draw lists, post-process intermediates), binding the same GPU buffer into the render pass keeps everything on-device. Readback is only for results the CPU genuinely needs.
+
+Q: What does `dispatchWorkgroups(10)` launch given `@workgroup_size(64)`?
+- [ ] 10 invocations
+- [x] 10 workgroups × 64 invocations = 640 total invocations, each running the shader with a different invocation id
+- [ ] 64 invocations
+- [ ] 74 invocations
+> The dispatch count is in *workgroups*, and each workgroup contains `@workgroup_size` invocations, so the total is the product. This two-level grid (workgroups of invocations) is the compute execution model; for 2D work like image processing you use a 2D workgroup size (`8, 8`) and a 2D dispatch (`ceil(width/8), ceil(height/8)`), mapping invocation ids to pixels.
+```
+
 ---
 
 ## Part 10 - Render Loops, Resize, and Presentation
@@ -1704,6 +1796,29 @@ When the screen is black, ask:
 - are bind groups set?
 - are texture formats correct?
 - are command buffers submitted?
+
+```quiz
+Q: How does WebGPU's error model differ from WebGL's `gl.getError()`?
+- [ ] It's identical, just renamed
+- [x] It's asynchronous and structured — errors arrive via `uncapturederror` events or `pushErrorScope`/`popErrorScope` (promise-based), filterable by `validation`/`out-of-memory`/`internal`, instead of a synchronous polled error flag
+- [ ] WebGPU has no error reporting
+- [ ] Errors throw exceptions synchronously
+> Matching its async execution model, WebGPU reports errors without forcing CPU↔GPU synchronization: an `uncapturederror` listener catches anything unhandled, and `pushErrorScope('validation')` ... `await popErrorScope()` brackets operations you expect might fail (like pipeline creation) to get a specific error or null. It's stricter and more informative than `gl.getError()`'s single global flag.
+
+Q: Why does the guide insist on adding a `label` to buffers, pipelines, bind groups, and encoders?
+- [ ] Labels are required by the spec
+- [x] Labels appear in error messages and developer tools, so a validation failure names the actual resource instead of an anonymous handle — invaluable when debugging
+- [ ] Labels improve GPU performance
+- [ ] Labels set the resource's memory size
+> WebGPU's validation messages reference resources by their label, so an unlabeled buffer shows up as an opaque object while `'particles position buffer'` points you straight at the problem. Labeling everything is cheap insurance that turns cryptic validation errors into actionable ones — the guide's "future you will be grateful."
+
+Q: The recommended WebGPU debugging strategy for a black screen starts how?
+- [ ] Rewrite the shaders from scratch
+- [x] Reduce to one pass, clear the screen to a loud color, then draw a hardcoded triangle with no buffers — building complexity back up incrementally (vertex buffers, uniforms, textures, depth, compute)
+- [ ] Check the GPU driver version
+- [ ] Disable validation
+> The strategy is bisection by construction: prove each layer works before adding the next. A loud clear color confirms the pass and canvas configuration; a buffer-free hardcoded triangle confirms the pipeline; then you add vertex buffers, uniforms, textures, and depth one at a time. When something breaks, it's almost certainly the layer you just added — far faster than staring at a black screen wondering which of a dozen things is wrong.
+```
 
 ### Browser Tools
 

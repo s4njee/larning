@@ -149,7 +149,7 @@ Part, click-to-reveal explanation included.
 - [x] `QT_STUDY_GUIDE.md` — 5 quizzes (15 questions; moc/parent-child-ownership/lambda-context, event-loop blocking/processEvents-smell/events-vs-signals, model begin-end-pairs/cheap-data()/proxy-models, QML bindings/assign-over-binding/QML_ELEMENT-vs-context, worker-object affinity/QThread-misconception/QtConcurrent-vs-worker)
 - [x] `WEBSOCKETS_STUDY_GUIDE.md` — 5 quizzes (14 questions; full-duplex value-prop/handshake-correctness/1006, jitter/bufferedAmount/intentional-close, backplane/sticky-sessions/connection-ceilings, CSWSH-origin/auth-options/heartbeats, at-most-once-default/at-least-once-recipe)
 - [x] `WEBGL_OPENGL_STUDY_GUIDE.md` — 5 quizzes (15 questions; state-machine current-binding/state-leaks/debug-checklist, vertex-shader-clip-position/interpolation/perspective-divide, attribute-uniform-varying/GLSL-3.00-port/fragment-precision, no-camera-is-math/z-fighting/DPR-blur, depth-write-vs-test/transparency-sort/premultiplied-alpha)
-- [ ] `WEBGPU_STUDY_GUIDE.md`
+- [x] `WEBGPU_STUDY_GUIDE.md` — 5 quizzes (15 questions; explicit-pipelines-vs-state/async-model/compute-capability, adapter-vs-device/usage-flags/immutable-pipelines, WGSL address-spaces/uniform-layout/binding-match, compute bounds-check/keep-on-GPU/workgroup-dispatch, async-error-scopes/labels/black-screen-bisection)
 - [ ] `IOS_DEVELOPMENT_STUDY_GUIDE.md`
 - [ ] `CB8_IOS_STUDY_GUIDE.md`
 - [ ] `CB8_ANDROID_STUDY_GUIDE.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 51/65 (Batches 1–4 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 52/65 (Batches 1–4 complete).
