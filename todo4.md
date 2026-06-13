@@ -150,7 +150,7 @@ Part, click-to-reveal explanation included.
 - [x] `WEBSOCKETS_STUDY_GUIDE.md` — 5 quizzes (14 questions; full-duplex value-prop/handshake-correctness/1006, jitter/bufferedAmount/intentional-close, backplane/sticky-sessions/connection-ceilings, CSWSH-origin/auth-options/heartbeats, at-most-once-default/at-least-once-recipe)
 - [x] `WEBGL_OPENGL_STUDY_GUIDE.md` — 5 quizzes (15 questions; state-machine current-binding/state-leaks/debug-checklist, vertex-shader-clip-position/interpolation/perspective-divide, attribute-uniform-varying/GLSL-3.00-port/fragment-precision, no-camera-is-math/z-fighting/DPR-blur, depth-write-vs-test/transparency-sort/premultiplied-alpha)
 - [x] `WEBGPU_STUDY_GUIDE.md` — 5 quizzes (15 questions; explicit-pipelines-vs-state/async-model/compute-capability, adapter-vs-device/usage-flags/immutable-pipelines, WGSL address-spaces/uniform-layout/binding-match, compute bounds-check/keep-on-GPU/workgroup-dispatch, async-error-scopes/labels/black-screen-bisection)
-- [ ] `IOS_DEVELOPMENT_STUDY_GUIDE.md`
+- [x] `IOS_DEVELOPMENT_STUDY_GUIDE.md` — 5 quizzes (12 questions; declarative-body/modifier-order/LazyVStack, @State-rerender/@Observable-granular/@Environment-shared, NavigationStack value-destination/router-path, .task-cancellation/@MainActor-viewmodel, MVVM repository-protocol/layer-responsibilities)
 - [ ] `CB8_IOS_STUDY_GUIDE.md`
 - [ ] `CB8_ANDROID_STUDY_GUIDE.md`
 
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 52/65 (Batches 1–4 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 53/65 (Batches 1–4 complete).
