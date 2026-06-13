@@ -670,17 +670,16 @@ RAG gives the model access to external knowledge by retrieving relevant document
 
 ### The Pattern
 
-```
-User question
-    │
-    ▼
-Retrieve relevant documents (search)
-    │
-    ▼
-Inject documents into prompt as context
-    │
-    ▼
-Model generates answer grounded in the documents
+```mermaid
+graph TD
+  Q[User question] --> R["retrieve relevant documents (vector / hybrid search)"]
+  R --> RR["rerank top results (optional)"]
+  RR --> INJ["inject documents into the prompt as context"]
+  INJ --> GEN["model generates an answer grounded in the documents"]
+  subgraph idx["Index time (offline)"]
+    DOCS[documents] --> CH[chunk] --> EMB[embed] --> VS[(vector store)]
+  end
+  VS -.searched by.-> R
 ```
 
 ### Step 1: Chunking

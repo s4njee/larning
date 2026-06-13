@@ -305,8 +305,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       end_turn=done / tool_use=execute+append+loop → max_steps guard),
       visualizing the minimal-loop code. *Follow-ups: workflow-vs-agent
       decision, multi-agent handoffs.*
-- [ ] `LLM_APP_DEV_STUDY_GUIDE.md` — Flow: a RAG request (retrieve→rerank→
-      generate); decision: RAG-vs-finetune. Seq: tool/function calling.
+- [x] `LLM_APP_DEV_STUDY_GUIDE.md` — Flow: the RAG pipeline (query→retrieve→
+      rerank→inject→generate, with the offline chunk→embed→vector-store index;
+      replaced ASCII). *Follow-ups: RAG-vs-finetune, tool calling.*
 - [ ] `ENTERPRISE_API_STUDY_GUIDE.md` — Seq: idempotency-key reservation flow;
       flow: the rate-limit (token-bucket) decision; ETag optimistic-concurrency.
 - [ ] `TESTING_STUDY_GUIDE.md` — Graph: the test pyramid (already a concept
