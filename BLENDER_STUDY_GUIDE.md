@@ -73,6 +73,29 @@ Blender uses a **right-handed coordinate system** with **Z-up**:
 
 This differs from some engines (Unity uses Y-up). It matters when exporting. The FBX exporter handles the conversion automatically, but knowing the convention prevents confusion.
 
+```quiz
+Q: In Blender's data model, what's the relationship between an *object* and a *mesh data-block*?
+- [ ] They're the same thing
+- [x] An object is a container holding transform (position/rotation/scale) that *references* a mesh data-block; multiple objects can share one mesh data-block, which is instancing — a thousand trees from one geometry
+- [ ] A mesh contains the object
+- [ ] Objects store geometry directly
+> Blender separates the *where/how-displayed* (the object: a transform plus references) from the *what* (the data-block: the actual mesh, material, armature). Because objects merely point at data-blocks, several objects can reference the same mesh — change the mesh once and all instances update, and you store the geometry only once. This separation explains much of Blender's behavior, including linked duplicates and the user-count system.
+
+Q: Why does a material you created sometimes "disappear" after saving and reloading?
+- [ ] A bug in Blender
+- [x] Data-blocks with zero users (e.g. a material assigned to no object) are treated as orphaned and discarded on reload — giving it a "fake user" (the shield icon) keeps it around
+- [ ] Materials expire after one session
+- [ ] You must export materials separately
+> Blender garbage-collects data-blocks nothing references: a material with zero users is purged on save/reload to avoid accumulating junk. That's usually desirable, but a material you're holding for later use (not yet assigned) has zero users and vanishes. The shield/fake-user toggle adds a synthetic user so the data-block survives even when nothing real points at it.
+
+Q: A `.blend` file is described as "a self-contained database." What practical fact follows?
+- [ ] It only stores meshes
+- [x] It holds everything — meshes, materials, textures, animations, render settings, even the UI layout — in one file, organized as named data-blocks with user counts
+- [ ] It links to external files for all assets
+- [ ] It can't store the camera
+> The single-file database model means a `.blend` captures the whole project state, including window layout, which is why opening someone's file can rearrange your workspace. Everything inside is a named data-block with a user count, and the file is the unit of sharing. (Textures can be packed in or linked externally — a separate choice — but the structural point is that the `.blend` is one cohesive database, not a thin scene description.)
+```
+
 ---
 
 ## 2. The Interface & Navigation
@@ -224,6 +247,22 @@ The mode is **per-object**. You enter Edit Mode *on* a specific mesh. Tab toggle
 
 New users frequently get confused because they're in the wrong mode. You're trying to select a vertex but nothing happens — you're in Object Mode. You're trying to move the whole object but only one vertex moves — you're in Edit Mode. **Always check your mode** (displayed in the top-left of the viewport header).
 
+```quiz
+Q: Why does Blender have modes at all — what do they fundamentally change?
+- [ ] They change the render engine
+- [x] Modes change *what you can do to the selected object* and what the same hotkeys/selection mean — `G` moves the whole object in Object Mode but a selected vertex in Edit Mode
+- [ ] They switch between projects
+- [ ] They change the color theme
+> The same viewport, selection, and shortcuts need to mean different things at different levels of work — moving an object vs moving a vertex vs sculpting vs posing a bone. Modes resolve that overload: each mode reinterprets the tools for the level you're operating at. Internalizing this is the single most important Blender concept, and "I'm in the wrong mode" explains most beginner confusion.
+
+Q: A new user clicks to select a vertex but nothing happens. What's the most likely cause?
+- [ ] The mesh is corrupted
+- [x] They're in Object Mode (which selects whole objects), not Edit Mode (which selects vertices/edges/faces) — check the mode indicator in the viewport header
+- [ ] The vertex doesn't exist
+- [ ] Selection is disabled in preferences
+> Vertex/edge/face selection only exists in Edit Mode; in Object Mode clicks select entire objects. The mirror-image confusion ("I tried to move the object but only one vertex moved") is being stuck in Edit Mode. Since the mode silently changes what your actions do, the habit of glancing at the mode indicator (top-left of the viewport) resolves a huge fraction of "it's not working" moments. Tab toggles Object ↔ last edit mode.
+```
+
 ---
 
 ## 5. Modeling
@@ -364,6 +403,29 @@ When you **apply** a modifier (`Ctrl+A` on the modifier), the operation becomes 
 
 Keep modifiers unapplied as long as possible to maintain flexibility.
 
+```quiz
+Q: What makes modifiers "non-destructive," and why is that powerful?
+- [ ] They can't change the mesh
+- [x] They sit in a stack evaluated on top of the unchanged original mesh, so you can adjust parameters, reorder, disable, or remove them anytime — e.g. a Subdivision Surface modifier whose level you can change instead of permanently subdividing
+- [ ] They only work in Edit Mode
+- [ ] They make rendering faster
+> A modifier computes a result from the original data without altering it, so the source mesh stays editable and the modifier's effect stays adjustable. Add a Mirror modifier and model one half forever; add a Subdivision Surface and dial smoothing up or down at will. This preserves flexibility through the whole project — the opposite of destructively baking changes into the geometry early.
+
+Q: Why does the *order* of modifiers in the stack matter?
+- [ ] It changes render speed only
+- [x] Modifiers are evaluated sequentially top-to-bottom, each operating on the previous one's output — so swapping Subdivision Surface and Solidify (for example) produces a completely different result
+- [ ] Order is purely cosmetic
+- [ ] Only the top modifier is applied
+> The stack is a pipeline: Solidify-then-Subdivide thickens the raw mesh and then smooths the thickened result, while Subdivide-then-Solidify smooths first and adds even thickness to the smooth surface — visibly different geometry. Because each stage feeds the next, reordering (drag in the stack) is a real creative control, not a detail.
+
+Q: When should you "apply" a modifier, making it permanent?
+- [ ] As soon as you add it
+- [x] When you need to edit the resulting geometry directly, or you're exporting to a format/engine that doesn't support modifiers — otherwise keep them unapplied as long as possible to retain flexibility
+- [ ] Never — applying is always wrong
+- [ ] Only on the Subdivision modifier
+> Applying bakes the modifier's effect into the mesh and removes the modifier, trading adjustability for a concrete result you can hand-edit or export. Game engines and many interchange formats don't understand Blender modifiers, so you apply before export; and you apply when you specifically need to model on the generated topology. Until one of those forces it, staying non-destructive keeps every parameter live.
+```
+
 ---
 
 ## 7. Materials & Shading
@@ -409,6 +471,29 @@ Real-world materials are rarely a single color. Textures (images) are plugged in
 | **Opacity / Alpha** | Alpha | Transparent areas (leaves, fences) |
 
 Texture workflow: connect an **Image Texture** node to the input, with a **Texture Coordinate** and **Mapping** node controlling placement. The UV coordinate is the most common method — it uses the mesh's UV map (see next section).
+
+```quiz
+Q: What does PBR (Physically Based Rendering) mean for how you define a material?
+- [ ] You paint the lighting directly onto the surface
+- [x] Materials are defined by measurable physical properties (base color, metallic, roughness, IOR) rather than artistic hacks, so the same material looks correct under any lighting
+- [ ] It only works for metal surfaces
+- [ ] It requires ray tracing to be off
+> PBR grounds materials in physics: instead of tweaking ad hoc parameters until it looks right under one light, you set real properties and the renderer computes correct light interaction in any environment. The Principled BSDF node exposes those properties in one place, which is why a PBR material authored once behaves consistently across scenes and lighting setups — the whole point of the approach.
+
+Q: For the Metallic property, why is the guide emphatic that it's "almost always exactly 0 or exactly 1"?
+- [ ] Intermediate values crash the renderer
+- [x] Real materials are physically either a dielectric (non-metal, 0) or a metal (1) — there's no real-world "half-metal," so intermediate values are usually a mistake (a metallic map mixing the two regions is the exception)
+- [ ] 0.5 is the default
+- [ ] Metallic controls transparency
+> Metalness is a binary physical fact: a surface conducts (metal) or it doesn't (dielectric like plastic, wood, skin). PBR encodes this as 0 or 1, and a value like 0.5 describes no real material — it's typically an authoring error. The legitimate use of in-between values is a metallic *texture map* selecting which pixels are the metal part of a mixed surface (e.g. a painted-metal object), not a uniform half-metal.
+
+Q: What's the difference between a normal map and a displacement map plugged into a material?
+- [ ] They're the same thing
+- [x] A normal map fakes surface bumps by perturbing shading without adding geometry (cheap); displacement actually moves geometry along the surface (requires subdivision and costs more)
+- [ ] Normal maps move geometry; displacement fakes it
+- [ ] Both require UV maps to be disabled
+> A normal map tricks the lighting into showing detail the mesh doesn't physically have — fast, but the silhouette stays flat. Displacement genuinely offsets the surface (so it shows on the silhouette and casts proper shadows) but needs enough subdivision to have vertices to move, making it heavier. The common workflow uses normal maps for fine detail and reserves displacement for large surface variation where the silhouette matters.
+```
 
 ### Procedural Textures
 
@@ -539,6 +624,29 @@ Blender ships with three render engines:
 For animation, you render a **sequence of images** (one per frame), not a video file directly. Why: if the render crashes at frame 347 of 500, you've lost nothing — just restart from 347. You assemble the image sequence into video afterward (in the Video Sequencer or an external tool).
 
 Output format for animation frames: PNG (quick, lossy-free, 8-bit) or OpenEXR (for compositing flexibility).
+
+```quiz
+Q: What's the core trade-off between EEVEE and Cycles?
+- [ ] EEVEE is photorealistic; Cycles is fast
+- [x] EEVEE rasterizes in real time (fast but approximate — some effects need manual setup), while Cycles path-traces physically accurate light (photorealistic but slow); you pick speed-with-approximation vs realism-with-render-time
+- [ ] They produce identical output
+- [ ] Cycles only works for stills
+> EEVEE is a rasterizer optimized for speed, so lighting is approximated and effects like soft shadows or global illumination may need manual help (or EEVEE Next's ray tracing). Cycles is a path tracer that computes light bounces physically, giving photoreal results — area lights make soft shadows automatically, indirect light "just works" — at the cost of minutes-to-hours per frame. The choice is workflow-driven: previews and stylized work lean EEVEE, final/product/film renders lean Cycles.
+
+Q: In Cycles, what do "samples" and a "denoiser" together let you do?
+- [ ] Increase resolution without cost
+- [x] Samples are light rays per pixel (more = less noise but slower); an AI denoiser cleans up the residual noise, so you can render with far fewer samples and still get a clean image — dramatically cutting render time
+- [ ] Denoising replaces the need for lights
+- [ ] Samples control the frame rate
+> A path tracer estimates each pixel by shooting random light rays; too few and the image is grainy. Cranking samples up removes noise but multiplies render time. The denoiser (OptiX/OpenImageDenoise) reconstructs a clean image from a noisier, cheaper render, breaking that trade — typical final renders use 128–512 samples plus denoising rather than the thousands raw convergence would need.
+
+Q: Why render an animation as a sequence of image files rather than directly to a video?
+- [ ] Video files are lower quality
+- [x] If the render crashes at frame 347 of 500, you've lost nothing — restart from 347 — whereas a direct video render would have to start over; you assemble the frames into video afterward
+- [ ] Blender can't output video
+- [ ] Image sequences render faster
+> A multi-hour animation render is fragile; encoding straight to a video file means a crash or interruption forfeits all progress. Rendering to numbered frames makes the job resumable and lets you inspect or re-render individual frames, then mux them into video in the Sequencer or an external tool. OpenEXR frames additionally preserve full color data for compositing flexibility.
+```
 
 ---
 

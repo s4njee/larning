@@ -163,7 +163,7 @@ Part, click-to-reveal explanation included.
 - [x] `LLM_APP_DEV_STUDY_GUIDE.md` — 5 quizzes (13 questions; stateless/output-latency/hallucination-inherent, JSON-mode-vs-schema/tool-as-schema, RAG-grounds-knowledge/hybrid-search/retrieve-then-rerank, prompt-cache-prefix/semantic-cache-caution, RAG-for-facts/when-to-fine-tune/prompt-vs-finetune-cost)
 - [x] `ENTERPRISE_API_STUDY_GUIDE.md` — 5 quizzes (14 questions; method-semantics-contract/code-vs-detail/return-full-resource, exactly-once-effect/atomic-key-reservation/idempotency-composes, additive-evolution/Hyrum-observability, offset-pagination-bug/ETag-optimistic-concurrency/filter-allowlist, three-problems-one-429/token-bucket-by-principal/cooperative-429)
 - [x] `TESTING_STUDY_GUIDE.md` — 5 quizzes (15 questions; confidence-per-cost/testability-is-design/trust-cost, pyramid-economics/mock-forest/coverage-theater, one-reason-to-fail/behavior-vs-call-assertions/private-method-smell, dependency-boundary-rule/fakes-vs-mocks/contract-tests, eventual-consistency-poll/fake-clock-retries/idempotency-superpower)
-- [ ] `BLENDER_STUDY_GUIDE.md`
+- [x] `BLENDER_STUDY_GUIDE.md` — 5 quizzes (14 questions; object-vs-datablock-instancing/fake-user/blend-database, modes-reinterpret-tools/wrong-mode-trap, modifiers-nondestructive/stack-order/apply-vs-keep, PBR-physical-properties/metallic-0-or-1/normal-vs-displacement, EEVEE-vs-Cycles/samples-denoiser/image-sequence-renders)
 - [ ] `ESP32_STUDY_GUIDE.md`
 - [ ] `RASPBERRY_PI_STUDY_GUIDE.md`
 
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 62/65 (Batches 1–5 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 63/65 (Batches 1–5 complete).
