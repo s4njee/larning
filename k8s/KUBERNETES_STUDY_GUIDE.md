@@ -38,6 +38,27 @@ The remaining control-plane components are all **controllers** — control loops
 
 On every worker node, two components do the actual work. The **`kubelet`** is the node's agent: it watches the API server for Pods assigned to *its* node, and for each one it instructs the container runtime to pull images and start containers, then continuously reports their status back. The kubelet is what literally runs your workloads — the control plane decides *what* should run *where*, but the kubelet is the thing that makes containers exist. The **`kube-proxy`** programs the kernel's packet-handling rules (iptables, IPVS, or nftables) to implement Service load balancing, as the [networking guide](DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md) details — though modern eBPF dataplanes like Cilium increasingly replace it. Beneath both is the **container runtime** itself: Docker is no longer used directly here, with modern clusters running `containerd` or `CRI-O`, both speaking the standardized [CRI](https://kubernetes.io/docs/concepts/architecture/cri/) protocol the kubelet talks to. Around this core, almost every real cluster also runs a standard set of **addons** — CoreDNS for service discovery, metrics-server for resource metrics, a CNI plugin for Pod networking, CSI drivers for storage, and an Ingress controller for HTTP entry. (References: [kubelet](https://kubernetes.io/docs/reference/command-line-tools-reference/kubelet/), [kube-proxy modes](https://kubernetes.io/docs/reference/networking/virtual-ips/).)
 
+The single-front-door design shows up clearly in what actually happens when you `kubectl apply` a Deployment — every component reacts by *watching the API server*, never by calling each other directly:
+
+```mermaid
+sequenceDiagram
+  participant U as kubectl
+  participant API as kube-apiserver
+  participant E as etcd
+  participant Ctl as controllers
+  participant Sch as kube-scheduler
+  participant Kbl as kubelet
+  participant CRI as container runtime
+  U->>API: apply Deployment (desired state)
+  API->>E: persist object
+  Ctl->>API: watch → Deployment makes ReplicaSet makes Pods
+  Sch->>API: watch → see unscheduled Pod
+  Sch->>API: bind Pod to a node (filter + score)
+  Kbl->>API: watch → Pod assigned to my node
+  Kbl->>CRI: pull image, start containers
+  Kbl->>API: report status: Running
+```
+
 **Practice**: On a kind or minikube cluster, run `kubectl get pods -n kube-system` and identify each control-plane and node component. Then `kubectl get --raw /readyz?verbose` to see every health check the API server runs.
 
 ---
@@ -179,6 +200,18 @@ A Pod is one or more containers that **share a network and IPC namespace**: they
 The kubelet manages each container's health through three kinds of **probe**, and confusing them is a leading cause of self-inflicted outages, so the distinction is worth holding precisely. The **`readinessProbe`** controls *traffic*: when it fails, the kubelet removes the Pod from its Services' endpoints, so requests stop flowing to it — and this is the probe to use liberally, because it is exactly what keeps rolling deploys healthy (a new Pod receives no traffic until it reports ready). The **`livenessProbe`** controls *restarts*: when it fails, the kubelet kills and restarts the container, which sounds helpful but is dangerous, because an aggressive liveness probe that trips under load restarts healthy-but-busy Pods and turns a load spike into a cascading restart storm — so reserve it strictly for genuine *deadlock* detection, the case where only a restart can recover. The **`startupProbe`** buys slow-starting apps room: it disables the liveness probe until the app has started, so a sixty-second JVM warmup isn't killed by a liveness check tuned for steady state. All three can probe via `httpGet`, `tcpSocket`, `exec`, or `grpc` (1.27+).
 
 Finally, the Pod's lifecycle and shutdown deserve care because they govern whether deploys are graceful. A Pod moves through phases `Pending` → `Running` → `Succeeded`/`Failed`, with `Unknown` meaning the kubelet hasn't reported recently (usually a node problem). On deletion, the kubelet sends `SIGTERM`, waits **`terminationGracePeriodSeconds`** (default 30), then `SIGKILL` — so an app with long in-flight work needs both a longer grace period and signal handling that actually drains on `SIGTERM`. The **`preStop` hook** runs *before* the `SIGTERM` and is the standard fix for the classic "requests fail during deploys" bug: a `preStop` of `sleep 10` gives the Service's endpoint removal time to propagate to every node's kube-proxy before the container starts shutting down, so in-flight requests aren't dropped by a Pod that's already gone from the load balancer's view but still receiving traffic. (References: [Pod lifecycle](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/), [Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/), [Sidecar containers](https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/).)
+
+```mermaid
+stateDiagram-v2
+  [*] --> Pending: created, awaiting schedule + image pull
+  Pending --> Running: containers started
+  Running --> Succeeded: all containers exited 0
+  Running --> Failed: a container exited non-zero
+  Pending --> Failed: cannot schedule / image pull error
+  Running --> Unknown: kubelet stopped reporting (node problem)
+  Succeeded --> [*]
+  Failed --> [*]
+```
 
 ---
 

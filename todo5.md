@@ -139,9 +139,10 @@ their core and prose carries them poorly.
 
 ## Batch B — Infra, cloud, ops
 
-- [ ] `k8s/KUBERNETES_STUDY_GUIDE.md` — Seq: what happens on `kubectl apply`
-      (api-server→etcd→scheduler→kubelet). State: Pod lifecycle + probe gates.
-      Graph: control-plane components.
+- [x] `k8s/KUBERNETES_STUDY_GUIDE.md` — Seq: what happens on `kubectl apply`
+      (every component watches the API server). State: Pod phase lifecycle
+      (Pending→Running→Succeeded/Failed, Unknown). *Follow-up: control-plane
+      component graph.*
 - [ ] `k8s/ADVANCED_KUBERNETES_STUDY_GUIDE.md` — Seq: admission/API machinery
       request flow; operator reconcile loop. 
 - [ ] `k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md` — Flow: authn→authz(RBAC)→
