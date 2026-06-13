@@ -233,8 +233,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       type-narrowing decision. (Mostly fine as prose — max 1–2.)
 - [ ] `CPP26_STUDY_GUIDE.md` — Seq: coroutine suspend/resume; flow: RAII
       destruction order. 
-- [ ] `SWIFT_STUDY_GUIDE.md` — Graph: ARC retain/release + cycle; flow:
-      protocol static-vs-dynamic dispatch decision. State: actor reentrancy.
+- [x] `SWIFT_STUDY_GUIDE.md` — Graph: the ARC retain cycle (Person↔Dog strong =
+      leak) vs the `weak`-broken version (frees). *Follow-ups: dispatch
+      decision, actor reentrancy.*
 - [ ] `GOLANG_FOR_PYTHON_DEVS.md` — Graph: goroutine scheduling vs threads
       (one comparison diagram). *(Low ASCII density — likely adds new.)*
 - [ ] `RUST_FOR_PYTHON_DEVS.md` — Flow: ownership "third answer" decision.

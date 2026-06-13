@@ -303,6 +303,18 @@ rex = nil      // Dog ref count: 1 (Person still holds it)
 // neither deinit runs — both leaked
 ```
 
+```mermaid
+graph LR
+  subgraph cycle["Retain cycle — leaks"]
+    P1[Person] -->|strong| D1[Dog]
+    D1 -->|strong| P1
+  end
+  subgraph fixed["weak breaks it — frees"]
+    P2[Person] -->|strong| D2[Dog]
+    D2 -.weak, no refcount.-> P2
+  end
+```
+
 ### Breaking Cycles: weak and unowned
 
 **`weak`** — the safe choice. Automatically set to `nil` when the referenced object is deallocated. Always optional:
