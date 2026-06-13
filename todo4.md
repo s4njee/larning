@@ -156,7 +156,7 @@ Part, click-to-reveal explanation included.
 
 ## Batch 6 — Security, AI, and the rest
 
-- [ ] `AUTH_STUDY_GUIDE.md`
+- [x] `AUTH_STUDY_GUIDE.md` — 5 quizzes (15 questions; sessions-vs-JWT/cookie-storage/401-vs-403, slow-hash/salt-rainbow/timing-enumeration, JWT-signed-not-encrypted/alg-pinning/HS-vs-RS, OAuth-vs-OIDC/PKCE/access-vs-ID-token, short+refresh-split/rotation-reuse-detection/revocation-cache-invalidation)
 - [ ] `WEB_LLM_SECURITY_STUDY_GUIDE.md`
 - [ ] `KALI_LINUX_STUDY_GUIDE.md`
 - [ ] `AI_AGENTS_STUDY_GUIDE.md`
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 55/65 (Batches 1–5 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 56/65 (Batches 1–5 complete).
