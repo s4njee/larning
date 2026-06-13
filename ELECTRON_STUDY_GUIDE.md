@@ -168,6 +168,29 @@ if (!gotLock) {
 
 If you remember one thing from Part 2: **an Electron app is a one-machine client-server system — one privileged Node.js main process (the backend), N sandboxed Chromium renderers (the clients/windows), and a preload bridge (the API contract) — and the app lifecycle, with its per-OS conventions, is something you now own and must handle explicitly.**
 
+```quiz
+Q: Why does a renderer process have no Node.js access by default, even though it's your own UI code?
+- [ ] Node would slow down rendering
+- [x] The renderer runs web content, the attackable surface — if it had OS access, an XSS bug would become remote code execution on the user's laptop; privileged code lives in main behind a validated boundary
+- [ ] Chromium can't embed Node
+- [ ] It does have full Node access
+> The renderer is treated exactly like an untrusted browser client: it might be compromised by malicious content or XSS, so it gets no direct power — no filesystem, no process spawning, no OS APIs. It can only ask the main process for privileged operations through the preload bridge. This is "never trust the client" made load-bearing, plus the stability win that a crashed renderer takes down one window, not the app.
+
+Q: What is the preload script's unique role in the three-context model?
+- [ ] It preloads images for faster startup
+- [x] It runs in the renderer's context *before* the page loads, with limited bridged APIs, and uses `contextBridge` to expose a small set of named, validated functions — it's where you decide exactly what the UI may ask for
+- [ ] It replaces the main process
+- [ ] It runs in a separate fourth process
+> The preload is the API gateway: it sees both a limited slice of Electron APIs and the page's `window`, and its job is to publish narrow, intent-named functions (never raw `ipcRenderer` or Node power) to the renderer via `contextBridge`. It is the contract between the untrusted UI and the privileged backend — the place the security model is actually enforced.
+
+Q: Why does the canonical lifecycle code check `process.platform !== "darwin"` in `window-all-closed`?
+- [ ] macOS can't close windows programmatically
+- [x] macOS apps conventionally keep running in the dock with no windows (and `activate` re-creates one), while Windows/Linux apps quit when the last window closes — honoring each OS's convention is what makes the app feel right
+- [ ] It's a workaround for a Chromium bug
+- [ ] Quitting is forbidden on macOS
+> Desktop platforms have different lifecycle conventions: a Mac user expects the app to stay resident after closing its windows and to get a new window when clicking the dock icon (`activate`); Windows/Linux users expect close-last-window-quits. Getting this wrong makes the app feel foreign on each platform immediately. It's the first of many `process.platform` branches a real cross-platform app accumulates.
+```
+
 ---
 
 ## Part 3 — IPC & the Process Boundary
@@ -266,6 +289,29 @@ The same discipline you'd apply to any API:
 - **Keep big data out of frequent messages.** Serialization copies. Streaming a large file byte-by-byte over IPC is slow; instead pass a path and let main stream it, or use a `MessagePort` for high-throughput channels.
 
 If you remember one thing from Part 3: **IPC is an API boundary between an untrusted client (renderer) and a trusted server (main) — design it exactly as you'd design any client-server API: coarse-grained intent-named channels, exposed as specific functions through the preload bridge, with every payload validated in main.**
+
+```quiz
+Q: Why does the preload expose `openFile: () => ipcRenderer.invoke("dialog:openFile")` instead of exposing `ipcRenderer` itself?
+- [ ] It's shorter to type
+- [x] Exposing specific named functions means the renderer can only do exactly what you published — it can't invoke arbitrary channels or reach raw IPC power; least-privilege API design that's also more ergonomic
+- [ ] ipcRenderer doesn't work in preloads
+- [ ] invoke is faster than send
+> Handing the renderer raw `ipcRenderer` lets compromised UI code call *any* channel with any payload. Publishing a minimal set of clean async functions via `contextBridge` confines the attack surface to exactly the operations you designed, with main still validating every payload. The same principle says expose `saveNote(note)`, never `writeFile(path, data)` — the narrower the API, the smaller the blast radius.
+
+Q: When should you use `invoke`/`handle` versus `webContents.send`?
+- [ ] invoke for big payloads, send for small ones
+- [x] `invoke`/`handle` is request-response (the 90% case — renderer asks, awaits a result); `webContents.send` is how main *pushes* to the UI (progress updates, menu actions, OS events)
+- [ ] They're interchangeable
+- [ ] send is deprecated
+> `invoke` returns a Promise resolved by the handler's return value — exactly like calling an API, the modern default for renderer-initiated work. But the renderer can't be "called" by main; pushing data to the UI (download progress, a native menu click, an OS event) requires `webContents.send` with the renderer subscribed via a wrapped listener. Two patterns, two directions.
+
+Q: What constraint does IPC serialization (structured clone) place on what can cross the boundary?
+- [ ] Only strings can cross
+- [x] Plain data crosses (objects, arrays, ArrayBuffers, Dates) but not functions, class instances with methods, or DOM nodes — anything with *behavior* can't be serialized
+- [ ] Everything crosses by reference
+- [ ] Only JSON-stringified text
+> Main and renderers don't share memory; messages are serialized via structured clone, like `postMessage`. So data survives but behavior doesn't — no functions, no live objects. This also drives a design principle: serialization copies, so keep big data out of frequent messages (pass a path and stream in main, or use a MessagePort for high throughput) and prefer coarse-grained intent-named channels over chatty ones.
+```
 
 ## Part 4 — The Renderer & Your Web Skills
 
@@ -501,6 +547,29 @@ One local-first consideration with no web equivalent: when your app auto-updates
 
 If you remember one thing from Part 6: **data lives on the user's disk under `app.getPath("userData")`; use `electron-store` for preferences and `better-sqlite3` for real data (your SQL skills transfer directly); keep *all* filesystem access in the main process behind validated IPC; and own your client-side schema migrations because the next app version inherits the last version's data.**
 
+```quiz
+Q: A native module like `better-sqlite3` installed with plain `npm install` fails to load in Electron with a version-mismatch error. Why?
+- [ ] SQLite doesn't work in Electron
+- [x] Native addons compile against a specific V8/Node ABI, and Electron bundles its *own* V8 — different from your system Node — so the module must be rebuilt with `@electron/rebuild` against Electron's ABI
+- [ ] npm install skips native compilation
+- [ ] The module needs admin rights
+> Compiled C/C++ addons bind to the exact runtime ABI they were built for. Your system Node and Electron's bundled Node/V8 differ, so a module built by plain `npm install` targets the wrong runtime. `npx @electron/rebuild` (run automatically by Forge/electron-builder) rebuilds against Electron's ABI — and now the cryptic "compiled against a different Node.js version" error has a known fix.
+
+Q: Why does an Electron app have to own client-side schema migrations?
+- [ ] SQLite requires migrations by design
+- [x] When the app auto-updates, the new version runs against the *old version's data on disk* — on thousands of machines with no DBA — so you version the schema and migrate forward at startup
+- [ ] userData is wiped on every update
+- [ ] Migrations are only needed for Postgres
+> Local-first data outlives any single app version: an update replaces the code but inherits whatever schema the previous version wrote. That's server-style migration discipline executing on users' machines at launch — version the schema, apply forward migrations idempotently, and never assume disk data matches current code. There's no web equivalent because servers control their own database.
+
+Q: Why is it correct (not a code smell) that `better-sqlite3` is synchronous in the main process?
+- [ ] Synchronous code is always better
+- [x] Local single-user file access is so fast that synchronous calls are fine, and the API is simpler — though heavy queries still shouldn't block main's event loop for long (offload big work)
+- [ ] The main process has no event loop
+- [ ] Async SQLite is impossible
+> Unlike a network database where waiting would waste the thread, a local SQLite file answers in microseconds for typical single-user operations, so the synchronous API's simplicity wins. The general rule still applies: the main process owns every window, so genuinely heavy work (large imports, long scans) belongs in a `utilityProcess` or worker rather than blocking main.
+```
+
 ## Part 7 — Security
 
 This is the chapter where your backend instincts make you *better* than the average Electron developer (read the official [Security checklist](https://www.electronjs.org/docs/latest/tutorial/security) in full — it's the page this part operationalizes). Electron is web code with operating-system access, which means a web vulnerability can become a native compromise — an XSS that would merely deface a website can, in a misconfigured Electron app, read every file on the user's disk or run arbitrary commands. The good news: the threat model is one you already think in (*never trust the client*), and the defaults are now safe. Your job is to not turn them off and to guard the boundary you control.
@@ -610,6 +679,29 @@ Electron bundles Chromium and Node.js, which means **you are now shipping a brow
 You're shipping `node_modules` to users' machines. A compromised dependency runs with your app's privileges on their computer. Apply the supply-chain discipline from server-side work: lockfiles, `npm audit`, minimal dependencies, and scrutiny of anything in the main process or preload (which have the most power). Electron's official **`@electron/fuses`** lets you flip off dangerous capabilities (like `runAsNode`) at the binary level for defense-in-depth, and the **Electronegativity** tool statically scans your app for misconfigurations — run it in CI.
 
 If you remember one thing from Part 7: **the renderer is untrusted code with an OS-capable process next door, so keep the secure defaults on (`contextIsolation`, `sandbox`, `nodeIntegration: false`), expose only narrow validated functions through the preload, control navigation, set a strict CSP, and keep Electron updated — because you now ship the browser and own its CVEs.**
+
+```quiz
+Q: Why is `nodeIntegration: true` called "the single biggest Electron security mistake"?
+- [ ] It slows down rendering
+- [x] It gives page JavaScript direct Node/OS access, so any XSS in the renderer becomes arbitrary code execution on the user's machine — the boundary the whole architecture exists to enforce disappears
+- [ ] It breaks the preload script
+- [ ] It's only a problem on Windows
+> The process split exists so the attackable surface (web content) has no OS power. With Node integrated into the renderer, an injected script can read files, spawn processes, and own the machine — turning a web-grade bug into a desktop-grade compromise. Old tutorials enable it for convenience; modern defaults (`nodeIntegration: false`, `contextIsolation: true`, `sandbox: true`) must stay on.
+
+Q: `openFile(path)` where `path` comes from the renderer is called "a directory-traversal waiting to happen." What's the safe design?
+- [ ] Escape the path string in the renderer
+- [x] Expose *intent* (`openProjectFile(id)`), resolve the actual path in main from trusted state, and validate it stays within an allowed directory — never act on renderer-supplied paths/commands/URLs unvalidated
+- [ ] Use synchronous IPC for paths
+- [ ] Encrypt the path before sending
+> The renderer is untrusted, so a path it supplies can point anywhere (`../../../etc/passwd`). The fix is to keep path construction on the trusted side: the renderer names *what* it wants by identifier, main maps that to a real path from its own state and checks containment. The same rule covers shell commands and URLs — validate in main exactly as you'd validate a web request body.
+
+Q: Why is keeping Electron updated described as "a real obligation" with no web equivalent?
+- [ ] New versions add features you must adopt
+- [x] You ship Chromium and Node inside your app, so you inherit their CVEs — when Chromium patches a critical bug, every install runs known-vulnerable browser code until you ship an update, which is why auto-updates aren't optional
+- [ ] Electron licenses expire annually
+- [ ] Old versions stop launching
+> On the web, the browser updates itself out from under you. In Electron, *you are the browser vendor*: each install carries the Chromium and Node versions you bundled, and they stay vulnerable until you rebuild and deliver an update. That makes tracking Electron security releases and wiring auto-updates (Part 9) part of the security posture, not a nice-to-have.
+```
 
 ---
 
@@ -754,6 +846,29 @@ Options, in order of preference: a **`utilityProcess`** (Electron's managed chil
 - **Measure both sides:** renderer via DevTools (built in); main via `node --inspect` semantics (`win.webContents` aside, launch with `--inspect` and attach Chrome/VS Code to the main process).
 
 If you remember one thing from Part 9: **auto-updates are how you ship fixes and security patches to machines you don't control — wire up `electron-updater` against GitHub Releases with signed builds and staged rollouts — and the top performance rule is the familiar one: never block the main process, because it owns every window, so offload heavy work to a `utilityProcess` or worker.**
+
+```quiz
+Q: Why must auto-updates be signed with the same identity as the installed app?
+- [ ] To compress the download
+- [x] The OS/updater rejects mismatched signatures, which prevents an attacker from pushing a malicious "update" to every install — the Part 8 signing setup is what makes update delivery trustworthy
+- [ ] Signing speeds up installation
+- [ ] It's only required on Linux
+> An auto-updater that accepted unsigned or differently-signed builds would be a perfect malware delivery channel: compromise the update feed and you own every user's machine. Signature continuity ensures only the original publisher can ship updates. On macOS this is enforced absolutely — unsigned apps can't auto-update at all.
+
+Q: Why does staged rollout matter *more* for desktop updates than for server deploys?
+- [ ] Desktop users complain more
+- [x] You can't roll back an update already installed on a user's laptop — so releasing to a small percentage first, watching for crashes, then ramping is the only safety valve
+- [ ] Staging is required by app stores
+- [ ] Servers don't support canary deploys
+> Canary thinking applies, but with a harsher constraint: a server rollback is a redeploy you control, while a bad desktop build is on thousands of machines you can't reach except by shipping *another* update they must receive and apply. Staged rollout (plus beta/stable channels) limits the blast radius of a bad release before it's irreversible at scale.
+
+Q: A synchronous DB migration runs in the main process at startup and every window freezes. Why, and what's the fix?
+- [ ] SQLite locks the windows
+- [x] The main process owns and manages every window, so blocking it freezes the entire UI; offload heavy work to a `utilityProcess` (or worker threads) so the event-handling thread stays free
+- [ ] Migrations must run in the renderer
+- [ ] Windows freeze only in dev mode
+> It's the event-loop-blocking sin with maximum blast radius: main is the process that services every window's events, so any long synchronous work there stalls all of them. Electron's `utilityProcess.fork` is the blessed way to run heavy Node work off main, with `worker_threads` and renderer Web Workers as alternatives. Keep the thread that handles events free to handle events.
+```
 
 ## Part 10 — Alternatives & a Build Walkthrough
 
