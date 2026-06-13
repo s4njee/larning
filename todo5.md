@@ -214,8 +214,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       replaced ASCII). *Follow-up: GC mark-phase flow.*
 - [ ] `ADVANCED_RUST_STUDY_GUIDE.md` — Flow: borrow-checker decision; state:
       a value's ownership/move lifecycle. (Leave memory layouts ASCII.)
-- [ ] `ADVANCED_PYTHON_STUDY_GUIDE.md` — Flow: the import system; descriptor
-      lookup order. (Diagram-dense — pick the flows.)
+- [x] `ADVANCED_PYTHON_STUDY_GUIDE.md` — Flow: the attribute-lookup chain for
+      `obj.attr` (data descriptor → instance __dict__ → non-data descriptor →
+      __getattr__ → AttributeError), the decision behind property/__slots__.
 - [x] `ADVANCED_NODEJS_STUDY_GUIDE.md` — Flow: the libuv event-loop phase cycle
       (timers→pending→idle/prepare→poll→check→close→next iteration; replaced
       ASCII).

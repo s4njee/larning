@@ -173,6 +173,19 @@ The resolution order for `obj.attr` in Python — the full **attribute lookup ch
 3. **Non-data descriptors** on the type — e.g. regular methods, `classmethod`, `staticmethod`.
 4. `__getattr__` (the fallback hook, if defined).
 
+```mermaid
+graph TD
+  A["obj.attr"] --> D1{"data descriptor<br/>on the type / MRO?"}
+  D1 -->|yes| R1["use it (e.g. property, __slots__)"]
+  D1 -->|no| ID{"in instance __dict__?"}
+  ID -->|yes| R2["return that value"]
+  ID -->|no| ND{"non-data descriptor<br/>on the type?"}
+  ND -->|yes| R3["use it (methods, classmethod, staticmethod)"]
+  ND -->|no| GA{"__getattr__ defined?"}
+  GA -->|yes| R4["call __getattr__ (fallback)"]
+  GA -->|no| ERR["AttributeError"]
+```
+
 This order is *why* a `property` (a data descriptor) overrides an instance attribute of the same name, and why `__slots__` removes the instance `__dict__` entirely (Part 3). Understanding this chain is what makes descriptor-based metaprogramming predictable instead of magical.
 
 ### Container and Sequence Protocols
