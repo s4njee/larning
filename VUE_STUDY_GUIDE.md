@@ -326,6 +326,15 @@ function watchEffect(fn) {
 }
 ```
 
+```mermaid
+graph LR
+  E["effect runs<br/>(e.g. a component's render fn)"] -->|reads state| GET["get trap / ref .value getter"]
+  GET -->|track| DEP[("dependency map<br/>(target, key) → subscribers")]
+  MUT["state mutated"] -->|set trap / .value setter| TRIG["trigger"]
+  TRIG -->|look up subscribers| DEP
+  TRIG -->|re-run| E
+```
+
 Three properties of this design are worth dwelling on, because they explain Vue's ergonomics:
 
 - **Dependencies are discovered by running, not declared.** There is no dependency array to maintain and therefore no stale-dependency bug. If your effect reads `a.value` this run, it depends on `a` — period.

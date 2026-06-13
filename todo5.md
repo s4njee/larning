@@ -252,8 +252,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `NEXTJS_STUDY_GUIDE.md` — Flow: how `next build` infers the rendering
       mode (request-time info → dynamic/streaming; else static, or ISR if
       revalidate set). *Follow-ups: four-caches request path, Server Action.*
-- [ ] `VUE_STUDY_GUIDE.md` — Graph: reactivity dependency tracking
-      (ref→effect→re-render); flow: a component's update cycle.
+- [x] `VUE_STUDY_GUIDE.md` — Graph: the reactivity track/trigger cycle (effect
+      reads → get trap tracks into the dependency map → mutation's set trap
+      triggers → re-runs the effect), the guide's central mental model.
 - [ ] `SVELTEKIT_STUDY_GUIDE.md` — Flow: universal-vs-server load resolution;
       seq: a form action's fail/enhance path.
 - [x] `DJANGO_STUDY_GUIDE.md` — Flow: the request/response pipeline (server→
