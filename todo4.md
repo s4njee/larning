@@ -151,7 +151,7 @@ Part, click-to-reveal explanation included.
 - [x] `WEBGL_OPENGL_STUDY_GUIDE.md` — 5 quizzes (15 questions; state-machine current-binding/state-leaks/debug-checklist, vertex-shader-clip-position/interpolation/perspective-divide, attribute-uniform-varying/GLSL-3.00-port/fragment-precision, no-camera-is-math/z-fighting/DPR-blur, depth-write-vs-test/transparency-sort/premultiplied-alpha)
 - [x] `WEBGPU_STUDY_GUIDE.md` — 5 quizzes (15 questions; explicit-pipelines-vs-state/async-model/compute-capability, adapter-vs-device/usage-flags/immutable-pipelines, WGSL address-spaces/uniform-layout/binding-match, compute bounds-check/keep-on-GPU/workgroup-dispatch, async-error-scopes/labels/black-screen-bisection)
 - [x] `IOS_DEVELOPMENT_STUDY_GUIDE.md` — 5 quizzes (12 questions; declarative-body/modifier-order/LazyVStack, @State-rerender/@Observable-granular/@Environment-shared, NavigationStack value-destination/router-path, .task-cancellation/@MainActor-viewmodel, MVVM repository-protocol/layer-responsibilities)
-- [ ] `CB8_IOS_STUDY_GUIDE.md`
+- [x] `CB8_IOS_STUDY_GUIDE.md` — 5 quizzes (14 questions; nodejs-mobile-trap/two-phase-strategy/wrapper-limits, server-owns-completion/actual-API-fidelity, UIScrollView-zoom/index-interop/page-prefetch, sandbox-scanning/auth-tables-dropped/referenced-file-removal, ZIP-random-access-LRU/CBR-phase-asymmetry/naturalSort-fidelity)
 - [ ] `CB8_ANDROID_STUDY_GUIDE.md`
 
 ## Batch 6 — Security, AI, and the rest
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 53/65 (Batches 1–4 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 54/65 (Batches 1–4 complete).
