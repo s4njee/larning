@@ -310,9 +310,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       replaced ASCII). *Follow-ups: RAG-vs-finetune, tool calling.*
 - [ ] `ENTERPRISE_API_STUDY_GUIDE.md` — Seq: idempotency-key reservation flow;
       flow: the rate-limit (token-bucket) decision; ETag optimistic-concurrency.
-- [ ] `TESTING_STUDY_GUIDE.md` — Graph: the test pyramid (already a concept
-      that wants a diagram); flow: the dependency-boundary mock-vs-fake decision.
-      *(Low ASCII density — adds new.)*
+- [x] `TESTING_STUDY_GUIDE.md` — Flow: the dependency-boundary test-double
+      decision (real inside the boundary; fake/stub/mock outside by what the
+      test needs). Pyramid/trophy left as ASCII (proportional/spatial).
 - [ ] `BLENDER_STUDY_GUIDE.md` — Graph: object→datablock instancing relations;
       flow: the modifier stack evaluation order; EEVEE-vs-Cycles decision.
       (Diagram-dense — pick the relational ones.)

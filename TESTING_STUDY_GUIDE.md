@@ -570,6 +570,16 @@ For example, in a billing service:
 
 This keeps business logic real while preventing tests from charging cards, sending emails, or depending on external uptime.
 
+```mermaid
+graph TD
+  D{"Is the dependency at a true boundary?<br/>network, filesystem, external service, clock"}
+  D -->|"no — internal logic"| REAL["use the real collaborator — don't mock it"]
+  D -->|yes| NEED{"What does the test need?"}
+  NEED -->|realistic behavior| FAKE["Fake — in-memory working impl (e.g. repository)"]
+  NEED -->|canned return values| STUB["Stub — returns fixed data"]
+  NEED -->|verify an outgoing call happened| MOCK["Mock / Spy — assert the interaction, sparingly"]
+```
+
 ### Fakes Beat Mocks When Behavior Matters
 
 A fake can model behavior over time:
