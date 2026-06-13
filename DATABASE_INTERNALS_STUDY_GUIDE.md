@@ -32,17 +32,18 @@ Primary references: Andy Pavlo's [CMU 15-445/645](https://15445.courses.cs.cmu.e
 
 Every relational engine, however different its skin, decomposes into the same stack — worth fixing as a map before descending:
 
-```
-SQL text
-  │  parser            → parse tree (grammar only; "is this SQL?")
-  │  analyzer/rewriter → query tree (names resolved, views expanded)
-  │  planner/optimizer → plan tree (the *how*: scans, joins, order)   Ch. 8
-  │  executor          → rows (iterators / bytecode)                  Ch. 9
-  ├─ access methods    → tables & indexes as trees and heaps          Ch. 2–3, 10
-  ├─ buffer manager    → pages cached in memory, pinned, dirtied      Ch. 4
-  ├─ transaction mgr   → visibility, isolation, locks                 Ch. 6–7
-  ├─ WAL / journal     → durability and crash recovery                Ch. 5
-  └─ storage           → files, fsync, the operating system
+```mermaid
+graph TD
+  SQL[SQL text] -->|"grammar: is this SQL?"| P[parser]
+  P -->|parse tree| A[analyzer / rewriter]
+  A -->|"query tree: names resolved, views expanded"| PL["planner / optimizer — Ch. 8"]
+  PL -->|"plan tree: scans, joins, order"| EX["executor — Ch. 9"]
+  EX -->|rows| OUT[result]
+  EX -.runs on.-> AM["access methods: trees and heaps — Ch. 2-3, 10"]
+  AM --> BM["buffer manager: cached, pinned, dirtied pages — Ch. 4"]
+  BM --> TM["transaction mgr: visibility, isolation, locks — Ch. 6-7"]
+  TM --> WAL["WAL / journal: durability and crash recovery — Ch. 5"]
+  WAL --> ST["storage: files, fsync, the operating system"]
 ```
 
 The two case studies instantiate the stack at opposite ends of the architecture spectrum:

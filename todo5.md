@@ -117,9 +117,10 @@ their core and prose carries them poorly.
 - [ ] `LINUX_NETWORKING_STUDY_GUIDE.md` — Graph: netfilter/iptables chain
       traversal; namespace + veth + bridge topology. Flow: a packet through
       the routing decision.
-- [ ] `DATABASE_INTERNALS_STUDY_GUIDE.md` — Flow: a query through
-      parser→planner→executor; WAL write path. Seq: 2PL lock acquisition.
-      (Leave B-tree page layouts as ASCII.)
+- [x] `DATABASE_INTERNALS_STUDY_GUIDE.md` — Flow: the engine layer cake —
+      query pipeline (parser→executor) on the subsystem stack (replaced ASCII,
+      kept chapter cross-refs). B-tree/page layouts left as ASCII. *Follow-ups:
+      WAL write path, 2PL lock acquisition.*
 - [ ] `ADVANCED_POSTGRES.md` / `POSTGRES.md` — Flow: query planner stages;
       MVCC visibility decision. Seq: a transaction's WAL + checkpoint path.
 - [ ] `POSTGRES_EXTENSIONS.md` — Graph: logical-replication/CDC topology
