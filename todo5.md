@@ -139,9 +139,10 @@ their core and prose carries them poorly.
 - [ ] `DATA_ENGINEERING_STUDY_GUIDE.md` — Graph: a lakehouse pipeline (sources
       →ingest→storage→transform→serve); dbt DAG. (Already diagram-dense — pick
       the 2–3 that are flows, not tables.)
-- [ ] `COMPILER_INTERNALS_STUDY_GUIDE.md` — Flow: source→tokens→AST→IR/SSA→
-      opt→codegen. Flow: a JIT's tiered-compilation decision. (Leave SSA/
-      memory layouts as ASCII.)
+- [x] `COMPILER_INTERNALS_STUDY_GUIDE.md` — Flow: the implementation pipeline
+      grouped into frontend/middle-end/backend subgraphs + runtime alongside
+      (replaced ASCII, chapter refs kept). SSA/memory layouts left as ASCII.
+      *Follow-up: JIT tiered-compilation decision flow.*
 
 ## Batch B — Infra, cloud, ops
 

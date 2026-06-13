@@ -34,16 +34,22 @@ Primary references: Bob Nystrom, [*Crafting Interpreters*](https://craftinginter
 
 Every language implementation — gcc, CPython, V8, tsc — is a variation on one pipeline, and fixing it in mind gives every later chapter an address:
 
-```
-source text
-  │  lexer        → tokens                      (Ch. 2)
-  │  parser       → syntax tree                 (Ch. 3)
-  │  analysis     → resolved, typed tree        (Ch. 4–6)   ← the "frontend" ends here
-  │  lowering     → intermediate representation (Ch. 7)
-  │  optimizer    → better IR                   (Ch. 8)     ← the "middle end"
-  │  codegen      → machine code / bytecode     (Ch. 9, 11)
-  │  link/load    → a runnable program          (Ch. 10)    ← the "backend" ends here
-  └─ runtime      → GC, JIT, dispatch           (Ch. 11–13) ← runs alongside your program
+```mermaid
+graph TD
+  SRC[source text] --> LEX
+  subgraph FE["Frontend — knows the language, not the machine"]
+    LEX["lexer → tokens (Ch. 2)"] --> PAR["parser → syntax tree (Ch. 3)"]
+    PAR --> AN["analysis → resolved, typed tree (Ch. 4-6)"]
+  end
+  subgraph ME["Middle end — language- and machine-neutral IR"]
+    LOW["lowering → IR (Ch. 7)"] --> OPT["optimizer → better IR (Ch. 8)"]
+  end
+  subgraph BE["Backend — knows the machine, not the language"]
+    CG["codegen → machine code / bytecode (Ch. 9, 11)"] --> LL["link/load → runnable program (Ch. 10)"]
+  end
+  AN --> LOW
+  OPT --> CG
+  LL -.runs alongside your program.-> RT["runtime → GC, JIT, dispatch (Ch. 11-13)"]
 ```
 
 The frontend knows everything about the language and nothing about the machine; the backend knows everything about the machine and nothing about the language; the IR in the middle is the treaty between them. This separation is not just pedagogy — it is the actual industrial structure: LLVM is a middle-and-back-end that a dozen frontends (C, C++, Rust, Swift, Zig, Julia) share, which is why "write a frontend, get world-class optimization free" has shaped two decades of language design.
