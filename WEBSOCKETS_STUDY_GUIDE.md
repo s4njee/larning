@@ -78,6 +78,18 @@ The `Sec-WebSocket-Accept` value is computed deterministically: take the client'
 
 After the `101`, the HTTP semantics are over. The TCP connection stays open, and both sides now speak the **WebSocket framing protocol** instead of HTTP. The connection has been *upgraded*.
 
+```mermaid
+sequenceDiagram
+  participant C as Client
+  participant S as Server
+  C->>S: HTTP GET — Upgrade: websocket, Sec-WebSocket-Key
+  S-->>C: 101 Switching Protocols — Sec-WebSocket-Accept
+  Note over C,S: HTTP semantics over — same TCP connection, now upgraded
+  C->>S: WebSocket frame
+  S->>C: WebSocket frame
+  Note over C,S: full-duplex — either side sends anytime
+```
+
 References: [RFC 6455 §1.3: Opening Handshake](https://www.rfc-editor.org/rfc/rfc6455#section-1.3), [MDN: Protocol upgrade mechanism](https://developer.mozilla.org/en-US/docs/Web/HTTP/Protocol_upgrade_mechanism).
 
 ### 1.3 Frames

@@ -247,7 +247,7 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `DOTNET_FOR_PYTHON_DEVS.md` — Flow: the compilation model (C# source →
       IL → CLR loads → JIT to native). *Follow-up: Task vs Thread.*
 
-## Batch D — Web, frontend, apps
+## Batch D — Web, frontend, apps — in progress
 
 - [ ] `NEXTJS_STUDY_GUIDE.md` — Flow: the rendering decision (static/ISR/
       streaming); request through the four caches. Seq: a Server Action.
@@ -261,8 +261,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       renderer/preload) + IPC edges. Seq: an `invoke` round-trip.
 - [ ] `QT_STUDY_GUIDE.md` — Seq: signal→slot across thread affinity; flow:
       the event loop dispatch. Graph: parent-child ownership tree.
-- [ ] `WEBSOCKETS_STUDY_GUIDE.md` — Seq: the HTTP→WS upgrade handshake; the
-      backplane fan-out topology. State: connection lifecycle + 1006/close.
+- [x] `WEBSOCKETS_STUDY_GUIDE.md` — Seq: the HTTP→WS upgrade handshake (GET
+      Upgrade → 101 Switching Protocols → full-duplex framing). *Follow-ups:
+      backplane fan-out, connection lifecycle + 1006/close.*
 - [ ] `WEBGL_OPENGL_STUDY_GUIDE.md` — Flow: the rendering pipeline (vertex→
       clip→raster→fragment); the state-machine binding model.
       *(Low ASCII density — adds new; high payoff.)*
