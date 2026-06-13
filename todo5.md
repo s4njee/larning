@@ -277,8 +277,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
 - [x] `WEBGPU_STUDY_GUIDE.md` — Flow: the WebGL-vs-WebGPU decision tree
       (compatibility/compute/library questions; replaced ASCII). *Follow-up:
       command-encoder→queue.submit async flow.*
-- [ ] `IOS_DEVELOPMENT_STUDY_GUIDE.md` — Flow: SwiftUI body re-evaluation;
-      graph: MVVM layer responsibilities. State: `.task` cancellation.
+- [x] `IOS_DEVELOPMENT_STUDY_GUIDE.md` — Flow: the SwiftUI declarative loop
+      (state change → re-invoke body → diff view tree → minimal screen update →
+      interaction mutates state). *Follow-ups: MVVM layers, .task cancellation.*
 - [ ] `CB8_IOS_STUDY_GUIDE.md` — Graph: nodejs-mobile two-phase architecture;
       seq: the server-owns-completion request path.
 - [ ] `CB8_ANDROID_STUDY_GUIDE.md` — Graph: the on-device-node architecture;

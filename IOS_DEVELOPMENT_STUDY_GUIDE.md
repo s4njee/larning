@@ -323,6 +323,14 @@ SwiftUI's `@State`, `@Binding`, `@Environment`, `@AppStorage` are all property w
 
 SwiftUI is a declarative UI framework: you describe *what* the UI should look like for a given state, and the framework figures out *how* to update the screen when the state changes. This is fundamentally different from UIKit (imperative: you mutate views directly).
 
+```mermaid
+graph LR
+  S["State changes<br/>@State / @Observable"] --> B["SwiftUI re-invokes body<br/>(views are cheap structs)"]
+  B --> R["framework diffs new vs old view tree"]
+  R --> U["applies the minimal screen updates"]
+  U -.user interaction mutates state.-> S
+```
+
 ### Your First View
 
 ```swift
