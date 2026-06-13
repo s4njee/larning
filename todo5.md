@@ -240,7 +240,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       decision, actor reentrancy.*
 - [ ] `GOLANG_FOR_PYTHON_DEVS.md` — Graph: goroutine scheduling vs threads
       (one comparison diagram). *(Low ASCII density — likely adds new.)*
-- [ ] `RUST_FOR_PYTHON_DEVS.md` — Flow: ownership "third answer" decision.
+- [x] `RUST_FOR_PYTHON_DEVS.md` — Graph: the three answers to "when is it safe
+      to free?" (manual / GC / ownership) and their trade-offs — the guide's
+      framing for why ownership exists.
 - [ ] `DOTNET_FOR_PYTHON_DEVS.md` — Flow: IL→JIT→native; Task vs Thread.
       *(Low ASCII density — likely adds new.)*
 

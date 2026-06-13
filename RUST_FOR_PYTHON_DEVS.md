@@ -79,6 +79,17 @@ Official docs: [The Rust Book: What Is Ownership?](https://doc.rust-lang.org/boo
 
 Before the rules, the problem they solve — because ownership is incomprehensible until you see *why* it exists, and obvious once you do. Every program must answer one question about every piece of heap memory: when is it safe to free? History offers two answers, each with a fatal flaw. **Manual management** (C/C++: you call `free` yourself) is fast and predictable but hands you the two worst bug classes in software — free too early and you get a use-after-free (a security hole); free twice or never and you get corruption or a leak. **Garbage collection** (Python, Java, Go: a runtime traces and frees for you) is safe and convenient but costs you a runtime, unpredictable pauses, and the inability to know *when* cleanup happens. Rust's ownership system is a *third answer*: the compiler figures out, at compile time, exactly when each value can be freed, and inserts the free for you — so you get C's speed and predictability (no runtime, no GC pauses, deterministic cleanup) *and* memory safety (the use-after-free and double-free become compile errors), with no garbage collector. Ownership is the bookkeeping system that makes this possible, and "fighting the borrow checker" is really the compiler walking you through the proof that your memory usage is safe.
 
+```mermaid
+graph TD
+  Q["When is it safe to free heap memory?"]
+  Q --> M["Manual — C/C++: you call free()"]
+  Q --> G["Garbage collection — Python/Java/Go: runtime traces & frees"]
+  Q --> R["Ownership — Rust: compiler inserts free at compile time"]
+  M --> MC["fast + predictable, BUT use-after-free / double-free / leaks"]
+  G --> GC["safe + convenient, BUT runtime, pauses, non-deterministic cleanup"]
+  R --> RC["safe AND fast: no GC, deterministic drop, errors caught at compile time"]
+```
+
 ### The Three Rules of Ownership
 
 That goal produces three rules, and each one exists to make the compile-time-safe-freeing tractable:
