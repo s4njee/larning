@@ -90,9 +90,15 @@ Authentication answers one question — *what identity is making this API reques
 
 Every request to the API server passes through four sequential gates, and understanding the sequence is most of understanding Kubernetes access control:
 
-```
-request → [ Authentication ] → [ Authorization ] → [ Admission ] → persisted to etcd
-            who are you?         may you?            mutate/validate
+```mermaid
+graph LR
+  REQ[API request] --> AN{"Authentication<br/>who are you?"}
+  AN -->|reject| X[denied]
+  AN -->|identity| AZ{"Authorization / RBAC<br/>may you?"}
+  AZ -->|reject| X
+  AZ -->|allow| AD{"Admission<br/>mutate / validate"}
+  AD -->|reject| X
+  AD -->|accept| ETCD[(persisted to etcd)]
 ```
 
 Authentication establishes the identity; authorization (Part 3) decides whether that identity may perform the action; admission (Part 4) gets the last word, mutating or rejecting the object even after authorization passed. A request that fails any gate is rejected, and — critically — these are *independent* layers, so a misconfiguration in one is often caught by another. The flow is documented at [Controlling Access to the Kubernetes API](https://kubernetes.io/docs/concepts/security/controlling-access/).

@@ -161,8 +161,9 @@ diagrams; *follow-ups* noted per entry are optional later additions.
       path (authn→authz/RBAC→mutating webhooks→schema validation→validating
       webhooks/CEL→etcd, with reject branches). *Follow-up: operator reconcile
       loop.*
-- [ ] `k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md` — Flow: authn→authz(RBAC)→
-      admission decision path. Graph: the threat model.
+- [x] `k8s/KUBERNETES_SECURITY_STUDY_GUIDE.md` — Flow: the four gates
+      (authentication→authorization/RBAC→admission→etcd, each independently
+      able to reject; replaced ASCII). *Follow-up: 4Cs threat-model graph.*
 - [ ] `k8s/DOCKER_KUBERNETES_NETWORKING_STUDY_GUIDE.md` — Graph: pod→service→
       endpoint→pod packet path; CNI topology.
 - [x] `DOCKER_STUDY_GUIDE.md` — State: the HEALTHCHECK state machine
