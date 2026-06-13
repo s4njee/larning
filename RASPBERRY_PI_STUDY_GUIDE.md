@@ -80,6 +80,29 @@ The Pi Zero 2 W occupies a sweet spot: **powerful enough for real work, small en
 
 Common deployments: wildlife camera traps, IoT gateways, home automation hubs, weather stations with dashboards, amateur radio nodes, kiosk displays, network monitoring probes, remote data loggers.
 
+```quiz
+Q: The Pi Zero 2 W and ESP32 are both "embedded," but at opposite ends. What's the defining difference?
+- [ ] The Pi is just faster
+- [x] The Pi runs a full Linux kernel and userspace (processes, threads, a filesystem, the full TCP/IP stack, SSH) — it's a small computer; the ESP32 runs one program on bare metal or FreeRTOS with no OS
+- [ ] The ESP32 has more RAM
+- [ ] They run the same software
+> The mental model is microcontroller vs embedded Linux. The Pi gives you multitasking, an ext4 filesystem, apt, SSH, and any language — at the cost of a ~15–30s boot, no deep sleep (~40mA minimum), and microsecond-not-nanosecond GPIO. The ESP32 gives instant-on, 10µA deep sleep, and register-level GPIO timing, but no OS. Each strength is the other's weakness.
+
+Q: For which task should you choose the ESP32 over the Pi Zero 2 W?
+- [ ] Running a web dashboard plus a sensor logger plus an MQTT bridge
+- [x] A battery device needing months of life via deep sleep and precise bit-banged GPIO timing — the Pi can't deep-sleep (~40mA floor) and has microsecond kernel GPIO latency
+- [ ] Computer-vision inference on a camera feed
+- [ ] Logging gigabytes to a database
+> The ESP32 wins on battery life (10µA deep sleep vs the Pi's ~40mA minimum — months vs hours on a coin cell), real-time GPIO (~50ns register access vs the Pi's 1–10µs kernel overhead), instant boot, and per-unit cost. The Pi wins when you need complex processing, rich networking, a filesystem, multiple concurrent services, or USB host — anything that genuinely wants an operating system.
+
+Q: Why does the Pi have ~1–10µs GPIO latency while the ESP32 has ~50ns?
+- [ ] The Pi's pins are slower hardware
+- [x] The Pi's GPIO access goes through the Linux kernel (scheduling, syscalls, no real-time guarantees), adding overhead; the ESP32 touches hardware registers directly with no OS in the way
+- [ ] The ESP32 overclocks its pins
+- [ ] The Pi uses a slower bus
+> The same OS that gives the Pi multitasking and a filesystem also sits between your code and the pins: a GPIO toggle is a syscall subject to scheduling, so timing is non-deterministic at the microsecond scale. The ESP32's bare-metal model writes registers directly and deterministically. This is why precise bit-banged protocols and tight timing favor the microcontroller, even though the Pi is far more capable overall.
+```
+
 ---
 
 ## 2. The Hardware
@@ -219,6 +242,29 @@ The microSD card has two partitions:
 2. **Root partition** — ext4. The Linux root filesystem (`/`).
 
 The boot partition is FAT32 so it can be read on any OS (Windows, macOS, Linux) — this is how you configure WiFi and enable SSH before the first boot.
+
+```quiz
+Q: What's unusual about how the Raspberry Pi boots compared to a typical PC?
+- [ ] It boots from the network first
+- [x] It starts on the *GPU* (VideoCore), not the CPU — the on-chip ROM and GPU firmware (`bootcode.bin`/`start.elf`) initialize SDRAM, read config.txt, load the kernel and device tree, and only then release the ARM CPU from reset
+- [ ] It has no bootloader
+- [ ] The CPU runs first as usual
+> The Pi's boot pipeline is GPU-led: the VideoCore GPU runs the first stages, sets up memory, parses config.txt, and loads the Linux kernel plus device tree blob before handing control to the ARM CPU, which then mounts the root filesystem and starts systemd. Knowing this multi-stage flow (firmware → kernel → init → services, ~15–30s) is what lets you debug "my Pi won't boot" rather than staring at a dead board.
+
+Q: Why is the boot partition FAT32 while the root partition is ext4?
+- [ ] FAT32 is faster
+- [x] FAT32 is readable on any OS (Windows, macOS, Linux), so you can edit config.txt, enable SSH, and set Wi-Fi credentials on the card from your laptop *before* first boot; the root partition uses ext4 for the full POSIX Linux filesystem
+- [ ] ext4 can't store a kernel
+- [ ] The GPU only reads FAT32 by coincidence
+> The two-partition layout serves two needs: the GPU firmware and config files live on a universally-readable FAT32 boot partition so you can configure a headless Pi by mounting the SD card on any computer, and the Linux system lives on ext4 for proper permissions, journaling, and thousands of files. This is exactly how headless setup works — drop config into the boot partition before the Pi ever powers on.
+
+Q: What role does config.txt play in the Pi's boot?
+- [ ] It's the systemd service list
+- [x] It's the Pi's BIOS/UEFI equivalent — hardware configuration read by the GPU firmware before the kernel loads (CPU frequency, GPU memory split, enabling I2C/SPI/UART, device tree overlays)
+- [ ] It stores the root password
+- [ ] It's the kernel command line
+> config.txt configures hardware *before* Linux starts, the job a PC's BIOS does: clock speeds, memory split, which buses are enabled (`dtparam=i2c_arm=on`), and which device tree overlays to apply. It's distinct from cmdline.txt (kernel parameters). Editing it on the FAT32 boot partition is how you turn on interfaces and tune the board, applied at the next boot.
+```
 
 ### config.txt — The Hardware Configuration File
 
@@ -497,6 +543,22 @@ cat /proc/device-tree/model        # "Raspberry Pi Zero 2 W Rev 1.0"
 # Verify an overlay loaded correctly:
 vcdbg log msg 2>&1 | grep -i dtoverlay
 dmesg | grep -i "i2c\|spi\|rtc"   # kernel messages about hardware init
+```
+
+```quiz
+Q: Why does an ARM board like the Pi need a device tree when a PC doesn't?
+- [ ] ARM kernels are smaller
+- [x] A PC's BIOS/UEFI probes and enumerates hardware, but the Pi's peripherals are soldered with no discovery mechanism — the device tree is a data structure that tells the kernel exactly what hardware exists and at which addresses
+- [ ] The device tree replaces the kernel
+- [ ] ARM boards have no peripherals
+> x86 has enumerable buses (PCI) and firmware that discovers devices; ARM SoCs generally don't, so the kernel can't find an I2C or SPI controller by probing. The device tree (compiled from `.dts` source to a `.dtb` blob the bootloader hands the kernel) is the static description of "this controller is at this address, this chip is wired here." Without it, the kernel wouldn't know the board's hardware exists.
+
+Q: What's a device tree *overlay*, and why use one instead of editing the base tree?
+- [ ] A theme for the desktop
+- [x] A fragment that modifies the base device tree at boot (loaded via config.txt) to enable/disable/configure hardware *without recompiling the kernel* — e.g. `dtoverlay=i2c-rtc,ds3231` adds an RTC, `dtparam=spi=on` enables SPI
+- [ ] A way to overclock the CPU
+- [ ] A second kernel
+> The base device tree describes the board; overlays patch it for the peripherals *you* attach. Because they're applied at boot from config.txt, you reconfigure hardware (turn on a bus, add a sensor, enable hardware PWM) by editing a text file and rebooting — no kernel rebuild. `dtparam` flips simple base-tree parameters; `dtoverlay` loads a whole `.dtbo` file from `/boot/firmware/overlays/`. It's the Pi's equivalent of plugging in a card and having the OS recognize it.
 ```
 
 ### Writing a Custom Overlay
@@ -1073,6 +1135,22 @@ The Pi Zero 2 W has no deep sleep mode — the SoC is always on. But you can sig
 
 Compare with the ESP32's deep sleep at ~10 µA. The Pi is not a battery device — it's a mains-powered (or large-battery/solar-powered) device.
 
+```quiz
+Q: Why is the Pi Zero 2 W "not a battery device" the way an ESP32 is?
+- [ ] Its battery connector is too small
+- [x] The SoC has no deep-sleep mode — it's always on, so even a stripped-down idle Pi draws ~100mA (vs the ESP32's ~10µA deep sleep); there's no microamp idle state to coast through, only "fully on"
+- [ ] It can't run on DC power
+- [ ] Linux forbids low-power modes
+> The ESP32's battery strategy is "sleep 99% of the time at 10µA"; the Pi has no equivalent — its lowest idle (Wi-Fi/HDMI/BT/LED all off) is ~100mA, roughly 10,000× more. You can trim draw by disabling unused hardware, but you can't make it disappear. So the Pi is a mains, large-battery, or solar device, not a coin-cell one.
+
+Q: For a battery Pi project that must last, what's the standard power strategy given the Pi can't deep-sleep?
+- [ ] Lower the CPU frequency and hope
+- [x] Duty-cycle the *whole Pi* with an external timer circuit (Witty Pi, TPL5110) or an ESP32 wake-controller that cuts the Pi's power between bursts — boot, do the job in seconds-to-minutes, then power off entirely to reach ~µA average
+- [ ] Run the app as a systemd timer
+- [ ] Disable two CPU cores permanently
+> Since the Pi has no internal low-power state, you achieve low *average* draw by removing its power externally. A timer circuit (or a 10µA-sleeping ESP32 acting as a wake controller via a MOSFET) powers the Pi up, lets it boot and do its work, then cuts power — turning a ~200mA always-on device into mA-bursts at µA average. A systemd timer keeps the Pi on; it doesn't save power. This whole-device duty-cycling is the embedded-Linux answer to the ESP32's deep sleep.
+```
+
 ### Reducing Power Draw
 
 ```ini
@@ -1247,6 +1325,22 @@ User=myuser
 ```bash
 sudo systemctl enable --now sensor-reading.timer
 systemctl list-timers          # verify it's scheduled
+```
+
+```quiz
+Q: Why run an embedded Pi application as a systemd service rather than launching it from a login script or `rc.local`?
+- [ ] Systemd makes the code run faster
+- [x] Systemd starts it at boot, restarts it on crash (`Restart=always`), captures its output to the journal, can order it after the network is up, and can sandbox it with resource limits and hardening — the supervision an unattended device needs
+- [ ] Login scripts can't run Python
+- [ ] rc.local is encrypted
+> An unattended device must survive crashes and reboots without a human, which is exactly what a service unit provides: automatic start, automatic restart with a delay, dependency ordering (`After=network-online.target`), journal logging for `journalctl`, and process sandboxing (`MemoryMax`, `ProtectSystem`, `NoNewPrivileges`). A login script or rc.local does none of that — your app would die silently on the first exception with nowhere to log it.
+
+Q: For a task that should run every 5 minutes, why use a systemd timer + oneshot service instead of cron?
+- [ ] cron is deprecated
+- [x] A timer unit integrates with systemd's logging, dependency ordering, and resource controls, and pairs with a `Type=oneshot` service so each run is supervised and logged to the journal like any other unit — with options like `OnBootSec` and `AccuracySec` cron lacks
+- [ ] Timers run with no overhead
+- [ ] cron can't run every 5 minutes
+> A systemd timer triggers an associated oneshot service, so the periodic job inherits everything services get: journal output (debuggable with `journalctl -u`), dependency ordering, resource limits, and consistent management via `systemctl`. It also expresses schedules cron can't — relative to boot (`OnBootSec`) or to the last activation (`OnUnitActiveSec`), with a tolerance window (`AccuracySec`) for power efficiency. On an embedded device where you already use systemd, keeping periodic work in the same system is cleaner than a separate cron daemon.
 ```
 
 ---

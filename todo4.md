@@ -154,7 +154,7 @@ Part, click-to-reveal explanation included.
 - [x] `CB8_IOS_STUDY_GUIDE.md` — 5 quizzes (14 questions; nodejs-mobile-trap/two-phase-strategy/wrapper-limits, server-owns-completion/actual-API-fidelity, UIScrollView-zoom/index-interop/page-prefetch, sandbox-scanning/auth-tables-dropped/referenced-file-removal, ZIP-random-access-LRU/CBR-phase-asymmetry/naturalSort-fidelity)
 - [x] `CB8_ANDROID_STUDY_GUIDE.md` — 5 quizzes (14 questions; node-on-device-heals-two-blockers/wrapper-Play-friendly/architecture-derived-plan, persistent-CookieJar/ignoreUnknownKeys/no-completed-field, Telephoto-zoom/bitmap-budget-onTrimMemory, SAF-vs-bookmark/cursor-traversal-perf/WorkManager, RAR5-junrar-gap/filter-by-extension/bundled-7z-sideload)
 
-## Batch 6 — Security, AI, and the rest
+## Batch 6 — Security, AI, and the rest — ✅ COMPLETE (2026-06-13)
 
 - [x] `AUTH_STUDY_GUIDE.md` — 5 quizzes (15 questions; sessions-vs-JWT/cookie-storage/401-vs-403, slow-hash/salt-rainbow/timing-enumeration, JWT-signed-not-encrypted/alg-pinning/HS-vs-RS, OAuth-vs-OIDC/PKCE/access-vs-ID-token, short+refresh-split/rotation-reuse-detection/revocation-cache-invalidation)
 - [x] `WEB_LLM_SECURITY_STUDY_GUIDE.md` — 5 quizzes (15 questions; IDOR-data-layer-auth/404-not-403/framework-cant-help, SSRF-CSRF-confused-deputy/metadata-endpoint/header-token-immune, SOP-enables-CSRF-token/CORS-reflection/localStorage-vs-cookie-threat-model, prompt-injection-no-data-channel/indirect-injection/delimiting-insufficient, output-as-untrusted/excessive-agency-blast-radius/shrink-not-stop)
@@ -165,7 +165,7 @@ Part, click-to-reveal explanation included.
 - [x] `TESTING_STUDY_GUIDE.md` — 5 quizzes (15 questions; confidence-per-cost/testability-is-design/trust-cost, pyramid-economics/mock-forest/coverage-theater, one-reason-to-fail/behavior-vs-call-assertions/private-method-smell, dependency-boundary-rule/fakes-vs-mocks/contract-tests, eventual-consistency-poll/fake-clock-retries/idempotency-superpower)
 - [x] `BLENDER_STUDY_GUIDE.md` — 5 quizzes (14 questions; object-vs-datablock-instancing/fake-user/blend-database, modes-reinterpret-tools/wrong-mode-trap, modifiers-nondestructive/stack-order/apply-vs-keep, PBR-physical-properties/metallic-0-or-1/normal-vs-displacement, EEVEE-vs-Cycles/samples-denoiser/image-sequence-renders)
 - [x] `ESP32_STUDY_GUIDE.md` — 5 quizzes (15 questions; MCU-vs-MPU/RAM-exhaustion-crash/cross-compile-flash, floating-inputs-pulls/contact-bounce-debounce/ISR-flag-volatile, ADC1-with-WiFi/PWM-duty-cycle/bus-library-abstraction, delay-blocks-millis/vTaskDelay-yields/dual-core-WiFi, deep-sleep-reboot/connect-fast-power-win/board-not-chip-draw)
-- [ ] `RASPBERRY_PI_STUDY_GUIDE.md`
+- [x] `RASPBERRY_PI_STUDY_GUIDE.md` — 5 quizzes (12 questions; not-a-microcontroller-Linux-mental-model, boot-chain/config.txt-firmware-config, device-tree/overlays-no-discovery, power-undervoltage/throttling, systemd-services-vs-cron-on-boot)
 
 ## Bespoke pages (verify only)
 
@@ -176,4 +176,5 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 64/65 (Batches 1–5 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 65/65 (all guide batches complete).
+Remaining: the 2 bespoke pages (verify only).
