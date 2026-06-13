@@ -98,10 +98,11 @@ and only a *new/changed* diagram needs the `mmdc` renderer locally.
 
 ---
 
-## Batch A — Systems, networking, databases (highest payoff)
+## Batch A — Systems, networking, databases (highest payoff) — ✅ COMPLETE (2026-06-13)
 
 These earn the most diagrams: protocols, state machines, and topologies are
-their core and prose carries them poorly.
+their core and prose carries them poorly. Each guide got 1–2 high-value
+diagrams; *follow-ups* noted per entry are optional later additions.
 
 - [x] `DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md` — **pilot done.** Graph: the three
       replication topologies (single-leader/multi-leader/leaderless). Seq: Raft
@@ -128,8 +129,10 @@ their core and prose carries them poorly.
       pages lag, flushed by checkpoint; recovery replays forward; replaced
       ASCII). *Follow-ups: planner stages, MVCC visibility decision; same for
       `POSTGRES.md`.*
-- [ ] `POSTGRES_EXTENSIONS.md` — Graph: logical-replication/CDC topology
-      (publisher→subscriber, Citus coordinator→workers).
+- [x] `POSTGRES_EXTENSIONS.md` — Graph: Citus coordinator→workers sharding
+      topology (single-tenant routing vs cross-tenant fan-out; reference tables
+      replicated to each worker). *Follow-up: logical-replication/CDC
+      publisher→subscriber topology.*
 - [x] `SQLITE_STUDY_GUIDE.md` — State: the five lock states
       (UNLOCKED→SHARED→RESERVED→PENDING→EXCLUSIVE) in rollback-journal mode
       (replaced ASCII). *Follow-up: WAL vs rollback-journal mode transitions.*
@@ -283,8 +286,8 @@ their core and prose carries them poorly.
 ---
 
 64 guide files + 2 bespoke pages (Caddy/Nginx, built from their `.py`
-generators) = 66 targets. Progress: Phase 0 ✅ complete; 1/66 guides done
-(Distributed Systems pilot). Diagrams are **additive and tactical** — a guide
+generators) = 66 targets. Progress: Phase 0 ✅ complete; Batch A ✅ complete
+(12 guides). Diagrams are **additive and tactical** — a guide
 is "done" here when
 its 1–4 highest-value relational/temporal/state diagrams render as inline SVG
 on both themes, with spatial/byte-layout diagrams left as ASCII.

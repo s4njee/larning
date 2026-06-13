@@ -438,6 +438,19 @@ EXPLAIN (VERBOSE) SELECT count(*) FROM ext.orders WHERE region = 'EU';  -- read 
 
 **[Citus](https://docs.citusdata.com/)** — 🧪 Specialist (transformative, but a commitment) · *third-party (Microsoft)*. Turns Postgres into a **distributed, horizontally-sharded** database: a coordinator routes queries to worker nodes holding shards of your tables. The model in four verbs: `create_distributed_table('events', 'tenant_id')` (rows hash-distributed by the **distribution column**), `create_reference_table('plans')` (small tables replicated to every worker so joins stay local), single-tenant queries route to one worker (full SQL, low latency), cross-tenant analytics fan out and parallelize (with SQL restrictions where operations would require cross-worker data movement). Multi-tenant SaaS is the sweet spot precisely because the tenant ID makes every transactional query single-shard.
 
+```mermaid
+graph TD
+  App[Client] -->|SQL| C["Coordinator — routes queries, holds metadata"]
+  C -->|"single-tenant query → one shard"| W1
+  C -->|"cross-tenant analytics → fan out, parallelize"| W2
+  C --> W3
+  subgraph workers["Worker nodes"]
+    W1["Worker 1<br/>events shards + plans (reference)"]
+    W2["Worker 2<br/>events shards + plans (reference)"]
+    W3["Worker 3<br/>events shards + plans (reference)"]
+  end
+```
+
 ```sql
 CREATE EXTENSION citus;
 SELECT create_distributed_table('events', 'tenant_id');
