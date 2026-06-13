@@ -164,7 +164,7 @@ Part, click-to-reveal explanation included.
 - [x] `ENTERPRISE_API_STUDY_GUIDE.md` — 5 quizzes (14 questions; method-semantics-contract/code-vs-detail/return-full-resource, exactly-once-effect/atomic-key-reservation/idempotency-composes, additive-evolution/Hyrum-observability, offset-pagination-bug/ETag-optimistic-concurrency/filter-allowlist, three-problems-one-429/token-bucket-by-principal/cooperative-429)
 - [x] `TESTING_STUDY_GUIDE.md` — 5 quizzes (15 questions; confidence-per-cost/testability-is-design/trust-cost, pyramid-economics/mock-forest/coverage-theater, one-reason-to-fail/behavior-vs-call-assertions/private-method-smell, dependency-boundary-rule/fakes-vs-mocks/contract-tests, eventual-consistency-poll/fake-clock-retries/idempotency-superpower)
 - [x] `BLENDER_STUDY_GUIDE.md` — 5 quizzes (14 questions; object-vs-datablock-instancing/fake-user/blend-database, modes-reinterpret-tools/wrong-mode-trap, modifiers-nondestructive/stack-order/apply-vs-keep, PBR-physical-properties/metallic-0-or-1/normal-vs-displacement, EEVEE-vs-Cycles/samples-denoiser/image-sequence-renders)
-- [ ] `ESP32_STUDY_GUIDE.md`
+- [x] `ESP32_STUDY_GUIDE.md` — 5 quizzes (15 questions; MCU-vs-MPU/RAM-exhaustion-crash/cross-compile-flash, floating-inputs-pulls/contact-bounce-debounce/ISR-flag-volatile, ADC1-with-WiFi/PWM-duty-cycle/bus-library-abstraction, delay-blocks-millis/vTaskDelay-yields/dual-core-WiFi, deep-sleep-reboot/connect-fast-power-win/board-not-chip-draw)
 - [ ] `RASPBERRY_PI_STUDY_GUIDE.md`
 
 ## Bespoke pages (verify only)
@@ -176,4 +176,4 @@ Part, click-to-reveal explanation included.
 
 ---
 
-65 Markdown guides + 2 bespoke pages. Progress: 63/65 (Batches 1–5 complete).
+65 Markdown guides + 2 bespoke pages. Progress: 64/65 (Batches 1–5 complete).
