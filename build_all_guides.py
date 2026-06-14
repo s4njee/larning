@@ -23,6 +23,8 @@ GUIDES = [
     ("ADVANCED_RUST_STUDY_GUIDE.md", "html/advanced-rust-study-guide.html", {"accent": "#f74c00"}),
     ("TYPESCRIPT_STUDY_GUIDE.md", "html/typescript-study-guide.html", {"accent": "#3178c6", "brand": "TS"}),
     ("COMPILER_INTERNALS_STUDY_GUIDE.md", "html/compiler-internals-study-guide.html", {"auto": True}),
+    ("SCALA_STUDY_GUIDE.md", "html/scala-study-guide.html", {"accent": "#dc322f", "brand": "Scala"}),
+    ("WEBASSEMBLY_STUDY_GUIDE.md", "html/webassembly-study-guide.html", {"accent": "#654ff0", "brand": "Wasm"}),
     ("SWIFT_STUDY_GUIDE.md", "html/swift-study-guide.html", {"accent": "#f05138", "brand": "Swift"}),
     ("IOS_DEVELOPMENT_STUDY_GUIDE.md", "html/ios-development-study-guide.html", {"accent": "#f05138", "brand": "iOS"}),
     ("CB8_IOS_STUDY_GUIDE.md", "html/cb8-ios-study-guide.html", {"accent": "#f05138", "brand": "CB8"}),
@@ -55,6 +57,7 @@ GUIDES = [
     ("LINUX_NETWORKING_STUDY_GUIDE.md", "html/linux-networking-study-guide.html", {"auto": True}),
     ("ESP32_STUDY_GUIDE.md", "html/esp32-study-guide.html", {"auto": True}),
     ("RASPBERRY_PI_STUDY_GUIDE.md", "html/raspberry-pi-study-guide.html", {"accent": "#c51a4a", "brand": "RPi"}),
+    ("SYSTEMD_STUDY_GUIDE.md", "html/systemd-study-guide.html", {"auto": True, "brand": "sd"}),
     ("GIT_STUDY_GUIDE.md", "html/git-study-guide.html", {"auto": True}),
     ("VIM_STUDY_GUIDE.md", "html/vim-study-guide.html", {"auto": True}),
     ("DATA_ENGINEERING_STUDY_GUIDE.md", "html/data-engineering-study-guide.html", {"auto": True}),
@@ -90,6 +93,7 @@ CATEGORIES = [
         "python-vs-nodejs-async-study-guide.html", "rust-for-python-devs.html",
         "advanced-rust-study-guide.html",
         "typescript-study-guide.html", "swift-study-guide.html",
+        "scala-study-guide.html", "webassembly-study-guide.html",
         "compiler-internals-study-guide.html",
     ]),
     ("Web and frontend", [
@@ -115,7 +119,7 @@ CATEGORIES = [
     ]),
     ("Systems, OS, and hardware", [
         "advanced-linux-study-guide.html", "linux-fundamentals-study-guide.html",
-        "linux-networking-study-guide.html",
+        "linux-networking-study-guide.html", "systemd-study-guide.html",
         "esp32-study-guide.html", "raspberry-pi-study-guide.html",
         "git-study-guide.html", "vim-study-guide.html",
     ]),
