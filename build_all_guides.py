@@ -24,6 +24,7 @@ GUIDES = [
     ("TYPESCRIPT_STUDY_GUIDE.md", "html/typescript-study-guide.html", {"accent": "#3178c6", "brand": "TS"}),
     ("COMPILER_INTERNALS_STUDY_GUIDE.md", "html/compiler-internals-study-guide.html", {"auto": True}),
     ("SCALA_STUDY_GUIDE.md", "html/scala-study-guide.html", {"accent": "#dc322f", "brand": "Scala"}),
+    ("WEBASSEMBLY_STUDY_GUIDE.md", "html/webassembly-study-guide.html", {"accent": "#654ff0", "brand": "Wasm"}),
     ("SWIFT_STUDY_GUIDE.md", "html/swift-study-guide.html", {"accent": "#f05138", "brand": "Swift"}),
     ("IOS_DEVELOPMENT_STUDY_GUIDE.md", "html/ios-development-study-guide.html", {"accent": "#f05138", "brand": "iOS"}),
     ("CB8_IOS_STUDY_GUIDE.md", "html/cb8-ios-study-guide.html", {"accent": "#f05138", "brand": "CB8"}),
@@ -92,7 +93,8 @@ CATEGORIES = [
         "python-vs-nodejs-async-study-guide.html", "rust-for-python-devs.html",
         "advanced-rust-study-guide.html",
         "typescript-study-guide.html", "swift-study-guide.html",
-        "scala-study-guide.html", "compiler-internals-study-guide.html",
+        "scala-study-guide.html", "webassembly-study-guide.html",
+        "compiler-internals-study-guide.html",
     ]),
     ("Web and frontend", [
         "django-study-guide.html", "electron-study-guide.html",
