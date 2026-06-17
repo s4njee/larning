@@ -699,10 +699,10 @@ Many systems need *exactly one* active instance — one Kafka controller, one ac
 
 - **The CAS/lease way (etcd):** candidates race to create a single key with a lease; the winner holds leadership and keeps renewing; if it dies, the lease expires, the key vanishes, and the watchers race again. etcd exposes this directly:
 
-  ```bash
-  # Blocks until this node is leader; holds it until the process exits or its lease lapses.
-  etcdctl elect scheduler node-1
-  ```
+```bash
+# Blocks until this node is leader; holds it until the process exits or its lease lapses.
+etcdctl elect scheduler node-1
+```
 
   Kubernetes uses exactly this pattern via `Lease` objects so that, e.g., `kube-controller-manager` and `kube-scheduler` run as active/standby — only the lease-holder acts, the others wait.
 

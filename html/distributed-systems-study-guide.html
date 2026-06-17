@@ -751,9 +751,9 @@ etcdctl watch --prefix /services/api/
 <ul>
 <li><strong>The CAS/lease way (etcd):</strong> candidates race to create a single key with a lease; the winner holds leadership and keeps renewing; if it dies, the lease expires, the key vanishes, and the watchers race again. etcd exposes this directly:</li>
 </ul>
-<p><code>bash
-  # Blocks until this node is leader; holds it until the process exits or its lease lapses.
-  etcdctl elect scheduler node-1</code></p>
+<pre><code class="language-bash"># Blocks until this node is leader; holds it until the process exits or its lease lapses.
+etcdctl elect scheduler node-1
+</code></pre>
 <p>Kubernetes uses exactly this pattern via <code>Lease</code> objects so that, e.g., <code>kube-controller-manager</code> and <code>kube-scheduler</code> run as active/standby — only the lease-holder acts, the others wait.</p>
 <ul>
 <li><strong>The sequential-ephemeral way (ZooKeeper):</strong> each candidate creates an <strong>ephemeral sequential</strong> znode under <code>/election/</code> (getting <code>n_0000000001</code>, <code>n_0000000002</code>, …). The lowest sequence number is the leader. The elegant detail: instead of every node watching the leader (a <strong>thundering herd</strong> when it dies — Part 9), each node watches <em>only the znode just below its own</em>. When a node leaves, exactly one successor is notified and checks whether it's now lowest. Herd avoided.</li>

@@ -1303,19 +1303,19 @@ if (typeof x === "number") {
 The type with no values — the empty set. Used for:
 
 1. **Functions that never return** (throw or infinite loop):
-   ```ts
-   function fail(message: string): never {
-     throw new Error(message);
-   }
-   ```
+```ts
+function fail(message: string): never {
+  throw new Error(message);
+}
+```
 
 2. **Exhaustiveness checking** (see [Section 5](#5-type-guards--control-flow-analysis))
 
 3. **Impossible states** in conditional types:
-   ```ts
-   type OnlyStrings<T> = T extends string ? T : never;
-   type A = OnlyStrings<"a" | "b" | 42>;  // "a" | "b"
-   ```
+```ts
+type OnlyStrings<T> = T extends string ? T : never;
+type A = OnlyStrings<"a" | "b" | 42>;  // "a" | "b"
+```
 
 4. **Bottom of the type hierarchy**: `never` extends every type, and nothing extends `never` (except `never` itself).
 

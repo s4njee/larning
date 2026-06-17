@@ -846,10 +846,10 @@ Consumers pin to a ref, so **your tags are your public API**:
 
 - Cut **semver tags** (`v1.2.0`) for releases.
 - Maintain a **floating major tag** (`v1`) that you re-point to the latest `v1.x.y`. This is the convention that lets consumers write `@v1` and pick up non-breaking updates:
-  ```bash
-  git tag -f v1 v1.2.0      # move the v1 tag onto the new release
-  git push -f origin v1
-  ```
+```bash
+git tag -f v1 v1.2.0      # move the v1 tag onto the new release
+git push -f origin v1
+```
 - Security-conscious consumers will pin your **commit SHA** instead of `@v1` ([Part 7](#part-7--security-hardening)). That's expected — design your changelog around it.
 - To list on the [Marketplace](https://docs.github.com/en/actions/creating-actions/publishing-actions-in-github-marketplace), the repo needs a single root `action.yml`, a good README, and a published release.
 

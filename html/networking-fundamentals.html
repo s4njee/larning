@@ -1376,12 +1376,14 @@ sudo lsof -i :8080
 <p>You set up a VPN or a GRE tunnel or anything that encapsulates IP packets. Suddenly <em>some</em> websites work and others time out. The symptom: small responses fine; large responses hang.</p>
 <p>The cause: the tunnel reduces effective MTU below 1500. Large packets, sent with the Don't-Fragment (DF) bit set, hit a router that says "too big, fragment please" — but its ICMP Fragmentation Needed reply gets silently dropped by some firewall, leaving the sender to retransmit the same too-big packet forever. This is <strong>PMTUD black hole</strong>.</p>
 <p>Fixes:
-- <strong>MSS clamping</strong> — at the tunnel, rewrite outgoing TCP SYNs to advertise a smaller MSS, so the other end never sends packets too big in the first place.
-  <code>bash
-  iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN \
-      -j TCPMSS --clamp-mss-to-pmtu</code>
-- <strong>Lower the interface MTU</strong> explicitly on the tunnel.
-- Stop dropping ICMP everywhere. (Cultural problem; usually the firewall team won't budge.)</p>
+- <strong>MSS clamping</strong> — at the tunnel, rewrite outgoing TCP SYNs to advertise a smaller MSS, so the other end never sends packets too big in the first place.</p>
+<pre><code class="language-bash">iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN \
+    -j TCPMSS --clamp-mss-to-pmtu
+</code></pre>
+<ul>
+<li><strong>Lower the interface MTU</strong> explicitly on the tunnel.</li>
+<li>Stop dropping ICMP everywhere. (Cultural problem; usually the firewall team won't budge.)</li>
+</ul>
 <h3 id="132-happy-eyeballs-and-the-ipv6-slowdown">13.2 Happy Eyeballs and the IPv6 Slowdown</h3>
 <p>A site has both A and AAAA records. Your client tries IPv6 first. If v6 is broken (no route, slow path), pure TCP timeout is 30+ seconds, and you blame the site.</p>
 <p><strong>Happy Eyeballs</strong> (RFC 8305) is the solution: try v6 and v4 in parallel with a small head start for v6 (~200ms), use whichever succeeds first. Implemented by browsers, modern OS resolvers, and most networking libraries.</p>

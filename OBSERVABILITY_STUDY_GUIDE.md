@@ -308,16 +308,16 @@ Defenses:
 - **Linting at instrumentation time** — code review for label values that could be unbounded (user IDs, full URLs, trace IDs). Use a static linter like `promlinter`.
 - **Relabeling at scrape time** — drop or rewrite labels in the scrape config before ingestion:
 
-  ```yaml
-  metric_relabel_configs:
-  - source_labels: [__name__]
-    regex: "go_.*"
-    action: drop
-  - source_labels: [path]
-    regex: "/users/[0-9]+"
-    target_label: path
-    replacement: "/users/:id"
-  ```
+```yaml
+metric_relabel_configs:
+- source_labels: [__name__]
+  regex: "go_.*"
+  action: drop
+- source_labels: [path]
+  regex: "/users/[0-9]+"
+  target_label: path
+  replacement: "/users/:id"
+```
 
 - **Series limits per target/job** (`sample_limit`, `target_limit`) — scrape config caps that drop the whole scrape if exceeded. Better to lose one job's metrics than the entire Prometheus.
 - **TSDB head limit** — Mimir / Cortex enforce `max_global_series_per_user`. Set it; alert on getting close.

@@ -1510,10 +1510,10 @@ The cause: the tunnel reduces effective MTU below 1500. Large packets, sent with
 
 Fixes:
 - **MSS clamping** — at the tunnel, rewrite outgoing TCP SYNs to advertise a smaller MSS, so the other end never sends packets too big in the first place.
-  ```bash
-  iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN \
-      -j TCPMSS --clamp-mss-to-pmtu
-  ```
+```bash
+iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN \
+    -j TCPMSS --clamp-mss-to-pmtu
+```
 - **Lower the interface MTU** explicitly on the tunnel.
 - Stop dropping ICMP everywhere. (Cultural problem; usually the firewall team won't budge.)
 
