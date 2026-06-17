@@ -100,7 +100,7 @@ You cannot reason about Python concurrency without understanding the **Global In
 
 The GIL is a **mutex inside the CPython interpreter that allows only one thread to execute Python bytecode at a time.** Even on a 64-core machine, a single Python process runs Python code on exactly one core at any instant. Threads exist and switch, but they take turns holding the GIL; they do not run Python bytecode simultaneously.
 
-It is a property of **CPython** (the reference implementation, the one you almost certainly run), not of the Python language. Other implementations differ: Jython and IronPython have no GIL; PyPy has one; and CPython itself now ships an experimental *free-threaded* build that removes it (Part 9). But for the Python you're running today, the GIL is the rule.
+It is a property of **CPython** (the reference implementation, the one you almost certainly run), not of the Python language. Other implementations differ: Jython and IronPython have no GIL; PyPy has one; and CPython itself now ships a *free-threaded* build that removes it — experimental in 3.13, officially supported (but still optional) since 3.14 (Part 9). But for the Python you're running today, the GIL is the rule.
 
 ### Why It Exists
 
@@ -148,7 +148,7 @@ Everything you need to carry from this part:
 1. **CPU-bound + need parallelism → use processes**, not threads. Each process has its own interpreter and its own GIL, so they run on separate cores genuinely in parallel (Part 4).
 2. **I/O-bound → threads (or async) are fine**, because the GIL is released during the waits that dominate the runtime (Parts 3, 6).
 3. **CPU-bound work in a GIL-releasing C library (NumPy etc.) → threads can parallelize it**, because the heavy loop runs in C with the GIL dropped. Check your library's docs.
-4. **The GIL is not forever.** Free-threaded CPython (3.13+, Part 9) removes it, changing rule 1 — but it's opt-in and maturing, so design for today's GIL and watch the transition.
+4. **The GIL is not forever.** Free-threaded CPython (supported but optional since 3.14, Part 9) removes it, changing rule 1 — but the GIL build is still the default, so design for today's GIL and watch the transition.
 
 If you remember one thing from Part 2: **the GIL lets only one thread run Python bytecode at a time — so threads parallelize *waiting* (I/O, where the GIL is released) but not *computing* (pure Python, where it's held); for CPU parallelism you need processes, and that single fact explains why "add threads" speeds up a scraper and slows down a number-cruncher.**
 
@@ -714,16 +714,18 @@ The GIL (Part 2) has defined Python concurrency for thirty years, and as of 2026
 
 ### Free-Threaded CPython (PEP 703)
 
-Since **Python 3.13**, CPython ships an experimental **free-threaded build** (sometimes called "nogil") that **removes the GIL entirely.** In this build, threads execute Python bytecode *truly in parallel* across cores — the thing Part 2 said was impossible becomes possible. CPU-bound multithreading would finally scale, and the "use processes for CPU parallelism" rule would relax to "use threads."
+CPython now ships a **free-threaded build** (sometimes called "nogil") that **removes the GIL entirely.** In this build, threads execute Python bytecode *truly in parallel* across cores — the thing Part 2 said was impossible becomes possible. CPU-bound multithreading finally scales, and the "use processes for CPU parallelism" rule relaxes to "threads can work too." Early benchmarks show roughly **2–4× speedups on multithreaded CPU-bound work** on a 4-core machine.
+
+The big change is **status**, not the feature itself. Python 3.13 shipped the free-threaded build as **experimental**; **Python 3.14 (October 2025) promoted it to officially *supported* — but still optional —** via [PEP 779](https://peps.python.org/pep-0779/). That's the second of a deliberate three-phase plan: Phase I experimental (3.13), **Phase II supported-but-optional (3.14, where we are now)**, Phase III default (future, no committed date). So "the GIL can be bypassed" is now a supported configuration you can actually adopt, not a research preview — but the GIL build is still what you get by default.
 
 The status and the caveats, as of 2026:
 
-- It's **opt-in** — a separate build (`python3.13t`), not the default interpreter. By 3.14 it's more mature but still not the standard build.
-- It carries a **single-threaded performance cost** (historically ~5–10%) because removing the GIL meant adding finer-grained locking and changing reference counting (biased/deferred refcounting). That overhead is shrinking with each release but isn't zero.
-- **C extensions must be made compatible.** Many popular packages have added free-threaded support, but the ecosystem isn't fully there — a single incompatible extension can force the GIL back on or fail to load.
-- The threading **race conditions** of Part 3 become *more* dangerous, not less: with true parallelism, data races that the GIL accidentally papered over (by serializing bytecode) can now actually manifest. Free-threaded code needs *more* disciplined locking, not less.
+- It's **opt-in** — a separate binary with a `t` suffix (`python3.14t`), not the default interpreter. Confirm what you're running with `python -VV` or `sys.version` (both contain "free-threading build"), and check at runtime with **`sys._is_gil_enabled()`**. You can force the GIL back on for debugging with the **`PYTHON_GIL=1`** env var or the **`-X gil=1`** flag (and disable it, on a capable build, with `0`).
+- The **single-threaded performance cost** is now roughly **5–10%** (PEP 779's bar for supported status was ≤15%) — about **~1% on macOS arm64, ~8% on x86-64 Linux** in CPython's own measurements, with ~15–20% higher memory use. A large part of the improvement over 3.13t is that **3.14 enabled the specializing adaptive interpreter** (the 3.11+ speedup machinery) in the free-threaded build, which 3.13t had to disable. The overhead is the price of finer-grained locking and changed reference counting (biased/deferred refcounting) replacing the one big lock.
+- **C extensions must opt in.** An extension declares free-threading support via the **`Py_mod_gil`** module slot; importing a C extension that *isn't* marked compatible **automatically re-enables the GIL at runtime and prints a warning** (unless you override with `PYTHON_GIL=0`). Many major packages (NumPy, etc.) now ship free-threaded wheels, but the ecosystem isn't fully there — one unmarked extension silently puts the GIL back.
+- The threading **race conditions** of Part 3 become *more* dangerous, not less: with true parallelism, data races that the GIL accidentally papered over (by serializing bytecode) can now actually manifest. Built-in `dict`/`list`/`set` use internal locks so they won't corrupt, but Python still makes **no guarantee about the *result* of concurrent modification** — use `threading.Lock` rather than leaning on those internal locks. Free-threaded code needs *more* disciplined locking, not less.
 
-The practical stance: **design for today's GIL** (the rules in Parts 2–7 hold for the default build), **but watch this transition** — test your CPU-bound workloads on the free-threaded build, because the day it becomes default-and-fast, the threads-vs-processes calculus flips.
+The practical stance: **the default build still has the GIL, so the rules in Parts 2–7 hold for the code you ship today.** But free-threading is now supported, not experimental — so if your dependencies are free-threaded-ready, it's a real option for CPU-bound work *now*, and worth benchmarking. Watch the transition: the day it becomes default-and-fast, the threads-vs-processes calculus flips.
 
 ### Sub-Interpreters (PEP 684 & PEP 734)
 
@@ -735,7 +737,7 @@ The model sits *between* threads and processes: more isolated than threads (each
 
 For now, **nothing changes in how you choose** — the default CPython you ship on has the GIL, so Parts 2–7 stand. But the direction is clear: Python is acquiring real in-process parallelism, by two routes at once. Over the next few years, expect the "processes for CPU work" rule to soften as free-threading matures and sub-interpreters stabilize. Keep an eye on your key C extensions' free-threading support — that ecosystem readiness, more than the interpreter itself, is what will gate the transition.
 
-If you remember one thing from Part 9: **the GIL is on its way out — free-threaded CPython (3.13+, opt-in) makes threads parallelize CPU work, and per-interpreter GILs add a third parallelism option between threads and processes — but both are still maturing, so design for the GIL today while testing the free-threaded build for your CPU-bound code.**
+If you remember one thing from Part 9: **the GIL is on its way out — free-threaded CPython (officially supported but still optional since 3.14) makes threads parallelize CPU work, and per-interpreter GILs add a third parallelism option between threads and processes — but the GIL build is still the default, so design for the GIL today while testing the free-threaded build for your CPU-bound code.**
 
 ---
 
@@ -866,7 +868,7 @@ If you remember one thing from Part 10: **the recipes are short because the mode
 
 - **Watch David Beazley's [GIL talks](https://www.dabeaz.com/GIL/)** — still the clearest explanation of the convoy effects and scheduling behavior Part 2 summarizes, and genuinely entertaining.
 - **Read the stdlib docs as designed wholes:** [`concurrent.futures`](https://docs.python.org/3/library/concurrent.futures.html) (short, and the API you should default to), the [`multiprocessing` programming guidelines](https://docs.python.org/3/library/multiprocessing.html#programming-guidelines) (the official list of fork/pickle gotchas), and the [asyncio docs](https://docs.python.org/3/library/asyncio.html).
-- **Track the GIL's endgame:** [PEP 703](https://peps.python.org/pep-0703/) (free-threading) and [PEP 684](https://peps.python.org/pep-0684/) (per-interpreter GIL) are the primary sources, and each release's [What's New](https://docs.python.org/3/whatsnew/) reports the current state.
+- **Track the GIL's endgame:** [PEP 703](https://peps.python.org/pep-0703/) (free-threading), [PEP 779](https://peps.python.org/pep-0779/) (the criteria that made it *supported* in 3.14), and [PEP 684](https://peps.python.org/pep-0684/) (per-interpreter GIL) are the primary sources; the [free-threading HOWTO](https://docs.python.org/3/howto/free-threading-python.html) and each release's [What's New](https://docs.python.org/3/whatsnew/) report the current state.
 - **Run the classification experiment.** Take a slow script, watch CPU usage while it runs, classify it I/O- or CPU-bound, then implement it twice — `ThreadPoolExecutor` and `ProcessPoolExecutor` — and time both. Seeing threads *lose* on CPU-bound work (and win on I/O) makes Part 2 permanent.
 - **Siblings in this repo:** the [Asyncio & aiohttp guide](ASYNCIO_STUDY_GUIDE.md) (async at full depth), [Advanced Python](ADVANCED_PYTHON_STUDY_GUIDE.md) (the runtime underneath), and [Python vs Node.js Async](PYTHON_VS_NODEJS_ASYNC_STUDY_GUIDE.md) (the comparison).
 
