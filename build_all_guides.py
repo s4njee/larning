@@ -39,6 +39,7 @@ GUIDES = [
     ("WEBGPU_STUDY_GUIDE.md", "html/webgpu-study-guide.html", {"auto": True}),
     ("WEBSOCKETS_STUDY_GUIDE.md", "html/websockets-study-guide.html", {"auto": True}),
     ("BLENDER_STUDY_GUIDE.md", "html/blender-study-guide.html", {"accent": "#ea7600"}),
+    ("UNREAL_ENGINE_STUDY_GUIDE.md", "html/unreal-engine-study-guide.html", {"accent": "#1ea7e1", "brand": "UE"}),
     ("ANSIBLE_STUDY_GUIDE.md", "html/ansible-study-guide.html", {"auto": True}),
     ("AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md", "html/azure-for-aws-solutions-architect.html", {"auto": True}),
     ("GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md", "html/gcp-for-aws-solutions-architect.html", {"auto": True}),
@@ -106,6 +107,7 @@ CATEGORIES = [
     ]),
     ("Creative and 3D", [
         "blender-study-guide.html",
+        "unreal-engine-study-guide.html",
     ]),
     ("Infra, cloud, and ops", [
         "ansible-study-guide.html", "azure-for-aws-solutions-architect.html",

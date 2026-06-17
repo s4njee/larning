@@ -1,0 +1,1820 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Unreal Engine — A Depth-First Guide for Engineers.">
+<title>Unreal Engine — A Depth-First Guide for Engineers - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#1ea7e1; --accent2:#1ea7e1; --accent-weak:rgba(30,167,225,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#1ea7e1; --accent2:#1ea7e1; --accent-weak:rgba(30,167,225,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint);pointer-events:none}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+#quizBtn.off{opacity:.45}
+#quizBtn.off:hover{opacity:.8}
+html.quiz-hidden .addon.quiz{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px;min-width:0;overflow-wrap:break-word}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+/* Build-time-rendered mermaid diagrams: a light "figure card" so the SVG stays
+   legible under both the dark default and the light theme toggle. */
+.mermaid-diagram{margin:1.8em 0;padding:18px 16px;border:1px solid var(--border2);
+  border-radius:var(--radius);background:#fbfbfd;text-align:center;overflow-x:auto}
+.mermaid-diagram svg{max-width:100%;height:auto}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:minmax(0,1fr)}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+  .spacer{display:none}
+  .brand{flex:1;min-width:0}
+  .brand > span:not(.logo):not(.sub){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">UE</span><span>Unreal Engine — A Depth-First Guide for Engineers</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#1-the-mental-model" data-target="1-the-mental-model">1. The Mental Model</a></li><li class="toc-l3"><a href="#what-unreal-engine-is" data-target="what-unreal-engine-is">What Unreal Engine Is</a></li><li class="toc-l3"><a href="#the-four-layers" data-target="the-four-layers">The Four Layers</a></li><li class="toc-l3"><a href="#blueprint-vs-c-the-real-tradeoff" data-target="blueprint-vs-c-the-real-tradeoff">Blueprint vs C++ — The Real Tradeoff</a></li><li class="toc-l3"><a href="#why-it-feels-different-from-other-engines" data-target="why-it-feels-different-from-other-engines">Why It Feels Different From Other Engines</a></li><li class="toc-l2"><a href="#2-project-setup-the-editor" data-target="2-project-setup-the-editor">2. Project Setup &amp; The Editor</a></li><li class="toc-l3"><a href="#installing" data-target="installing">Installing</a></li><li class="toc-l3"><a href="#creating-a-project" data-target="creating-a-project">Creating a Project</a></li><li class="toc-l3"><a href="#anatomy-of-a-project-on-disk" data-target="anatomy-of-a-project-on-disk">Anatomy of a Project on Disk</a></li><li class="toc-l3"><a href="#the-gitignore-that-matters" data-target="the-gitignore-that-matters">The .gitignore That Matters</a></li><li class="toc-l3"><a href="#the-editor-the-panels-you-live-in" data-target="the-editor-the-panels-you-live-in">The Editor — The Panels You Live In</a></li><li class="toc-l3"><a href="#play-in-editor-pie-and-the-game-instance-lifecycle" data-target="play-in-editor-pie-and-the-game-instance-lifecycle">Play-In-Editor (PIE) and the Game Instance Lifecycle</a></li><li class="toc-l2"><a href="#3-the-object-model-uobject-actor-component" data-target="3-the-object-model-uobject-actor-component">3. The Object Model — UObject, Actor, Component</a></li><li class="toc-l3"><a href="#the-class-hierarchy" data-target="the-class-hierarchy">The Class Hierarchy</a></li><li class="toc-l3"><a href="#actor-vs-component-the-composition-model" data-target="actor-vs-component-the-composition-model">Actor vs Component — The Composition Model</a></li><li class="toc-l3"><a href="#the-actor-lifecycle" data-target="the-actor-lifecycle">The Actor Lifecycle</a></li><li class="toc-l3"><a href="#tick-and-why-you-should-avoid-it" data-target="tick-and-why-you-should-avoid-it">Tick — and Why You Should Avoid It</a></li><li class="toc-l3"><a href="#spawning-and-destroying-actors" data-target="spawning-and-destroying-actors">Spawning and Destroying Actors</a></li><li class="toc-l2"><a href="#4-the-gameplay-framework" data-target="4-the-gameplay-framework">4. The Gameplay Framework</a></li><li class="toc-l3"><a href="#the-cast-of-classes" data-target="the-cast-of-classes">The Cast of Classes</a></li><li class="toc-l3"><a href="#each-class-concretely" data-target="each-class-concretely">Each Class, Concretely</a></li><li class="toc-l3"><a href="#why-this-split-exists-a-worked-example" data-target="why-this-split-exists-a-worked-example">Why This Split Exists — A Worked Example</a></li><li class="toc-l3"><a href="#a-minimal-gamemode-in-c" data-target="a-minimal-gamemode-in-c">A Minimal GameMode in C++</a></li><li class="toc-l2"><a href="#5-blueprints" data-target="5-blueprints">5. Blueprints</a></li><li class="toc-l3"><a href="#what-a-blueprint-class-is" data-target="what-a-blueprint-class-is">What a Blueprint Class Is</a></li><li class="toc-l3"><a href="#the-anatomy-of-the-graph" data-target="the-anatomy-of-the-graph">The Anatomy of the Graph</a></li><li class="toc-l3"><a href="#key-node-categories" data-target="key-node-categories">Key Node Categories</a></li><li class="toc-l3"><a href="#communication-between-blueprints" data-target="communication-between-blueprints">Communication Between Blueprints</a></li><li class="toc-l3"><a href="#blueprint-performance-reality" data-target="blueprint-performance-reality">Blueprint Performance Reality</a></li><li class="toc-l2"><a href="#6-c-in-unreal" data-target="6-c-in-unreal">6. C++ in Unreal</a></li><li class="toc-l3"><a href="#the-macros-that-arent-optional" data-target="the-macros-that-arent-optional">The Macros That Aren't Optional</a></li><li class="toc-l3"><a href="#unreals-standard-library-use-it-not-std" data-target="unreals-standard-library-use-it-not-std">Unreal's Standard Library — Use It, Not std::</a></li><li class="toc-l3"><a href="#memory-two-worlds" data-target="memory-two-worlds">Memory: Two Worlds</a></li><li class="toc-l3"><a href="#logging-and-assertions" data-target="logging-and-assertions">Logging and Assertions</a></li><li class="toc-l2"><a href="#7-blueprint-c-interop" data-target="7-blueprint-c-interop">7. Blueprint ↔ C++ Interop</a></li><li class="toc-l3"><a href="#exposing-c-to-blueprint" data-target="exposing-c-to-blueprint">Exposing C++ to Blueprint</a></li><li class="toc-l3"><a href="#calling-blueprint-from-c-two-directions" data-target="calling-blueprint-from-c-two-directions">Calling Blueprint from C++ — Two Directions</a></li><li class="toc-l3"><a href="#the-professional-split-concretely" data-target="the-professional-split-concretely">The Professional Split, Concretely</a></li><li class="toc-l3"><a href="#tsubclassof-letting-designers-pick-classes" data-target="tsubclassof-letting-designers-pick-classes">TSubclassOf — Letting Designers Pick Classes</a></li><li class="toc-l2"><a href="#8-the-reflection-system-memory" data-target="8-the-reflection-system-memory">8. The Reflection System &amp; Memory</a></li><li class="toc-l3"><a href="#what-reflection-is-and-how-its-built" data-target="what-reflection-is-and-how-its-built">What Reflection Is and How It's Built</a></li><li class="toc-l3"><a href="#the-five-systems-reflection-powers" data-target="the-five-systems-reflection-powers">The Five Systems Reflection Powers</a></li><li class="toc-l3"><a href="#garbage-collection-in-depth" data-target="garbage-collection-in-depth">Garbage Collection in Depth</a></li><li class="toc-l3"><a href="#soft-vs-hard-references-the-memory-budget-lever" data-target="soft-vs-hard-references-the-memory-budget-lever">Soft vs Hard References — The Memory Budget Lever</a></li><li class="toc-l2"><a href="#9-rendering-nanite-lumen-and-the-frame" data-target="9-rendering-nanite-lumen-and-the-frame">9. Rendering — Nanite, Lumen, and the Frame</a></li><li class="toc-l3"><a href="#the-frame-in-brief" data-target="the-frame-in-brief">The Frame, in Brief</a></li><li class="toc-l3"><a href="#nanite-virtualized-geometry" data-target="nanite-virtualized-geometry">Nanite — Virtualized Geometry</a></li><li class="toc-l3"><a href="#lumen-dynamic-global-illumination" data-target="lumen-dynamic-global-illumination">Lumen — Dynamic Global Illumination</a></li><li class="toc-l3"><a href="#virtual-shadow-maps-vsm" data-target="virtual-shadow-maps-vsm">Virtual Shadow Maps (VSM)</a></li><li class="toc-l3"><a href="#materials-lighting-and-post-in-one-picture" data-target="materials-lighting-and-post-in-one-picture">Materials, Lighting, and Post in One Picture</a></li><li class="toc-l3"><a href="#the-console-commands-youll-actually-use" data-target="the-console-commands-youll-actually-use">The Console Commands You'll Actually Use</a></li><li class="toc-l2"><a href="#10-materials" data-target="10-materials">10. Materials</a></li><li class="toc-l3"><a href="#the-material-graph-and-the-output-node" data-target="the-material-graph-and-the-output-node">The Material Graph and the Output Node</a></li><li class="toc-l3"><a href="#shading-models-and-blend-modes-the-two-big-switches" data-target="shading-models-and-blend-modes-the-two-big-switches">Shading Models and Blend Modes — The Two Big Switches</a></li><li class="toc-l3"><a href="#material-instances-the-reuse-pattern" data-target="material-instances-the-reuse-pattern">Material Instances — The Reuse Pattern</a></li><li class="toc-l3"><a href="#material-cost-what-to-watch" data-target="material-cost-what-to-watch">Material Cost — What to Watch</a></li><li class="toc-l2"><a href="#11-animation" data-target="11-animation">11. Animation</a></li><li class="toc-l3"><a href="#the-data-model" data-target="the-data-model">The Data Model</a></li><li class="toc-l3"><a href="#the-animation-blueprint-two-graphs" data-target="the-animation-blueprint-two-graphs">The Animation Blueprint — Two Graphs</a></li><li class="toc-l3"><a href="#state-machines" data-target="state-machines">State Machines</a></li><li class="toc-l3"><a href="#blend-spaces" data-target="blend-spaces">Blend Spaces</a></li><li class="toc-l3"><a href="#montages-playing-one-shots-over-locomotion" data-target="montages-playing-one-shots-over-locomotion">Montages — Playing One-Shots Over Locomotion</a></li><li class="toc-l3"><a href="#beyond-the-basics" data-target="beyond-the-basics">Beyond the Basics</a></li><li class="toc-l2"><a href="#12-physics-collision" data-target="12-physics-collision">12. Physics &amp; Collision</a></li><li class="toc-l3"><a href="#collision-is-channel-based" data-target="collision-is-channel-based">Collision Is Channel-Based</a></li><li class="toc-l3"><a href="#the-two-event-types" data-target="the-two-event-types">The Two Event Types</a></li><li class="toc-l3"><a href="#traces-raycasts-the-workhorse-of-gameplay" data-target="traces-raycasts-the-workhorse-of-gameplay">Traces (Raycasts) — The Workhorse of Gameplay</a></li><li class="toc-l3"><a href="#simulated-physics" data-target="simulated-physics">Simulated Physics</a></li><li class="toc-l3"><a href="#character-movement-is-not-raw-physics" data-target="character-movement-is-not-raw-physics">Character Movement Is Not Raw Physics</a></li><li class="toc-l2"><a href="#13-input" data-target="13-input">13. Input</a></li><li class="toc-l3"><a href="#the-three-concepts" data-target="the-three-concepts">The Three Concepts</a></li><li class="toc-l3"><a href="#wiring-it-up-in-c" data-target="wiring-it-up-in-c">Wiring It Up in C++</a></li><li class="toc-l2"><a href="#14-ui-umg-slate" data-target="14-ui-umg-slate">14. UI — UMG &amp; Slate</a></li><li class="toc-l3"><a href="#the-umg-model" data-target="the-umg-model">The UMG Model</a></li><li class="toc-l3"><a href="#layout-slots-and-containers" data-target="layout-slots-and-containers">Layout — Slots and Containers</a></li><li class="toc-l3"><a href="#getting-data-into-the-ui-three-ways" data-target="getting-data-into-the-ui-three-ways">Getting Data Into the UI — Three Ways</a></li><li class="toc-l3"><a href="#performance-notes" data-target="performance-notes">Performance Notes</a></li><li class="toc-l2"><a href="#15-audio" data-target="15-audio">15. Audio</a></li><li class="toc-l3"><a href="#the-pieces" data-target="the-pieces">The Pieces</a></li><li class="toc-l3"><a href="#playing-sound-from-code" data-target="playing-sound-from-code">Playing Sound From Code</a></li><li class="toc-l2"><a href="#16-networking-replication" data-target="16-networking-replication">16. Networking &amp; Replication</a></li><li class="toc-l3"><a href="#the-authority-model" data-target="the-authority-model">The Authority Model</a></li><li class="toc-l3"><a href="#roles-and-the-hasauthority-check" data-target="roles-and-the-hasauthority-check">Roles and the HasAuthority Check</a></li><li class="toc-l3"><a href="#property-replication" data-target="property-replication">Property Replication</a></li><li class="toc-l3"><a href="#rpcs-remote-procedure-calls" data-target="rpcs-remote-procedure-calls">RPCs — Remote Procedure Calls</a></li><li class="toc-l3"><a href="#prediction-and-the-feel-of-multiplayer" data-target="prediction-and-the-feel-of-multiplayer">Prediction and the Feel of Multiplayer</a></li><li class="toc-l3"><a href="#what-to-replicate-the-bandwidth-discipline" data-target="what-to-replicate-the-bandwidth-discipline">What to Replicate — The Bandwidth Discipline</a></li><li class="toc-l2"><a href="#17-assets-cooking-packaging" data-target="17-assets-cooking-packaging">17. Assets, Cooking &amp; Packaging</a></li><li class="toc-l3"><a href="#how-assets-reference-each-other" data-target="how-assets-reference-each-other">How Assets Reference Each Other</a></li><li class="toc-l3"><a href="#cooking" data-target="cooking">Cooking</a></li><li class="toc-l3"><a href="#packaging" data-target="packaging">Packaging</a></li><li class="toc-l3"><a href="#pak-files-and-asset-loading-at-runtime" data-target="pak-files-and-asset-loading-at-runtime">Pak Files and Asset Loading at Runtime</a></li><li class="toc-l2"><a href="#18-performance-profiling" data-target="18-performance-profiling">18. Performance &amp; Profiling</a></li><li class="toc-l3"><a href="#the-triage-ladder" data-target="the-triage-ladder">The Triage Ladder</a></li><li class="toc-l3"><a href="#unreal-insights-the-real-profiler" data-target="unreal-insights-the-real-profiler">Unreal Insights — The Real Profiler</a></li><li class="toc-l3"><a href="#the-usual-cpu-culprits" data-target="the-usual-cpu-culprits">The Usual CPU Culprits</a></li><li class="toc-l3"><a href="#the-usual-gpu-culprits" data-target="the-usual-gpu-culprits">The Usual GPU Culprits</a></li><li class="toc-l3"><a href="#memory" data-target="memory">Memory</a></li><li class="toc-l3"><a href="#the-one-habit" data-target="the-one-habit">The One Habit</a></li><li class="toc-l2"><a href="#19-patterns-recipes" data-target="19-patterns-recipes">19. Patterns &amp; Recipes</a></li><li class="toc-l3"><a href="#recipe-a-pickup-item-overlap-effect-destroy" data-target="recipe-a-pickup-item-overlap-effect-destroy">Recipe: A Pickup Item (Overlap → Effect → Destroy)</a></li><li class="toc-l3"><a href="#recipe-a-component-you-reuse-across-actors-health" data-target="recipe-a-component-you-reuse-across-actors-health">Recipe: A Component You Reuse Across Actors (Health)</a></li><li class="toc-l3"><a href="#recipe-subsystems-instead-of-singletons" data-target="recipe-subsystems-instead-of-singletons">Recipe: Subsystems Instead of Singletons</a></li><li class="toc-l3"><a href="#recipe-data-driven-design-with-dataassets-and-datatables" data-target="recipe-data-driven-design-with-dataassets-and-datatables">Recipe: Data-Driven Design with DataAssets and DataTables</a></li><li class="toc-l3"><a href="#the-c-base-blueprint-derived-template-the-meta-pattern" data-target="the-c-base-blueprint-derived-template-the-meta-pattern">The "C++ Base, Blueprint Derived" Template (the meta-pattern)</a></li><li class="toc-l2"><a href="#20-mastery-checklist" data-target="20-mastery-checklist">20. Mastery Checklist</a></li><li class="toc-l3"><a href="#foundations" data-target="foundations">Foundations</a></li><li class="toc-l3"><a href="#object-model-framework" data-target="object-model-framework">Object Model &amp; Framework</a></li><li class="toc-l3"><a href="#c-reflection" data-target="c-reflection">C++ &amp; Reflection</a></li><li class="toc-l3"><a href="#rendering-materials-animation" data-target="rendering-materials-animation">Rendering, Materials, Animation</a></li><li class="toc-l3"><a href="#systems" data-target="systems">Systems</a></li><li class="toc-l3"><a href="#networking-shipping" data-target="networking-shipping">Networking &amp; Shipping</a></li><li class="toc-l2"><a href="#21-additional-resources" data-target="21-additional-resources">21. Additional Resources</a></li><li class="toc-l3"><a href="#game-development-fundamentals-engine-agnostic" data-target="game-development-fundamentals-engine-agnostic">Game development fundamentals (engine-agnostic)</a></li><li class="toc-l3"><a href="#official-unreal-engine-resources-start-here-for-unreal" data-target="official-unreal-engine-resources-start-here-for-unreal">Official Unreal Engine resources (start here for Unreal)</a></li><li class="toc-l3"><a href="#beginner-friendly-unreal-courses-and-channels" data-target="beginner-friendly-unreal-courses-and-channels">Beginner-friendly Unreal courses and channels</a></li><li class="toc-l3"><a href="#community-and-staying-current" data-target="community-and-staying-current">Community and staying current</a></li></ul></nav></aside>
+  <main><h1 id="unreal-engine-a-depth-first-guide-for-engineers">Unreal Engine — A Depth-First Guide for Engineers</h1>
+<p>A practical, depth-first guide to Unreal Engine 5 for developers who want to understand <em>how the engine actually works</em>, not just which buttons to click. It assumes you can program (the C++ chapters assume C++ familiarity, but the rest does not) and that you have basic 3D intuition — what a mesh, material, and camera are. If you need the 3D foundation first, read the <a href="blender-study-guide.html">Blender conceptual guide</a> for content creation or the <a href="webgl-opengl-study-guide.html">WebGL/OpenGL guide</a> for the rendering pipeline underneath. This guide covers the engine's architecture, the Actor/Component model, Blueprints <em>and</em> C++ (and the gameplay framework that unifies them), the UE5 rendering stack (Nanite, Lumen, Virtual Shadow Maps), animation, physics, audio, UI, networking/replication, and the performance discipline that separates a prototype from a shipped game.</p>
+<p>Primary references: <a href="https://dev.epicgames.com/documentation/en-us/unreal-engine">Unreal Engine Documentation</a>, <a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/API">Unreal Engine C++ API</a>, <a href="https://dev.epicgames.com/community/">Epic Developer Community</a>, <a href="https://github.com/EpicGames/UnrealEngine">Unreal Source on GitHub</a> (requires linking your Epic account).</p>
+<hr>
+<h2 id="table-of-contents">Table of Contents</h2>
+<ol>
+<li><a href="#1-the-mental-model">The Mental Model</a></li>
+<li><a href="#2-project-setup--the-editor">Project Setup &amp; The Editor</a></li>
+<li><a href="#3-the-object-model--uobject-actor-component">The Object Model — UObject, Actor, Component</a></li>
+<li><a href="#4-the-gameplay-framework">The Gameplay Framework</a></li>
+<li><a href="#5-blueprints">Blueprints</a></li>
+<li><a href="#6-c-in-unreal">C++ in Unreal</a></li>
+<li><a href="#7-blueprint--c-interop">Blueprint ↔ C++ Interop</a></li>
+<li><a href="#8-the-reflection-system--memory">The Reflection System &amp; Memory</a></li>
+<li><a href="#9-rendering--nanite-lumen-and-the-frame">Rendering — Nanite, Lumen, and the Frame</a></li>
+<li><a href="#10-materials">Materials</a></li>
+<li><a href="#11-animation">Animation</a></li>
+<li><a href="#12-physics--collision">Physics &amp; Collision</a></li>
+<li><a href="#13-input">Input</a></li>
+<li><a href="#14-ui--umg--slate">UI — UMG &amp; Slate</a></li>
+<li><a href="#15-audio">Audio</a></li>
+<li><a href="#16-networking--replication">Networking &amp; Replication</a></li>
+<li><a href="#17-assets-cooking--packaging">Assets, Cooking &amp; Packaging</a></li>
+<li><a href="#18-performance--profiling">Performance &amp; Profiling</a></li>
+<li><a href="#19-patterns--recipes">Patterns &amp; Recipes</a></li>
+<li><a href="#20-mastery-checklist">Mastery Checklist</a></li>
+<li><a href="#21-additional-resources">Additional Resources</a></li>
+</ol>
+<hr>
+<h2 id="1-the-mental-model">1. The Mental Model</h2>
+<h3 id="what-unreal-engine-is">What Unreal Engine Is</h3>
+<p>Unreal Engine is a <strong>C++ game engine with an editor and two scripting surfaces</strong>. The C++ core provides the runtime: an object system, a renderer, a physics engine, an audio engine, a networking layer, and a gameplay framework that ties them together. On top of that sits <strong>Blueprint</strong>, a visual scripting language that compiles to bytecode run by a virtual machine. Both Blueprint and C++ manipulate the same objects through the same reflection system. There is no "Blueprint world" and "C++ world" — there is one object graph, exposed two ways.</p>
+<p>The single most important fact about Unreal: <strong>it is not a library you call, it is a framework that calls you.</strong> You do not write a <code>main()</code> and pump a loop. You subclass engine classes — <code>AActor</code>, <code>APawn</code>, <code>UActorComponent</code> — and override virtual functions (<code>BeginPlay</code>, <code>Tick</code>, <code>EndPlay</code>) that the engine invokes at the right time. Your code lives inside the engine's lifecycle, not around it.</p>
+<h3 id="the-four-layers">The Four Layers</h3>
+<pre><code class="language-text">┌─────────────────────────────────────────────────────────┐
+│  Your game: Blueprints + C++ gameplay classes            │  ← you write this
+├─────────────────────────────────────────────────────────┤
+│  Gameplay Framework: GameMode, PlayerController,         │  ← you subclass this
+│  Pawn, Character, GameState, PlayerState, HUD            │
+├─────────────────────────────────────────────────────────┤
+│  Engine subsystems: Renderer, Physics (Chaos), Audio,    │  ← you configure this
+│  Animation, Networking, AI, Input                        │
+├─────────────────────────────────────────────────────────┤
+│  Core: UObject system, reflection, GC, serialization,    │  ← you rely on this
+│  reflection (UCLASS/UPROPERTY/UFUNCTION), modules        │
+└─────────────────────────────────────────────────────────┘
+</code></pre>
+<p>Almost everything distinctive about Unreal — garbage collection, Blueprint exposure, network replication, the editor's property panels, save/load — is built on the <strong>reflection system</strong> at the bottom. When you write <code>UPROPERTY()</code> above a member variable, you are not adding metadata for documentation; you are registering that field with the engine so the GC can see it, the editor can display it, the serializer can save it, and the network can replicate it. Chapter 8 is the one that makes the rest click.</p>
+<h3 id="blueprint-vs-c-the-real-tradeoff">Blueprint vs C++ — The Real Tradeoff</h3>
+<p>This is the question every newcomer asks, and the honest answer is <strong>both, by design</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Concern</th>
+<th>Blueprint</th>
+<th>C++</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Iteration speed</td>
+<td>Instant (hot-reload in editor)</td>
+<td>Slower (compile + reload)</td>
+</tr>
+<tr>
+<td>Performance</td>
+<td>VM bytecode, ~10× slower per node</td>
+<td>Native, compiled</td>
+</tr>
+<tr>
+<td>Designer accessibility</td>
+<td>High — visual, no toolchain</td>
+<td>Low — needs IDE + build</td>
+</tr>
+<tr>
+<td>Complex logic / data structures</td>
+<td>Painful past a point</td>
+<td>Natural</td>
+</tr>
+<tr>
+<td>Merge/diff in version control</td>
+<td>Binary, hard to merge</td>
+<td>Text, normal diffs</td>
+</tr>
+<tr>
+<td>Frame-by-frame <code>Tick</code> work</td>
+<td>Avoid</td>
+<td>Fine</td>
+</tr>
+</tbody>
+</table>
+<p>The shipping pattern Epic itself uses: <strong>systems and performance-critical logic in C++, composition and tuning in Blueprint.</strong> A weapon's firing math, hit registration, and replication live in a C++ base class; the specific rifle's fire rate, muzzle effect, and sound are set on a Blueprint subclass a designer can edit without touching code. This "C++ base, Blueprint derived" split appears throughout the guide.</p>
+<h3 id="why-it-feels-different-from-other-engines">Why It Feels Different From Other Engines</h3>
+<p>If you're coming from Unity, the closest analogies: <code>GameObject</code> ≈ <code>Actor</code>, <code>MonoBehaviour</code> ≈ <code>UActorComponent</code>, prefab ≈ Blueprint class, <code>Instantiate</code> ≈ <code>SpawnActor</code>. The deepest difference is that Unity's <code>GameObject</code> is a thin container and behavior lives in components, whereas Unreal's <code>Actor</code> is itself a substantial class with its own lifecycle, and the engine's gameplay framework (<code>GameMode</code>, <code>Controller</code>, <code>Pawn</code>) imposes far more structure out of the box. Unreal is more opinionated; you get more for free and fight the framework more when you go against its grain.</p>
+<hr>
+<h2 id="2-project-setup-the-editor">2. Project Setup &amp; The Editor</h2>
+<h3 id="installing">Installing</h3>
+<p>Unreal Engine is distributed through the <strong>Epic Games Launcher</strong> (Windows/macOS) or built from source on GitHub. For C++ work you also need a compiler toolchain:</p>
+<ul>
+<li><strong>Windows:</strong> Visual Studio 2022 with the "Game development with C++" workload, plus the "Unreal Engine installer" component.</li>
+<li><strong>macOS:</strong> Xcode (latest).</li>
+<li><strong>Linux:</strong> Clang via the cross-compile toolchain or a source build.</li>
+</ul>
+<p>Source builds (from <code>github.com/EpicGames/UnrealEngine</code>, after linking your GitHub account to Epic) matter when you need engine modifications, want to step into engine code in the debugger, or are shipping on a console. Most teams start with the launcher binary and move to source if needed.</p>
+<h3 id="creating-a-project">Creating a Project</h3>
+<p>The New Project dialog asks two questions that matter:</p>
+<ol>
+<li><strong>Blueprint or C++?</strong> This only sets up the initial files. A Blueprint project can add C++ later (right-click in Content Browser → New C++ Class), and a C++ project always supports Blueprints. The C++ template generates a <code>Source/</code> folder, a <code>.uproject</code>, and module files.</li>
+<li><strong>Template.</strong> Templates (Third Person, First Person, Top Down, Blank) pre-wire the gameplay framework so you start with a controllable character. The Third Person template is the best teaching tool — it contains a <code>Character</code>, an <code>Enhanced Input</code> setup, an animation Blueprint, and a <code>GameMode</code>, all of which this guide explains.</li>
+</ol>
+<h3 id="anatomy-of-a-project-on-disk">Anatomy of a Project on Disk</h3>
+<pre><code class="language-text">MyProject/
+├── MyProject.uproject        # JSON manifest: engine version, modules, plugins
+├── Config/                   # .ini files — the engine's settings layers
+│   ├── DefaultEngine.ini
+│   ├── DefaultGame.ini
+│   └── DefaultInput.ini
+├── Content/                  # ALL assets (.uasset, .umap) — binary, opaque
+├── Source/                   # C++ (only in C++ projects)
+│   └── MyProject/
+│       ├── MyProject.Build.cs        # module build rules (C#!)
+│       ├── MyProject.cpp / .h
+│       └── ... your classes
+├── Plugins/                  # project-local plugins
+├── Binaries/                 # compiled output (git-ignore)
+├── Intermediate/             # generated code, build temp (git-ignore)
+├── DerivedDataCache/         # cooked/compiled asset cache (git-ignore)
+└── Saved/                    # logs, autosaves, config overrides (git-ignore)
+</code></pre>
+<p>Two non-obvious points. First, <strong>build configuration is C#, not a Makefile.</strong> <code>MyProject.Build.cs</code> declares module dependencies (<code>PublicDependencyModuleNames.AddRange(new[] { "Core", "CoreUObject", "Engine", ... })</code>) and is executed by <strong>UnrealBuildTool (UBT)</strong>, Epic's build orchestrator. Second, <strong><code>Content/</code> is binary and unmergeable.</strong> A <code>.uasset</code> is a serialized <code>UObject</code> graph. This is why teams use locking version control (Perforce) or are disciplined about who edits which assets in Git — you cannot merge two people's changes to the same Blueprint.</p>
+<h3 id="the-gitignore-that-matters">The .gitignore That Matters</h3>
+<p>Only <code>Config/</code>, <code>Content/</code>, <code>Source/</code>, <code>Plugins/</code>, and the <code>.uproject</code> are source-of-truth. Everything else is generated:</p>
+<pre><code class="language-gitignore">Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+*.sln
+*.VC.db
+</code></pre>
+<p>For binary assets, <a href="https://git-lfs.com/">Git LFS</a> is standard. Large teams use Perforce because of file locking on unmergeable assets.</p>
+<h3 id="the-editor-the-panels-you-live-in">The Editor — The Panels You Live In</h3>
+<ul>
+<li><strong>Viewport</strong> — the 3D scene. Learn the navigation: right-mouse + WASD to fly, F to focus selection, Alt+drag to orbit. The <code>~</code> key opens the console (<code>stat fps</code>, <code>stat unit</code>, and dozens of debug commands).</li>
+<li><strong>Outliner</strong> — the tree of every Actor in the level.</li>
+<li><strong>Details panel</strong> — every <code>UPROPERTY</code> of the selected object, generated from reflection. This <em>is</em> the reflection system made visible.</li>
+<li><strong>Content Browser</strong> — your asset database. Right-click is the gateway to creating everything.</li>
+<li><strong>Place Actors</strong> — drag lights, meshes, volumes into the world.</li>
+</ul>
+<h3 id="play-in-editor-pie-and-the-game-instance-lifecycle">Play-In-Editor (PIE) and the Game Instance Lifecycle</h3>
+<p>Pressing <strong>Play</strong> runs the game inside the editor process (PIE). This is fast but lies in two ways you must internalize:</p>
+<ol>
+<li><strong>PIE shares the editor's memory and some global state.</strong> Static variables persist between PIE sessions; a real standalone build resets them. Bugs that only appear in packaged builds often trace to this.</li>
+<li><strong>PIE can simulate multiplayer</strong> by spawning multiple windows/clients in one process (Net Mode dropdown). This is invaluable for testing replication (Chapter 16) without deploying.</li>
+</ol>
+<p>"Standalone Game" launches a separate process — closer to shipping behavior. Always test in Standalone and in a packaged build before trusting that something works.</p>
+<hr>
+<h2 id="3-the-object-model-uobject-actor-component">3. The Object Model — UObject, Actor, Component</h2>
+<h3 id="the-class-hierarchy">The Class Hierarchy</h3>
+<p>Everything that participates in the engine's managed systems descends from <strong><code>UObject</code></strong>. It is the root that provides reflection, garbage collection, serialization, and Blueprint/network exposure. The key subtree:</p>
+<pre><code class="language-text">UObject                         # GC, reflection, serialization — the base of everything
+├── AActor                      # something that can be placed in a level (the 'A' prefix)
+│   ├── APawn                   # an Actor that can be &quot;possessed&quot; and controlled
+│   │   └── ACharacter          # a Pawn with a capsule, movement component, and skeletal mesh
+│   ├── AController             # the &quot;brain&quot; that possesses a Pawn
+│   │   ├── APlayerController    # a human's brain
+│   │   └── AAIController        # an AI's brain
+│   ├── AGameModeBase           # rules of the game (server-only)
+│   ├── APlayerState / AGameStateBase
+│   └── AHUD, AInfo, ...
+├── UActorComponent             # behavior/data attached to an Actor (no transform)
+│   └── USceneComponent         # a component WITH a transform (position/rotation/scale)
+│       ├── UPrimitiveComponent  # something renderable/collidable
+│       │   ├── UStaticMeshComponent
+│       │   ├── USkeletalMeshComponent
+│       │   └── UShapeComponent (box, sphere, capsule)
+│       └── UCameraComponent, ULightComponent, ...
+└── UActorComponent, UDataAsset, UUserWidget, ... (non-Actor UObjects)
+</code></pre>
+<p><strong>The naming prefixes are mandatory and meaningful:</strong> <code>U</code> for <code>UObject</code> subclasses, <code>A</code> for <code>AActor</code> subclasses, <code>F</code> for plain structs/non-UObject types (<code>FVector</code>, <code>FString</code>), <code>I</code> for interfaces, <code>E</code> for enums, <code>T</code> for templates (<code>TArray</code>, <code>TSubclassOf</code>). The code generator (UHT) relies on these prefixes; getting them wrong breaks compilation.</p>
+<h3 id="actor-vs-component-the-composition-model">Actor vs Component — The Composition Model</h3>
+<p>An <strong>Actor</strong> is a thing that exists in a level. A <strong>Component</strong> is a reusable piece of behavior or data that lives inside an Actor. This is composition over inheritance, the same instinct as Unity's components, but with a twist:</p>
+<ul>
+<li><strong><code>UActorComponent</code></strong> — pure behavior/data, <em>no position in the world</em>. Example: a <code>UHealthComponent</code> that tracks HP. It doesn't have a location because "health" isn't somewhere in space.</li>
+<li><strong><code>USceneComponent</code></strong> — has a <strong>transform</strong> (location, rotation, scale) and can be attached to other scene components, forming a hierarchy. A car Actor has a root scene component, with a mesh, four wheel meshes, a camera, and an audio component attached at offsets.</li>
+<li><strong><code>UPrimitiveComponent</code></strong> — a scene component that can be rendered and/or collide. Static meshes, skeletal meshes, and collision shapes.</li>
+</ul>
+<p>Every Actor has exactly one <strong>root component</strong>. The root's transform <em>is</em> the Actor's transform; everything else attaches beneath it and inherits its movement. Move the root, everything follows.</p>
+<pre><code class="language-cpp">// A typical Actor composed of components (C++ constructor)
+ADrone::ADrone()
+{
+    // RootComponent is the anchor; all else attaches under it.
+    RootComponent = CreateDefaultSubobject&lt;USceneComponent&gt;(TEXT(&quot;Root&quot;));
+
+    Body = CreateDefaultSubobject&lt;UStaticMeshComponent&gt;(TEXT(&quot;Body&quot;));
+    Body-&gt;SetupAttachment(RootComponent);
+
+    SpringArm = CreateDefaultSubobject&lt;USpringArmComponent&gt;(TEXT(&quot;SpringArm&quot;));
+    SpringArm-&gt;SetupAttachment(RootComponent);
+    SpringArm-&gt;TargetArmLength = 300.f;
+
+    Camera = CreateDefaultSubobject&lt;UCameraComponent&gt;(TEXT(&quot;Camera&quot;));
+    Camera-&gt;SetupAttachment(SpringArm);  // camera rides the spring arm
+
+    Health = CreateDefaultSubobject&lt;UHealthComponent&gt;(TEXT(&quot;Health&quot;)); // no transform
+}
+</code></pre>
+<h3 id="the-actor-lifecycle">The Actor Lifecycle</h3>
+<p>This is the set of virtual functions the engine calls on your Actor, in order. Knowing <em>when</em> each fires prevents an entire category of bugs (accessing things before they exist):</p>
+<pre><code class="language-text">Spawn / Level Load
+   │
+   ▼
+PostInitializeComponents()   # components exist and are registered
+   │
+   ▼
+BeginPlay()                  # gameplay has started; safe to reference other Actors,
+   │                         #   bind events, start timers. THE main entry point.
+   ▼
+Tick(DeltaSeconds)           # called every frame (if ticking enabled)
+   │  ...repeats...
+   ▼
+EndPlay(Reason)              # leaving play: destroyed, level change, PIE stop
+   │
+   ▼
+BeginDestroy() → garbage collected
+</code></pre>
+<p>The rookie mistake is putting initialization in the <strong>constructor</strong> that depends on other Actors or the world. The constructor runs when the object is created — possibly during editor load, possibly before the world is fully set up. <strong><code>BeginPlay</code> is where gameplay initialization belongs.</strong> Constructors should only set defaults and create components.</p>
+<h3 id="tick-and-why-you-should-avoid-it">Tick — and Why You Should Avoid It</h3>
+<p><code>Tick</code> runs every frame. It's the obvious place to put per-frame logic, and it's also the most abused feature in the engine. A thousand Actors each doing trivial work in <code>Tick</code> is a thousand virtual function calls and a measurable cost. The discipline:</p>
+<ul>
+<li><strong>Disable ticking</strong> when you don't need it: <code>PrimaryActorTick.bCanEverTick = false;</code> (the default for many component types).</li>
+<li><strong>Prefer events and timers</strong> over polling in <code>Tick</code>. Instead of checking <code>if (Health &lt;= 0)</code> every frame, fire a delegate when damage is applied.</li>
+<li><strong>Use timers</strong> (<code>GetWorldTimerManager().SetTimer(...)</code>) for periodic work that doesn't need frame granularity — a status effect that pulses every 0.5s doesn't need 60 checks per second.</li>
+<li>If you must tick, <strong>tick less often</strong> with <code>PrimaryActorTick.TickInterval</code>.</li>
+</ul>
+<p>This connects directly to performance (Chapter 18): Tick cost is one of the first things a profiler reveals.</p>
+<h3 id="spawning-and-destroying-actors">Spawning and Destroying Actors</h3>
+<p>You don't <code>new</code> an Actor — the world owns them and the GC tracks them. You ask the world to spawn:</p>
+<pre><code class="language-cpp">FActorSpawnParameters Params;
+Params.Owner = this;
+AProjectile* Shot = GetWorld()-&gt;SpawnActor&lt;AProjectile&gt;(
+    ProjectileClass,            // a UClass* / TSubclassOf&lt;AProjectile&gt;
+    MuzzleLocation,
+    MuzzleRotation,
+    Params);
+
+// Later:
+Shot-&gt;Destroy();   // marks for destruction; GC reclaims memory
+</code></pre>
+<p><code>TSubclassOf&lt;AProjectile&gt;</code> is a type-safe class reference — it guarantees the assigned class is a <code>AProjectile</code> or subclass, and it's how you let a designer pick <em>which</em> projectile Blueprint to spawn from a dropdown in the editor.</p>
+<hr>
+<h2 id="4-the-gameplay-framework">4. The Gameplay Framework</h2>
+<p>The gameplay framework is Unreal's biggest opinion: a set of cooperating classes that answer "who controls what, who decides the rules, and where does state live." Fighting it is the cause of most architectural pain. Learning it is the highest-leverage thing in this guide.</p>
+<h3 id="the-cast-of-classes">The Cast of Classes</h3>
+<pre><code class="language-text">            GameMode (server only) ── owns the rules, spawns players, sets win/lose
+                  │
+   spawns &amp;       │
+   assigns        ▼
+            PlayerController ◄──── the player's &quot;brain&quot;: input, camera, UI ownership
+                  │  possesses
+                  ▼
+                Pawn / Character ◄── the physical body in the world (visual + movement)
+                  │
+                  ├── PlayerState  ── per-player data that must survive respawn (score, name)
+                  │
+            GameState ──────────── per-match data every client needs (scores, match phase)
+</code></pre>
+<p>The mental model: <strong>a Controller possesses a Pawn.</strong> The Pawn is the body; the Controller is the will. This separation is powerful — when a player dies, the Pawn is destroyed but the PlayerController persists, then possesses a freshly spawned Pawn. An AI uses the <em>same</em> Pawn class; only the controlling class differs (<code>AAIController</code> instead of <code>APlayerController</code>). Swap the controller and a player-driven character becomes AI-driven with zero changes to the Pawn.</p>
+<h3 id="each-class-concretely">Each Class, Concretely</h3>
+<ul>
+<li>
+<p><strong><code>Pawn</code></strong> — anything controllable. A character, a vehicle, a turret, a flying drone. The minimal Pawn has a collision component, a visual, and accepts input. <strong><code>Character</code></strong> is a specialized Pawn for bipedal humanoids: it bundles a capsule collider, a <code>UCharacterMovementComponent</code> (walking, jumping, swimming, network-smoothed), and a skeletal mesh. Use <code>Character</code> for anything that walks; subclass <code>Pawn</code> directly for vehicles and oddities.</p>
+</li>
+<li>
+<p><strong><code>Controller</code></strong> — the brain, with <strong>no physical presence</strong>. <code>APlayerController</code> handles a human: it owns the camera management, processes input, and is the gateway to the player's UI and the network connection. <code>AAIController</code> runs behavior trees and navigation. A controller can possess and unpossess pawns at runtime.</p>
+</li>
+<li>
+<p><strong><code>GameMode</code></strong> (<code>AGameModeBase</code>) — the <strong>server-authoritative rulebook</strong>. It exists <em>only on the server</em> (and in single-player). It decides which Pawn class to spawn, where players start, what the win condition is, what happens on death. Clients never see the GameMode — asking for it on a client returns null. This is a deliberate security boundary: rules live where they can't be tampered with.</p>
+</li>
+<li>
+<p><strong><code>GameState</code></strong> (<code>AGameStateBase</code>) — match-wide state that <strong>every client needs to know</strong>: the current score, the match phase (warmup/active/ended), the list of connected players. It's replicated to all clients. Where GameMode is the server's private rulebook, GameState is the public scoreboard.</p>
+</li>
+<li>
+<p><strong><code>PlayerState</code></strong> — per-player state that must <strong>survive the player's Pawn being destroyed</strong>: name, score, team, ping. When you respawn, your Pawn is new but your PlayerState (and your score) persists. Replicated to all clients so everyone can see everyone's score.</p>
+</li>
+<li>
+<p><strong><code>HUD</code> / UMG</strong> — the on-screen UI. Modern projects use UMG widgets (Chapter 14) owned by the PlayerController rather than the legacy <code>AHUD</code> canvas drawing.</p>
+</li>
+</ul>
+<h3 id="why-this-split-exists-a-worked-example">Why This Split Exists — A Worked Example</h3>
+<p>Consider a respawn in a shooter. Walk the classes:</p>
+<ol>
+<li>Player's <code>Character</code> takes lethal damage. The <code>Character</code> (Pawn) is destroyed.</li>
+<li>The <code>PlayerController</code> survives — it's the persistent connection to the human. So does the <code>PlayerState</code> (the score stays).</li>
+<li>The <code>PlayerController</code> notifies the <code>GameMode</code> (server-only logic): "my pawn died."</li>
+<li>The <code>GameMode</code> decides the respawn rules — delay, location (<code>PlayerStart</code> actors), which Pawn class.</li>
+<li>After the delay, the <code>GameMode</code> spawns a fresh <code>Character</code> and tells the <code>PlayerController</code> to <strong>possess</strong> it.</li>
+<li><code>GameState</code> already reflected the death in the match score; every client saw it via replication.</li>
+</ol>
+<p>No single class does everything. Each owns one concern. This is why the framework feels heavyweight at first and indispensable once you've built something real with networking.</p>
+<h3 id="a-minimal-gamemode-in-c">A Minimal GameMode in C++</h3>
+<pre><code class="language-cpp">// The rulebook: which classes to use for this match.
+AArenaGameMode::AArenaGameMode()
+{
+    DefaultPawnClass    = AArenaCharacter::StaticClass();
+    PlayerControllerClass = AArenaPlayerController::StaticClass();
+    PlayerStateClass    = AArenaPlayerState::StaticClass();
+    GameStateClass      = AArenaGameState::StaticClass();
+}
+
+void AArenaGameMode::OnPlayerDied(AController* DeadController)
+{
+    // Server-authoritative respawn after a delay.
+    FTimerHandle Handle;
+    FTimerDelegate Del;
+    Del.BindUObject(this, &amp;AArenaGameMode::RespawnPlayer, DeadController);
+    GetWorldTimerManager().SetTimer(Handle, Del, RespawnDelay, false);
+}
+</code></pre>
+<p>You almost always set these classes on a <strong>Blueprint subclass of your GameMode</strong> so designers can swap them, then assign that Blueprint in Project Settings → Maps &amp; Modes (or per-level via a World Settings override).</p>
+<hr>
+<h2 id="5-blueprints">5. Blueprints</h2>
+<p>Blueprint is Unreal's visual scripting system. Despite the "no-code" framing, it is a real programming language — it has variables, functions, types, control flow, and an object model. It compiles to bytecode executed by the <strong>Blueprint VM</strong>. Understanding it as "a language with a graph syntax" rather than "drag-and-drop magic" is the right frame.</p>
+<h3 id="what-a-blueprint-class-is">What a Blueprint Class Is</h3>
+<p>A Blueprint asset is most often a <strong>subclass of a C++ (or another Blueprint) class</strong>, with overridden behavior and configured properties. <code>BP_Rifle</code> might subclass <code>AWeapon</code> (C++), set its mesh and fire rate, and override the <code>Fire</code> event with a node graph. It's the exact analog of writing a subclass in code — Epic's editor just gives designers a way to do it without a compiler.</p>
+<h3 id="the-anatomy-of-the-graph">The Anatomy of the Graph</h3>
+<ul>
+<li><strong>Execution pins (white, ►)</strong> — the control flow. The white line threading through nodes is "what runs next." This is the program counter made visible.</li>
+<li><strong>Data pins (colored)</strong> — typed values. Blue = object reference, red = boolean, green = float, etc. You drag from an output data pin to an input to wire values.</li>
+<li><strong>Event nodes</strong> — entry points: <code>Event BeginPlay</code>, <code>Event Tick</code>, <code>Event ActorBeginOverlap</code>, custom events, input events. Execution starts here.</li>
+<li><strong>Functions vs Events</strong> — functions can return values and run synchronously; events cannot return values but can be called over the network and can contain latent (async) nodes.</li>
+<li><strong>Variables</strong> — typed, with the same <code>UPROPERTY</code> flags as C++ (editable, replicated, private). The "eye" icon exposes a variable to the editor's Details panel.</li>
+</ul>
+<h3 id="key-node-categories">Key Node Categories</h3>
+<ul>
+<li><strong>Flow control:</strong> <code>Branch</code> (if), <code>Sequence</code> (do A then B then C), <code>ForLoop</code>, <code>ForEachLoop</code>, <code>Gate</code>, <code>DoOnce</code>, <code>FlipFlop</code>, <code>Switch</code>.</li>
+<li><strong>Latent / async nodes</strong> — nodes with a clock icon that span multiple frames: <code>Delay</code>, <code>Timeline</code>, <code>Move Component To</code>, async asset loads. These can only live in Events, not functions, because functions must complete in one call.</li>
+<li><strong>Timelines</strong> — a Blueprint-only construct: a built-in keyframe track that drives a value over time (a curve), perfect for door-opening, fades, and lerps without writing tick math.</li>
+<li><strong>Cast nodes</strong> — <code>Cast To BP_Door</code>: a runtime type check that, if successful, gives you the typed reference. Overusing casts creates hard references that bloat memory (the cast forces the target class to load); prefer interfaces (below).</li>
+</ul>
+<h3 id="communication-between-blueprints">Communication Between Blueprints</h3>
+<p>Three patterns, in increasing decoupling:</p>
+<ol>
+<li><strong>Direct reference + cast</strong> — you have a reference to the other object and cast to its type to call its functions. Simple, but creates a hard dependency.</li>
+<li><strong>Blueprint Interfaces</strong> — declare a set of functions (an interface), implement it on multiple unrelated classes, and call through the interface without knowing the concrete type. The decoupled choice: a <code>BP_Switch</code> calls <code>Interact()</code> on whatever it hit, be it a door, a chest, or an NPC, none of which it references directly.</li>
+<li><strong>Event Dispatchers (delegates)</strong> — the observer pattern. An object broadcasts an event ("I died", "health changed") and any number of listeners subscribe. The publisher knows nothing about subscribers. This is how a health bar widget updates when a character takes damage without the character ever referencing the UI.</li>
+</ol>
+<h3 id="blueprint-performance-reality">Blueprint Performance Reality</h3>
+<p>The VM adds overhead per node — roughly an order of magnitude slower than equivalent C++ per operation. This is irrelevant for event-driven logic that fires occasionally (opening a door) and very relevant for per-frame math over many objects (a <code>Tick</code> graph doing vector math on 500 actors). The rule: <strong>Blueprint for orchestration and configuration, C++ for hot loops and heavy math.</strong> "Nativization" (compiling Blueprints to C++) existed in UE4 but was removed in UE5; the answer now is to move hot logic to C++ directly.</p>
+<p>A subtle cost: <strong>hard references.</strong> A Blueprint that references another asset (a mesh, a sound, another Blueprint) forces that asset to load into memory whenever the referencing Blueprint loads. A web of casts and direct references can pull half your content into memory at once. Use <strong>soft references</strong> (<code>TSoftObjectPtr</code>, soft class pointers) and async loading for things you don't always need.</p>
+<hr>
+<h2 id="6-c-in-unreal">6. C++ in Unreal</h2>
+<p>Unreal C++ is C++ with a heavy macro and code-generation layer. You will recognize the language but not the idioms — Epic has its own containers, string types, smart pointers, and a reflection preprocessor. Writing it like standard C++ fights the engine.</p>
+<h3 id="the-macros-that-arent-optional">The Macros That Aren't Optional</h3>
+<pre><code class="language-cpp">// MyActor.h
+#pragma once
+#include &quot;CoreMinimal.h&quot;
+#include &quot;GameFramework/Actor.h&quot;
+#include &quot;MyActor.generated.h&quot;   // ALWAYS last include; UHT generates this
+
+UCLASS(Blueprintable)            // register this class with the reflection system
+class MYGAME_API AMyActor : public AActor
+{
+    GENERATED_BODY()             // injects generated boilerplate; mandatory
+
+public:
+    AMyActor();
+
+    // Exposed to the editor's Details panel and to Blueprint.
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=&quot;Combat&quot;)
+    float MaxHealth = 100.f;
+
+    // A UObject pointer the GC must track — UPROPERTY makes it visible to GC.
+    UPROPERTY(VisibleAnywhere)
+    UStaticMeshComponent* Mesh;
+
+    // Callable from Blueprint graphs.
+    UFUNCTION(BlueprintCallable, Category=&quot;Combat&quot;)
+    void ApplyDamage(float Amount);
+
+protected:
+    virtual void BeginPlay() override;
+    virtual void Tick(float DeltaSeconds) override;
+};
+</code></pre>
+<p>What each macro does:</p>
+<ul>
+<li><strong><code>UCLASS()</code></strong> — registers the class with the reflection system so it can be spawned by name, exposed to Blueprint, serialized, and GC-tracked. Specifiers like <code>Blueprintable</code> (can be subclassed in BP) and <code>Abstract</code> tune behavior.</li>
+<li><strong><code>GENERATED_BODY()</code></strong> — expands (via the generated <code>.generated.h</code>) into constructors, reflection registration, and the glue the engine needs. Without it, the class won't link.</li>
+<li><strong><code>UPROPERTY()</code></strong> — the workhorse. Registers a member with reflection. The specifiers control four independent systems: editor visibility (<code>EditAnywhere</code>/<code>VisibleAnywhere</code>), Blueprint access (<code>BlueprintReadWrite</code>/<code>BlueprintReadOnly</code>), serialization, and GC tracking. <strong>A <code>UObject*</code> pointer without <code>UPROPERTY()</code> is invisible to the GC and will be collected out from under you — a use-after-free.</strong> This is the single most important rule in Unreal C++.</li>
+<li><strong><code>UFUNCTION()</code></strong> — exposes a function to Blueprint, networking (<code>Server</code>/<code>Client</code>/<code>NetMulticast</code>), or as an event (<code>BlueprintImplementableEvent</code>).</li>
+</ul>
+<p><code>MYGAME_API</code> is the module's export macro (DLL boundary); it must prefix classes other modules use.</p>
+<h3 id="unreals-standard-library-use-it-not-std">Unreal's Standard Library — Use It, Not std::</h3>
+<p>Unreal predates and replaces much of the STL for engine reasons (memory control, serialization, platform portability):</p>
+<table>
+<thead>
+<tr>
+<th>Standard C++</th>
+<th>Unreal</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>std::vector</code></td>
+<td><code>TArray&lt;T&gt;</code></td>
+<td>The default container. Contiguous, fast.</td>
+</tr>
+<tr>
+<td><code>std::map</code></td>
+<td><code>TMap&lt;K,V&gt;</code></td>
+<td>Hashed map. <code>TSortedMap</code> for ordered.</td>
+</tr>
+<tr>
+<td><code>std::set</code></td>
+<td><code>TSet&lt;T&gt;</code></td>
+<td>Hashed set.</td>
+</tr>
+<tr>
+<td><code>std::string</code></td>
+<td><code>FString</code></td>
+<td>Mutable, owns memory. For manipulation.</td>
+</tr>
+<tr>
+<td>string literal/key</td>
+<td><code>FName</code></td>
+<td>Interned, immutable, fast compare. For asset/bone names.</td>
+</tr>
+<tr>
+<td>display text</td>
+<td><code>FText</code></td>
+<td>Localized, for anything a user reads.</td>
+</tr>
+<tr>
+<td><code>std::shared_ptr</code></td>
+<td><code>TSharedPtr&lt;T&gt;</code></td>
+<td>For non-UObject types only.</td>
+</tr>
+<tr>
+<td><code>std::unique_ptr</code></td>
+<td><code>TUniquePtr&lt;T&gt;</code></td>
+<td>For non-UObject types only.</td>
+</tr>
+<tr>
+<td><code>std::weak_ptr</code></td>
+<td><code>TWeakPtr&lt;T&gt;</code> / <code>TWeakObjectPtr&lt;T&gt;</code></td>
+<td>The latter for UObjects.</td>
+</tr>
+<tr>
+<td>raw <code>new</code>/<code>delete</code></td>
+<td><code>NewObject&lt;T&gt;()</code> / <code>SpawnActor</code></td>
+<td>Never <code>new</code> a UObject.</td>
+</tr>
+</tbody>
+</table>
+<p><strong>The string type trilemma trips up everyone.</strong> <code>FString</code> is a mutable string you build and slice. <code>FName</code> is an interned, case-insensitive, immutable handle — comparisons are integer compares, used for bone names, asset names, tags (cheap to compare millions of times). <code>FText</code> is localizable display text — anything the player reads must be <code>FText</code> so it can be translated. Using <code>FString</code> for UI text or <code>FName</code> where you needed manipulation is a common smell.</p>
+<h3 id="memory-two-worlds">Memory: Two Worlds</h3>
+<p>This is the crux of Unreal C++. There are <strong>two memory regimes</strong> and you must know which one a type lives in:</p>
+<ol>
+<li>
+<p><strong><code>UObject</code> and subclasses (including all Actors and Components)</strong> are <strong>garbage collected</strong>. You never <code>delete</code> them. You create them with <code>NewObject&lt;T&gt;()</code> or <code>SpawnActor&lt;T&gt;()</code>. The GC keeps them alive as long as something reachable holds a <code>UPROPERTY</code> reference to them. Drop all <code>UPROPERTY</code> references and they're collected. <strong>Do not use <code>TSharedPtr</code> on UObjects</strong> — it conflicts with the GC.</p>
+</li>
+<li>
+<p><strong>Plain C++ types (<code>F</code>-structs, your own non-UObject classes)</strong> are <em>not</em> GC-managed. Manage them with RAII, <code>TUniquePtr</code>/<code>TSharedPtr</code>, or stack allocation, like normal C++.</p>
+</li>
+</ol>
+<p>The classic bug: storing a <code>UObject*</code> as a raw member without <code>UPROPERTY()</code>. The GC can't see the reference, collects the object during the next sweep, and your pointer dangles. The fix is always the same: mark it <code>UPROPERTY()</code>. For non-owning references that should <em>not</em> keep the object alive, use <code>TWeakObjectPtr&lt;T&gt;</code> and check <code>IsValid()</code> before dereferencing.</p>
+<pre><code class="language-cpp">UPROPERTY()                              // GC sees this; object stays alive
+UStaticMeshComponent* Mesh;
+
+TWeakObjectPtr&lt;AActor&gt; LastAttacker;     // does NOT keep it alive
+// ... later
+if (LastAttacker.IsValid()) { LastAttacker-&gt;TakeDamage(...); }
+</code></pre>
+<h3 id="logging-and-assertions">Logging and Assertions</h3>
+<pre><code class="language-cpp">UE_LOG(LogTemp, Warning, TEXT(&quot;Health is now %f for %s&quot;), Health, *GetName());
+// *GetName() — the leading * converts FString to const TCHAR* for %s
+
+check(Mesh != nullptr);        // hard assert; crashes in all builds if false
+ensure(Health &gt;= 0.f);         // soft assert; logs + continues, once per call site
+</code></pre>
+<p>Define your own log categories (<code>DECLARE_LOG_CATEGORY_EXTERN</code>) instead of spamming <code>LogTemp</code>. <code>check</code> vs <code>ensure</code> matters: <code>check</code> halts execution (use for invariants that mean the program is broken), <code>ensure</code> reports but continues (use for "shouldn't happen but recoverable").</p>
+<hr>
+<h2 id="7-blueprint-c-interop">7. Blueprint ↔ C++ Interop</h2>
+<p>The power of Unreal's architecture is the seam between C++ and Blueprint. The standard professional pattern — <strong>C++ base class, Blueprint derived class</strong> — depends entirely on exposing the right things across this seam. Here are the tools.</p>
+<h3 id="exposing-c-to-blueprint">Exposing C++ to Blueprint</h3>
+<pre><code class="language-cpp">// A value a designer can tune in the Blueprint's Details panel.
+UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=&quot;Weapon&quot;)
+float FireRate = 0.1f;
+
+// A function a designer can call from a Blueprint graph.
+UFUNCTION(BlueprintCallable, Category=&quot;Weapon&quot;)
+void Reload();
+
+// A pure getter (no exec pins, like a const accessor) shown in BP.
+UFUNCTION(BlueprintPure, Category=&quot;Weapon&quot;)
+float GetAmmoFraction() const;
+</code></pre>
+<h3 id="calling-blueprint-from-c-two-directions">Calling Blueprint from C++ — Two Directions</h3>
+<pre><code class="language-cpp">// 1. BlueprintImplementableEvent: declared in C++, IMPLEMENTED in Blueprint.
+//    C++ calls it; the body is a BP graph. No C++ body exists.
+UFUNCTION(BlueprintImplementableEvent, Category=&quot;FX&quot;)
+void OnFired();   // designer wires muzzle flash + sound in the BP
+
+// 2. BlueprintNativeEvent: a C++ default that Blueprint CAN override.
+UFUNCTION(BlueprintNativeEvent, Category=&quot;Combat&quot;)
+void OnDamaged(float Amount);
+void OnDamaged_Implementation(float Amount);  // the C++ default; note the suffix
+</code></pre>
+<p><code>BlueprintImplementableEvent</code> is "C++ defines the hook, designer fills it in" — perfect for visual/audio polish that has no sensible C++ default. <code>BlueprintNativeEvent</code> is "C++ has a default behavior, designer may override it" — note the mandatory <code>_Implementation</code> suffix on the C++ body.</p>
+<h3 id="the-professional-split-concretely">The Professional Split, Concretely</h3>
+<pre><code class="language-text">AWeapon  (C++)                     BP_PlasmaRifle  (Blueprint, subclass of AWeapon)
+├── FireRate, Damage, Ammo         ├── FireRate = 0.05  (set in Details)
+│     (UPROPERTY EditAnywhere)     ├── Mesh = SK_PlasmaRifle  (assigned asset)
+├── Fire()  — hit math, recoil,    ├── OnFired event → spawn Niagara muzzle FX,
+│     replication (BlueprintCallable)│     play sound, camera shake
+└── OnFired()  — BlueprintImplementableEvent (empty in C++)
+</code></pre>
+<p>The C++ class owns <em>correctness and performance</em> (hit registration, damage, network replication). The Blueprint subclass owns <em>content and feel</em> (which mesh, which sound, how the muzzle flash looks, the exact fire rate). A designer iterates on the Blueprint all day without ever recompiling C++, and the C++ programmer changes hit math without touching art. This division of labor is the entire point of Unreal's two-language design.</p>
+<h3 id="tsubclassof-letting-designers-pick-classes"><code>TSubclassOf</code> — Letting Designers Pick Classes</h3>
+<pre><code class="language-cpp">// Designer picks WHICH projectile Blueprint to spawn, from a dropdown
+// filtered to AProjectile subclasses.
+UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=&quot;Weapon&quot;)
+TSubclassOf&lt;AProjectile&gt; ProjectileClass;
+</code></pre>
+<p>This is how data-driven design works in Unreal: C++ says "I will spawn <em>a</em> projectile," and the Blueprint says <em>which</em> projectile, chosen from a type-safe dropdown.</p>
+<hr>
+<h2 id="8-the-reflection-system-memory">8. The Reflection System &amp; Memory</h2>
+<p>Everything distinctive about Unreal flows from one system: <strong>reflection</strong>, the engine's ability to know the structure of your types at runtime. This chapter is the keystone — once you see how reflection underlies GC, serialization, the editor, networking, and Blueprint, the rest of the engine stops feeling like magic.</p>
+<h3 id="what-reflection-is-and-how-its-built">What Reflection Is and How It's Built</h3>
+<p>Reflection is runtime metadata: a description of every <code>UCLASS</code>, its <code>UPROPERTY</code> fields (names, types, flags), and its <code>UFUNCTION</code>s. C++ has no native reflection, so Unreal generates it with a build step.</p>
+<pre><code class="language-text">Your .h files with UCLASS/UPROPERTY/UFUNCTION macros
+        │
+        ▼
+UnrealHeaderTool (UHT)  ── parses your headers BEFORE the C++ compiler runs
+        │
+        ▼
+Generated .gen.cpp / .generated.h  ── tables describing your types
+        │
+        ▼
+C++ compiler + linker  ── compiles your code AND the generated reflection tables
+        │
+        ▼
+At runtime: UClass objects describe every type; the engine queries them
+</code></pre>
+<p>The macros (<code>UCLASS</code>, etc.) are <em>markers</em> UHT scans for. They expand to nearly nothing for the compiler; their real job is to tell UHT "generate reflection data for this." This is why the <code>#include "MyClass.generated.h"</code> must be last and why forgetting <code>GENERATED_BODY()</code> breaks the build — they're hooks into generated code.</p>
+<h3 id="the-five-systems-reflection-powers">The Five Systems Reflection Powers</h3>
+<ol>
+<li><strong>Garbage collection.</strong> The GC walks <code>UPROPERTY</code> references to determine reachability. It can only see object pointers you've marked. (Hence the cardinal rule from Chapter 6.)</li>
+<li><strong>Serialization.</strong> Saving a level, a save game, or a <code>.uasset</code> means walking reflected properties and writing them out. <code>UPROPERTY</code> fields persist; un-reflected fields don't.</li>
+<li><strong>The editor.</strong> The Details panel is generated entirely from reflection — every row is a <code>UPROPERTY</code>, with the widget chosen by its type and the editability set by its specifiers.</li>
+<li><strong>Blueprint.</strong> Blueprint can only see and call what reflection exposes (<code>BlueprintReadWrite</code>, <code>BlueprintCallable</code>). The Blueprint VM dispatches through reflection tables.</li>
+<li><strong>Networking.</strong> Replication (Chapter 16) walks reflected properties marked <code>Replicated</code> and sends the changed ones. RPCs are reflected <code>UFUNCTION</code>s.</li>
+</ol>
+<p>One mechanism, five payoffs. This is why the macros are non-negotiable: opting out of reflection opts out of being a first-class engine citizen.</p>
+<h3 id="garbage-collection-in-depth">Garbage Collection in Depth</h3>
+<p>Unreal's GC is a <strong>mark-and-sweep</strong> collector that runs periodically (default ~every 60s, plus on demand under memory pressure). It works in two phases:</p>
+<ol>
+<li><strong>Mark:</strong> starting from a set of roots (objects added to the "root set," plus the reachability graph from them), it walks all <code>UPROPERTY</code> object references and marks everything reachable.</li>
+<li><strong>Sweep:</strong> anything unmarked is unreachable — it gets destroyed (<code>BeginDestroy</code>) and its memory reclaimed.</li>
+</ol>
+<p>Implications:</p>
+<ul>
+<li><strong><code>Destroy()</code> is not immediate free.</strong> <code>Actor-&gt;Destroy()</code> removes it from the world and unhooks it, but the memory is reclaimed at the next GC pass. Don't assume the destructor ran synchronously.</li>
+<li><strong>To keep a UObject alive that nothing else references</strong>, add it to the root set (<code>AddToRoot()</code>) or hold a <code>UPROPERTY</code> reference. Forget, and it vanishes at the next sweep.</li>
+<li><strong>To reference without keeping alive</strong>, use <code>TWeakObjectPtr</code> and check <code>IsValid()</code>. This is the right tool for "the last actor that hit me" — you don't want to keep a corpse in memory just because something pointed at it.</li>
+</ul>
+<pre><code class="language-cpp">UPROPERTY()
+TArray&lt;AEnemy*&gt; ActiveEnemies;   // GC sees every element; all stay alive
+
+TWeakObjectPtr&lt;APawn&gt; Target;    // tracked but not kept alive
+if (APawn* T = Target.Get())     // safe deref pattern
+{
+    T-&gt;Jump();
+}
+</code></pre>
+<p><code>TObjectPtr&lt;T&gt;</code> is the modern (UE5) replacement for raw <code>UPROPERTY</code> pointers — it behaves like a raw pointer at runtime but enables access tracking and lazy loading in the editor. New code should prefer <code>TObjectPtr&lt;UStaticMeshComponent&gt;</code> over <code>UStaticMeshComponent*</code> for <code>UPROPERTY</code> members.</p>
+<h3 id="soft-vs-hard-references-the-memory-budget-lever">Soft vs Hard References — The Memory Budget Lever</h3>
+<ul>
+<li><strong>Hard reference</strong> (<code>TObjectPtr&lt;T&gt;</code>, direct BP reference): loading the owner loads the target. Eager.</li>
+<li><strong>Soft reference</strong> (<code>TSoftObjectPtr&lt;T&gt;</code>, <code>TSoftClassPtr&lt;T&gt;</code>): stores a <em>path</em>, not a loaded object. The target loads only when you explicitly request it. Lazy.</li>
+</ul>
+<p>For a boss that appears once, a hard reference from your level Blueprint keeps the boss's mesh, textures, and sounds in memory the entire game. A soft reference loads them only when you spawn the boss. On memory-constrained platforms, soft references and async loading are the difference between fitting in budget and crashing.</p>
+<hr>
+<h2 id="9-rendering-nanite-lumen-and-the-frame">9. Rendering — Nanite, Lumen, and the Frame</h2>
+<p>UE5's rendering is the engine's headline. Two systems — <strong>Nanite</strong> (geometry) and <strong>Lumen</strong> (lighting) — change the content workflow fundamentally, and a third, <strong>Virtual Shadow Maps</strong>, ties them together. To use them well you need to know what each one <em>is</em> and what it costs.</p>
+<h3 id="the-frame-in-brief">The Frame, in Brief</h3>
+<p>Unreal is a <strong>deferred renderer</strong> by default (with a forward path for VR/mobile). Deferred rendering means:</p>
+<ol>
+<li><strong>G-Buffer pass:</strong> render scene geometry once, writing surface data (albedo, normal, roughness, metallic, depth) into multiple full-screen buffers — not final color.</li>
+<li><strong>Lighting pass:</strong> for each light, read the G-Buffer and accumulate lighting. Decoupling geometry from lighting is what makes many dynamic lights affordable.</li>
+<li><strong>Translucency, post-processing, tonemapping:</strong> transparent surfaces (which deferred can't handle in the G-Buffer) are drawn forward; then bloom, depth of field, color grading, and the final tonemap.</li>
+</ol>
+<p>Knowing it's deferred explains the costs you'll meet: many dynamic lights are cheap (deferred's strength), but transparency is expensive and overdraw-prone (deferred's weakness), and the G-Buffer eats memory bandwidth at high resolution.</p>
+<h3 id="nanite-virtualized-geometry">Nanite — Virtualized Geometry</h3>
+<p>Nanite is a <strong>virtualized micropolygon geometry system</strong>. The pitch: import film-quality meshes (millions of triangles) and Nanite streams and renders only the visible, screen-relevant detail — roughly a pixel-sized triangle budget regardless of source density. It replaces manual LOD authoring for static meshes.</p>
+<p>How it changes the workflow:</p>
+<ul>
+<li><strong>No hand-authored LODs</strong> for Nanite meshes — Nanite computes detail continuously.</li>
+<li><strong>Polycount stops being the primary budget</strong> for opaque static geometry; Nanite's cost scales with screen pixels and instances, not source triangles.</li>
+<li>It works via a custom rasterizer and a per-cluster culling scheme; the GPU does fine-grained visibility on clusters of triangles.</li>
+</ul>
+<p>Limits to know (they shift each version, but the shape holds): Nanite historically excelled at <strong>opaque and masked static meshes</strong>, with skeletal/deforming mesh and translucency support arriving and maturing over UE5.x releases. It has fixed overhead, so it's not automatically a win for simple scenes, and very small/instanced foliage has its own considerations. <strong>Check the version's docs</strong> rather than assuming — this is the fastest-moving part of the engine.</p>
+<h3 id="lumen-dynamic-global-illumination">Lumen — Dynamic Global Illumination</h3>
+<p>Lumen is <strong>real-time global illumination and reflections</strong>. GI means indirect light — light that bounces off surfaces and illuminates other surfaces (the soft fill light in a room lit by one window). Before Lumen, GI meant <strong>baking</strong>: precomputing static lighting into lightmaps, which forbade moving lights or geometry. Lumen does it dynamically, so you can move the sun, open a door and watch light spill in, and destroy walls, all with correct bounce lighting.</p>
+<p>The tradeoff is cost and a quality/performance dial:</p>
+<ul>
+<li>Lumen uses a <strong>software ray-tracing</strong> path (via signed distance fields and a surface cache) that runs broadly, and a <strong>hardware ray-tracing</strong> path (via RT cores) for higher fidelity.</li>
+<li>It targets real-time framerates by being approximate — it's not path-traced ground truth, and it has resolution/noise characteristics you tune.</li>
+<li>It is the single biggest GPU cost in a typical UE5 scene. On lower-end or high-framerate targets, teams scale it down or fall back to baked lighting.</li>
+</ul>
+<p><strong>The baked-vs-Lumen decision</strong> is a real architectural choice: baked lighting is nearly free at runtime but static and requires lightmap UVs and bake times; Lumen is dynamic and workflow-friendly but expensive. Mobile and many competitive/high-FPS titles still bake.</p>
+<h3 id="virtual-shadow-maps-vsm">Virtual Shadow Maps (VSM)</h3>
+<p>VSM is the shadowing system designed to pair with Nanite and Lumen. It provides high-resolution, consistent shadows across a huge depth range by virtualizing the shadow map (allocating shadow resolution only where needed, like Nanite does for geometry). It's what makes Nanite's fine detail cast believable shadows. It also has a cost and caching behavior worth profiling.</p>
+<h3 id="materials-lighting-and-post-in-one-picture">Materials, Lighting, and Post in One Picture</h3>
+<pre><code class="language-text">Meshes (Nanite or traditional) ─┐
+Lights (dynamic) ───────────────┤
+Materials (shaders) ────────────┼──► G-Buffer ──► Lumen GI + direct lighting
+Sky / Environment ──────────────┘                    │
+                                                      ▼
+                            Translucency (forward) → Post-process stack →
+                            (Bloom, DOF, Exposure, Color Grade, Tonemap) → Final image
+</code></pre>
+<h3 id="the-console-commands-youll-actually-use">The Console Commands You'll Actually Use</h3>
+<pre><code class="language-text">stat fps          # framerate
+stat unit         # frame time broken into Game / Draw / GPU / RHIT — the first triage
+stat gpu          # GPU cost by pass (BasePass, Lumen, Shadows, ...)
+r.Lumen.* / r.Nanite.*   # the cvars that scale these systems
+showflag.* / viewmode    # visualize buffers (Lit, Unlit, Lighting Only, Overdraw, ...)
+</code></pre>
+<p><code>stat unit</code> is the rendering triage tool: if <strong>Game</strong> is high you're CPU/gameplay-bound (look at Tick, Chapter 18); if <strong>Draw</strong> is high you have too many draw calls (batching, instancing); if <strong>GPU</strong> is high it's the renderer (Lumen, resolution, overdraw). Never optimize before <code>stat unit</code> tells you which one.</p>
+<hr>
+<h2 id="10-materials">10. Materials</h2>
+<p>A material in Unreal is a <strong>shader authored as a node graph</strong>. The Material Editor is a visual front-end that compiles to HLSL shader code. Understanding the model — not just the nodes — lets you reason about cost and reuse.</p>
+<h3 id="the-material-graph-and-the-output-node">The Material Graph and the Output Node</h3>
+<p>Every material feeds a final node whose inputs are the <strong>PBR (physically based rendering) surface properties</strong>:</p>
+<ul>
+<li><strong>Base Color</strong> — the albedo (the surface's color with no lighting).</li>
+<li><strong>Metallic</strong> — 0 for non-metals (dielectrics), 1 for metals. Mostly binary in reality.</li>
+<li><strong>Roughness</strong> — 0 = mirror-smooth, 1 = fully diffuse. The most expressive channel for "what is this surface."</li>
+<li><strong>Normal</strong> — a normal map perturbing surface direction for fine detail without geometry.</li>
+<li><strong>Emissive</strong> — light the surface emits (glowing screens, neon).</li>
+<li><strong>Specular</strong>, <strong>Ambient Occlusion</strong>, <strong>Opacity</strong> (for translucent/masked), and others.</li>
+</ul>
+<p>You build expressions feeding these inputs from textures, math nodes, and parameters. The same PBR inputs map directly onto the deferred G-Buffer from Chapter 9 — base color, normal, roughness, and metallic <em>are</em> what the G-Buffer stores.</p>
+<h3 id="shading-models-and-blend-modes-the-two-big-switches">Shading Models and Blend Modes — The Two Big Switches</h3>
+<p>Two material settings dominate cost and behavior:</p>
+<ul>
+<li><strong>Blend Mode:</strong> <strong>Opaque</strong> (writes depth, cheapest, deferred), <strong>Masked</strong> (opaque with a binary alpha cutout — foliage, chain-link, still deferred but with an alpha test), <strong>Translucent</strong> (real transparency — glass, water — rendered forward, expensive, depth-sorting issues, no deferred lighting niceties). Choosing Translucent when Masked would do is a common, costly mistake.</li>
+<li><strong>Shading Model:</strong> Default Lit (standard PBR), Unlit (pure emissive, no lighting — UI, effects), Subsurface (skin, wax, foliage with light bleed), Clear Coat (car paint), and others. Each enables different inputs and costs.</li>
+</ul>
+<h3 id="material-instances-the-reuse-pattern">Material Instances — The Reuse Pattern</h3>
+<p>This is the single most important material concept for performance and workflow. A <strong>Material</strong> with <strong>Parameters</strong> (a <code>ScalarParameter</code> for roughness, a <code>VectorParameter</code> for color, a <code>TextureParameter</code> for the albedo map) becomes a <em>template</em>. A <strong>Material Instance</strong> overrides those parameters without recompiling the shader.</p>
+<pre><code class="language-text">M_Metal  (the parent — compiled shader with parameters: Color, Roughness, Metallic)
+├── MI_Gold      (instance: Color=gold, Roughness=0.2)
+├── MI_RustyIron (instance: Color=brown, Roughness=0.8, + rust mask texture)
+└── MI_Chrome    (instance: Color=white, Roughness=0.05)
+</code></pre>
+<p>Why it matters: <strong>changing a Material Instance's parameter is nearly free</strong> (no shader recompile), and instances can be changed at <strong>runtime</strong> via a <code>Dynamic Material Instance</code> (<code>CreateDynamicMaterialInstance</code> → <code>SetScalarParameterValue</code>) — that's how you make a health bar fill, a surface glow on hit, or a character flash red. Authoring 30 unique materials instead of one parameterized material with 30 instances multiplies shader compile time and breaks batching.</p>
+<pre><code class="language-cpp">// Runtime parameter change: flash the mesh red on damage.
+UMaterialInstanceDynamic* MID =
+    Mesh-&gt;CreateAndSetMaterialInstanceDynamic(0);
+MID-&gt;SetVectorParameterValue(TEXT(&quot;EmissiveTint&quot;), FLinearColor::Red);
+</code></pre>
+<h3 id="material-cost-what-to-watch">Material Cost — What to Watch</h3>
+<p>Shader cost is roughly the instruction count and texture-sample count, multiplied by how many pixels the material covers (and overdraw for translucency). The <code>Stats</code> panel in the Material Editor shows the instruction count. Translucent overdraw (many transparent layers stacking on the same pixels) is a frequent GPU killer — the <code>Shader Complexity</code> view mode visualizes it (green = cheap, red = expensive).</p>
+<hr>
+<h2 id="11-animation">11. Animation</h2>
+<p>Unreal's animation system is deep; this chapter builds the spine: how a skeleton drives a mesh, how an Animation Blueprint chooses and blends poses, and the constructs (state machines, blend spaces, montages) you'll use daily.</p>
+<h3 id="the-data-model">The Data Model</h3>
+<pre><code class="language-text">Skeleton (the bone hierarchy + reference pose)  ── shared across compatible meshes
+   │
+Skeletal Mesh (the rendered geometry, skinned to the skeleton)
+   │
+Animation Sequences (clips: walk, run, jump) ── authored against the Skeleton
+   │
+Animation Blueprint (the per-frame logic that picks/blends poses → final pose)
+</code></pre>
+<p>The crucial decoupling: <strong>animations target a Skeleton, not a specific mesh.</strong> Any skeletal mesh sharing that skeleton can play the same animations — so a roster of characters with the same rig shares one animation library. This is why "retargeting" (Chapter end) exists for <em>different</em> skeletons.</p>
+<h3 id="the-animation-blueprint-two-graphs">The Animation Blueprint — Two Graphs</h3>
+<p>An Animation Blueprint (AnimBP) has two cooperating graphs:</p>
+<ol>
+<li><strong>Event Graph (the "think" side):</strong> runs game-thread logic to compute variables — speed, direction, is-falling, is-aiming. Typically a <code>BlueprintUpdateAnimation</code> (or the threaded <code>BlueprintThreadSafeUpdateAnimation</code>) reads the owning Pawn's state into AnimBP variables every frame.</li>
+<li><strong>AnimGraph (the "pose" side):</strong> a node graph that <em>produces a pose</em>. It reads the variables from the event graph and flows poses through state machines, blend nodes, and modifiers into the final <code>Output Pose</code>.</li>
+</ol>
+<p>The separation mirrors the rest of the engine: gather data, then transform it into output.</p>
+<h3 id="state-machines">State Machines</h3>
+<p>The AnimGraph's backbone for locomotion. States are poses or sub-graphs (Idle, Walk, Run, Jump, Fall); transitions are rules (booleans/conditions) that move between them with blend times.</p>
+<pre><code class="language-text">        [Idle/Walk/Run] ── Speed → 0 ───► (stays)
+              │  Jump pressed
+              ▼
+           [Jump Start] ──auto──► [In Air] ──IsFalling=false──► [Land] ──► [Idle/Walk/Run]
+</code></pre>
+<p>Transition rules read the AnimBP variables ("Speed &gt; 0", "IsInAir"). Blend times on transitions prevent pops. A single "Locomotion" state often contains a <strong>Blend Space</strong> rather than discrete walk/run states.</p>
+<h3 id="blend-spaces">Blend Spaces</h3>
+<p>A Blend Space maps <strong>continuous input(s) to a blended pose</strong>. A 1D blend space blends idle→walk→run along a Speed axis; a 2D blend space blends by Speed <em>and</em> Direction so a character leans into strafes. You place sample animations at coordinates and the engine interpolates between the nearest samples. This is how smooth, analog locomotion replaces hard state switches.</p>
+<h3 id="montages-playing-one-shots-over-locomotion">Montages — Playing One-Shots Over Locomotion</h3>
+<p>Animation Montages play <em>authored, interruptible sequences</em> on top of the state machine — an attack swing, a reload, a hit reaction. They support:</p>
+<ul>
+<li><strong>Sections</strong> (named segments you can jump between — combo chains).</li>
+<li><strong>Notifies</strong> — events fired at specific frames: "play footstep sound here," "enable weapon collision now," "spawn this effect." Notifies are how animation drives gameplay timing (the sword only damages during the swing's active frames).</li>
+<li><strong>Slots</strong> — the AnimGraph has a <code>Slot</code> node where montages inject their pose, blending over the base locomotion (upper body reloads while legs keep running).</li>
+</ul>
+<pre><code class="language-cpp">// Play an attack montage from C++; bind to its end.
+float Duration = AnimInstance-&gt;Montage_Play(AttackMontage);
+FOnMontageEnded EndDelegate;
+EndDelegate.BindUObject(this, &amp;AHero::OnAttackEnded);
+AnimInstance-&gt;Montage_SetEndDelegate(EndDelegate, AttackMontage);
+</code></pre>
+<h3 id="beyond-the-basics">Beyond the Basics</h3>
+<ul>
+<li><strong>Control Rig</strong> — in-engine procedural rigging and animation (IK, foot placement on uneven ground, procedural tails) driven by a graph; increasingly the home for runtime adjustments.</li>
+<li><strong>IK (Inverse Kinematics)</strong> — foot IK keeps feet on slopes/stairs; hand IK aligns hands to weapons. UE5's <strong>IK Rig</strong> and <strong>IK Retargeter</strong> standardize this and handle retargeting animations between different skeletons.</li>
+<li><strong>Layered blending / additive animations</strong> — aim offsets (looking up/down) layered additively over locomotion.</li>
+</ul>
+<hr>
+<h2 id="12-physics-collision">12. Physics &amp; Collision</h2>
+<p>Unreal's physics runs on <strong>Chaos</strong>, Epic's in-house physics engine (which replaced PhysX in UE5). You'll interact with it through collision settings far more than through raw simulation, so the collision model is the priority.</p>
+<h3 id="collision-is-channel-based">Collision Is Channel-Based</h3>
+<p>Every collidable component has a <strong>Collision Response</strong> configuration answering, for each <strong>channel</strong>, "do I Ignore, Overlap, or Block it?"</p>
+<ul>
+<li><strong>Object Type</strong> — what this component <em>is</em> (WorldStatic, WorldDynamic, Pawn, PhysicsBody, Vehicle, or custom channels you define).</li>
+<li><strong>Response to each channel</strong> — Ignore / Overlap / Block.</li>
+</ul>
+<p>The interaction between two objects is the <em>intersection</em> of their responses: a hit/overlap occurs based on what <em>both</em> say. Two objects <strong>Block</strong> each other → a physical collision (and a <code>Hit</code> event). One <strong>Overlaps</strong> → they pass through but fire <strong>Overlap</strong> events (triggers, pickups). Either <strong>Ignores</strong> → nothing.</p>
+<pre><code class="language-text">Trigger Volume:  Object Type = WorldStatic,  Response to Pawn = Overlap
+Player Capsule:  Object Type = Pawn,         Response to WorldStatic = Block
+                 → but trigger says Overlap, so net result = OVERLAP
+                 → OnComponentBeginOverlap fires; player walks through
+</code></pre>
+<p><strong>Collision Presets</strong> (BlockAll, OverlapAllDynamic, Pawn, Trigger, etc.) are named bundles of these responses — use them instead of hand-setting every channel. Custom channels (Project Settings → Collision) let you express game-specific interactions ("Bullets block walls and enemies but ignore other bullets").</p>
+<h3 id="the-two-event-types">The Two Event Types</h3>
+<pre><code class="language-cpp">// Overlap: things passing through trigger this (pickups, zones).
+MyTrigger-&gt;OnComponentBeginOverlap.AddDynamic(this, &amp;AMyActor::OnOverlap);
+
+void AMyActor::OnOverlap(UPrimitiveComponent* Overlapped, AActor* Other,
+    UPrimitiveComponent* OtherComp, int32 BodyIndex, bool bFromSweep,
+    const FHitResult&amp; Sweep) { /* ... */ }
+
+// Hit: blocking collisions trigger this (impacts, landing).
+MyMesh-&gt;OnComponentHit.AddDynamic(this, &amp;AMyActor::OnHit);
+</code></pre>
+<p><code>OnComponentBeginOverlap</code>/<code>EndOverlap</code> need "Generate Overlap Events" enabled. <code>OnHit</code> needs "Simulation Generates Hit Events" and a blocking response. Forgetting these flags is the #1 reason "my collision callback doesn't fire."</p>
+<h3 id="traces-raycasts-the-workhorse-of-gameplay">Traces (Raycasts) — The Workhorse of Gameplay</h3>
+<p>Most "did the gun hit something" / "is there ground below" / "what am I looking at" logic uses <strong>traces</strong>, not simulated physics:</p>
+<pre><code class="language-cpp">FHitResult Hit;
+FVector Start = Muzzle-&gt;GetComponentLocation();
+FVector End   = Start + (AimDirection * 10000.f);
+FCollisionQueryParams Params;
+Params.AddIgnoredActor(this);   // don't shoot yourself
+
+bool bHit = GetWorld()-&gt;LineTraceSingleByChannel(
+    Hit, Start, End, ECC_Visibility, Params);
+
+if (bHit)
+{
+    AActor* HitActor = Hit.GetActor();
+    FVector ImpactPoint = Hit.ImpactPoint;
+    FVector ImpactNormal = Hit.ImpactNormal;   // for decals/effects
+    // apply damage, spawn impact FX...
+}
+</code></pre>
+<p>Variants: <code>LineTraceSingle/Multi</code> (by channel or object type), <code>SweepSingle</code> (a shape swept along a path — for "can this capsule fit"), and the <code>...ByObjectType</code> family. Traces are cheap and deterministic, which is why hitscan weapons, line-of-sight checks, and ground detection all use them rather than spawning physics bodies.</p>
+<h3 id="simulated-physics">Simulated Physics</h3>
+<p>For objects that should tumble, fall, and respond to forces, enable <strong>Simulate Physics</strong> on a primitive component. It then has mass, responds to gravity and impulses (<code>AddImpulse</code>, <code>AddForce</code>), and resolves collisions with other physics bodies. Specialized systems build on Chaos: <strong>physics constraints</strong> (joints/hinges/ragdolls), <strong>Chaos Vehicles</strong>, <strong>Chaos Cloth</strong>, and <strong>Chaos Destruction</strong> (Geometry Collections fracturing into pieces). Simulated physics is more expensive than traces and is non-deterministic across machines — important for networking (Chapter 16), where you usually don't replicate raw physics but instead replicate results.</p>
+<h3 id="character-movement-is-not-raw-physics">Character Movement Is Not Raw Physics</h3>
+<p><code>UCharacterMovementComponent</code> (on every <code>Character</code>) does <strong>not</strong> use simulated rigid-body physics for walking. It's a custom, network-friendly kinematic mover that handles walking, stepping up stairs, slope limits, jumping, falling, swimming, and crouching — with built-in client prediction and server reconciliation for multiplayer. This is why you configure walk speed and jump height as properties rather than applying forces. Reach for simulated physics for ragdolls and props, not for the player's normal locomotion.</p>
+<hr>
+<h2 id="13-input">13. Input</h2>
+<p>Modern Unreal uses the <strong>Enhanced Input</strong> system (the default since UE5; the legacy "Action/Axis Mappings" are deprecated). It's a data-driven, context-aware input layer that's worth learning correctly from the start.</p>
+<h3 id="the-three-concepts">The Three Concepts</h3>
+<ol>
+<li><strong>Input Action (IA)</strong> — an abstract intent: "Jump," "Move," "Fire." It has a value type (boolean, 1D axis, 2D axis like a stick/WASD vector, 3D). Gameplay code binds to the <em>Action</em>, not to a key — so it never cares whether Jump came from spacebar or a gamepad button.</li>
+<li><strong>Input Mapping Context (IMC)</strong> — a set of bindings from physical inputs (keys, buttons, axes) to Actions, with <strong>Modifiers</strong> and <strong>Triggers</strong>. You can push/pop multiple contexts with priorities — a "driving" context overrides the "on-foot" context when you enter a vehicle, then pops when you exit.</li>
+<li><strong>Modifiers and Triggers</strong> — Modifiers transform raw input (negate, swizzle XY→YX, dead zone, scale); Triggers decide <em>when</em> an Action fires (Pressed, Released, Hold for 0.5s, Tap, Pulse). "Hold E to revive" is a Hold trigger, no timer code needed.</li>
+</ol>
+<pre><code class="language-text">Spacebar ─┐
+Gamepad A ─┼──[IMC_OnFoot]──► IA_Jump (bool) ──► bound C++/BP handler → Character-&gt;Jump()
+          │
+W/A/S/D ──┴──[IMC_OnFoot]──► IA_Move (Vector2D, with negate/swizzle modifiers)
+</code></pre>
+<h3 id="wiring-it-up-in-c">Wiring It Up in C++</h3>
+<pre><code class="language-cpp">void AHero::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+{
+    // Add the mapping context (usually in BeginPlay via the local player subsystem).
+    if (APlayerController* PC = Cast&lt;APlayerController&gt;(Controller))
+    {
+        auto* Subsys = ULocalPlayer::GetSubsystem&lt;UEnhancedInputLocalPlayerSubsystem&gt;(
+            PC-&gt;GetLocalPlayer());
+        Subsys-&gt;AddMappingContext(OnFootContext, /*Priority=*/0);
+    }
+
+    auto* EIC = CastChecked&lt;UEnhancedInputComponent&gt;(PlayerInputComponent);
+    EIC-&gt;BindAction(JumpAction, ETriggerEvent::Started,   this, &amp;AHero::OnJump);
+    EIC-&gt;BindAction(MoveAction, ETriggerEvent::Triggered, this, &amp;AHero::OnMove);
+}
+
+void AHero::OnMove(const FInputActionValue&amp; Value)
+{
+    const FVector2D Axis = Value.Get&lt;FVector2D&gt;();   // typed by the IA's value type
+    AddMovementInput(GetActorForwardVector(), Axis.Y);
+    AddMovementInput(GetActorRightVector(),   Axis.X);
+}
+</code></pre>
+<p><code>IA_*</code> and <code>IMC_*</code> assets are created in the editor and assigned to the C++ class as <code>UPROPERTY</code> references — the classic data-driven split: C++ binds the <em>Action</em>, designers configure <em>which keys</em> in the IMC.</p>
+<hr>
+<h2 id="14-ui-umg-slate">14. UI — UMG &amp; Slate</h2>
+<p>Unreal has two UI layers. <strong>Slate</strong> is the C++ framework the entire editor is built in — verbose, powerful, code-only. <strong>UMG (Unreal Motion Graphics)</strong> is the designer-facing layer built on Slate: you compose widgets visually in the <strong>Widget Blueprint</strong> editor. For game UI, you use UMG; you drop to Slate only for editor tooling or extreme cases.</p>
+<h3 id="the-umg-model">The UMG Model</h3>
+<p>A <strong>Widget Blueprint</strong> (a <code>UUserWidget</code> subclass) has two parts, mirroring the AnimBP split:</p>
+<ul>
+<li><strong>Designer view</strong> — a visual canvas where you place widgets (Text, Button, Image, ProgressBar, etc.) into a layout hierarchy.</li>
+<li><strong>Graph view</strong> — a Blueprint (or C++) graph for behavior: button click handlers, binding values, animations.</li>
+</ul>
+<pre><code class="language-text">UUserWidget (your HUD)
+├── CanvasPanel (free positioning) / Overlay / Horizontal/VerticalBox (auto-layout)
+│   ├── ProgressBar  &quot;HealthBar&quot;   (bound to Health/MaxHealth)
+│   ├── TextBlock    &quot;AmmoText&quot;    (bound to a function returning ammo string)
+│   └── Button       &quot;PauseButton&quot; (OnClicked → open pause menu)
+</code></pre>
+<h3 id="layout-slots-and-containers">Layout — Slots and Containers</h3>
+<p>Layout is hierarchical: each child sits in a <strong>Slot</strong> whose type depends on the parent panel. A <code>CanvasPanel</code> slot has anchors and absolute positions (for HUDs pinned to screen corners); a <code>HorizontalBox</code> slot has fill/size rules (for auto-arranged rows). <strong>Anchors</strong> are the key to resolution independence — anchoring a health bar to the bottom-left corner keeps it there on any screen size. Mixing up "I want this pinned to a corner" (CanvasPanel + anchor) with "I want these laid out in a row" (HorizontalBox) is the usual beginner layout confusion.</p>
+<h3 id="getting-data-into-the-ui-three-ways">Getting Data Into the UI — Three Ways</h3>
+<ol>
+<li><strong>Property Binding</strong> (a function the widget polls every frame) — easy but runs every frame; fine for a few values, wasteful at scale.</li>
+<li><strong>Event-driven updates</strong> (the right default) — the game broadcasts a delegate ("HealthChanged") and the widget updates only then. No per-frame polling. This is the Chapter 5 Event Dispatcher pattern applied to UI.</li>
+<li><strong>MVVM (Model-View-ViewModel)</strong> — UE5's structured approach (the UMG ViewModel plugin): a ViewModel object holds UI state, the view binds to it, and changes propagate automatically. The scalable choice for complex UIs.</li>
+</ol>
+<pre><code class="language-cpp">// Create and show a HUD widget from the PlayerController.
+UUserWidget* HUD = CreateWidget&lt;UUserWidget&gt;(PlayerController, HUDWidgetClass);
+HUD-&gt;AddToViewport();
+
+// Event-driven update: subscribe to the character's delegate.
+MyCharacter-&gt;OnHealthChanged.AddDynamic(HUDWidget, &amp;UHUDWidget::UpdateHealth);
+</code></pre>
+<h3 id="performance-notes">Performance Notes</h3>
+<p>Per-frame property bindings and deep widget hierarchies are the usual UMG costs; <code>Invalidation Boxes</code> cache widgets that don't change often, and the <strong>Widget Reflector</strong> (an editor tool) inspects the live widget tree. Heavy 3D-in-UI (render targets, retainer boxes) is powerful but expensive.</p>
+<hr>
+<h2 id="15-audio">15. Audio</h2>
+<p>Modern Unreal audio centers on <strong>MetaSounds</strong>, a node-based audio system that is effectively "Blueprint for DSP" — you build the actual sound-generating signal graph, sample by sample, with full procedural control. Alongside it sits the <strong>submix</strong> mixing graph and <strong>attenuation/spatialization</strong> for 3D sound.</p>
+<h3 id="the-pieces">The Pieces</h3>
+<ul>
+<li><strong>Sound Wave</strong> — an imported audio file (the raw asset).</li>
+<li><strong>MetaSound Source</strong> — a procedural sound graph: oscillators, samplers, filters, envelopes, randomization, and inputs you can drive from gameplay (pitch by speed, filter by health). It replaces the older Sound Cue for new work, offering true synthesis and per-instance parameter control.</li>
+<li><strong>Attenuation Settings</strong> — how a sound fades with distance, its spatialization (stereo→3D positioning, occlusion, falloff curves). This is what makes a sound feel located in the world.</li>
+<li><strong>Submixes</strong> — a routing/mixing graph. Sounds route into submixes (SFX, Music, Voice, Master), where you apply effects (reverb, EQ, compression) and control group volume — exactly how a mixing console's buses work. The classic use: a "duck music when dialogue plays" sidechain on the music submix.</li>
+<li><strong>Sound Classes / Mixes</strong> — categorize sounds and apply volume/effect passes (the player's Music/SFX/Voice sliders map to Sound Classes).</li>
+</ul>
+<pre><code class="language-text">MetaSound Source (footstep: sampler + random pitch + surface-type input)
+        │  played at a location with Attenuation
+        ▼
+   SFX Submix ──► Master Submix ──► output
+Music Source ──► Music Submix ─┘   (ducked when Voice Submix is active)
+</code></pre>
+<h3 id="playing-sound-from-code">Playing Sound From Code</h3>
+<pre><code class="language-cpp">// 2D / non-spatial (UI click, music):
+UGameplayStatics::PlaySound2D(this, ClickSound);
+
+// 3D / positional (fades with distance, uses attenuation):
+UGameplayStatics::PlaySoundAtLocation(this, ExplosionSound, ImpactLocation);
+
+// Attached, controllable instance (engine loop that follows a car, with live params):
+UAudioComponent* Engine = UGameplayStatics::SpawnSoundAttached(
+    EngineSound, CarMesh);
+Engine-&gt;SetFloatParameter(TEXT(&quot;RPM&quot;), CurrentRPM);  // drives the MetaSound graph
+</code></pre>
+<p>The <code>UAudioComponent</code> (a spawned, attached instance) is what you keep a handle to when a sound must follow an object and respond to gameplay (RPM, intensity) live — that's the MetaSound parameter system in action.</p>
+<hr>
+<h2 id="16-networking-replication">16. Networking &amp; Replication</h2>
+<p>Unreal has one of the most battle-tested multiplayer architectures in the industry, and it's also where the gameplay framework (Chapter 4) pays off. The model is <strong>server-authoritative client-server with a single shared codebase</strong> — the same C++/Blueprint runs as server or client, and <code>if (HasAuthority())</code> checks branch behavior.</p>
+<h3 id="the-authority-model">The Authority Model</h3>
+<pre><code class="language-text">                 ┌──────────── SERVER (authority) ────────────┐
+                 │  Owns truth: GameMode, real Actor state,    │
+                 │  hit registration, score. Replicates DOWN.  │
+                 └───────────────┬─────────────────────────────┘
+                      replication │ (state) + RPCs
+                 ┌────────────────┴───────────────┐
+            ┌────▼─────┐                      ┌────▼─────┐
+            │ Client A │  sends input/requests│ Client B │
+            │ (a copy) │  UP via Server RPCs  │ (a copy) │
+            └──────────┘                      └──────────┘
+</code></pre>
+<p>The cardinal rule: <strong>the server is authoritative.</strong> Clients never directly change important state; they <em>ask</em> the server (via a Server RPC), the server validates and applies it, then the new state <em>replicates</em> back down to all clients. This is the anti-cheat foundation — a hacked client can lie about its input, but it can't change the score, because the score lives on the server. The <code>GameMode</code> existing only on the server (Chapter 4) is this rule made structural.</p>
+<h3 id="roles-and-the-hasauthority-check">Roles and the <code>HasAuthority</code> Check</h3>
+<p>Every Actor has a role telling it where it "really" lives:</p>
+<ul>
+<li><strong><code>ROLE_Authority</code></strong> — the authoritative copy (on the server, or the actor's owning client for client-authoritative cases).</li>
+<li><strong><code>ROLE_SimulatedProxy</code></strong> — a replicated copy on a client, driven by data from the server (other players' characters you see).</li>
+<li><strong><code>ROLE_AutonomousProxy</code></strong> — the local player's own pawn on their client, which does prediction.</li>
+</ul>
+<pre><code class="language-cpp">if (HasAuthority())   // true on the server (and single-player)
+{
+    // Safe to change authoritative state here.
+    Health -= Damage;
+}
+</code></pre>
+<h3 id="property-replication">Property Replication</h3>
+<p>Mark a <code>UPROPERTY</code> as <code>Replicated</code> and the engine syncs it from server to clients automatically (built on reflection, Chapter 8). You declare which properties replicate in <code>GetLifetimeReplicatedProps</code>:</p>
+<pre><code class="language-cpp">UPROPERTY(ReplicatedUsing = OnRep_Health)   // calls OnRep_Health on clients when it changes
+float Health;
+
+UPROPERTY(Replicated)
+int32 Ammo;
+
+void AMyChar::GetLifetimeReplicatedProps(TArray&lt;FLifetimeProperty&gt;&amp; Out) const
+{
+    Super::GetLifetimeReplicatedProps(Out);
+    DOREPLIFETIME(AMyChar, Health);
+    DOREPLIFETIME(AMyChar, Ammo);
+}
+
+UFUNCTION()
+void AMyChar::OnRep_Health()   // runs on clients after Health replicates
+{
+    UpdateHealthBar();         // react to the change (e.g., update UI, play hit FX)
+}
+</code></pre>
+<p><code>ReplicatedUsing</code> (a <strong>RepNotify</strong>) is the key idiom: the server changes the value, it replicates, and each client runs <code>OnRep_*</code> to <em>react</em> (update the health bar, play a hit flash). Replication only flows <strong>server → client</strong>; properties are not auto-synced upward.</p>
+<h3 id="rpcs-remote-procedure-calls">RPCs — Remote Procedure Calls</h3>
+<p>Three flavors, set by <code>UFUNCTION</code> specifiers:</p>
+<pre><code class="language-cpp">// Client → Server: &quot;please do this for me&quot; (validated server-side).
+UFUNCTION(Server, Reliable, WithValidation)
+void Server_Fire(FVector_NetQuantize Target);
+
+// Server → owning client only.
+UFUNCTION(Client, Reliable)
+void Client_ShowHitMarker();
+
+// Server → ALL clients (explosions, sounds everyone should see).
+UFUNCTION(NetMulticast, Unreliable)
+void Multicast_PlayExplosionFX(FVector Location);
+</code></pre>
+<ul>
+<li><strong><code>Server</code></strong> RPCs are how clients request authoritative actions ("I fired"). Always <code>WithValidation</code> to reject cheats.</li>
+<li><strong><code>Client</code></strong> RPCs target the one owning client.</li>
+<li><strong><code>NetMulticast</code></strong> RPCs run on the server and all clients — for cosmetic events everyone needs (FX, sounds).</li>
+<li><strong><code>Reliable</code></strong> guarantees delivery (use sparingly — it can clog the channel); <strong><code>Unreliable</code></strong> is fire-and-forget (fine for frequent cosmetic events).</li>
+</ul>
+<h3 id="prediction-and-the-feel-of-multiplayer">Prediction and the Feel of Multiplayer</h3>
+<p>If every action waited for a server round-trip, movement would feel laggy. <code>UCharacterMovementComponent</code> solves this with <strong>client-side prediction</strong>: your client moves your character <em>immediately</em> and simultaneously sends the input to the server. The server simulates authoritatively and sends back the correct position; if the client predicted wrong (it diverged), it gets <strong>corrected</strong> (reconciled), causing the occasional rubber-band. Other players' characters are smoothed via <strong>interpolation</strong> between received updates. You get this for free with <code>Character</code>, which is a major reason to build on it.</p>
+<h3 id="what-to-replicate-the-bandwidth-discipline">What to Replicate — The Bandwidth Discipline</h3>
+<p>Replicate <strong>decisions and results, not raw streams.</strong> Don't replicate physics simulation tick-by-tick; replicate "the door is now open" and let each client animate it. Use <strong>relevancy</strong> (the server skips replicating actors a client can't see) and <strong>net update frequency</strong> to control cost. Bandwidth is the budget; reflection makes replication easy, but easy isn't free.</p>
+<hr>
+<h2 id="17-assets-cooking-packaging">17. Assets, Cooking &amp; Packaging</h2>
+<p>Shipping a game means turning the editor's <code>.uasset</code> files into a platform-optimized package. The pipeline has its own vocabulary.</p>
+<h3 id="how-assets-reference-each-other">How Assets Reference Each Other</h3>
+<p>Assets form a <strong>reference graph</strong>: a level references the meshes it places, each mesh references its materials, each material references its textures. The engine tracks this graph (the <strong>Asset Registry</strong>), which powers the <strong>Reference Viewer</strong> (right-click an asset → Reference Viewer) — indispensable for answering "why is this 200 MB asset in my build?" and "what breaks if I delete this?"</p>
+<p>This graph is also the memory story from Chapter 8: a hard reference pulls the whole subtree into memory together. The Size Map tool visualizes the memory footprint of an asset and everything it hard-references.</p>
+<h3 id="cooking">Cooking</h3>
+<p><strong>Cooking</strong> converts editor assets into runtime-ready, platform-specific formats:</p>
+<ul>
+<li>Textures are compressed to the platform's GPU format (BC on desktop, ASTC on mobile).</li>
+<li>Shaders are compiled for the target's graphics API.</li>
+<li>Editor-only data is stripped.</li>
+<li>Assets are serialized into an optimized form.</li>
+</ul>
+<p>Cooked content can't be opened in the editor — it's the runtime artifact. The <strong>Derived Data Cache (DDC)</strong> caches these expensive conversions (especially shader compilation) so they're not redone every cook; a shared network DDC dramatically speeds up a team's iteration.</p>
+<h3 id="packaging">Packaging</h3>
+<p>Packaging cooks the content, compiles your game's code for the target configuration, and assembles a runnable build. Build <strong>configurations</strong> matter:</p>
+<ul>
+<li><strong>Debug / DebugGame</strong> — full debug info, slow; for stepping through code.</li>
+<li><strong>Development</strong> — optimized but with logging, <code>stat</code> commands, and the console; your daily build.</li>
+<li><strong>Shipping</strong> — fully optimized, logging and debug commands stripped; what ships to players. <strong>Always test a Shipping build before release</strong> — <code>check</code>/<code>ensure</code> behavior, logging, and PIE-only assumptions (Chapter 2) differ.</li>
+</ul>
+<h3 id="pak-files-and-asset-loading-at-runtime">Pak Files and Asset Loading at Runtime</h3>
+<p>Cooked assets are bundled into <strong><code>.pak</code></strong> files (optionally compressed/encrypted). At runtime, the engine streams from them. For DLC, patches, and large games, <strong>chunking</strong> and <strong>Asset Manager</strong> (with <strong>Primary Asset Ids</strong> and <strong>Asset Bundles</strong>) let you load/unload content on demand and ship updates without re-downloading everything. This is where soft references (Chapter 8) pay off: a soft-referenced boss can live in its own chunk, downloaded only when reached.</p>
+<hr>
+<h2 id="18-performance-profiling">18. Performance &amp; Profiling</h2>
+<p>Performance work in Unreal follows one discipline: <strong>measure, find the bottleneck, fix that, re-measure.</strong> The engine gives you exceptional tools; the failure mode is optimizing by guesswork. Recall from Chapter 9 that the frame splits across Game (CPU gameplay), Draw (CPU render submission), and GPU.</p>
+<h3 id="the-triage-ladder">The Triage Ladder</h3>
+<pre><code class="language-text">1. stat unit           → which of Game / Draw / GPU is the bottleneck?
+2. stat fps            → confirm the framerate problem is real and reproducible
+3. Then, per culprit:
+     Game high  → stat game, Unreal Insights (CPU), look at Tick
+     Draw high  → stat scenerendering, draw call count, batching/instancing
+     GPU  high  → stat gpu, GPU Visualizer (ProfileGPU), Lumen/shadow/overdraw cost
+</code></pre>
+<p><code>stat unit</code> is non-negotiable as step one. Optimizing GPU when you're CPU-bound (or vice versa) wastes effort and can even make things worse.</p>
+<h3 id="unreal-insights-the-real-profiler">Unreal Insights — The Real Profiler</h3>
+<p><code>stat</code> commands are triage; <strong>Unreal Insights</strong> is the deep profiler. It captures a timeline trace (CPU timing per function/frame, GPU, memory allocations, networking, Slate, file I/O, loading) that you analyze offline. It's how you find the specific function eating your Game thread, the asset load stalling a frame, or the allocation spike. Launch with tracing enabled (<code>-trace=cpu,gpu,frame</code> or the toolbar) and open the <code>.utrace</code> in the Insights app.</p>
+<h3 id="the-usual-cpu-culprits">The Usual CPU Culprits</h3>
+<ul>
+<li><strong>Tick abuse</strong> (Chapter 3) — hundreds of Actors ticking. Fix: disable ticks, use events/timers, tick less often.</li>
+<li><strong>Blueprint in hot paths</strong> (Chapter 5) — heavy per-frame BP graphs. Fix: move to C++.</li>
+<li><strong>Excessive casts / <code>GetAllActorsOfClass</code></strong> — the latter iterates every actor in the world; never per-frame. Fix: cache references, use a manager/subsystem, or tag-based lookup.</li>
+<li><strong>Synchronous asset loads</strong> — loading a hard-referenced asset mid-gameplay hitches the frame. Fix: async load soft references ahead of need.</li>
+<li><strong>Overlap event spam</strong> — many overlapping volumes generating events. Fix: tighten collision responses (Chapter 12).</li>
+</ul>
+<h3 id="the-usual-gpu-culprits">The Usual GPU Culprits</h3>
+<ul>
+<li><strong>Overdraw</strong>, especially translucent materials stacking (Chapter 10). Fix: prefer Masked over Translucent, reduce particle layering; check with the Shader Complexity view.</li>
+<li><strong>Lumen and Virtual Shadow Map cost</strong> (Chapter 9) — the biggest dynamic GPU expense. Fix: scale Lumen quality cvars, consider baked lighting on constrained targets.</li>
+<li><strong>Too many draw calls</strong> — each unique mesh+material is a draw call. Fix: instancing (<code>InstancedStaticMesh</code>/<code>HierarchicalISM</code>), merging static meshes, fewer unique materials (Material Instances, Chapter 10).</li>
+<li><strong>Resolution / post-process</strong> — at 4K everything costs more; dynamic resolution and temporal upscaling (TSR — Temporal Super Resolution) are the standard levers.</li>
+<li><strong>High-poly non-Nanite meshes</strong> without LODs. Fix: Nanite for static meshes, or author LODs.</li>
+</ul>
+<h3 id="memory">Memory</h3>
+<p>The <strong>Size Map</strong> and <strong>Reference Viewer</strong> (Chapter 17) show what's resident and why. <code>stat memory</code>/<code>memreport</code> and Insights' memory track find leaks and bloat. The recurring theme from Chapter 8 returns: hard references determine your memory footprint; soft references and the Asset Manager are how you control it.</p>
+<h3 id="the-one-habit">The One Habit</h3>
+<p>Build a <strong>Development</strong> configuration, run on <strong>target hardware</strong> (not your dev rig), capture an <strong>Insights</strong> trace, and read <code>stat unit</code> first. Every other technique is downstream of knowing which thread is the bottleneck. Profiling on a beefy workstation hides the problems your players will hit.</p>
+<hr>
+<h2 id="19-patterns-recipes">19. Patterns &amp; Recipes</h2>
+<h3 id="recipe-a-pickup-item-overlap-effect-destroy">Recipe: A Pickup Item (Overlap → Effect → Destroy)</h3>
+<p>The canonical first gameplay loop, tying together components, overlap events, and lifecycle.</p>
+<pre><code class="language-cpp">APickup::APickup()
+{
+    Sphere = CreateDefaultSubobject&lt;USphereComponent&gt;(TEXT(&quot;Sphere&quot;));
+    RootComponent = Sphere;
+    Sphere-&gt;SetCollisionProfileName(TEXT(&quot;Trigger&quot;));  // overlap pawns, block nothing
+
+    Mesh = CreateDefaultSubobject&lt;UStaticMeshComponent&gt;(TEXT(&quot;Mesh&quot;));
+    Mesh-&gt;SetupAttachment(Sphere);
+    Mesh-&gt;SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void APickup::BeginPlay()
+{
+    Super::BeginPlay();
+    Sphere-&gt;OnComponentBeginOverlap.AddDynamic(this, &amp;APickup::OnOverlap);
+}
+
+void APickup::OnOverlap(UPrimitiveComponent*, AActor* Other, UPrimitiveComponent*,
+    int32, bool, const FHitResult&amp;)
+{
+    if (!HasAuthority()) return;          // server decides who picks up (Chapter 16)
+    if (auto* Char = Cast&lt;AMyCharacter&gt;(Other))
+    {
+        Char-&gt;GrantItem(ItemData);
+        Multicast_PlayPickupFX(GetActorLocation());  // cosmetic, all clients
+        Destroy();                         // server destroys; replicates to clients
+    }
+}
+</code></pre>
+<h3 id="recipe-a-component-you-reuse-across-actors-health">Recipe: A Component You Reuse Across Actors (Health)</h3>
+<p>The composition pattern — drop this on any Actor that can take damage.</p>
+<pre><code class="language-cpp">UCLASS(ClassGroup=(Gameplay), meta=(BlueprintSpawnableComponent))
+class UHealthComponent : public UActorComponent
+{
+    GENERATED_BODY()
+public:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=&quot;Health&quot;)
+    float MaxHealth = 100.f;
+
+    UPROPERTY(ReplicatedUsing=OnRep_Health, BlueprintReadOnly, Category=&quot;Health&quot;)
+    float Health;
+
+    // Broadcast so UI/AI/anything reacts without HealthComponent knowing them.
+    UPROPERTY(BlueprintAssignable)
+    FOnHealthChanged OnHealthChanged;
+
+    void ApplyDamage(float Amount);   // server-authoritative
+protected:
+    virtual void BeginPlay() override { Super::BeginPlay(); Health = MaxHealth; }
+    UFUNCTION() void OnRep_Health() { OnHealthChanged.Broadcast(Health, MaxHealth); }
+};
+</code></pre>
+<p>Any Actor adds this component; the UI subscribes to <code>OnHealthChanged</code> (Chapter 14); the server owns the value and replicates it (Chapter 16). One component, zero coupling.</p>
+<h3 id="recipe-subsystems-instead-of-singletons">Recipe: Subsystems Instead of Singletons</h3>
+<p>Need a manager (audio director, save system, match flow) accessible from anywhere without a global? Use a <strong>Subsystem</strong> — an engine-managed singleton with a defined lifetime and automatic creation. No manual instantiation, no GC worries, no <code>static</code> footguns.</p>
+<pre><code class="language-cpp">UCLASS()
+class USaveSubsystem : public UGameInstanceSubsystem  // lives as long as the game
+{
+    GENERATED_BODY()
+public:
+    virtual void Initialize(FSubsystemCollectionBase&amp; Collection) override;
+    UFUNCTION(BlueprintCallable) void SaveGame();
+};
+
+// Anywhere:
+auto* Save = GetGameInstance()-&gt;GetSubsystem&lt;USaveSubsystem&gt;();
+</code></pre>
+<p>Subsystem flavors map to lifetimes: <code>UGameInstanceSubsystem</code> (whole game), <code>UWorldSubsystem</code> (per level), <code>ULocalPlayerSubsystem</code> (per local player — used by Enhanced Input, Chapter 13), <code>UEngineSubsystem</code> (editor+runtime). This is the modern, GC-safe replacement for the global-manager pattern.</p>
+<h3 id="recipe-data-driven-design-with-dataassets-and-datatables">Recipe: Data-Driven Design with DataAssets and DataTables</h3>
+<p>Stop hardcoding gameplay numbers in C++.</p>
+<ul>
+<li><strong><code>UDataAsset</code></strong> (and <code>UPrimaryDataAsset</code>) — a designer-authored asset holding configuration: a weapon's stats, an enemy's parameters, an item definition. Soft-reference it and load on demand.</li>
+<li><strong><code>UDataTable</code></strong> — a spreadsheet (importable from CSV/JSON) of rows of a struct: all 200 items, all enemy stat lines. Look up by row name at runtime.</li>
+</ul>
+<p>This pushes balance and content out of code into assets designers own — the same C++/content division that runs through the whole engine.</p>
+<h3 id="the-c-base-blueprint-derived-template-the-meta-pattern">The "C++ Base, Blueprint Derived" Template (the meta-pattern)</h3>
+<p>Every recipe above embodies the engine's central pattern, worth stating once more as the through-line:</p>
+<ol>
+<li><strong>C++</strong> owns correctness, performance, and networking: the math, the authoritative state, the replication.</li>
+<li><strong>Blueprint subclasses</strong> own content and feel: which mesh/sound/FX, the exact numbers, the visual polish.</li>
+<li><strong>The seam</strong> is <code>UPROPERTY(EditAnywhere)</code> for tunables, <code>BlueprintImplementableEvent</code> for designer hooks, and <code>TSubclassOf</code> for "pick which class."</li>
+<li><strong>Communication</strong> is event dispatchers/delegates for decoupling, interfaces for cross-type calls, subsystems for shared services.</li>
+</ol>
+<p>Internalize this and Unreal stops being a pile of features and becomes a coherent system.</p>
+<hr>
+<h2 id="20-mastery-checklist">20. Mastery Checklist</h2>
+<h3 id="foundations">Foundations</h3>
+<ul>
+<li>[ ] Explain the four layers (core → subsystems → framework → your game) and why reflection underlies GC, serialization, the editor, Blueprint, and networking</li>
+<li>[ ] State the Blueprint-vs-C++ tradeoff and the "C++ base, Blueprint derived" pattern from memory</li>
+<li>[ ] Navigate a project on disk: know what's source-of-truth vs generated, and why <code>Content/</code> is unmergeable</li>
+<li>[ ] Use <code>stat fps</code>, <code>stat unit</code>, and the console; read <code>stat unit</code> to identify Game/Draw/GPU bottlenecks</li>
+</ul>
+<h3 id="object-model-framework">Object Model &amp; Framework</h3>
+<ul>
+<li>[ ] Distinguish <code>UActorComponent</code> / <code>USceneComponent</code> / <code>UPrimitiveComponent</code> and explain root components and attachment</li>
+<li>[ ] Order the Actor lifecycle (constructor → <code>PostInitializeComponents</code> → <code>BeginPlay</code> → <code>Tick</code> → <code>EndPlay</code>) and know what's safe where</li>
+<li>[ ] Explain why a Controller possesses a Pawn, and what GameMode / GameState / PlayerState / PlayerController each own</li>
+<li>[ ] Justify avoiding <code>Tick</code>; replace a polling tick with an event or timer</li>
+</ul>
+<h3 id="c-reflection">C++ &amp; Reflection</h3>
+<ul>
+<li>[ ] Write a <code>UCLASS</code> with <code>GENERATED_BODY</code>, <code>UPROPERTY</code>, and <code>UFUNCTION</code> correctly, including the <code>.generated.h</code> include</li>
+<li>[ ] Explain the two memory worlds and why a <code>UObject*</code> without <code>UPROPERTY</code> is a use-after-free</li>
+<li>[ ] Choose correctly among <code>FString</code> / <code>FName</code> / <code>FText</code>, and <code>TObjectPtr</code> / <code>TWeakObjectPtr</code> / <code>TSubclassOf</code></li>
+<li>[ ] Describe what UHT does and why the macros are markers for code generation</li>
+<li>[ ] Expose C++ to Blueprint and call Blueprint from C++ (<code>BlueprintImplementableEvent</code> vs <code>BlueprintNativeEvent</code>)</li>
+</ul>
+<h3 id="rendering-materials-animation">Rendering, Materials, Animation</h3>
+<ul>
+<li>[ ] Explain deferred rendering, the G-Buffer, and why transparency is the expensive case</li>
+<li>[ ] Describe what Nanite, Lumen, and Virtual Shadow Maps each do and their main costs; argue baked-vs-Lumen for a target</li>
+<li>[ ] Build a parameterized Material and create runtime Material Instances; explain why instances beat unique materials</li>
+<li>[ ] Diagram an Animation Blueprint's two graphs and explain state machines, blend spaces, and montage notifies</li>
+</ul>
+<h3 id="systems">Systems</h3>
+<ul>
+<li>[ ] Configure channel-based collision (Object Type + responses) and explain Overlap vs Hit and their required flags</li>
+<li>[ ] Use a line trace for hitscan/line-of-sight and explain why character movement isn't raw physics</li>
+<li>[ ] Set up Enhanced Input (Input Action + Mapping Context + Triggers/Modifiers)</li>
+<li>[ ] Build a UMG HUD updated by an event dispatcher rather than per-frame binding</li>
+<li>[ ] Explain MetaSounds, attenuation, and submixes</li>
+</ul>
+<h3 id="networking-shipping">Networking &amp; Shipping</h3>
+<ul>
+<li>[ ] Explain server authority, <code>HasAuthority</code>, and the three actor roles</li>
+<li>[ ] Replicate a property with <code>ReplicatedUsing</code>/<code>GetLifetimeReplicatedProps</code> and use a RepNotify to react</li>
+<li>[ ] Choose among Server / Client / NetMulticast RPCs and Reliable vs Unreliable</li>
+<li>[ ] Explain client prediction and reconciliation in <code>CharacterMovementComponent</code></li>
+<li>[ ] Describe cooking, build configurations, and why you must test a Shipping build</li>
+<li>[ ] Use the Reference Viewer / Size Map and soft references to control memory; capture and read an Unreal Insights trace</li>
+</ul>
+<hr>
+<h2 id="21-additional-resources">21. Additional Resources</h2>
+<p>A curated reading list for newcomers. Start with the engine-agnostic foundations if you're new to game development entirely — the concepts (game loop, vectors, frame timing, scene graphs) transfer to <em>any</em> engine and make Unreal far less mysterious. Then move to the Unreal-specific material.</p>
+<h3 id="game-development-fundamentals-engine-agnostic">Game development fundamentals (engine-agnostic)</h3>
+<p>These build the mental model behind <em>every</em> engine, so the knowledge survives switching tools.</p>
+<ul>
+<li><strong><a href="https://gameprogrammingpatterns.com/">Game Programming Patterns</a></strong> by Robert Nystrom — free to read online. The single best book for understanding <em>why</em> engines are built the way they are: the game loop, update method, component pattern, object pools, state machines. Reading this makes Unreal's Actor/Component/Tick model feel inevitable rather than arbitrary.</li>
+<li><strong><a href="https://natureofcode.com/">The Nature of Code</a></strong> by Daniel Shiffman — free online. Vectors, forces, oscillation, and simulation explained from scratch with intuition first. The foundation for understanding movement, physics, and <code>DeltaTime</code>.</li>
+<li><strong><a href="https://www.gameenginebook.com/">Game Engine Architecture</a></strong> by Jason Gregory — the definitive deep reference on how commercial engines (the author works on Naughty Dog's) are structured: subsystems, memory, rendering, animation, gameplay. Dense; treat it as a reference to grow into, not a first read.</li>
+<li><strong><a href="https://catlikecoding.com/">Catlike Coding</a></strong> — Unity-focused, but the tutorials on meshes, shaders, and math are some of the clearest explanations of 3D rendering concepts anywhere, and the ideas port directly to Unreal's Material Editor and rendering model.</li>
+<li><strong><a href="https://learnopengl.com/">Learn OpenGL</a></strong> — if you want to understand what's happening <em>beneath</em> the renderer (the pipeline, shaders, lighting, the G-buffer this guide references in Chapter 9). Pairs with this repo's <a href="webgl-opengl-study-guide.html">WebGL/OpenGL guide</a>.</li>
+<li><strong><a href="https://www.3blue1brown.com/topics/linear-algebra">3Blue1Brown — Linear Algebra</a></strong> — vectors, matrices, and transforms with visual intuition. The math under every camera, bone, and transform in any engine.</li>
+</ul>
+<h3 id="official-unreal-engine-resources-start-here-for-unreal">Official Unreal Engine resources (start here for Unreal)</h3>
+<ul>
+<li><strong><a href="https://dev.epicgames.com/community/unreal-engine/learning">Epic Developer Community Learning</a></strong> — Epic's free official courses and tutorials, from "Your First Hour in Unreal Engine" through gameplay, Blueprints, materials, and rendering. The authoritative starting point.</li>
+<li><strong><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine">Unreal Engine Documentation</a></strong> — the official docs, organized by system. Use it as a reference alongside this guide.</li>
+<li><strong><a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/API">Unreal Engine C++ API Reference</a></strong> — the searchable API for every <code>UCLASS</code>, function, and component when you're writing C++.</li>
+<li><strong><a href="https://www.youtube.com/@UnrealEngine">Unreal Engine YouTube channel</a></strong> — official feature overviews, livestreams, and "Inside Unreal" deep dives.</li>
+<li><strong><a href="https://github.com/EpicGames/UnrealEngine">Unreal Source on GitHub</a></strong> — the full engine source (requires linking your Epic and GitHub accounts). The ultimate reference: when docs are thin, read how the engine does it. Pair with the <a href="https://dev.epicgames.com/documentation/en-us/unreal-engine/lyra-sample-game-in-unreal-engine">Lyra sample game</a>, Epic's production-quality reference project.</li>
+</ul>
+<h3 id="beginner-friendly-unreal-courses-and-channels">Beginner-friendly Unreal courses and channels</h3>
+<ul>
+<li><strong><a href="https://www.tomlooman.com/">Tom Looman's Unreal Engine C++ course &amp; blog</a></strong> — Tom is a former Epic engineer; his free articles and (paid) "Professional Game Development in C++ and Unreal Engine" course are the standard recommendation for learning Unreal C++ the right way, with the C++/Blueprint split this guide emphasizes.</li>
+<li><strong><a href="https://www.gamedev.tv/">GameDev.tv Unreal courses</a></strong> — beginner-oriented, project-based courses (often bundled on Udemy) that walk you from zero to a finished small game. Good if you learn best by building.</li>
+<li><strong><a href="https://www.youtube.com/@BenCloward">Ben Cloward (materials &amp; shaders)</a></strong> — the go-to channel for the Material Editor (Chapter 10) and shader concepts, explained clearly and applicable to other engines too.</li>
+<li><strong><a href="https://www.youtube.com/@MathewWadsteinTutorials">Mathew Wadstein (WTF Is...?)</a></strong> — a huge library of short "what does this single node/function do" videos. Excellent as a just-in-time reference when you hit an unfamiliar Blueprint node.</li>
+</ul>
+<h3 id="community-and-staying-current">Community and staying current</h3>
+<ul>
+<li><strong><a href="https://forums.unrealengine.com/">Unreal Engine forums</a></strong> and <strong><a href="https://www.reddit.com/r/unrealengine/">r/unrealengine</a></strong> — for questions, troubleshooting, and seeing what others build.</li>
+<li><strong><a href="https://unrealslackers.org/">Unreal Slackers Discord</a></strong> — a large, active community with topic-specific channels (rendering, C++, networking, animation).</li>
+<li><strong><a href="https://portal.productboard.com/epicgames/1-unreal-engine-public-roadmap">Epic's official roadmap</a></strong> — what's coming, useful given how fast Nanite/Lumen evolve (Chapter 9).</li>
+</ul>
+<blockquote>
+<p><strong>Suggested path for a complete beginner:</strong> read <em>Game Programming Patterns</em> (or at least its game-loop and component chapters) → do Epic's "Your First Hour in Unreal Engine" → build the Third Person template into a tiny game following a GameDev.tv or Tom Looman project → return to this guide chapter by chapter to understand <em>why</em> each system works the way it does.</p>
+</blockquote></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- quiz visibility toggle ---------- */
+  function setupQuizToggle(){
+    if(!document.querySelector('.addon.quiz'))return;   // no quizzes on this page
+    var root=document.documentElement;
+    var btn=document.createElement('button');
+    btn.id='quizBtn'; btn.className='iconbtn';
+    btn.setAttribute('aria-label','Toggle quizzes');
+    btn.title='Show/hide quizzes (q)';
+    btn.innerHTML='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+
+      '<circle cx="12" cy="12" r="10"/>'+
+      '<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>'+
+      '<line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+    function apply(hidden){
+      root.classList.toggle('quiz-hidden',hidden);
+      btn.classList.toggle('off',hidden);
+      btn.setAttribute('aria-pressed',String(!hidden));
+    }
+    apply(localStorage.getItem('quizzes-hidden')==='1');
+    btn.addEventListener('click',function(){
+      var hidden=!root.classList.contains('quiz-hidden');
+      apply(hidden); localStorage.setItem('quizzes-hidden',hidden?'1':'0');
+    });
+    var themeBtn=document.getElementById('themeBtn');
+    themeBtn.parentNode.insertBefore(btn,themeBtn);
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+      else if(e.key==='q'&&document.activeElement.tagName!=='INPUT'){var qb=document.getElementById('quizBtn');if(qb)qb.click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupQuizToggle(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>
