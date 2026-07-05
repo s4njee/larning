@@ -103,6 +103,29 @@ Official docs: [Language Spec: Type definitions](https://go.dev/ref/spec#Type_de
 
 Python has no equivalent enforcement without runtime validation libraries.
 
+```quiz
+Q: In Go, what does "every type has a zero value" mean, and why can that cause silent bugs?
+- [x] An uninitialized variable isn't an error (no `NameError`) — it holds a defined default (`0`, `""`, `false`, `nil`, or a struct with all fields zeroed) — so a zero-value struct is *valid* and won't panic; it just might do the wrong thing quietly
+- [ ] Every variable must be explicitly initialized or the compiler rejects it
+- [ ] Zero values exist only for numeric types
+- [ ] Uninitialized variables raise a runtime exception like Python
+> Go has no "undefined" — declaring `var u User` gives a usable struct with zeroed fields. That's convenient (no `None`-checking everywhere) but means a forgotten initialization compiles and runs, surfacing as wrong behavior rather than a crash. Knowing each type's zero value — especially `nil` for pointers, slices, maps, channels, and interfaces — is part of reading Go correctly.
+
+Q: Go functions routinely return `(result, error)`. How is this different from Python returning a tuple?
+- [ ] It's purely a performance optimization
+- [x] In Go it's the *primary error-handling mechanism*, not a convenience — `result, err := f()` then `if err != nil` replaces exceptions, so errors are ordinary values you must explicitly check rather than control flow that unwinds the stack
+- [ ] Go can only ever return two values
+- [ ] The error is thrown automatically if non-nil
+> Python uses exceptions for errors and tuples for convenience; Go unifies them — multiple returns *are* how errors propagate. This makes the error path visible at every call site (the famous `if err != nil`), trading verbosity for explicitness: nothing is silently swallowed or unwound past a caller that didn't opt in. It's the single biggest workflow shift from Python.
+
+Q: What do defined types like `type Celsius float64` buy you that a plain `float64` doesn't?
+- [ ] Faster arithmetic
+- [ ] Automatic unit conversion
+- [x] They're *distinct types* the compiler won't let you mix — passing a `Fahrenheit` where a `Celsius` is expected is a compile error — so you make invalid states harder to represent, which Python can't enforce without runtime validation
+- [ ] They're documentation aliases with no enforcement
+> This is types-as-design: `Celsius` and `Fahrenheit` both have underlying type `float64` but are not interchangeable, so a whole class of unit-mixing bugs becomes a compile error. (A type *alias*, `type X = float64`, is the non-enforcing version.) Using defined types for IDs, units, and states is how Go programs make the compiler catch domain mistakes Python would only find at runtime.
+```
+
 ---
 
 ## 2. Structs, Methods & Interfaces
@@ -465,6 +488,29 @@ func process() {
 Official docs: [Go FAQ: Stack or heap?](https://go.dev/doc/faq#stack_or_heap)
 
 Python allocates everything on the heap with reference counting + GC. Go's approach is faster for short-lived objects.
+
+```quiz
+Q: `b := a` copies a struct, but `s2 := s1` on a slice shares the data. What explains "why did that mutation stick?"
+- [x] Structs have *value semantics* — assignment copies them, so mutating `b` leaves `a` unchanged — while slices, maps, and channels are *reference types* (like Python lists/dicts), so the copy points at the same underlying data and a mutation through one is visible through the other
+- [ ] It depends on whether the struct has a pointer receiver
+- [ ] Go copies everything; the slice example is a bug
+- [ ] Maps copy but slices don't
+> Go gives you both models on purpose, and knowing which you have explains a lot of surprises. A `User` struct passed or assigned is a fresh copy; a `[]int` or `map` carries reference-like behavior. Python developers expect everything to be a shared reference, so the struct-copy behavior is the surprising half — and the reason you reach for a pointer (`*User`) when you actually want shared, mutable access.
+
+Q: When should a method use a pointer receiver (`*T`) rather than a value receiver (`T`)?
+- [ ] Always, since pointers are faster
+- [x] When the method modifies the receiver, or the struct is large enough that copying it per call is wasteful — and for *consistency*, if any method on the type uses `*T`, they all should; value receivers suit small, read-only types
+- [ ] Only for basic types like int and string
+- [ ] Never; Go methods can't take pointers
+> A value receiver operates on a copy, so a method that mutates state must use `*T` or its changes vanish with the copy. Large structs also favor pointers to avoid per-call copies. The consistency rule matters because mixing receiver kinds on one type creates a confusing method set (and affects which values satisfy an interface). It's the same value-vs-reference decision as assignment, applied to methods.
+
+Q: `func newUser() *User { u := User{...}; return &u }` returns the address of a local variable. Why isn't that a dangling pointer like in C?
+- [ ] Go forbids returning addresses of locals
+- [x] Go does *escape analysis* — because `u`'s address escapes the function (it's returned), the compiler allocates it on the heap automatically; you never manage memory manually, and the garbage collector frees it when no references remain
+- [ ] The pointer is only valid inside the function
+- [ ] Go copies the value into the caller's stack frame
+> In C this would be a classic bug; in Go the compiler proves the value outlives the function and heap-allocates it, while values that *don't* escape can stay on the cheaper stack. You don't choose — escape analysis does — but understanding it explains performance: short-lived non-escaping values avoid heap/GC pressure, which is why Go is fast for them where Python heap-allocates everything with refcounting.
+```
 
 ---
 
@@ -900,6 +946,29 @@ Official docs: [Go Blog: Pipelines and cancellation](https://go.dev/blog/pipelin
 
 In practice, use `context.Context` instead (see section 14).
 
+```quiz
+Q: A Python developer reaches for `ThreadPoolExecutor` to run jobs concurrently. What's the Go equivalent of a worker pool?
+- [x] Spawn N goroutines that all range over a shared `jobs` channel and send to a `results` channel, coordinated with a `sync.WaitGroup` — you build the coordination directly from stdlib primitives rather than importing a framework
+- [ ] Import a worker-pool library; Go has no built-in primitives
+- [ ] One goroutine per job, with no bound on concurrency
+- [ ] A single goroutine processing jobs sequentially
+> Go's primitives are intentionally small, so higher-level patterns (worker pools, pipelines, fan-out/fan-in) are assembled from goroutines and channels with little code. The worker pool bounds concurrency to `numWorkers` goroutines competing for jobs off one channel; the `WaitGroup` waits for all to finish before closing `results`. Much of production Go is these patterns composed together.
+
+Q: Closing a channel with `close(done)` is a common cancellation idiom. What does it accomplish?
+- [ ] It sends a value to exactly one waiting goroutine
+- [x] A closed channel makes every receive on it return immediately, so `close(done)` *broadcasts* — all goroutines blocked on `<-done` unblock at once — which is how one signal cancels many workers; in practice you use `context.Context` for this
+- [ ] It deletes the channel from memory
+- [ ] It panics any goroutine still reading from it
+> Receiving from a closed channel never blocks (it returns the zero value immediately), so closing is a one-to-many broadcast — perfect for "everyone stop now." Workers `select` between `<-done` and their job channel, returning when `done` closes. This is the manual version of cancellation; section 14's `context.Context` packages the same idea with deadlines and propagation, which is what idiomatic code uses.
+
+Q: In a Go pipeline (`generate → square → print`), how are the stages connected, and what's each stage's responsibility?
+- [ ] Shared global variables guarded by a mutex
+- [x] Each stage is a goroutine that receives on its input channel and sends on its output channel, closing the output when its input is exhausted — so stages run concurrently and backpressure flows naturally through the channels
+- [ ] A single goroutine calling each stage in turn
+- [ ] Callbacks registered between stages
+> A pipeline chains channel-connected stages, each a small goroutine doing one transform. Because sends block until a receiver is ready, a slow downstream stage naturally throttles upstream ones (backpressure) with no extra code. Closing the output channel when the input drains is what lets the next stage's `range` terminate — the discipline that keeps a pipeline from leaking goroutines.
+```
+
 ---
 
 ## 8. The `sync` Package
@@ -1288,6 +1357,29 @@ Official docs: [builtin.panic](https://pkg.go.dev/builtin#panic), [builtin.recov
 
 **Convention:** Use `panic`/`recover` only for truly unrecoverable situations (programmer errors, impossible states). Use error returns for everything else.
 
+```quiz
+Q: How does Go's `defer` compare to Python's `finally`, and in what order do multiple defers run?
+- [x] `defer` schedules a call to run when the function returns *no matter how* (like `finally`), making it the idiom for cleanup paired with acquisition (`f, _ := os.Open(...); defer f.Close()`); multiple defers run in LIFO (stack) order
+- [ ] `defer` runs immediately, like a normal statement
+- [ ] Defers run in the order written (FIFO)
+- [ ] `defer` only runs if the function returns without error
+> `defer` keeps cleanup next to the acquisition it pairs with, so you can't forget it down an early-return path — Go's answer to Python's `with`/`finally`. The LIFO order mirrors a stack: the last resource acquired is the first released, which is usually exactly what nested resources need (close the inner thing before the outer).
+
+Q: When should you use `panic`/`recover` rather than returning an `error`?
+- [ ] For any error you'd handle with `try`/`except` in Python
+- [ ] Whenever a function can fail
+- [x] Almost never in application logic — `panic` is for truly unrecoverable situations (programmer errors, impossible states), and `recover` is a *boundary* tool to stop one bad path from crashing the whole process; expected failures use error returns
+- [ ] To return multiple values from a function
+> Python developers reflexively map `panic`/`recover` onto `try`/`except`, but Go deliberately separates *expected* failures (a missing file, bad input → return an `error`) from *exceptional* ones (a nil dereference, a corrupt invariant → `panic`). Recover lives at process boundaries (a server's request handler) so one request's panic doesn't take down the server. Using panic for ordinary errors fights the language.
+
+Q: The classic loop-variable closure bug (every closure capturing the final value) affected both Python and old Go. What changed?
+- [ ] Go never had this bug
+- [x] As of Go 1.22, loop variables are per-iteration, so a closure or `defer` inside the loop captures that iteration's value rather than a shared variable that ends at the final value — fixing the long-standing footgun (Python still has it without a default-argument workaround)
+- [ ] Go 1.22 removed closures from loops
+- [ ] You must now copy the variable manually every time
+> Before 1.22, `for i := ...; ... { defer f(i) }` captured one shared `i`, so every deferred/closured call saw the final value — the same trap Python has (`lambda: i` in a loop). Go 1.22 gave each iteration its own variable, quietly fixing a bug that had burned everyone. Worth knowing both because you'll read pre-1.22 code and because the Python equivalent still bites.
+```
+
 ---
 
 ## 12. Generics
@@ -1350,6 +1442,29 @@ def first(items: Sequence[T]) -> T:
 Official docs: [Tutorial: Getting started with generics](https://go.dev/doc/tutorial/generics)
 
 Go generics are **compiler-enforced**. Python type hints are advisory (unless you use mypy/pyright).
+
+```quiz
+Q: Before Go 1.18, reusable container code used `interface{}`. What do generics change?
+- [x] They add compiler-enforced type parameters (`func Map[T any, U any](...)`), so reusable code keeps full type safety instead of erasing to `interface{}` (Go's `Any`) and forcing type assertions — unlike Python's `TypeVar`, which is advisory unless you run mypy/pyright
+- [ ] They make all functions slower but more flexible
+- [ ] They're identical to Python type hints
+- [ ] They allow arbitrary metaprogramming and reflection
+> `interface{}` accepts anything but loses the type — callers must assert it back, risking runtime panics. Generics let `Map`, `Filter`, and typed containers be written once with the compiler checking every call. The contrast with Python is the point: Go generics are enforced at compile time and genuinely prevent bugs, where Python's `TypeVar` annotations change nothing at runtime on their own.
+
+Q: A constraint like `type Ordered interface { ~int | ~float64 | ~string }` — what does the `~` mean, and why constrain at all?
+- [ ] `~` means "approximately"; the constraint is a hint
+- [x] `~int` means "any type whose *underlying* type is int" (so your `type Celsius float64` satisfies `~float64`); the constraint tells the compiler which operations `T` supports — here `<` — so `Min[T Ordered]` can compare values, which `any` could not
+- [ ] `~` makes the type parameter optional
+- [ ] Constraints are only for documentation
+> A type parameter needs a constraint to do anything beyond what's valid for *all* types. `any` permits nothing but assignment and passing; `Ordered` promises the `<` operator, so the body can compare. The `~` matters because it admits defined types built on those primitives, not just the primitives themselves — without it, `Min` would reject your `Celsius`. Constraints are how Go generics stay safe and useful at once.
+
+Q: What's the idiomatic attitude toward generics in Go application code?
+- [ ] Use them everywhere to maximize abstraction
+- [x] Use them sparingly — they were added for specific reusable-typed-code problems (containers, algorithms like Map/Min), not heavy type-level programming; most everyday code still uses concrete types and interfaces, with generics earning their place mainly in library code
+- [ ] Avoid them entirely; they're unfinished
+- [ ] Replace all interfaces with generics
+> Generics arrived late and deliberately narrow. They shine where the alternative was `interface{}` plus assertions, but Go culture resists the heavily-abstracted generic programming common elsewhere. For a Python developer the lesson is calibration: reach for generics when you'd otherwise lose type safety across many element types, and prefer plain interfaces and concrete types for ordinary application logic.
+```
 
 ---
 
@@ -1528,6 +1643,29 @@ userID := ctx.Value(userIDKey).(string)
 Official docs: [context.WithValue](https://pkg.go.dev/context#WithValue)
 
 Use context values for **request-scoped** data (request IDs, auth tokens) that crosses API boundaries, not as a general-purpose data bag.
+
+```quiz
+Q: What is `context.Context`, and how does Go's approach to cancellation differ from Python's?
+- [x] It's the standard convention for carrying deadlines, cancellation signals, and request-scoped values — passed as the *first parameter* to long-running or I/O functions — so Go pushes cancellation into ordinary function signatures, where Python often hides it behind framework-specific APIs (asyncio's CancelledError, signal handling)
+- [ ] It's a global variable holding the current request
+- [ ] It's Go's exception type
+- [ ] It's only used for storing configuration
+> Modern Go threads a `ctx context.Context` through call chains so a timeout or cancellation propagates everywhere the work flows. The discipline is visible: if a function might block or outlive its caller, it takes a context. `http.NewRequestWithContext` ties an outbound request to the context, so cancelling the context cancels the in-flight request — cooperative cancellation made explicit in the type signature.
+
+Q: After `ctx, cancel := context.WithTimeout(...)`, why must you `defer cancel()` even if the timeout will fire?
+- [ ] To make the timeout shorter
+- [x] `cancel` releases the resources associated with the context (timers, goroutines tracking it) — failing to call it leaks them until the timeout elapses, or forever for `WithCancel` — so `defer cancel()` immediately is the unconditional habit, regardless of whether the work finishes early or times out
+- [ ] It's optional and only matters for `WithCancel`
+- [ ] It cancels the parent context too
+> Every `WithTimeout`/`WithCancel`/`WithDeadline` returns a `cancel` function that must be called to free what the context set up. `defer cancel()` runs it on every return path. Even when you expect the deadline to trigger, calling `cancel` is correct and cheap; skipping it is a resource leak the compiler can't catch (though `go vet` warns). Pair it with `errors.Is(err, context.DeadlineExceeded)` to distinguish a timeout from other failures.
+
+Q: When is `context.WithValue` appropriate?
+- [ ] As a general-purpose way to pass function arguments
+- [x] Only for *request-scoped* data that crosses API boundaries — request IDs, auth tokens, trace spans — not as a general data bag for normal parameters, which should be explicit function arguments
+- [ ] For storing application configuration globally
+- [ ] To replace struct fields
+> Context values are powerful and easily abused. The legitimate use is metadata that rides along with a request across many layers (and even process boundaries) without threading it through every signature — an auth token, a correlation ID. Using it to pass ordinary parameters makes data flow invisible and untyped (every read is a type assertion), so the convention is "request-scoped only," with a typed unexported key to avoid collisions.
+```
 
 ---
 

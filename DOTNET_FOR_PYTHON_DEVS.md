@@ -91,6 +91,29 @@ Those are not all wrong, but they are not the best baseline to learn from now.
 | Virtual env / version pinning | `venv`, `pyenv`, `uv` | SDK install + `global.json` |
 | Batteries included | Some core libs, many third-party packages | Very large first-party platform |
 
+```quiz
+Q: When someone says ".NET" today, what do they mean, and how does it relate to ".NET Framework"?
+- [x] The modern, unified, *cross-platform* platform (runs on macOS/Linux/Windows, `dotnet` CLI, ASP.NET Core) — distinct from the legacy ".NET Framework," which is effectively Windows-only and learned now only to maintain old code
+- [ ] They're two names for the same Windows runtime
+- [ ] .NET Framework is the newer, cross-platform one
+- [ ] ".NET" always means the C# language specifically
+> The first reset for a returning developer is terminology: "modern .NET" (formerly .NET Core, now just .NET, currently .NET 10) is the cross-platform line to learn, while .NET Framework is the older Windows-centric family. Many older blog posts still say ".NET Core," ".NET 5/6/7," or ".NET Framework" — not wrong, but not the best baseline today.
+
+Q: The guide says modern .NET is "a platform," not just a language plus interpreter. What does that mean for a Python developer?
+- [ ] Nothing — it's the same as Python plus pip
+- [x] DI, configuration, logging, testing, building, and publishing are *built into the platform* (runtime, SDK/CLI, base libraries, and app frameworks like ASP.NET Core ship together) rather than assembled ad hoc from third-party libraries the way Python often does
+- [ ] You must use Visual Studio on Windows to build anything
+- [ ] C# is the only file format allowed
+> Python is a language + interpreter + a packaging ecosystem you assemble; modern .NET is an integrated platform where the first-party story for app composition is the default. That's why .NET apps feel "pre-integrated" — the generic host, DI container, structured logging, and configuration system are part of the box, the biggest ecosystem difference Section 9 explores.
+
+Q: Why do many Python developers warm to modern .NET's static typing specifically?
+- [ ] It eliminates the need for tests
+- [x] C# gives compile-time guarantees and excellent integrated tooling without forcing the strict ownership model Rust does — static safety with a familiar GC'd, class-based feel — so the payoff (safer refactoring, better tooling) comes without a steep borrow-checker tax
+- [ ] It runs Python code directly
+- [ ] It has no learning curve at all
+> The appeal is calibrated strictness: you get the "fewer how-did-this-become-a-string bugs" benefit of static types and the integrated CLI/build/test/DI tooling, while the language stays approachable (garbage-collected, class-based, nullable-reference-aware rather than ownership-based). For a Python developer it's a smaller mental leap than Rust while still delivering most of the compile-time safety.
+```
+
 ---
 
 ## 2. Type System, Compilation & Nullability

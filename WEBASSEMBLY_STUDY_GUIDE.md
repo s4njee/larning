@@ -104,6 +104,16 @@ WASM instructions operate on an implicit **operand stack** rather than named reg
   (export "add" (func $add)))   ;; make $add callable from the host
 ```
 
+To actually *see* the stack machine work, trace the operand stack as `add(2, 3)` runs — each instruction pops its inputs off the stack and pushes its result:
+
+```
+local.get $a    stack: [2]
+local.get $b    stack: [2, 3]
+i32.add         stack: [5]      ;; popped 2 and 3, pushed their sum
+```
+
+The function returns whatever value is left on the stack when it finishes — here, `5`. There are no named registers and no memory addresses anywhere in that trace, which is the whole point: the machine state is just one stack, so the encoding is tiny and a runtime can check and compile it in a single pass.
+
 WAT is a one-to-one textual rendering of the binary (an s-expression syntax); you read it to understand a module and almost never write it. The stack-machine design is deliberate: it's compact (no register-allocation encoding to store) and trivial for a runtime to validate and compile.
 
 ### Validation: the property that makes the sandbox cheap
@@ -292,6 +302,26 @@ sequenceDiagram
 
 Doing that allocate-copy-call dance by hand is tedious and error-prone, so **bindings generators** automate it. For Rust, [`wasm-bindgen`](https://rustwasm.github.io/wasm-bindgen/) lets you write a Rust function taking a `String` and a JS function taking a string, and it generates the glue that marshals across the boundary (managing the linear-memory copies for you); `wasm-pack` packages the result for npm. For C/C++, [Emscripten](https://emscripten.org/) generates similar glue plus emulation of POSIX and even OpenGL-on-WebGL. The key understanding to carry: **these tools are hiding the "only numbers cross, everything else is a copy through linear memory" reality, not eliminating it** — which is why passing large or complex data across the boundary frequently has a real copy cost, and why the [component model](https://component-model.bytecodealliance.org/) (Part 7) exists to give this a proper standard rather than per-language glue.
 
+Concretely, `wasm-bindgen` lets you write this Rust —
+
+```rust
+use wasm_bindgen::prelude::*;
+
+#[wasm_bindgen]
+pub fn greet(name: &str) -> String {
+    format!("Hello, {name}!")   // a real String in, a real String out
+}
+```
+
+— and call it from JavaScript as if strings crossed the boundary natively:
+
+```javascript
+import { greet } from "./pkg/hello.js";
+console.log(greet("Ada"));   // "Hello, Ada!"
+```
+
+But the generated glue is doing the allocate-copy-call dance from the diagram above on your behalf: it asks the module to allocate space in linear memory, copies `"Ada"`'s UTF-8 bytes in, passes the pointer and length, then reads the result string's bytes back out and frees the buffer. The ergonomics are real; the copy is still there. That gap — between the clean signature you write and the numbers-and-copies that actually cross — is exactly what the component model (Part 7) sets out to standardize.
+
 ```quiz
 Q: Why can't you export a WASM function that directly takes a JavaScript string and returns a struct?
 - [ ] WASM functions can only take one argument
@@ -439,6 +469,29 @@ Garbage-collected languages — Java, Kotlin, C#, Go, Python — had a problem: 
 ### The toolchain shape
 
 Whatever the language, the workflow rhymes: a compiler with a `wasm32` target produces the `.wasm`; a bindings generator (`wasm-bindgen`, Emscripten) produces the host glue for the boundary; a packager (`wasm-pack`, npm) bundles it for the host environment; and runtimes (Part 9) execute it. For server/CLI WASM, tools like [`cargo-component`](https://github.com/bytecodealliance/cargo-component) build *components* (Part 7) directly. The ecosystem is young enough that the toolchain is part of what you're choosing when you pick a source language.
+
+### From source to running, concretely
+
+The abstract workflow is easier to hold once you've seen it end to end. With Rust, the whole loop from source to a module running in a page is a few steps:
+
+```bash
+cargo new --lib hello-wasm && cd hello-wasm
+# in Cargo.toml: set crate-type = ["cdylib"] and add the wasm-bindgen dependency,
+# then put the #[wasm_bindgen] greet() from Part 5 in src/lib.rs
+wasm-pack build --target web      # compiles to wasm32 + generates the JS glue in pkg/
+```
+
+That `pkg/` directory holds the `.wasm` binary plus a small JavaScript module that wraps it. A page then loads it like any ES module:
+
+```html
+<script type="module">
+  import init, { greet } from "./pkg/hello_wasm.js";
+  await init();                   // fetch + instantiate the .wasm (streaming, Part 2)
+  document.body.textContent = greet("world");
+</script>
+```
+
+For a *server* or CLI target the shape rhymes but swaps the back-end tools: `cargo build --target wasm32-wasi` produces a module you run with `wasmtime run app.wasm` (Part 9), and [`cargo-component`](https://github.com/bytecodealliance/cargo-component) produces a *component* (Part 7) instead of a bare module. Same compiler front end; the boundary and the runtime are what change underneath.
 
 ```quiz
 Q: Why is Rust the best-fit language for writing WebAssembly?

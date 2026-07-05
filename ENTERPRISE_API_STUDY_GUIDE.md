@@ -435,7 +435,27 @@ Whatever the scheme: credentials never in URLs (they land in logs, referrers, an
 
 The OWASP API Security Top 10 has been led for years by **BOLA — Broken Object Level Authorization** — because it's the bug that scales: the attacker doesn't break your crypto, they increment an ID. `GET /v1/transfers/tr_8MGyq4zXKj0` with a *valid* key for tenant A must verify that `tr_8MGy…` *belongs to tenant A*, on every object, on every route, including the ones reached through relations (`/transfers/{id}/reversals/{rid}` — both IDs).
 
+Made concrete, the attack is mundane — no cracked crypto, just a guessed identifier:
+
+```http
+GET /v1/transfers/tr_8MGyq4zXKj0          # an ID belonging to tenant B
+Authorization: Bearer sk_live_…           # ...but a perfectly valid key for tenant A
+```
+
+If the handler fetches that transfer by ID and returns it without checking *who owns it*, tenant A has just read tenant B's data. That is the entire exploit — which is why it scales to every object on every route, and why the defense cannot be a check each handler is trusted to remember.
+
 The only architecture that survives audit is **authorization as a chokepoint, not a convention**: every data access path goes through a layer that takes the authenticated principal and scopes the query (`WHERE tenant_id = $principal.tenant`), rather than two hundred handlers each remembering to check. Make the *unscoped* query the hard thing to write — a `dangerouslyUnscopedQuery()` name with a lint rule beats a code-review checklist. Defense in depth where the data layer supports it (Postgres row-level security as the backstop). And return `404`, not `403`, for objects outside the caller's tenancy — `403` confirms the ID exists, which is reconnaissance you're giving away free.
+
+Concretely, that chokepoint is a data-access layer where the tenant scope is structural rather than per-handler discipline:
+
+```typescript
+// Every read of a transfer goes through here; the tenant filter isn't optional.
+function getTransfer(principal: Principal, id: string) {
+  return db.transfers.findOne({ id, tenant_id: principal.tenantId });
+  //                                  ^ an object outside the caller's tenant
+  //                                    is simply not found → 404, as above
+}
+```
 
 **Scopes** bound what a credential may do (`transfers:read`, `transfers:write`, `webhooks:manage`): least privilege per integration, finer-grained for partners than for first-party. Scopes complement, never replace, object-level checks — `transfers:read` says the caller may read transfers, tenancy says *which* transfers.
 
@@ -530,6 +550,8 @@ The rules, each load-bearing:
 - **Exponential backoff with jitter**: `delay = random(0, min(cap, base × 2^attempt))` — "full jitter." The jitter isn't decoration: a failing dependency that recovers will be met by every waiting client retrying *in phase* if their backoffs are deterministic, re-killing it on schedule — the thundering herd / retry-storm pattern that turns a 10-second blip into an hour-long incident.
 - **Cap the attempts and the budget.** 2–3 attempts; and at the service level, a **retry budget** (e.g., retries may add at most 10–20% extra load): when the budget is exhausted, fail fast instead of multiplying traffic into a dying dependency. Crucially, **retry at one layer, not every layer** — if the client, the SDK, the gateway, the mesh, and the service each retry 3×, one user click becomes 243 requests at the bottom of the stack. Decide where retries live (usually: the outermost client, plus *nothing* in the middle) and disable them elsewhere.
 
+Concretely, with `base = 1s` and `cap = 30s`, full jitter means each attempt waits a *random* duration in a widening window — attempt 1 somewhere in `[0, 1s]`, attempt 2 in `[0, 2s]`, attempt 3 in `[0, 4s]` — so a thousand clients that all failed at the same instant scatter their retries across that window instead of stampeding back in lockstep. The randomness is the feature, not a rough edge: deterministic backoff merely reschedules the synchronized herd for a few seconds later.
+
 **Circuit breakers** add the missing memory: after N consecutive failures to a dependency, stop calling it (fail fast or serve a fallback) for a cooling period, then *probe* with limited traffic before fully closing. This converts "every request waits 25s to fail" into "requests fail in 1ms while the dependency recovers" — protecting both your latency and their recovery. **Bulkheads** complete the set: per-dependency connection/concurrency pools, so the slow dependency saturates *its* pool and not your event loop, and one bad downstream can't take hostage the endpoints that never touch it.
 
 ### You own the client too
@@ -567,6 +589,22 @@ Webhooks invert the relationship — now *you* are the unreliable network caller
 - **Don't promise ordering.** Retries and parallel delivery reorder events; consumers who need current state should treat the event as a doorbell and `GET` the resource (the "thin event" pattern — which also keeps payloads from becoming a second, accidentally-versioned representation of your resources).
 - **Respond-fast contract**: consumers should ack with `2xx` *before* processing (enqueue, then work) — a handler that does 30 seconds of work before responding will be timed out and redelivered into a duplicate storm. Put this in the docs; it's the most common webhook consumer bug.
 
+Here is the consumer side of that signing contract — the snippet you ship in your docs and SDKs so integrators verify correctly instead of inventing their own broken check:
+
+```typescript
+import { createHmac, timingSafeEqual } from "node:crypto";
+
+function verifyWebhook(rawBody: string, header: string, secret: string): boolean {
+  const { t, sig } = parseHeader(header);                  // e.g. "t=1718…,v1=5e8b…"
+  if (Math.abs(Date.now() / 1000 - Number(t)) > 300) return false;   // replay window: 5 min
+  const expected = createHmac("sha256", secret).update(`${t}.${rawBody}`).digest();
+  // constant-time compare — a normal === leaks the match one byte at a time
+  return sig.length === expected.length && timingSafeEqual(Buffer.from(sig), expected);
+}
+```
+
+Three defenses are stacked in those few lines: the timestamp check rejects a captured-and-replayed delivery, the HMAC over `timestamp.payload` rejects a forged one (only someone holding the secret can compute it), and the constant-time comparison denies the attacker the timing oracle a byte-by-byte `===` would hand them. Verifying the *raw* body before JSON-parsing matters too — re-serializing changes bytes and breaks the signature.
+
 The same at-least-once + dedup logic governs **event streams** (Kafka/SNS/etc.) if you offer them; the transport changes, the contract — unique IDs, documented redelivery, consumer idempotency, schema evolution rules matching Part 4 — does not.
 
 ---
@@ -576,6 +614,16 @@ The same at-least-once + dedup logic governs **event streams** (Kafka/SNS/etc.) 
 ### The request ID is the spine
 
 One ID, generated at the edge (or accepted from the client and *echoed*), returned in every response header (`Request-Id`), attached to every log line, propagated to every downstream call (W3C `traceparent` if you're doing distributed tracing properly — do), and stored with every side effect. The payoff is the support workflow that defines enterprise-grade in practice: customer quotes `req_9f3b2c` from their error object → you reconstruct the entire request path in one query. Without it, every escalation starts with archaeology.
+
+In practice the spine is one structured line per request that every other tool joins on:
+
+```json
+{ "ts": "2026-06-10T14:23:05Z", "request_id": "req_9f3b2c", "route": "POST /v1/transfers",
+  "principal": "acct_7Hq2", "tenant": "ten_004", "status": 422, "code": "insufficient_funds",
+  "latency_ms": 38, "idempotency_key": "0d1aafc8…" }
+```
+
+When the customer quotes `req_9f3b2c`, that one line — and every downstream service's line carrying the same ID — is what turns "my requests fail since Tuesday" into a reconstructed request path in a single query. Note what is *absent*: no `Authorization` header, no card number, no email. That omission is by construction (below), not by luck.
 
 On top of that spine:
 
@@ -655,4 +703,4 @@ Every part of this guide is one idea applied to a different layer: **assume the 
 - **Read [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110) §9 (methods) and [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457)** while the safe/idempotent table and Problem Details format are fresh — they're short, and they are the contract everything here builds on. Google's [AIPs](https://google.aip.dev/) are the equivalent corpus for resource-oriented design.
 - **Work the [OWASP API Security Top 10](https://owasp.org/API-Security/)** against an API you own — BOLA (broken object-level authorization) alone accounts for most real-world API breaches, and Part 7's per-object checks are the fix.
 - **Implement the idempotency middleware from Part 3 for real** — key storage, body fingerprinting, in-progress locking, TTL — and then kill the process mid-request and verify the retry behaves. That one exercise turns the guide's central concept into reflex.
-- **Adjacent guides in this repo:** [Auth](AUTH_STUDY_GUIDE.md) (Part 7 at full depth), [Distributed Systems](DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md) (why exactly-once delivery doesn't exist — the reason idempotency matters), [Observability](OBSERVABILITY_STUDY_GUIDE.md) (Part 11 at full depth), and [Testing](TESTING_STUDY_GUIDE.md) (contract tests in CI).
+- **Adjacent guides in this repo:** [API Design](API_DESIGN_STUDY_GUIDE.md) (the craft layer beneath this one — resource modeling, errors, versioning, and designing for agent consumers), [Auth](AUTH_STUDY_GUIDE.md) (Part 7 at full depth), [Distributed Systems](DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md) (why exactly-once delivery doesn't exist — the reason idempotency matters), [Observability](OBSERVABILITY_STUDY_GUIDE.md) (Part 11 at full depth), and [Testing](TESTING_STUDY_GUIDE.md) (contract tests in CI).

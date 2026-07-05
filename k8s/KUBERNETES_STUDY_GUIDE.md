@@ -4,6 +4,8 @@ A depth-first guide to mastering Kubernetes as an operator and platform engineer
 
 The goal is practical fluency: you should be able to read a manifest, predict which controller owns it, explain how traffic reaches it, debug it when it fails, and make conservative production choices without needing a platform team to rescue every deploy.
 
+Primary references, all worth working through: the official [Kubernetes documentation](https://kubernetes.io/docs/home/) — unusually good for project docs, and the concepts pages are the canonical statement of every mechanism here; [*Kubernetes in Action*](https://www.manning.com/books/kubernetes-in-action-second-edition) (Lukša) — the best book-length treatment of how the pieces actually fit; [Kubernetes the Hard Way](https://github.com/kelseyhightower/kubernetes-the-hard-way) (Hightower) — building a cluster by hand, once, demystifies the control plane permanently; and the [API conventions](https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md) — the short document that explains why every Kubernetes object looks the way it does (spec vs. status, controllers, reconciliation).
+
 ---
 
 ## Table of Contents
@@ -689,6 +691,8 @@ Q: What's the layered boundary between a Service, an Ingress, and the Gateway AP
 - **CPU limits are controversial**. Throttling can cause latency spikes far worse than the CPU saved. Many shops set requests-only on CPU and rely on the node being correctly sized; always set memory limits.
 - **Resource units**: CPU in cores (`500m` = 0.5 core). Memory in bytes (`Mi` = mebibytes, `M` = megabytes — they are *different*; almost always use `Mi`/`Gi`).
 - **Ephemeral storage** also has requests/limits. Exceeding the limit evicts the pod. Easy to overlook until a log-spam app brings down a node.
+- **In-place resize** ([beta, on by default since v1.33](https://kubernetes.io/docs/tasks/configure-pod-container/resize-container-resources/)): CPU and memory requests/limits can be changed on a running Pod without restarting it — ending the era where every right-sizing pass meant a rolling restart.
+- **GPUs and other devices**: the traditional model is a device plugin exposing a countable extended resource (`nvidia.com/gpu: 1`). [**Dynamic Resource Allocation (DRA)**](https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/), GA since v1.34, replaces bare counting with **ResourceClaims** that can express device attributes and sharing — the machinery the AI-workload era pushed into the core scheduler.
 - References: [Resource Management](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/), [QoS](https://kubernetes.io/docs/concepts/workloads/pods/pod-qos/)
 
 ```quiz

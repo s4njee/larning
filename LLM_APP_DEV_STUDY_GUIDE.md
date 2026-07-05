@@ -4,7 +4,7 @@ A practical guide to building applications on top of large language models. Focu
 
 Code examples use Python and pseudocode. Patterns apply regardless of language.
 
-Primary references: [Anthropic Docs](https://docs.anthropic.com/), [OpenAI API Reference](https://platform.openai.com/docs/api-reference), [Anthropic Prompt Engineering Guide](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview), [OpenAI Prompt Engineering Guide](https://platform.openai.com/docs/guides/prompt-engineering)
+Primary references, each earning its place: the [Anthropic docs](https://platform.claude.com/docs/) and [OpenAI API reference](https://platform.openai.com/docs/api-reference) — the two API surfaces this guide's patterns are written against, and the only current source for parameters and pricing; and the [Anthropic](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview) and [OpenAI](https://platform.openai.com/docs/guides/prompt-engineering) prompt-engineering guides — the vendors' own distillations of what reliably works, worth reading before any third-party tutorial.
 
 ---
 
@@ -139,7 +139,7 @@ Every major LLM API uses the same basic structure — a list of messages with ro
 
 ```python
 response = client.messages.create(
-    model="claude-sonnet-4-6",
+    model="claude-sonnet-5",
     max_tokens=1024,
     system="You are a helpful assistant that answers questions about Python.",
     messages=[
@@ -154,7 +154,7 @@ response = client.messages.create(
 |---|---|
 | `system` | Instructions that frame the model's behavior. Set tone, persona, constraints, output format. Persists across the conversation. |
 | `user` | The human's input. |
-| `assistant` | The model's previous responses (or prefilled text to steer the response). |
+| `assistant` | The model's previous responses. (Older models also accepted a *prefilled* final assistant turn to steer the response; current Claude models reject prefills.) |
 
 The system prompt is where you do most of your engineering. The conversation history (alternating user/assistant messages) provides context.
 
@@ -180,7 +180,7 @@ Modern models accept images, PDFs, and other media alongside text:
 
 ```python
 response = client.messages.create(
-    model="claude-sonnet-4-6",
+    model="claude-sonnet-5",
     max_tokens=1024,
     messages=[{
         "role": "user",
@@ -208,7 +208,7 @@ Common uses: OCR, chart/diagram interpretation, UI screenshot analysis, document
 
 ## 3. Prompt Engineering Patterns
 
-Reference: [Anthropic Prompt Engineering](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview), [OpenAI Prompt Engineering](https://platform.openai.com/docs/guides/prompt-engineering)
+Reference: [Anthropic Prompt Engineering](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview), [OpenAI Prompt Engineering](https://platform.openai.com/docs/guides/prompt-engineering)
 
 Prompt engineering is the practice of designing inputs to get reliable, high-quality outputs. These patterns work across models.
 
@@ -276,23 +276,21 @@ CoT improves accuracy on reasoning-heavy tasks (math, logic, multi-step analysis
 
 ### Extended Thinking
 
-Some models support explicit thinking/reasoning modes where the model does extended internal reasoning before responding:
+Some models support explicit thinking/reasoning modes where the model does extended internal reasoning before responding. Current Claude models use **adaptive thinking** — the model decides when and how much to think, and an `effort` parameter controls the depth/cost tradeoff:
 
 ```python
 response = client.messages.create(
-    model="claude-sonnet-4-6",
+    model="claude-sonnet-5",
     max_tokens=16000,
-    thinking={
-        "type": "enabled",
-        "budget_tokens": 10000
-    },
+    thinking={"type": "adaptive"},
+    output_config={"effort": "high"},  # low | medium | high | xhigh | max
     messages=[{"role": "user", "content": "...complex problem..."}]
 )
 ```
 
-The model's thinking is returned separately from the response. This is useful for complex tasks where you want the model to reason deeply but return a concise answer. The thinking can also be inspected for debugging.
+(Older Claude models instead took a manual token budget — `thinking={"type": "enabled", "budget_tokens": N}` — which is deprecated and rejected outright on the newest models.) The model's thinking is returned separately from the response. This is useful for complex tasks where you want the model to reason deeply but return a concise answer. The thinking can also be inspected for debugging.
 
-Reference: [Anthropic Extended Thinking](https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking)
+Reference: [Anthropic Adaptive Thinking](https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking)
 
 ### Delimiters and Structure
 
@@ -402,20 +400,13 @@ Most APIs offer a JSON mode that constrains the output to valid JSON:
 ```python
 # OpenAI
 response = client.chat.completions.create(
-    model="gpt-4o",
+    model="gpt-5.1",
     response_format={"type": "json_object"},
     messages=[...]
 )
-
-# Anthropic (via prefill — start the response with "{")
-response = client.messages.create(
-    model="claude-sonnet-4-6",
-    messages=[
-        {"role": "user", "content": "Extract... respond in JSON"},
-        {"role": "assistant", "content": "{"}  # prefill forces JSON start
-    ]
-)
 ```
+
+Anthropic has no schemaless JSON mode. The historical trick was to *prefill* the assistant turn with `{` to force a JSON start — but current Claude models (Sonnet 4.6 and later) **reject assistant prefills with a 400 error**, so don't copy that pattern from older tutorials. On Claude, skip straight to schema-constrained output (next section), which is now supported natively.
 
 JSON mode guarantees valid JSON syntax but doesn't guarantee the JSON matches your schema.
 
@@ -425,7 +416,7 @@ Q: What's the difference between "JSON mode" and schema-constrained output?
 - [x] JSON mode guarantees syntactically valid JSON but not that it matches your schema (fields could be missing or wrong-typed); schema-constrained output validates against a JSON Schema/Pydantic model, guaranteeing structure
 - [ ] They're the same feature
 - [ ] Schema mode only works for OpenAI
-> JSON mode solves the "the model wrapped it in markdown fences / added prose / produced a trailing comma" problem — you get parseable JSON. But it can still omit a required field or put a string where you wanted a number. Schema-constrained output (OpenAI's `response_format=Model`, or Anthropic's tool-as-schema trick) goes further by enforcing the actual shape, which is the strongest guarantee for production.
+> JSON mode solves the "the model wrapped it in markdown fences / added prose / produced a trailing comma" problem — you get parseable JSON. But it can still omit a required field or put a string where you wanted a number. Schema-constrained output (OpenAI's `response_format=Model`, or Anthropic's native `output_config.format` / `messages.parse()`) goes further by enforcing the actual shape, which is the strongest guarantee for production.
 
 Q: Why does Anthropic's structured-output approach define a "tool" that's really just a schema?
 - [ ] Tools are faster than JSON mode
@@ -449,8 +440,8 @@ class Product(BaseModel):
     currency: str
     in_stock: bool
 
-response = client.beta.chat.completions.parse(
-    model="gpt-4o",
+response = client.chat.completions.parse(
+    model="gpt-5.1",
     response_format=Product,
     messages=[...]
 )
@@ -458,9 +449,22 @@ product = response.choices[0].message.parsed  # typed Product object
 ```
 
 ```python
+# Anthropic native structured outputs — the same Pydantic model
+response = client.messages.parse(
+    model="claude-sonnet-5",
+    max_tokens=1024,
+    output_format=Product,
+    messages=[...]
+)
+product = response.parsed_output  # typed, validated Product instance
+```
+
+Before Anthropic shipped native structured outputs, the standard approach was the **tool-use trick** — define a "tool" whose input schema is your desired output shape and force the model to call it. It still works everywhere tool use does:
+
+```python
 # Anthropic tool-use trick — define a "tool" that's really a schema
 response = client.messages.create(
-    model="claude-sonnet-4-6",
+    model="claude-sonnet-5",
     tools=[{
         "name": "extract_product",
         "description": "Extract product information",
@@ -490,7 +494,7 @@ response = client.messages.create(
 
 ## 5. Tool Use (Function Calling)
 
-Reference: [Anthropic Tool Use](https://docs.anthropic.com/en/docs/build-with-claude/tool-use/overview), [OpenAI Function Calling](https://platform.openai.com/docs/guides/function-calling)
+Reference: [Anthropic Tool Use](https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview), [OpenAI Function Calling](https://platform.openai.com/docs/guides/function-calling)
 
 Tool use is the pattern that turns an LLM from a text generator into an agent that can take actions. The model doesn't execute tools — it generates a structured request for your code to execute.
 
@@ -534,7 +538,7 @@ tools = [
 
 # step 1: send message with tools
 response = client.messages.create(
-    model="claude-sonnet-4-6",
+    model="claude-sonnet-5",
     max_tokens=1024,
     tools=tools,
     messages=[{"role": "user", "content": "What's the weather in Tokyo?"}]
@@ -551,7 +555,7 @@ if response.stop_reason == "tool_use":
 
     # step 4: send the result back
     followup = client.messages.create(
-        model="claude-sonnet-4-6",
+        model="claude-sonnet-5",
         max_tokens=1024,
         tools=tools,
         messages=[
@@ -631,7 +635,7 @@ messages = [{"role": "user", "content": user_input}]
 
 while True:
     response = client.messages.create(
-        model="claude-sonnet-4-6",
+        model="claude-sonnet-5",
         max_tokens=4096,
         tools=tools,
         messages=messages,
@@ -664,9 +668,9 @@ This loop is the foundation of agent architectures — the model calls tools, ob
 
 ## 6. Retrieval-Augmented Generation (RAG)
 
-Reference: [Anthropic RAG Guide](https://docs.anthropic.com/en/docs/build-with-claude/retrieval-augmented-generation)
+Reference: [Anthropic RAG Guide](https://platform.claude.com/docs/en/build-with-claude/retrieval-augmented-generation)
 
-RAG gives the model access to external knowledge by retrieving relevant documents and injecting them into the prompt. This is how you make an LLM answer questions about your data without fine-tuning.
+RAG gives the model access to external knowledge by retrieving relevant documents and injecting them into the prompt. This is how you make an LLM answer questions about your data without fine-tuning. This section covers the essentials; the [RAG & Retrieval Engineering guide](RAG_STUDY_GUIDE.md) treats every stage — chunking, ANN indexes, hybrid search, reranking, and retrieval evaluation — at full depth.
 
 ### The Pattern
 
@@ -866,7 +870,7 @@ cite the source document in brackets, e.g., [doc-3].
 
 Some APIs support citations natively, returning which parts of the input were used for which parts of the output. This is more reliable than prompt-based citation.
 
-Reference: [Anthropic Citations](https://docs.anthropic.com/en/docs/build-with-claude/citations)
+Reference: [Anthropic Citations](https://platform.claude.com/docs/en/build-with-claude/citations)
 
 ---
 
@@ -980,7 +984,7 @@ Most LLM APIs stream using SSE — a simple HTTP-based protocol where the server
 ```python
 # Anthropic streaming
 with client.messages.stream(
-    model="claude-sonnet-4-6",
+    model="claude-sonnet-5",
     max_tokens=1024,
     messages=[{"role": "user", "content": "Explain quantum computing"}]
 ) as stream:
@@ -1003,7 +1007,7 @@ app = FastAPI()
 async def chat(request: ChatRequest):
     async def generate():
         async with client.messages.stream(
-            model="claude-sonnet-4-6",
+            model="claude-sonnet-5",
             max_tokens=4096,
             messages=request.messages,
         ) as stream:
@@ -1034,7 +1038,7 @@ When the model calls tools during streaming, you receive the tool call arguments
 
 ```python
 with client.messages.stream(
-    model="claude-sonnet-4-6",
+    model="claude-sonnet-5",
     max_tokens=4096,
     tools=tools,
     messages=messages,
@@ -1104,7 +1108,7 @@ import anthropic
 
 # Anthropic provides a token counting API
 token_count = client.messages.count_tokens(
-    model="claude-sonnet-4-6",
+    model="claude-sonnet-5",
     messages=messages,
     system=system_prompt,
 )
@@ -1139,7 +1143,7 @@ Most providers offer prompt caching — reuse the processed representation of lo
 ```python
 # Anthropic prompt caching
 response = client.messages.create(
-    model="claude-sonnet-4-6",
+    model="claude-sonnet-5",
     max_tokens=1024,
     system=[{
         "type": "text",
@@ -1154,7 +1158,7 @@ response = client.messages.create(
 
 Prompt caching is valuable when you have a long, static prefix (system prompt, few-shot examples, retrieved documents) followed by a short, varying suffix (user message).
 
-Reference: [Anthropic Prompt Caching](https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching)
+Reference: [Anthropic Prompt Caching](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)
 
 **Cache economics:**
 - Cached input tokens are typically 90% cheaper than uncached
@@ -1275,9 +1279,9 @@ def route_request(user_message):
         f"Rate the complexity of this request as 'simple' or 'complex': {user_message}"
     )
     if complexity == "simple":
-        return call_model("claude-haiku", user_message)
+        return call_model("claude-haiku-4-5", user_message)
     else:
-        return call_model("claude-sonnet", user_message)
+        return call_model("claude-sonnet-5", user_message)
 ```
 
 In practice, routing logic can be simpler than another LLM call — keyword matching, message length, or task type from the application layer.
@@ -1290,14 +1294,14 @@ For non-real-time workloads, batch APIs process requests asynchronously at a dis
 # Anthropic Message Batches
 batch = client.messages.batches.create(
     requests=[
-        {"custom_id": f"request-{i}", "params": {"model": "claude-sonnet-4-6", "max_tokens": 1024, "messages": msgs}}
+        {"custom_id": f"request-{i}", "params": {"model": "claude-sonnet-5", "max_tokens": 1024, "messages": msgs}}
         for i, msgs in enumerate(all_messages)
     ]
 )
 # poll for completion, then retrieve results
 ```
 
-Reference: [Anthropic Message Batches](https://docs.anthropic.com/en/docs/build-with-claude/batch-processing)
+Reference: [Anthropic Message Batches](https://platform.claude.com/docs/en/build-with-claude/batch-processing)
 
 ---
 
@@ -1666,7 +1670,7 @@ Every LLM call should log:
 log_entry = {
     "request_id": uuid4(),
     "timestamp": datetime.utcnow(),
-    "model": "claude-sonnet-4-6",
+    "model": "claude-sonnet-5",
     "input_tokens": response.usage.input_tokens,
     "output_tokens": response.usage.output_tokens,
     "latency_ms": elapsed_ms,
@@ -1828,7 +1832,7 @@ For structured output, always validate against a schema. For free-text output, v
 
 ```python
 # bad — locked to one model
-response = client.messages.create(model="claude-sonnet-4-6", ...)
+response = client.messages.create(model="claude-sonnet-5", ...)
 
 # better — configurable
 response = client.messages.create(model=config.MODEL, ...)
@@ -1863,8 +1867,8 @@ A 5-second wait for a response feels broken. The same content streamed token-by-
 
 ## Where to Go Next
 
-- **Read the provider docs as engineering references:** the [Anthropic docs](https://docs.anthropic.com/) (especially the [prompt-engineering guide](https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview) and tool-use pages) and the [OpenAI API reference](https://platform.openai.com/docs/api-reference) — capabilities, parameters, and pricing change fast, and the docs are the only current source.
+- **Read the provider docs as engineering references:** the [Anthropic docs](https://platform.claude.com/docs/) (especially the [prompt-engineering guide](https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview) and tool-use pages) and the [OpenAI API reference](https://platform.openai.com/docs/api-reference) — capabilities, parameters, and pricing change fast, and the docs are the only current source.
 - **Read Anthropic's [Building Effective Agents](https://www.anthropic.com/research/building-effective-agents)** — the short essay that separates workflows from agents and argues for the simplest pattern that works; it's the design philosophy this guide's architecture sections assume.
 - **Build the eval harness before the feature.** Take one real task, write 20–50 graded examples, and wire a scoring loop — the discipline that separates teams that improve their prompts from teams that vibe-edit them. [promptfoo](https://www.promptfoo.dev/docs/intro/) or a 100-line script both work.
 - **Ship one RAG app end to end** — chunking, embeddings, retrieval, citations, and the injection defenses from the security section — against your own documents. Every hard problem in this guide shows up in miniature.
-- **Adjacent guides in this repo:** [AI Agents](AI_AGENTS_STUDY_GUIDE.md) (the autonomy layer on top), [Web & LLM Security](WEB_LLM_SECURITY_STUDY_GUIDE.md) (the attack surface you just created), [Enterprise APIs](ENTERPRISE_API_STUDY_GUIDE.md) (rate limits, retries, idempotency for provider calls), and [Observability](OBSERVABILITY_STUDY_GUIDE.md) (tracing multi-step LLM pipelines).
+- **Adjacent guides in this repo:** [AI Agents](AI_AGENTS_STUDY_GUIDE.md) (the autonomy layer on top), [RAG & Retrieval Engineering](RAG_STUDY_GUIDE.md) (section 6 at full depth — chunking, ANN indexes, reranking, retrieval evaluation), [Web & LLM Security](WEB_LLM_SECURITY_STUDY_GUIDE.md) (the attack surface you just created), [Enterprise APIs](ENTERPRISE_API_STUDY_GUIDE.md) (rate limits, retries, idempotency for provider calls), and [Observability](OBSERVABILITY_STUDY_GUIDE.md) (tracing multi-step LLM pipelines).

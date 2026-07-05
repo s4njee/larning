@@ -110,6 +110,29 @@ The principle behind this layout: **keep reads near the Server Component that re
 
 If you remember one thing from Part 1: **Next.js is the answer when one codebase must span server and client — content sites, commerce, SaaS with public surfaces. It is the wrong answer for pure SPAs and simple static sites, and `next dev` is not production.**
 
+```quiz
+Q: The guide's central thesis is that "modern Next.js is one big idea with a framework attached." What is the idea?
+- [ ] File-based routing replaces React Router
+- [ ] It bundles React with a faster compiler
+- [x] Your component tree is split between two computers — some components run only on the server (reading databases/secrets, shipping zero JS), some on the client (state, clicks) — and the boundary between them is the concept everything else (routing, data fetching, Server Actions, caching) hangs off
+- [ ] It replaces REST APIs with GraphQL
+> Routing conventions, server data fetching, Server Actions, streaming, and the famously confusing caches are all consequences of that one server/client split. Learn the boundary deeply (Part 3) and the rest stops feeling like a pile of special cases. This is also why "React plus file routing plus getServerSideProps" — the Pages Router mental model — is the picture this guide is upgrading you away from.
+
+Q: For which application is Next.js the *wrong* default choice?
+- [ ] A content-plus-commerce site that needs SEO and rich interactivity
+- [x] A pure SPA behind a login wall (internal dashboard, admin console) where SEO is irrelevant and the whole UI is interactive client state — Vite + React gives a static bundle, a simpler model, and no caching layer to fight
+- [ ] Multi-tenant SaaS with public marketing pages and an authenticated app in one codebase
+- [ ] A product where time-to-first-byte and Core Web Vitals are business metrics
+> Next.js earns its weight when one codebase must span server and client with SEO *and* app interactivity. For an authenticated-only SPA, server rendering buys little and costs a server, a deploy story, and the Part 6 caching model; for a simple static site, Astro fits better; for a backend-heavy service (WebSockets, long jobs) the request-scoped model fights you. "A framework you can't argue against is one you don't understand."
+
+Q: Why does the guide insist `next dev` "does not behave like production"?
+- [ ] Dev mode uses a different React version
+- [ ] Dev mode disables TypeScript checking
+- [x] In dev, caching is largely disabled and every page renders dynamically — rendering-mode and caching decisions are made at `next build` — so "works in dev, breaks in prod" (or vice versa) means running `next build && next start` locally before trusting the bug
+- [ ] Dev mode ignores the App Router
+> Caching and static/dynamic decisions are build-time concerns, so dev (lazy compilation, no production caching, all-dynamic) is a different machine from prod. `next build`'s per-route summary (○ static, ƒ dynamic) is the cheapest observability you have — reading it after each significant change tells you what the framework actually decided, which is most of debugging "framework bugs."
+```
+
 ---
 
 ## Part 2 — The App Router: The Filesystem Is the Architecture
@@ -614,6 +637,29 @@ export const getCurrentUser = cache(async () => {
 Now `getCurrentUser()` can be called from the layout, the page, and three nested components, and the database is hit once per request. This is *not* caching across requests — memoization lives and dies with one render pass — but it's what makes colocated data access architecturally free. (The cross-request caches are Part 6's tangle.)
 
 If you remember one thing from Part 4: **fetch where the data is used, in async Server Components, through a thin authorized data layer — start independent reads in parallel, and let `cache()`/memoization make repeated reads free within a request.**
+
+```quiz
+Q: In the App Router, how does a Server Component get its data, and why is reading the database directly in the component safe?
+- [x] It's an `async` function that runs next to the data and just reads it (DB query or `fetch`) at the point of use — safe because Server Components never ship to the browser, so there's no API route, client fetch library, or loading-state `useState` to maintain
+- [ ] It calls `getServerSideProps` like the Pages Router
+- [ ] It fetches from your own `/api` routes over HTTP
+- [ ] It uses `useEffect` + `fetch` and a client cache
+> The App Router retires "components receive, they don't fetch." An async Server Component reads data inline and renders HTML with the data already in it. Direct DB access is safe precisely because the component's code stays on the server. The error idioms are control-flow functions (`notFound()` for expected absence, throw → `error.tsx` for unexpected failure) — and remember `fetch` doesn't throw on 4xx/5xx, so the `res.ok` check is always on you.
+
+Q: Why does the guide say "do not call your own Route Handlers from Server Components"?
+- [ ] Route Handlers can't return JSON
+- [x] The caller is already on the server, so fetching `https://yourapp.com/api/...` adds an HTTP hop, a second serialization, and a duplicated auth check for zero benefit — instead call the function directly through a thin data layer; Route Handlers are for *external* HTTP consumers
+- [ ] Route Handlers are deprecated in the App Router
+- [ ] It causes an infinite render loop
+> Inside the server, call the function, not the endpoint. The clean factoring is a data layer — plain `lib/` functions that take typed args, enforce authorization, and return DTOs — which Server Components and Server Actions both call directly. (That data layer is also where security lives, Part 8.) Route Handlers exist for callers that genuinely speak HTTP from outside.
+
+Q: What is the "component-tree waterfall," and what makes repeated reads within one render free?
+- [ ] A CSS layout bug caused by streaming
+- [ ] Importing a client component into a server component
+- [x] When `<Page>` awaits its data, then renders `<Reviews>` which awaits *its* data, the fetches serialize across components even though each looks innocent — fixed by starting promises high and streaming via Suspense; and request memoization (`fetch` dedup, or React's `cache()`) makes identical reads in one render hit the source once
+- [ ] Calling `Promise.all` on independent reads
+> Two waterfalls bite: the obvious one (sequential awaits of independent data — fix with `Promise.all`) and the sneaky component-tree one. "Starting work and waiting for work are separate decisions." Memoization (lives and dies with one render pass, not cross-request caching) is what makes colocated "fetch where you use it" architecturally free — the layout, the page, and three nested components can all call `getCurrentUser()` and hit the DB once.
+```
 
 ---
 
@@ -1202,6 +1248,29 @@ Two closing hardening notes. First, Server Actions get some framework-level prot
 
 If you remember one thing from Part 8: **`NEXT_PUBLIC_` and `'use client'` are declarations that code and config are world-readable; fence the rest with `server-only`, and put real authorization in the data access layer — middleware redirects, the DAL decides.**
 
+```quiz
+Q: What does the `NEXT_PUBLIC_` prefix on an environment variable actually mean?
+- [ ] It's loaded only in production builds
+- [ ] It's encrypted before reaching the client
+- [x] It's a declaration that the value is world-readable — inlined into the client JavaScript bundle at build time — so `DATABASE_URL` (no prefix) is server-only, while `NEXT_PUBLIC_*` ships to every visitor forever (rotating it requires a rebuild)
+- [ ] It makes the variable available to middleware only
+> Treat the prefix as what it is, not a naming convention: prefixed = public. The companion for *code* is the `server-only` package, which turns "this module must never reach the browser" into a build error — put it atop every module touching secrets, the DB, or privileged SDKs, and the "a refactor moved an import and now the bundle has the admin client" vulnerability class becomes a compile failure.
+
+Q: Why is middleware (Proxy in Next 16) explicitly "not your security layer"?
+- [ ] It only runs in development
+- [ ] It cannot read cookies
+- [x] It's for cheap, request-shaped decisions and *optimistic* checks (does a session cookie exist?) — it doesn't verify sessions against a store, runs on a constrained runtime, must be fast, and can be bypassed by rewrites/direct route invocations; real authorization belongs in the Data Access Layer, close to the data
+- [ ] It runs after the route renders, so it's too late to block
+> Middleware redirects obvious anonymous traffic (a UX optimization) but makes no authorization decisions. The real check lives in the DAL: every function that reads or writes privileged data verifies the session and checks per-row permissions itself (`cache()`-wrapped so twenty checks decrypt the cookie once). The layering: middleware redirects (experience), pages decide what UI to show (experience), the DAL enforces who may read/write what (security, every time).
+
+Q: Why must you map database entities to DTOs before passing them to a Client Component?
+- [ ] Client Components can't render plain objects
+- [ ] DTOs serialize faster
+- [x] The serialization boundary faithfully ships *every* field you give it, including `passwordHash` — "the UI doesn't display it" is not "the response doesn't contain it," so a raw entity leaks its secrets into the client payload regardless of what's rendered
+- [ ] It's required for TypeScript inference across the boundary
+> The structural fix beats the band-aids: don't pass raw entities at all; map to DTOs containing exactly what the UI needs. React's taint APIs can mark specific objects un-passable as defense in depth, but returning DTOs from the data layer prevents the whole class. Anything that crosses to the client is world-readable — the same truth as `NEXT_PUBLIC_`, applied to data instead of config.
+```
+
 ---
 
 ## Part 9 — Performance, Metadata, and Client-Side Discipline
@@ -1344,6 +1413,29 @@ One genuinely Next-specific accessibility point deserves more than a passing men
 
 If you remember one thing from Part 9: **use the framework's optimizers (`next/image`, `next/font`, metadata-as-code) instead of hand-rolling them, keep heavy code server-side or lazily loaded, and locate state by what it describes — server truth on the server, view state in the URL, ephemera in `useState`.**
 
+```quiz
+Q: What does `next/image` fix "by construction," and what is the one prop to study?
+- [x] It requires or infers dimensions so the browser reserves space (eliminating layout shift / CLS), serves resized modern formats (WebP/AVIF), and lazy-loads below-the-fold by default — and `priority` is the prop to study: set it on the LCP element (the hero), keep the lazy default elsewhere
+- [ ] It compresses images smaller than any other tool, nothing more
+- [ ] It only works with images hosted on Vercel
+- [ ] It converts every image to base64 and inlines it
+> The biggest Core Web Vitals problems usually aren't React — they're a 2 MB hero, a late-swapping font, a main-thread-blocking script. Next ships a component for each (`next/image`; `next/font`, which self-hosts Google Fonts into the build; `next/script` with a `strategy` prop). `priority` eagerly loads and preloads the Largest Contentful Paint image; misusing it (priority on everything) defeats the purpose.
+
+Q: Where should a piece of state live in an App Router app?
+- [ ] All state in a global client store like Redux for consistency
+- [ ] Everything in the URL so it's always shareable
+- [x] By what it describes: server data stays on the server (don't mirror fetched truth into a client store — it goes stale; the Server Component re-renders fresh on revalidation), view-describing state goes in the URL, ephemeral UI state is `useState`, ambient concerns (theme) are context
+- [ ] Always `useState`, lifted up as needed
+> Most "do I need Redux/Zustand?" questions dissolve under that hierarchy — what's left genuinely client-global is usually small. The SPA-habit mistake is copying server data into a client store, which immediately risks staleness because the real source re-renders on revalidation while the copy doesn't. Locate state by its nature, not by reflex.
+
+Q: For a search box that drives a server navigation on each keystroke, what does `useTransition` buy you?
+- [ ] It debounces the input automatically
+- [ ] It caches the search results client-side
+- [x] It splits urgent from non-urgent: the keystroke updates the input instantly while the navigation (and the Server Component re-render it triggers) runs as an interruptible transition, and `isPending` lets you dim the now-stale results instead of freezing the input
+- [ ] It moves the search to a Web Worker
+> URL-driven state means every filter keystroke is potentially a router navigation, which would otherwise make the input janky. `useTransition` keeps typing fluid and the re-render interruptible; `useDeferredValue` does the same when the expensive thing is a client computation rather than a navigation. Add a debounce on top for server-bound searches — transitions make the UI honest, debouncing makes the request volume polite.
+```
+
 ---
 
 ## Part 10 — Deployment, Operations, and Honest Trade-offs
@@ -1460,6 +1552,29 @@ If you remember one thing from Part 10: **`next build` produces a server, not a 
 ### The Wider Ecosystem, Briefly
 
 A few production topics deserve a paragraph each so you know they exist and where their documentation lives, even though they're "after the core model is comfortable" material. **MDX** ([guide](https://nextjs.org/docs/app/guides/mdx)) compiles Markdown-with-components into pages — the natural engine for docs sites and blogs, and a genuinely good first practice project because it exercises routing, `generateStaticParams`, metadata, and the server/client boundary (your prose is server-rendered; the interactive demo embedded in it is a client island) all at once. **Internationalization** ([guide](https://nextjs.org/docs/app/guides/internationalization)) in the App Router is architecture, not string replacement: locale lives in the route tree (`app/[lang]/...`), middleware negotiates the user's locale and rewrites, and every cached page exists per-locale — decide this on day one or pay a routing migration later. **Multi-zones** ([guide](https://nextjs.org/docs/app/guides/multi-zones)) let several independently deployed Next.js apps share one domain via rewrites — the escape valve when one app, one build, and one deploy cadence stops scaling across teams. And **PWA support and package-bundling controls** ([PWAs](https://nextjs.org/docs/app/guides/progressive-web-apps), [Package Bundling](https://nextjs.org/docs/app/guides/package-bundling)) are there when the product calls for them — specialized tools, learned on demand.
+
+```quiz
+Q: The guide stresses that "`next build` produces a server, not a folder of static files." Why does that frame the whole deployment discussion?
+- [x] That server renders dynamic routes, streams, regenerates ISR, runs middleware, and optimizes images — so deploying it is a real architectural choice (Vercel rents you the operational machinery at usage-scaled, spiky cost; self-hosting hands it to you), not a static-file upload
+- [ ] Because Next.js apps can only run on Vercel
+- [ ] Because the build output is too large for a CDN
+- [ ] Because static export is the only supported mode
+> Treating Next as "a static site generator" misses that it's a server with opinions. Vercel makes deployment `git push` and gives preview-per-PR, but costs meter separately (image optimization, invocations, bandwidth) and there's real lock-in pull (narrowing via the adapters API). Self-hosting is fully supported but hands you the proxy, CDN, image pipeline, and cache — a choice teams already running services give up less to make.
+
+Q: Self-hosting across three replicas, a `revalidateTag` updates one page but the other two keep serving stale content. Why, and what's the fix?
+- [ ] ISR is disabled when self-hosting
+- [ ] The CDN cached the page too aggressively
+- [x] The ISR/Data Cache defaults to in-memory-plus-disk *per instance*, so three replicas are three independent caches and a revalidation lands only on the instance that served the action — the fix is a shared cache backend (a `cacheHandler` backed by Redis, with per-instance memory caching disabled)
+- [ ] Tagged revalidation only works on Vercel
+> This is the self-hosting item that bites multi-instance deployments hardest. On Vercel the Data Cache is managed and multi-region; self-hosted, you wire a shared cache handler implementing `get`/`set`/`revalidateTag` against Redis or similar. It's "the difference between 'it deploys' and 'revalidation actually works'" — and the streaming-safe reverse proxy (configured *not* to buffer) is the companion gotcha.
+
+Q: What's the framework-specific testing caveat the docs state outright?
+- [ ] Server Actions cannot be tested at all
+- [ ] Vitest doesn't work with Next.js
+- [x] Async Server Components don't unit-test well yet — the RSC machinery isn't meaningfully simulable in jsdom — so don't force that layer; unit-test the pure core (validation, authz rules, DTO mappers, the data layer) and cover routing, streaming, form actions, and auth flows with Playwright against a real `next start`
+- [ ] You must mock the entire App Router for every test
+> Testing follows the architecture: aggressively unit-test pure functions and synchronous components, but cover the RSC-heavy flows end-to-end rather than fighting jsdom. Make the E2E suite hit the unhappy paths (pending buttons, validation errors, auth redirects, not-found) where production bugs live. `instrumentation.ts` (`register`/`onRequestError`) is the observability hook for OpenTelemetry and server-error reporting.
+```
 
 ---
 

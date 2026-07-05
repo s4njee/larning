@@ -402,6 +402,29 @@ let s: &'static str = "I'm a string literal";  // embedded in the binary
 
 Beginners often overuse `'static` because it sounds like "the easy lifetime." Usually it is not what you want. In most code, if the compiler asks for a lifetime, the fix is to own the data with `String`, `Vec<T>`, or `Arc<T>`, not to force everything toward `'static`.
 
+```quiz
+Q: A Python developer reads `fn longest<'a>(x: &'a str, y: &'a str) -> &'a str` and assumes `'a` controls how long the strings live. What's the accurate model?
+- [ ] `'a` allocates the strings on a special long-lived heap
+- [x] A lifetime isn't wall-clock "how long an object lives" — it's a compile-time *proof* that the returned reference cannot outlive the data it points to; here it ties the result to the shorter of the two inputs, so the caller must keep both alive
+- [ ] `'a` makes the function faster by reusing memory
+- [ ] Lifetimes are a runtime garbage-collection hint
+> Python never hits this because the GC keeps any referenced object alive. Rust instead proves at compile time that no reference dangles. Read `'a` as a contract between borrows: the output borrow is bound to the input borrows, so returning a reference to a value about to drop is a compile error, not a runtime crash. Annotations describe relationships, not allocations.
+
+Q: The compiler asks for a lifetime and a beginner reaches for `'static`. Why is that usually the wrong fix?
+- [ ] `'static` is slower than other lifetimes
+- [x] `'static` means "valid for the entire program" (like a string literal baked into the binary), which is rarely what your data actually is — forcing it papers over the real issue; the usual correct fix is to *own* the data with `String`, `Vec<T>`, or `Arc<T>`
+- [ ] `'static` only works inside `main`
+- [ ] `'static` disables the borrow checker for that value
+> `'static` sounds like "the easy lifetime," so beginners overuse it. But it's a strong claim — the reference must be valid forever — and most data isn't. When the compiler says a reference doesn't live long enough, the real question is usually "should this own its data instead of borrowing?" Owning (`String` over `&str`, `Arc<T>` for shared) resolves the lifetime by removing the borrow.
+
+Q: When does a struct need a lifetime annotation like `struct Excerpt<'a> { text: &'a str }`?
+- [ ] Whenever it has more than one field
+- [ ] Whenever it's sent across threads
+- [x] When it *stores a reference* rather than owning its data — the annotation ties the struct's validity to the borrowed value, so an `Excerpt` borrowing a `String` can't outlive that `String`
+- [ ] Only when the struct is returned from a function
+> A struct holding `&str` borrows memory it doesn't own, so the compiler must know the borrowed data outlives the struct — that's what `<'a>` expresses. The common alternative is an owned field (`text: String`), which removes the lifetime at the cost of a copy. It's the same own-vs-borrow decision as function parameters, applied to data structures.
+```
+
 ---
 
 ## 5. Enums, Pattern Matching & Option/Result
@@ -880,6 +903,29 @@ let b = Vec2 { x: 3.0, y: 4.0 };
 let c = a + b;  // Vec2 { x: 4.0, y: 6.0 }
 ```
 
+```quiz
+Q: Rust has no class inheritance. How do you get polymorphism, and what's the `impl Trait` vs `dyn Trait` tradeoff?
+- [x] Through traits: `impl Trait`/generics give *static* dispatch (monomorphization — fast, concrete types, more compiler visibility), while `dyn Trait` trait objects give *dynamic* dispatch (heterogeneous collections, runtime polymorphism) at the cost of an indirection and lost specialization
+- [ ] Through subclassing a base struct, exactly like Python
+- [ ] Only through `dyn Trait`; static dispatch doesn't exist
+- [ ] Rust has no polymorphism without unsafe code
+> Composition replaces inheritance: a type implements many traits, structs embed other structs, and trait objects handle runtime polymorphism. Most Rust prefers static dispatch (`&impl Drawable`) because it's fast and keeps types concrete; reach for `Box<dyn Drawable>` when you genuinely need a heterogeneous collection or plugin-style behavior. Python's dispatch is always dynamic — Rust makes you choose and defaults to the faster option.
+
+Q: What does `#[derive(Debug, Clone, PartialEq, Hash)]` on a struct do?
+- [ ] Nothing at runtime; it's documentation
+- [x] It asks the compiler to generate standard trait implementations — `Debug` (like `__repr__`, the `{:?}` format), `Clone` (`.clone()`), `PartialEq` (the `==` operator), `Hash` (usable as a HashMap key) — so you don't hand-write the boilerplate
+- [ ] It makes the struct mutable
+- [ ] It registers the struct with a global type registry
+> Traits express capabilities, and `derive` mechanically implements the common ones from your fields. This is why traits feel more central than Python interfaces: formatting, equality, hashing, ordering, iteration, and operator overloading all flow through traits, so much of the standard library is "this type implements that trait." A type usable as a HashMap key is just one that derives `Eq` and `Hash`.
+
+Q: How do you make `a + b` work on your own `Vec2` struct, and what does a default trait method give you?
+- [ ] Override the `+` symbol globally
+- [x] Implement the `std::ops::Add` trait for `Vec2` (operator overloading is just a trait), defining `add`; and a trait can supply a *default* method body (like a mixin) that implementors get for free unless they override it
+- [ ] Rust doesn't allow operator overloading
+- [ ] Add an `__add__` method by naming convention
+> Operators are traits: `+` is `Add`, `==` is `PartialEq`, indexing is `Index`. Implementing the trait wires the operator to your type. Default methods (like `Drawable::description`) let a trait provide shared behavior implementors inherit without rewriting — the closest thing to a mixin — so a trait can define both a required interface (`draw`) and reusable defaults on top of it.
+```
+
 ---
 
 ## 8. Generics & Trait Bounds
@@ -1072,6 +1118,29 @@ for s in &mut v { }      // s is &mut String, can modify in place
 
 // Take ownership (consumes the vec)
 for s in v { }           // s is String, v is gone after this loop
+```
+
+```quiz
+Q: A Python developer writes `(0..10).filter(|x| x % 2 == 0).map(|x| x * x)` and expects the work to have happened. What's different from a list comprehension?
+- [ ] Rust iterators are eager but run on another thread
+- [x] Rust iterator chains are *lazy* — they build a pipeline that does nothing until a consuming operation (`collect`, `sum`, `find`, `count`) drives it — unlike Python's eager comprehensions, which compute immediately
+- [ ] The closures won't compile without type annotations
+- [ ] `filter` and `map` each allocate a new Vec
+> Each adaptor (`map`, `filter`, `take`) just wraps the previous iterator; nothing iterates until a *consumer* pulls values through. That's what makes chains zero-cost (no intermediate Vecs) and able to express infinite sequences, but it surprises people from eager languages: building the pipeline isn't running it. Forgetting the terminal operation means the work silently never happens.
+
+Q: Rust closures implement `Fn`, `FnMut`, or `FnOnce` depending on how they capture. What forces a closure to be `FnOnce`?
+- [ ] Calling it more than once
+- [x] Capturing a variable *by ownership* (a `move` closure that consumes the captured value) — it can be called only once, because calling it uses up what it owns; `Fn` captures by immutable reference, `FnMut` by mutable reference
+- [ ] Returning a value instead of `()`
+- [ ] Being defined inside `main`
+> The capture mode is tied to the ownership system, which has no Python equivalent. A closure that only reads a captured value is `Fn` (callable repeatedly); one that mutates it is `FnMut`; one that *moves* a value in and consumes it is `FnOnce`. This is why `move ||` closures handed to threads take ownership of what they touch — the thread may outlive the current scope, so the data must travel with it.
+
+Q: `for s in &v`, `for s in &mut v`, and `for s in v` over a `Vec<String>` differ how?
+- [ ] They're identical; the compiler picks the fastest
+- [x] `&v` borrows (each `s` is `&String`, and `v` is usable afterward), `&mut v` mutably borrows (modify in place), and `for s in v` *consumes* the vec by value (each `s` is an owned `String`, and `v` is gone after the loop)
+- [ ] `for s in v` copies the vec first
+- [ ] Only `&v` is allowed; the others don't compile
+> Iteration interacts with ownership like everything else. Borrowing iteration (`&v`) is the common default and leaves the collection intact; mutable iteration lets you edit elements; by-value iteration moves the elements out and uses up the collection. Python's `for x in list` never consumes the list, so the third form — where the vec is *gone* afterward — is the one that surprises Python developers.
 ```
 
 ---
@@ -1353,6 +1422,29 @@ async for value in async_iterable:
 
 Streams are not built into the language the way Python's async iterators are. They are a trait-based ecosystem pattern, which is flexible but means you will often need helper crates and extension traits to get ergonomic stream combinators.
 
+```quiz
+Q: In Python, `asyncio.create_task()` starts running immediately. What's fundamentally different about a Rust future?
+- [ ] Rust futures run on a background OS thread automatically
+- [x] Rust futures are *lazy* — calling an `async fn` produces a future that does nothing until it's `.await`ed or spawned onto an executor — so "creating a future" and "running a task" are separate actions, and forgetting to await/spawn is a common early bug
+- [ ] Rust futures can only be awaited once per program
+- [ ] Rust futures execute eagerly, exactly like Python's
+> `let f = do_work();` prints nothing; `f.await` is what runs it. This laziness lets the compiler and executor compose futures efficiently, but it inverts the Python intuition where scheduling a coroutine starts it. The corollary: constructing work isn't enough — you must drive it, either by awaiting it or handing it to the runtime with `tokio::spawn`.
+
+Q: Why does Rust async "feel lower-level" than Python's, and what must you choose that Python gives you for free?
+- [ ] Rust async requires writing raw poll loops by hand
+- [x] The language provides `async`/`await` syntax but *not a runtime* — you pick an executor like `tokio`, which decides task scheduling, timers, networking primitives, and spawning APIs — whereas Python ships `asyncio` built in
+- [ ] Rust async only works single-threaded
+- [ ] Rust has no equivalent of `asyncio.gather`
+> Python bundles the event loop; Rust deliberately doesn't, so you add `tokio` (or another executor) and annotate `#[tokio::main]`. That's more setup but more control — tokio is multi-threaded by default, and you choose primitives to match the workload. The combinators map across, but the runtime is a dependency, not batteries included.
+
+Q: How do you run two async tasks concurrently in tokio, mirroring `asyncio.gather`?
+- [ ] `await` them one after another
+- [x] `tokio::join!(task_a(), task_b())` drives both concurrently and returns both results; `tokio::select!` instead races them and proceeds with whichever finishes first, and `tokio::spawn` launches a task like `asyncio.create_task`
+- [ ] `tokio::gather!(...)`, a direct rename
+- [ ] You can't; tokio runs one task at a time
+> The combinators map closely to asyncio: `join!` is "wait for all" (gather), `select!` is "first to finish wins," and `spawn` hands a future to the runtime to run independently, returning a handle you can await. Because futures are lazy, `join!` is what actually *drives* `task_a()` and `task_b()` — passing them to `join!` is the await point, not the call.
+```
+
 ---
 
 ## 12. Smart Pointers & Interior Mutability
@@ -1443,6 +1535,29 @@ println!("{:?}", *v);
 | `Rc<RefCell<T>>` | Multiple owners + mutation, single thread |
 | `Arc<Mutex<T>>` | Multiple owners + mutation, multi-threaded |
 | `Arc<RwLock<T>>` | Multiple owners + read-heavy mutation, multi-threaded |
+
+```quiz
+Q: What problem do `Rc<T>` and `Arc<T>` solve, and when must you use `Arc` instead of `Rc`?
+- [x] They provide *shared ownership* (explicit reference counting), where a value has multiple owners and is dropped when the count hits zero; use `Arc` (atomic counting) when the value is shared *across threads*, `Rc` (cheaper, non-atomic) only single-threaded
+- [ ] They allocate on the stack to avoid the heap
+- [ ] `Rc` is for small values and `Arc` for large ones
+- [ ] They disable the borrow checker
+> Plain ownership allows one owner; `Rc`/`Arc` allow many, releasing the data when the last clone drops (like Python's refcounting, but explicit). The split is thread safety: `Arc` uses atomic increments (slightly costlier) so clones are safe to move into other threads, while `Rc` skips the atomics and the compiler rejects sending it across a thread boundary. Use the cheaper `Rc` until you actually cross threads.
+
+Q: `RefCell<T>` lets you mutate data through an immutable reference. What's the catch?
+- [ ] It copies the data on every access
+- [x] It moves borrow checking from compile time to *runtime* — `borrow_mut()` panics if the value is already borrowed — so you trade a compile error for a possible runtime panic, which is why it's an escape hatch for when the static rules are too strict (recursive structures, shared graphs)
+- [ ] It only works with primitive types
+- [ ] It makes the value thread-safe automatically
+> Interior mutability is a controlled cheat: the value looks immutable but can change inside. `RefCell` still enforces "one mutable or many immutable borrows" — just at runtime, by panicking on violation, rather than refusing to compile. It's useful precisely because the rest of Rust stays statically checked, so when you reach for it you should know which invariant moved to runtime. (`Mutex` is the thread-safe analog, blocking instead of panicking.)
+
+Q: You need a value shared by multiple owners across threads *and* mutable. Which combination?
+- [ ] `Rc<RefCell<T>>`
+- [ ] `Box<T>`
+- [x] `Arc<Mutex<T>>` — `Arc` for thread-safe shared ownership, `Mutex` for synchronized interior mutability; the single-threaded analog is `Rc<RefCell<T>>`
+- [ ] `Arc<T>` alone
+> The smart pointers compose: pick the ownership wrapper (`Rc` single-thread, `Arc` multi-thread) and, if you need mutation through the shared reference, the matching cell (`RefCell` single-thread, `Mutex`/`RwLock` multi-thread). `Rc<RefCell<T>>` is the canonical "shared mutable graph in one thread"; `Arc<Mutex<T>>` is its thread-safe sibling. Mixing wrong — `Rc` across threads — won't compile, the type system steering you to the right tool.
+```
 
 ---
 
@@ -1718,6 +1833,29 @@ greet(&String::from("Alice"));            // &String auto-derefs to &str
 struct User {
     name: String,  // not &str (would need lifetime)
 }
+```
+
+```quiz
+Q: Why does Rust have both `String` and `&str`, and which should a function take as a parameter?
+- [x] `String` is owned and growable (heap-allocated, like a `list`); `&str` is a borrowed, immutable view (a slice, including string literals in the binary) — functions should take `&str`, because a `&str` parameter accepts both a literal and a borrow of a `String`
+- [ ] `String` is for ASCII and `&str` is for Unicode
+- [ ] They're identical; `&str` is just an alias
+- [ ] `&str` is mutable and `String` is immutable
+> The split is the own-vs-borrow distinction Python lets you ignore. Store `String` in structs (it owns its data, no lifetime needed); accept `&str` in signatures (`fn greet(name: &str)`) because a `&String` auto-derefs to `&str`, so one signature serves both callers. This is the recurring Rust text question: do you own this text or borrow it?
+
+Q: Why does `s[0]` fail to compile on a Rust `String` when Python's `s[0]` just works?
+- [ ] Rust strings are immutable
+- [x] Rust strings are UTF-8 *bytes*, where one character may span multiple bytes, so a single integer index is ambiguous — Rust makes you choose: `.as_bytes()` for bytes, `.chars()` for Unicode scalar values, or a byte-range slice `&s[0..1]` (which panics off a char boundary)
+- [ ] Indexing requires importing a trait first
+- [ ] Rust strings start at index 1
+> Python presents `str` as a simple sequence of characters; Rust refuses to hide that text is encoded. Because UTF-8 is variable-width, `s[0]` can't mean both "first byte" and "first character," so Rust won't guess. Likewise `s.len()` is byte length, not character count (`s.chars().count()` for that) — the recurring theme that you must say which unit you mean.
+
+Q: What's the idiomatic way to build the string `"Hi, I'm Alice"` from a `name` variable?
+- [ ] `"Hi, I'm " + name` where `name` is a `String`
+- [x] `format!("Hi, I'm {name}")` — the f-string analog — preferred over `+`; the `+` operator works but has awkward ownership rules (it takes `String` on the left and `&str` on the right, consuming the left operand)
+- [ ] `String::concat(name)`
+- [ ] `print!(name)`, which returns the string
+> `format!` is Rust's f-string: readable, handles mixed types, and doesn't consume its arguments. The `+` operator exists but its signature (`String + &str`, moving the left side) makes chains clumsy and surprising about ownership. To build a string piece by piece, `String::new()` plus `push_str`/`push` is the mutable builder. Prefer `format!` for assembly; reach for the others deliberately.
 ```
 
 ---

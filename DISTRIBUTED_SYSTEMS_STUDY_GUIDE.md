@@ -175,7 +175,7 @@ This is not academic. **Cassandra resolves conflicting writes by last-write-wins
 
 ### Logical Time: Ordering Without Clocks
 
-If physical clocks can't order events, what can? **Causality**, captured by logical clocks. The foundational idea is Lamport's **happens-before** relation (→):
+If physical clocks can't order events, what can? **Causality**, captured by logical clocks. The foundational idea is the **happens-before** relation (→) from Lamport's [*Time, Clocks, and the Ordering of Events in a Distributed System*](https://lamport.azurewebsites.net/pubs/time-clocks.pdf) — arguably the field's founding paper:
 
 - If `a` and `b` are in the same process and `a` comes first, then `a → b`.
 - If `a` is sending a message and `b` is receiving it, then `a → b`.
@@ -194,14 +194,24 @@ If neither `a → b` nor `b → a`, the events are **concurrent** — and crucia
 Since you can't ask "are you dead?", you infer liveness from silence. The basic tool is the **heartbeat**: nodes periodically ping; miss enough and you suspect the peer is down. But a fixed threshold is brittle (Part 9's timeout dilemma again). Two refinements show up across real systems:
 
 - **Phi-accrual failure detectors** output a *suspicion level* (φ) that rises smoothly as silence lengthens, adapting to observed network variance instead of a hard cutoff. **Cassandra** and **Akka** use this.
-- **Gossip / SWIM protocols** scale failure detection to large clusters: instead of everyone pinging everyone (O(n²)), each node periodically exchanges state with a few random peers, and information about who's up/down/joining propagates epidemically in O(log n) rounds. **Cassandra**, **Consul** (via Serf), and **HashiCorp's** tooling use gossip for membership and failure detection. It's eventually-consistent membership — fast and robust, but a node's view can briefly lag reality.
+- **Gossip / [SWIM](https://www.cs.cornell.edu/projects/Quicksilver/public_pdfs/SWIM.pdf) protocols** scale failure detection to large clusters: instead of everyone pinging everyone (O(n²)), each node periodically exchanges state with a few random peers, and information about who's up/down/joining propagates epidemically in O(log n) rounds. **Cassandra**, **Consul** (via Serf), and **HashiCorp's** tooling use gossip for membership and failure detection. It's eventually-consistent membership — fast and robust, but a node's view can briefly lag reality.
+
+### Crash, Recover, or Lie: Fault Models
+
+One more piece of precision before the impossibility results: "fault tolerance" is a meaningless claim until you name the **fault model** — what, exactly, a faulty node is allowed to do:
+
+- **Crash-stop:** a faulty node halts and never returns. The simplest model, and the one most textbook algorithms are stated in.
+- **Crash-recovery:** a faulty node halts, then later restarts with its durable disk state intact but everything in memory gone. This is the model real systems actually live in, and it has a concrete consequence: a consensus node must `fsync` its promises and log entries to disk *before* acknowledging them (Part 4), because a node that votes, reboots, and forgets it voted can hand the same election to two candidates.
+- **Byzantine:** a faulty node can do *anything* — lie, send conflicting messages to different peers, corrupt data — whether from a bug, bad RAM, or an active adversary. Tolerating `f` Byzantine nodes requires at least `3f+1` participants and far more expensive protocols ([PBFT](https://pdos.csail.mit.edu/6.824/papers/castro-practicalbft.pdf) is the classic); blockchains pay that price because their participants are mutually untrusting by design.
+
+Everything in this guide — Raft included — assumes **crash-recovery, non-Byzantine** faults. That's the right assumption inside one organization's infrastructure: you trust your own nodes not to lie, and you catch silent corruption with checksums rather than voting. But read every system's claims through this lens, because "tolerates one failure" means very different things in different models.
 
 ### Two Impossibility Results You Should Know
 
 You don't need the proofs, but you must know the shape of these, because they explain why certain "obvious" features don't exist:
 
 - **The Two Generals Problem.** Two generals must coordinate an attack by messengers crossing enemy territory (an unreliable channel). It is provably impossible to *guarantee* they ever reach certain agreement — any final confirming message could be the one that's lost, requiring a confirmation of the confirmation, forever. The practical lesson: **guaranteed exactly-once delivery over an unreliable network is impossible.** You can have at-most-once (don't retry) or at-least-once (retry until acked), and you bridge the gap with idempotency. "Exactly-once" only ever means "at-least-once delivery plus deduplication" (Part 7).
-- **FLP (Fischer–Lynch–Paterson, 1985).** In a fully asynchronous system (no clock bounds) where even *one* node may crash, **no deterministic algorithm can guarantee it will reach consensus** — there's always some unlucky timing that makes it run forever. This sounds like it kills consensus entirely. It doesn't, because real systems sidestep it: they use **timeouts** (a touch of synchrony) and **randomization** to guarantee *termination in practice* while never sacrificing *safety*. That distinction — safety (never wrong) vs. liveness (eventually makes progress) — is the lens through which Part 4's Raft is best understood: Raft is always safe, and is live whenever the network behaves well enough for long enough.
+- **[FLP](https://groups.csail.mit.edu/tds/papers/Lynch/jacm85.pdf) (Fischer–Lynch–Paterson, 1985).** In a fully asynchronous system (no clock bounds) where even *one* node may crash, **no deterministic algorithm can guarantee it will reach consensus** — there's always some unlucky timing that makes it run forever. This sounds like it kills consensus entirely. It doesn't, because real systems sidestep it: they use **timeouts** (a touch of synchrony) and **randomization** to guarantee *termination in practice* while never sacrificing *safety*. That distinction — safety (never wrong) vs. liveness (eventually makes progress) — is the lens through which Part 4's Raft is best understood: Raft is always safe, and is live whenever the network behaves well enough for long enough.
 
 If you remember one thing from Part 2: **the network and the clock are both unreliable narrators.** You order events by causality, not timestamps; you detect failure by inference, not certainty; and you make retries safe with idempotency because the impossibility results say you have no other choice.
 
@@ -355,7 +365,7 @@ Quorums alone don't make replicas converge after failures, so leaderless systems
 Multi-leader and leaderless systems must resolve concurrent writes to the same key. Two approaches dominate:
 
 - **Last-write-wins (LWW):** attach a timestamp, keep the highest. Simple, and the Cassandra default — but as Part 2 warned, it *silently discards* the "losing" write and depends on clocks you can't trust. Fine for "latest sensor reading," dangerous for anything where both writes carry intent (e.g., adding two different items to a cart — LWW throws one away).
-- **CRDTs (Conflict-free Replicated Data Types):** data structures (counters, sets, maps, sequences) designed so that concurrent updates *merge automatically and deterministically* without coordination, because the merge function is commutative, associative, and idempotent. A grow-only counter merges by taking the max per node and summing; an add-wins set tracks adds and removes so a concurrent add+remove resolves predictably. **Riak** ships CRDTs, **Redis Enterprise** uses them for active-active geo-replication, and **Automerge/Yjs** power collaborative editors (Google-Docs-style multi-user editing). CRDTs are the principled answer to multi-leader conflicts — at the cost of being restricted to data types whose semantics you can express as a clean merge.
+- **[CRDTs](https://inria.hal.science/inria-00555588/document) (Conflict-free Replicated Data Types):** data structures (counters, sets, maps, sequences) designed so that concurrent updates *merge automatically and deterministically* without coordination, because the merge function is commutative, associative, and idempotent. A grow-only counter merges by taking the max per node and summing; an add-wins set tracks adds and removes so a concurrent add+remove resolves predictably. **Riak** ships CRDTs, **Redis Enterprise** uses them for active-active geo-replication, and **Automerge/Yjs** power collaborative editors (Google-Docs-style multi-user editing). CRDTs are the principled answer to multi-leader conflicts — at the cost of being restricted to data types whose semantics you can express as a clean merge.
 
 ### CAP, Honestly — and PACELC
 
@@ -436,14 +446,14 @@ So replication-of-anything reduces to **agreeing on the order of commands in a l
 
 ### Paxos, In Spirit
 
-**Paxos** (Lamport, 1998) was the first proven-correct consensus algorithm and dominated the literature for a decade. Single-decree Paxos agrees on *one* value via two phases over majority quorums, using ever-increasing proposal numbers:
+**[Paxos](https://lamport.azurewebsites.net/pubs/lamport-paxos.pdf)** (Lamport, 1998) was the first proven-correct consensus algorithm and dominated the literature for a decade. Single-decree Paxos agrees on *one* value via two phases over majority quorums, using ever-increasing proposal numbers:
 
 1. **Prepare/Promise:** a proposer picks a proposal number `n`, asks a majority of acceptors to "promise" not to accept anything numbered below `n`. If an acceptor already accepted a value, it returns it.
 2. **Accept/Accepted:** the proposer asks the majority to accept value `v` under number `n` (using any value already in flight from phase 1). Once a majority accepts, `v` is chosen — permanently.
 
 Majority quorums are the magic: **any two majorities overlap in at least one node**, so a previously-chosen value can't be missed by a later round. **Multi-Paxos** chains this to agree on a *log* of values, electing a stable leader to skip phase 1 in the common case.
 
-Paxos is correct and influential — and notoriously hard to understand and *even harder to implement correctly*. Google's Chubby team famously documented the wide gap between "Paxos the algorithm in a paper" and "Paxos the working system," full of underspecified engineering decisions. That difficulty is the entire reason the next algorithm exists.
+Paxos is correct and influential — and notoriously hard to understand and *even harder to implement correctly*. Google's Chubby team famously documented — in [*Paxos Made Live*](https://static.googleusercontent.com/media/research.google.com/en//archive/paxos_made_live.pdf) — the wide gap between "Paxos the algorithm in a paper" and "Paxos the working system," full of underspecified engineering decisions. That difficulty is the entire reason the next algorithm exists.
 
 ### Raft, In Depth
 
@@ -492,6 +502,10 @@ sequenceDiagram
 | 7 | 4 | 3 |
 
 Note 4 tolerates the *same* one failure as 3 but needs a larger quorum (so it's *slower* and *less* available, not more) — which is why production etcd/ZooKeeper/Consul clusters are almost always **3 or 5 nodes**: odd sizes maximize fault tolerance per node, and going past 5 mostly just slows writes (every write waits for a bigger majority) without buying meaningful resilience. Membership itself is changed safely via **joint consensus** (Raft) — transitioning through a combined old+new configuration so no two disjoint majorities can ever form mid-change.
+
+### Logs Can't Grow Forever: Snapshots
+
+One practical wrinkle the elegant log model hides: an append-only log grows without bound, while the state it produces usually stays small (a million overwrites of one key is a million log entries describing one value). Raft's answer is **snapshotting**: each node periodically persists its state machine's full state as of some log index, then discards the log up to that point. A follower that has fallen so far behind that the entries it needs are already compacted away can't be repaired entry-by-entry — the leader ships it the entire snapshot (the `InstallSnapshot` RPC) and resumes normal replication from there. You meet this operationally in **etcd** as its snapshot settings and [history compaction and defragmentation](https://etcd.io/docs/latest/op-guide/maintenance/) — routine maintenance that, if skipped, bloats the database toward its quota until the cluster stops accepting writes.
 
 ### Don't Forget: Reads Need Consensus Too
 
@@ -860,7 +874,7 @@ If "reserve car" fails, compensate backward:
 
 Two coordination styles:
 
-- **Orchestration:** a central coordinator (a **workflow engine** like **Temporal**, **Netflix Conductor**, **Camunda**, or AWS Step Functions) explicitly drives the steps and compensations. Easy to see the whole flow, easy to monitor; the orchestrator is a component to run. Temporal is especially popular because it makes the workflow *durable* — it survives process crashes and resumes where it left off.
+- **Orchestration:** a central coordinator (a **workflow engine** like [**Temporal**](https://temporal.io/), **Netflix Conductor**, **Camunda**, or AWS Step Functions) explicitly drives the steps and compensations. Easy to see the whole flow, easy to monitor; the orchestrator is a component to run. Temporal is especially popular because it makes the workflow *durable* — it survives process crashes and resumes where it left off.
 - **Choreography:** no central brain — each service reacts to events emitted by others (`OrderCreated` → payment service charges → emits `PaymentDone` → shipping reacts…). Loosely coupled, but the end-to-end flow is implicit and hard to trace; with many services it becomes "what happens next? nobody knows."
 
 The crucial caveat: **sagas give you atomicity (all steps complete or all compensate) but NOT isolation.** Intermediate states are *visible* — between "charge card" and "reserve hotel," the world can see a charge with no booking. You must design for that explicitly (semantic locks, "pending" states, commutative operations), because the database isolation that normally hides intermediate state is gone.
@@ -876,7 +890,7 @@ BEGIN;
 COMMIT;  -- both or neither. No dual write.
 ```
 
-Then a **separate relay process** reads the `outbox` table and publishes to the broker **at-least-once**, marking rows as sent. If the relay crashes mid-publish, it re-publishes on restart — so consumers must **dedup** (idempotency, above). The elegant production version tails the database's replication log directly with **Change Data Capture (CDC)** — **Debezium** reading the Postgres WAL or MySQL binlog — so there's no polling and the outbox is drained the instant it's committed. This — *atomic local write + CDC relay + idempotent consumers* — is how mature event-driven systems "update the database and emit an event" correctly. (More on CDC in the [Data Engineering guide](DATA_ENGINEERING_STUDY_GUIDE.md).)
+Then a **separate relay process** reads the `outbox` table and publishes to the broker **at-least-once**, marking rows as sent. If the relay crashes mid-publish, it re-publishes on restart — so consumers must **dedup** (idempotency, above). The elegant production version tails the database's replication log directly with **Change Data Capture (CDC)** — [**Debezium**](https://debezium.io/) reading the Postgres WAL or MySQL binlog — so there's no polling and the outbox is drained the instant it's committed. This — *atomic local write + CDC relay + idempotent consumers* — is how mature event-driven systems "update the database and emit an event" correctly. (More on CDC in the [Data Engineering guide](DATA_ENGINEERING_STUDY_GUIDE.md).)
 
 ### Distributed Transactions Done Right: NewSQL and Clock Tricks
 
@@ -991,7 +1005,7 @@ And the safety valve: a **dead-letter queue (DLQ)**. A message that fails repeat
 | **Apache Pulsar** | Both | Unified queue+stream, multi-tenant, tiered storage | Separates serving (brokers) from storage (**BookKeeper**); geo-replication |
 | **Redis Streams** | Log | Lightweight streaming when you already run Redis | Consumer groups, `XADD`/`XREADGROUP`; see the [Redis guide](REDIS_STUDY_GUIDE.md) |
 
-Kafka gets its own future deep-dive in [TOPICS.md](TOPICS.md); for stream *processing* on top of these (Spark, Flink, exactly-once stateful pipelines) see the [Data Engineering guide](DATA_ENGINEERING_STUDY_GUIDE.md), and for using a Redis pub/sub backplane to scale stateful connections, the [WebSockets guide](WEBSOCKETS_STUDY_GUIDE.md).
+Kafka gets its own dedicated deep-dive in the [Kafka & Stream Processing guide](KAFKA_STUDY_GUIDE.md); for stream *processing* on top of these (Spark, Flink, exactly-once stateful pipelines) see the [Data Engineering guide](DATA_ENGINEERING_STUDY_GUIDE.md), and for using a Redis pub/sub backplane to scale stateful connections, the [WebSockets guide](WEBSOCKETS_STUDY_GUIDE.md).
 
 If you remember one thing from Part 8: **a broker decouples availability and absorbs load, but you must choose queue (each message handled once) vs. log (replayable ordered history), accept at-least-once with idempotent consumers, and bound the system with prefetch/backpressure and a DLQ — or the buffer that was supposed to protect you becomes the thing that fills up and fails.**
 
@@ -1052,7 +1066,7 @@ These aren't textbook curiosities — they're the recurring shapes of real outag
 - **Cascading failure.** One dependency slows down; its callers block waiting (no timeout), pile up threads/connections, exhaust their own resources, and fail — propagating *upward* until the whole system is down. The original culprit may even recover while everything downstream stays dead.
 - **Retry storm (retry amplification).** Each layer retries 3×, so a failure gets amplified 3ⁿ across `n` layers. A briefly-overloaded service gets hit *harder* the moment it tries to recover, and can never climb out. Unbounded retries are how a small blip becomes a total outage.
 - **Thundering herd / cache stampede.** A hot cache key expires; thousands of concurrent requests all miss and hit the origin database *simultaneously*; the origin (sized for the cache-hit load) collapses. Variants strike whenever many clients act in lockstep (all reconnecting after a blip, all waking on the same cron).
-- **Tail-latency amplification.** A request that fans out to 100 services is only as fast as the **slowest** of the 100. Even a 1-in-100 slow response (p99) becomes the *common* case once you fan out wide enough — your p50 inherits everyone else's p99. (The classic treatment is Dean & Barroso's *The Tail at Scale*.)
+- **Tail-latency amplification.** A request that fans out to 100 services is only as fast as the **slowest** of the 100. Even a 1-in-100 slow response (p99) becomes the *common* case once you fan out wide enough — your p50 inherits everyone else's p99. (The classic treatment is Dean & Barroso's [*The Tail at Scale*](https://research.google/pubs/the-tail-at-scale/).)
 - **Gray failure.** A node is "up" — it answers health checks — but is *degraded*: a failing disk, 5% packet loss, GC thrashing. It's the worst kind because crude failure detectors don't catch it, yet it poisons every request routed to it. Detecting it needs *differential* observation (this node vs. its peers).
 - **Metastable failure.** The system gets stuck in a degraded **equilibrium sustained by a feedback loop** (usually retries) and **won't recover on its own even after the original trigger is gone.** A load spike triggers retries; the retries sustain the overload after the spike passes; the system stays down until you manually break the loop. This is why "it'll recover when traffic drops" sometimes just... doesn't.
 
@@ -1065,8 +1079,23 @@ The patterns that prevent the above — each is a direct countermeasure, and mat
 - **Circuit breakers.** Track the failure rate to a dependency; when it crosses a threshold, **trip open** and fail *fast* for a cooldown instead of piling up against a dead service; periodically go **half-open** to test recovery. (Hystrix, resilience4j, Envoy outlier detection.) This is the primary defense against cascades.
 - **Bulkheads.** Isolate resource pools per dependency (separate thread/connection pools), so one slow dependency can't consume *all* your capacity and sink the ship — named for a ship's watertight compartments.
 - **Load shedding.** When overloaded, **reject excess work early** (return 503, drop low-priority requests) to protect the core. Serving 80% of traffic well beats collapsing to 0%. This is also the cure for metastability — deliberately shed to break the feedback loop.
+- **Hedged requests.** The countermeasure to tail-latency amplification: after a short delay (say, the p95 latency), send the same request to a *second* replica and take whichever answers first. A few percent of duplicate load buys a dramatically shorter tail — but only for idempotent operations (Part 7), and only with a cap on hedged traffic so the cure can't finish off an already-struggling fleet.
 - **Backpressure** (Part 8): signal upstream to slow down rather than buffer without bound.
 - **Graceful degradation:** serve stale cache, default values, or reduced functionality when a dependency is down, instead of failing the whole response.
+
+The circuit breaker is the one item on this list with genuine state-machine mechanics, and its states are worth holding in your head — misconfiguring the transitions (a cooldown too short, probes too aggressive) quietly turns the protection back into a battering ram:
+
+```mermaid
+stateDiagram-v2
+    state "Closed — requests flow, failures counted" as Closed
+    state "Open — fail fast, dependency untouched" as Open
+    state "Half-open — a few probe requests allowed" as HalfOpen
+    [*] --> Closed
+    Closed --> Open: failure rate crosses threshold
+    Open --> HalfOpen: cooldown expires
+    HalfOpen --> Closed: probes succeed
+    HalfOpen --> Open: a probe fails
+```
 
 ### Health Checks, Deploys, and Headroom — Where Outages Are Born
 
@@ -1080,8 +1109,9 @@ Three operational realities that cause more incidents than exotic algorithms eve
 
 The final operational truth: distributed systems behave differently under failure than under test, so you must **inject failure deliberately**:
 
-- **Chaos engineering** (Netflix's **Chaos Monkey** and successors): randomly kill nodes, add latency, drop packets, and partition the network *in production-like environments* to verify your timeouts, retries, and failovers actually work — before reality tests them for you. Run **game days** where the team rehearses an outage.
+- **Chaos engineering** (Netflix's [**Chaos Monkey**](https://netflix.github.io/chaosmonkey/) and successors): randomly kill nodes, add latency, drop packets, and partition the network *in production-like environments* to verify your timeouts, retries, and failovers actually work — before reality tests them for you. Run **game days** where the team rehearses an outage.
 - **Jepsen** (Kyle Kingsbury): the gold-standard framework for testing whether a database *actually* provides the consistency it advertises, by hammering it under network partitions and checking the history for violations. Jepsen has caught *many* well-known databases violating their own guarantees — a humbling reminder that "we're linearizable" is a claim to verify, not trust. When you evaluate a distributed datastore, **read its Jepsen report.**
+- **Deterministic simulation testing (DST)** attacks the problem from the other end: instead of injecting faults into a live cluster, run the *entire system* single-threaded against a simulated network, disk, and clock, then explore thousands of failure schedules per hour — and because the simulation is deterministic, any bug found replays exactly from its seed, turning "we saw it once at 3 a.m." into a unit test. [FoundationDB](https://apple.github.io/foundationdb/testing.html) pioneered the approach (its simulator found bugs no amount of production traffic had), [TigerBeetle](https://docs.tigerbeetle.com/concepts/safety/) designed its whole architecture around it, and [Antithesis](https://antithesis.com/) offers it as a service for systems that weren't built that way. Where chaos engineering and Jepsen test the system you built, DST is a reason to *architect* for testability — keep the state machine deterministic and the I/O behind interfaces you can swap for a simulator.
 
 If you remember one thing from Part 9: **operating a distributed system is about containing failure, not preventing it — every dependency gets a timeout, every retry gets backoff/jitter/a budget, every cascade gets a circuit breaker, and you assume the network will betray you and test that assumption on purpose.**
 
@@ -1230,9 +1260,9 @@ The through-lines of the entire guide, distilled:
 
 - **Read [*Designing Data-Intensive Applications*](https://dataintensive.net/)** cover to cover — it is the definitive treatment of everything here, in more depth.
 - **Do the [MIT 6.5840 labs](https://pdos.csail.mit.edu/6.824/)** — you implement Raft and a sharded key-value store. Nothing internalizes this material like building it; it's the highest-return exercise in the field.
-- **Read the source papers** while they're fresh: [Raft](https://raft.github.io/raft.pdf), [Dynamo](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf), [Spanner](https://research.google/pubs/pub39966/), [Kafka](https://kafka.apache.org/documentation/#design), and Aphyr's [*Notes on Distributed Systems for Young Bloods*](https://aphyr.com/posts/288-the-network-is-reliable) and the [Jepsen analyses](https://jepsen.io/analyses).
+- **Read the source papers** while they're fresh: [Raft](https://raft.github.io/raft.pdf), [Dynamo](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf), [Spanner](https://research.google/pubs/pub39966/), [Kafka](https://kafka.apache.org/documentation/#design), plus Bailis & Kingsbury's [*The Network is Reliable*](https://aphyr.com/posts/288-the-network-is-reliable) (a catalog of real-world partitions) and the [Jepsen analyses](https://jepsen.io/analyses).
 - **Run one system deeply.** Stand up a 3-node etcd, Cassandra, or Kafka cluster locally, then *break* it — kill a node mid-write, partition it with `iptables`, slow a disk — and watch the concepts from this guide play out. The fundamentals only become instincts once you've seen them fail.
-- **Adjacent guides in this repo:** the [Redis](REDIS_STUDY_GUIDE.md), [Data Engineering](DATA_ENGINEERING_STUDY_GUIDE.md), [Observability](OBSERVABILITY_STUDY_GUIDE.md), [Kubernetes](k8s/KUBERNETES_STUDY_GUIDE.md), [Postgres](POSTGRES.md), and [Networking Fundamentals](NETWORKING_FUNDAMENTALS.md) guides each go deeper on a slice of this picture.
+- **Adjacent guides in this repo:** the [Kafka & Stream Processing](KAFKA_STUDY_GUIDE.md) (Part 8's log, at full depth), [Redis](REDIS_STUDY_GUIDE.md), [Data Engineering](DATA_ENGINEERING_STUDY_GUIDE.md), [Observability](OBSERVABILITY_STUDY_GUIDE.md), [Kubernetes](k8s/KUBERNETES_STUDY_GUIDE.md), [Postgres](POSTGRES.md), and [Networking Fundamentals](NETWORKING_FUNDAMENTALS.md) guides each go deeper on a slice of this picture.
 
 That's the guide. From here the highest-leverage next step is the one that turns reading into knowing: stand up a real cluster, put load on it, and break it on purpose — because in distributed systems the only guarantee is that the network eventually will, and the engineers who sleep at night are the ones who've already watched it happen.
 

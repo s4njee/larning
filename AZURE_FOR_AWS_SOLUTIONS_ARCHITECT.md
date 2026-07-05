@@ -6,6 +6,8 @@ This guide was assembled from official Microsoft Learn documentation and Azure A
 
 Primary references: the [Azure Architecture Center's AWS-to-Azure comparison](https://learn.microsoft.com/en-us/azure/architecture/aws-professional/) (the official Rosetta stone this guide expands), [Microsoft Learn](https://learn.microsoft.com/en-us/azure/) (per-service docs), the [Cloud Adoption Framework](https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/) (landing zones and governance), and the [Azure Well-Architected Framework](https://learn.microsoft.com/en-us/azure/well-architected/) (the pillar-review counterpart to AWS's).
 
+Siblings in this repo go deeper on adjacent ground: the [GCP for AWS architects guide](GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md) (the same translation method applied to Google's cloud), the [Terraform guide](TERRAFORM_STUDY_GUIDE.md) (declaring all of it as code), the [Kubernetes guide](k8s/KUBERNETES_STUDY_GUIDE.md) (AKS's substrate), and the [Enterprise API guide](ENTERPRISE_API_STUDY_GUIDE.md) (the API-management discipline Azure API Management productizes).
+
 ---
 
 ## How to Use This Guide

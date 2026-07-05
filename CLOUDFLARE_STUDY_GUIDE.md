@@ -184,6 +184,29 @@ Two adjacent products live here. **Cloudflare Registrar** sells/renews domains a
 
 Docs: [DNS](https://developers.cloudflare.com/dns/), [Registrar](https://developers.cloudflare.com/registrar/), [Email Routing](https://developers.cloudflare.com/email-routing/).
 
+```quiz
+Q: A proxied (orange-cloud) and a DNS-only (gray-cloud) record differ how — and why check proxy status first when "my WAF rule isn't firing"?
+- [ ] Orange records resolve faster; gray records are cached longer
+- [x] An orange record answers with Cloudflare's anycast IPs so the request runs the whole edge pipeline (WAF, cache, DDoS); a gray record answers with the origin's real IP and bypasses every product — so a gray cloud is the first thing to suspect when any Cloudflare feature seems off
+- [ ] Gray records are more secure because they hide the origin
+- [ ] They're identical once DNSSEC is enabled
+> The proxy toggle is the whole game: only orange-cloud traffic enters the pipeline this guide describes. A gray cloud exposes the origin and skips WAF/cache/DDoS entirely, so "my rule isn't working" is very often "that record is gray." The corollaries: keep the origin IP undiscoverable, firewall the origin to Cloudflare's ranges, and remember some records (mail) *must* stay gray because the HTTP proxy can't front them.
+
+Q: Proxying hides your origin's IP. Why isn't that alone enough to protect the origin?
+- [ ] Proxying also encrypts the origin's disk
+- [x] The IP leaks through other channels — historical DNS data, certificate-transparency logs, verbose error pages, SPF records — and an attacker who finds it connects directly, walking past the WAF; the fix is to firewall the origin to Cloudflare's IP ranges (or use a Tunnel so there's no inbound at all)
+- [ ] Proxying is only for caching, never security
+- [ ] The origin IP is never discoverable once proxied
+> Hiding the IP in DNS doesn't hide it everywhere. Until the origin only accepts connections from Cloudflare's published ranges (or has no inbound exposure via a Tunnel, §16), a discovered IP lets an attacker bypass every edge protection. This "walk around the WAF" hole is closed by origin IP allowlisting plus Authenticated Origin Pulls (§3) — proxy-hiding is necessary but not sufficient.
+
+Q: Why must MX records (and the mail host they point to) stay gray-cloud?
+- [ ] Mail is more secure when exposed directly
+- [x] Cloudflare's proxy fronts HTTP(S), not SMTP — proxying mail-related records breaks mail delivery, the classic first-week mistake (the dashboard now warns about it)
+- [ ] MX records can't be proxied for DNSSEC reasons
+- [ ] Gray-cloud is required for all subdomains
+> The orange-cloud pipeline is an HTTP reverse proxy; it has nothing to terminate SMTP with. Point an MX (or the A record its target resolves to) at an orange cloud and inbound mail stops. So "orange everything" has explicit exceptions for non-HTTP protocols — mail is the common one. (Email Routing is the separate product for forwarding mail, including to a Worker.)
+```
+
 ---
 
 ## 3. TLS and Certificates
@@ -215,6 +238,29 @@ Full (strict) authenticates the origin *to Cloudflare*; the reverse question —
 - Inspect your certificate chain with `openssl s_client` against the edge, then against the origin — explain every certificate you see.
 
 Docs: [SSL/TLS](https://developers.cloudflare.com/ssl/), [Origin CA](https://developers.cloudflare.com/ssl/origin-configuration/origin-ca/), [Authenticated Origin Pulls](https://developers.cloudflare.com/ssl/origin-configuration/authenticated-origin-pull/).
+
+```quiz
+Q: Why is the Flexible SSL/TLS mode called "a trap with two teeth"?
+- [ ] It doubles TLS handshake latency
+- [x] It serves HTTPS to the user but connects to the origin over plain HTTP — so traffic crosses the internet unencrypted on the second hop while users see a padlock (security tooth), and an HTTPS-redirecting origin creates an infinite redirect loop (operational tooth)
+- [ ] It blocks HTTP/2 on the second hop
+- [ ] It disables the WAF on encrypted requests
+> Flexible existed so 2014 sites with no origin cert could show a padlock; today it's dangerous. The second hop is plaintext though the user sees HTTPS, and an origin that redirects HTTP→HTTPS sends Cloudflare back over HTTP again, looping forever — pages of forum threads are this one setting. The fix is Full (strict) with a free Origin CA cert.
+
+Q: What makes Full (strict) the only mode that "means what users think the padlock means"?
+- [ ] It uses a longer key length
+- [x] It requires a valid, trusted certificate on the origin — plain Full accepts *any* cert (expired, self-signed), so it's encrypted but not authenticated and an on-path attacker can present any cert; only Full (strict) authenticates the origin to Cloudflare
+- [ ] It enables HSTS automatically
+- [ ] It caches the certificate at the edge
+> Full encrypts the second hop but trusts any certificate, so a man-in-the-middle on Cloudflare→origin can impersonate the origin — encrypted, not authenticated. Full (strict) demands a valid trusted cert, and Cloudflare removes the old excuse by issuing free 15-year Origin CA certificates trusted by its proxy. The rule: Full (strict) with an Origin CA cert on day one.
+
+Q: Full (strict) proves the origin to Cloudflare. What answers the reverse question — "is this request to my origin really from Cloudflare?"
+- [ ] HSTS with a long max-age
+- [ ] A stricter minimum TLS version
+- [x] Authenticated Origin Pulls — the proxy presents a client certificate your origin verifies (mTLS on the second hop), which combined with the §2 IP allowlist or a Tunnel closes the "attacker found the origin IP and walked around the WAF" hole
+- [ ] Universal SSL on the edge certificate
+> TLS modes secure and authenticate the proxy→origin direction; Authenticated Origin Pulls authenticate the *other* direction, so the origin can reject any request that didn't come through Cloudflare. That's the piece that, with origin IP allowlisting (§2) or a Tunnel (§16), makes the proxy the only possible path to the origin — otherwise a discovered origin IP bypasses everything.
+```
 
 ---
 
@@ -353,6 +399,29 @@ APIs invert WAF assumptions: there's no browser to challenge, "bot" is the *inte
 
 Docs: [WAF](https://developers.cloudflare.com/waf/), [Rules language](https://developers.cloudflare.com/ruleset-engine/rules-language/), [Bots](https://developers.cloudflare.com/bots/), [Turnstile](https://developers.cloudflare.com/turnstile/), [API Shield](https://developers.cloudflare.com/api-shield/).
 
+```quiz
+Q: What discipline "separates teams who love their WAF from teams drowning in false positives"?
+- [ ] Enable every managed ruleset at maximum paranoia immediately
+- [x] Deploy each new rule in Log (count without acting), read Security Analytics for a few days, then promote Log → Managed Challenge → Block as confidence grows — so you discover the legitimate traffic a rule would break before it breaks it
+- [ ] Block first, then allowlist whatever complains
+- [ ] Use only custom rules and skip the managed rulesets
+> Every new rule should start in Log. The analytics show which real clients the rule would have hit, and you promote toward Block only once you trust it. Managed Challenge helps the calculus: it's not a CAPTCHA but a decision engine that's invisible for most visitors, so challenging ambiguous traffic costs legitimate users almost nothing — which is why blocking feels safe once you've watched the logs.
+
+Q: The guide says to use Attack Score (`cf.waf.score`) "as a condition rather than a verdict." Why?
+- [ ] The score is only available on Enterprise
+- [x] It's an ML attack-likelihood signal that catches obfuscated variants a signature regex misses, but banding it into graduated actions (score < 20 → Block, 20–50 → Managed Challenge) avoids the false positives of treating one model's number as an absolute block
+- [ ] The score is random below 50
+- [ ] Conditions evaluate faster than verdicts
+> Attack Score scores every request independent of signatures, so it generalizes where regex rules don't. But no single model is perfect, so the robust pattern bands the score into actions — block the near-certain, challenge the ambiguous, allow the rest. Same philosophy as the Log→Challenge→Block ramp: prefer graduated responses to binary verdicts on probabilistic signals.
+
+Q: A request matches a Skip rule in the custom-rules phase. Why does rule and phase order matter?
+- [ ] Skip rules run last regardless of position
+- [x] Phases run in pipeline order (custom rules → rate limiting → managed rules) and rules evaluate in order within a phase, so a Skip in custom rules can exempt traffic from the managed rules behind it — order determines what a later rule even sees
+- [ ] Skip permanently deletes the request from logs
+- [ ] Order only matters for rate limiting
+> Skip is the allowlist mechanism: it exempts matching traffic from later rules. Because custom rules run before managed rules, a Skip there carries through and the managed ruleset never evaluates that request — exactly how you allowlist the office, but also how an overly broad Skip silently punches a hole. Reasoning about WAF behavior means reasoning about phase and rule order.
+```
+
 ---
 
 ## 7. Rate Limiting
@@ -383,6 +452,29 @@ Enterprise adds **complexity-based limiting** (budget per client on a *cost* you
 - Re-key a per-IP API limit by `x-api-key` header and write down what happens to (a) the NAT'd office and (b) an attacker rotating IPs — the two cases that justify the change.
 
 Docs: [Rate limiting rules](https://developers.cloudflare.com/waf/rate-limiting-rules/).
+
+```quiz
+Q: Why is keying a rate limit by `ip.src` (the default) often the wrong choice on a consumer product?
+- [ ] IP addresses change too slowly to rate-limit
+- [x] Corporate NATs and CGNAT put thousands of legitimate users behind one IP, so an IP-keyed limit punishes the innocent — keying by API key, session cookie, or JA4 fingerprint is fairer whenever the request carries an identity
+- [ ] IP keying is more expensive to compute
+- [ ] The default counts only failed requests
+> The counting *characteristic* decides who you punish. IP is the default and the trap: shared egress means one "IP" is a whole office or a mobile carrier's customers. When the request carries an identity, key by that so an abuser is isolated and the NAT'd crowd isn't collateral. The flip side an attacker exploits: a per-IP limit is trivially evaded by rotating IPs, which an identity-keyed limit resists.
+
+Q: What does a counting expression like "count only 401/403 responses" change about a login rate limiter?
+- [ ] It blocks all 401 responses outright
+- [x] It counts failures instead of attempts, so the limiter fires on actual brute-force patterns rather than annoying a fat-fingered user who then succeeds — and counting only expensive responses protects capacity instead of penalizing cheap cache hits
+- [ ] It rate-limits the origin's error pages
+- [ ] It disables counting for successful logins
+> Cloudflare decouples the *counting* expression from the *matching* expression, so you count only the outcomes that signal abuse. A limiter that counts every login POST trips users who mistype once; one that counts only failed auths (401/403) fires on the credential-stuffing pattern and ignores the user who succeeds on try two. Set thresholds from measured p99 behavior, and ship in Log first — there's always a legitimate client you were about to break.
+
+Q: After a rate-limit threshold is exceeded, how long does the mitigation last?
+- [ ] Exactly one request, then it resets
+- [ ] Until the client sends a valid API key
+- [x] For the mitigation timeout you configured, which outlives the counting window — so a "5 per 60s → block 600s" rule keeps blocking for ten minutes after the fifth hit, a deliberate choice you tune
+- [ ] Until the next cache purge
+> The counting window (per 60s) and the mitigation timeout (block for 600s) are separate knobs. Exceeding the threshold triggers the action for the full timeout, so the penalty intentionally outlasts the burst. Tune it from real behavior: too long punishes a recovered client, too short lets an attacker resume immediately. Enterprise adds leaky-bucket throttling and cost-based budgets (for GraphQL, where one request can be a thousand-row join).
+```
 
 ---
 
@@ -654,6 +746,29 @@ KV's sweet spot is data that is **read constantly, written rarely, and tolerant 
 
 Docs: [KV](https://developers.cloudflare.com/kv/), [How KV works](https://developers.cloudflare.com/kv/concepts/how-kv-works/).
 
+```quiz
+Q: Why is KV "exactly wrong" for a counter, a lock, or an inventory count?
+- [ ] KV can't store numbers
+- [x] KV is centralized storage with edge caching, eventually consistent up to ~60 seconds — a write invalidates lazily, so two clients doing read-modify-write can both read a stale value; anything needing agreement *now* belongs in Durable Objects (one instance per object → strong consistency)
+- [ ] KV writes are too slow for counters
+- [ ] KV has no API for incrementing
+> KV reads are nearly free because PoPs serve cached copies that may lag the central store by up to a minute. That's perfect for read-constantly/write-rarely data (feature flags, config, routing) and disqualifying for read-modify-write, where the stale window causes lost updates. The strongly-consistent answer is Durable Objects, where there's exactly one instance of each object so reads and writes serialize.
+
+Q: D1 is billed like Aurora Serverless, but the guide warns against reading it as "my Postgres, but serverless." What topology does D1 actually reward?
+- [ ] One large database scaled vertically with read replicas
+- [x] Many small SQLite databases — per tenant, per user, per shard — each under 10 GB and cheap to create programmatically, because SQLite's one-writer limit becomes write *locality* at that granularity; for one big relational store you'd put Hyperdrive in front of your own Postgres instead
+- [ ] A single global key-value namespace
+- [ ] A graph database sharded by edge
+> D1 is SQLite, and its intended shape is Aurora's opposite: a fleet of small per-tenant databases rather than one monolith. Per-tenant write locality sidesteps the single-writer constraint, the 10 GB cap is generous per tenant and irrelevant across thousands, and there are no cross-database joins — so the question D1 forces is "what's your tenancy key?" Misreading it as one big Postgres is the primary source of D1 disappointment.
+
+Q: R2 charges $0 egress always. Why isn't it automatically cheaper than S3 for every workload?
+- [ ] R2 has a monthly minimum spend
+- [x] Zero egress isn't "free everything" — R2's Class A operations (writes/lists) are pricier than S3's, so a tiny-object, write-heavy workload can cost *more*; model it as a triple of (storage, ops, egress), where R2 wins decisively only when egress dominates
+- [ ] R2 charges for egress after the first terabyte
+- [ ] S3 is always cheaper because of reserved capacity
+> The zero-egress model makes egress-dominated architectures (serving media, cross-cloud training, customer bulk-export) rational. But writes cost more, so a logging bucket doing constant small writes can flip the comparison. Compute the break-even on (storage, ops, egress) for your actual read/write mix rather than assuming "no egress = cheaper."
+```
+
 ---
 
 ## 13. Durable Objects (Stateful Coordination)
@@ -825,6 +940,22 @@ Per-app, per-identity policy beats network reachability on blast radius: a phish
 - Verify the JWT server-side (Access publishes the public keys) and log the identity into your app's audit trail.
 
 Docs: [Cloudflare One](https://developers.cloudflare.com/cloudflare-one/), [Access policies](https://developers.cloudflare.com/cloudflare-one/policies/access/), [JWT validation](https://developers.cloudflare.com/cloudflare-one/identity/authorization-cookie/validating-json/).
+
+```quiz
+Q: What does "Zero Trust," operationalized by Access, actually mean for each request?
+- [ ] Every request is encrypted end to end
+- [x] Every request to a protected resource is evaluated against identity + device + context (email/group, country, device posture, MFA recency) with no notion of a trusted network — per request, not per session-on-a-network
+- [ ] Users authenticate once and are trusted for the rest of the session
+- [ ] Only requests from the corporate VPN are allowed
+> The model replaces "inside the network = trusted" with continuous per-request evaluation of who you are, what device you're on, and the context. Access is the ZTNA core that authenticates against your IdP and checks policy on every request. The business case in one line: a phished contractor credential exposes the three apps that identity could reach, not a flat /16 of internal network — blast radius by identity, not by network reachability.
+
+Q: Access protects an internal app and issues a signed JWT per request. What's the "classic half-migration hole"?
+- [ ] Forgetting to enable DNSSEC on the app's hostname
+- [x] Treating Access as the only check while leaving the origin reachable by other network paths — if the app makes its own authorization decisions it must verify the `Cf-Access-Jwt-Assertion`, and the origin must be unreachable except through Cloudflare (e.g. via a Tunnel), or an attacker just connects directly
+- [ ] Using Google SSO instead of Okta
+- [ ] Enabling device posture checks too early
+> Access enforces login at the edge before the origin sees a byte — but only for traffic that goes through the edge. If the origin still accepts direct connections, an attacker bypasses Access entirely. Closing the hole means the app verifies the per-request JWT *and* the origin has no other reachable path (pair Access with a Tunnel, §16, so the app has zero network exposure). Clientless Access + Tunnel is the modern "VPN into the office" replacement.
+```
 
 ---
 

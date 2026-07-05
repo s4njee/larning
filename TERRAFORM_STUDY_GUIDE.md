@@ -254,6 +254,29 @@ terraform validate         # syntax + internal consistency, no cloud access need
 
 If you remember one thing from Part 2: **pin versions, commit the lock file, and make the reviewed plan and the applied plan the same saved artifact — the workflow is `init → plan -out → review → apply`, and every shortcut you take from it is a place surprises get in.**
 
+```quiz
+Q: In a Terraform plan, which symbol "causes incidents," and how does the plan tell you?
+- [x] `-/+` (destroy and recreate) — some attributes can't change on a live object, so the provider marks the change as *forces replacement* and Terraform plans a destroy-then-create; the plan prints `# forces replacement` next to the exact attribute, so a "one-line rename" of a database identifier can be a plan to delete the database
+- [ ] `~` (update in place), because in-place edits are irreversible
+- [ ] `<=` (read), because data sources run arbitrary code
+- [ ] `+` (create), because new resources cost money
+> The dangerous one is replacement, and the information is never hidden — the `# forces replacement` annotation names the attribute that triggered it, and the summary's destroy count is the headline you must explain out loud. The failure mode is human: scrolling to the summary and typing "yes." Reading the plan is the operational skill; `create_before_destroy` can reorder a replacement when the resource type allows two to coexist.
+
+Q: Why does `terraform plan -out=tfplan` matter for team workflows?
+- [ ] It makes the plan run faster
+- [x] It saves the exact diff as an immutable artifact, so the reviewed plan and the applied plan are the *same thing* — without it, "plan in the PR, apply after merge" recomputes the diff against a world that may have moved, so what runs isn't necessarily what your reviewer approved
+- [ ] It encrypts the plan output
+- [ ] It skips the approval step
+> `apply tfplan` executes precisely the saved plan and errors if the world changed since — that's the contract being enforced. Without the saved artifact, the apply improvises against current reality, breaking the link between review and execution. CI systems are built around this (and `terraform show -json tfplan` renders it for policy engines).
+
+Q: Which file does Terraform hygiene say to commit, and which must never enter Git?
+- [ ] Commit the state file; ignore the lock file
+- [ ] Commit both; they're regenerable
+- [x] Commit `.terraform.lock.hcl` (the provider dependency lock — like `package-lock.json`); never commit `*.tfstate` (it holds secrets in plaintext) or `.terraform/` (large, regenerable) — teams get this backwards in both directions, and one direction leaks secrets
+- [ ] Ignore both; Terraform regenerates them
+> The lock file records exact provider versions and checksums, so committing it is the difference between "we all verifiably run aws 6.4.0" and "we all run something compatible-ish." State files contain resource attributes including secrets and so are a credential, never version-controlled. The asymmetry — lock file in, state out — is one of the cheapest correctness wins in the toolchain.
+```
+
 ---
 
 ## Part 3 — The Language: HCL
@@ -847,6 +870,29 @@ It looks symmetrical with application Git-flow: `dev` branch deploys dev, `main`
 
 If you remember one thing from Part 7: **use directories for environments and workspaces for ephemera — real environments deserve explicit roots with their own state, credentials, and visible differences, because the most expensive Terraform mistakes start with "I thought I was pointed at dev."**
 
+```quiz
+Q: Terraform CLI workspaces are good for one thing and a trap as another. Which is which?
+- [x] Good for *ephemeral copies of the same config* (a feature-branch stack, a per-developer sandbox); a trap as your *only* environment mechanism — the current workspace is invisible ambient state (one forgotten `workspace select` from a prod incident), all workspaces share one backend and credentials, and divergence forces `var.environment == "prod"` conditional spaghetti
+- [ ] Good for prod/staging isolation; a trap for sandboxes
+- [ ] Good for storing secrets; a trap for storing state
+- [ ] They're equivalent to directories in every way
+> A CLI workspace is just a named parallel state file for the same configuration — same code, same backend, same auth. That thin isolation is fine for throwaway copies but dangerous as the dev/staging/prod boundary, because nothing in the code or directory tells you which one your next apply hits. (Note: HCP Terraform "workspaces" are a different, much heavier concept — don't conflate them.)
+
+Q: Why is "a branch per environment" (dev branch → dev, main → prod) the trap to avoid?
+- [ ] Git can't deploy from multiple branches
+- [x] Long-lived environment branches drift apart exactly where they must not (provider/module versions, hotfixes), merges hide production-only differences, and "what's deployed to prod?" becomes hard to answer — infrastructure wants one trunk with environment differences in files you can diff side by side, not branch deltas
+- [ ] Branches can't have separate state files
+- [ ] It requires Terragrunt to work
+> It looks symmetrical with app Git-flow but fights both Git and Terraform. The production-grade default is a directory per environment: each is its own root module with its own backend key, variables, and lifecycle, composing shared modules — so *where you are* is the directory you're standing in, prod state can live in a different account, and environments diverge by writing different composition rather than threading conditionals through shared code.
+
+Q: With the directory-per-environment layout, how can prod and dev differ in *topology* (prod has read replicas and a WAF; dev doesn't)?
+- [ ] Only by setting `terraform.workspace` conditionals
+- [ ] They can't; shared modules force identical topology
+- [x] Each environment is its own root module, so you write different composition in each root (different module calls, different counts) rather than threading `var.environment == "prod"` conditionals through shared code — the explicitness is the point
+- [ ] By maintaining separate Git branches that drift
+> The directory layout makes everything the workspace approach obscures explicit: state can live in a different bucket/account, and structural divergence is just different HCL in each root. The cost is repetition (each root repeats backend/provider boilerplate), the tax plain-Terraform teams accept for explicitness and which Terragrunt exists to DRY up. The asymmetry favors it: visible, reviewable differences beat invisible ambient state.
+```
+
 ---
 
 ## Part 8 — Providers in Depth
@@ -1130,6 +1176,29 @@ Whatever the operation, the procedure is the same, and it's the procedure that m
 
 If you remember one thing from Part 10: **`import`, `moved`, and `removed` blocks let you adopt, rename, and release infrastructure declaratively, with the plan as reviewable proof — and the no-changes plan after an import or refactor is the artifact that says you did it right.**
 
+```quiz
+Q: You rename a resource (`aws_instance.web` → `aws_instance.web_server`). Without a `moved` block, what does the plan show, and why does it matter?
+- [x] `1 to add, 1 to destroy` — Terraform tracks resources by address, so a rename looks like destroy-the-old, create-the-new; for a database that's catastrophic. A `moved { from … to … }` block tells Terraform they're the same object, and the plan becomes `0 to add, 0 to change, 0 to destroy`
+- [ ] No changes, because Terraform matches by attributes
+- [ ] An error that blocks the plan entirely
+- [ ] `1 to change` (in-place update)
+> State addresses are identity, so renaming without telling Terraform plans a replacement — same code change, opposite blast radius. The `moved` block (also for moves into/out of modules and `count`→`for_each` migrations) makes the next plan a no-op state update, *and that plan is your proof the refactor is safe*. Module authors ship `moved` blocks inside modules so internal refactors upgrade cleanly for every consumer.
+
+Q: A resource should stop being managed by Terraform but *keep existing* (ownership moves to another team). What do you use?
+- [ ] Just delete the `resource` block
+- [ ] `terraform destroy -target`
+- [x] A `removed` block with `lifecycle { destroy = false }` — deleting the resource block alone plans a *destroy*, which is exactly wrong; the `removed` block makes the plan read "will no longer be managed, but will not be destroyed"
+- [ ] `terraform taint` then apply
+> This is the inverse of import, and the danger it averts is real: every team eventually has a near-miss where "remove this from our repo" almost became "delete this from production," because deletion-from-config means destruction-of-object. The `removed` block expresses the actual intent declaratively and reviewably (the successor to the imperative `terraform state rm`).
+
+Q: After writing an `import` block to adopt a hand-created bucket, when is the import actually "done"?
+- [ ] As soon as `terraform plan` shows it will be imported
+- [ ] After the first `apply`, regardless of subsequent diffs
+- [x] When `terraform plan` shows *no changes* — import success only means "Terraform now knows this object exists at this address"; the job is finished when your config fully matches reality and every remaining diff is one you consciously decided to adopt or apply
+- [ ] When you delete the `import` block
+> "Import success is the beginning, not the end." Adopting infrastructure connects a config address to a real-world ID, but if the `resource` block doesn't match the live object, the next plan shows spurious changes. The no-changes plan is the artifact that proves the adoption is clean — the same proof-by-plan discipline as `moved` and `removed`. (`-generate-config-out` can draft the matching HCL for bulk imports.)
+```
+
 ---
 
 ## Part 11 — Validation & Testing
@@ -1412,6 +1481,29 @@ The same machinery, run on a schedule instead of a trigger, gives you **drift de
 
 If you remember one thing from Part 13: **team Terraform is plan-on-PR, apply-on-merge with the plan as the reviewed artifact — whether HCP Terraform, Atlantis, or your own CI executes it — with policy gates evaluating plan JSON and scheduled drift detection so surprises arrive on your calendar, not during incidents.**
 
+```quiz
+Q: In the canonical team workflow, what does a "speculative plan" posted on the PR provide that a code diff alone cannot?
+- [x] Real consequences — reviewers see "this replaces the prod database" rather than guessing the blast radius from the HCL diff — so approving the PR means approving the blast radius, the single highest-value feedback loop in infrastructure review
+- [ ] Faster CI runs
+- [ ] Automatic application after approval
+- [ ] A guarantee the apply will never fail
+> Plan-on-PR, apply-on-merge is the shape nearly every team converges on. The plan makes the effects of a change legible at review time, which is where infrastructure mistakes are cheapest to catch. The merge-triggered apply should run the *saved* plan artifact (Part 2's contract), behind a human approval gate for production.
+
+Q: Why should the CI *plan* role be weaker than the *apply* role?
+- [ ] To make plans run faster
+- [x] Speculative plans run on *unreviewed* code (anyone's PR), so the identity that plans should be read-mostly — separating it from the stronger apply role limits what unreviewed code can do, and pairs with OIDC federation (short-lived credentials) instead of long-lived cloud keys in secrets
+- [ ] Apply needs fewer permissions than plan
+- [ ] They must be identical for the artifact to match
+> A plan refreshes state and reads infrastructure, which a weaker role can do; granting it apply-level power means unreviewed PR code runs with write credentials. The skeleton's other details matter too: the reviewed `tfplan` is uploaded so the apply executes the artifact rather than re-planning, and the Terraform version is pinned to match `required_version`.
+
+Q: How should you introduce a new policy-as-code rule against existing infrastructure, and what does scheduled drift detection buy you?
+- [ ] Hard-mandatory immediately, to force compliance
+- [x] Start *advisory* (warn, educate) — a new hard-mandatory policy against a thousand existing violations teaches everyone to route around the platform team — graduating to soft- then hard-mandatory; and re-planning on a schedule surfaces drift as a Tuesday-morning conversation instead of a Friday-emergency incident multiplier
+- [ ] Skip advisory; go straight to soft-mandatory
+- [ ] Policies can only run inside HCP Terraform
+> Once plans are machine-readable JSON, governance is programmable (Sentinel or OPA/Conftest against the plan), with graduated enforcement: advisory → soft-mandatory (override with audit trail) → hard-mandatory (block). Rolling out hard rules onto a field of existing violations backfires. The same machinery on a cron (`plan -detailed-exitcode`, exit 2 = changes) is drift detection — surprises on your calendar, not during incidents.
+```
+
 ---
 
 ## Part 14 — Operating at Scale: Failure Modes & Production Judgment
@@ -1481,6 +1573,29 @@ Also worth a mental map: the `.terraform/` directory (never committed) is just a
 The most senior judgment is scoping. Terraform excels at **infrastructure whose desired state changes at human review speed** — networks, clusters, databases, DNS, IAM — and degrades predictably outside it. **Application deployments**: Terraform can set an image tag, but rollout orchestration — canaries, progressive rollback, deploy-on-every-commit cadence — fights the plan/review/apply loop; use Terraform to provision the platform (the cluster, the registry, the [Kubernetes](k8s/KUBERNETES_STUDY_GUIDE.md) control plane) and a deployment tool to own releases. **In-machine configuration**: once a VM exists, packages and config files belong to image baking, cloud-init, or [Ansible](ANSIBLE_STUDY_GUIDE.md) — which is also the verdict on **provisioners**: `remote-exec`/`local-exec` run once at creation, aren't tracked in state, can't converge, and fail in ways Terraform can't reason about; HashiCorp's own docs label them a [last resort](https://developer.hashicorp.com/terraform/language/provisioners). (For lifecycle-aware glue without a real resource, [`terraform_data`](https://developer.hashicorp.com/terraform/language/resources/terraform-data) — 1.4+, the typed successor to `null_resource` — is the least-bad vehicle, and every `local-exec` you ship is operational debt the next person must reason about outside the graph.) **High-churn operational data**: feature flags, scaling setpoints, anything that changes faster than you're willing to review plans — if a human shouldn't approve each change, it doesn't belong in Terraform. **One-off imperative tasks**: restores, migrations, reboots are jobs, not desired state; forcing them into resource lifecycles produces fake resources whose "state" means nothing. The common thread: Terraform's value *is* the plan-review-apply contract, so anything that needs to bypass that contract — too fast, too imperative, too post-boot — belongs to a tool whose model fits.
 
 If you remember one thing from Part 14: **partition state by ownership and rate of change because a state file is your failure, lock, performance, and permission boundary all at once — and keep Terraform scoped to infrastructure that changes at plan-review speed, handing releases, host config, and operational churn to tools built for them.**
+
+```quiz
+Q: Why is "how you partition resources into state files" called the single most consequential scale decision?
+- [x] A state file is simultaneously a failure domain (corrupt it, everything in it is affected), a lock domain (one apply at a time), a performance unit (refresh scales with resource count), and a permission boundary (access is all-or-nothing) — so a monolithic state degrades on all four axes at once; split by ownership and rate of change
+- [ ] Because more state files are always faster
+- [ ] Because Terraform limits each state to 100 resources
+- [ ] Because state files can't reference each other
+> One everything-state means hour-long refreshes, teams queueing on each other's locks, every plan touching everything, and a bad day for anyone with write access. Split along ownership (the team that operates it plans it) and rate of change (quarterly VPC changes shouldn't share a blast radius with daily service changes). The asymmetry favors splitting: merging states later is easy (`import`/`moved`), while splitting a load-bearing monolith is surgery.
+
+Q: An apply fails halfway through. What's the correct response?
+- [ ] Assume the state is corrupt and start editing it by hand
+- [ ] Restore the state from a week-old backup
+- [x] Re-plan and re-apply — Terraform applies node by node and records each success in state immediately, so a partial apply is *fine*; the run converges from wherever it stopped, and heroic state surgery is how people turn a non-problem into a real one
+- [ ] Delete everything and recreate from scratch
+> Partial failure is normal and well-handled: state reflects exactly what succeeded, so fixing the cause and re-running converges. People get into trouble by *assuming* a failed apply left things corrupt. (Eventual consistency — the API acknowledging creation before the object is visible — explains a related genre of flaky applies that providers mostly absorb with retries.)
+
+Q: Which workload does *not* belong in Terraform?
+- [ ] A VPC, subnets, and security groups
+- [ ] An RDS database and its parameter group
+- [x] Application rollouts (canaries, deploy-on-every-commit) and high-churn operational data (feature flags, scaling setpoints) — anything that changes faster than you're willing to review a plan fights the plan/review/apply loop; provision the platform with Terraform and hand releases and host config to tools built for them
+- [ ] DNS records and IAM roles
+> Terraform excels at infrastructure whose desired state changes at human-review speed and degrades predictably outside it. App deployments want progressive rollout, not plan-and-apply; in-machine config belongs to image baking or Ansible; provisioners (`remote-exec`) are a documented last resort because they run once, aren't tracked, and can't converge. The through-line: Terraform's value *is* the plan-review-apply contract, so anything needing to bypass it belongs elsewhere.
+```
 
 ---
 
@@ -1560,6 +1675,29 @@ Each leaf is a handful of lines instead of a repeated root module; `dependency` 
 The deep difference worth understanding is the last row's neighbor, Crossplane: Terraform is **plan-time reconciliation** (diffs computed when a human runs plan; drift waits to be noticed) while Crossplane is **continuous reconciliation** (controllers stamp out drift within seconds, no human in the loop). Each is the other's weakness — Terraform gives you the review gate, Crossplane gives you self-healing — and which you want is a statement about how much you trust automation versus review for a given layer.
 
 If you remember one thing from Part 15: **OpenTofu is the MPL-licensed, Linux Foundation drop-in fork (with state encryption as its flagship divergence), Terragrunt is the DRY/orchestration layer for many-root codebases, and everything in this guide transfers to both — the genuinely different choices are real-language IaC (Pulumi) and continuous reconciliation (Crossplane).**
+
+```quiz
+Q: What is OpenTofu, and what's its flagship divergence from Terraform?
+- [x] An MPL-licensed, Linux-Foundation fork created after HashiCorp relicensed Terraform to the BUSL — a drop-in replacement (`tofu init`/`plan`, same HCL and providers) whose standout feature is *client-side state encryption* (the whole state artifact encrypted before it reaches the backend), which has no Terraform equivalent
+- [ ] A paid HashiCorp product that replaces Terraform Cloud
+- [ ] A configuration language that replaces HCL with YAML
+- [ ] A Terraform plugin for Kubernetes
+> The 2023 BUSL relicense (aimed at third-party automation platforms) prompted the fork; OpenTofu hit stable 1.6 in January 2024 and has since shipped genuine differentiators. State encryption restructures Part 12's threat model — bucket access alone no longer reads secrets — at the cost that losing the key loses the state. Choosing in 2026 is about posture (open governance vs HCP investment), since this guide applies to both.
+
+Q: When does Terragrunt start "paying rent"?
+- [ ] On any project, from the first root module
+- [ ] Never — it duplicates Terraform's features
+- [x] Around 50+ root modules — under ~10, plain Terraform's directory-per-env repetition is annoying but honest; Terragrunt's value (generating backend boilerplate, wiring outputs between states with `dependency` blocks, `run-all` across a tree in dependency order) outweighs its costs only once the repetition and cross-state plumbing are substantial
+- [ ] Only when migrating to OpenTofu
+> Terragrunt is a thin wrapper addressing two plain-Terraform pains: backend blocks can't use variables, and directory-per-environment repeats boilerplate. Its costs are real — another tool with its own cadence, a second layer to debug, reduced HCP compatibility — so it's a scale tool, not a default. The decision is about how many roots you operate, and the multi-state orchestration plain Terraform simply lacks.
+
+Q: What's the deep difference between Terraform and Crossplane?
+- [ ] Crossplane only works on AWS
+- [x] Terraform is *plan-time* reconciliation (diffs computed when a human runs plan; drift waits to be noticed, giving you a review gate), while Crossplane is *continuous* reconciliation (Kubernetes controllers stamp out drift within seconds, no human in the loop, giving you self-healing) — each is the other's weakness
+- [ ] They're identical except for syntax
+- [ ] Crossplane can't manage cloud resources
+> Which you want is a statement about how much you trust automation versus review for a given layer. Terraform's review gate is exactly what you want for a VPC change; Crossplane's self-healing is what you want for resources that must never drift. The other genuinely different alternative is real-language IaC (Pulumi), for teams that want loops/tests/abstractions in a language they already use.
+```
 
 ---
 

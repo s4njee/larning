@@ -4,7 +4,7 @@ A depth-first guide to building, orchestrating, and operating AI agents in produ
 
 Code examples use Python. Patterns apply regardless of language.
 
-Primary references: [Anthropic — Building Effective Agents](https://www.anthropic.com/research/building-effective-agents), [OpenAI Agents SDK](https://github.com/openai/openai-agents-python), [Model Context Protocol](https://modelcontextprotocol.io/), [Google A2A](https://google.github.io/A2A/), [LangGraph](https://langchain-ai.github.io/langgraph/), [Anthropic Tool Use](https://docs.anthropic.com/en/docs/build-with-claude/tool-use/overview), [OpenAI Function Calling](https://platform.openai.com/docs/guides/function-calling)
+Primary references, each canonical for its slice: [Anthropic — Building Effective Agents](https://www.anthropic.com/research/building-effective-agents) — the short essay that defines this guide's central discipline (workflows before agents, simplest pattern that works); the [Model Context Protocol spec](https://modelcontextprotocol.io/) — the standard for agent-to-tool interoperability, short enough to read in full; the [Anthropic tool-use docs](https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview) and [OpenAI function-calling docs](https://platform.openai.com/docs/guides/function-calling) — the two API surfaces every pattern here is built on; [Google A2A](https://google.github.io/A2A/) — the agent-to-agent counterpart to MCP; and the [LangGraph](https://langchain-ai.github.io/langgraph/) and [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) docs — the two framework designs worth understanding even if you skip frameworks (Section 15 explains when you should).
 
 ---
 
@@ -146,7 +146,7 @@ def agent(goal: str, tools: list, max_steps: int = 20) -> str:
 
     for step in range(max_steps):
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-opus-4-8",
             max_tokens=4096,
             tools=tools,
             messages=messages,
@@ -203,7 +203,7 @@ def agent(goal: str, tools: list, max_steps: int = 20) -> str:
 
     for step in range(max_steps):
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-5.1",
             tools=tools,
             messages=messages,
         )
@@ -645,7 +645,7 @@ Sometimes you want the model to always use a specific tool (e.g., for structured
 ```python
 # Anthropic — force a specific tool
 response = client.messages.create(
-    model="claude-sonnet-4-20250514",
+    model="claude-opus-4-8",
     tools=tools,
     tool_choice={"type": "tool", "name": "extract_entities"},
     messages=messages,
@@ -653,7 +653,7 @@ response = client.messages.create(
 
 # OpenAI — force a specific function
 response = client.chat.completions.create(
-    model="gpt-4o",
+    model="gpt-5.1",
     tools=tools,
     tool_choice={"type": "function", "function": {"name": "extract_entities"}},
     messages=messages,
@@ -696,8 +696,8 @@ class AgentPlan(BaseModel):
     estimated_difficulty: int  # 1-5
 
 client = OpenAI()
-completion = client.beta.chat.completions.parse(
-    model="gpt-4o",
+completion = client.chat.completions.parse(
+    model="gpt-5.1",
     response_format=AgentPlan,
     messages=[{"role": "user", "content": "Plan how to deploy a Python app to AWS"}],
 )
@@ -712,17 +712,19 @@ Requirements: all fields must be `required`, `additionalProperties: false`. The 
 
 ```python
 response = client.messages.create(
-    model="claude-sonnet-4-20250514",
+    model="claude-opus-4-8",
     max_tokens=1024,
     messages=[{"role": "user", "content": "Extract entities from: ..."}],
     output_config={
         "format": {
             "type": "json_schema",
-            "json_schema": AgentPlan.model_json_schema(),
+            "schema": AgentPlan.model_json_schema(),
         }
     },
 )
 ```
+
+The Python SDK also offers the higher-level `client.messages.parse(..., output_format=AgentPlan)`, which validates the response against the Pydantic model and returns a typed instance on `response.parsed_output` — the closest equivalent to OpenAI's `.parse()`.
 
 Before native support, the standard approach was the "tool-use trick" — define a dummy tool with the desired output schema, force the model to call it, and extract the arguments. This still works and is sometimes preferred for backward compatibility.
 
@@ -750,7 +752,7 @@ class ExtractedEntity(BaseModel):
 client = instructor.from_openai(OpenAI())
 
 entities = client.chat.completions.create(
-    model="gpt-4o-mini",
+    model="gpt-5-mini",
     response_model=list[ExtractedEntity],
     messages=[{"role": "user", "content": "Apple Inc. was founded by Steve Jobs in Cupertino."}],
     max_retries=3,  # automatic retry on validation failure
@@ -782,8 +784,8 @@ class AgentDecision(BaseModel):
     should_continue: bool
 
 # force the agent to make a structured decision at each step
-decision = client.beta.chat.completions.parse(
-    model="gpt-4o",
+decision = client.chat.completions.parse(
+    model="gpt-5.1",
     response_format=AgentDecision,
     messages=messages,
 )
@@ -1058,7 +1060,7 @@ Cache the static prefix (system prompt, tool definitions, reference documents) a
 ```python
 # Anthropic prompt caching
 response = client.messages.create(
-    model="claude-sonnet-4-20250514",
+    model="claude-opus-4-8",
     max_tokens=4096,
     system=[{
         "type": "text",
@@ -1079,16 +1081,16 @@ Not every agent step needs a frontier model. Route by complexity:
 
 ```python
 MODEL_ROUTING = {
-    "classify": "claude-haiku",           # $0.25/$1.25 per MTok
-    "extract": "claude-haiku",            # fast, structured output
-    "search": "claude-haiku",             # formulating search queries
-    "analyze": "claude-sonnet",           # $3/$15 per MTok
-    "synthesize": "claude-sonnet",        # complex reasoning
-    "code_generation": "claude-sonnet",   # needs quality
+    "classify": "claude-haiku-4-5",        # $1/$5 per MTok
+    "extract": "claude-haiku-4-5",         # fast, structured output
+    "search": "claude-haiku-4-5",          # formulating search queries
+    "analyze": "claude-sonnet-5",          # $3/$15 per MTok
+    "synthesize": "claude-sonnet-5",       # complex reasoning
+    "code_generation": "claude-sonnet-5",  # needs quality
 }
 
 def routed_llm(task_type: str, **kwargs):
-    model = MODEL_ROUTING.get(task_type, "claude-sonnet")
+    model = MODEL_ROUTING.get(task_type, "claude-sonnet-5")
     return client.messages.create(model=model, **kwargs)
 ```
 
@@ -1098,7 +1100,7 @@ def routed_llm(task_type: str, **kwargs):
 def cascading_llm(messages, tools, quality_threshold=0.7):
     # try cheap model first
     response = client.messages.create(
-        model="claude-haiku", messages=messages, tools=tools, max_tokens=1024,
+        model="claude-haiku-4-5", messages=messages, tools=tools, max_tokens=1024,
     )
 
     # evaluate quality (could be a heuristic or a cheap eval)
@@ -1107,7 +1109,7 @@ def cascading_llm(messages, tools, quality_threshold=0.7):
     if quality < quality_threshold:
         # escalate to expensive model
         response = client.messages.create(
-            model="claude-sonnet", messages=messages, tools=tools, max_tokens=4096,
+            model="claude-sonnet-5", messages=messages, tools=tools, max_tokens=4096,
         )
 
     return response
@@ -1891,12 +1893,13 @@ The 80/20 rule: use deterministic scripts for predictable steps (login, navigati
 Anthropic's Claude supports computer use natively — the model can view screenshots and generate mouse/keyboard actions:
 
 ```python
-response = client.messages.create(
-    model="claude-sonnet-4-20250514",
+response = client.beta.messages.create(
+    model="claude-sonnet-5",
     max_tokens=4096,
+    betas=["computer-use-2025-11-24"],
     tools=[
         {
-            "type": "computer_20241022",
+            "type": "computer_20251124",
             "name": "computer",
             "display_width_px": 1920,
             "display_height_px": 1080,
@@ -2329,7 +2332,7 @@ from tenacity import retry, stop_after_attempt
 @retry(stop=stop_after_attempt(3))
 def agent_step(messages, tools):
     return client.messages.create(
-        model="claude-sonnet-4-20250514",
+        model="claude-opus-4-8",
         messages=messages,
         tools=tools,
     )
@@ -2583,7 +2586,7 @@ def support_agent(customer_message: str, max_steps: int = 10) -> str:
 
     for step in range(max_steps):
         response = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-opus-4-8",
             max_tokens=1024,
             system=SYSTEM_PROMPT,
             tools=TOOLS,
@@ -2646,7 +2649,7 @@ class ResearchAgent:
     def _agent_loop(self, messages, tools, max_steps):
         for step in range(max_steps):
             response = self.client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-opus-4-8",
                 max_tokens=4096,
                 tools=tools,
                 messages=messages,
@@ -2755,15 +2758,15 @@ class CostOptimizedAgent:
     def _choose_model(self, messages, step):
         """Route to cheap model for early exploration, expensive for synthesis."""
         if step < 3:
-            return "claude-haiku-3-20250414"  # cheap for initial tool calls
+            return "claude-haiku-4-5"  # cheap for initial tool calls
         elif step > 8:
-            return "claude-sonnet-4-20250514"  # expensive for final synthesis
+            return "claude-sonnet-5"  # expensive for final synthesis
         else:
             # check if last response needed complex reasoning
             last = messages[-1] if messages else None
             if last and len(str(last)) > 5000:
-                return "claude-sonnet-4-20250514"
-            return "claude-haiku-3-20250414"
+                return "claude-sonnet-5"
+            return "claude-haiku-4-5"
 ```
 
 ---
@@ -2825,7 +2828,7 @@ Models degrade with too many tools. Select relevant tools per request based on t
 
 ### 8. Forgetting That Agents Are Non-Deterministic
 
-The same input can produce different tool-call sequences, different intermediate results, and different final answers. Build evals that test outcomes, not exact trajectories. Use temperature=0 for more consistency, but accept that variation is inherent.
+The same input can produce different tool-call sequences, different intermediate results, and different final answers. Build evals that test outcomes, not exact trajectories. `temperature=0` gives more consistency on models that still accept it — the newest frontier models (Claude Opus 4.7+, Claude Sonnet 5) have removed sampling parameters entirely — and even there, variation is inherent.
 
 ### 9. Building Without Evals
 
@@ -2881,11 +2884,11 @@ Are you prototyping a multi-agent system quickly?
 
 ```
 Is this step a simple classification, extraction, or tool-call formulation?
-  → YES: Use a cheap model (Haiku, GPT-4o-mini, Flash).
+  → YES: Use a cheap model (Haiku, GPT-5 mini, Gemini Flash).
   → NO: ↓
 
 Does this step require complex reasoning, synthesis, or nuanced judgment?
-  → YES: Use a frontier model (Sonnet, GPT-4o, Gemini Pro).
+  → YES: Use a frontier model (Opus/Sonnet, GPT-5.1, Gemini Pro).
   → NO: ↓
 
 Is this step generating the final user-facing output?
@@ -2901,4 +2904,4 @@ Is this step generating the final user-facing output?
 - **Read the [MCP specification](https://modelcontextprotocol.io/)** — the protocol layer for tool/context interoperability, and increasingly the standard way agents reach external systems; the spec is short and the reference servers are readable.
 - **Read the foundational papers while the patterns are fresh:** [ReAct](https://arxiv.org/abs/2210.03629) (reason+act interleaving) and [Toolformer](https://arxiv.org/abs/2302.04761) (tool-use emergence) — both are approachable and explain *why* the loop architecture looks the way it does.
 - **Build one agent with evals and a budget.** A single-loop agent with 3–5 tools, a hard iteration cap, cost tracking, and a 30-case eval set teaches more than any framework tour — and per this guide's thesis, *resist* reaching for multi-agent until the eval numbers demand it.
-- **Adjacent guides in this repo:** [LLM App Development](LLM_APP_DEV_STUDY_GUIDE.md) (the layer below: prompts, RAG, structured output), [Web & LLM Security](WEB_LLM_SECURITY_STUDY_GUIDE.md) (prompt injection and tool-permission boundaries — mandatory before giving an agent real tools), [Enterprise APIs](ENTERPRISE_API_STUDY_GUIDE.md) (idempotency for agent-issued writes), and [Observability](OBSERVABILITY_STUDY_GUIDE.md) (tracing multi-step loops).
+- **Adjacent guides in this repo:** [LLM App Development](LLM_APP_DEV_STUDY_GUIDE.md) (the layer below: prompts, RAG, structured output), [RAG & Retrieval Engineering](RAG_STUDY_GUIDE.md) (the retrieval your agents will lean on), [Web & LLM Security](WEB_LLM_SECURITY_STUDY_GUIDE.md) (prompt injection and tool-permission boundaries — mandatory before giving an agent real tools), [API Design](API_DESIGN_STUDY_GUIDE.md) (designing the APIs agents consume as tools), [Enterprise APIs](ENTERPRISE_API_STUDY_GUIDE.md) (idempotency for agent-issued writes), and [Observability](OBSERVABILITY_STUDY_GUIDE.md) (tracing multi-step loops).

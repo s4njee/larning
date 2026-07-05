@@ -105,6 +105,29 @@ function increment() { count.value += props.step }
 
 Same component, same reactivity engine underneath — the Options API is, in fact, *implemented on top of* the Composition API in Vue 3. The translation table is nearly mechanical (`data` → `ref`s, option buckets → function calls, `this.x` → `x` or `x.value`), which is also why migrating a component is usually an hour of typing, not a redesign.
 
+```quiz
+Q: The deep difference between React and Vue is the change-detection model. How does Vue detect that something changed?
+- [ ] You call a setX function and Vue re-renders the component and its children
+- [x] You mutate reactive state and Vue's Proxies *observe* the mutation, so only components whose render actually *read* the changed state re-render — dependencies are tracked at runtime by observing real reads, so they're never wrong
+- [ ] Vue diffs the entire component tree on every tick
+- [ ] Vue compares previous and next props with a shallow equality check
+> React's model is "re-run everything and make it cheap" (re-render the subtree unless you memoize); Vue's is "know precisely what changed and re-run only that." The cost is the machinery you must learn (Proxies, refs, `.value`); the payoff is no dependency-array bugs or `useCallback` ceremony, because tracking happens by observing actual reads rather than a list you maintain.
+
+Q: The guide says "a component's render function is just a reactive effect." What does that unify?
+- [ ] It means components can't have side effects
+- [ ] It means every component re-renders on every state change
+- [x] The render function reads reactive state while producing virtual DOM; the engine records those reads and re-queues the render effect when any of that state changes — so re-rendering is the same dependency-tracking mechanism as `computed` and `watch`, not a separate system
+- [ ] It means templates are interpreted at runtime
+> Vue is two cooperating systems — a reactivity engine and a renderer — married by this one idea. Because the render function is an effect, the engine knows exactly which components depend on which state and re-runs only those. Every feature you meet (`computed`, `watch`, Pinia, the reactive route) is then just a kind of reactive state or a kind of effect, which is why one mental model explains the whole framework.
+
+Q: Both Options and Composition APIs are supported. Why does the Composition API "win as logic grows"?
+- [ ] It runs faster at runtime
+- [ ] The Options API is deprecated
+- [x] Colocation (a feature's state, derived values, watchers, and cleanup sit together instead of smeared across option buckets) and extraction (any chunk lifts into a plain composable function and is reused) — where the Options API's only reuse was mixins, with invisible merging and name collisions
+- [ ] It requires less TypeScript
+> Both compile to the same engine (the Options API is implemented on top of Composition). For small components the Options API's enforced organization is genuinely fine. But as a component grows, Composition lets related logic live together and, decisively, be extracted into composables with explicit data flow — solving exactly what mixins did badly. TypeScript inference is also far better through ordinary function calls than through `this`.
+```
+
 ---
 
 ## Part 2 — Tooling: Vite and the Modern Vue Project
@@ -172,6 +195,29 @@ Vite loads `.env` files per mode — `.env` always, `.env.development` and `.env
 ### Editor and Lint Tooling
 
 Use VS Code with the official **Vue extension** (formerly called Volar; the marketplace name is simply "Vue"). It understands `.vue` files end-to-end — template expressions are type-checked against your script types, so a typo'd prop name or a `string` passed to a `number` prop is a red squiggle, not a runtime mystery. For CLI type-checking (CI, pre-commit), the scaffold wires up `vue-tsc`, a `tsc` wrapper that understands SFCs. Add [eslint-plugin-vue](https://eslint.vuejs.org/) with the `flat/recommended` config to catch Vue-specific correctness issues (missing `:key`, mutated props, mis-ordered SFC blocks), and let Prettier own formatting so reviews stay about substance. None of this is optional ceremony: Vue's template DSL only stays honest if tooling checks it.
+
+```quiz
+Q: Why does a Vite dev server start in milliseconds regardless of app size, where webpack slows as the app grows?
+- [ ] Vite skips type-checking and linting in development
+- [ ] Vite keeps the whole app in memory as one pre-built bundle
+- [x] Vite serves source files as native ES modules, transforming each on demand when the browser requests it, and pre-bundles node_modules once with esbuild — so there's no up-front whole-graph bundle to build before the server can respond
+- [ ] Vite compiles the app to WebAssembly
+> Traditional bundlers build a complete dependency graph and bundle *before* serving; Vite inverts this, letting the browser's native ESM support pull modules on demand and transforming them lazily. Dependencies are pre-bundled with esbuild (Go, ~100× faster than JS tooling) and cached. The payoff is startup and HMR that stay instant at 10 or 10,000 components.
+
+Q: `vite build` uses Rollup, but the dev server doesn't. What discipline does that dev/prod asymmetry demand?
+- [x] Run `vite preview` against a production build before shipping — dev mode's unbundled native-ESM serving can mask issues (circular imports, wrong asset paths) that only appear in the Rollup-bundled, tree-shaken, code-split production output
+- [ ] Never use dynamic import(), since it behaves differently in each
+- [ ] Disable HMR so dev matches prod exactly
+- [ ] Always build with esbuild instead of Rollup
+> Dev serves unbundled modules for speed; production is a real optimized bundle (tree-shaking, minification, asset hashing, automatic code-splitting at every dynamic import). Because the two paths differ, a class of bugs is invisible in dev. `vite preview` runs the actual production build locally so you catch them before users do.
+
+Q: Vite exposes env vars as `import.meta.env.*`, but only `VITE_`-prefixed ones reach your code. Why is that a security boundary, not just a naming rule?
+- [ ] Non-prefixed variables simply load more slowly
+- [ ] The prefix is required for TypeScript to type them
+- [x] Everything that reaches client code ships readable in the bundle, so the prefix gates what becomes public — `VITE_*` is for configuration (API origins, feature flags, public keys), and secrets have no legitimate home in a frontend build at all
+- [ ] VITE_ variables are encrypted in the bundle
+> A frontend bundle is downloaded by every user, so any value baked into it is public by definition. The prefix forces an explicit decision about what's safe to expose. The corollary is absolute: secrets (API keys with write access, DB credentials) belong behind your API, never in `VITE_*` — anything in client code is one "view source" away from the world.
+```
 
 ---
 
@@ -249,6 +295,29 @@ The practical consequences: template expressions must be expressions (no stateme
 The edges: a child component's *root* element receives the parent's scope attribute too (so the parent can set layout-ish styles on it), but nothing deeper. When you legitimately need to style a child's internals — a third-party component, say — use `:deep(.inner-class)` to opt one selector out of the rewrite. `:slotted()` targets content passed into your slots, and `:global()` escapes scoping entirely. There is also `<style module>` (CSS Modules, classes accessed as `$style.card`), which is preferable for library code where consumers shouldn't depend on your class names. For application code, `scoped` plus a utility framework like Tailwind covers nearly everything; the deeper trade-offs are a styling-architecture question, not a Vue question.
 
 One more SFC trick that punches above its weight: `v-bind()` in CSS. Writing `color: v-bind(accentColor)` in a `<style>` block wires a CSS property to reactive state via a CSS custom property — the compiled output updates a `--xxxx` variable on the component root whenever `accentColor` changes. It's the cleanest way to drive styles from state without inline-style soup.
+
+```quiz
+Q: "Vue templates are not interpreted at runtime." What actually happens to a template?
+- [ ] The browser parses the template string on each render
+- [x] At build time `@vue/compiler-sfc` parses the template into an AST and emits a JavaScript render function that builds vnodes — so production has no template-parsing cost, and the template can be statically validated by tooling
+- [ ] The template is sent to the server to render
+- [ ] Templates are stored as strings and eval'd lazily
+> Compiling templates ahead of time is what makes Vue's constrained template DSL pay off: the output is plain render code, there's zero runtime parsing, and tooling (the Vue extension, vue-tsc) can type-check template expressions against your script. It also enables the optimizations below — the compiler can analyze what's static because it sees the whole template at build time.
+
+Q: How does Vue answer the objection "isn't virtual-DOM diffing wasteful?"
+- [ ] It caches the entire DOM and never diffs
+- [ ] It re-renders the whole component subtree like React
+- [x] Because templates are statically analyzable, the compiler emits patch flags (which node is dynamic and how), hoists static subtrees to create them once, and builds block trees that collect only dynamic descendants — so diff cost scales with *dynamic* content, not template size
+- [ ] It diffs on a background thread
+> This "compiler-informed virtual DOM" is the key difference from a hand-written or JSX render function. The compiler sees that `class="card"` is static and only `{{ title }}` changes, so it marks exactly that and skips static structure during diffing. (Vapor mode is the experimental endpoint that drops the vnode layer entirely.) It's why Vue's templates can be both ergonomic and fast.
+
+Q: `defineProps`, `defineEmits`, and `defineModel` look like functions but "do not exist at runtime." What are they?
+- [ ] Global runtime helpers Vue injects into every component
+- [ ] Ordinary functions re-exported from the 'vue' package
+- [x] Compiler macros — the compiler recognizes them, extracts their type arguments or options into the component definition, and deletes the calls, which is why `defineProps<{ title: string }>()` can turn a pure TypeScript type into runtime prop validation
+- [ ] Decorators that run during component mount
+> Because they're compile-time declarations rather than calls, they can do things no real function could — most strikingly, lifting a TypeScript type into runtime validation, which a normal function (whose type arguments are erased) cannot. Internalizing "these are compile-time, not runtime" prevents confusion about why you don't import them and why they must be called at the top level of `<script setup>`.
+```
 
 ---
 
@@ -563,6 +632,29 @@ onMounted(() => input.value?.focus())    // only populated after mount
 
 `useTemplateRef('search')` (Vue 3.5) returns a ref that Vue populates with the element matching `ref="search"` once the component mounts — before 3.5, the convention was a plain `ref(null)` whose *variable name* matched the attribute, which worked but was easy to get subtly wrong. Two rules keep refs honest: they are `null` until `onMounted` (and again after unmount), and they are for *imperative escape hatches only* — if you find yourself reading or writing application state through the DOM, you've abandoned the declarative model and the framework will fight you. A ref on a *component* yields the component's exposed instance instead of an element, which is rarer and gated by `defineExpose` (Part 3).
 
+```quiz
+Q: `v-if` and `v-show` both conditionally display content. What's the categorical difference, and when does it force your hand?
+- [x] `v-if` is structural — false means no vnodes, no instance, no mounted hooks, so toggling destroys and recreates (losing component state); `v-show` is cosmetic — always rendered, toggling flips `display: none` — so a component that must keep state across toggles forces `v-show` (or `<KeepAlive>`)
+- [ ] `v-if` is faster; `v-show` is always slower
+- [ ] They're identical except `v-show` can't be used with components
+- [ ] `v-show` removes the element from the DOM; `v-if` only hides it
+> `v-if` is for branches rarely shown or expensive to keep alive (it also short-circuits, so `v-if="user"` makes `user.name` inside safe); `v-show` is for things toggled frequently where re-creation cost or state loss would hurt (tab panels, dropdown contents). The deciding question is often just "must the inner component keep its state across toggles?" — if yes, you can't use `v-if`.
+
+Q: Why is `:key="todo.id"` on a `v-for` "not a lint formality"?
+- [ ] It sorts the list automatically
+- [ ] It makes the list reactive
+- [x] It's the identity hint the diff uses to match old vnodes to new across re-renders — with stable keys, reordering *moves* DOM nodes and preserves each row's element/child state; with index keys, rows match positionally, so deleting row 1 patches row 2's data into row 1's element while DOM/child state stays behind
+- [ ] It's only needed for server-side rendering
+> The classic bug: a list of input rows where deleting the first makes the second's text appear in the first's input — because without stable keys Vue matches positionally and leaves DOM-resident state in place. The rule is absolute for any list that can reorder, insert, or delete: key by stable identity, never by index. Index keys are acceptable only for append-only lists that never reorder.
+
+Q: Why are Vue templates "XSS-safe by default," and what is the one deliberate exception?
+- [ ] Vue blocks all user input from templates
+- [ ] Templates run in a sandboxed iframe
+- [ ] Vue validates every expression against a schema
+- [x] `{{ }}` interpolation HTML-escapes its output, so user content renders as text, never markup — the deliberate exception is `v-html`, which assigns raw HTML to innerHTML, so it must never receive user-influenced content unless sanitized (e.g. DOMPurify)
+> Interpolation escaping is why the default is safe: an injected `<script>` shows up as literal text. `v-html` opts out for legitimate trusted rich text (a CMS body, rendered Markdown), but "it's just our users' comments" is the famous-last-words path to stored XSS. Sanitize anything a user influenced before `v-html`, and note such content is also invisible to scoped styles — a reminder it's a hole in the template model, not part of it.
+```
+
 ---
 
 ## Part 6 — Components: Props, Events, v-model, and Slots
@@ -786,6 +878,29 @@ provide(ThemeKey, { theme: readonly(theme), setTheme: (t: Theme) => (theme.value
 Where does provide/inject sit versus Pinia? The honest boundary: provide/inject is **scoped context** — it serves a *subtree*, can have different values in different subtrees (two `<Tabs>` instances each provide their own coordination state), and is invisible outside its subtree. Pinia is **application state** — global, devtools-inspectable, importable from anywhere including the router. Theme/locale/compound-component-internals → provide/inject; cart/session/cross-page data → Pinia. Using provide/inject as a poor man's global store gives you Pinia's coupling without its tooling; the full three-way comparison (including module-state composables) is in Part 10.
 
 One scoping detail completes the picture: `app.provide(key, value)` in `main.ts` provides to *every* component — the mechanism plugins use to expose their services (Vue Router's `useRouter` and Pinia's stores both resolve through app-level injection under the hood). When a value is genuinely app-wide *and* has no reason to vary by subtree, app-level provide is lighter than a wrapper component.
+
+```quiz
+Q: Why must `onMounted` and other lifecycle hooks be called synchronously during setup — never inside an `await`, callback, or condition?
+- [x] A hook call registers its callback against the *currently initializing instance* (Vue tracks which instance is running setup, the same "who's active?" trick the reactivity system uses); after setup finishes there is no current instance to register against
+- [ ] Hooks are slow and async calls would block rendering
+- [ ] Vue lints them but they actually work anywhere
+- [ ] They must run before the reactivity system initializes
+> `onMounted(fn)` is a plain function call, not a declaration — it works by side-effecting the active instance. That instance only exists during synchronous setup execution, so registering after an `await` (when setup has yielded) silently fails. This is the same active-context mechanism behind reactive effects, and it's why hook ordering in `<script setup>` is just call order.
+
+Q: `onMounted` is for DOM/client-side setup. Why is `onUnmounted` called its "non-negotiable shadow"?
+- [ ] Unmounting is required for the component to render
+- [ ] It resets the component's props
+- [x] Every listener, timer, socket, and observer acquired in `onMounted` must be released in `onUnmounted` or you leak — and the leak is invisible until a user navigates back and forth enough times to accumulate dozens of live subscriptions
+- [ ] It's only needed for server-side rendering
+> Resource acquisition and release must pair. A WebSocket opened on mount, an interval started, a listener added — each survives the component unless explicitly torn down, and an SPA mounts/unmounts components constantly. The bug doesn't show in a quick test; it shows as creeping memory and duplicate handlers after real navigation. Acquire in `onMounted`, release in `onUnmounted`, every time.
+
+Q: When should state live in `provide`/`inject` rather than a Pinia store?
+- [ ] Always — provide/inject replaces Pinia
+- [x] When it's *scoped context* serving a subtree that can legitimately differ per subtree (theme, locale, a compound component's coordination state) and shouldn't be globally visible — Pinia is for *application* state (cart, session) that's global, devtools-inspectable, and importable anywhere
+- [ ] Only for primitive values, never objects
+- [ ] Whenever you want the value to be reactive
+> provide/inject creates an ancestor→descendant channel scoped to a subtree, so two `<Tabs>` instances each provide their own state and neither is visible outside. That's the right tool for ambient, subtree-local values. Using it as a poor-man's global store gives you Pinia's coupling without its tooling. Craft notes: use `InjectionKey` symbols for type-safe keys, provide a *reactive* value if consumers should see updates, and keep mutation with the provider (expose a setter alongside a `readonly()` view).
+```
 
 ---
 
@@ -1270,6 +1385,29 @@ const onSubmit = handleSubmit(async (values) => {
 
 `handleSubmit` only invokes your callback when the schema passes, so the submit path handles *valid data by construction*. The patterns layered on this foundation are predictable once named: cross-field rules live in schema `refine`s; multi-step wizards validate per-step schemas while accumulating one model; **server-side errors map back onto fields** via `setFieldError` (the API rejecting "email already taken" should light up the email field, not a generic banner); and dirty tracking (`meta.dirty`) pairs with Part 9's `onBeforeRouteLeave` guard to protect unsaved work. Accessibility is part of correctness here, not garnish: every input labeled, every error linked via `aria-describedby`, focus moved to the first invalid field on failed submit.
 
+```quiz
+Q: Why is treating server state like client state "how Vue apps rot"?
+- [ ] Server state can't be stored in refs
+- [x] Client state your app owns (mutations instant and authoritative); server state is a *cache* of data the server owns — stale the moment it arrives — so the real problems are invalidation, request dedup, refetching, and races, which scattered `data` refs and hand-rolled `loading` flags don't address
+- [ ] Server state must always go through Pinia
+- [ ] The two are identical if you use TypeScript
+> The distinction drives the architecture. The cart (client state) is authoritative locally; a fetched user list (server state) is a copy that can already be wrong. Conflating them yields ad-hoc loading flags everywhere and subtle staleness bugs. The fix is layered: a framework-free service module for HTTP mechanics, then a caching layer (a `useFetch` composable, or TanStack Query past modest complexity) that owns the cache lifecycle.
+
+Q: TanStack Query's central concept is the *query key*. What does it buy you?
+- [ ] It encrypts the request
+- [ ] It's just a cache-busting timestamp
+- [x] A hierarchical, serializable identity for each piece of server data — identical keys share one cache entry and one in-flight request (deduplication), mutations invalidate by key prefix, and stale-while-revalidate comes free; since keys can contain refs, changing a filter ref refetches the query automatically
+- [ ] It names the component that made the request
+> The query key (`['users', filters]`, `['users', id]`) is the identity the cache is organized around. Same key → shared data and a single network request even across components; a mutation invalidates `['users']` and dependents refetch. And because the Part 4 reactivity engine drives it, a reactive key turns "filter changed" into "refetch" with no manual wiring — the cache becomes reactive state.
+
+Q: With VeeValidate + a Zod schema, `handleSubmit` only invokes your callback when the schema passes. Why does that matter, and what handles "email already taken"?
+- [ ] It means you can skip client-side validation
+- [x] The submit path handles *valid data by construction* (and the schema yields both runtime validation and the inferred TypeScript type of the values); server-side rejections map back onto the offending field via `setFieldError`, lighting up the email field rather than a generic banner
+- [ ] Zod replaces the need for a backend check
+- [ ] It disables the submit button permanently after one try
+> One schema produces validation and the form's static type, so `values` inside the callback is fully typed and already valid — the happy path can't receive garbage. Validation isn't only client-side, though: the API rejecting a duplicate email should surface on that field (`setFieldError`), not as a vague message. Cross-field rules live in `refine`, multi-step wizards validate per step, and dirty tracking pairs with the route-leave guard to protect unsaved work.
+```
+
 ---
 
 ## Part 12 — Transitions, Teleport, and the Other Built-ins
@@ -1478,6 +1616,29 @@ Note that nothing here is Vue-specific — by this altitude the framework is inv
 
 The summary heuristic for the whole part: **test each layer through its public contract, in the cheapest environment that can falsify it.** Pure logic in plain Vitest; composables via `withSetup`; components via mounted behavior; flows via Playwright — and if a test keeps breaking on refactors that didn't change behavior, it was written at the wrong altitude.
 
+```quiz
+Q: What's the guiding heuristic for *where* to test each kind of Vue code?
+- [x] Test each layer through its public contract in the cheapest environment that can falsify it — pure logic in plain Vitest, composables via a throwaway host, components through mounted behavior (props in, events/DOM out), whole flows via a few Playwright tests
+- [ ] Write end-to-end tests for everything to maximize confidence
+- [ ] Test components by asserting on their internal refs and method names
+- [ ] Put all logic in components so one test type covers it
+> The four code kinds have natural altitudes, and most of the value sits in the first three (fast, deterministic, run-on-save), with E2E reserved for flows whose breakage would page you (login, checkout). A test written at the wrong altitude — asserting internals — breaks on refactors that didn't change behavior, which is the signal it's testing the wrong thing.
+
+Q: A component test asserts that clicking remove emits `remove` with payload `1`, and nothing about internal refs or markup. Why is that the right shape?
+- [ ] It makes the test run faster
+- [ ] VTU can't access internal state anyway
+- [x] It tests the component's *contract* (Part 6: props in, events/DOM out), so a refactor of internal refs, method names, or markup won't break it — coupling tests to internals is what makes them flake on changes that didn't alter behavior
+- [ ] Emitted events are the only thing VTU can observe
+> Testing the contract means the test survives exactly the changes that should be free (renaming a ref, restructuring markup) and fails exactly when behavior regresses. The discipline that supports it: `await` every interaction (`trigger`/`setProps` resolve after Vue's update flush — asserting too early is the top cause of flaky Vue tests), and select by role/label/`data-testid`, not CSS classes that change for styling reasons.
+
+Q: When testing a component that fetches data, why `vi.mock('@/services/users')` rather than mocking `fetch` or axios?
+- [ ] Mocking fetch is impossible in Vitest
+- [ ] axios cannot be mocked at all
+- [x] You mock at the *boundary you own* — the thin service layer (Part 11's layer 1) — so tests stay ignorant of HTTP plumbing; mocking fetch/axios internals couples the test to the very details the service layer exists to hide
+- [ ] Service mocks run in a real browser
+> The service module is the seam: components import `userService.list`, not endpoint strings, precisely so tests can replace that function and drive the three render states (pending/error/data) without touching transport. The error-path test (`mockRejectedValue`) is the one teams skip and the one production rewards — a fetch with no error branch is a blank screen when the API fails.
+```
+
 ---
 
 ## Part 14 — Performance
@@ -1511,6 +1672,29 @@ Part 4's deep reactivity walks every nested property; that's free at form-model 
 One performance problem doesn't belong to Vue at all: heavy *computation* — parsing a large file, crunching rows for a chart — blocks the main thread no matter how it's rendered, and the fix is a [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API) (ergonomically, via [Comlink](https://github.com/GoogleChromeLabs/comlink) or VueUse's [`useWebWorkerFn`](https://vueuse.org/core/useWebWorkerFn/)), with the result landing back in a ref. Diagnose before reaching for it: a frozen UI during *data work* is a worker problem; a frozen UI during *rendering* is a Part 14 problem.
 
 Finally, perceived performance is a budget too: skeleton screens instead of spinner-then-pop, optimistic UI where rollback is cheap (Part 11), and [`web-vitals`](https://github.com/GoogleChrome/web-vitals) measurement in production — because the metric that matters is on your users' devices, not your M-series laptop.
+
+```quiz
+Q: The performance part opens with "Vue's defaults are fast." What follows from that, and what are the three usual real problems?
+- [x] An idiomatic app (stable keys, computeds, state at the right altitude) has no perf problem to solve at typical scale — so when one appears it's almost always too much JavaScript up front, too many DOM nodes, or reactivity overhead on data that didn't need it; profile first, then match symptom to fix
+- [ ] You should preemptively add `v-memo` to every list
+- [ ] Vue is slow, so you must hand-optimize rendering everywhere
+- [ ] The fix is always to reduce reactivity
+> Optimizing without a measurement is how codebases accumulate `v-memo` cargo cult. The compiler-optimized rendering (Part 3) and fine-grained tracking (Part 4) mean the framework isn't your bottleneck; a specific symptom is. Chrome's Performance panel plus Vue DevTools' render timings tell you which of the three you have before you change anything.
+
+Q: A table renders ten thousand rows and scrolling is janky. What's the actual fix, and why don't micro-directives solve it?
+- [ ] `v-once` on each row
+- [ ] `v-memo` keyed on the row data
+- [x] Virtual scrolling — render only the visible window plus a buffer, recycling DOM nodes — because the browser doesn't care how efficiently you *computed* the rows, only that ten thousand DOM nodes *exist*; `v-once`/`v-memo` are last-few-percent footnotes, not the strategy
+- [ ] Move the table into a Web Worker
+> Past roughly a thousand rendered items the problem is DOM scale, and the only real answer is not creating the nodes you can't see (vue-virtual-scroller, `useVirtualList`). Below that threshold, the cheaper wins are pagination, stable keys so reorders move nodes, and `v-show`/`<KeepAlive>` to avoid re-creating expensive subtrees. `v-once`/`v-memo` are for profiled hot lists after the structural fixes, not before.
+
+Q: An app freezes while *loading* a 50,000-row dataset (not while rendering it). Which tool fits, and how do you tell this from a rendering problem?
+- [ ] `v-memo`, because the list is large
+- [x] Reactivity escape hatches — `shallowRef` for replace-wholesale data (track only `.value`, refresh by reassigning), `markRaw` for library instances that shouldn't be proxied — because deep reactivity walks every nested property; the symptom is slow *data loading or mutation*, which DevTools' profiler distinguishes from slow rendering
+- [ ] Virtual scrolling, since the dataset is big
+- [ ] A Web Worker for all reactive state
+> Deep reactivity is free at form scale but real cost on huge structures or third-party object graphs. `shallowRef` tracks only reassignment (pairs naturally with immutable API responses); `markRaw` keeps charts/maps/editors unproxied (speed, and proxy identity confuses their internals). The diagnostic is *when* it's slow: data work → these hatches (or a Web Worker for pure computation); rendering → the DOM-scale fixes above.
+```
 
 ---
 
@@ -1561,6 +1745,22 @@ declare module 'vue-router' {
 (The mechanics of `declare module` are covered in the [TypeScript guide's declaration-merging section](TYPESCRIPT_STUDY_GUIDE.md); Vue Router and Pinia plugins both rely on it.)
 
 The judgment, condensed: put explicit types on every boundary (props, emits, slots, injection keys, service-layer DTOs, store returns if you want a narrower public surface than inference gives), and let inference own everything between boundaries. A Vue codebase with those two rules applied refactors like a statically-typed program, because it is one.
+
+```quiz
+Q: With the Composition API, when do you actually write type annotations versus letting Vue infer?
+- [ ] Annotate everything; Vue infers nothing useful
+- [x] Inference is the baseline (`ref(0)` is `Ref<number>`, a setup store's surface is inferred) — you annotate only where inference can't reach, most commonly "starts empty" cases like `ref<User | null>(null)` or `ref<SearchResult[]>([])`
+- [ ] Only annotate function return types
+- [ ] Annotations are required on every `ref`
+> The integration is "mostly invisible," which is the compliment. You add types at the edges inference can't see: a ref that starts `null` and becomes a `User`, an array that would otherwise infer `never[]`. A subtle one: `ref('idle')` infers `Ref<string>`, silently discarding a literal union — annotate state-machine refs (`ref<'idle'|'loading'|'done'>('idle')`) so a typo'd state is a compile error.
+
+Q: What's the one-sentence TypeScript discipline for a Vue codebase?
+- [ ] Cast with `as` wherever the compiler complains
+- [ ] Annotate every internal variable for clarity
+- [x] Put explicit types on every boundary (props, emits, slots, injection keys, service DTOs, store returns) and let inference own everything between boundaries — a codebase with those two rules refactors like the statically-typed program it is
+- [ ] Use `any` for props and validate only at runtime
+> Boundaries are where types earn their keep and where inference can't follow: `defineProps<Props>()`, `defineEmits<{save:[Draft]}>()`, `defineSlots`, `InjectionKey<T>`. Inside, inference is reliable and noise-free. Generic components (`<script setup generic="T">`) even flow a caller's type through to slot props, eliminating casts. Module augmentation types framework extension points like Vue Router's `RouteMeta`.
+```
 
 ---
 

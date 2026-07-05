@@ -1,0 +1,1521 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<meta name="description" content="An interactive study guide: Quantum Computing Study Guide.">
+<title>Quantum Computing Study Guide - Interactive</title>
+<style>
+:root{
+  --bg:#08090b; --bg2:#0e0f13; --panel:#121319; --panel2:#171922;
+  --border:#23252f; --border2:#2c2f3b;
+  --txt:#e6e8ee; --muted:#9aa0ad; --faint:#6b7180;
+  --accent:#d46ee1; --accent2:#dc6ab8; --accent-weak:rgba(212,110,225,.13);
+  --warn:#fbbf24; --good:#4ade80; --bad:#f87171;
+  --radius:12px; --radius-sm:8px;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --sidebar-w:310px;
+}
+html[data-theme="light"]{
+  --bg:#f6f7f9; --bg2:#eef0f4; --panel:#ffffff; --panel2:#f3f4f7;
+  --border:#e2e5eb; --border2:#d3d7e0;
+  --txt:#1b1f27; --muted:#5a6170; --faint:#878e9c;
+  --accent:#d46ee1; --accent2:#dc6ab8; --accent-weak:rgba(212,110,225,.13);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+  line-height:1.65;font-size:16px;-webkit-font-smoothing:antialiased;
+}
+a{color:var(--accent2);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* progress bar */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;z-index:60;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));transition:width .1s linear}
+
+/* top bar */
+header.topbar{
+  position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:14px;
+  padding:10px 18px;background:rgba(8,9,11,.82);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--border);
+}
+html[data-theme="light"] header.topbar{background:rgba(246,247,249,.85)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:-.01em;white-space:nowrap}
+.brand .logo{width:26px;height:26px;border-radius:7px;display:grid;place-items:center;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04201c;font-weight:800;font-size:15px}
+.brand .sub{color:var(--faint);font-weight:500;font-size:13px}
+.spacer{flex:1}
+.search{position:relative;display:flex;align-items:center;max-width:340px;flex:1}
+.search input{
+  width:100%;padding:8px 12px 8px 34px;border-radius:999px;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);font-size:14px;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search svg{position:absolute;left:11px;width:15px;height:15px;color:var(--faint);pointer-events:none}
+.search kbd{position:absolute;right:10px;color:var(--faint);font-family:var(--mono);font-size:11px;
+  border:1px solid var(--border2);border-radius:5px;padding:1px 5px;background:var(--bg2)}
+.iconbtn{display:grid;place-items:center;width:38px;height:38px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--border2);background:var(--panel);color:var(--txt)}
+.iconbtn:hover{border-color:var(--accent)}
+#menuBtn{display:none}
+#quizBtn.off{opacity:.45}
+#quizBtn.off:hover{opacity:.8}
+html.quiz-hidden .addon.quiz{display:none}
+
+/* layout */
+.layout{display:grid;grid-template-columns:var(--sidebar-w) minmax(0,1fr);gap:0;align-items:start}
+aside.sidebar{
+  position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto;
+  border-right:1px solid var(--border);padding:18px 10px 60px;background:var(--bg)}
+aside.sidebar::-webkit-scrollbar{width:9px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc li a{display:block;padding:5px 12px;border-radius:7px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;transition:color .12s,background .12s}
+.toc li a:hover{color:var(--txt);background:var(--panel);text-decoration:none}
+.toc .toc-l2 a{font-weight:600;color:var(--txt);margin-top:6px}
+.toc .toc-l3 a{padding-left:26px;font-size:12.8px}
+.toc a.active{color:var(--accent);background:var(--accent-weak);border-left-color:var(--accent)}
+.toc li.hide{display:none}
+
+main{padding:32px clamp(18px,5vw,64px) 120px;max-width:1000px;min-width:0;overflow-wrap:break-word}
+.lead{color:var(--muted);font-size:15px}
+
+/* typography */
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15;letter-spacing:-.02em;margin:.2em 0 .4em}
+h2{font-size:clamp(22px,3vw,29px);letter-spacing:-.01em;margin:2.2em 0 .7em;padding-bottom:.3em;
+  border-bottom:1px solid var(--border);scroll-margin-top:74px;cursor:pointer;position:relative}
+h2::after{content:"–";position:absolute;right:2px;top:0;color:var(--faint);font-weight:400;
+  transition:transform .15s;opacity:.6}
+h2.collapsed::after{content:"+"}
+h3{font-size:19px;margin:1.8em 0 .5em;color:var(--txt);scroll-margin-top:74px}
+h2+*,h3+*{margin-top:0}
+p{margin:.7em 0}
+strong{color:var(--txt)}
+blockquote{margin:1.1em 0;padding:.6em 1.1em;border-left:3px solid var(--accent);
+  background:var(--accent-weak);border-radius:0 var(--radius-sm) var(--radius-sm) 0;color:var(--txt)}
+blockquote em{font-style:italic;color:var(--txt)}
+hr{border:none;border-top:1px solid var(--border);margin:2.4em 0}
+ul,ol{padding-left:1.3em}
+li{margin:.3em 0}
+
+/* inline code */
+:not(pre)>code{font-family:var(--mono);font-size:.86em;background:var(--panel2);
+  border:1px solid var(--border);border-radius:6px;padding:.1em .4em;color:#e7c6a0}
+html[data-theme="light"] :not(pre)>code{color:#9a5b00}
+
+/* code blocks */
+.codewrap{position:relative;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius);
+  background:var(--bg2);overflow:hidden}
+.codebar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--panel);border-bottom:1px solid var(--border)}
+.codebar .lang{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
+.copybtn{display:inline-flex;align-items:center;gap:6px;cursor:pointer;border:1px solid var(--border2);
+  background:var(--bg2);color:var(--muted);font-size:12px;padding:4px 9px;border-radius:7px;font-family:var(--sans)}
+.copybtn:hover{border-color:var(--accent);color:var(--txt)}
+.copybtn.ok{color:var(--good);border-color:var(--good)}
+.codewrap pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--mono);font-size:13.3px;line-height:1.6}
+.codewrap pre::-webkit-scrollbar{height:9px}
+.codewrap pre::-webkit-scrollbar-thumb{background:var(--border2);border-radius:9px}
+code .c{color:#6b7180;font-style:italic}      /* comment */
+code .s{color:#9ece9a}                          /* string */
+code .k{color:#7dd3fc}                          /* keyword/directive */
+code .n{color:#e5b873}                          /* number/duration */
+code .ph{color:#f0abfc}                         /* placeholder {..} */
+code .m{color:#fca5a5}                           /* matcher @name */
+code .a{color:#7dd3fc}                           /* attr/key */
+code .b{color:#f0abfc}                           /* boolean/const */
+code .p{color:#8b93a3}                           /* punctuation */
+code .site{color:#5eead4;font-weight:600}        /* site address */
+
+/* tables */
+.tablewrap{overflow-x:auto;margin:1.2em 0;border:1px solid var(--border);border-radius:var(--radius)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--border)}
+thead th{background:var(--panel);color:var(--txt);font-weight:600;position:sticky;top:0}
+tbody tr:hover{background:var(--panel2)}
+tbody tr:last-child td{border-bottom:none}
+
+/* add-ons: quiz + decision */
+.addon{margin:1.8em 0;border:1px solid var(--border2);border-radius:var(--radius);
+  background:linear-gradient(180deg,var(--panel),var(--bg2));overflow:hidden}
+/* Build-time-rendered mermaid diagrams: a light "figure card" so the SVG stays
+   legible under both the dark default and the light theme toggle. */
+.mermaid-diagram{margin:1.8em 0;padding:18px 16px;border:1px solid var(--border2);
+  border-radius:var(--radius);background:#fbfbfd;text-align:center;overflow-x:auto}
+.mermaid-diagram svg{max-width:100%;height:auto}
+.addon-head{padding:16px 18px 4px}
+.addon-kicker{display:inline-block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700}
+.addon-head h3{margin:.25em 0 .1em;scroll-margin-top:0}
+.addon-sub{margin:.1em 0 0;color:var(--faint);font-size:13.5px}
+.quiz-item{padding:8px 18px 16px;border-top:1px solid var(--border);margin-top:12px}
+.quiz-item:first-of-type{border-top:none;margin-top:0}
+.quiz-q{font-weight:600;margin:.6em 0 .7em}
+.quiz-n{display:inline-grid;place-items:center;min-width:26px;height:22px;margin-right:9px;padding:0 6px;
+  border-radius:6px;background:var(--accent-weak);color:var(--accent);font-size:12px;font-weight:700;font-family:var(--mono)}
+.quiz-opts{list-style:none;padding:0;margin:0;display:grid;gap:7px}
+.quiz-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);color:var(--txt);font-size:14px;
+  padding:9px 12px;border-radius:9px;font-family:var(--sans);transition:border-color .12s,background .12s}
+.quiz-opt:hover{border-color:var(--accent)}
+.quiz-mark{width:16px;height:16px;border-radius:50%;border:2px solid var(--faint);flex:none}
+.quiz-opt.correct{border-color:var(--good);background:rgba(74,222,128,.10)}
+.quiz-opt.correct .quiz-mark{border-color:var(--good);background:var(--good)}
+.quiz-opt.wrong{border-color:var(--bad);background:rgba(248,113,113,.10)}
+.quiz-opt.wrong .quiz-mark{border-color:var(--bad);background:var(--bad)}
+.quiz-opt.locked{cursor:default;opacity:.7}
+.quiz-opt.locked.correct,.quiz-opt.locked.wrong{opacity:1}
+.quiz-explain{margin:11px 0 2px;padding:10px 12px;border-radius:8px;background:var(--panel2);
+  border-left:3px solid var(--accent);font-size:13.6px;color:var(--muted)}
+
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px 18px}
+.dchip{display:flex;align-items:flex-start;gap:9px;font-size:13.6px;color:var(--txt);cursor:pointer;
+  border:1px solid var(--border2);background:var(--bg2);padding:9px 11px;border-radius:9px}
+.dchip:hover{border-color:var(--accent)}
+.dchip input{margin-top:2px;accent-color:var(--accent)}
+.decision-out{margin:4px 18px 18px;padding:14px 16px;border-radius:10px;background:var(--panel2);
+  border:1px solid var(--border)}
+.decision-verdict{font-weight:700;font-size:15px}
+.decision-verdict.caddy{color:var(--good)}
+.decision-verdict.maybe{color:var(--warn)}
+.decision-verdict.alt{color:var(--accent2)}
+.decision-reasons{margin:8px 0 0;color:var(--muted);font-size:13.5px}
+
+/* search highlight */
+mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
+
+/* back to top */
+#toTop{position:fixed;right:22px;bottom:22px;width:44px;height:44px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;border:1px solid var(--border2);
+  background:var(--panel);color:var(--txt);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s}
+#toTop.show{opacity:1;pointer-events:auto}
+#toTop:hover{border-color:var(--accent);transform:translateY(-2px)}
+
+.scrim{display:none}
+.collapsed-body{display:none !important}
+
+@media(max-width:980px){
+  :root{--sidebar-w:0px}
+  #menuBtn{display:grid}
+  .layout{grid-template-columns:minmax(0,1fr)}
+  aside.sidebar{position:fixed;top:0;left:0;height:100vh;width:300px;z-index:70;
+    transform:translateX(-100%);transition:transform .25s;border-right:1px solid var(--border);
+    padding-top:16px;background:var(--bg)}
+  aside.sidebar.open{transform:none}
+  .scrim.show{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:65}
+  .search{max-width:none}
+  .brand .sub{display:none}
+  .decision-grid{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body{font-size:15px}
+  .search kbd{display:none}
+  main{padding:22px 16px 100px}
+  .spacer{display:none}
+  .brand{flex:1;min-width:0}
+  .brand > span:not(.logo):not(.sub){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<header class="topbar">
+  <button id="menuBtn" class="iconbtn" aria-label="Toggle menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="brand"><span class="logo">Q</span><span>Quantum Computing Study Guide</span><span class="sub">interactive</span></div>
+  <div class="spacer"></div>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="search" placeholder="Search the guide..." aria-label="Search" autocomplete="off">
+    <kbd>/</kbd>
+  </div>
+  <button id="themeBtn" class="iconbtn" aria-label="Toggle theme" title="Toggle theme (t)">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+<div class="scrim"></div>
+<div class="layout">
+  <aside class="sidebar"><nav class="toc" aria-label="Table of contents"><ul><li class="toc-l2"><a href="#phase-1-the-three-pillars-why-quantum-is-different" data-target="phase-1-the-three-pillars-why-quantum-is-different">Phase 1: The Three Pillars — Why Quantum Is Different</a></li><li class="toc-l3"><a href="#11-superposition-parallelism-that-isnt-parallelism" data-target="11-superposition-parallelism-that-isnt-parallelism">1.1 Superposition — Parallelism That Isn't Parallelism</a></li><li class="toc-l3"><a href="#12-entanglement-correlated-fate" data-target="12-entanglement-correlated-fate">1.2 Entanglement — Correlated Fate</a></li><li class="toc-l3"><a href="#13-interference-the-secret-weapon" data-target="13-interference-the-secret-weapon">1.3 Interference — The Secret Weapon</a></li><li class="toc-l3"><a href="#14-measurement-the-collapse" data-target="14-measurement-the-collapse">1.4 Measurement — The Collapse</a></li><li class="toc-l3"><a href="#15-the-quantum-circuit-model" data-target="15-the-quantum-circuit-model">1.5 The Quantum Circuit Model</a></li><li class="toc-l3"><a href="#16-why-not-just-simulate-it-classically" data-target="16-why-not-just-simulate-it-classically">1.6 Why Not Just Simulate It Classically?</a></li><li class="toc-l2"><a href="#phase-2-grovers-algorithm-quantum-search" data-target="phase-2-grovers-algorithm-quantum-search">Phase 2: Grover's Algorithm — Quantum Search</a></li><li class="toc-l3"><a href="#21-the-problem" data-target="21-the-problem">2.1 The Problem</a></li><li class="toc-l3"><a href="#22-why-it-works-the-geometry-of-amplitude" data-target="22-why-it-works-the-geometry-of-amplitude">2.2 Why It Works — The Geometry of Amplitude</a></li><li class="toc-l3"><a href="#23-why-classical-cant-do-this" data-target="23-why-classical-cant-do-this">2.3 Why Classical Can't Do This</a></li><li class="toc-l3"><a href="#24-real-world-applications" data-target="24-real-world-applications">2.4 Real-World Applications</a></li><li class="toc-l3"><a href="#25-key-takeaway" data-target="25-key-takeaway">2.5 Key Takeaway</a></li><li class="toc-l2"><a href="#phase-3-shors-algorithm-breaking-cryptography" data-target="phase-3-shors-algorithm-breaking-cryptography">Phase 3: Shor's Algorithm — Breaking Cryptography</a></li><li class="toc-l3"><a href="#31-the-problem" data-target="31-the-problem">3.1 The Problem</a></li><li class="toc-l3"><a href="#32-the-reduction-factoring-to-period-finding" data-target="32-the-reduction-factoring-to-period-finding">3.2 The Reduction — Factoring to Period-Finding</a></li><li class="toc-l3"><a href="#33-why-quantum-can-find-periods-the-qft" data-target="33-why-quantum-can-find-periods-the-qft">3.3 Why Quantum Can Find Periods — The QFT</a></li><li class="toc-l3"><a href="#34-why-classical-cant-do-this" data-target="34-why-classical-cant-do-this">3.4 Why Classical Can't Do This</a></li><li class="toc-l3"><a href="#35-real-world-impact" data-target="35-real-world-impact">3.5 Real-World Impact</a></li><li class="toc-l3"><a href="#36-the-discrete-logarithm-variant" data-target="36-the-discrete-logarithm-variant">3.6 The Discrete Logarithm Variant</a></li><li class="toc-l3"><a href="#37-key-takeaway" data-target="37-key-takeaway">3.7 Key Takeaway</a></li><li class="toc-l2"><a href="#phase-4-quantum-simulation-the-original-killer-app" data-target="phase-4-quantum-simulation-the-original-killer-app">Phase 4: Quantum Simulation — The Original Killer App</a></li><li class="toc-l3"><a href="#41-the-problem" data-target="41-the-problem">4.1 The Problem</a></li><li class="toc-l3"><a href="#42-why-quantum-simulates-quantum" data-target="42-why-quantum-simulates-quantum">4.2 Why Quantum Simulates Quantum</a></li><li class="toc-l3"><a href="#43-two-approaches-to-quantum-simulation" data-target="43-two-approaches-to-quantum-simulation">4.3 Two Approaches to Quantum Simulation</a></li><li class="toc-l3"><a href="#44-why-classical-cant-do-this" data-target="44-why-classical-cant-do-this">4.4 Why Classical Can't Do This</a></li><li class="toc-l3"><a href="#45-real-world-applications" data-target="45-real-world-applications">4.5 Real-World Applications</a></li><li class="toc-l3"><a href="#46-current-status" data-target="46-current-status">4.6 Current Status</a></li><li class="toc-l3"><a href="#47-key-takeaway" data-target="47-key-takeaway">4.7 Key Takeaway</a></li><li class="toc-l2"><a href="#phase-5-quantum-machine-learning-cautious-optimism" data-target="phase-5-quantum-machine-learning-cautious-optimism">Phase 5: Quantum Machine Learning — Cautious Optimism</a></li><li class="toc-l3"><a href="#51-the-landscape" data-target="51-the-landscape">5.1 The Landscape</a></li><li class="toc-l3"><a href="#52-where-quantum-might-help" data-target="52-where-quantum-might-help">5.2 Where Quantum Might Help</a></li><li class="toc-l3"><a href="#53-the-input-problem" data-target="53-the-input-problem">5.3 The Input Problem</a></li><li class="toc-l3"><a href="#54-the-dequantization-results" data-target="54-the-dequantization-results">5.4 The Dequantization Results</a></li><li class="toc-l3"><a href="#55-whats-likely-real" data-target="55-whats-likely-real">5.5 What's Likely Real</a></li><li class="toc-l3"><a href="#56-key-takeaway" data-target="56-key-takeaway">5.6 Key Takeaway</a></li><li class="toc-l2"><a href="#phase-6-quantum-optimization-qaoa-and-beyond" data-target="phase-6-quantum-optimization-qaoa-and-beyond">Phase 6: Quantum Optimization — QAOA and Beyond</a></li><li class="toc-l3"><a href="#61-the-problem-class" data-target="61-the-problem-class">6.1 The Problem Class</a></li><li class="toc-l3"><a href="#62-quantum-approximate-optimization-algorithm-qaoa" data-target="62-quantum-approximate-optimization-algorithm-qaoa">6.2 Quantum Approximate Optimization Algorithm (QAOA)</a></li><li class="toc-l3"><a href="#63-why-quantum-helps-maybe" data-target="63-why-quantum-helps-maybe">6.3 Why Quantum Helps (Maybe)</a></li><li class="toc-l3"><a href="#64-quantum-annealing" data-target="64-quantum-annealing">6.4 Quantum Annealing</a></li><li class="toc-l3"><a href="#65-real-world-applications-where-people-are-trying" data-target="65-real-world-applications-where-people-are-trying">6.5 Real-World Applications (Where People Are Trying)</a></li><li class="toc-l3"><a href="#66-key-takeaway" data-target="66-key-takeaway">6.6 Key Takeaway</a></li><li class="toc-l2"><a href="#phase-7-quantum-error-correction-the-engineering-prerequisite" data-target="phase-7-quantum-error-correction-the-engineering-prerequisite">Phase 7: Quantum Error Correction — The Engineering Prerequisite</a></li><li class="toc-l3"><a href="#71-the-problem" data-target="71-the-problem">7.1 The Problem</a></li><li class="toc-l3"><a href="#72-why-quantum-error-correction-is-harder-than-classical" data-target="72-why-quantum-error-correction-is-harder-than-classical">7.2 Why Quantum Error Correction Is Harder Than Classical</a></li><li class="toc-l3"><a href="#73-how-qec-works-anyway" data-target="73-how-qec-works-anyway">7.3 How QEC Works Anyway</a></li><li class="toc-l3"><a href="#74-the-surface-code" data-target="74-the-surface-code">7.4 The Surface Code</a></li><li class="toc-l3"><a href="#75-logical-vs-physical-qubits" data-target="75-logical-vs-physical-qubits">7.5 Logical vs. Physical Qubits</a></li><li class="toc-l3"><a href="#76-key-takeaway" data-target="76-key-takeaway">7.6 Key Takeaway</a></li><li class="toc-l2"><a href="#phase-8-quantum-speedups-a-taxonomy" data-target="phase-8-quantum-speedups-a-taxonomy">Phase 8: Quantum Speedups — A Taxonomy</a></li><li class="toc-l3"><a href="#81-classification-of-quantum-advantages" data-target="81-classification-of-quantum-advantages">8.1 Classification of Quantum Advantages</a></li><li class="toc-l3"><a href="#82-the-bqp-complexity-class" data-target="82-the-bqp-complexity-class">8.2 The BQP Complexity Class</a></li><li class="toc-l3"><a href="#83-algorithms-with-proven-exponential-advantage" data-target="83-algorithms-with-proven-exponential-advantage">8.3 Algorithms With Proven Exponential Advantage</a></li><li class="toc-l2"><a href="#phase-9-quantum-linear-algebra-hhl-and-friends" data-target="phase-9-quantum-linear-algebra-hhl-and-friends">Phase 9: Quantum Linear Algebra — HHL and Friends</a></li><li class="toc-l3"><a href="#91-the-hhl-algorithm" data-target="91-the-hhl-algorithm">9.1 The HHL Algorithm</a></li><li class="toc-l3"><a href="#92-how-it-works-high-level" data-target="92-how-it-works-high-level">9.2 How It Works (High Level)</a></li><li class="toc-l3"><a href="#93-why-classical-cant-do-this" data-target="93-why-classical-cant-do-this">9.3 Why Classical Can't Do This</a></li><li class="toc-l3"><a href="#94-the-fine-print-critical-caveats" data-target="94-the-fine-print-critical-caveats">9.4 The Fine Print (Critical Caveats)</a></li><li class="toc-l3"><a href="#95-real-world-relevance" data-target="95-real-world-relevance">9.5 Real-World Relevance</a></li><li class="toc-l3"><a href="#96-key-takeaway" data-target="96-key-takeaway">9.6 Key Takeaway</a></li><li class="toc-l2"><a href="#phase-10-post-quantum-cryptography-the-practical-response" data-target="phase-10-post-quantum-cryptography-the-practical-response">Phase 10: Post-Quantum Cryptography — The Practical Response</a></li><li class="toc-l3"><a href="#101-the-threat-model" data-target="101-the-threat-model">10.1 The Threat Model</a></li><li class="toc-l3"><a href="#102-nist-post-quantum-standards-finalized-2024" data-target="102-nist-post-quantum-standards-finalized-2024">10.2 NIST Post-Quantum Standards (Finalized 2024)</a></li><li class="toc-l3"><a href="#103-why-lattice-problems-resist-quantum-attack" data-target="103-why-lattice-problems-resist-quantum-attack">10.3 Why Lattice Problems Resist Quantum Attack</a></li><li class="toc-l3"><a href="#104-harvest-now-decrypt-later" data-target="104-harvest-now-decrypt-later">10.4 Harvest Now, Decrypt Later</a></li><li class="toc-l3"><a href="#105-migration-priorities" data-target="105-migration-priorities">10.5 Migration Priorities</a></li><li class="toc-l3"><a href="#106-key-takeaway" data-target="106-key-takeaway">10.6 Key Takeaway</a></li><li class="toc-l2"><a href="#phase-11-quantum-hardware-the-physical-platforms" data-target="phase-11-quantum-hardware-the-physical-platforms">Phase 11: Quantum Hardware — The Physical Platforms</a></li><li class="toc-l3"><a href="#111-the-landscape" data-target="111-the-landscape">11.1 The Landscape</a></li><li class="toc-l3"><a href="#112-superconducting-qubits-ibm-google" data-target="112-superconducting-qubits-ibm-google">11.2 Superconducting Qubits (IBM, Google)</a></li><li class="toc-l3"><a href="#113-trapped-ions-quantinuum-ionq" data-target="113-trapped-ions-quantinuum-ionq">11.3 Trapped Ions (Quantinuum, IonQ)</a></li><li class="toc-l3"><a href="#114-neutral-atoms-quera-pasqal" data-target="114-neutral-atoms-quera-pasqal">11.4 Neutral Atoms (QuEra, Pasqal)</a></li><li class="toc-l3"><a href="#115-key-takeaway" data-target="115-key-takeaway">11.5 Key Takeaway</a></li><li class="toc-l2"><a href="#phase-12-quantum-software-stack-from-theory-to-code" data-target="phase-12-quantum-software-stack-from-theory-to-code">Phase 12: Quantum Software Stack — From Theory to Code</a></li><li class="toc-l3"><a href="#121-the-stack" data-target="121-the-stack">12.1 The Stack</a></li><li class="toc-l3"><a href="#122-major-frameworks" data-target="122-major-frameworks">12.2 Major Frameworks</a></li><li class="toc-l3"><a href="#123-cloud-access" data-target="123-cloud-access">12.3 Cloud Access</a></li><li class="toc-l3"><a href="#124-key-takeaway" data-target="124-key-takeaway">12.4 Key Takeaway</a></li><li class="toc-l2"><a href="#phase-13-what-quantum-computers-will-not-do" data-target="phase-13-what-quantum-computers-will-not-do">Phase 13: What Quantum Computers Will Not Do</a></li><li class="toc-l3"><a href="#131-common-misconceptions" data-target="131-common-misconceptions">13.1 Common Misconceptions</a></li><li class="toc-l3"><a href="#132-where-classical-wins" data-target="132-where-classical-wins">13.2 Where Classical Wins</a></li><li class="toc-l3"><a href="#133-the-realistic-picture" data-target="133-the-realistic-picture">13.3 The Realistic Picture</a></li><li class="toc-l2"><a href="#phase-14-timeline-and-milestones" data-target="phase-14-timeline-and-milestones">Phase 14: Timeline and Milestones</a></li><li class="toc-l3"><a href="#141-what-has-been-achieved" data-target="141-what-has-been-achieved">14.1 What Has Been Achieved</a></li><li class="toc-l3"><a href="#142-whats-next" data-target="142-whats-next">14.2 What's Next</a></li><li class="toc-l2"><a href="#phase-15-learning-roadmap" data-target="phase-15-learning-roadmap">Phase 15: Learning Roadmap</a></li><li class="toc-l3"><a href="#151-if-youre-an-engineer-not-a-physicist" data-target="151-if-youre-an-engineer-not-a-physicist">15.1 If You're an Engineer (Not a Physicist)</a></li><li class="toc-l3"><a href="#152-key-resources" data-target="152-key-resources">15.2 Key Resources</a></li><li class="toc-l2"><a href="#quick-reference-card" data-target="quick-reference-card">Quick Reference Card</a></li><li class="toc-l3"><a href="#when-does-quantum-help" data-target="when-does-quantum-help">When Does Quantum Help?</a></li><li class="toc-l3"><a href="#the-one-paragraph-summary" data-target="the-one-paragraph-summary">The One-Paragraph Summary</a></li><li class="toc-l2"><a href="#where-to-go-next" data-target="where-to-go-next">Where to Go Next</a></li></ul></nav></aside>
+  <main><h1 id="quantum-computing-study-guide">Quantum Computing Study Guide</h1>
+<p>A practitioner-oriented guide to quantum computing, focused on the algorithms that actually matter and the intuitions behind why quantum mechanics lets them outperform classical machines. This is not a physics course or a linear algebra textbook. The goal is to make you fluent enough to understand what quantum computers are good for, why they're good at it, and where the real-world applications land — without drowning in bra-ket notation.</p>
+<blockquote>
+<p><strong>The key idea in one sentence:</strong> Quantum computers exploit superposition, entanglement, and interference to explore solution spaces in ways that classical bits physically cannot — and the useful algorithms are the ones that structure this exploration so the right answer gets amplified and the wrong ones cancel out.</p>
+</blockquote>
+<p>Primary references, all worth working through: <em><a href="https://www.cambridge.org/highereducation/books/quantum-computation-and-quantum-information/01E10196D0A682A6AEFFEA52D53BE9AE">Quantum Computation and Quantum Information</a></em> (Nielsen &amp; Chuang) — the field's canonical textbook, mathematical but unmatched for rigor; <a href="https://www.ibm.com/quantum/qiskit">IBM's Qiskit</a> and its companion <a href="https://learning.quantum.ibm.com/">IBM Quantum Learning</a> platform — the fastest path from reading about a circuit to running one, free and browser-based; Preskill's <a href="https://arxiv.org/abs/1801.00862">"Quantum Computing in the NISQ Era and Beyond"</a> — the paper that coined NISQ and remains the honest statement of where near-term hardware stands; and <a href="https://csrc.nist.gov/projects/post-quantum-cryptography">NIST's Post-Quantum Cryptography project</a> — the standards body's own documentation of the migration this guide's Phase 10 covers.</p>
+<p>This guide has a natural sibling in <a href="crypto-fundamentals.html">Cryptography Fundamentals</a>, which covers the classical primitives (RSA, elliptic curves, hashing) that Shor's algorithm threatens and that post-quantum schemes replace; <a href="distributed-algorithms-study-guide.html">Distributed Algorithms</a>, for the classical complexity-theory grounding that makes "quantum advantage" a precise claim rather than a marketing one; and <a href="compiler-internals-study-guide.html">Compiler and Language Internals</a>, for readers curious how a quantum circuit gets compiled down to a specific hardware's native gate set.</p>
+<hr>
+<h2 id="phase-1-the-three-pillars-why-quantum-is-different">Phase 1: The Three Pillars — Why Quantum Is Different</h2>
+<p>Before any algorithm makes sense, you need three concepts. Not the math — the <em>intuition</em>.</p>
+<h3 id="11-superposition-parallelism-that-isnt-parallelism">1.1 Superposition — Parallelism That Isn't Parallelism</h3>
+<p>A classical bit is 0 or 1. A qubit can be in a <strong>superposition</strong> of 0 and 1 simultaneously. When you have <code>n</code> qubits, they can represent all <code>2^n</code> possible states <em>at once</em>.</p>
+<p>This is <strong>not</strong> the same as classical parallelism. A classical computer with 1000 cores runs 1000 computations. A quantum computer with 1000 qubits doesn't run <code>2^1000</code> computations and hand you all the answers. The moment you measure, you get <em>one</em> answer. The whole game is rigging the system so the answer you get is the <em>right</em> one.</p>
+<p><strong>Analogy:</strong> Imagine a coin spinning in the air. While spinning, it's "both heads and tails." But when it lands, it's one or the other. The quantum trick is building a biased coin that lands on the answer you want.</p>
+<h3 id="12-entanglement-correlated-fate">1.2 Entanglement — Correlated Fate</h3>
+<p>Two qubits can be <strong>entangled</strong>, meaning their states are correlated in a way that has no classical equivalent. Measuring one instantly determines the other, regardless of distance. This isn't communication — it's correlation baked into the physics.</p>
+<p><strong>Why it matters for algorithms:</strong> Entanglement lets you create correlations between qubits that encode the <em>structure</em> of a problem. When you manipulate one part of an entangled system, the effects propagate across the whole state. This is the mechanism that lets quantum algorithms process relationships between variables simultaneously.</p>
+<p><strong>Analogy:</strong> Two entangled coins always land on opposite sides. Not because one sends a signal to the other — they were manufactured as a pair with this property baked in. The quantum version is weirder: you choose <em>which property</em> to measure, and the correlation still holds for that choice.</p>
+<h3 id="13-interference-the-secret-weapon">1.3 Interference — The Secret Weapon</h3>
+<p>This is the one most people skip, and it's the most important. Quantum states have <strong>amplitudes</strong>, which are complex numbers. When two computational paths lead to the same outcome, their amplitudes add. If they're in phase (same sign), they <strong>constructively interfere</strong> — the probability increases. If they're out of phase (opposite sign), they <strong>destructively interfere</strong> — the probability decreases, potentially to zero.</p>
+<p><strong>Why it matters for algorithms:</strong> Every useful quantum algorithm works the same way at a high level:</p>
+<ol>
+<li>Put qubits into superposition (explore everything).</li>
+<li>Apply operations that make wrong answers interfere destructively.</li>
+<li>Apply operations that make right answers interfere constructively.</li>
+<li>Measure — the right answer pops out with high probability.</li>
+</ol>
+<p><strong>Why classical computers can't do this:</strong> Classical probabilities are always non-negative and add normally. You can't cancel out wrong answers by adding more computation. Quantum amplitudes can be negative (or complex), so they can cancel. This is the fundamental asymmetry.</p>
+<p><strong>Analogy:</strong> Noise-cancelling headphones. Two sound waves (your noise + the headphone's anti-noise) destructively interfere to produce silence. A quantum algorithm is like noise-cancelling for wrong answers — it generates anti-amplitude that cancels them out, leaving only the signal.</p>
+<h3 id="14-measurement-the-collapse">1.4 Measurement — The Collapse</h3>
+<p>When you measure a qubit, the superposition collapses. You get a definite classical bit — 0 or 1 — with probability determined by the amplitude. Once measured, the superposition is gone. This means:</p>
+<ul>
+<li>You can't "peek" at intermediate quantum states without destroying them.</li>
+<li>You typically run a quantum algorithm many times and take the most frequent result.</li>
+<li>Algorithm design is about maximizing the probability of measuring the correct answer.</li>
+</ul>
+<h3 id="15-the-quantum-circuit-model">1.5 The Quantum Circuit Model</h3>
+<p>Quantum computations are expressed as <strong>circuits</strong>: sequences of <strong>gates</strong> applied to qubits, followed by measurement. Key gates to know:</p>
+<table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>What It Does</th>
+<th>Classical Analogue</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>X</strong> (NOT)</td>
+<td>Flips |0⟩ ↔ |1⟩</td>
+<td>Classical NOT</td>
+</tr>
+<tr>
+<td><strong>H</strong> (Hadamard)</td>
+<td>Creates superposition: |0⟩ → equal mix of |0⟩ and |1⟩</td>
+<td>No analogue — this is the on-ramp to quantum</td>
+</tr>
+<tr>
+<td><strong>CNOT</strong></td>
+<td>Flips target qubit if control qubit is |1⟩</td>
+<td>Classical XOR, but it creates entanglement</td>
+</tr>
+<tr>
+<td><strong>Phase gates</strong> (S, T, Rz)</td>
+<td>Rotate the phase of |1⟩ without changing probabilities</td>
+<td>No analogue — phase is a quantum-only concept</td>
+</tr>
+<tr>
+<td><strong>Toffoli</strong> (CCX)</td>
+<td>Flips target if both controls are |1⟩</td>
+<td>Classical AND — makes quantum circuits universal</td>
+</tr>
+</tbody>
+</table>
+<p>The circuit model is the assembly language of quantum computing. Higher-level algorithms are described in terms of these gates.</p>
+<h3 id="16-why-not-just-simulate-it-classically">1.6 Why Not Just Simulate It Classically?</h3>
+<p>A system of <code>n</code> qubits requires tracking <code>2^n</code> complex amplitudes. For 50 qubits, that's <code>2^50 ≈ 10^15</code> amplitudes — about a petabyte of memory just to store the state. Every gate operation transforms this entire vector. Classical simulation of quantum systems is exponentially expensive in general, which is precisely why quantum computers are interesting.</p>
+<p>The catch: most of those <code>2^n</code> states aren't useful. Quantum advantage only happens when you can structure interference to extract useful information from that exponentially large space without needing to look at all of it.</p>
+<hr>
+<h2 id="phase-2-grovers-algorithm-quantum-search">Phase 2: Grover's Algorithm — Quantum Search</h2>
+<h3 id="21-the-problem">2.1 The Problem</h3>
+<p>You have an unsorted database of <code>N</code> items (or equivalently, a black-box function that returns "yes" for exactly one input). Classically, you must check items one by one — on average <code>N/2</code> checks, worst case <code>N</code>. Can quantum do better?</p>
+<p><strong>Yes.</strong> Grover's algorithm finds the answer in <code>O(√N)</code> evaluations. For a database of 1 million items, classical search needs ~500,000 checks; Grover needs ~1,000.</p>
+<h3 id="22-why-it-works-the-geometry-of-amplitude">2.2 Why It Works — The Geometry of Amplitude</h3>
+<p>Grover's algorithm has a beautiful geometric interpretation:</p>
+<ol>
+<li>
+<p><strong>Start in superposition.</strong> Apply Hadamard to all qubits. Now every item has equal amplitude <code>1/√N</code>. Visualize the quantum state as a vector in a 2D plane: one axis is the "target" item, the other is "everything else."</p>
+</li>
+<li>
+<p><strong>Oracle marks the target.</strong> The oracle flips the sign (amplitude) of the target item. This is like reflecting the state vector across the "everything else" axis.</p>
+</li>
+<li>
+<p><strong>Diffusion operator.</strong> This reflects the state vector across the <em>average</em> amplitude. Since the target's amplitude is now negative, the average drops slightly, and reflecting across it pushes the target's amplitude <em>above</em> average while pushing everything else <em>below</em>.</p>
+</li>
+<li>
+<p><strong>Repeat.</strong> Each iteration rotates the state vector toward the target by a fixed angle <code>θ ≈ 2/√N</code>. After <code>~π√N/4</code> iterations, the state vector is pointing almost entirely at the target.</p>
+</li>
+<li>
+<p><strong>Measure.</strong> You get the target with high probability.</p>
+</li>
+</ol>
+<h3 id="23-why-classical-cant-do-this">2.3 Why Classical Can't Do This</h3>
+<p>The classical version of this problem is fundamentally about checking items one at a time. There's no way to "cancel out" wrong items — every check gives you independent information about exactly one item. The quantum version exploits interference: wrong answers' amplitudes systematically decrease while the right answer's amplitude increases, all happening simultaneously across the entire superposition.</p>
+<p>Crucially, Grover's speedup is <strong>provably optimal</strong> for unstructured search — no quantum algorithm can do better than <code>O(√N)</code> for this problem. This means quantum computers are not magical: they offer a quadratic speedup for search, not an exponential one.</p>
+<h3 id="24-real-world-applications">2.4 Real-World Applications</h3>
+<p>Grover's by itself is a quadratic speedup, which is meaningful but not earth-shattering (you'd need a fault-tolerant quantum computer with millions of qubits to beat a classical computer on raw search). Its real power is as a <strong>subroutine</strong>:</p>
+<ul>
+<li><strong>Cryptography:</strong> Grover's effectively halves the security of symmetric ciphers. AES-128 becomes AES-64 against a quantum attacker. This is why NIST recommends AES-256 for post-quantum security — Grover reduces it to 128-bit equivalent.</li>
+<li><strong>Satisfiability / constraint solving:</strong> Grover can search over all possible variable assignments to find one that satisfies a Boolean formula. Quadratic speedup over brute force.</li>
+<li><strong>Optimization:</strong> Grover-based amplitude amplification is used inside many other quantum algorithms to boost the probability of finding good solutions.</li>
+<li><strong>Database lookups in quantum algorithms:</strong> Many quantum algorithms use Grover as an inner loop — "given this quantum subroutine, find the input that produces this output."</li>
+</ul>
+<h3 id="25-key-takeaway">2.5 Key Takeaway</h3>
+<p>Grover's is the gateway algorithm. It shows the interference pattern (mark → amplify → repeat) that underlies almost all quantum algorithms. It also calibrates expectations: quantum offers <em>quadratic</em> speedup for generic search, not exponential. The exponential advantages come from algorithms that exploit <em>structure</em> in the problem — which brings us to Shor's.</p>
+<hr>
+<h2 id="phase-3-shors-algorithm-breaking-cryptography">Phase 3: Shor's Algorithm — Breaking Cryptography</h2>
+<h3 id="31-the-problem">3.1 The Problem</h3>
+<p>Given a large number <code>N = p × q</code> (product of two large primes), find <code>p</code> and <code>q</code>. This is <strong>integer factorization</strong>, and the security of RSA, Diffie-Hellman, and elliptic curve cryptography rests on the assumption that it's hard.</p>
+<p>Best classical algorithm: the General Number Field Sieve, which runs in sub-exponential time <code>exp(O(n^(1/3) (log n)^(2/3)))</code> where <code>n</code> is the number of bits. For a 2048-bit RSA key, this is estimated to take thousands of years on current hardware.</p>
+<p><strong>Shor's algorithm factors <code>N</code> in polynomial time:</strong> <code>O(n^3)</code> on a quantum computer (with some classical pre/post-processing). This would break RSA, DSA, ECDSA, and Diffie-Hellman.</p>
+<h3 id="32-the-reduction-factoring-to-period-finding">3.2 The Reduction — Factoring to Period-Finding</h3>
+<p>Shor's key insight is a classical one: factoring reduces to <strong>period-finding</strong>. Here's the reduction:</p>
+<ol>
+<li>Pick a random number <code>a &lt; N</code>.</li>
+<li>Consider the function <code>f(x) = a^x mod N</code>.</li>
+<li>This function is <strong>periodic</strong> — there exists some period <code>r</code> such that <code>f(x + r) = f(x)</code> for all <code>x</code>.</li>
+<li>If you can find <code>r</code>, then with high probability, <code>gcd(a^(r/2) ± 1, N)</code> gives you a non-trivial factor of <code>N</code>.</li>
+</ol>
+<p>This reduction is entirely classical and was known before quantum computing. The hard part classically is finding <code>r</code> — and that's where quantum mechanics enters.</p>
+<h3 id="33-why-quantum-can-find-periods-the-qft">3.3 Why Quantum Can Find Periods — The QFT</h3>
+<p>Finding the period of <code>f(x) = a^x mod N</code> is essentially finding a hidden frequency in a signal. Classical computers can do Fourier transforms (FFT runs in <code>O(n log n)</code>), but the "signal" here has exponentially many points (<code>a^0 mod N, a^1 mod N, ..., a^(2^n) mod N</code>), so classical FFT would need exponential time to even compute the signal.</p>
+<p>The <strong>Quantum Fourier Transform (QFT)</strong> solves this:</p>
+<ol>
+<li><strong>Prepare superposition of all inputs.</strong> Create a superposition of <code>|x⟩</code> for <code>x = 0, 1, ..., 2^n - 1</code>.</li>
+<li><strong>Compute f(x) in superposition.</strong> Apply the function <code>f</code> to get <code>|x⟩|f(x)⟩</code>. Now the quantum state encodes all values of <code>f</code> simultaneously.</li>
+<li><strong>Apply the QFT to the input register.</strong> The QFT is the quantum analogue of the discrete Fourier transform. It converts the periodicity in the input into peaks at multiples of <code>2^n / r</code> in the frequency domain.</li>
+<li><strong>Measure.</strong> You get a value close to a multiple of <code>2^n / r</code>. Classical post-processing (continued fractions) extracts <code>r</code>.</li>
+</ol>
+<h3 id="34-why-classical-cant-do-this">3.4 Why Classical Can't Do This</h3>
+<p>The classical bottleneck is step 1: you'd need to evaluate <code>f(x)</code> for exponentially many values of <code>x</code> to build the signal before Fourier-transforming it. The quantum trick is evaluating <code>f</code> on a superposition of all inputs <em>in one shot</em> (quantum parallelism), then using interference (via the QFT) to extract the period without ever looking at individual function values.</p>
+<p>The QFT itself is efficient: it acts on <code>n</code> qubits using <code>O(n^2)</code> gates, compared to <code>O(n · 2^n)</code> operations for a classical FFT on <code>2^n</code> points. This exponential speedup in the Fourier transform, combined with the ability to evaluate <code>f</code> in superposition, is what makes period-finding tractable.</p>
+<p><strong>Interference is doing the heavy lifting:</strong> After computing <code>f(x)</code> in superposition, states with the same value of <code>f(x)</code> have their amplitudes spread across multiple values of <code>x</code> (separated by the period <code>r</code>). The QFT causes these amplitudes to constructively interfere at frequency-domain values that are multiples of <code>1/r</code>, and destructively interfere everywhere else. The period literally emerges from the interference pattern.</p>
+<h3 id="35-real-world-impact">3.5 Real-World Impact</h3>
+<ul>
+<li><strong>RSA, DSA, Diffie-Hellman, ECDSA:</strong> All broken by Shor's algorithm (or its elliptic curve variant for discrete log). A sufficiently large quantum computer would render all currently deployed public-key cryptography insecure.</li>
+<li><strong>Current status (2025):</strong> The largest number factored by Shor's algorithm on actual quantum hardware is tiny (in the hundreds). Factoring a 2048-bit RSA key would require thousands of logical (error-corrected) qubits, which translates to millions of physical qubits. We're not there yet — but the trajectory is clear enough that NIST finalized post-quantum cryptography standards in 2024 (ML-KEM / CRYSTALS-Kyber for key encapsulation, ML-DSA / CRYSTALS-Dilithium for signatures).</li>
+<li><strong>Timeline estimates:</strong> Credible estimates for "cryptographically relevant quantum computers" (CRQC) range from 2030 to 2045+. The "harvest now, decrypt later" threat — intercepting encrypted data today to decrypt it when quantum computers arrive — is the reason migration to post-quantum cryptography is urgent <em>now</em>.</li>
+</ul>
+<h3 id="36-the-discrete-logarithm-variant">3.6 The Discrete Logarithm Variant</h3>
+<p>Shor's algorithm also solves the <strong>discrete logarithm problem</strong>: given <code>g</code>, <code>h</code>, and <code>p</code>, find <code>x</code> such that <code>g^x ≡ h (mod p)</code>. The structure is identical — it reduces to period-finding in a group. This breaks Diffie-Hellman and DSA. The elliptic curve variant breaks ECDSA and ECDH, which are the backbone of TLS, SSH, and cryptocurrency signatures.</p>
+<h3 id="37-key-takeaway">3.7 Key Takeaway</h3>
+<p>Shor's algorithm is the most consequential quantum algorithm discovered. It provides an <strong>exponential</strong> speedup over the best known classical algorithms for factoring and discrete log. The speedup comes from the QFT's ability to extract hidden periodicity via interference — a problem that's fundamentally about frequency analysis, which is what Fourier transforms were made for. The quantum version just does it over an exponentially large domain in polynomial time.</p>
+<hr>
+<h2 id="phase-4-quantum-simulation-the-original-killer-app">Phase 4: Quantum Simulation — The Original Killer App</h2>
+<h3 id="41-the-problem">4.1 The Problem</h3>
+<p>Simulating quantum mechanical systems (molecules, materials, chemical reactions) on a classical computer is exponentially hard. A system of <code>n</code> interacting quantum particles has a state space of dimension <code>2^n</code>. Storing the state of 50 interacting electrons requires more memory than exists on Earth.</p>
+<p>Richard Feynman proposed quantum computing in 1982 specifically for this problem: "Nature isn't classical, dammit, and if you want to make a simulation of nature, you'd better make it quantum mechanical."</p>
+<h3 id="42-why-quantum-simulates-quantum">4.2 Why Quantum Simulates Quantum</h3>
+<p>The argument is almost tautological, but it's the deepest insight:</p>
+<ul>
+<li>A quantum system of <code>n</code> particles lives in a <code>2^n</code>-dimensional Hilbert space.</li>
+<li>A quantum computer with <code>n</code> qubits <em>also</em> lives in a <code>2^n</code>-dimensional Hilbert space.</li>
+<li>Therefore, a quantum computer can naturally represent and evolve quantum states — it <em>is</em> the simulation.</li>
+</ul>
+<p>A classical computer must approximate a <code>2^n</code>-dimensional object with a polynomial amount of memory, which means brutal truncation and approximation. A quantum computer represents the state natively.</p>
+<h3 id="43-two-approaches-to-quantum-simulation">4.3 Two Approaches to Quantum Simulation</h3>
+<p><strong>Hamiltonian Simulation (digital):</strong> Decompose the time evolution operator <code>e^(-iHt)</code> into a sequence of quantum gates. The Hamiltonian <code>H</code> describes the system's energy/interactions. Product formulas (Trotter-Suzuki decomposition) break the evolution into small time steps, each implementable with gates. More advanced methods (qubitization, quantum signal processing) achieve near-optimal scaling.</p>
+<p><strong>Variational Quantum Eigensolver — VQE (hybrid):</strong> Use a parameterized quantum circuit to prepare a trial state, measure its energy, and use a classical optimizer to adjust the parameters. This is the NISQ-era (Noisy Intermediate-Scale Quantum) workhorse — it can run on today's imperfect hardware because the circuits are short. The tradeoff: no guaranteed optimality, and classical optimization can get stuck.</p>
+<h3 id="44-why-classical-cant-do-this">4.4 Why Classical Can't Do This</h3>
+<p>Classical simulation methods for quantum systems face a fundamental scaling wall:</p>
+<ul>
+<li><strong>Exact diagonalization:</strong> Store the full <code>2^n × 2^n</code> Hamiltonian matrix. Maxes out at ~40–45 qubits.</li>
+<li><strong>Density Functional Theory (DFT):</strong> Approximates electron density rather than the full wave function. Scales polynomially but makes approximations that fail for <strong>strongly correlated systems</strong> (transition metals, high-temperature superconductors, enzymatic reaction centers).</li>
+<li><strong>Tensor networks / DMRG:</strong> Work brilliantly for 1D systems with limited entanglement. Fail for 2D/3D systems or systems with high entanglement.</li>
+</ul>
+<p>The quantum advantage is most pronounced for <strong>strongly correlated systems</strong> — systems where the electrons' behaviors are deeply entangled and classical approximations systematically fail. These are exactly the systems where entanglement — a quantum resource — is essential to the physics.</p>
+<h3 id="45-real-world-applications">4.5 Real-World Applications</h3>
+<p>This is where quantum computing delivers its first practical advantage, likely before any other application:</p>
+<ul>
+<li><strong>Drug discovery:</strong> Simulating molecular interactions to predict drug binding affinities. A single FeMoco (the active site of nitrogenase, the enzyme that fixes atmospheric nitrogen) has 100+ strongly correlated electrons — far beyond classical simulation. Understanding it could revolutionize fertilizer production.</li>
+<li><strong>Battery and materials design:</strong> Simulating lithium-ion cathode materials, solid-state electrolytes, or high-temperature superconductors requires accurate treatment of electron correlation.</li>
+<li><strong>Catalyst design:</strong> Industrial catalysis (Haber-Bosch process, CO2 reduction) depends on transition metal chemistry that is notoriously hard to simulate classically.</li>
+<li><strong>Protein folding:</strong> While AlphaFold solved structure prediction, understanding the <em>dynamics</em> of protein folding — including quantum effects in enzyme catalysis — may require quantum simulation.</li>
+</ul>
+<h3 id="46-current-status">4.6 Current Status</h3>
+<ul>
+<li>Google, IBM, Microsoft, and startups (PsiQuantum, IonQ, Quantinuum) all have quantum chemistry as a primary application target.</li>
+<li>In 2020, Google simulated the binding energy of diazene (N₂H₂) with 12 qubits using VQE — a proof of concept, not yet competitive with classical methods.</li>
+<li>The crossover point where quantum simulation beats the best classical methods is estimated at 100–200 logical qubits for chemistry problems. With error correction overhead, that's still thousands of physical qubits.</li>
+</ul>
+<h3 id="47-key-takeaway">4.7 Key Takeaway</h3>
+<p>Quantum simulation is the most natural application of quantum computing. It's the one area where the quantum advantage isn't a clever algorithmic trick — it's the physics itself. Simulating a quantum system on a quantum computer is like simulating water with water. The practical applications (drug discovery, materials science) represent trillions of dollars of economic value, and this is likely where quantum computing delivers first.</p>
+<hr>
+<h2 id="phase-5-quantum-machine-learning-cautious-optimism">Phase 5: Quantum Machine Learning — Cautious Optimism</h2>
+<h3 id="51-the-landscape">5.1 The Landscape</h3>
+<p>Quantum machine learning (QML) is the most hyped and most uncertain area of quantum computing. The claims range from "exponential speedup for all ML" (overhyped) to "no practical advantage" (too pessimistic). The truth is nuanced.</p>
+<h3 id="52-where-quantum-might-help">5.2 Where Quantum Might Help</h3>
+<p><strong>Quantum Kernel Methods:</strong> Use a quantum computer to compute kernel functions that are hard to compute classically. The idea: map classical data into a quantum Hilbert space, where the inner product (kernel) captures relationships that are exponentially expensive to compute classically. If the data has structure that aligns with the quantum kernel's feature space, this could provide a genuine advantage.</p>
+<p><strong>Quantum Principal Component Analysis (qPCA):</strong> Given a density matrix <code>ρ</code> (representing a dataset), quantum PCA can extract the principal components in time <code>O(log d)</code> where <code>d</code> is the dimensionality — exponentially faster than classical PCA's <code>O(d²)</code>. The catch: loading classical data into a quantum state (the "input problem") can negate the speedup.</p>
+<p><strong>Quantum Boltzmann Machines:</strong> Quantum versions of restricted Boltzmann machines that use quantum tunneling to explore the energy landscape more efficiently. Promising for generative models, but still theoretical.</p>
+<p><strong>Variational Quantum Classifiers / Quantum Neural Networks:</strong> Parameterized quantum circuits trained like neural networks. The circuit acts as a model, and parameters are optimized classically. Can run on NISQ hardware but face <strong>barren plateau</strong> problems — gradients vanish exponentially with circuit depth, making training intractable for large circuits.</p>
+<h3 id="53-the-input-problem">5.3 The Input Problem</h3>
+<p>The elephant in the room: most quantum ML algorithms assume quantum access to data (the data is already in a quantum state). Loading <code>N</code> classical data points into a quantum state takes <code>O(N)</code> time, which often erases the quantum speedup entirely. This is called the <strong>data loading bottleneck</strong> or "qRAM problem."</p>
+<p>For quantum ML to deliver practical speedups, one of these must be true:
+1. The data is <em>inherently quantum</em> (e.g., output of a quantum sensor or quantum simulation).
+2. Efficient quantum random access memory (qRAM) exists — this is an open hardware challenge.
+3. The algorithm's advantage survives even with classical data loading overhead.</p>
+<h3 id="54-the-dequantization-results">5.4 The Dequantization Results</h3>
+<p>In 2018, Ewin Tang (then an 18-year-old undergrad) showed that the famous "quantum recommendation algorithm" (Kerenidis &amp; Prakash) could be approximately matched by a classical algorithm using random sampling. This sparked a wave of "dequantization" results that removed quantum advantage from several QML algorithms under certain assumptions about data access.</p>
+<p>The lesson: not every quantum speedup survives scrutiny. The speedups that do survive tend to be for problems with genuinely quantum structure.</p>
+<h3 id="55-whats-likely-real">5.5 What's Likely Real</h3>
+<ul>
+<li><strong>Quantum data:</strong> When the input is quantum (e.g., classifying quantum states, processing quantum sensor output), quantum ML has a clear and provable advantage.</li>
+<li><strong>Quantum-enhanced optimization for ML:</strong> Using quantum algorithms (QAOA, quantum annealing) to optimize classical ML model parameters for specific structured problems.</li>
+<li><strong>Feature spaces:</strong> Some evidence that quantum kernels can identify patterns in data that classical kernels miss, particularly for data generated by quantum processes.</li>
+</ul>
+<h3 id="56-key-takeaway">5.6 Key Takeaway</h3>
+<p>Quantum ML is not a silver bullet for classical ML problems. The strongest advantages appear when the data itself is quantum, or when the problem structure aligns with quantum feature spaces. For classical data, the jury is still out, and dequantization results have narrowed the scope of provable advantage. Approach QML claims with healthy skepticism and demand clarity on data loading assumptions.</p>
+<hr>
+<h2 id="phase-6-quantum-optimization-qaoa-and-beyond">Phase 6: Quantum Optimization — QAOA and Beyond</h2>
+<h3 id="61-the-problem-class">6.1 The Problem Class</h3>
+<p>Combinatorial optimization: finding the best solution from a finite set of possibilities. Examples include:
+- Traveling salesman (shortest route)
+- Portfolio optimization (best asset allocation)
+- Vehicle routing (optimal delivery schedules)
+- Max-Cut (partition a graph to maximize edges between groups)</p>
+<p>These problems are typically NP-hard — no classical algorithm solves them exactly in polynomial time. Classical heuristics (simulated annealing, genetic algorithms) work well in practice but offer no guarantees.</p>
+<h3 id="62-quantum-approximate-optimization-algorithm-qaoa">6.2 Quantum Approximate Optimization Algorithm (QAOA)</h3>
+<p>QAOA is a hybrid quantum-classical algorithm:</p>
+<ol>
+<li><strong>Encode the problem</strong> as a cost function (a Hamiltonian) where the ground state (lowest energy state) corresponds to the optimal solution.</li>
+<li><strong>Prepare a trial state</strong> using alternating layers of "problem" unitaries (that encode the cost function) and "mixer" unitaries (that explore the solution space).</li>
+<li><strong>Measure</strong> the energy of the trial state.</li>
+<li><strong>Classically optimize</strong> the parameters of the unitaries to minimize the energy.</li>
+<li><strong>Repeat</strong> until convergence.</li>
+</ol>
+<h3 id="63-why-quantum-helps-maybe">6.3 Why Quantum Helps (Maybe)</h3>
+<p>The honest answer: it's unclear whether QAOA provides a provable advantage over classical optimization heuristics for generic combinatorial optimization problems. Here's what we know:</p>
+<p><strong>Arguments for advantage:</strong>
+- Quantum tunneling: the quantum state can "tunnel" through energy barriers in the cost landscape that trap classical algorithms like simulated annealing. This is analogous to how a ball can quantum-mechanically pass through a wall instead of needing to climb over it.
+- Superposition: QAOA explores many candidate solutions simultaneously and uses interference to amplify good ones.
+- At sufficient depth (many layers), QAOA can theoretically find the exact optimal solution.</p>
+<p><strong>Arguments against guaranteed advantage:</strong>
+- For low depth (few layers), QAOA's performance on many problems can be matched by classical algorithms.
+- Barren plateaus: for large problem sizes, gradients can vanish, making optimization difficult.
+- No proof of unconditional quantum advantage for QAOA exists.</p>
+<h3 id="64-quantum-annealing">6.4 Quantum Annealing</h3>
+<p>A different paradigm, implemented by D-Wave's quantum computers:</p>
+<ol>
+<li>Start the system in the ground state of a simple Hamiltonian (easy to prepare).</li>
+<li>Slowly "anneal" (transition) to a Hamiltonian whose ground state encodes the solution to your optimization problem.</li>
+<li>If you go slowly enough (the adiabatic theorem), the system stays in the ground state and you end up with the answer.</li>
+</ol>
+<p><strong>Why it might work:</strong> Quantum tunneling through energy barriers, as mentioned above. Classical simulated annealing must thermally hop over barriers; quantum annealing can tunnel through them. For certain barrier shapes (tall but thin), quantum tunneling is exponentially faster.</p>
+<p><strong>Current status:</strong> D-Wave machines with 5000+ qubits exist today but are noisy and limited to specific problem structures. Demonstrating clear quantum advantage over state-of-the-art classical solvers on practical problems remains an open challenge.</p>
+<h3 id="65-real-world-applications-where-people-are-trying">6.5 Real-World Applications (Where People Are Trying)</h3>
+<ul>
+<li><strong>Finance:</strong> Portfolio optimization, risk analysis, fraud detection. JPMorgan, Goldman Sachs, and others have active quantum research programs.</li>
+<li><strong>Logistics:</strong> Vehicle routing, supply chain optimization. BMW, Airbus, and DHL have published quantum optimization pilots.</li>
+<li><strong>Scheduling:</strong> Airline crew scheduling, manufacturing job-shop scheduling.</li>
+<li><strong>Telecom:</strong> Network optimization, spectrum allocation.</li>
+</ul>
+<p>Most of these are NISQ-era experiments — demonstrating feasibility, not quantum advantage. The practical quantum advantage for optimization, if it exists, likely requires error-corrected hardware.</p>
+<h3 id="66-key-takeaway">6.6 Key Takeaway</h3>
+<p>Quantum optimization is the area with the highest commercial interest and the most uncertain quantum advantage. QAOA and quantum annealing are promising but unproven for beating the best classical heuristics on practical problems. The theoretical foundations are weaker than for Shor's (exponential, proven) or Grover's (quadratic, proven). Invest in understanding the algorithms, but don't bet on them outperforming classical solvers until there's a clear demonstration.</p>
+<hr>
+<h2 id="phase-7-quantum-error-correction-the-engineering-prerequisite">Phase 7: Quantum Error Correction — The Engineering Prerequisite</h2>
+<h3 id="71-the-problem">7.1 The Problem</h3>
+<p>Qubits are fragile. They interact with their environment (decohere), lose their quantum properties, and accumulate errors at rates vastly higher than classical transistors. A single qubit error rate of 0.1% per gate sounds good until you need to run a circuit with millions of gates.</p>
+<p>Without error correction, quantum computers are limited to short circuits on small problems — the NISQ era. Fault-tolerant quantum computing (FTQC) requires quantum error correction (QEC) and is the prerequisite for running Shor's algorithm on real-world key sizes.</p>
+<h3 id="72-why-quantum-error-correction-is-harder-than-classical">7.2 Why Quantum Error Correction Is Harder Than Classical</h3>
+<p>Classical error correction is straightforward: copy the bit, check copies, majority vote. Quantum error correction faces three fundamental obstacles:</p>
+<ol>
+<li><strong>No-cloning theorem:</strong> You cannot copy an unknown quantum state. This rules out the simplest classical strategy (redundant copies).</li>
+<li><strong>Measurement destroys the state:</strong> You can't peek at a qubit to check for errors without collapsing the superposition.</li>
+<li><strong>Continuous errors:</strong> Classical bits flip 0 → 1 or 1 → 0 (discrete). Qubits can rotate by any continuous angle, creating a continuum of possible errors.</li>
+</ol>
+<h3 id="73-how-qec-works-anyway">7.3 How QEC Works Anyway</h3>
+<p>The solutions are ingenious:</p>
+<ul>
+<li><strong>Redundancy without cloning:</strong> Instead of copying a qubit, encode it across multiple physical qubits. A single logical qubit might use 7, 9, or thousands of physical qubits. The information is spread across the entanglement structure, not copied.</li>
+<li><strong>Syndrome measurement:</strong> Measure <em>relationships</em> between qubits (parity checks) without measuring the qubits themselves. This reveals the error <em>type and location</em> without revealing the data. For example: measure "are qubit 1 and qubit 2 in the same state?" without learning <em>what</em> state they're in.</li>
+<li><strong>Discretization of errors:</strong> Any continuous error can be decomposed into a combination of discrete Pauli errors (bit flip X, phase flip Z, both Y). Correcting these discrete errors automatically corrects any continuous error — a remarkable feature of the math.</li>
+</ul>
+<h3 id="74-the-surface-code">7.4 The Surface Code</h3>
+<p>The leading QEC approach:</p>
+<ul>
+<li>Qubits arranged on a 2D grid (compatible with superconducting chip layouts).</li>
+<li>Logical qubits encoded using <code>d²</code> physical qubits, where <code>d</code> is the code distance.</li>
+<li>Error threshold: ~1% per gate. If physical error rates are below this, adding more qubits reduces logical error rates exponentially.</li>
+<li>Overhead: for cryptographically relevant problems (factoring 2048-bit RSA), estimates suggest ~20 million physical qubits using the surface code.</li>
+</ul>
+<p>Google's 2024 "below threshold" demonstration showed that increasing surface code size reduced logical error rates — the first experimental proof that QEC can work in practice.</p>
+<h3 id="75-logical-vs-physical-qubits">7.5 Logical vs. Physical Qubits</h3>
+<p>When you hear "1000 qubits," ask: logical or physical?</p>
+<ul>
+<li><strong>Physical qubits:</strong> The actual hardware qubits. Today's largest machines: IBM (1000+), Google (100+), Quantinuum (50+), IonQ (30+).</li>
+<li><strong>Logical qubits:</strong> Error-corrected qubits made from many physical qubits. Running Shor's algorithm to break RSA-2048 requires ~4000 logical qubits. With surface code overhead, that's millions of physical qubits.</li>
+</ul>
+<p>The gap between physical and logical qubits is the central engineering challenge of quantum computing.</p>
+<h3 id="76-key-takeaway">7.6 Key Takeaway</h3>
+<p>Quantum error correction is what separates toy demonstrations from practically useful quantum computers. The physics works (it's been demonstrated experimentally), but the engineering overhead is enormous. Every "real-world useful" algorithm discussed in this guide requires fault-tolerant quantum computing — which requires QEC. This is why the timeline for practical quantum advantage is years to decades, not months.</p>
+<hr>
+<h2 id="phase-8-quantum-speedups-a-taxonomy">Phase 8: Quantum Speedups — A Taxonomy</h2>
+<h3 id="81-classification-of-quantum-advantages">8.1 Classification of Quantum Advantages</h3>
+<p>Not all quantum speedups are equal. Understanding the <em>type</em> of advantage is critical for assessing real-world relevance:</p>
+<table>
+<thead>
+<tr>
+<th>Speedup Type</th>
+<th>Example</th>
+<th>Classical</th>
+<th>Quantum</th>
+<th>Significance</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Exponential</strong></td>
+<td>Factoring (Shor's)</td>
+<td>Sub-exponential</td>
+<td>Polynomial</td>
+<td>Breaks cryptography</td>
+</tr>
+<tr>
+<td><strong>Exponential</strong></td>
+<td>Quantum simulation</td>
+<td>Exponential</td>
+<td>Polynomial</td>
+<td>Enables new science</td>
+</tr>
+<tr>
+<td><strong>Superpolynomial</strong></td>
+<td>Forrelation problem</td>
+<td>Ω(√N)</td>
+<td>O(1)</td>
+<td>Proven oracle separation</td>
+</tr>
+<tr>
+<td><strong>Polynomial (quadratic)</strong></td>
+<td>Unstructured search (Grover's)</td>
+<td>O(N)</td>
+<td>O(√N)</td>
+<td>Halves crypto key security</td>
+</tr>
+<tr>
+<td><strong>Polynomial (cubic+)</strong></td>
+<td>Some linear algebra</td>
+<td>O(N³)</td>
+<td>O(N² polylog)</td>
+<td>Context-dependent value</td>
+</tr>
+<tr>
+<td><strong>Uncertain / conditional</strong></td>
+<td>Optimization (QAOA)</td>
+<td>Heuristic</td>
+<td>Heuristic</td>
+<td>No proven advantage yet</td>
+</tr>
+</tbody>
+</table>
+<h3 id="82-the-bqp-complexity-class">8.2 The BQP Complexity Class</h3>
+<p>Quantum computers define their own complexity class: <strong>BQP</strong> (Bounded-Error Quantum Polynomial-Time) — problems solvable by a quantum computer in polynomial time with error probability &lt; 1/3.</p>
+<p>Known relationships:
+- <strong>P ⊆ BQP:</strong> Anything classical computers can do efficiently, quantum computers can too.
+- <strong>BQP ⊆ PSPACE:</strong> Quantum computers can be simulated classically with polynomial space (but possibly exponential time).
+- <strong>BQP vs NP:</strong> We do not know if BQP contains NP. Quantum computers probably cannot solve all NP-complete problems efficiently. Grover gives a quadratic speedup, not an exponential one.</p>
+<p><strong>The practical implication:</strong> Quantum computers are not universal problem-solvers. They're not going to make NP-complete problems easy. They offer advantage for specific problem structures — mainly those involving periodicity, symmetry, quantum simulation, and certain algebraic structures.</p>
+<h3 id="83-algorithms-with-proven-exponential-advantage">8.3 Algorithms With Proven Exponential Advantage</h3>
+<p>Only a few problem classes have proven exponential quantum speedups over the best possible classical algorithms:</p>
+<ol>
+<li><strong>Period-finding / hidden subgroup problem</strong> (Shor's, Simon's) — over abelian groups.</li>
+<li><strong>Quantum simulation</strong> — simulating quantum systems.</li>
+<li><strong>Certain oracle problems</strong> (Bernstein-Vazirani, Deutsch-Jozsa, forrelation) — useful as subroutines and for theoretical understanding, less direct practical impact.</li>
+</ol>
+<p>For everything else, the advantage is either polynomial, conditional, heuristic, or unknown.</p>
+<hr>
+<h2 id="phase-9-quantum-linear-algebra-hhl-and-friends">Phase 9: Quantum Linear Algebra — HHL and Friends</h2>
+<h3 id="91-the-hhl-algorithm">9.1 The HHL Algorithm</h3>
+<p>The Harrow-Hassidim-Lloyd (HHL) algorithm solves systems of linear equations <code>Ax = b</code> exponentially faster than classical methods — under specific conditions.</p>
+<ul>
+<li><strong>Classical:</strong> Best general algorithms are <code>O(N³)</code> for dense matrices, <code>O(N²)</code> for sparse.</li>
+<li><strong>HHL:</strong> <code>O(polylog(N))</code> — exponential speedup in the dimension of the matrix.</li>
+</ul>
+<h3 id="92-how-it-works-high-level">9.2 How It Works (High Level)</h3>
+<ol>
+<li>Encode <code>b</code> as a quantum state <code>|b⟩</code>.</li>
+<li>Use quantum phase estimation (a generalization of the QFT) to decompose <code>|b⟩</code> in the eigenbasis of <code>A</code>.</li>
+<li>Invert the eigenvalues by controlled rotation (the quantum analogue of dividing by the eigenvalue).</li>
+<li>Uncompute the phase estimation.</li>
+<li>The output state <code>|x⟩</code> encodes the solution.</li>
+</ol>
+<h3 id="93-why-classical-cant-do-this">9.3 Why Classical Can't Do This</h3>
+<p>HHL processes the matrix <code>A</code> implicitly through queries to <code>e^(iAt)</code> (Hamiltonian simulation of <code>A</code>). It never needs to store or explicitly manipulate the full <code>N × N</code> matrix. Classical algorithms must read <code>O(N²)</code> matrix entries at minimum.</p>
+<p>The quantum state <code>|x⟩</code> represents an <code>N</code>-dimensional vector using only <code>log₂(N)</code> qubits. This exponential compression is the source of the speedup.</p>
+<h3 id="94-the-fine-print-critical-caveats">9.4 The Fine Print (Critical Caveats)</h3>
+<p>HHL's exponential speedup comes with so many caveats that its practical applicability is severely limited:</p>
+<ol>
+<li><strong>Input problem:</strong> Loading <code>b</code> into a quantum state may require <code>O(N)</code> time, negating the speedup. You need qRAM or <code>b</code> must already be quantum.</li>
+<li><strong>Output problem:</strong> The solution <code>|x⟩</code> is a quantum state. Extracting all <code>N</code> components requires <code>O(N)</code> measurements. You can only efficiently extract <em>global properties</em> (e.g., <code>⟨x|M|x⟩</code> for some observable <code>M</code>).</li>
+<li><strong>Sparsity requirement:</strong> <code>A</code> must be sparse (few non-zero entries per row) and well-conditioned (condition number <code>κ</code> not too large). The actual complexity is <code>O(polylog(N) · κ²)</code>, and many practical matrices have large <code>κ</code>.</li>
+<li><strong>Dequantization threat:</strong> For certain data access models, classical algorithms can approximately match HHL's speedup (Tang-style dequantization).</li>
+</ol>
+<h3 id="95-real-world-relevance">9.5 Real-World Relevance</h3>
+<p>HHL is most promising when:
+- The input <code>b</code> is itself the output of another quantum computation (no input problem).
+- You only need a global property of the solution (no output problem).
+- The matrix is sparse and well-conditioned.</p>
+<p><strong>Applications that fit this profile:</strong>
+- Solving differential equations arising in quantum simulation.
+- Quantum finance: computing portfolio risk metrics that are expectation values (global properties) of a large linear system.
+- Machine learning: training models where the solution's global properties (loss function, gradient) are what you need.</p>
+<h3 id="96-key-takeaway">9.6 Key Takeaway</h3>
+<p>HHL is a theoretically beautiful algorithm with a huge gap between its promised speedup and practical applicability. It's important to understand because it's the foundation for many other quantum algorithms (quantum PCA, quantum SVM, etc.), but its caveats mean it won't simply replace NumPy's <code>linalg.solve</code>. The output problem alone — you get a quantum state, not a classical vector — fundamentally changes what "solving" means.</p>
+<hr>
+<h2 id="phase-10-post-quantum-cryptography-the-practical-response">Phase 10: Post-Quantum Cryptography — The Practical Response</h2>
+<h3 id="101-the-threat-model">10.1 The Threat Model</h3>
+<p>Shor's algorithm breaks RSA, DSA, ECDSA, Diffie-Hellman, and ECDH. Grover's algorithm halves symmetric key security. The practical response:</p>
+<table>
+<thead>
+<tr>
+<th>Cryptographic Primitive</th>
+<th>Quantum Threat</th>
+<th>Post-Quantum Response</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AES-128</td>
+<td>Grover → 64-bit security</td>
+<td>Use AES-256 (128-bit post-quantum)</td>
+</tr>
+<tr>
+<td>AES-256</td>
+<td>Grover → 128-bit security</td>
+<td>Already safe</td>
+</tr>
+<tr>
+<td>SHA-256</td>
+<td>Grover → 128-bit preimage</td>
+<td>Already safe (collision search less affected)</td>
+</tr>
+<tr>
+<td>RSA-2048</td>
+<td>Shor → broken</td>
+<td>Replace with ML-KEM</td>
+</tr>
+<tr>
+<td>ECDSA / ECDH</td>
+<td>Shor → broken</td>
+<td>Replace with ML-DSA / ML-KEM</td>
+</tr>
+<tr>
+<td>Diffie-Hellman</td>
+<td>Shor → broken</td>
+<td>Replace with ML-KEM</td>
+</tr>
+</tbody>
+</table>
+<h3 id="102-nist-post-quantum-standards-finalized-2024">10.2 NIST Post-Quantum Standards (Finalized 2024)</h3>
+<p><strong>ML-KEM (Module Lattice-Based Key Encapsulation Mechanism)</strong> — formerly CRYSTALS-Kyber:
+- Based on the Module Learning With Errors (M-LWE) problem.
+- Key encapsulation (replaces RSA/ECDH for key exchange).
+- Three security levels: ML-KEM-512, ML-KEM-768, ML-KEM-1024.
+- <strong>Why it's hard for quantum computers:</strong> Finding short vectors in high-dimensional lattices. No known quantum algorithm provides more than a polynomial speedup for lattice problems.</p>
+<p><strong>ML-DSA (Module Lattice-Based Digital Signature Algorithm)</strong> — formerly CRYSTALS-Dilithium:
+- Also based on M-LWE.
+- Digital signatures (replaces RSA/ECDSA for signing).
+- Three security levels: ML-DSA-44, ML-DSA-65, ML-DSA-87.</p>
+<p><strong>SLH-DSA (Stateless Hash-Based Digital Signature Algorithm)</strong> — formerly SPHINCS+:
+- Based purely on hash functions (minimal cryptographic assumptions).
+- Larger signatures but maximum confidence in security.
+- Use when you want a backup in case lattice problems turn out to be easier than expected.</p>
+<h3 id="103-why-lattice-problems-resist-quantum-attack">10.3 Why Lattice Problems Resist Quantum Attack</h3>
+<p>The best known quantum algorithms for lattice problems (like Shortest Vector Problem) provide at most a <strong>polynomial</strong> speedup over classical algorithms — not the exponential speedup Shor gives for factoring. The core reason:</p>
+<ul>
+<li><strong>Factoring / discrete log</strong> have hidden algebraic structure (periodicity in groups) that the QFT perfectly exploits.</li>
+<li><strong>Lattice problems</strong> lack this periodic structure. They're geometric problems in high-dimensional space where the QFT doesn't help.</li>
+</ul>
+<p>This is why lattice-based crypto is considered quantum-resistant: the problem doesn't have the structure that quantum algorithms are known to exploit.</p>
+<h3 id="104-harvest-now-decrypt-later">10.4 Harvest Now, Decrypt Later</h3>
+<p>The most immediate quantum threat:</p>
+<ol>
+<li>An adversary intercepts your encrypted communications <em>today</em>.</li>
+<li>They store the ciphertext.</li>
+<li>When a quantum computer capable of running Shor's algorithm becomes available (maybe 2030–2040), they decrypt everything.</li>
+</ol>
+<p>This is not hypothetical — intelligence agencies are widely assumed to be doing this. It means:
+- Any data that needs to stay secret for 10+ years should be migrated to post-quantum encryption <em>now</em>.
+- Hybrid approaches (classical + post-quantum key exchange) provide defense-in-depth during the transition.</p>
+<h3 id="105-migration-priorities">10.5 Migration Priorities</h3>
+<ol>
+<li><strong>TLS / HTTPS:</strong> Chrome and Firefox already support ML-KEM (hybrid with X25519). Enable it.</li>
+<li><strong>SSH:</strong> OpenSSH 9.0+ supports hybrid post-quantum key exchange (sntrup761 + X25519).</li>
+<li><strong>VPNs:</strong> WireGuard and OpenVPN are adding post-quantum support.</li>
+<li><strong>Long-term data:</strong> Encrypt archives, backups, and sensitive records with AES-256 + post-quantum key wrapping.</li>
+<li><strong>Code signing / certificates:</strong> Migrate to ML-DSA or SLH-DSA signatures.</li>
+</ol>
+<h3 id="106-key-takeaway">10.6 Key Takeaway</h3>
+<p>Post-quantum cryptography is the most immediately actionable topic in this guide. You don't need a quantum computer to start defending against one. The NIST standards are finalized, implementations exist in major libraries (OpenSSL, BoringSSL, liboqs), and the migration is happening now. If you work in security, this is the part of quantum computing that affects your job today.</p>
+<hr>
+<h2 id="phase-11-quantum-hardware-the-physical-platforms">Phase 11: Quantum Hardware — The Physical Platforms</h2>
+<h3 id="111-the-landscape">11.1 The Landscape</h3>
+<p>Different physical systems compete to be the substrate for quantum computing. Each trades off qubit quality, count, connectivity, and engineering maturity:</p>
+<table>
+<thead>
+<tr>
+<th>Platform</th>
+<th>Key Players</th>
+<th>Qubits (2025)</th>
+<th>Gate Fidelity</th>
+<th>Pros</th>
+<th>Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Superconducting</strong></td>
+<td>IBM, Google, Rigetti</td>
+<td>1000+</td>
+<td>~99.5% (2-qubit)</td>
+<td>Fast gates (~ns), scalable fabrication</td>
+<td>Must operate at 15 mK, short coherence times</td>
+</tr>
+<tr>
+<td><strong>Trapped Ion</strong></td>
+<td>IonQ, Quantinuum, AQT</td>
+<td>30–50</td>
+<td>~99.9% (2-qubit)</td>
+<td>Best fidelity, all-to-all connectivity</td>
+<td>Slow gates (~ms), scaling challenges</td>
+</tr>
+<tr>
+<td><strong>Photonic</strong></td>
+<td>PsiQuantum, Xanadu</td>
+<td>Variable</td>
+<td>High (single-qubit)</td>
+<td>Room temperature, networking-native</td>
+<td>Non-deterministic entangling gates</td>
+</tr>
+<tr>
+<td><strong>Neutral Atom</strong></td>
+<td>QuEra, Pasqal, Atom Computing</td>
+<td>100–1000+</td>
+<td>~99.5%</td>
+<td>Large qubit counts, flexible geometry</td>
+<td>Relatively new, mid-circuit measurement challenges</td>
+</tr>
+<tr>
+<td><strong>Topological</strong></td>
+<td>Microsoft (Majorana)</td>
+<td>Pre-prototype</td>
+<td>Theoretical: very high</td>
+<td>Inherent error protection</td>
+<td>Still in fundamental research</td>
+</tr>
+</tbody>
+</table>
+<h3 id="112-superconducting-qubits-ibm-google">11.2 Superconducting Qubits (IBM, Google)</h3>
+<p>Tiny circuits cooled to near absolute zero (15 millikelvin — colder than outer space) where electrical current flows without resistance. The qubit is a nonlinear oscillator (transmon) where the two lowest energy levels represent |0⟩ and |1⟩.</p>
+<p><strong>Why this platform leads:</strong> Leverages decades of semiconductor fabrication expertise. Qubit counts are growing steadily. Google demonstrated quantum error correction below threshold in 2024.</p>
+<p><strong>The challenge:</strong> Coherence times are short (~100 microseconds). Every operation must happen within this window, limiting circuit depth.</p>
+<h3 id="113-trapped-ions-quantinuum-ionq">11.3 Trapped Ions (Quantinuum, IonQ)</h3>
+<p>Individual atoms stripped of an electron, confined in electromagnetic traps, and manipulated with precisely tuned laser beams. The qubit states are two energy levels of the ion.</p>
+<p><strong>Why this platform excels:</strong> Highest gate fidelities (~99.9%). All qubits can interact with all others (all-to-all connectivity — superconducting qubits only connect to neighbors). Long coherence times (seconds to minutes).</p>
+<p><strong>The challenge:</strong> Gates are slow (milliseconds vs nanoseconds for superconducting). Scaling to thousands of ions in a single trap is hard; requires shuttling ions between trap zones.</p>
+<h3 id="114-neutral-atoms-quera-pasqal">11.4 Neutral Atoms (QuEra, Pasqal)</h3>
+<p>Arrays of individual atoms held in place by focused laser beams (optical tweezers). Qubits interact by exciting atoms to high-energy Rydberg states, where their electron clouds expand and overlap.</p>
+<p><strong>Why this platform is exciting:</strong> Can arrange atoms in arbitrary 2D and 3D geometries (perfect for simulating materials). Scaling to 1000+ qubits has been demonstrated. Natural fit for quantum simulation.</p>
+<h3 id="115-key-takeaway">11.5 Key Takeaway</h3>
+<p>There is no clear winner yet. The competition between platforms is driving rapid progress across the board. For practical purposes: if you're developing quantum algorithms, use cloud-based access (IBM Quantum, Amazon Braket, Azure Quantum) and write hardware-agnostic code. The algorithm layer will outlast any particular hardware generation.</p>
+<hr>
+<h2 id="phase-12-quantum-software-stack-from-theory-to-code">Phase 12: Quantum Software Stack — From Theory to Code</h2>
+<h3 id="121-the-stack">12.1 The Stack</h3>
+<pre><code class="language-text">┌─────────────────────────────┐
+│        Applications          │  ← Your problem (chemistry, optimization, ML)
+├─────────────────────────────┤
+│    Algorithm Libraries       │  ← Qiskit, Cirq, PennyLane, Q#
+├─────────────────────────────┤
+│    Circuit Optimization      │  ← Transpilation, gate decomposition
+├─────────────────────────────┤
+│    Error Correction          │  ← Logical → physical qubit mapping
+├─────────────────────────────┤
+│    Control Electronics       │  ← Pulse generation, readout
+├─────────────────────────────┤
+│    Quantum Hardware          │  ← Superconducting, ion trap, etc.
+└─────────────────────────────┘
+</code></pre>
+<h3 id="122-major-frameworks">12.2 Major Frameworks</h3>
+<p><strong>Qiskit (IBM):</strong>
+- Most popular quantum SDK. Python-based.
+- Full stack: circuit construction, simulation, transpilation, hardware execution.
+- Extensive library of algorithm implementations (Grover, VQE, QAOA, etc.).
+- Access to IBM's quantum hardware fleet.
+- Open source.</p>
+<pre><code class="language-python">from qiskit import QuantumCircuit
+from qiskit_aer import AerSimulator
+
+# Create a Bell state (maximally entangled pair)
+qc = QuantumCircuit(2, 2)
+qc.h(0)          # Hadamard on qubit 0 → superposition
+qc.cx(0, 1)      # CNOT → entanglement
+qc.measure([0, 1], [0, 1])
+
+# Simulate
+simulator = AerSimulator()
+result = simulator.run(qc, shots=1024).result()
+counts = result.get_counts()
+print(counts)  # {'00': ~512, '11': ~512} — always correlated
+</code></pre>
+<p><strong>Cirq (Google):</strong>
+- Python-based, lower-level than Qiskit.
+- Designed for NISQ algorithms and close-to-hardware control.
+- Used for Google's quantum supremacy experiments.</p>
+<p><strong>PennyLane (Xanadu):</strong>
+- Focus on quantum machine learning and differentiable quantum computing.
+- Integrates with PyTorch, TensorFlow, JAX.
+- Hardware-agnostic: runs on Qiskit, Cirq, Amazon Braket, etc.</p>
+<p><strong>Q# (Microsoft):</strong>
+- Standalone quantum programming language (not a Python library).
+- Designed for fault-tolerant quantum computing.
+- Integrated with Azure Quantum.</p>
+<h3 id="123-cloud-access">12.3 Cloud Access</h3>
+<p>You don't need a quantum computer to start:</p>
+<table>
+<thead>
+<tr>
+<th>Provider</th>
+<th>Hardware Access</th>
+<th>Simulator</th>
+<th>Free Tier</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>IBM Quantum</strong></td>
+<td>IBM superconducting</td>
+<td>Up to 100+ qubits (sim)</td>
+<td>Yes (limited)</td>
+</tr>
+<tr>
+<td><strong>Amazon Braket</strong></td>
+<td>IonQ, Rigetti, OQC</td>
+<td>On-demand simulation</td>
+<td>Pay-per-use</td>
+</tr>
+<tr>
+<td><strong>Azure Quantum</strong></td>
+<td>Quantinuum, IonQ, Pasqal</td>
+<td>Integrated with Q#</td>
+<td>Credits available</td>
+</tr>
+<tr>
+<td><strong>Google Quantum AI</strong></td>
+<td>Google Sycamore</td>
+<td>Cirq simulator</td>
+<td>Research access</td>
+</tr>
+</tbody>
+</table>
+<h3 id="124-key-takeaway">12.4 Key Takeaway</h3>
+<p>The quantum software ecosystem is maturing rapidly. You can write and simulate quantum algorithms today without touching quantum hardware. Start with Qiskit (most documentation and community) or PennyLane (if ML is your focus). Simulate first, then try real hardware for the noise experience.</p>
+<hr>
+<h2 id="phase-13-what-quantum-computers-will-not-do">Phase 13: What Quantum Computers Will Not Do</h2>
+<h3 id="131-common-misconceptions">13.1 Common Misconceptions</h3>
+<p><strong>"Quantum computers try all answers simultaneously."</strong>
+Half right, completely misleading. Superposition creates all possibilities, but measurement gives you <em>one</em> answer. Without interference to suppress wrong answers, you'd just get a random result. Quantum advantage requires algorithmic structure.</p>
+<p><strong>"Quantum computers will make classical computers obsolete."</strong>
+No. Quantum computers are co-processors for specific problem types. They will not run your web server, your database, or your text editor faster. For the vast majority of computing tasks, classical hardware is and will remain superior.</p>
+<p><strong>"Quantum computers solve NP-complete problems efficiently."</strong>
+Almost certainly not. BQP (quantum polynomial time) is not believed to contain NP. Grover's gives a quadratic speedup for NP search problems, but not a polynomial-time solution. Factoring is in NP ∩ co-NP but is NOT believed to be NP-complete — Shor's doesn't generalize to all NP problems.</p>
+<p><strong>"More qubits = more powerful."</strong>
+Only if those qubits are high quality and well-connected. 1000 noisy qubits with high error rates may be less useful than 50 high-fidelity qubits. The metric that matters is <em>circuit volume</em> (qubits × depth × fidelity).</p>
+<p><strong>"Quantum computing is decades away."</strong>
+For breaking RSA: probably 10–20 years. For quantum simulation advantage: possibly 5–10 years. For NISQ experiments with practical value: happening now. For replacing your laptop: never. The timeline depends on <em>which application</em>.</p>
+<h3 id="132-where-classical-wins">13.2 Where Classical Wins</h3>
+<ul>
+<li><strong>Deterministic, well-structured computations:</strong> Sorting, searching sorted data, string processing, compilation, rendering, databases — all fundamentally sequential or parallelize classically.</li>
+<li><strong>Small problem sizes:</strong> Quantum overhead (error correction, circuit compilation) means small problems run faster classically.</li>
+<li><strong>Problems with efficient classical algorithms:</strong> If a polynomial-time classical algorithm exists, quantum rarely helps.</li>
+<li><strong>Big-data problems with classical structure:</strong> Processing terabytes of log files, training LLMs on text data — the data is classical, the computations are classical, quantum adds nothing.</li>
+</ul>
+<h3 id="133-the-realistic-picture">13.3 The Realistic Picture</h3>
+<p>Quantum computing will be a <strong>specialized accelerator</strong> — like GPUs for graphics or TPUs for ML. The right mental model:</p>
+<pre><code class="language-text">Classical CPU ──→ General-purpose computing (99% of tasks)
+GPU            ──→ Parallel numerical work, ML training
+TPU            ──→ Tensor operations, ML inference
+QPU            ──→ Quantum simulation, certain optimization, cryptanalysis
+</code></pre>
+<hr>
+<h2 id="phase-14-timeline-and-milestones">Phase 14: Timeline and Milestones</h2>
+<h3 id="141-what-has-been-achieved">14.1 What Has Been Achieved</h3>
+<table>
+<thead>
+<tr>
+<th>Year</th>
+<th>Milestone</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1994</td>
+<td>Shor publishes the factoring algorithm</td>
+</tr>
+<tr>
+<td>1996</td>
+<td>Grover publishes the search algorithm</td>
+</tr>
+<tr>
+<td>2001</td>
+<td>IBM factors 15 using Shor's algorithm on 7 NMR qubits</td>
+</tr>
+<tr>
+<td>2019</td>
+<td>Google claims "quantum supremacy" — 53 qubits solve a sampling problem in 200s vs estimated 10,000 years classically (later revised)</td>
+</tr>
+<tr>
+<td>2020</td>
+<td>USTC (China) demonstrates photonic quantum advantage (Jiuzhang)</td>
+</tr>
+<tr>
+<td>2023</td>
+<td>IBM launches 1,121-qubit Condor processor</td>
+</tr>
+<tr>
+<td>2023</td>
+<td>Harvard/QuEra demonstrate 48 logical qubits using neutral atoms</td>
+</tr>
+<tr>
+<td>2024</td>
+<td>Google demonstrates below-threshold quantum error correction</td>
+</tr>
+<tr>
+<td>2024</td>
+<td>NIST finalizes post-quantum cryptography standards</td>
+</tr>
+<tr>
+<td>2025</td>
+<td>Microsoft announces topological qubit milestone (Majorana-based)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="142-whats-next">14.2 What's Next</h3>
+<table>
+<thead>
+<tr>
+<th>Timeframe</th>
+<th>Expected Development</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>2025–2027</strong></td>
+<td>100+ logical qubits, early fault-tolerant demonstrations, quantum simulation experiments approaching classical limits</td>
+</tr>
+<tr>
+<td><strong>2027–2030</strong></td>
+<td>Quantum advantage for specific chemistry/materials problems, early commercial quantum simulation</td>
+</tr>
+<tr>
+<td><strong>2030–2035</strong></td>
+<td>1000+ logical qubits, broader algorithmic applications, possible threat to current cryptography</td>
+</tr>
+<tr>
+<td><strong>2035+</strong></td>
+<td>Mature fault-tolerant quantum computers, routine quantum simulation, optimization, and ML applications</td>
+</tr>
+</tbody>
+</table>
+<p>These timelines are speculative and depend heavily on engineering progress in error correction, qubit quality, and systems integration.</p>
+<hr>
+<h2 id="phase-15-learning-roadmap">Phase 15: Learning Roadmap</h2>
+<h3 id="151-if-youre-an-engineer-not-a-physicist">15.1 If You're an Engineer (Not a Physicist)</h3>
+<p><strong>Week 1–2: Foundations</strong>
+- Understand qubits, gates, circuits, measurement (Phase 1 of this guide).
+- Install Qiskit: <code>pip install qiskit qiskit-aer</code>.
+- Build a Bell state. Simulate it. Understand the output.</p>
+<p><strong>Week 3–4: Core Algorithms</strong>
+- Implement Deutsch-Jozsa (the simplest quantum advantage proof).
+- Implement Grover's algorithm for a small search problem.
+- Understand why interference makes these work.</p>
+<p><strong>Week 5–6: Real Applications</strong>
+- Study Shor's algorithm at a high level (don't implement — focus on the reduction to period-finding and why QFT helps).
+- Study VQE for quantum chemistry (implement with Qiskit Nature if interested).
+- Study QAOA for optimization.</p>
+<p><strong>Week 7–8: Practical Context</strong>
+- Post-quantum cryptography: understand ML-KEM and ML-DSA at an API level.
+- Quantum error correction: understand surface codes conceptually.
+- The quantum software stack and cloud access.</p>
+<h3 id="152-key-resources">15.2 Key Resources</h3>
+<p><strong>Books:</strong>
+- <em>Quantum Computing: An Applied Approach</em> (Hidary) — best for engineers.
+- <em>Quantum Computation and Quantum Information</em> (Nielsen &amp; Chuang) — the bible, more mathematical.
+- <em>Programming Quantum Computers</em> (Johnston, Harrigan, Gimeno-Segovia) — hands-on, circuit-focused.</p>
+<p><strong>Online Courses:</strong>
+- IBM Quantum Learning (free, interactive, Qiskit-based).
+- MIT 8.370x on edX — quantum information science.
+- Qiskit Textbook (free, online, excellent).</p>
+<p><strong>Papers That Changed the Field:</strong>
+- Shor, 1994: "Algorithms for Quantum Computation: Discrete Logarithms and Factoring."
+- Grover, 1996: "A Fast Quantum Mechanical Algorithm for Database Search."
+- Kitaev, 1995: "Quantum Measurements and the Abelian Stabilizer Problem" (phase estimation).
+- Harrow, Hassidim, Lloyd, 2009: "Quantum Algorithm for Linear Systems of Equations."
+- Preskill, 2018: "Quantum Computing in the NISQ Era and Beyond" (coined "NISQ").</p>
+<hr>
+<h2 id="quick-reference-card">Quick Reference Card</h2>
+<h3 id="when-does-quantum-help">When Does Quantum Help?</h3>
+<table>
+<thead>
+<tr>
+<th>Problem</th>
+<th>Quantum Algorithm</th>
+<th>Speedup</th>
+<th>Practical?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Factoring large integers</td>
+<td>Shor's</td>
+<td>Exponential</td>
+<td>Future (needs FTQC)</td>
+</tr>
+<tr>
+<td>Discrete logarithm</td>
+<td>Shor's variant</td>
+<td>Exponential</td>
+<td>Future (needs FTQC)</td>
+</tr>
+<tr>
+<td>Unstructured search</td>
+<td>Grover's</td>
+<td>Quadratic</td>
+<td>Limited (needs large N)</td>
+</tr>
+<tr>
+<td>Quantum simulation</td>
+<td>Hamiltonian simulation</td>
+<td>Exponential</td>
+<td>Nearest-term advantage</td>
+</tr>
+<tr>
+<td>Linear systems</td>
+<td>HHL</td>
+<td>Exponential (with caveats)</td>
+<td>Narrow applicability</td>
+</tr>
+<tr>
+<td>Optimization</td>
+<td>QAOA / annealing</td>
+<td>Uncertain</td>
+<td>Under investigation</td>
+</tr>
+<tr>
+<td>Machine learning</td>
+<td>Various</td>
+<td>Uncertain / conditional</td>
+<td>Under investigation</td>
+</tr>
+</tbody>
+</table>
+<h3 id="the-one-paragraph-summary">The One-Paragraph Summary</h3>
+<p>Quantum computers exploit superposition, entanglement, and interference to solve specific problem classes faster than any classical computer. The proven exponential advantages are in factoring/discrete log (Shor's, breaking cryptography) and quantum simulation (modeling molecules and materials). Grover's search gives a proven quadratic advantage. Optimization and ML advantages are promising but unproven. Error correction is the engineering bottleneck — without it, we're limited to small, noisy demonstrations. Post-quantum cryptography is the most immediately actionable topic. Quantum computing will be a specialized accelerator, not a replacement for classical computers.</p>
+<hr>
+<h2 id="where-to-go-next">Where to Go Next</h2>
+<ul>
+<li><strong>Read <em>Quantum Computation and Quantum Information</em></strong> (Nielsen &amp; Chuang) cover to cover once the intuitions here feel solid — it is the field's definitive textbook, and everything in this guide is a simplification of something it treats rigorously.</li>
+<li><strong>Do the <a href="https://learning.quantum.ibm.com/">IBM Quantum Learning</a> labs</strong> with <a href="https://www.ibm.com/quantum/qiskit">Qiskit</a> — build a Bell state, then Deutsch-Jozsa, then a small Grover instance, and simulate each before you worry about real hardware queue times. Building one beats reading ten explanations of superposition.</li>
+<li><strong>Read the source papers while the intuitions are fresh:</strong> <a href="https://arxiv.org/abs/quant-ph/9508027">Shor, 1994</a> (factoring), <a href="https://arxiv.org/abs/quant-ph/9605043">Grover, 1996</a> (search), <a href="https://arxiv.org/abs/0811.3171">Harrow, Hassidim &amp; Lloyd, 2009</a> (HHL), and <a href="https://arxiv.org/abs/1801.00862">Preskill's NISQ paper</a> (the field's honest self-assessment).</li>
+<li><strong>Run one circuit on real hardware, not just a simulator.</strong> IBM's free tier queues real superconducting qubits — submit the same Bell state or Grover circuit you simulated and compare the noisy result to the ideal one. The gap between simulation and hardware <em>is</em> the NISQ era, and no amount of reading substitutes for watching decoherence corrupt a result you predicted perfectly on paper.</li>
+<li><strong>Adjacent guides in this repo:</strong> <a href="crypto-fundamentals.html">Cryptography Fundamentals</a> (the classical primitives Shor's algorithm threatens, and the post-quantum schemes replacing them), <a href="distributed-algorithms-study-guide.html">Distributed Algorithms</a> (the classical complexity theory that makes "quantum advantage" precise), and <a href="compiler-internals-study-guide.html">Compiler and Language Internals</a> (how a circuit compiles to a specific device's native gates).</li>
+</ul>
+<p>The single highest-leverage next step is the hardware-vs-simulator comparison above: run the same small circuit both ways and see the noise for yourself, because every claim in this guide about NISQ limitations and error correction being the bottleneck stops being an abstraction the moment you watch it happen to your own Bell state.</p></main>
+</div>
+<button id="toTop" aria-label="Back to top">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+</button>
+<script>
+(function(){
+  'use strict';
+  var ESC={'&':'&amp;','<':'&lt;','>':'&gt;'};
+  function esc(s){return s.replace(/[&<>]/g,function(c){return ESC[c];});}
+
+  /* ---------- lightweight syntax highlighting ---------- */
+  // Generic token-rule engine. Each rule: {re, cls}. First match at pos wins.
+  function tokenize(src, rules){
+    var out='', i=0, n=src.length, guard=0;
+    while(i<n && guard++<200000){
+      var matched=false;
+      for(var r=0;r<rules.length;r++){
+        rules[r].re.lastIndex=i;
+        var m=rules[r].re.exec(src);
+        if(m && m.index===i && m[0].length>0){
+          out+= rules[r].cls? '<span class="'+rules[r].cls+'">'+esc(m[0])+'</span>' : esc(m[0]);
+          i+=m[0].length; matched=true; break;
+        }
+      }
+      if(!matched){ out+=esc(src[i]); i++; }
+    }
+    if(i<n) out+=esc(src.slice(i));
+    return out;
+  }
+  var DIRECTIVES=('reverse_proxy file_server root encode header redir rewrite respond tls log '
+    +'basic_auth forward_auth handle handle_path handle_errors import route uri templates '
+    +'try_files metrics tracing request_body skip_log map vars push bind').split(' ');
+  var GLOBALS=('email acme_ca admin default_sni order debug auto_https on_demand_tls servers '
+    +'storage grace_period http_port https_port').split(' ');
+  function caddyRules(){
+    var dir='\\b(?:'+DIRECTIVES.concat(GLOBALS).join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\{[^{}\n]*\}/g, cls:'ph'},          // placeholders {http.request.host}
+      {re:/@[A-Za-z0-9_-]+/g, cls:'m'},        // named matchers
+      {re:new RegExp(dir,'g'), cls:'k'},
+      {re:/\b\d+(?:\.\d+)?(?:ms|s|m|h|d|[KMGT]i?B?)?\b/g, cls:'n'},
+      {re:/^[ \t]*(?:https?:\/\/)?[A-Za-z0-9*][A-Za-z0-9.\-*]*\.[A-Za-z][A-Za-z0-9.\-:]*(?=[ ,{])/gm, cls:'site'},
+      {re:/[:|]\d{2,5}\b/g, cls:'site'},
+      {re:/[{}]/g, cls:'p'}
+    ];
+  }
+  function bashRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{[^}]*\}|\$[A-Za-z_][A-Za-z0-9_]*/g, cls:'ph'},
+      {re:/\b(sudo|curl|apt|dnf|brew|pacman|scoop|choco|go|xcaddy|caddy|systemctl|journalctl|docker|openssl|ulimit|export|chmod|mv|tee|gpg)\b/g, cls:'k'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function jsonRules(){
+    return [
+      {re:/"(?:[^"\\]|\\.)*"(?=\s*:)/g, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\b(true|false|null)\b/g, cls:'b'},
+      {re:/-?\b\d+(?:\.\d+)?\b/g, cls:'n'},
+      {re:/[{}\[\],:]/g, cls:'p'}
+    ];
+  }
+  var NGINX_KW=('http events main stream upstream server location map geo types charset_map split_clients '
+    +'listen server_name root alias index autoindex try_files return rewrite error_page internal default_type '
+    +'include set if set_real_ip_from real_ip_header real_ip_recursive '
+    +'proxy_pass proxy_set_header proxy_http_version proxy_buffering proxy_buffers proxy_buffer_size '
+    +'proxy_cache proxy_cache_path proxy_cache_valid proxy_cache_key proxy_cache_use_stale proxy_cache_lock '
+    +'proxy_read_timeout proxy_connect_timeout proxy_send_timeout proxy_redirect proxy_ssl_server_name proxy_pass_request_headers '
+    +'fastcgi_pass fastcgi_param fastcgi_cache fastcgi_index scgi_pass uwsgi_pass grpc_pass '
+    +'ssl_certificate ssl_certificate_key ssl_protocols ssl_ciphers ssl_prefer_server_ciphers ssl_session_cache '
+    +'ssl_session_timeout ssl_session_tickets ssl_stapling ssl_stapling_verify ssl_dhparam ssl_early_data ssl_trusted_certificate '
+    +'resolver resolver_timeout http2 http3 quic '
+    +'gzip gzip_types gzip_comp_level gzip_min_length gzip_vary gzip_proxied brotli brotli_types brotli_comp_level '
+    +'add_header add_trailer expires etag sendfile sendfile_max_chunk tcp_nopush tcp_nodelay keepalive_timeout keepalive keepalive_requests '
+    +'worker_processes worker_connections worker_rlimit_nofile worker_priority multi_accept use pid user '
+    +'client_max_body_size client_body_buffer_size client_body_timeout client_header_timeout large_client_header_buffers send_timeout '
+    +'limit_req limit_req_zone limit_req_status limit_conn limit_conn_zone limit_conn_status limit_rate limit_rate_after '
+    +'access_log error_log log_format open_log_file_cache stub_status open_file_cache open_file_cache_valid '
+    +'allow deny auth_basic auth_basic_user_file satisfy auth_request '
+    +'least_conn ip_hash hash zone server weight max_fails fail_timeout backup down slow_start '
+    +'absolute_redirect server_tokens merge_slashes underscores_in_headers types_hash_max_size variables_hash_max_size').split(' ');
+  var NGINX_CONST=('on off break last permanent redirect reuseport ssl default_server deferred '
+    +'spdy fastopen rcvbuf sndbuf').split(' ');
+  function nginxRules(){
+    var kw='\\b(?:'+NGINX_KW.join('|')+')\\b';
+    var cn='\\b(?:'+NGINX_CONST.join('|')+')\\b';
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/\$\{?[A-Za-z_][A-Za-z0-9_]*\}?/g, cls:'ph'},
+      {re:new RegExp(kw,'g'), cls:'k'},
+      {re:new RegExp(cn,'g'), cls:'b'},
+      {re:/~\*?|\^~|=(?=\s)/g, cls:'m'},
+      {re:/\b\d+(?:\.\d+)*(?:ms|[smhdMG]|k|m|g)?\b/g, cls:'n'},
+      {re:/[{};]/g, cls:'p'}
+    ];
+  }
+  function yamlRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'},
+      {re:/^[ \t-]*[A-Za-z0-9_.\-]+(?=\s*:)/gm, cls:'a'},
+      {re:/\b(true|false|null|yes|no)\b/g, cls:'b'},
+      {re:/\b\d+(?:\.\d+)?\b/g, cls:'n'}
+    ];
+  }
+  function iniRules(){
+    return [
+      {re:/[#;][^\n]*/g, cls:'c'},
+      {re:/^\[[^\]\n]+\]/gm, cls:'k'},
+      {re:/^[A-Za-z0-9_.\-]+(?=\s*=)/gm, cls:'a'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'}
+    ];
+  }
+  function dockerRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/^\s*(FROM|RUN|COPY|CMD|ENV|EXPOSE|WORKDIR|ENTRYPOINT|ARG|LABEL|VOLUME|USER|AS)\b/gmi, cls:'k'},
+      {re:/"(?:[^"\\]|\\.)*"/g, cls:'s'},
+      {re:/\s-{1,2}[A-Za-z][\w-]*/g, cls:'n'}
+    ];
+  }
+  function defaultRules(){
+    return [
+      {re:/#[^\n]*/g, cls:'c'},
+      {re:/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, cls:'s'}
+    ];
+  }
+  function rulesFor(lang){
+    switch(lang){
+      case 'caddyfile': case 'caddy': return caddyRules();
+      case 'bash': case 'sh': case 'shell': case 'console': case 'powershell': return bashRules();
+      case 'json': return jsonRules();
+      case 'nginx': return nginxRules();
+      case 'yaml': case 'yml': return yamlRules();
+      case 'ini': case 'toml': case 'systemd': return iniRules();
+      case 'dockerfile': case 'docker': return dockerRules();
+      case 'html': case 'xml': return defaultRules();
+      default: return null;
+    }
+  }
+  var LANGLABEL={caddyfile:'Caddyfile',caddy:'Caddyfile',bash:'bash',sh:'bash',shell:'bash',
+    console:'bash',powershell:'PowerShell',json:'JSON',nginx:'nginx',yaml:'YAML',yml:'YAML',
+    ini:'ini',toml:'TOML',systemd:'systemd',dockerfile:'Dockerfile',docker:'Dockerfile',
+    html:'HTML',text:'text'};
+
+  function enhanceCode(){
+    document.querySelectorAll('main pre > code').forEach(function(code){
+      var pre=code.parentNode;
+      if(pre.parentNode.classList && pre.parentNode.classList.contains('codewrap')) return;
+      var cls=code.className||'';
+      var lm=cls.match(/language-([\w-]+)/);
+      var lang=lm?lm[1].toLowerCase():'text';
+      var raw=code.textContent;
+      // highlight
+      var rules=rulesFor(lang);
+      if(rules){ try{ code.innerHTML=tokenize(raw,rules);}catch(e){ code.textContent=raw; } }
+      // wrap
+      var wrap=document.createElement('div'); wrap.className='codewrap';
+      var bar=document.createElement('div'); bar.className='codebar';
+      var label=document.createElement('span'); label.className='lang';
+      label.textContent=LANGLABEL[lang]||lang;
+      var btn=document.createElement('button'); btn.className='copybtn'; btn.type='button';
+      btn.innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg><span>Copy</span>';
+      btn.addEventListener('click',function(){
+        navigator.clipboard.writeText(raw).then(function(){
+          btn.classList.add('ok'); btn.querySelector('span').textContent='Copied';
+          setTimeout(function(){btn.classList.remove('ok');btn.querySelector('span').textContent='Copy';},1400);
+        });
+      });
+      bar.appendChild(label); bar.appendChild(btn);
+      pre.parentNode.insertBefore(wrap,pre);
+      wrap.appendChild(bar); wrap.appendChild(pre);
+    });
+  }
+
+  /* ---------- wrap tables for horizontal scroll ---------- */
+  function wrapTables(){
+    document.querySelectorAll('main table').forEach(function(t){
+      if(t.parentNode.classList.contains('tablewrap'))return;
+      var w=document.createElement('div'); w.className='tablewrap';
+      t.parentNode.insertBefore(w,t); w.appendChild(t);
+    });
+  }
+
+  /* ---------- scroll-spy + progress ---------- */
+  function setupSpy(){
+    var links=[].slice.call(document.querySelectorAll('.toc a'));
+    var map={}; links.forEach(function(a){map[a.dataset.target]=a;});
+    var heads=[].slice.call(document.querySelectorAll('main h2[id], main h3[id]'));
+    var prog=document.getElementById('progress');
+    function onScroll(){
+      var y=window.scrollY, h=document.documentElement;
+      var max=h.scrollHeight-h.clientHeight;
+      prog.style.width=(max>0?(y/max*100):0)+'%';
+      var cur=null;
+      for(var i=0;i<heads.length;i++){
+        if(heads[i].getBoundingClientRect().top<=90) cur=heads[i]; else break;
+      }
+      links.forEach(function(a){a.classList.remove('active');});
+      if(cur && map[cur.id]){
+        map[cur.id].classList.add('active');
+        var act=map[cur.id];
+        var sb=document.querySelector('.sidebar');
+        if(sb && act.offsetTop<sb.scrollTop || act.offsetTop>sb.scrollTop+sb.clientHeight-40){
+          // keep active link in view
+          sb.scrollTop=act.offsetTop-sb.clientHeight/2;
+        }
+      }
+      document.getElementById('toTop').classList.toggle('show',y>600);
+    }
+    window.addEventListener('scroll',onScroll,{passive:true});
+    onScroll();
+  }
+
+  /* ---------- collapsible parts (h2) ---------- */
+  function setupCollapse(){
+    document.querySelectorAll('main h2[id]').forEach(function(h){
+      h.addEventListener('click',function(e){
+        // ignore clicks on links inside heading
+        if(e.target.tagName==='A')return;
+        var collapsed=h.classList.toggle('collapsed');
+        var el=h.nextElementSibling;
+        while(el && el.tagName!=='H2'){
+          if(el.tagName==='HR'){el=el.nextElementSibling;continue;}
+          el.classList.toggle('collapsed-body',collapsed);
+          el=el.nextElementSibling;
+        }
+      });
+    });
+  }
+
+  /* ---------- quizzes ---------- */
+  function setupQuiz(){
+    document.querySelectorAll('.quiz-item').forEach(function(item){
+      var opts=[].slice.call(item.querySelectorAll('.quiz-opt'));
+      var explain=item.querySelector('.quiz-explain');
+      opts.forEach(function(opt){
+        opt.addEventListener('click',function(){
+          if(item.dataset.done)return;
+          item.dataset.done='1';
+          opts.forEach(function(o){
+            o.classList.add('locked');
+            if(o.dataset.correct==='true')o.classList.add('correct');
+          });
+          if(opt.dataset.correct!=='true')opt.classList.add('wrong');
+          if(explain)explain.hidden=false;
+        });
+      });
+    });
+  }
+
+  /* ---------- decision helper ---------- */
+  function setupDecision(){
+    var box=document.getElementById('decision-helper'); if(!box)return;
+    var out=document.getElementById('decision-out');
+    function compute(){
+      var w={caddy:0,against:0,traefik:0};
+      box.querySelectorAll('input:checked').forEach(function(c){
+        w[c.dataset.w]+=parseInt(c.value,10);
+      });
+      var verdict,cls,reasons;
+      if(w.caddy===0 && w.against===0 && w.traefik===0){
+        out.innerHTML='<span class="decision-verdict">Select options above for a recommendation.</span>';
+        return;
+      }
+      if(w.traefik>=2 && w.traefik>=w.caddy){
+        verdict='Consider Traefik'; cls='alt';
+        reasons='Docker-label auto-discovery is Traefik’s native strength. Caddy can do it with plugins, but if that’s a core requirement, Traefik is the cleaner fit.';
+      } else if(w.against>w.caddy){
+        verdict='Caddy is probably not the best fit'; cls='alt';
+        reasons='Your needs lean toward a specialist: HAProxy/Envoy for L4 or extreme scale, Nginx+ModSecurity or a cloud WAF for filtering, or sticking with a working Nginx setup. See Part 12.6.';
+      } else if(w.against>0 && w.caddy-w.against<=1){
+        verdict='Caddy works — with caveats'; cls='maybe';
+        reasons='Caddy fits most of your needs, but weigh the constraints you checked. For those specific concerns, a specialist tool may still be worth pairing in.';
+      } else {
+        verdict='Caddy is a strong fit'; cls='caddy';
+        reasons='Automatic HTTPS, a simple config, and a single dependency-free binary line up well with what you need. Start with the Caddyfile and reach for the JSON API only if you outgrow it.';
+      }
+      out.innerHTML='<span class="decision-verdict '+cls+'">'+verdict+'</span>'
+        +'<p class="decision-reasons">'+reasons+'</p>';
+    }
+    box.addEventListener('change',compute);
+  }
+
+  /* ---------- search ---------- */
+  function setupSearch(){
+    var input=document.getElementById('search');
+    var tocItems=[].slice.call(document.querySelectorAll('.toc li'));
+    function clearMarks(){
+      document.querySelectorAll('main mark.hit').forEach(function(m){
+        var t=document.createTextNode(m.textContent); m.parentNode.replaceChild(t,m);
+      });
+    }
+    var t;
+    input.addEventListener('input',function(){
+      clearTimeout(t); t=setTimeout(run,150);
+    });
+    function run(){
+      var q=input.value.trim().toLowerCase();
+      // filter TOC
+      tocItems.forEach(function(li){
+        var a=li.querySelector('a'); if(!a)return;
+        li.classList.toggle('hide', q!=='' && a.textContent.toLowerCase().indexOf(q)===-1);
+      });
+      clearMarks();
+      if(q.length<2)return;
+      // highlight in body (text nodes only, skip code/script)
+      var rx=new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+      var walker=document.createTreeWalker(document.querySelector('main'),NodeFilter.SHOW_TEXT,{
+        acceptNode:function(node){
+          if(!node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+          var p=node.parentNode;
+          while(p && p!==document.body){
+            var tn=p.tagName;
+            if(tn==='CODE'||tn==='PRE'||tn==='SCRIPT'||tn==='STYLE'||tn==='MARK')return NodeFilter.FILTER_REJECT;
+            p=p.parentNode;
+          }
+          return rx.test(node.nodeValue)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+        }
+      });
+      var nodes=[],nd; while(nd=walker.nextNode())nodes.push(nd);
+      var count=0;
+      nodes.forEach(function(node){
+        if(count>400)return;
+        var frag=document.createDocumentFragment(); var last=0,s=node.nodeValue; rx.lastIndex=0; var m;
+        while((m=rx.exec(s))){
+          frag.appendChild(document.createTextNode(s.slice(last,m.index)));
+          var mk=document.createElement('mark'); mk.className='hit'; mk.textContent=m[0];
+          frag.appendChild(mk); last=m.index+m[0].length; count++;
+          if(m.index===rx.lastIndex)rx.lastIndex++;
+        }
+        frag.appendChild(document.createTextNode(s.slice(last)));
+        node.parentNode.replaceChild(frag,node);
+      });
+    }
+  }
+
+  /* ---------- quiz visibility toggle ---------- */
+  function setupQuizToggle(){
+    if(!document.querySelector('.addon.quiz'))return;   // no quizzes on this page
+    var root=document.documentElement;
+    var btn=document.createElement('button');
+    btn.id='quizBtn'; btn.className='iconbtn';
+    btn.setAttribute('aria-label','Toggle quizzes');
+    btn.title='Show/hide quizzes (q)';
+    btn.innerHTML='<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">'+
+      '<circle cx="12" cy="12" r="10"/>'+
+      '<path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>'+
+      '<line x1="12" y1="17" x2="12.01" y2="17"/></svg>';
+    function apply(hidden){
+      root.classList.toggle('quiz-hidden',hidden);
+      btn.classList.toggle('off',hidden);
+      btn.setAttribute('aria-pressed',String(!hidden));
+    }
+    apply(localStorage.getItem('quizzes-hidden')==='1');
+    btn.addEventListener('click',function(){
+      var hidden=!root.classList.contains('quiz-hidden');
+      apply(hidden); localStorage.setItem('quizzes-hidden',hidden?'1':'0');
+    });
+    var themeBtn=document.getElementById('themeBtn');
+    themeBtn.parentNode.insertBefore(btn,themeBtn);
+  }
+
+  /* ---------- theme + mobile nav + shortcuts ---------- */
+  function setupChrome(){
+    var root=document.documentElement;
+    var saved=localStorage.getItem('caddy-theme');
+    if(saved)root.setAttribute('data-theme',saved);
+    document.getElementById('themeBtn').addEventListener('click',function(){
+      var cur=root.getAttribute('data-theme')==='light'?'dark':'light';
+      root.setAttribute('data-theme',cur); localStorage.setItem('caddy-theme',cur);
+    });
+    var sb=document.querySelector('.sidebar'), scrim=document.querySelector('.scrim');
+    function close(){sb.classList.remove('open');scrim.classList.remove('show');}
+    document.getElementById('menuBtn').addEventListener('click',function(){
+      sb.classList.toggle('open');scrim.classList.toggle('show');
+    });
+    scrim.addEventListener('click',close);
+    sb.addEventListener('click',function(e){if(e.target.tagName==='A')close();});
+    document.getElementById('toTop').addEventListener('click',function(){
+      window.scrollTo({top:0,behavior:'smooth'});
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key==='/'&&document.activeElement.id!=='search'){e.preventDefault();document.getElementById('search').focus();}
+      else if(e.key==='Escape'){close();document.getElementById('search').blur();}
+      else if(e.key==='t'&&document.activeElement.tagName!=='INPUT'){document.getElementById('themeBtn').click();}
+      else if(e.key==='q'&&document.activeElement.tagName!=='INPUT'){var qb=document.getElementById('quizBtn');if(qb)qb.click();}
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    enhanceCode(); wrapTables(); setupSpy(); setupCollapse();
+    setupQuiz(); setupQuizToggle(); setupDecision(); setupSearch(); setupChrome();
+  });
+})();
+</script>
+</body>
+</html>

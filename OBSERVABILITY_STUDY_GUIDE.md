@@ -2,6 +2,8 @@
 
 A depth-first guide to production observability for working engineers. Assumes you've shipped something that handles real traffic, paged at 3 AM, and stared at a dashboard wondering whether the number you're looking at means anything. Each phase builds on the previous. The goal: by the end, you can design an observability stack from scratch, instrument a service end to end, write SLOs that survive contact with reality, and pick tools without being sold to. The applied phases (12–14) walk through real instrumentation, burn-rate SLO math, runbook design, and the anatomy of a production observability stack — like the dbt project layout in [DATA_ENGINEERING_STUDY_GUIDE.md](DATA_ENGINEERING_STUDY_GUIDE.md) and the recipes in [CRYPTO_FUNDAMENTALS.md](CRYPTO_FUNDAMENTALS.md), but for telemetry.
 
+Primary references, all worth reading in full: the [Google SRE Book](https://sre.google/sre-book/table-of-contents/) (free online; its SLO and alerting chapters are the foundation Phase 7 and 8 build on), [*Observability Engineering*](https://www.oreilly.com/library/view/observability-engineering/9781492076438/) (Majors, Fong-Jones & Miranda — the book behind the wide-events, high-cardinality worldview this guide adopts), the [OpenTelemetry documentation](https://opentelemetry.io/docs/) (the instrumentation standard everything now converges on, covered in Phase 5), and the [Prometheus documentation](https://prometheus.io/docs/introduction/overview/) (the metrics data model and PromQL that Phases 2 and 13 assume).
+
 > Observability is not about graphs. It's about the speed at which a stranger to your system can answer a novel question about it. If your dashboards only answer the questions you anticipated, you have monitoring, not observability.
 
 ---
@@ -832,9 +834,8 @@ The tools:
 
 | Tool             | Approach                                                |
 |------------------|---------------------------------------------------------|
-| Pyroscope        | Multi-language continuous profiler, now under Grafana   |
+| Grafana Pyroscope | Multi-language continuous profiler (absorbed Grafana's earlier Phlare project) |
 | Parca            | eBPF-based, language-agnostic system profiler           |
-| Grafana Phlare   | Continuous profiles, integrated with Grafana stack      |
 | Polar Signals    | Hosted Parca, eBPF-driven                               |
 | Datadog Profiler | Built into Datadog APM agents                           |
 | Google Cloud Profiler | The original, for GCP workloads                    |
@@ -1192,7 +1193,7 @@ Be honest about what each tool is for and what it costs. The matrix is busy; her
 | OpenSearch / Elastic   | Logs                | Rich query, mature                            | Operationally heavy, costly           |
 | Tempo                  | Traces              | Object-store-backed traces                    | Limited query (TraceQL still maturing)|
 | Jaeger                 | Traces              | The OG, well-trodden                          | Storage backends each their own thing |
-| Pyroscope / Phlare     | Profiles            | Continuous profiling                          | Smaller ecosystem                     |
+| Grafana Pyroscope      | Profiles            | Continuous profiling                          | Smaller ecosystem                     |
 | Parca                  | Profiles            | eBPF, language-agnostic                       | Requires kernel support               |
 | Grafana                | UI                  | Multi-datasource, dashboards, alerting        | UI/UX evolves, breaking changes       |
 | OpenTelemetry Collector | Router             | Unified telemetry routing                     | Config sprawl at scale                |

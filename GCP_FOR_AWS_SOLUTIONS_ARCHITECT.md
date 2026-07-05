@@ -6,6 +6,8 @@ This guide is updated to reflect the Google Cloud architecture and services land
 
 Primary references: Google's [GCP for AWS professionals comparison](https://cloud.google.com/docs/get-started/aws-azure-gcp-service-comparison) (the official service mapping this guide expands), the [Google Cloud documentation](https://cloud.google.com/docs) (per-service), the [Architecture Framework](https://cloud.google.com/architecture/framework) (Google's well-architected counterpart), and the [Cloud Architecture Center](https://cloud.google.com/architecture) (reference architectures).
 
+Siblings in this repo go deeper on adjacent ground: the [Azure for AWS architects guide](AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md) (the same translation method applied to Microsoft's cloud), the [Terraform guide](TERRAFORM_STUDY_GUIDE.md) (the IaC layer you'll drive all three clouds with), the [Kubernetes guide](k8s/KUBERNETES_STUDY_GUIDE.md) (GKE is the reference managed Kubernetes), and the [Data Engineering guide](DATA_ENGINEERING_STUDY_GUIDE.md) (BigQuery's world).
+
 ---
 
 ## How to Use This Guide

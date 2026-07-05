@@ -488,6 +488,29 @@ NetworkPolicy governs *east-west* (Pod-to-Pod) L3/L4 traffic and nothing else. T
 
 The most consequential design judgment in this part is how strong a wall you actually need between tenants, because **a namespace is an organizational boundary, not a hard security boundary**. Namespaces scope names and RBAC and NetworkPolicy, but tenants in different namespaces still share one API server, one set of nodes, and — critically — one kernel per node, so a container escape or a kernel exploit crosses namespace lines. This gives a spectrum. *Soft multi-tenancy* (trusted teams in one cluster, separated by namespace + RBAC + NetworkPolicy + ResourceQuota) is appropriate when tenants are internal and broadly trusted. *Hard multi-tenancy* (untrusted tenants, e.g. a SaaS running customer code) needs more: sandboxed runtimes (Part 5), and frequently the conclusion that the only boundary you trust is a **separate cluster per tenant** — because at the limit, the strongest isolation Kubernetes offers within a cluster is weaker than a fresh cluster, and pretending otherwise is how cross-tenant breaches happen. Naming where your workload sits on that spectrum, honestly, is the senior call.
 
+```quiz
+Q: A NetworkPolicy is "deny-by-omission only once a policy selects a Pod." What does that mean in practice?
+- [ ] Every Pod is denied all traffic by default until you write an allow
+- [x] A Pod with no policy selecting it is wide open, but the moment any policy selects it for a direction, all traffic in that direction is denied except what the policy explicitly allows — so a default-deny policy selecting every Pod is the foundational move
+- [ ] Policies subtract from a default-allow baseline using deny rules
+- [ ] A Pod can be selected by only one policy at a time
+> By default every Pod can reach every other Pod — a flat network where one compromised workload scans your databases and neighbors freely. NetworkPolicy flips that per-direction, but only for Pods a policy actually selects. So you apply `podSelector: {}` with no rules to default-deny a whole namespace, then add back the specific flows, making connectivity an explicit, reviewable decision instead of an accident.
+
+Q: After applying default-deny egress to a namespace, Pods can't resolve any hostnames. Why — and what else can silently make a NetworkPolicy useless?
+- [ ] Default-deny corrupts the Pod's /etc/resolv.conf
+- [ ] DNS uses TCP only, which the policy can't match
+- [x] Egress default-deny blocks DNS until you explicitly allow port 53 to kube-dns; separately, NetworkPolicy only works if the CNI implements it — on a CNI that ignores it, the policy is a dangerous illusion of protection
+- [ ] NetworkPolicy always allows DNS automatically
+> Two things bite everyone once. Forgetting to allow UDP/TCP 53 to kube-dns is the classic "why can't my Pod resolve anything" incident, because egress denial includes DNS. And NetworkPolicy is enforced by the CNI (Calico, Cilium, most managed ones do; some bare defaults don't), so you must *verify* enforcement rather than assume it — an unenforced policy looks applied but protects nothing.
+
+Q: Why is a namespace described as "a soft boundary, not a hard security boundary"?
+- [ ] Any user can delete a namespace
+- [ ] Namespaces provide no isolation whatsoever
+- [ ] A namespace becomes a hard boundary once NetworkPolicy is applied
+- [x] Namespaces scope names, RBAC, and NetworkPolicy, but tenants still share one API server, one set of nodes, and one kernel per node — so a container escape or kernel exploit crosses namespace lines, which is why genuinely untrusted multi-tenancy often needs a separate cluster per tenant
+> Namespaces are an organizational boundary, fine for *soft* multi-tenancy (trusted internal teams separated by namespace + RBAC + NetworkPolicy + ResourceQuota). But they share the kernel, so they don't contain a container escape. *Hard* multi-tenancy (untrusted customer code) needs sandboxed runtimes and frequently the honest conclusion that the only boundary you trust is a fresh cluster — pretending otherwise is how cross-tenant breaches happen.
+```
+
 ---
 
 ## Part 7 — Secrets & Data Protection
@@ -523,6 +546,29 @@ The deeper decision is *where secrets actually originate*, and the modern answer
 
 A separate, common need is **secrets in Git** for GitOps, where the literal Secret manifest obviously cannot be committed in cleartext. The two answers are **Sealed Secrets** (a controller holds a private key; you encrypt the Secret with the matching public key, commit the encrypted blob safely, and only the in-cluster controller can decrypt it) and the External-Secrets approach (commit a *reference* to a secret in an external store, not the secret itself). Sealed Secrets is simpler and self-contained; external stores are stronger on rotation and central audit. The honest trade: for a small platform, encryption-at-rest plus Sealed Secrets is a perfectly defensible posture; for a larger or compliance-bound one, an external store with the CSI driver or ESO is where you end up, because the value is less the encryption and more the *operational* properties — one place to rotate, one audit trail, short-lived dynamic credentials. Whatever you choose, the disqualifying anti-patterns are constant: secrets in plain ConfigMaps, secrets baked into images, secrets in environment variables in the manifest, and static long-lived cloud keys in a Secret when workload identity (Part 2) would issue short-lived ones.
 
+```quiz
+Q: A teammate says "our Secrets are safe — they're base64-encoded in etcd." What's wrong, and where are the three places a Secret is exposed?
+- [x] base64 is encoding, not encryption (`base64 -d` reverses it instantly) — a Secret is at risk at rest in etcd, in transit/at use (any identity with `get` reads cleartext; env vars leak widely), and at its source of truth, and a real strategy addresses all three
+- [ ] Nothing is wrong — only the API server can read etcd
+- [ ] Secrets are transparently encrypted by default on every cluster
+- [ ] The only real risk is network interception in transit
+> The name "Secret" falsely implies protection. Encoding is reversible by anyone who reads the bytes — a node backup, a compromised control-plane host, an attacker who reached etcd directly. The fix is encryption at rest for etcd, tight RBAC plus file-mounts-over-env-vars for use, and an external source of truth for origin — fixing one of the three while ignoring the other two is the common self-congratulatory mistake.
+
+Q: For encryption at rest, why is KMS v2 strongly preferred over a static aesgcm key — and what's the catch right after you enable it?
+- [ ] KMS v2 is simply faster; security-wise the two are equivalent
+- [ ] A static key is more secure because it can be kept offline
+- [x] KMS v2 uses envelope encryption — a local data key wrapped by a cloud KMS, so the root key never lands on the node — whereas a static key sits in a file next to the data it protects; and enabling encryption only affects Secrets written *after*, so existing ones must be rewritten
+- [ ] Enabling encryption retroactively encrypts all existing Secrets
+> A static `aesgcm` key on the control-plane host is co-located with the etcd data, so one host compromise yields both. KMS v2 keeps the root key in the cloud KMS and only ever places a wrapped data key on the node. And because encryption applies on write, existing Secrets stay cleartext until rewritten (`kubectl get secrets -A -o json | kubectl replace -f -`) — a subtlety that silently leaves old credentials exposed.
+
+Q: The modern pattern moves the source of truth for secrets out of etcd into an external store (Vault, cloud secret managers). What's the real payoff, beyond encryption?
+- [ ] External stores are the only way to get any encryption at all
+- [x] The value is operational — one place to rotate, one audit trail, fine-grained access, and dynamic short-lived credentials (Vault can issue a DB password that expires in an hour) — bridged in by the External Secrets Operator (syncs into K8s Secrets) or the Secrets Store CSI Driver (mounts directly, never becoming a Secret object)
+- [ ] etcd cannot store values larger than 1 MB
+- [ ] It removes the need for RBAC on Secrets
+> Encryption-at-rest plus Sealed Secrets is a defensible posture for a small platform. You graduate to an external store for the *operational* properties: centralized rotation and audit, and short-lived dynamic credentials that shrink the value of any single leak. For GitOps, Sealed Secrets (encrypt to a cluster public key, commit the blob safely) or committing a *reference* keeps cleartext out of git — the constant anti-patterns are secrets in ConfigMaps, images, or manifest env vars.
+```
+
 ---
 
 ## Part 8 — Supply Chain Security
@@ -557,6 +603,29 @@ spec:
 ```
 
 Read it as the enforced version of "we only run our own builds": a Pod whose image lacks a valid signature from our GitHub Actions identity is rejected at admission, so a compromised image — even one pushed to our registry by an attacker who never gained signing capability — cannot run. Combined with **digest pinning** (referencing images by `@sha256:...` rather than a mutable `:latest` tag, so what you tested is byte-for-byte what runs, and nobody can swap the image out from under a tag) and a tightly controlled **registry allowlist** (Part 4), this is the supply-chain posture that turns "we hope this image is clean" into "this image is provably ours and provably scanned."
+
+```quiz
+Q: Why does supply chain security defend against a threat that Parts 1–7 cannot touch?
+- [ ] Supply chain attacks disable the API server's admission stage
+- [x] A poisoned image is *admitted legitimately* — it passes authn, authz, admission, NetworkPolicy, and Pod hardening because nothing about it looks wrong — so every runtime control ends up defending a workload that was malicious before it started
+- [ ] Parts 1–7 only apply to self-managed clusters
+- [ ] It is just another form of leaked credential
+> The attacks moved upstream because it's easier to compromise a popular base image or a CI pipeline than to break a hardened cluster. The runtime layers all assume the workload is *yours*; supply chain security earns that assumption — minimal images, scanning, SBOMs, signing — so the thing those controls protect isn't already compromised at admission.
+
+Q: Why scan images both in CI as a gate *and* continuously on the registry?
+- [ ] Registry scanning is just a slower duplicate of the CI scan
+- [ ] CI scanning also catches runtime exploits
+- [ ] Continuous scanning makes the CI gate unnecessary
+- [x] A CI gate fails the build on a known critical CVE before it ships, but a CVE disclosed *tomorrow* affects an image you shipped *today* — continuous registry scanning (plus SBOMs) answers "are we affected, and where?" in minutes without rebuilding everything
+> Vulnerability knowledge changes after build time, so a one-time gate is necessary but not sufficient. The CI gate stops known-bad images from shipping; continuous scanning catches the next Log4Shell-class disclosure in images already running, and an SBOM turns "which of our images bundle this library?" from an audit into a query. Both, because they catch the problem at different moments.
+
+Q: How does Sigstore/cosign signing with admission-time verification "close the loop," and what does digest pinning add?
+- [x] CI signs every image keylessly against an OIDC identity (no signing key to leak), and an admission policy refuses any image lacking that signature — so even an image an attacker pushed to your registry can't run; digest pinning (`@sha256:...` over `:latest`) ensures what you tested is byte-for-byte what runs
+- [ ] Signing encrypts the image so its contents can't be read
+- [ ] Verification happens at runtime, inside the container
+- [ ] Digest pinning signs the image automatically
+> Scanning and minimal bases reduce risk; signing makes provenance *enforceable*. Keyless signing ties the signature to the pipeline's OIDC identity (nothing durable to steal), and an admission policy turns "we hope this image is ours" into "this image is provably ours, or it doesn't run." Digest pinning closes the mutable-tag gap so nobody swaps the image out from under `:latest` after you tested it.
+```
 
 ---
 
@@ -594,6 +663,29 @@ Audit logs see API-server activity, but they are blind to what happens *inside* 
 ### Incident response: assume you'll need it
 
 The response side is mostly about having decided things in advance. The key Kubernetes-specific moves: **isolate** a compromised Pod (apply a NetworkPolicy that cuts all its traffic, rather than deleting it and destroying the forensic evidence), **revoke** the relevant credentials (rotate the ServiceAccount token, the leaked kubeconfig, the cloud keys), **preserve** evidence (snapshot the node, capture the Pod's filesystem and the audit trail before anything is torn down), and **understand the escalation graph** before you're in it — knowing, ahead of time, that an attacker in namespace X with ServiceAccount Y can reach Z is what lets you scope the blast radius in minutes during an incident rather than discovering it during the post-mortem. Drift detection (continuously checking that the running cluster still matches policy — that no one disabled a NetworkPolicy or added a privileged Pod out of band) is the quieter companion to all of this: it catches the slow erosion of your posture that no single audit event flags.
+
+```quiz
+Q: Why is the API-server audit log the single most valuable security signal — and why must it ship off-cluster?
+- [ ] It records the contents of every Pod's memory
+- [ ] It runs at full verbosity by default, so there's nothing to configure
+- [x] It captures intent at the chokepoint — who did what, to what, when, and whether it was allowed — so investigations can answer "who read this Secret / created this RoleBinding / exec'd into this Pod"; but a log on a compromised control-plane node is one the attacker deletes, so ship it to a SIEM or durable off-cluster storage
+- [ ] It makes runtime detection unnecessary
+> Every control concentrates at the API server, so its audit log sees intent at the one chokepoint — and it's off or minimal by default on many clusters, the first thing to fix. The craft is logging enough to investigate without drowning: `RequestResponse` for Secrets/ServiceAccounts/RBAC, `Metadata` for the rest, `None` for system read-noise. And it only helps if the attacker can't erase it, hence off-cluster.
+
+Q: Audit logging is on, yet an attacker spawns a shell inside a Pod and reads /etc/shadow. Why might the audit log miss it, and what catches it?
+- [ ] The audit log captures it, just at the wrong verbosity level
+- [x] The audit log sees API-server activity but is blind to what happens *inside* a container — runtime detection (Falco, via eBPF watching syscalls) flags the spawned shell, sensitive-file read, or unexpected outbound connection: the post-exploitation activity prevention is meant to make hard
+- [ ] Nothing can ever detect in-container activity
+- [ ] Only the cloud provider can see it
+> Prevention tells you a Pod *can't* do X; runtime detection tells you a Pod *just tried* to. Audit logs cover requests to the API server, not syscalls within a container, so an attacker operating entirely inside an exploited Pod is invisible to them. Falco (CNCF-graduated) watches kernel syscalls against a ruleset of suspicious behavior — the layer most clusters are missing, which is exactly why it's worth running.
+
+Q: You discover a compromised Pod. Why isolate it with a NetworkPolicy rather than delete it?
+- [ ] Deleting Pods is disallowed during an incident
+- [ ] A NetworkPolicy can't affect an already-running Pod
+- [ ] Isolation and deletion amount to the same thing
+- [x] Deleting it destroys the forensic evidence (the live process, the filesystem, what it was doing); a NetworkPolicy that cuts all its traffic contains the blast radius while preserving the Pod — alongside revoking its credentials and snapshotting the node before teardown
+> Incident response is mostly decisions made in advance. The Kubernetes-specific moves: isolate (cut traffic, don't destroy evidence), revoke (rotate the ServiceAccount token, kubeconfig, and cloud keys the Pod could reach), preserve (snapshot node and filesystem, capture the audit trail), and know the escalation graph beforehand so you can scope "what could this Pod reach" in minutes, not during the post-mortem. Drift detection catches the slow erosion no single event flags.
+```
 
 ---
 

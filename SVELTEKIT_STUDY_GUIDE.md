@@ -109,6 +109,29 @@ The pattern to notice: SvelteKit and Next.js answer the same questions with diff
 
 **Practice:** scaffold a fresh app with `npx sv create`, add ESLint, Prettier, and Vitest through `sv add`, then walk every top-level file and directory and say out loud what it does, where its code runs, and when. Finish with `npm run build && npm run preview` so the dev-versus-production distinction is concrete before you write a single feature.
 
+```quiz
+Q: SvelteKit is built for what it calls a "transitional app." What does that mean?
+- [x] A site that works as a server-rendered website on first contact (real HTML, working links/forms, crawler-friendly) and then *transitions* into a client-side app once JS loads, so subsequent navigation is instant and stateful — you get both, in that order, by default
+- [ ] An app you can gradually migrate from React to Svelte
+- [ ] A purely client-rendered SPA with no server
+- [ ] A static site that never loads JavaScript
+> You don't choose between "server-rendered site" and "SPA" — SvelteKit gives you SSR first paint (usable HTML immediately, good for SEO and slow devices) and then hydrates into SPA-quality navigation. Every part of the guide elaborates a stage of that lifecycle: server load → render to HTML → hydrate → client router takes over, fetching just data for subsequent navigations.
+
+Q: The guide returns repeatedly to one question about every line of code. What is it?
+- [ ] Is this line covered by a test?
+- [ ] Does this line use a web standard or a framework API?
+- [x] Where does it run — server only, browser only, or both — and when: at build time, per request, or after hydration?
+- [ ] Will this line work without TypeScript?
+> Because a SvelteKit app spans the server/client divide, the load-bearing discipline is always knowing where and when code executes. That single question explains the routing file roles (`+page.ts` runs both places, `+page.server.ts` server-only), the data-loading model, and the security boundary. Internalizing it is most of what makes the framework stop feeling like magic.
+
+Q: How is the server/client boundary enforced for `src/lib/server`?
+- [ ] By convention — developers agree not to import it client-side
+- [ ] At runtime, by throwing if accessed from the browser
+- [x] Structurally — any code path reachable from the browser that imports from `src/lib/server` fails the *build*, with the import chain printed, so leaking secrets into the client bundle becomes a compile error rather than a code-review hope
+- [ ] By encrypting the module's contents
+> The boundary is physical, not conventional. Your database client, secret-bearing API wrappers, and session logic go in `$lib/server`, and the bundler refuses to include them in anything that could reach the client. This is the first of many places SvelteKit turns the mental model into tooling — "I'm pretty sure this only runs on the server" is replaced by a guarantee the compiler enforces.
+```
+
 ---
 
 ## Part 2 — Svelte 5: Components, Runes, and Reactivity
@@ -386,6 +409,29 @@ beforeNavigate(({ cancel }) => {
 Two refinements handle the "app-like" cases that tempt people back toward SPA habits. **Shallow routing** (`pushState`/`replaceState` from `$app/navigation`) creates history entries *without* running a navigation — the canonical use is a photo modal or filter drawer that the mobile back button should close, while the URL stays shareable ([shallow routing](https://svelte.dev/docs/kit/shallow-routing)). **Snapshots** preserve ephemeral DOM state across navigation: export `const snapshot = { capture, restore }` from a page, and a half-typed comment survives the user clicking away and coming back ([snapshots](https://svelte.dev/docs/kit/snapshots)).
 
 **Practice:** lay out a docs-style site: a `(marketing)` group and an `(app)` group with different layouts, a login page that escapes the app shell with `+page@`, docs pages under `[...path]` with a param matcher guarding a `[version=semver]` segment, and a photo-grid modal driven by shallow routing. Navigate it with JavaScript disabled and confirm every URL still resolves.
+
+```quiz
+Q: In SvelteKit's filesystem router, what's the difference between `+page.ts` and `+page.server.ts`?
+- [x] `+page.ts` holds a *universal* `load` that runs on both server and browser; `+page.server.ts` holds a *server-only* `load` (plus form `actions`) that never ships to the client — so secrets and the database belong in the latter
+- [ ] `+page.ts` is for TypeScript and `+page.server.ts` for JavaScript
+- [ ] They're interchangeable; pick whichever you prefer
+- [ ] `+page.ts` runs at build time and `+page.server.ts` per request
+> A directory is a URL segment, and the `+` files declare what that URL can do — and they come in pairs that straddle the server/client boundary. The universal/server distinction is the routing-level expression of Part 1's "where does it run?" question: put anything touching secrets or a database in `+page.server.ts`; use `+page.ts` for data-fetching that's safe (and sometimes faster) to also run in the browser on client navigation.
+
+Q: Why add a param matcher like `[id=integer]` to a dynamic route segment?
+- [ ] To make the URL render faster
+- [ ] To automatically convert the parameter to a number
+- [x] So URLs that fail the matcher don't match the route at all (falling through to another route or a 404) instead of flowing into your `load` as a malformed string — parameters are public API, and the matcher keeps garbage out
+- [ ] To require authentication for that route
+> `[slug]` matches any value; a matcher (`src/params/integer.ts` exporting `match(value)`) constrains it, so `/posts/abc` simply doesn't match `[id=integer]`. Treating route params like API contracts — validated at the boundary — prevents a class of "why is my handler getting `'abc'` where it expected a number" bugs, and keeps the routing layer, not your business logic, responsible for rejecting malformed URLs.
+
+Q: SvelteKit has no `<Link>` component. What's the navigation philosophy, and what makes it feel instant?
+- [ ] You must call `goto()` for every navigation
+- [x] Normal `<a>` tags *are* the navigation API — they work before JS loads, in crawlers and RSS readers, and the client router progressively enhances them; preloading (`data-sveltekit-preload-data="hover"`) starts fetching a link's code and data on hover/touch, ~200ms before the click
+- [ ] Navigation requires a framework-specific routing component
+- [ ] Links only work after full hydration
+> "Normal links are the navigation API" is a deliberate philosophy: no framework lock-in in your markup, anchors degrade gracefully, and the router enhances them after hydration. Preloading on hover is the superpower that makes navigation feel instant. `goto()` exists for imperative cases (post-event redirects), but most navigation should be links, and most post-mutation redirects belong on the server.
+```
 
 ---
 
@@ -777,6 +823,29 @@ References: [Errors](https://svelte.dev/docs/kit/errors).
 
 **Practice:** build a protected account area end to end: resolve the user in `handle`, type `locals` in `app.d.ts`, guard the `(app)` group by route ID, render a custom `+error.svelte` for missing resources, keep the database client in `$lib/server`, and then *try* to import it from a component to watch the build refuse. Confidence in the wall comes from testing the wall.
 
+```quiz
+Q: What is `event.locals` in a SvelteKit `handle` hook, and why does it matter?
+- [x] A request-scoped "briefcase" — anything attached in `handle` (typically the resolved user) is available to every server `load`, action, and endpoint for *that request only* — which is the safe place to hold per-request identity in a server concurrently serving many users
+- [ ] A global object shared across all requests
+- [ ] Browser-side state that persists after hydration
+- [ ] A cookie store written back to the client
+> `handle` wraps every server request — pages, client-navigation `load` calls, endpoints, actions — and its canonical job is turning an opaque cookie into a typed identity parked in `locals`. Request-scoping is the key property: a global would leak one user's identity into another's concurrent request. Type it once in `app.d.ts` and the whole codebase gets `locals.user` autocomplete. `handle` also composes via the `sequence` helper.
+
+Q: "Checking `data.user` in a component hides a button; it does not protect anything." Why, and what's the subtle layout trap?
+- [ ] Components can't read `data.user`
+- [x] The client is the other side of the trust boundary, so client-side checks are cosmetic — authorization must happen at server boundaries (every server `load`/action/endpoint re-checks `locals.user`); and guarding only a `+layout.server.ts` load doesn't protect child pages, since a page's server load can run on client navigation without the layout rerunning
+- [ ] Components run on the server, so the check is redundant
+- [ ] `data.user` is always undefined in components
+> Hiding UI is UX, not security — anyone can invoke the underlying server load or action directly. So every server boundary touching protected data re-checks identity (or relies on a `handle`-level guard for its path). The layout trap is real: layout loads don't necessarily rerun on client navigation to a child, so a check living only in the layout sometimes doesn't run. Guard the pages (or `handle`), not just the layout.
+
+Q: How does SvelteKit keep a secret env var from leaking into the client bundle?
+- [ ] By obfuscating it in the build output
+- [x] Private env modules (`$env/static/private`, `$env/dynamic/private`) are themselves server-only — importing them client-side fails the build — and only `PUBLIC_`-prefixed variables are allowed into the public modules, so a secret can't drift client-side by renaming alone
+- [ ] By only loading env vars at runtime
+- [ ] By storing secrets in `localStorage`
+> The boundary is structural, like `$lib/server`. The two axes are private/public and static/dynamic: *static* values are inlined at build time (enabling dead-code elimination but baking the value in), while *dynamic* values are read at server startup — which is what you want when one built image runs in several environments. The `PUBLIC_` gate makes exposure a deliberate, visible decision, not an accident.
+```
+
 ---
 
 ## Part 7 — State Management Without Foot-Guns
@@ -958,6 +1027,29 @@ A useful pattern for defaults-with-overrides: the layout sets baseline tags, pag
 
 **Practice:** optimize a content page until it's boring: `enhanced:img` for the hero, complete `<svelte:head>` metadata, one waterfall removed with `Promise.all`, a heavy charting library moved behind a dynamic import, and a clean `sv check` accessibility report. Measure with Lighthouse before and after — the numbers are the lesson.
 
+```quiz
+Q: The guide frames SvelteKit performance as "don't squander the defaults." Where do the real costs usually hide?
+- [x] In the data layer and the images, not the JavaScript — SvelteKit already gives compiled components with no runtime tax, per-route code-splitting, SSR, and link preloading, so the discipline is diagnosing waterfalls (client-server round trips, ORM N+1) and heavy images rather than adding JS optimizations
+- [ ] In Svelte's virtual-DOM diffing overhead
+- [ ] In the size of the framework runtime shipped to the client
+- [ ] In the hydration step, which you should disable
+> Svelte compiles away the runtime tax other frameworks pay, so "Svelte is slow to load" investigations rarely end at the JS. The frequent culprits are waterfalls — a component fetching in `onMount` then again based on the result (move it to a server `load` where hops are datacenter-side), or an ORM lazily loading relations per row (fix with a join in `$lib/server`) — and oversized images. Measure first (Lighthouse, the Network tab, server timing).
+
+Q: What does the `<enhanced:img>` plugin do, and what's its limitation?
+- [ ] It lazy-loads any image, including from a CMS
+- [x] At build time it generates modern formats (AVIF/WebP with fallbacks), a responsive `srcset`, and intrinsic `width`/`height` to prevent layout shift — the three things that move LCP and CLS — but only for build-time-known assets; user-uploaded/CMS images need an on-the-fly transforming CDN instead
+- [ ] It compresses images at runtime on every request
+- [ ] It replaces the need for `alt` text
+> Images routinely outweigh all code combined, so they're a first-class concern. `<enhanced:img src="./hero.png">` does the format/responsive/dimensions work for assets you own at build time. For dynamic images you can't know at build time, the same goals (modern formats, right sizes, reserved space) come from a CDN (Cloudinary, imgix, Cloudflare Images) plus `loading="lazy"` and explicit dimensions.
+
+Q: What is SvelteKit's SEO story, in one line?
+- [ ] You must add a meta-framework plugin to get any SEO
+- [x] "SSR is on by default; keep it on" — crawlers get real HTML with real content, no JS execution required — so what remains is per-page metadata (`<svelte:head>` fed by `load` data) and site plumbing (sitemap/RSS as `+server.ts` endpoints, canonical URLs)
+- [ ] SEO requires prerendering every route
+- [ ] Search engines run your JavaScript, so it doesn't matter
+> The big SEO win is free as long as you don't turn SSR off. The rest fits SvelteKit's primitives: metadata belongs to the route that owns it via `<svelte:head>` populated from `load` data; a sitemap is just an XML-returning `+server.ts`. And because Core Web Vitals feed ranking, the performance work in 9.1–9.2 is also SEO work — fast pages rank better.
+```
+
 ---
 
 ## Part 10 — Testing and Quality
@@ -1035,6 +1127,29 @@ Note the selectors: `getByRole`, `getByLabel` — accessibility-first queries th
 
 **Practice:** unit-test a formatter and a reactive `.svelte.ts` module (you'll need `flushSync`), component-test the login form by role and label, call a form action directly with a stubbed event to cover its `fail` branches, and write one Playwright journey — login through dashboard — that runs twice, once with `javaScriptEnabled: false`.
 
+```quiz
+Q: Why is `sv check` described as "the first test suite"?
+- [x] It type-checks components *including templates* against the `$types` SvelteKit generates per route — so changing a `load` return shape lights up every component rendering the old shape — making the type checker effectively an integration test of your server/client contracts, plus accessibility warnings
+- [ ] It runs your Playwright tests faster
+- [ ] It only checks formatting and style
+- [ ] It replaces the need for any other tests
+> Because SvelteKit generates types for every route's data, static analysis catches the contract drift that would otherwise surface as a runtime bug: a renamed `load` field, a removed prop, an unhandled `form` shape. That's the highest-leverage quality habit in the ecosystem — keep `sv check` clean locally and gate CI on it. The other layers (unit, component, E2E) catch what types can't.
+
+Q: How do you test a SvelteKit server `load` function or form action?
+- [ ] You can't; they only run inside the framework
+- [ ] Only through a full Playwright browser test
+- [x] They're just async functions — call one with a stubbed event object (a standard `Request`, stub `cookies`) and assert on the result — so redirect logic, `fail` shapes, and authorization guards get cheap, exhaustive unit coverage, with Playwright reserved for the happy path
+- [ ] You must deploy the app and hit it over HTTP
+> Server code needs no special machinery because SvelteKit is built on web standards: an action receives a standard `Request`, so you construct one and call `actions.default({ request, cookies })`. Every validation branch becomes a fast unit test. This is where the unhappy paths (malformed input → 400, repopulated fields) get covered cheaply, leaving the slow, flaky browser tests for a handful of critical journeys.
+
+Q: What two SvelteKit-specific tricks matter for Playwright tests?
+- [ ] Disabling SSR and mocking the server
+- [x] Run a critical flow with `javaScriptEnabled: false` to *prove* the progressive-enhancement story actually holds, and use accessibility-first selectors (`getByRole`, `getByLabel`) that double as a11y assertions — if Playwright can't find the button by role, neither can a screen reader
+- [ ] Testing only with JavaScript enabled, for speed
+- [ ] Asserting on internal component state names
+> Only a browser test exercises the real product (SSR → hydrate → navigate → submit). The JS-disabled run verifies that forms and navigation work without client JS — the payoff of building things the framework way. Role/label selectors keep tests resilient to markup changes and enforce accessibility at once. Keep E2E focused on journeys whose breakage is unacceptable; the layers below already cover the branches.
+```
+
 ---
 
 ## Part 11 — Adapters, Building, and Deployment
@@ -1083,6 +1198,29 @@ The pipeline writes itself from the layers you already have: `npm ci` → lint/f
 Two production capabilities round out the platform story. **Observability**: SvelteKit has first-class instrumentation support — server spans for `handle`, `load`, and actions can be exported via OpenTelemetry (see [observability docs](https://svelte.dev/docs/kit/observability) and this repo's [Observability guide](OBSERVABILITY_STUDY_GUIDE.md)); at minimum, wire `handleError` (Part 6.1) to an error tracker with request context, and watch route-level latency, not just frontend vitals — in a full-stack framework, a slow page is usually a slow `load`. **Service workers**: drop a `src/service-worker.ts` in the project and SvelteKit registers it automatically, exposing the build manifest through the `$service-worker` module so you can precache the app shell and assets for offline resilience ([service workers docs](https://svelte.dev/docs/kit/service-workers)). It's powerful and operationally sharp-edged (cache invalidation now ships to clients); adopt it when the product genuinely benefits — installable apps, flaky-network audiences — not by default.
 
 **Practice:** build the production artifact and run `npm run preview`; then containerize the `adapter-node` output (see the [Docker guide](DOCKER_STUDY_GUIDE.md)) and run it with `ORIGIN` and `PORT` set explicitly; then switch the same app to `adapter-static` and read the build error that tells you exactly which routes still need a server. That error message is Part 8 and Part 11 agreeing with each other.
+
+```quiz
+Q: What do SvelteKit *adapters* make possible?
+- [x] "Where will this run?" becomes a late, cheap decision — the application code from Parts 3–7 doesn't change; an adapter takes SvelteKit's platform-neutral output and packages it for a concrete runtime (Node server, static files, Vercel, Cloudflare Worker), changing one line of config
+- [ ] They transpile Svelte to React for deployment
+- [ ] They are required to run the dev server
+- [ ] They bundle the database with the app
+> A built SvelteKit app is "a description of a server and a client," not a deployable artifact; the adapter is the last build step that adapts it to a target. This decoupling is why you can defer and cheaply revisit the hosting decision. New projects scaffold `adapter-auto` (detects the platform at deploy), but you pin the real adapter once chosen to get its config and stop depending on detection.
+
+Q: Why must you sometimes guard code with the `building` flag from `$app/environment`?
+- [ ] To skip the code during development
+- [x] Because your code *executes during the build* — module top-levels are imported for analysis and prerendering runs real `load` functions — so anything that must not run at build time (like opening a database connection) needs a guard
+- [ ] To enable TypeScript checking
+- [ ] To prevent the client bundle from loading
+> The build imports your modules and runs prerenderable routes for real, so side effects at module scope or in a `load` that can't work at build time will fail the build. The `building` flag lets such code no-op during the build. The companion habit: always run `npm run preview` (which serves the real build) before shipping — it catches build-time env inlining, prerender errors, and server-only import leaks while you can still fix them quietly.
+
+Q: A team picks `adapter-cloudflare` for edge latency. What's the constraint to check *before* committing?
+- [ ] Cloudflare doesn't support SvelteKit
+- [x] Cloudflare Workers run on V8 isolates, *not* Node — so Node APIs need `nodejs_compat` and many npm packages (database drivers especially) simply won't run, plus there are CPU-time limits — verify your dependencies survive the non-Node runtime first
+- [ ] You must rewrite all your `load` functions
+- [ ] Edge deployment disables SSR
+> Adapter choice is about whether you need a server, what runtime constraints your code tolerates, and who operates it. The serverless/edge adapters (Cloudflare, Vercel edge) aren't Node, which trips up native modules and many drivers. `adapter-static` is the opposite extreme — no server at all, and the build *fails* if a route needs one, which is a feature. `adapter-node` in a container is the boring, flexible default when you're comfortable operating services.
+```
 
 ---
 

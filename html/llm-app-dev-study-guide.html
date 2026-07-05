@@ -244,7 +244,7 @@ mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
   <main><h1 id="llm-application-development">LLM Application Development</h1>
 <p>A practical guide to building applications on top of large language models. Focused on fundamental patterns that hold across providers and frameworks, not on any single API's surface. Assumes you can write production software and have used an LLM conversationally — this guide covers what you need to know to build <em>with</em> them programmatically.</p>
 <p>Code examples use Python and pseudocode. Patterns apply regardless of language.</p>
-<p>Primary references: <a href="https://docs.anthropic.com/">Anthropic Docs</a>, <a href="https://platform.openai.com/docs/api-reference">OpenAI API Reference</a>, <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview">Anthropic Prompt Engineering Guide</a>, <a href="https://platform.openai.com/docs/guides/prompt-engineering">OpenAI Prompt Engineering Guide</a></p>
+<p>Primary references, each earning its place: the <a href="https://platform.claude.com/docs/">Anthropic docs</a> and <a href="https://platform.openai.com/docs/api-reference">OpenAI API reference</a> — the two API surfaces this guide's patterns are written against, and the only current source for parameters and pricing; and the <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview">Anthropic</a> and <a href="https://platform.openai.com/docs/guides/prompt-engineering">OpenAI</a> prompt-engineering guides — the vendors' own distillations of what reliably works, worth reading before any third-party tutorial.</p>
 <hr>
 <h2 id="table-of-contents">Table of Contents</h2>
 <ol>
@@ -373,7 +373,7 @@ mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
 <h3 id="the-message-format">The Message Format</h3>
 <p>Every major LLM API uses the same basic structure — a list of messages with roles:</p>
 <pre><code class="language-python">response = client.messages.create(
-    model=&quot;claude-sonnet-4-6&quot;,
+    model=&quot;claude-sonnet-5&quot;,
     max_tokens=1024,
     system=&quot;You are a helpful assistant that answers questions about Python.&quot;,
     messages=[
@@ -401,7 +401,7 @@ mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
 </tr>
 <tr>
 <td><code>assistant</code></td>
-<td>The model's previous responses (or prefilled text to steer the response).</td>
+<td>The model's previous responses. (Older models also accepted a <em>prefilled</em> final assistant turn to steer the response; current Claude models reject prefills.)</td>
 </tr>
 </tbody>
 </table>
@@ -446,7 +446,7 @@ mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
 <h3 id="multimodal-input">Multimodal Input</h3>
 <p>Modern models accept images, PDFs, and other media alongside text:</p>
 <pre><code class="language-python">response = client.messages.create(
-    model=&quot;claude-sonnet-4-6&quot;,
+    model=&quot;claude-sonnet-5&quot;,
     max_tokens=1024,
     messages=[{
         &quot;role&quot;: &quot;user&quot;,
@@ -470,7 +470,7 @@ mark.hit{background:var(--accent);color:#04201c;border-radius:3px;padding:0 2px}
 <p>Common uses: OCR, chart/diagram interpretation, UI screenshot analysis, document extraction, visual question answering.</p>
 <hr>
 <h2 id="3-prompt-engineering-patterns">3. Prompt Engineering Patterns</h2>
-<p>Reference: <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview">Anthropic Prompt Engineering</a>, <a href="https://platform.openai.com/docs/guides/prompt-engineering">OpenAI Prompt Engineering</a></p>
+<p>Reference: <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview">Anthropic Prompt Engineering</a>, <a href="https://platform.openai.com/docs/guides/prompt-engineering">OpenAI Prompt Engineering</a></p>
 <p>Prompt engineering is the practice of designing inputs to get reliable, high-quality outputs. These patterns work across models.</p>
 <h3 id="role-and-context-setting">Role and Context Setting</h3>
 <p>Define who the model is, what it knows, and how it should behave:</p>
@@ -520,19 +520,17 @@ Claim details:
 </code></pre>
 <p>CoT improves accuracy on reasoning-heavy tasks (math, logic, multi-step analysis) because it forces the model to show intermediate work rather than jumping to a conclusion. The reasoning tokens also give the model more "compute" to work through the problem.</p>
 <h3 id="extended-thinking">Extended Thinking</h3>
-<p>Some models support explicit thinking/reasoning modes where the model does extended internal reasoning before responding:</p>
+<p>Some models support explicit thinking/reasoning modes where the model does extended internal reasoning before responding. Current Claude models use <strong>adaptive thinking</strong> — the model decides when and how much to think, and an <code>effort</code> parameter controls the depth/cost tradeoff:</p>
 <pre><code class="language-python">response = client.messages.create(
-    model=&quot;claude-sonnet-4-6&quot;,
+    model=&quot;claude-sonnet-5&quot;,
     max_tokens=16000,
-    thinking={
-        &quot;type&quot;: &quot;enabled&quot;,
-        &quot;budget_tokens&quot;: 10000
-    },
+    thinking={&quot;type&quot;: &quot;adaptive&quot;},
+    output_config={&quot;effort&quot;: &quot;high&quot;},  # low | medium | high | xhigh | max
     messages=[{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;...complex problem...&quot;}]
 )
 </code></pre>
-<p>The model's thinking is returned separately from the response. This is useful for complex tasks where you want the model to reason deeply but return a concise answer. The thinking can also be inspected for debugging.</p>
-<p>Reference: <a href="https://docs.anthropic.com/en/docs/build-with-claude/extended-thinking">Anthropic Extended Thinking</a></p>
+<p>(Older Claude models instead took a manual token budget — <code>thinking={"type": "enabled", "budget_tokens": N}</code> — which is deprecated and rejected outright on the newest models.) The model's thinking is returned separately from the response. This is useful for complex tasks where you want the model to reason deeply but return a concise answer. The thinking can also be inspected for debugging.</p>
+<p>Reference: <a href="https://platform.claude.com/docs/en/build-with-claude/adaptive-thinking">Anthropic Adaptive Thinking</a></p>
 <h3 id="delimiters-and-structure">Delimiters and Structure</h3>
 <p>Use clear delimiters to separate instructions from data, especially when the data might contain instruction-like text:</p>
 <pre><code class="language-text">Summarize the following article in 3 bullet points.
@@ -609,22 +607,14 @@ data = json.loads(response)  # may fail on invalid JSON
 <p>Most APIs offer a JSON mode that constrains the output to valid JSON:</p>
 <pre><code class="language-python"># OpenAI
 response = client.chat.completions.create(
-    model=&quot;gpt-4o&quot;,
+    model=&quot;gpt-5.1&quot;,
     response_format={&quot;type&quot;: &quot;json_object&quot;},
     messages=[...]
 )
-
-# Anthropic (via prefill — start the response with &quot;{&quot;)
-response = client.messages.create(
-    model=&quot;claude-sonnet-4-6&quot;,
-    messages=[
-        {&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Extract... respond in JSON&quot;},
-        {&quot;role&quot;: &quot;assistant&quot;, &quot;content&quot;: &quot;{&quot;}  # prefill forces JSON start
-    ]
-)
 </code></pre>
+<p>Anthropic has no schemaless JSON mode. The historical trick was to <em>prefill</em> the assistant turn with <code>{</code> to force a JSON start — but current Claude models (Sonnet 4.6 and later) <strong>reject assistant prefills with a 400 error</strong>, so don't copy that pattern from older tutorials. On Claude, skip straight to schema-constrained output (next section), which is now supported natively.</p>
 <p>JSON mode guarantees valid JSON syntax but doesn't guarantee the JSON matches your schema.</p>
-<div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>What&#x27;s the difference between &quot;JSON mode&quot; and schema-constrained output?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">JSON mode is slower</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">JSON mode guarantees syntactically valid JSON but not that it matches your schema (fields could be missing or wrong-typed); schema-constrained output validates against a JSON Schema/Pydantic model, guaranteeing structure</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">They&#x27;re the same feature</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Schema mode only works for OpenAI</span></button></li></ul><div class="quiz-explain" hidden>JSON mode solves the &quot;the model wrapped it in markdown fences / added prose / produced a trailing comma&quot; problem — you get parseable JSON. But it can still omit a required field or put a string where you wanted a number. Schema-constrained output (OpenAI&#x27;s <code>response_format=Model</code>, or Anthropic&#x27;s tool-as-schema trick) goes further by enforcing the actual shape, which is the strongest guarantee for production.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>Why does Anthropic&#x27;s structured-output approach define a &quot;tool&quot; that&#x27;s really just a schema?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Tools are faster than JSON mode</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Tool definitions carry a strict input schema the model must populate, so forcing a tool call (with <code>tool_choice</code>) coerces the model&#x27;s output into that schema — reusing the validated tool-calling mechanism for guaranteed structured extraction</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">It avoids needing an API key</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Tools can&#x27;t return text</span></button></li></ul><div class="quiz-explain" hidden>Tool use already requires the model to emit arguments conforming to the tool&#x27;s <code>input_schema</code>, so you can define an <code>extract_product</code> &quot;tool&quot; whose schema is your desired output shape and force the model to call it. The &quot;tool call&quot; arguments *are* your structured data, validated against the schema — a clean way to get schema-constrained output on a provider whose primary structured mechanism is tool calling.</div></div></div>
+<div class="addon quiz"><div class="addon-head"><span class="addon-kicker">Self-check</span><h3>Test yourself</h3><p class="addon-sub">Pick an answer to reveal the explanation.</p></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q1</span>What&#x27;s the difference between &quot;JSON mode&quot; and schema-constrained output?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">JSON mode is slower</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">JSON mode guarantees syntactically valid JSON but not that it matches your schema (fields could be missing or wrong-typed); schema-constrained output validates against a JSON Schema/Pydantic model, guaranteeing structure</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">They&#x27;re the same feature</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Schema mode only works for OpenAI</span></button></li></ul><div class="quiz-explain" hidden>JSON mode solves the &quot;the model wrapped it in markdown fences / added prose / produced a trailing comma&quot; problem — you get parseable JSON. But it can still omit a required field or put a string where you wanted a number. Schema-constrained output (OpenAI&#x27;s <code>response_format=Model</code>, or Anthropic&#x27;s native <code>output_config.format</code> / <code>messages.parse()</code>) goes further by enforcing the actual shape, which is the strongest guarantee for production.</div></div><div class="quiz-item"><p class="quiz-q"><span class="quiz-n">Q2</span>Why does Anthropic&#x27;s structured-output approach define a &quot;tool&quot; that&#x27;s really just a schema?</p><ul class="quiz-opts"><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Tools are faster than JSON mode</span></button></li><li><button class="quiz-opt" data-correct="true"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Tool definitions carry a strict input schema the model must populate, so forcing a tool call (with <code>tool_choice</code>) coerces the model&#x27;s output into that schema — reusing the validated tool-calling mechanism for guaranteed structured extraction</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">It avoids needing an API key</span></button></li><li><button class="quiz-opt" data-correct="false"><span class="quiz-mark" aria-hidden="true"></span><span class="quiz-opt-text">Tools can&#x27;t return text</span></button></li></ul><div class="quiz-explain" hidden>Tool use already requires the model to emit arguments conforming to the tool&#x27;s <code>input_schema</code>, so you can define an <code>extract_product</code> &quot;tool&quot; whose schema is your desired output shape and force the model to call it. The &quot;tool call&quot; arguments *are* your structured data, validated against the schema — a clean way to get schema-constrained output on a provider whose primary structured mechanism is tool calling.</div></div></div>
 <h3 id="schema-constrained-output">Schema-Constrained Output</h3>
 <p>The strongest guarantee — the API validates output against a JSON schema:</p>
 <pre><code class="language-python"># OpenAI structured outputs
@@ -636,16 +626,26 @@ class Product(BaseModel):
     currency: str
     in_stock: bool
 
-response = client.beta.chat.completions.parse(
-    model=&quot;gpt-4o&quot;,
+response = client.chat.completions.parse(
+    model=&quot;gpt-5.1&quot;,
     response_format=Product,
     messages=[...]
 )
 product = response.choices[0].message.parsed  # typed Product object
 </code></pre>
+<pre><code class="language-python"># Anthropic native structured outputs — the same Pydantic model
+response = client.messages.parse(
+    model=&quot;claude-sonnet-5&quot;,
+    max_tokens=1024,
+    output_format=Product,
+    messages=[...]
+)
+product = response.parsed_output  # typed, validated Product instance
+</code></pre>
+<p>Before Anthropic shipped native structured outputs, the standard approach was the <strong>tool-use trick</strong> — define a "tool" whose input schema is your desired output shape and force the model to call it. It still works everywhere tool use does:</p>
 <pre><code class="language-python"># Anthropic tool-use trick — define a &quot;tool&quot; that's really a schema
 response = client.messages.create(
-    model=&quot;claude-sonnet-4-6&quot;,
+    model=&quot;claude-sonnet-5&quot;,
     tools=[{
         &quot;name&quot;: &quot;extract_product&quot;,
         &quot;description&quot;: &quot;Extract product information&quot;,
@@ -672,7 +672,7 @@ response = client.messages.create(
 </ol>
 <hr>
 <h2 id="5-tool-use-function-calling">5. Tool Use (Function Calling)</h2>
-<p>Reference: <a href="https://docs.anthropic.com/en/docs/build-with-claude/tool-use/overview">Anthropic Tool Use</a>, <a href="https://platform.openai.com/docs/guides/function-calling">OpenAI Function Calling</a></p>
+<p>Reference: <a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview">Anthropic Tool Use</a>, <a href="https://platform.openai.com/docs/guides/function-calling">OpenAI Function Calling</a></p>
 <p>Tool use is the pattern that turns an LLM from a text generator into an agent that can take actions. The model doesn't execute tools — it generates a structured request for your code to execute.</p>
 <h3 id="the-flow">The Flow</h3>
 <pre><code class="language-text">1. You define available tools (name, description, parameter schema)
@@ -710,7 +710,7 @@ tools = [
 
 # step 1: send message with tools
 response = client.messages.create(
-    model=&quot;claude-sonnet-4-6&quot;,
+    model=&quot;claude-sonnet-5&quot;,
     max_tokens=1024,
     tools=tools,
     messages=[{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;What's the weather in Tokyo?&quot;}]
@@ -727,7 +727,7 @@ if response.stop_reason == &quot;tool_use&quot;:
 
     # step 4: send the result back
     followup = client.messages.create(
-        model=&quot;claude-sonnet-4-6&quot;,
+        model=&quot;claude-sonnet-5&quot;,
         max_tokens=1024,
         tools=tools,
         messages=[
@@ -790,7 +790,7 @@ if response.stop_reason == &quot;tool_use&quot;:
 
 while True:
     response = client.messages.create(
-        model=&quot;claude-sonnet-4-6&quot;,
+        model=&quot;claude-sonnet-5&quot;,
         max_tokens=4096,
         tools=tools,
         messages=messages,
@@ -819,8 +819,8 @@ while True:
 <p>This loop is the foundation of agent architectures — the model calls tools, observes results, and decides what to do next.</p>
 <hr>
 <h2 id="6-retrieval-augmented-generation-rag">6. Retrieval-Augmented Generation (RAG)</h2>
-<p>Reference: <a href="https://docs.anthropic.com/en/docs/build-with-claude/retrieval-augmented-generation">Anthropic RAG Guide</a></p>
-<p>RAG gives the model access to external knowledge by retrieving relevant documents and injecting them into the prompt. This is how you make an LLM answer questions about your data without fine-tuning.</p>
+<p>Reference: <a href="https://platform.claude.com/docs/en/build-with-claude/retrieval-augmented-generation">Anthropic RAG Guide</a></p>
+<p>RAG gives the model access to external knowledge by retrieving relevant documents and injecting them into the prompt. This is how you make an LLM answer questions about your data without fine-tuning. This section covers the essentials; the <a href="rag-study-guide.html">RAG &amp; Retrieval Engineering guide</a> treats every stage — chunking, ANN indexes, hybrid search, reranking, and retrieval evaluation — at full depth.</p>
 <h3 id="the-pattern">The Pattern</h3>
 <figure class="mermaid-diagram"><svg id="me826b26498_my-svg" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="flowchart" style="max-width: 440.75px; background-color: transparent;" viewBox="0 0 440.75 1036.327880859375" role="graphics-document document" aria-roledescription="flowchart-v2"><style>#me826b26498_my-svg{font-family:ui-sans-serif,system-ui,sans-serif;font-size:16px;fill:#333;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#me826b26498_my-svg .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#me826b26498_my-svg .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#me826b26498_my-svg .error-icon{fill:#552222;}#me826b26498_my-svg .error-text{fill:#552222;stroke:#552222;}#me826b26498_my-svg .edge-thickness-normal{stroke-width:1px;}#me826b26498_my-svg .edge-thickness-thick{stroke-width:3.5px;}#me826b26498_my-svg .edge-pattern-solid{stroke-dasharray:0;}#me826b26498_my-svg .edge-thickness-invisible{stroke-width:0;fill:none;}#me826b26498_my-svg .edge-pattern-dashed{stroke-dasharray:3;}#me826b26498_my-svg .edge-pattern-dotted{stroke-dasharray:2;}#me826b26498_my-svg .marker{fill:#333333;stroke:#333333;}#me826b26498_my-svg .marker.cross{stroke:#333333;}#me826b26498_my-svg svg{font-family:ui-sans-serif,system-ui,sans-serif;font-size:16px;}#me826b26498_my-svg p{margin:0;}#me826b26498_my-svg .label{font-family:ui-sans-serif,system-ui,sans-serif;color:#333;}#me826b26498_my-svg .cluster-label text{fill:#333;}#me826b26498_my-svg .cluster-label span{color:#333;}#me826b26498_my-svg .cluster-label span p{background-color:transparent;}#me826b26498_my-svg .label text,#me826b26498_my-svg span{fill:#333;color:#333;}#me826b26498_my-svg .node rect,#me826b26498_my-svg .node circle,#me826b26498_my-svg .node ellipse,#me826b26498_my-svg .node polygon,#me826b26498_my-svg .node path{fill:#ECECFF;stroke:#9370DB;stroke-width:1px;}#me826b26498_my-svg .rough-node .label text,#me826b26498_my-svg .node .label text,#me826b26498_my-svg .image-shape .label,#me826b26498_my-svg .icon-shape .label{text-anchor:middle;}#me826b26498_my-svg .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#me826b26498_my-svg .rough-node .label,#me826b26498_my-svg .node .label,#me826b26498_my-svg .image-shape .label,#me826b26498_my-svg .icon-shape .label{text-align:center;}#me826b26498_my-svg .node.clickable{cursor:pointer;}#me826b26498_my-svg .root .anchor path{fill:#333333!important;stroke-width:0;stroke:#333333;}#me826b26498_my-svg .arrowheadPath{fill:#333333;}#me826b26498_my-svg .edgePath .path{stroke:#333333;stroke-width:1px;}#me826b26498_my-svg .flowchart-link{stroke:#333333;fill:none;}#me826b26498_my-svg .edgeLabel{background-color:rgba(232,232,232, 0.8);text-align:center;}#me826b26498_my-svg .edgeLabel p{background-color:rgba(232,232,232, 0.8);}#me826b26498_my-svg .edgeLabel rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#me826b26498_my-svg .labelBkg{background-color:rgba(232, 232, 232, 0.5);}#me826b26498_my-svg .cluster rect{fill:#ffffde;stroke:#aaaa33;stroke-width:1px;}#me826b26498_my-svg .cluster text{fill:#333;}#me826b26498_my-svg .cluster span{color:#333;}#me826b26498_my-svg div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:ui-sans-serif,system-ui,sans-serif;font-size:12px;background:hsl(80, 100%, 96.2745098039%);border:1px solid #aaaa33;border-radius:2px;pointer-events:none;z-index:100;}#me826b26498_my-svg .flowchartTitleText{text-anchor:middle;font-size:18px;fill:#333;}#me826b26498_my-svg rect.text{fill:none;stroke-width:0;}#me826b26498_my-svg .icon-shape,#me826b26498_my-svg .image-shape{background-color:rgba(232,232,232, 0.8);text-align:center;}#me826b26498_my-svg .icon-shape p,#me826b26498_my-svg .image-shape p{background-color:rgba(232,232,232, 0.8);padding:2px;}#me826b26498_my-svg .icon-shape .label rect,#me826b26498_my-svg .image-shape .label rect{opacity:0.5;background-color:rgba(232,232,232, 0.8);fill:rgba(232,232,232, 0.8);}#me826b26498_my-svg .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#me826b26498_my-svg .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#me826b26498_my-svg .node .neo-node{stroke:#9370DB;}#me826b26498_my-svg [data-look="neo"].node rect,#me826b26498_my-svg [data-look="neo"].cluster rect,#me826b26498_my-svg [data-look="neo"].node polygon{stroke:#9370DB;filter:drop-shadow(1px 2px 2px rgba(185, 185, 185, 1));}#me826b26498_my-svg [data-look="neo"].node path{stroke:#9370DB;stroke-width:1px;}#me826b26498_my-svg [data-look="neo"].node .outer-path{filter:drop-shadow(1px 2px 2px rgba(185, 185, 185, 1));}#me826b26498_my-svg [data-look="neo"].node .neo-line path{stroke:#9370DB;filter:none;}#me826b26498_my-svg [data-look="neo"].node circle{stroke:#9370DB;filter:drop-shadow(1px 2px 2px rgba(185, 185, 185, 1));}#me826b26498_my-svg [data-look="neo"].node circle .state-start{fill:#000000;}#me826b26498_my-svg [data-look="neo"].icon-shape .icon{fill:#9370DB;filter:drop-shadow(1px 2px 2px rgba(185, 185, 185, 1));}#me826b26498_my-svg [data-look="neo"].icon-shape .icon-neo path{stroke:#9370DB;filter:drop-shadow(1px 2px 2px rgba(185, 185, 185, 1));}#me826b26498_my-svg :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><marker id="me826b26498_my-svg_flowchart-v2-pointEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="me826b26498_my-svg_flowchart-v2-pointStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="4.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="8" markerHeight="8" orient="auto"><path d="M 0 5 L 10 10 L 10 0 z" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="me826b26498_my-svg_flowchart-v2-pointEnd-margin" class="marker flowchart-v2" viewBox="0 0 11.5 14" refX="11.5" refY="7" markerUnits="userSpaceOnUse" markerWidth="10.5" markerHeight="14" orient="auto"><path d="M 0 0 L 11.5 7 L 0 14 z" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="me826b26498_my-svg_flowchart-v2-pointStart-margin" class="marker flowchart-v2" viewBox="0 0 11.5 14" refX="1" refY="7" markerUnits="userSpaceOnUse" markerWidth="11.5" markerHeight="14" orient="auto"><polygon points="0,7 11.5,14 11.5,0" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="me826b26498_my-svg_flowchart-v2-circleEnd" class="marker flowchart-v2" viewBox="0 0 10 10" refX="11" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="me826b26498_my-svg_flowchart-v2-circleStart" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-1" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 1; stroke-dasharray: 1, 0;"/></marker><marker id="me826b26498_my-svg_flowchart-v2-circleEnd-margin" class="marker flowchart-v2" viewBox="0 0 10 10" refY="5" refX="12.25" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="me826b26498_my-svg_flowchart-v2-circleStart-margin" class="marker flowchart-v2" viewBox="0 0 10 10" refX="-2" refY="5" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto"><circle cx="5" cy="5" r="5" class="arrowMarkerPath" style="stroke-width: 0; stroke-dasharray: 1, 0;"/></marker><marker id="me826b26498_my-svg_flowchart-v2-crossEnd" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="12" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"/></marker><marker id="me826b26498_my-svg_flowchart-v2-crossStart" class="marker cross flowchart-v2" viewBox="0 0 11 11" refX="-1" refY="5.2" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto"><path d="M 1,1 l 9,9 M 10,1 l -9,9" class="arrowMarkerPath" style="stroke-width: 2; stroke-dasharray: 1, 0;"/></marker><marker id="me826b26498_my-svg_flowchart-v2-crossEnd-margin" class="marker cross flowchart-v2" viewBox="0 0 15 15" refX="17.7" refY="7.5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path d="M 1,1 L 14,14 M 1,14 L 14,1" class="arrowMarkerPath" style="stroke-width: 2.5;"/></marker><marker id="me826b26498_my-svg_flowchart-v2-crossStart-margin" class="marker cross flowchart-v2" viewBox="0 0 15 15" refX="-3.5" refY="7.5" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" orient="auto"><path d="M 1,1 L 14,14 M 1,14 L 14,1" class="arrowMarkerPath" style="stroke-width: 2.5; stroke-dasharray: 1, 0;"/></marker><g class="root"><g class="clusters"><g class="cluster" id="me826b26498_my-svg-idx" data-look="classic"><rect style="" x="213.6875" y="8" width="219.0625" height="436.3279571533203"/><g class="cluster-label" transform="translate(246.9453125, 8)"><foreignObject width="152.546875" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5;"><span class="nodeLabel"><p>Index time (offline)</p></span></div></foreignObject></g></g></g><g class="edgePaths"><path d="M93.344,409.164L93.344,415.025C93.344,420.885,93.344,432.607,93.344,444.634C93.344,456.661,93.344,468.995,100.869,480.923C108.394,492.851,123.444,504.374,130.969,510.135L138.494,515.896" id="me826b26498_my-svg-L_Q_R_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="me826b26498_L_Q_R_0" data-points="W3sieCI6OTMuMzQzNzUsInkiOjQwOS4xNjM5Nzg1NzY2NjAxNn0seyJ4Ijo5My4zNDM3NSwieSI6NDQ0LjMyNzk1NzE1MzMyMDN9LHsieCI6OTMuMzQzNzUsInkiOjQ4MS4zMjc5NTcxNTMzMjAzfSx7IngiOjE0MS42Njk3NDQzMTgxODE4LCJ5Ijo1MTguMzI3OTU3MTUzMzIwM31d" data-look="classic" marker-end="url(#me826b26498_my-svg_flowchart-v2-pointEnd)"/><path d="M208.281,620.328L208.281,624.495C208.281,628.661,208.281,636.995,208.281,644.661C208.281,652.328,208.281,659.328,208.281,662.828L208.281,666.328" id="me826b26498_my-svg-L_R_RR_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="me826b26498_L_R_RR_0" data-points="W3sieCI6MjA4LjI4MTI1LCJ5Ijo2MjAuMzI3OTU3MTUzMzIwM30seyJ4IjoyMDguMjgxMjUsInkiOjY0NS4zMjc5NTcxNTMzMjAzfSx7IngiOjIwOC4yODEyNSwieSI6NjcwLjMyNzk1NzE1MzMyMDN9XQ==" data-look="classic" marker-end="url(#me826b26498_my-svg_flowchart-v2-pointEnd)"/><path d="M208.281,748.328L208.281,752.495C208.281,756.661,208.281,764.995,208.281,772.661C208.281,780.328,208.281,787.328,208.281,790.828L208.281,794.328" id="me826b26498_my-svg-L_RR_INJ_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="me826b26498_L_RR_INJ_0" data-points="W3sieCI6MjA4LjI4MTI1LCJ5Ijo3NDguMzI3OTU3MTUzMzIwM30seyJ4IjoyMDguMjgxMjUsInkiOjc3My4zMjc5NTcxNTMzMjAzfSx7IngiOjIwOC4yODEyNSwieSI6Nzk4LjMyNzk1NzE1MzMyMDN9XQ==" data-look="classic" marker-end="url(#me826b26498_my-svg_flowchart-v2-pointEnd)"/><path d="M208.281,876.328L208.281,880.495C208.281,884.661,208.281,892.995,208.281,900.661C208.281,908.328,208.281,915.328,208.281,918.828L208.281,922.328" id="me826b26498_my-svg-L_INJ_GEN_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="me826b26498_L_INJ_GEN_0" data-points="W3sieCI6MjA4LjI4MTI1LCJ5Ijo4NzYuMzI3OTU3MTUzMzIwM30seyJ4IjoyMDguMjgxMjUsInkiOjkwMS4zMjc5NTcxNTMzMjAzfSx7IngiOjIwOC4yODEyNSwieSI6OTI2LjMyNzk1NzE1MzMyMDN9XQ==" data-look="classic" marker-end="url(#me826b26498_my-svg_flowchart-v2-pointEnd)"/><path d="M323.219,87L323.219,91.167C323.219,95.333,323.219,103.667,323.219,111.333C323.219,119,323.219,126,323.219,129.5L323.219,133" id="me826b26498_my-svg-L_DOCS_CH_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="me826b26498_L_DOCS_CH_0" data-points="W3sieCI6MzIzLjIxODc1LCJ5Ijo4N30seyJ4IjozMjMuMjE4NzUsInkiOjExMn0seyJ4IjozMjMuMjE4NzUsInkiOjEzN31d" data-look="classic" marker-end="url(#me826b26498_my-svg_flowchart-v2-pointEnd)"/><path d="M323.219,191L323.219,195.167C323.219,199.333,323.219,207.667,323.219,215.333C323.219,223,323.219,230,323.219,233.5L323.219,237" id="me826b26498_my-svg-L_CH_EMB_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="me826b26498_L_CH_EMB_0" data-points="W3sieCI6MzIzLjIxODc1LCJ5IjoxOTF9LHsieCI6MzIzLjIxODc1LCJ5IjoyMTZ9LHsieCI6MzIzLjIxODc1LCJ5IjoyNDF9XQ==" data-look="classic" marker-end="url(#me826b26498_my-svg_flowchart-v2-pointEnd)"/><path d="M323.219,295L323.219,299.167C323.219,303.333,323.219,311.667,323.219,319.333C323.219,327,323.219,334,323.219,337.5L323.219,341" id="me826b26498_my-svg-L_EMB_VS_0" class="edge-thickness-normal edge-pattern-solid edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="me826b26498_L_EMB_VS_0" data-points="W3sieCI6MzIzLjIxODc1LCJ5IjoyOTV9LHsieCI6MzIzLjIxODc1LCJ5IjozMjB9LHsieCI6MzIzLjIxODc1LCJ5IjozNDV9XQ==" data-look="classic" marker-end="url(#me826b26498_my-svg_flowchart-v2-pointEnd)"/><path d="M323.219,419.328L323.219,423.495C323.219,427.661,323.219,435.995,323.219,446.328C323.219,456.661,323.219,468.995,315.694,480.923C308.169,492.851,293.119,504.374,285.594,510.135L278.069,515.896" id="me826b26498_my-svg-L_VS_R_0" class="edge-thickness-normal edge-pattern-dotted edge-thickness-normal edge-pattern-solid flowchart-link" style=";" data-edge="true" data-et="edge" data-id="me826b26498_L_VS_R_0" data-points="W3sieCI6MzIzLjIxODc1LCJ5Ijo0MTkuMzI3OTU3MTUzMzIwM30seyJ4IjozMjMuMjE4NzUsInkiOjQ0NC4zMjc5NTcxNTMzMjAzfSx7IngiOjMyMy4yMTg3NSwieSI6NDgxLjMyNzk1NzE1MzMyMDN9LHsieCI6Mjc0Ljg5Mjc1NTY4MTgxODIsInkiOjUxOC4zMjc5NTcxNTMzMjAzfV0=" data-look="classic" marker-end="url(#me826b26498_my-svg_flowchart-v2-pointEnd)"/></g><g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="me826b26498_L_Q_R_0_2" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="me826b26498_L_R_RR_0_2" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="me826b26498_L_RR_INJ_0_2" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="me826b26498_L_INJ_GEN_0_2" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="me826b26498_L_DOCS_CH_0_2" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="me826b26498_L_CH_EMB_0_2" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel"><g class="label" data-id="me826b26498_L_EMB_VS_0_2" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(323.21875, 481.3279571533203)"><g class="label" data-id="me826b26498_L_VS_R_0_2" transform="translate(-48.9296875, -12)"><foreignObject width="97.859375" height="24"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"><p>searched by</p></span></div></foreignObject></g></g></g><g class="nodes"><g class="node default" id="me826b26498_my-svg-flowchart-Q-0" data-look="classic" transform="translate(93.34375, 382.16397857666016)"><rect class="basic label-container" style="" x="-85.34375" y="-27" width="170.6875" height="54"/><g class="label" style="" transform="translate(-55.34375, -12)"><rect/><foreignObject width="110.6875" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>User question</p></span></div></foreignObject></g></g><g class="node default" id="me826b26498_my-svg-flowchart-R-1" data-look="classic" transform="translate(208.28125, 569.3279571533203)"><rect class="basic label-container" style="" x="-130" y="-51" width="260" height="102"/><g class="label" style="" transform="translate(-100, -36)"><rect/><foreignObject width="200" height="72"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel"><p>retrieve relevant documents (vector / hybrid search)</p></span></div></foreignObject></g></g><g class="node default" id="me826b26498_my-svg-flowchart-RR-3" data-look="classic" transform="translate(208.28125, 709.3279571533203)"><rect class="basic label-container" style="" x="-130" y="-39" width="260" height="78"/><g class="label" style="" transform="translate(-100, -24)"><rect/><foreignObject width="200" height="48"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel"><p>rerank top results (optional)</p></span></div></foreignObject></g></g><g class="node default" id="me826b26498_my-svg-flowchart-INJ-5" data-look="classic" transform="translate(208.28125, 837.3279571533203)"><rect class="basic label-container" style="" x="-130" y="-39" width="260" height="78"/><g class="label" style="" transform="translate(-100, -24)"><rect/><foreignObject width="200" height="48"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel"><p>inject documents into the prompt as context</p></span></div></foreignObject></g></g><g class="node default" id="me826b26498_my-svg-flowchart-GEN-7" data-look="classic" transform="translate(208.28125, 977.3279571533203)"><rect class="basic label-container" style="" x="-130" y="-51" width="260" height="102"/><g class="label" style="" transform="translate(-100, -36)"><rect/><foreignObject width="200" height="72"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table; white-space: break-spaces; line-height: 1.5; max-width: 200px; text-align: center; width: 200px;"><span class="nodeLabel"><p>model generates an answer grounded in the documents</p></span></div></foreignObject></g></g><g class="node default" id="me826b26498_my-svg-flowchart-DOCS-8" data-look="classic" transform="translate(323.21875, 60)"><rect class="basic label-container" style="" x="-74.53125" y="-27" width="149.0625" height="54"/><g class="label" style="" transform="translate(-44.53125, -12)"><rect/><foreignObject width="89.0625" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>documents</p></span></div></foreignObject></g></g><g class="node default" id="me826b26498_my-svg-flowchart-CH-9" data-look="classic" transform="translate(323.21875, 164)"><rect class="basic label-container" style="" x="-54.2421875" y="-27" width="108.484375" height="54"/><g class="label" style="" transform="translate(-24.2421875, -12)"><rect/><foreignObject width="48.484375" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>chunk</p></span></div></foreignObject></g></g><g class="node default" id="me826b26498_my-svg-flowchart-EMB-10" data-look="classic" transform="translate(323.21875, 268)"><rect class="basic label-container" style="" x="-57.796875" y="-27" width="115.59375" height="54"/><g class="label" style="" transform="translate(-27.796875, -12)"><rect/><foreignObject width="55.59375" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>embed</p></span></div></foreignObject></g></g><g class="node default" id="me826b26498_my-svg-flowchart-VS-11" data-look="classic" transform="translate(323.21875, 382.16397857666016)"><path d="M0,11.77598518910341 a55.65625,11.77598518910341 0,0,0 111.3125,0 a55.65625,11.77598518910341 0,0,0 -111.3125,0 l0,50.77598518910341 a55.65625,11.77598518910341 0,0,0 111.3125,0 l0,-50.77598518910341" class="basic label-container outer-path" style="" transform="translate(-55.65625, -37.16397778365511)"/><g class="label" style="" transform="translate(-48.15625, -2)"><rect/><foreignObject width="96.3125" height="24"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="nodeLabel"><p>vector store</p></span></div></foreignObject></g></g></g></g></g><defs><filter id="me826b26498_my-svg-drop-shadow" height="130%" width="130%"><feDropShadow dx="4" dy="4" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs><defs><filter id="me826b26498_my-svg-drop-shadow-small" height="150%" width="150%"><feDropShadow dx="2" dy="2" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs></svg></figure>
 <h3 id="step-1-chunking">Step 1: Chunking</h3>
@@ -1049,7 +1049,7 @@ cite the source document in brackets, e.g., [doc-3].
 &lt;/documents&gt;
 </code></pre>
 <p>Some APIs support citations natively, returning which parts of the input were used for which parts of the output. This is more reliable than prompt-based citation.</p>
-<p>Reference: <a href="https://docs.anthropic.com/en/docs/build-with-claude/citations">Anthropic Citations</a></p>
+<p>Reference: <a href="https://platform.claude.com/docs/en/build-with-claude/citations">Anthropic Citations</a></p>
 <hr>
 <h2 id="7-agents">7. Agents</h2>
 <p>An agent is an LLM in a loop that can observe, reason, and act. Where a single API call produces a one-shot response, an agent takes multiple steps to accomplish a goal.</p>
@@ -1131,7 +1131,7 @@ Synthesizer agent (combines results)
 <p>Most LLM APIs stream using SSE — a simple HTTP-based protocol where the server pushes events over a long-lived connection:</p>
 <pre><code class="language-python"># Anthropic streaming
 with client.messages.stream(
-    model=&quot;claude-sonnet-4-6&quot;,
+    model=&quot;claude-sonnet-5&quot;,
     max_tokens=1024,
     messages=[{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Explain quantum computing&quot;}]
 ) as stream:
@@ -1150,7 +1150,7 @@ app = FastAPI()
 async def chat(request: ChatRequest):
     async def generate():
         async with client.messages.stream(
-            model=&quot;claude-sonnet-4-6&quot;,
+            model=&quot;claude-sonnet-5&quot;,
             max_tokens=4096,
             messages=request.messages,
         ) as stream:
@@ -1175,7 +1175,7 @@ while (true) {
 <h3 id="streaming-with-tool-use">Streaming with Tool Use</h3>
 <p>When the model calls tools during streaming, you receive the tool call arguments progressively, then must execute the tool and resume streaming:</p>
 <pre><code class="language-python">with client.messages.stream(
-    model=&quot;claude-sonnet-4-6&quot;,
+    model=&quot;claude-sonnet-5&quot;,
     max_tokens=4096,
     tools=tools,
     messages=messages,
@@ -1229,7 +1229,7 @@ def trim_messages(messages):
 
 # Anthropic provides a token counting API
 token_count = client.messages.count_tokens(
-    model=&quot;claude-sonnet-4-6&quot;,
+    model=&quot;claude-sonnet-5&quot;,
     messages=messages,
     system=system_prompt,
 )
@@ -1253,7 +1253,7 @@ if token_count.input_tokens &gt; MAX_INPUT_TOKENS:
 <p>Most providers offer prompt caching — reuse the processed representation of long prefixes across requests:</p>
 <pre><code class="language-python"># Anthropic prompt caching
 response = client.messages.create(
-    model=&quot;claude-sonnet-4-6&quot;,
+    model=&quot;claude-sonnet-5&quot;,
     max_tokens=1024,
     system=[{
         &quot;type&quot;: &quot;text&quot;,
@@ -1266,7 +1266,7 @@ response = client.messages.create(
 # subsequent requests: reuses the cached prefix — much cheaper and faster
 </code></pre>
 <p>Prompt caching is valuable when you have a long, static prefix (system prompt, few-shot examples, retrieved documents) followed by a short, varying suffix (user message).</p>
-<p>Reference: <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching">Anthropic Prompt Caching</a></p>
+<p>Reference: <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-caching">Anthropic Prompt Caching</a></p>
 <p><strong>Cache economics:</strong>
 - Cached input tokens are typically 90% cheaper than uncached
 - First request has a small write cost
@@ -1419,9 +1419,9 @@ def cached_classify(text):
         f&quot;Rate the complexity of this request as 'simple' or 'complex': {user_message}&quot;
     )
     if complexity == &quot;simple&quot;:
-        return call_model(&quot;claude-haiku&quot;, user_message)
+        return call_model(&quot;claude-haiku-4-5&quot;, user_message)
     else:
-        return call_model(&quot;claude-sonnet&quot;, user_message)
+        return call_model(&quot;claude-sonnet-5&quot;, user_message)
 </code></pre>
 <p>In practice, routing logic can be simpler than another LLM call — keyword matching, message length, or task type from the application layer.</p>
 <h3 id="batching">Batching</h3>
@@ -1429,13 +1429,13 @@ def cached_classify(text):
 <pre><code class="language-python"># Anthropic Message Batches
 batch = client.messages.batches.create(
     requests=[
-        {&quot;custom_id&quot;: f&quot;request-{i}&quot;, &quot;params&quot;: {&quot;model&quot;: &quot;claude-sonnet-4-6&quot;, &quot;max_tokens&quot;: 1024, &quot;messages&quot;: msgs}}
+        {&quot;custom_id&quot;: f&quot;request-{i}&quot;, &quot;params&quot;: {&quot;model&quot;: &quot;claude-sonnet-5&quot;, &quot;max_tokens&quot;: 1024, &quot;messages&quot;: msgs}}
         for i, msgs in enumerate(all_messages)
     ]
 )
 # poll for completion, then retrieve results
 </code></pre>
-<p>Reference: <a href="https://docs.anthropic.com/en/docs/build-with-claude/batch-processing">Anthropic Message Batches</a></p>
+<p>Reference: <a href="https://platform.claude.com/docs/en/build-with-claude/batch-processing">Anthropic Message Batches</a></p>
 <hr>
 <h2 id="12-evals">12. Evals</h2>
 <p>Evals measure whether your LLM application works. Without evals, you're guessing. With evals, you can make changes confidently.</p>
@@ -1740,7 +1740,7 @@ Do you need the model to learn a specialized skill or domain?
 <pre><code class="language-python">log_entry = {
     &quot;request_id&quot;: uuid4(),
     &quot;timestamp&quot;: datetime.utcnow(),
-    &quot;model&quot;: &quot;claude-sonnet-4-6&quot;,
+    &quot;model&quot;: &quot;claude-sonnet-5&quot;,
     &quot;input_tokens&quot;: response.usage.input_tokens,
     &quot;output_tokens&quot;: response.usage.output_tokens,
     &quot;latency_ms&quot;: elapsed_ms,
@@ -1914,7 +1914,7 @@ execute(action)
 <p>For structured output, always validate against a schema. For free-text output, validate constraints (length, format, content).</p>
 <h3 id="9-hardcoding-a-single-model">9. Hardcoding a Single Model</h3>
 <pre><code class="language-python"># bad — locked to one model
-response = client.messages.create(model=&quot;claude-sonnet-4-6&quot;, ...)
+response = client.messages.create(model=&quot;claude-sonnet-5&quot;, ...)
 
 # better — configurable
 response = client.messages.create(model=config.MODEL, ...)
@@ -1985,11 +1985,11 @@ response = client.messages.create(model=config.MODEL, ...)
 <hr>
 <h2 id="where-to-go-next">Where to Go Next</h2>
 <ul>
-<li><strong>Read the provider docs as engineering references:</strong> the <a href="https://docs.anthropic.com/">Anthropic docs</a> (especially the <a href="https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview">prompt-engineering guide</a> and tool-use pages) and the <a href="https://platform.openai.com/docs/api-reference">OpenAI API reference</a> — capabilities, parameters, and pricing change fast, and the docs are the only current source.</li>
+<li><strong>Read the provider docs as engineering references:</strong> the <a href="https://platform.claude.com/docs/">Anthropic docs</a> (especially the <a href="https://platform.claude.com/docs/en/build-with-claude/prompt-engineering/overview">prompt-engineering guide</a> and tool-use pages) and the <a href="https://platform.openai.com/docs/api-reference">OpenAI API reference</a> — capabilities, parameters, and pricing change fast, and the docs are the only current source.</li>
 <li><strong>Read Anthropic's <a href="https://www.anthropic.com/research/building-effective-agents">Building Effective Agents</a></strong> — the short essay that separates workflows from agents and argues for the simplest pattern that works; it's the design philosophy this guide's architecture sections assume.</li>
 <li><strong>Build the eval harness before the feature.</strong> Take one real task, write 20–50 graded examples, and wire a scoring loop — the discipline that separates teams that improve their prompts from teams that vibe-edit them. <a href="https://www.promptfoo.dev/docs/intro/">promptfoo</a> or a 100-line script both work.</li>
 <li><strong>Ship one RAG app end to end</strong> — chunking, embeddings, retrieval, citations, and the injection defenses from the security section — against your own documents. Every hard problem in this guide shows up in miniature.</li>
-<li><strong>Adjacent guides in this repo:</strong> <a href="ai-agents-study-guide.html">AI Agents</a> (the autonomy layer on top), <a href="web-llm-security-study-guide.html">Web &amp; LLM Security</a> (the attack surface you just created), <a href="enterprise-api-study-guide.html">Enterprise APIs</a> (rate limits, retries, idempotency for provider calls), and <a href="observability-study-guide.html">Observability</a> (tracing multi-step LLM pipelines).</li>
+<li><strong>Adjacent guides in this repo:</strong> <a href="ai-agents-study-guide.html">AI Agents</a> (the autonomy layer on top), <a href="rag-study-guide.html">RAG &amp; Retrieval Engineering</a> (section 6 at full depth — chunking, ANN indexes, reranking, retrieval evaluation), <a href="web-llm-security-study-guide.html">Web &amp; LLM Security</a> (the attack surface you just created), <a href="enterprise-api-study-guide.html">Enterprise APIs</a> (rate limits, retries, idempotency for provider calls), and <a href="observability-study-guide.html">Observability</a> (tracing multi-step LLM pipelines).</li>
 </ul></main>
 </div>
 <button id="toTop" aria-label="Back to top">

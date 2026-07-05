@@ -4,7 +4,7 @@ A reference-style tour of PostgreSQL features and the SQL you write against them
 
 This is the **fundamentals + feature reference** part of a three-guide set. Its companions are the [Advanced PostgreSQL Study Guide](ADVANCED_POSTGRES.md) — the *engine*: MVCC internals, the query planner, `EXPLAIN`, indexing strategy, VACUUM/wraparound, locking at scale, connection pooling, the performance tuning ladder, replication/HA, backup/PITR, observability, and production pitfalls — and [PostgreSQL Extensions in Production](POSTGRES_EXTENSIONS.md), an opinionated tour of the ecosystem (PostGIS, pgvector, TimescaleDB, Citus, pg_cron, and more) with production verdicts and managed-service availability. When a topic here has a deeper treatment elsewhere, you'll see a → pointer.
 
-Tested against PostgreSQL 16/17. Most features work on 13+ unless noted.
+Tested against PostgreSQL 17/18. Most features work on 13+ unless noted.
 
 Primary references: the [official PostgreSQL documentation](https://www.postgresql.org/docs/current/) (each section below links its chapter — the docs are the most complete and accurate SQL reference in any database), the [Postgres Wiki](https://wiki.postgresql.org/) (tuning recipes, FAQs), and [pgexercises.com](https://pgexercises.com/) (hands-on SQL practice).
 

@@ -4,7 +4,7 @@ This guide is a depth-first treatment of the PostgreSQL engine and high-performa
 
 Its thesis, the throughline for everything below: **almost every Postgres performance and operations problem is a consequence of two design choices — MVCC (every write creates a new row version) and WAL (every change is logged before it is applied).** MVCC is why readers never block writers, why tables bloat, why `VACUUM` exists, and why transaction IDs can wrap around. WAL is why crash recovery, replication, and point-in-time recovery all work the same way. Internalize those two and the rest — the planner's row estimates, lock contention, autovacuum tuning, checkpoint spikes, replication lag — stops being a grab bag of unrelated knobs and becomes a single coherent system.
 
-Tested against PostgreSQL 16/17; most material applies to 13+, with version notes where it matters.
+Tested against PostgreSQL 17/18; most material applies to 13+, with version notes where it matters.
 
 Primary references: the [official PostgreSQL documentation](https://www.postgresql.org/docs/current/) (the internals chapters — [MVCC](https://www.postgresql.org/docs/current/mvcc.html), [WAL](https://www.postgresql.org/docs/current/wal-intro.html), [routine vacuuming](https://www.postgresql.org/docs/current/routine-vacuuming.html) — are excellent and underread), Egor Rogov's [*PostgreSQL Internals*](https://postgrespro.com/community/books/internals) (free PDF — the definitive deep dive on MVCC, vacuum, and the planner), the [pg_stat_statements](https://www.postgresql.org/docs/current/pgstatstatements.html) and [pgbench](https://www.postgresql.org/docs/current/pgbench.html) docs, and [explain.dalibo.com](https://explain.dalibo.com/) for visual plan analysis.
 
@@ -168,6 +168,10 @@ Diagnose pressure: if checkpoints are happening because WAL filled up (not on th
 SELECT num_timed, num_requested FROM pg_stat_checkpointer;
 -- num_requested >> num_timed  →  raise max_wal_size
 ```
+
+### PostgreSQL 18: asynchronous I/O
+
+The engine's oldest performance assumption — that reads are synchronous, one page at a time, with the OS page cache doing the heavy lifting — changed in PostgreSQL 18, which shipped a real **asynchronous I/O subsystem**. The [`io_method`](https://www.postgresql.org/docs/current/runtime-config-resource.html) setting selects the implementation: `sync` (the historical behavior), `worker` (the default — a pool of I/O worker processes issue reads ahead of the executor), or `io_uring` (Linux only, submitting I/O from the backend itself). It currently accelerates the *read* side — sequential scans, bitmap heap scans, and vacuum — where keeping multiple I/Os in flight can multiply throughput on cloud block storage, whose per-request latency is exactly what synchronous page-at-a-time reading serializes on. If you run Postgres on EBS-style storage, this is the biggest single reason to move to 18.
 
 ### Practice
 
