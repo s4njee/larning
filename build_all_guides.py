@@ -41,6 +41,7 @@ GUIDES = [
     ("BLENDER_STUDY_GUIDE.md", "html/blender-study-guide.html", {"accent": "#ea7600"}),
     ("UNREAL_ENGINE_STUDY_GUIDE.md", "html/unreal-engine-study-guide.html", {"accent": "#1ea7e1", "brand": "UE"}),
     ("ANSIBLE_STUDY_GUIDE.md", "html/ansible-study-guide.html", {"auto": True}),
+    ("AWS_FUNDAMENTALS_STUDY_GUIDE.md", "html/aws-fundamentals-study-guide.html", {"accent": "#ff9900", "brand": "AWS"}),
     ("AZURE_FOR_AWS_SOLUTIONS_ARCHITECT.md", "html/azure-for-aws-solutions-architect.html", {"auto": True}),
     ("GCP_FOR_AWS_SOLUTIONS_ARCHITECT.md", "html/gcp-for-aws-solutions-architect.html", {"auto": True}),
     ("CLOUDFLARE_STUDY_GUIDE.md", "html/cloudflare-study-guide.html", {"auto": True}),
@@ -115,7 +116,8 @@ CATEGORIES = [
         "unreal-engine-study-guide.html",
     ]),
     ("Infra, cloud, and ops", [
-        "ansible-study-guide.html", "azure-for-aws-solutions-architect.html",
+        "ansible-study-guide.html", "aws-fundamentals-study-guide.html",
+        "azure-for-aws-solutions-architect.html",
         "gcp-for-aws-solutions-architect.html",
         "cloudflare-study-guide.html", "docker-study-guide.html",
         "github-actions-study-guide.html", "observability-study-guide.html",
