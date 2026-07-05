@@ -75,6 +75,7 @@ GUIDES = [
     ("CRYPTO_FUNDAMENTALS.md", "html/crypto-fundamentals.html", {"auto": True}),
     ("DISTRIBUTED_SYSTEMS_STUDY_GUIDE.md", "html/distributed-systems-study-guide.html", {"auto": True}),
     ("DISTRIBUTED_ALGORITHMS_STUDY_GUIDE.md", "html/distributed-algorithms-study-guide.html", {"auto": True}),
+    ("DURABLE_EXECUTION_STUDY_GUIDE.md", "html/durable-execution-study-guide.html", {"auto": True}),
     ("QUANTUM_COMPUTING_STUDY_GUIDE.md", "html/quantum-computing-study-guide.html", {"auto": True}),
     ("KALI_LINUX_STUDY_GUIDE.md", "html/kali-linux-study-guide.html", {"auto": True}),
     ("WEB_LLM_SECURITY_STUDY_GUIDE.md", "html/web-llm-security-study-guide.html", {"auto": True}),
@@ -143,7 +144,8 @@ CATEGORIES = [
     ("Architecture, security, and AI", [
         "ai-agents-study-guide.html", "auth-study-guide.html",
         "crypto-fundamentals.html", "distributed-systems-study-guide.html",
-        "distributed-algorithms-study-guide.html", "quantum-computing-study-guide.html",
+        "distributed-algorithms-study-guide.html", "durable-execution-study-guide.html",
+        "quantum-computing-study-guide.html",
         "enterprise-api-study-guide.html",
         "kali-linux-study-guide.html", "llm-app-dev-study-guide.html",
         "rag-study-guide.html", "api-design-study-guide.html",
