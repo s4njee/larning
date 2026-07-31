@@ -918,6 +918,8 @@ When in doubt, **use Rigify** and learn by inspecting what it generates — it b
 
 Animation in Blender means defining how values change over time — positions, rotations, scales, material properties, light intensity, anything with a numeric value can be animated.
 
+> This section is the concept tour. For the depth version — the dependency graph's evaluation order, F-Curves as piecewise cubic Béziers, the quaternion pitfalls, slotted Actions and the NLA blend stack, drivers, the skinning equation, scripting with `bpy`, and exporting to real-time engines — see the [Blender Animation guide](BLENDER_ANIMATION_STUDY_GUIDE.md).
+
 ### Keyframes — The Foundation
 
 A **[keyframe](https://docs.blender.org/manual/en/latest/animation/keyframes/index.html)** records a value at a specific frame in time. You set a keyframe at frame 1 with the cube at position X=0, and another keyframe at frame 30 with X=5. Blender **interpolates** (fills in) the in-between frames automatically. The cube smoothly slides from 0 to 5 over 30 frames.
@@ -1338,6 +1340,7 @@ Blender's **Asset Browser** (3.0+) lets you mark any data-block as an asset — 
 - **Do the donut.** Blender Guru's beginner tutorial series (the famous donut) remains the best guided first project — it walks modeling → materials → lighting → rendering in order, and millions of people learned Blender through it.
 - **Study production files from [Blender Studio](https://studio.blender.org/)** — the open-movie project files (rigs, scenes, node setups) are the closest thing to reading production source code, and the training courses (especially on rigging and animation) are made by the artists who build Blender's own films.
 - **Animate a walk cycle and build one Geometry Nodes setup** — the two exercises in this guide with the highest skill-per-hour return; both force the graph editor and the node mindset to become real.
+- **Go deep on animation with the [Blender Animation guide](BLENDER_ANIMATION_STUDY_GUIDE.md)** — the sub-guide to this one, which takes the keyframe → F-Curve → Action → NLA → depsgraph → vertices pipeline apart stage by stage, with the interpolation and rotation math, `bpy` scripting, engine export, and an annotated bibliography of the field's primary and third-party literature.
 - **Script something with [`bpy`](https://docs.blender.org/api/current/)** — batch-rename, batch-export, anything; the Info editor shows the Python for every UI action, so the API teaches itself.
 - **Adjacent guides in this repo:** [WebGL/OpenGL](WEBGL_OPENGL_STUDY_GUIDE.md) and [WebGPU](WEBGPU_STUDY_GUIDE.md) (what a renderer actually does under the hood — Cycles and EEVEE will make more sense), and [Advanced Python](ADVANCED_PYTHON_STUDY_GUIDE.md) (for serious `bpy` scripting).
 
