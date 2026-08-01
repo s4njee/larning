@@ -77,7 +77,11 @@ def read_page(path: Path):
 
     m = re.search(r"<title>(.*?)</title>", text, re.S)
     # Unescape: the page title is already HTML-escaped, and callers re-escape it.
-    title = html.unescape(re.sub(r"\s*-\s*Interactive\s*$", "", m.group(1).strip())) if m else path.stem
+    title = (
+        html.unescape(re.sub(r"\s*[-–—]\s*Interactive\s*$", "", m.group(1).strip()))
+        if m
+        else path.stem
+    )
 
     m = re.search(r"<main>(.*)</main>", text, re.S)
     if not m:
@@ -370,10 +374,17 @@ CONTAINER = """<?xml version="1.0" encoding="utf-8"?>
 
 
 def build_nav(docs, categories) -> str:
-    """EPUB 3 navigation document: category -> guide -> the guide's sections."""
+    """EPUB 3 navigation document.
+
+    Top level is the book's chapter list: the contents page itself, then one
+    entry per study guide. A reader's chapter menu shows exactly those. Each
+    guide's own sections hang underneath it as children, and the categories
+    only set the reading order (they're listed on the title page instead), so
+    nothing but a guide ever appears as a chapter.
+    """
     lines = ['<nav epub:type="toc" id="toc"><h1>Contents</h1>', "<ol>"]
-    for category, pages in categories:
-        lines.append(f"<li><span>{esc(category)}</span><ol>")
+    lines.append('<li><a href="nav.xhtml">Contents</a></li>')
+    for _, pages in categories:
         for page in pages:
             doc = docs[page]
             lines.append(f'<li><a href="{doc["file"]}">{esc(doc["title"])}</a>')
@@ -383,7 +394,6 @@ def build_nav(docs, categories) -> str:
                     lines.append(f'<li><a href="{doc["file"]}#{anchor}">{label}</a></li>')
                 lines.append("</ol>")
             lines.append("</li>")
-        lines.append("</ol></li>")
     lines.append("</ol></nav>")
     lines.append(
         '<nav epub:type="landmarks" hidden="hidden"><ol>'
@@ -398,17 +408,17 @@ def build_ncx(docs, categories) -> str:
     """EPUB 2 fallback TOC, for readers that ignore nav.xhtml."""
     points, order = [], 1
     points.append(
-        f'<navPoint id="np-title" playOrder="{order}">'
-        f"<navLabel><text>{esc(BOOK_TITLE)}</text></navLabel>"
-        '<content src="title.xhtml"/></navPoint>'
+        f'<navPoint id="np-toc" playOrder="{order}">'
+        "<navLabel><text>Contents</text></navLabel>"
+        '<content src="nav.xhtml"/></navPoint>'
     )
-    for category, pages in categories:
+    for _, pages in categories:
         for page in pages:
             order += 1
             doc = docs[page]
             points.append(
                 f'<navPoint id="np-{order}" playOrder="{order}">'
-                f'<navLabel><text>{esc(category)}: {esc(doc["title"])}</text></navLabel>'
+                f'<navLabel><text>{esc(doc["title"])}</text></navLabel>'
                 f'<content src="{doc["file"]}"/></navPoint>'
             )
     return (
